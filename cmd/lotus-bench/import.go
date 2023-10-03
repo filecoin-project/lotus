@@ -497,21 +497,6 @@ type Invocation struct {
 
 const GasPerNs = 10
 
-func countGasCosts(et *types.ExecutionTrace) int64 {
-	var cgas int64
-
-	for _, gc := range et.GasCharges {
-		cgas += gc.ComputeGas
-	}
-
-	for _, sub := range et.Subcalls {
-		c := countGasCosts(&sub) //nolint
-		cgas += c
-	}
-
-	return cgas
-}
-
 type stats struct {
 	timeTaken meanVar
 	gasRatio  meanVar

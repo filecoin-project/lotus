@@ -381,7 +381,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("peer", peer.Pretty()),
+			trace.StringAttribute("peer", peer.String()),
 		)
 	}
 	defer func() {

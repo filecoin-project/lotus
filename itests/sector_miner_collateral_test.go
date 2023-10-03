@@ -51,7 +51,6 @@ func TestMinerBalanceCollateral(t *testing.T) {
 					sc.AlwaysKeepUnsealedCopy = true
 					sc.WaitDealsDelay = time.Hour
 
-					sc.BatchPreCommits = batching
 					sc.AggregateCommits = batching
 
 					sc.PreCommitBatchWait = time.Hour

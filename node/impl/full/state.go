@@ -1752,7 +1752,34 @@ func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personaliz
 
 func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
+}
 
+func (a *StateAPI) StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	ret, err := a.StateManager.GetRandomnessDigestFromTickets(ctx, randEpoch, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness digest from tickets: %w", err)
+	}
+
+	return ret[:], nil
+}
+
+func (a *StateAPI) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	ret, err := a.StateManager.GetRandomnessDigestFromBeacon(ctx, randEpoch, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness digest from tickets: %w", err)
+	}
+
+	return ret[:], nil
 }
 
 func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -1786,6 +1813,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 		ConsensusMinerMinPower:  build.ConsensusMinerMinPower,
 		SupportedProofTypes:     build.SupportedProofTypes,
 		PreCommitChallengeDelay: build.PreCommitChallengeDelay,
+		Eip155ChainID:           build.Eip155ChainId,
 		ForkUpgradeParams: api.ForkUpgradeParams{
 			UpgradeSmokeHeight:       build.UpgradeSmokeHeight,
 			UpgradeBreezeHeight:      build.UpgradeBreezeHeight,
@@ -1811,6 +1839,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeHyggeHeight:       build.UpgradeHyggeHeight,
 			UpgradeLightningHeight:   build.UpgradeLightningHeight,
 			UpgradeThunderHeight:     build.UpgradeThunderHeight,
+			UpgradeWatermelonHeight:  build.UpgradeWatermelonHeight,
 		},
 	}, nil
 }

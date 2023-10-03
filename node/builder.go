@@ -129,6 +129,8 @@ const (
 	SetupFallbackBlockstoresKey
 	GoRPCServer
 
+	ConsensusReporterKey
+
 	SetApiEndpointKey
 
 	StoreEventsKey

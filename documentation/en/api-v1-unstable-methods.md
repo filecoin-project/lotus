@@ -104,6 +104,8 @@
   * [EthSendRawTransaction](#EthSendRawTransaction)
   * [EthSubscribe](#EthSubscribe)
   * [EthSyncing](#EthSyncing)
+  * [EthTraceBlock](#EthTraceBlock)
+  * [EthTraceReplayBlockTransactions](#EthTraceReplayBlockTransactions)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [Filecoin](#Filecoin)
@@ -235,6 +237,8 @@
   * [StateGetClaim](#StateGetClaim)
   * [StateGetClaims](#StateGetClaims)
   * [StateGetNetworkParams](#StateGetNetworkParams)
+  * [StateGetRandomnessDigestFromBeacon](#StateGetRandomnessDigestFromBeacon)
+  * [StateGetRandomnessDigestFromTickets](#StateGetRandomnessDigestFromTickets)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
   * [StateListActors](#StateListActors)
@@ -3080,6 +3084,99 @@ Perms: read
 Inputs: `null`
 
 Response: `false`
+
+### EthTraceBlock
+TraceAPI related methods
+
+Returns traces created at given block
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "action": {
+      "callType": "string value",
+      "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "gas": "0x5",
+      "input": "0x07",
+      "value": "0x0"
+    },
+    "result": {
+      "gasUsed": "0x5",
+      "output": "0x07"
+    },
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "Type": "string value",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": 9,
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionPosition": 123
+  }
+]
+```
+
+### EthTraceReplayBlockTransactions
+Replays all transactions in a block returning the requested traces for each transaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value",
+  [
+    "string value"
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "output": "0x07",
+    "stateDiff": "string value",
+    "trace": [
+      {
+        "action": {
+          "callType": "string value",
+          "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+          "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+          "gas": "0x5",
+          "input": "0x07",
+          "value": "0x0"
+        },
+        "result": {
+          "gasUsed": "0x5",
+          "output": "0x07"
+        },
+        "subtraces": 123,
+        "traceAddress": [
+          123
+        ],
+        "Type": "string value"
+      }
+    ],
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "vmTrace": "string value"
+  }
+]
+```
 
 ### EthUninstallFilter
 Uninstalls a filter with given id.
@@ -6166,7 +6263,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  21
 ]
 ```
 
@@ -6181,7 +6278,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  21
 ]
 ```
 
@@ -6310,7 +6407,12 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "ParamsCodec": 42,
+      "GasLimit": 42,
+      "ReadOnly": true,
+      "CodeCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -6334,7 +6436,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true,
+          "CodeCid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,
@@ -6540,7 +6647,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true,
+          "CodeCid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,
@@ -6564,7 +6676,12 @@ Response:
               "Value": "0",
               "Method": 1,
               "Params": "Ynl0ZSBhcnJheQ==",
-              "ParamsCodec": 42
+              "ParamsCodec": 42,
+              "GasLimit": 42,
+              "ReadOnly": true,
+              "CodeCid": {
+                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+              }
             },
             "MsgRct": {
               "ExitCode": 0,
@@ -6957,10 +7074,58 @@ Response:
     "UpgradeSharkHeight": 10101,
     "UpgradeHyggeHeight": 10101,
     "UpgradeLightningHeight": 10101,
-    "UpgradeThunderHeight": 10101
-  }
+    "UpgradeThunderHeight": 10101,
+    "UpgradeWatermelonHeight": 10101
+  },
+  "Eip155ChainID": 123
 }
 ```
+
+### StateGetRandomnessDigestFromBeacon
+StateGetRandomnessDigestFromBeacon is used to sample the beacon for randomness.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"Bw=="`
+
+### StateGetRandomnessDigestFromTickets
+StateGetRandomnessDigestFromTickets. is used to sample the chain for randomness.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"Bw=="`
 
 ### StateGetRandomnessFromBeacon
 StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
@@ -7890,7 +8055,7 @@ Inputs:
 ]
 ```
 
-Response: `20`
+Response: `21`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -8011,7 +8176,12 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "ParamsCodec": 42,
+      "GasLimit": 42,
+      "ReadOnly": true,
+      "CodeCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -8035,7 +8205,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true,
+          "CodeCid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,

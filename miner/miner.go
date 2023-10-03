@@ -10,7 +10,8 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -61,7 +62,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 // NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
 // address (which can be different from the worker's address).
 func NewMiner(api v1api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter, j journal.Journal) *Miner {
-	arc, err := lru.NewARC[abi.ChainEpoch, bool](10000)
+	arc, err := arc.NewARC[abi.ChainEpoch, bool](10000)
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +123,7 @@ type Miner struct {
 	// minedBlockHeights is a safeguard that caches the last heights we mined.
 	// It is consulted before publishing a newly mined block, for a sanity check
 	// intended to avoid slashings in case of a bug.
-	minedBlockHeights *lru.ARCCache[abi.ChainEpoch, bool]
+	minedBlockHeights *arc.ARCCache[abi.ChainEpoch, bool]
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -373,8 +374,9 @@ minerLoop:
 // MiningBase is the tipset on top of which we plan to construct our next block.
 // Refer to godocs on GetBestMiningCandidate.
 type MiningBase struct {
-	TipSet     *types.TipSet
-	NullRounds abi.ChainEpoch
+	TipSet      *types.TipSet
+	ComputeTime time.Time
+	NullRounds  abi.ChainEpoch
 }
 
 // GetBestMiningCandidate implements the fork choice rule from a miner's
@@ -412,7 +414,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 		}
 	}
 
-	m.lastWork = &MiningBase{TipSet: bts}
+	m.lastWork = &MiningBase{TipSet: bts, ComputeTime: time.Now()}
 	return m.lastWork, nil
 }
 
@@ -507,13 +509,13 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
+	ticket, err := m.computeTicket(ctx, &rbase, round, base.TipSet.MinTicket(), mbi)
 	if err != nil {
 		err = xerrors.Errorf("scratching ticket failed: %w", err)
 		return nil, err
 	}
 
-	winner, err = gen.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
+	winner, err = gen.IsRoundWinner(ctx, round, m.address, rbase, mbi, m.api)
 	if err != nil {
 		err = xerrors.Errorf("failed to check if we win next round: %w", err)
 		return nil, err
@@ -531,7 +533,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
-	rand, err := lrand.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+	rand, err := lrand.DrawRandomnessFromBase(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
 		err = xerrors.Errorf("failed to get randomness for winning post: %w", err)
 		return nil, err
@@ -554,13 +556,74 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	tProof := build.Clock.Now()
 
 	// get pending messages early,
-	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
+	msgs, err := m.api.MpoolSelect(ctx, base.TipSet.Key(), ticket.Quality())
 	if err != nil {
 		err = xerrors.Errorf("failed to select messages for block: %w", err)
 		return nil, err
 	}
 
 	tPending := build.Clock.Now()
+
+	// This next block exists to "catch" equivocating miners,
+	// who submit 2 blocks at the same height at different times in order to split the network.
+	// To safeguard against this, we make sure it's been EquivocationDelaySecs since our base was calculated,
+	// then re-calculate it.
+	// If the daemon detected equivocated blocks, those blocks will no longer be in the new base.
+	m.niceSleep(time.Until(base.ComputeTime.Add(time.Duration(build.EquivocationDelaySecs) * time.Second)))
+	newBase, err := m.GetBestMiningCandidate(ctx)
+	if err != nil {
+		err = xerrors.Errorf("failed to refresh best mining candidate: %w", err)
+		return nil, err
+	}
+
+	tEquivocateWait := build.Clock.Now()
+
+	// If the base has changed, we take the _intersection_ of our old base and new base,
+	// thus ejecting blocks from any equivocating miners, without taking any new blocks.
+	if newBase.TipSet.Height() == base.TipSet.Height() && !newBase.TipSet.Equals(base.TipSet) {
+		log.Warnf("base changed from %s to %s, taking intersection", base.TipSet.Key(), newBase.TipSet.Key())
+		newBaseMap := map[cid.Cid]struct{}{}
+		for _, newBaseBlk := range newBase.TipSet.Cids() {
+			newBaseMap[newBaseBlk] = struct{}{}
+		}
+
+		refreshedBaseBlocks := make([]*types.BlockHeader, 0, len(base.TipSet.Cids()))
+		for _, baseBlk := range base.TipSet.Blocks() {
+			if _, ok := newBaseMap[baseBlk.Cid()]; ok {
+				refreshedBaseBlocks = append(refreshedBaseBlocks, baseBlk)
+			}
+		}
+
+		if len(refreshedBaseBlocks) != len(base.TipSet.Blocks()) {
+			refreshedBase, err := types.NewTipSet(refreshedBaseBlocks)
+			if err != nil {
+				err = xerrors.Errorf("failed to create new tipset when refreshing: %w", err)
+				return nil, err
+			}
+
+			if !base.TipSet.MinTicket().Equals(refreshedBase.MinTicket()) {
+				log.Warn("recomputing ticket due to base refresh")
+
+				ticket, err = m.computeTicket(ctx, &rbase, round, refreshedBase.MinTicket(), mbi)
+				if err != nil {
+					err = xerrors.Errorf("failed to refresh ticket: %w", err)
+					return nil, err
+				}
+			}
+
+			log.Warn("re-selecting messages due to base refresh")
+			// refresh messages, as the selected messages may no longer be valid
+			msgs, err = m.api.MpoolSelect(ctx, refreshedBase.Key(), ticket.Quality())
+			if err != nil {
+				err = xerrors.Errorf("failed to re-select messages for block: %w", err)
+				return nil, err
+			}
+
+			base.TipSet = refreshedBase
+		}
+	}
+
+	tIntersectAndRefresh := build.Clock.Now()
 
 	// TODO: winning post proof
 	minedBlock, err = m.createBlock(base, m.address, ticket, winner, bvals, postProof, msgs)
@@ -576,31 +639,32 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		parentMiners[i] = header.Miner
 	}
 	log.Infow("mined new block", "cid", minedBlock.Cid(), "height", int64(minedBlock.Header.Height), "miner", minedBlock.Header.Miner, "parents", parentMiners, "parentTipset", base.TipSet.Key().String(), "took", dur)
-	if dur > time.Second*time.Duration(build.BlockDelaySecs) {
-		log.Warnw("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up",
+	if dur > time.Second*time.Duration(build.BlockDelaySecs) || time.Now().Compare(time.Unix(int64(minedBlock.Header.Timestamp), 0)) >= 0 {
+		log.Warnw("CAUTION: block production took us past the block time. Your computer may not be fast enough to keep up",
 			"tPowercheck ", tPowercheck.Sub(tStart),
 			"tTicket ", tTicket.Sub(tPowercheck),
 			"tSeed ", tSeed.Sub(tTicket),
 			"tProof ", tProof.Sub(tSeed),
 			"tPending ", tPending.Sub(tProof),
-			"tCreateBlock ", tCreateBlock.Sub(tPending))
+			"tEquivocateWait ", tEquivocateWait.Sub(tPending),
+			"tIntersectAndRefresh ", tIntersectAndRefresh.Sub(tEquivocateWait),
+			"tCreateBlock ", tCreateBlock.Sub(tIntersectAndRefresh))
 	}
 
 	return minedBlock, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, round abi.ChainEpoch, chainRand *types.Ticket, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := m.address.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	round := base.TipSet.Height() + base.NullRounds + 1
 	if round > build.UpgradeSmokeHeight {
-		buf.Write(base.TipSet.MinTicket().VRFProof)
+		buf.Write(chainRand.VRFProof)
 	}
 
-	input, err := lrand.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
+	input, err := lrand.DrawRandomnessFromBase(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}

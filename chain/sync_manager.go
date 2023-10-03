@@ -92,6 +92,7 @@ type syncManager struct {
 var _ SyncManager = (*syncManager)(nil)
 
 type peerHead struct {
+	// Note: this doesn't _necessarily_ mean that p's head is ts, just that ts is a tipset that p sent to us
 	p  peer.ID
 	ts *types.TipSet
 }

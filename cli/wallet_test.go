@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
 func TestWalletNew(t *testing.T) {
@@ -133,6 +134,11 @@ func TestWalletBalance(t *testing.T) {
 
 	balance := big.NewInt(1234)
 
+	// add blocks to the chain
+	first := mock.TipSet(mock.MkBlock(nil, 5, 4))
+	head := mock.TipSet(mock.MkBlock(first, 15, 7))
+
+	mockApi.EXPECT().ChainHead(ctx).Return(head, nil)
 	mockApi.EXPECT().WalletBalance(ctx, addr).Return(balance, nil)
 
 	//stm: @CLI_WALLET_BALANCE_001

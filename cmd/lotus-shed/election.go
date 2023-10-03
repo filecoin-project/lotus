@@ -219,7 +219,7 @@ func backTestWinner(ctx context.Context, miner address.Address, round abi.ChainE
 		brand = bvals[len(bvals)-1]
 	}
 
-	winner, err := gen.IsRoundWinner(ctx, ts, round, miner, brand, mbi, api)
+	winner, err := gen.IsRoundWinner(ctx, round, miner, brand, mbi, api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}

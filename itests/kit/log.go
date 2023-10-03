@@ -21,6 +21,7 @@ func QuietMiningLogs() {
 	_ = logging.SetLogLevel("pubsub", "ERROR")
 	_ = logging.SetLogLevel("gen", "ERROR")
 	_ = logging.SetLogLevel("rpc", "ERROR")
+	_ = logging.SetLogLevel("consensus-common", "ERROR")
 	_ = logging.SetLogLevel("dht/RtRefreshManager", "ERROR")
 }
 
