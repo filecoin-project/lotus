@@ -3,6 +3,7 @@ package ffiwrapper
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"fmt"
 	"io"
 	"io/fs"
@@ -971,7 +972,9 @@ func TestMulticoreSDR(t *testing.T) {
 
 func TestPoStChallengeAssumptions(t *testing.T) {
 	var r [32]byte
-	rand.Read(r[:])
+	if _, err := crand.Read(r[:]); err != nil {
+		panic(err)
+	}
 	r[31] &= 0x3f
 
 	// behaves like a pure function

@@ -33,7 +33,6 @@ type DB struct {
 	cfg       *pgxpool.Config
 	schema    string
 	hostnames []string
-	log       func(string)
 }
 
 var logger = logging.Logger("harmonydb")
@@ -50,7 +49,6 @@ func NewFromConfig(cfg config.HarmonyDB) (*DB, error) {
 		cfg.Database,
 		cfg.Port,
 		"",
-		func(s string) { logger.Error(s) },
 	)
 }
 
@@ -63,7 +61,6 @@ func NewFromConfigWithITestID(cfg config.HarmonyDB) func(id ITestID) (*DB, error
 			cfg.Database,
 			cfg.Port,
 			id,
-			func(s string) { logger.Error(s) },
 		)
 	}
 }
@@ -71,7 +68,7 @@ func NewFromConfigWithITestID(cfg config.HarmonyDB) func(id ITestID) (*DB, error
 // New is to be called once per binary to establish the pool.
 // log() is for errors. It returns an upgraded database's connection.
 // This entry point serves both production and integration tests, so it's more DI.
-func New(hosts []string, username, password, database, port string, itestID ITestID, log func(string)) (*DB, error) {
+func New(hosts []string, username, password, database, port string, itestID ITestID) (*DB, error) {
 	itest := string(itestID)
 	connString := ""
 	if len(hosts) > 0 {
@@ -102,11 +99,11 @@ func New(hosts []string, username, password, database, port string, itestID ITes
 	}
 
 	cfg.ConnConfig.OnNotice = func(conn *pgconn.PgConn, n *pgconn.Notice) {
-		log("database notice: " + n.Message + ": " + n.Detail)
+		logger.Debug("database notice: " + n.Message + ": " + n.Detail)
 		DBMeasures.Errors.M(1)
 	}
 
-	db := DB{cfg: cfg, schema: schema, hostnames: hosts, log: log} // pgx populated in AddStatsAndConnect
+	db := DB{cfg: cfg, schema: schema, hostnames: hosts} // pgx populated in AddStatsAndConnect
 	if err := db.addStatsAndConnect(); err != nil {
 		return nil, err
 	}
@@ -172,10 +169,13 @@ func (db *DB) addStatsAndConnect() error {
 		return nil
 	}
 
+	// Timeout the first connection so we know if the DB is down.
+	ctx, ctxClose := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	defer ctxClose()
 	var err error
-	db.pgx, err = pgxpool.NewWithConfig(context.Background(), db.cfg)
+	db.pgx, err = pgxpool.NewWithConfig(ctx, db.cfg)
 	if err != nil {
-		db.log(fmt.Sprintf("Unable to connect to database: %v\n", err))
+		logger.Error(fmt.Sprintf("Unable to connect to database: %v\n", err))
 		return err
 	}
 	return nil
@@ -229,7 +229,7 @@ func (db *DB) upgrade() error {
 		applied TIMESTAMP DEFAULT current_timestamp
 	)`)
 	if err != nil {
-		db.log("Upgrade failed.")
+		logger.Error("Upgrade failed.")
 		return err
 	}
 
@@ -240,7 +240,7 @@ func (db *DB) upgrade() error {
 		var landedEntries []struct{ Entry string }
 		err = db.Select(context.Background(), &landedEntries, "SELECT entry FROM base")
 		if err != nil {
-			db.log("Cannot read entries: " + err.Error())
+			logger.Error("Cannot read entries: " + err.Error())
 			return err
 		}
 		for _, l := range landedEntries {
@@ -249,18 +249,23 @@ func (db *DB) upgrade() error {
 	}
 	dir, err := fs.ReadDir("sql")
 	if err != nil {
-		db.log("Cannot read fs entries: " + err.Error())
+		logger.Error("Cannot read fs entries: " + err.Error())
 		return err
 	}
 	sort.Slice(dir, func(i, j int) bool { return dir[i].Name() < dir[j].Name() })
+
+	if len(dir) == 0 {
+		logger.Error("No sql files found.")
+	}
 	for _, e := range dir {
 		name := e.Name()
 		if landed[name] || !strings.HasSuffix(name, ".sql") {
+			logger.Debug("DB Schema " + name + " already applied.")
 			continue
 		}
 		file, err := fs.ReadFile("sql/" + name)
 		if err != nil {
-			db.log("weird embed file read err")
+			logger.Error("weird embed file read err")
 			return err
 		}
 		for _, s := range strings.Split(string(file), ";") { // Implement the changes.
@@ -270,7 +275,7 @@ func (db *DB) upgrade() error {
 			_, err = db.pgx.Exec(context.Background(), s)
 			if err != nil {
 				msg := fmt.Sprintf("Could not upgrade! File %s, Query: %s, Returned: %s", name, s, err.Error())
-				db.log(msg)
+				logger.Error(msg)
 				return errors.New(msg) // makes devs lives easier by placing message at the end.
 			}
 		}
@@ -278,7 +283,7 @@ func (db *DB) upgrade() error {
 		// Mark Completed.
 		_, err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUES ($1)", name)
 		if err != nil {
-			db.log("Cannot update base: " + err.Error())
+			logger.Error("Cannot update base: " + err.Error())
 			return fmt.Errorf("cannot insert into base: %w", err)
 		}
 	}

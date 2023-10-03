@@ -54,37 +54,6 @@ var runCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
-		&cli.StringFlag{
-			Name:    "db-host",
-			EnvVars: []string{"LOTUS_DB_HOST"},
-			Usage:   "Command separated list of hostnames for yugabyte cluster",
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-name",
-			EnvVars: []string{"LOTUS_DB_NAME"},
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-user",
-			EnvVars: []string{"LOTUS_DB_USER"},
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-password",
-			EnvVars: []string{"LOTUS_DB_PASSWORD"},
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-port",
-			EnvVars: []string{"LOTUS_DB_PORT"},
-			Hidden:  true,
-			Value:   "5433",
-		},
-		&cli.StringFlag{
-			Name:  FlagProviderRepo,
-			Value: "~/lotusminer",
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
@@ -118,7 +87,7 @@ var runCmd = &cli.Command{
 
 		// Open repo
 
-		repoPath := cctx.String(FlagProviderRepo)
+		repoPath := cctx.String(FlagRepoPath)
 		fmt.Println("repopath", repoPath)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
@@ -159,18 +128,10 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		dbConfig := config.HarmonyDB{
-			Username: cctx.String("db-user"),
-			Password: cctx.String("db-password"),
-			Hosts:    strings.Split(cctx.String("db-host"), ","),
-			Database: cctx.String("db-name"),
-			Port:     cctx.String("db-port"),
-		}
-		db, err := harmonydb.NewFromConfig(dbConfig)
+		db, err := makeDB(cctx)
 		if err != nil {
 			return err
 		}
-
 		shutdownChan := make(chan struct{})
 
 		/* defaults break lockedRepo (below)
@@ -209,6 +170,11 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		lp, err := getConfig(cctx, db)
+		if err != nil {
+			return err
+		}
+		_ = lp // here is where the config feeds into task runners
 
 		taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{}, address)
 		if err != nil {
@@ -255,4 +221,16 @@ var runCmd = &cli.Command{
 		<-finishCh
 		return nil
 	},
+}
+
+func makeDB(cctx *cli.Context) (*harmonydb.DB, error) {
+	dbConfig := config.HarmonyDB{
+		Username: cctx.String("db-user"),
+		Password: cctx.String("db-password"),
+		Hosts:    strings.Split(cctx.String("db-host"), ","),
+		Database: cctx.String("db-name"),
+		Port:     cctx.String("db-port"),
+	}
+	return harmonydb.NewFromConfig(dbConfig)
+
 }

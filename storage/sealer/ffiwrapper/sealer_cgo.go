@@ -147,7 +147,8 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 		})
 	}
 
-	if len(piecePromises) > 0 && len(piecePromises) == 1 { // weird for linter
+	/*  #nosec G601 -- length is verified */
+	if len(piecePromises) == 1 {
 		p := piecePromises[0]
 		return p()
 	}
@@ -348,7 +349,8 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, exis
 	}
 	stagedFile = nil
 
-	if len(piecePromises) > 0 && len(piecePromises) == 1 { // weird for linter
+	/*  #nosec G601 -- length is verified */
+	if len(piecePromises) == 1 {
 		p := piecePromises[0]
 		return p()
 	}

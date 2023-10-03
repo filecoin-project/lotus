@@ -81,9 +81,40 @@ func main() {
 				Value:   "~/.lotusprovider", // should follow --repo default
 			},
 			&cli.StringFlag{
-				Name:    "repo",
-				EnvVars: []string{"LOTUS_PATH"},
+				Name:    "db-host",
+				EnvVars: []string{"LOTUS_DB_HOST"},
+				Usage:   "Command separated list of hostnames for yugabyte cluster",
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-name",
+				EnvVars: []string{"LOTUS_DB_NAME"},
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-user",
+				EnvVars: []string{"LOTUS_DB_USER"},
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-password",
+				EnvVars: []string{"LOTUS_DB_PASSWORD"},
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-port",
+				EnvVars: []string{"LOTUS_DB_PORT"},
 				Hidden:  true,
+				Value:   "5433",
+			},
+			&cli.StringFlag{
+				Name:    "layers",
+				EnvVars: []string{"LOTUS_LAYERS"},
+				Value:   "base",
+			},
+			&cli.StringFlag{
+				Name:    FlagRepoPath,
+				EnvVars: []string{"LOTUS_REPO_PATH"},
 				Value:   "~/.lotus",
 			},
 			cliutil.FlagVeryVerbose,
@@ -95,7 +126,7 @@ func main() {
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagProviderRepo), c.App.Name)
+				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagRepoPath), c.App.Name)
 				panic(r)
 			}
 			return nil
@@ -107,5 +138,5 @@ func main() {
 }
 
 const (
-	FlagProviderRepo = "provider-repo"
+	FlagRepoPath = "repo-path"
 )

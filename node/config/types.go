@@ -66,6 +66,19 @@ type StorageMiner struct {
 	HarmonyDB HarmonyDB
 }
 
+type LotusProviderConfig struct {
+	Subsystems ProviderSubsystemsConfig
+
+	Fees      LotusProviderFees
+	Addresses LotusProviderAddresses
+	Proving   ProvingConfig
+}
+
+type ProviderSubsystemsConfig struct {
+	EnableWindowPost  bool
+	EnableWinningPost bool
+}
+
 type DAGStoreConfig struct {
 	// Path to the dagstore root directory. This directory contains three
 	// subdirectories, which can be symlinked to alternative locations if
@@ -499,6 +512,20 @@ type MinerFeeConfig struct {
 	MaxMarketBalanceAddFee types.FIL
 }
 
+type LotusProviderFees struct {
+	DefaultMaxFee      types.FIL
+	MaxPreCommitGasFee types.FIL
+	MaxCommitGasFee    types.FIL
+
+	// maxBatchFee = maxBase + maxPerSector * nSectors
+	MaxPreCommitBatchGasFee BatchFeeConfig
+	MaxCommitBatchGasFee    BatchFeeConfig
+
+	MaxTerminateGasFee types.FIL
+	// WindowPoSt is a high-value operation, so the default fee should be high.
+	MaxWindowPoStGasFee types.FIL
+	MaxPublishDealsFee  types.FIL
+}
 type MinerAddressConfig struct {
 	// Addresses to send PreCommit messages from
 	PreCommitControl []string
@@ -506,6 +533,23 @@ type MinerAddressConfig struct {
 	CommitControl      []string
 	TerminateControl   []string
 	DealPublishControl []string
+
+	// DisableOwnerFallback disables usage of the owner address for messages
+	// sent automatically
+	DisableOwnerFallback bool
+	// DisableWorkerFallback disables usage of the worker address for messages
+	// sent automatically, if control addresses are configured.
+	// A control address that doesn't have enough funds will still be chosen
+	// over the worker address if this flag is set.
+	DisableWorkerFallback bool
+}
+
+type LotusProviderAddresses struct {
+	// Addresses to send PreCommit messages from
+	PreCommitControl []string
+	// Addresses to send Commit messages from
+	CommitControl    []string
+	TerminateControl []string
 
 	// DisableOwnerFallback disables usage of the owner address for messages
 	// sent automatically

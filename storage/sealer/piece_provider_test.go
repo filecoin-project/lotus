@@ -3,8 +3,8 @@ package sealer
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -195,7 +195,10 @@ type pieceProviderTestHarness struct {
 
 func generatePieceData(size uint64) []byte {
 	bz := make([]byte, size)
-	rand.Read(bz)
+	_, err := rand.Read(bz)
+	if err != nil {
+		panic(err)
+	}
 	return bz
 }
 

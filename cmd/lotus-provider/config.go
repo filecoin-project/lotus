@@ -1,24 +1,38 @@
 package main
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 var configCmd = &cli.Command{
 	Name:  "config",
-	Usage: "Manage node config",
+	Usage: "Manage node config by layers. The layer 'base' will always be applied. ",
 	Subcommands: []*cli.Command{
 		configDefaultCmd,
 		configSetCmd,
 		configGetCmd,
+		configListCmd,
+		configViewCmd,
+		configRmCmd,
 	},
 }
 
 var configDefaultCmd = &cli.Command{
-	Name:  "default",
-	Usage: "Print default system config",
+	Name:    "default",
+	Aliases: []string{"defaults"},
+	Usage:   "Print default node config",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "no-comment",
@@ -26,36 +40,203 @@ var configDefaultCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("[config]\nstatus = Coming Soon")
-		// [overlay.sealer1.tasks]\nsealer_task_enable = true
+		c := config.DefaultLotusProvider()
+
+		cb, err := config.ConfigUpdate(c, nil, config.Commented(!cctx.Bool("no-comment")), config.DefaultKeepUncommented(), config.NoEnv())
+		if err != nil {
+			return err
+		}
+
+		fmt.Print(string(cb))
+
 		return nil
 	},
 }
 
 var configSetCmd = &cli.Command{
-	Name:  "set",
-	Usage: "Set all config",
+	Name:      "set",
+	Aliases:   []string{"add"},
+	Usage:     "Set a config layer or the base by providing a filename or stdin.",
+	ArgsUsage: "a layer's file name",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "title",
+			Usage: "title of the config layer (req'd for stdin)",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("Coming soon")
+		args := cctx.Args()
+
+		db, err := makeDB(cctx)
+		if err != nil {
+			return err
+		}
+
+		name := cctx.String("title")
+		var stream io.Reader = os.Stdin
+		if args.Len() != 1 {
+			if cctx.String("title") == "" {
+				return errors.New("must have a title for stdin, or a file name")
+			}
+		} else {
+			stream, err = os.Open(args.First())
+			if err != nil {
+				return fmt.Errorf("cannot open file %s: %w", args.First(), err)
+			}
+			if name == "" {
+				name = strings.Split(args.First(), ".")[0]
+			}
+		}
+		bytes, err := io.ReadAll(stream)
+		if err != nil {
+			return fmt.Errorf("cannot read stream/file %w", err)
+		}
+
+		lp := config.DefaultLotusProvider() // ensure it's toml
+		_, err = toml.Decode(string(bytes), lp)
+		if err != nil {
+			return fmt.Errorf("cannot decode file: %w", err)
+		}
+		_ = lp
+
+		_, err = db.Exec(context.Background(),
+			`INSERT INTO harmony_config (title, config) VALUES ($1, $2) 
+			ON CONFLICT (title) DO UPDATE SET config = excluded.config`, name, string(bytes))
+		if err != nil {
+			return fmt.Errorf("unable to save config layer: %w", err)
+		}
+
+		fmt.Println("Layer " + name + " created/updated")
 		return nil
 	},
 }
 
 var configGetCmd = &cli.Command{
-	Name:  "get",
-	Usage: "Get all config",
+	Name:      "get",
+	Aliases:   []string{"cat", "show"},
+	Usage:     "Get a config layer by name. You may want to pipe the output to a file, or use 'less'",
+	ArgsUsage: "layer name",
+	Action: func(cctx *cli.Context) error {
+		args := cctx.Args()
+		if args.Len() != 1 {
+			return fmt.Errorf("want 1 layer arg, got %d", args.Len())
+		}
+		db, err := makeDB(cctx)
+		if err != nil {
+			return err
+		}
+
+		var cfg string
+		err = db.QueryRow(context.Background(), `SELECT config FROM harmony_config WHERE title=$1`, args.First()).Scan(&cfg)
+		if err != nil {
+			return err
+		}
+		fmt.Println(cfg)
+
+		return nil
+	},
+}
+
+var configListCmd = &cli.Command{
+	Name:    "list",
+	Aliases: []string{"ls"},
+	Usage:   "List config layers you can get.",
+	Flags:   []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		db, err := makeDB(cctx)
+		if err != nil {
+			return err
+		}
+		var res []string
+		err = db.Select(context.Background(), &res, `SELECT title FROM harmony_config ORDER BY title`)
+		if err != nil {
+			return fmt.Errorf("unable to read from db: %w", err)
+		}
+		for _, r := range res {
+			fmt.Println(r)
+		}
+
+		return nil
+	},
+}
+
+var configRmCmd = &cli.Command{
+	Name:    "remove",
+	Aliases: []string{"rm", "del", "delete"},
+	Usage:   "Remove a named config layer.",
+	Flags:   []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		args := cctx.Args()
+		if args.Len() != 1 {
+			return errors.New("must have exactly 1 arg for the layer name")
+		}
+		db, err := makeDB(cctx)
+		if err != nil {
+			return err
+		}
+		ct, err := db.Exec(context.Background(), `DELETE FROM harmony_config WHERE title=$1`, args.First())
+		if err != nil {
+			return fmt.Errorf("unable to read from db: %w", err)
+		}
+		if ct == 0 {
+			return fmt.Errorf("no layer named %s", args.First())
+		}
+
+		return nil
+	},
+}
+var configViewCmd = &cli.Command{
+	Name:      "interpret",
+	Aliases:   []string{"view", "stacked", "stack"},
+	Usage:     "Interpret stacked config layers by this version of lotus-provider.",
+	ArgsUsage: "a list of layers to be interpreted as the final config",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "no-comment",
-			Usage: "don't comment default values",
-		},
-		&cli.BoolFlag{
-			Name:  "no-doc",
-			Usage: "don't add value documentation",
+		&cli.StringSliceFlag{
+			Name:     "layers",
+			Usage:    "comma or space separated list of layers to be interpreted",
+			Value:    cli.NewStringSlice("base"),
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("Coming soon")
-		return nil
+		db, err := makeDB(cctx)
+		if err != nil {
+			return err
+		}
+		lp, err := getConfig(cctx, db)
+		if err != nil {
+			return err
+		}
+
+		e := toml.NewEncoder(os.Stdout)
+		e.Indent = "  "
+		return e.Encode(lp)
 	},
+}
+
+func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
+	lp := config.DefaultLotusProvider()
+	have := []string{}
+	for _, layer := range cctx.StringSlice("layers") {
+		text := ""
+		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
+		if err != nil {
+			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
+				return nil, fmt.Errorf("missing layer '%s' ", layer)
+			}
+			return nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
+		}
+		meta, err := toml.Decode(text, &lp)
+		if err != nil {
+			return nil, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
+		}
+		for _, k := range meta.Keys() {
+			have = append(have, strings.Join(k, " "))
+		}
+	}
+	_ = have // FUTURE: verify that required fields are here.
+	// If config includes 3rd-party config, consider JSONSchema as a way that
+	// 3rd-parties can dynamically include config requirements and we can
+	// validate the config. Because of layering, we must validate @ startup.
+	return lp, nil
 }

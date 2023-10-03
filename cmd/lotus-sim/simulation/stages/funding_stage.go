@@ -166,7 +166,8 @@ func (fs *FundingStage) PackMessages(ctx context.Context, bb *blockbuilder.Block
 		)
 	}()
 
-	for _, actor := range targets {
+	for _, actorTmp := range targets {
+		actor := actorTmp
 		switch {
 		case builtin.IsAccountActor(actor.Code):
 			if _, err := bb.PushMessage(&types.Message{
