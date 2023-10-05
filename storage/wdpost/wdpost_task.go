@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
+	"time"
 )
 
 type WdPostTaskDetails struct {
@@ -14,13 +15,69 @@ type WdPostTaskDetails struct {
 }
 
 type WdPostTask struct {
-	tasks chan *WdPostTaskDetails
-	db    *harmonydb.DB
+	tasks     chan *WdPostTaskDetails
+	db        *harmonydb.DB
+	scheduler *WindowPoStScheduler
 }
 
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 
+	time.Sleep(5 * time.Second)
 	log.Errorf("WdPostTask.Do() called with taskID: %v", taskID)
+
+	var tsKeyBytes []byte
+	var deadline dline.Info
+
+	err = t.db.QueryRow(context.Background(),
+		`Select tskey, 
+       				current_epoch, 
+       				period_start, 
+       				index, 
+    				open, 
+    				close, 
+    				challenge, 
+    				fault_cutoff, 
+    				wpost_period_deadlines, 
+    				wpost_proving_period, 
+    				wpost_challenge_window, 
+    				wpost_challenge_lookback, 
+    				fault_declaration_cutoff 
+			from wdpost_tasks 
+			where task_id = $1`, taskID).Scan(
+		&tsKeyBytes,
+		&deadline.CurrentEpoch,
+		&deadline.PeriodStart,
+		&deadline.Index,
+		&deadline.Open,
+		&deadline.Close,
+		&deadline.Challenge,
+		&deadline.FaultCutoff,
+		&deadline.WPoStPeriodDeadlines,
+		&deadline.WPoStProvingPeriod,
+		&deadline.WPoStChallengeWindow,
+		&deadline.WPoStChallengeLookback,
+		&deadline.FaultDeclarationCutoff,
+	)
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to queryRow: %v", err)
+		return false, err
+	}
+
+	log.Errorf("tskEY: %v", tsKeyBytes)
+	tsKey, err := types.TipSetKeyFromBytes(tsKeyBytes)
+	ts, err := t.scheduler.api.ChainGetTipSet(context.Background(), tsKey)
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to get tipset: %v", err)
+		return false, err
+	}
+	submitWdPostParams, err := t.scheduler.runPoStCycle(context.Background(), false, deadline, ts)
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to runPoStCycle: %v", err)
+		return false, err
+	}
+
+	log.Errorf("WdPostTask.Do() called with taskID: %v, submitWdPostParams: %v", taskID, submitWdPostParams)
+
 	return true, nil
 }
 
@@ -31,6 +88,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID) (*harmonytask.TaskID, e
 func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
 		Name: "WdPostCompute",
+		Max:  -1,
 	}
 }
 
@@ -49,10 +107,11 @@ func (t *WdPostTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	}
 }
 
-func NewWdPostTask(db *harmonydb.DB) *WdPostTask {
+func NewWdPostTask(db *harmonydb.DB, scheduler *WindowPoStScheduler) *WdPostTask {
 	return &WdPostTask{
-		tasks: make(chan *WdPostTaskDetails, 2),
-		db:    db,
+		tasks:     make(chan *WdPostTaskDetails, 2),
+		db:        db,
+		scheduler: scheduler,
 	}
 }
 
@@ -92,7 +151,7 @@ func (t *WdPostTask) addTaskToDB(ts *types.TipSet, deadline *dline.Info, taskId 
                          fault_declaration_cutoff
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10 , $11, $12, $13, $14)`,
 		taskId,
-		tsKey.String(),
+		tsKey.Bytes(),
 		deadline.CurrentEpoch,
 		deadline.PeriodStart,
 		deadline.Index,
@@ -134,7 +193,7 @@ func (t *WdPostTask) AddTaskOld(ctx context.Context, ts *types.TipSet, deadline 
                          fault_declaration_cutoff
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10 , $11, $12, $13, $14)`,
 		taskId,
-		tsKey.String(),
+		tsKey.Bytes(),
 		deadline.CurrentEpoch,
 		deadline.PeriodStart,
 		deadline.Index,

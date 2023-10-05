@@ -211,7 +211,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		wdPostTask := wdpost.NewWdPostTask(db)
+		wdPostTask := wdpost.NewWdPostTask(db, nil)
 
 		taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, address)
 		if err != nil {

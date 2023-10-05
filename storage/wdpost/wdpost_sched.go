@@ -37,6 +37,7 @@ var log = logging.Logger("wdpost")
 type NodeAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -139,7 +140,7 @@ func NewWindowedPoStScheduler(api NodeAPI,
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	// Initialize change handler.
 
-	wdPostTask := NewWdPostTask(s.db)
+	wdPostTask := NewWdPostTask(s.db, s)
 
 	taskEngine, er := harmonytask.New(s.db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
 	if er != nil {

@@ -170,7 +170,8 @@ type proveHandler2 struct {
 	processedHeadChanges chan *headChange
 	processedPostResults chan *postResult
 
-	wdPostTask *WdPostTask
+	wdPostTask   *WdPostTask
+	currDeadline *dline.Info
 }
 
 func newProver2(
@@ -223,20 +224,22 @@ func (p *proveHandler2) run() {
 
 func (p *proveHandler2) processHeadChange(ctx context.Context, newTS *types.TipSet, di *dline.Info) {
 	// If the post window has expired, abort the current proof
-	if p.current != nil && newTS.Height() >= p.current.di.Close {
-		// Cancel the context on the current proof
-		p.current.abort()
-
-		// Clear out the reference to the proof so that we can immediately
-		// start generating a new proof, without having to worry about state
-		// getting clobbered when the abort completes
-		p.current = nil
-	}
-
-	// Only generate one proof at a time
-	if p.current != nil {
-		return
-	}
+	//if p.current != nil && newTS.Height() >= p.current.di.Close {
+	//	log.Errorf("Aborted window post Proving (Deadline: %+v), newTs: %+v", p.current.di, newTS.Height())
+	//	// Cancel the context on the current proof
+	//	p.current.abort()
+	//
+	//	// Clear out the reference to the proof so that we can immediately
+	//	// start generating a new proof, without having to worry about state
+	//	// getting clobbered when the abort completes
+	//	p.current = nil
+	//}
+	//
+	//// Only generate one proof at a time
+	//log.Errorf("p.current: %+v", p.current)
+	//if p.current != nil {
+	//	return
+	//}
 
 	// If the proof for the current post window has been generated, check the
 	// next post window
@@ -246,17 +249,19 @@ func (p *proveHandler2) processHeadChange(ctx context.Context, newTS *types.TipS
 	//	_, complete = p.posts.get(di)
 	//}
 
+	// Check if the chain is above the Challenge height for the post window
+	if newTS.Height() < di.Challenge+ChallengeConfidence {
+		return
+	}
+
+	//p.current = &currentPost{di: di}
+
 	err := p.wdPostTask.AddTask(ctx, newTS, di)
 	if err != nil {
 		log.Errorf("AddTask failed: %v", err)
 	}
 
-	//// Check if the chain is above the Challenge height for the post window
-	//if newTS.Height() < di.Challenge+ChallengeConfidence {
-	//	return
-	//}
 	//
-	//p.current = &currentPost{di: di}
 	//curr := p.current
 	//p.current.abort = p.api.startGeneratePoST(ctx, newTS, di, func(posts []miner.SubmitWindowedPoStParams, err error) {
 	//	p.postResults <- &postResult{ts: newTS, currPost: curr, posts: posts, err: err}
