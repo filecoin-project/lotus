@@ -220,7 +220,7 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 }
 
 func (h *taskTypeHandler) AssertMachineHasCapacity() error {
-	r := h.TaskEngine.resourcesInUse()
+	r := h.TaskEngine.resoourcesAvailable()
 
 	if r.Cpu-h.Cost.Cpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of cpu")

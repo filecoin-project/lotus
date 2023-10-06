@@ -394,8 +394,14 @@ func (e *TaskEngine) bump(taskType string) {
 	}
 }
 
-// resourcesInUse requires workListsMutex to be already locked.
-func (e *TaskEngine) resourcesInUse() resources.Resources {
+func (e *TaskEngine) ResourcesAvailable() resources.Resources {
+	e.workAdderMutex.Lock()
+	defer e.workAdderMutex.Unlock()
+	return e.resoourcesAvailable()
+}
+
+// resoourcesAvailable requires workAdderMutex to be already locked.
+func (e *TaskEngine) resoourcesAvailable() resources.Resources {
 	tmp := e.reg.Resources
 	copy(tmp.GpuRam, e.reg.Resources.GpuRam)
 	for _, t := range e.handlers {
