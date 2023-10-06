@@ -18,7 +18,7 @@ CREATE TABLE harmony_task (
     owner_id INTEGER REFERENCES harmony_machines (id) ON DELETE SET NULL, 
     added_by INTEGER NOT NULL,
     previous_task INTEGER,
-    name varchar(8) NOT NULL
+    name varchar(16) NOT NULL
 );
 COMMENT ON COLUMN harmony_task.initiated_by IS 'The task ID whose completion occasioned this task.';
 COMMENT ON COLUMN harmony_task.owner_id IS 'The foreign key to harmony_machines.';
@@ -29,7 +29,7 @@ COMMENT ON COLUMN harmony_task.update_time IS 'When it was last modified. not a 
 CREATE TABLE harmony_task_history (
     id SERIAL PRIMARY KEY NOT NULL,  
     task_id INTEGER NOT NULL, 
-    name VARCHAR(8) NOT NULL,
+    name VARCHAR(16) NOT NULL,
     posted TIMESTAMP NOT NULL, 
     work_start TIMESTAMP NOT NULL, 
     work_end TIMESTAMP NOT NULL, 
@@ -41,12 +41,12 @@ COMMENT ON COLUMN harmony_task_history.result IS 'Use to detemine if this was a 
 CREATE TABLE harmony_task_follow (
     id SERIAL PRIMARY KEY NOT NULL,  
     owner_id INTEGER NOT NULL REFERENCES harmony_machines (id) ON DELETE CASCADE,
-    to_type VARCHAR(8) NOT NULL,
-    from_type VARCHAR(8) NOT NULL
+    to_type VARCHAR(16) NOT NULL,
+    from_type VARCHAR(16) NOT NULL
 );
 
 CREATE TABLE harmony_task_impl (
     id SERIAL PRIMARY KEY NOT NULL,  
     owner_id INTEGER NOT NULL REFERENCES harmony_machines (id) ON DELETE CASCADE,
-    name VARCHAR(8) NOT NULL
+    name VARCHAR(16) NOT NULL
 );

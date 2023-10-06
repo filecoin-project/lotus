@@ -54,7 +54,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not read from harmony_machines: %w", err)
 		}
-		gpuram := lo.Sum(reg.GpuRam)
+		gpuram := uint64(lo.Sum(reg.GpuRam))
 		if len(ownerID) == 0 {
 			err = db.QueryRow(ctx, `INSERT INTO harmony_machines 
 		(host_and_port, cpu, ram, gpu, gpuram) VALUES

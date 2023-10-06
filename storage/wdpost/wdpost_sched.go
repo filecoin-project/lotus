@@ -2,6 +2,9 @@ package wdpost
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
+	"github.com/gin-gonic/gin"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -34,6 +37,7 @@ var log = logging.Logger("wdpost")
 type NodeAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -76,7 +80,8 @@ type WindowPoStScheduler struct {
 	maxPartitionsPerPostMessage             int
 	maxPartitionsPerRecoveryMessage         int
 	singleRecoveringPartitionPerPostMessage bool
-	ch                                      *changeHandler
+	ch                                      changeHandlerIface
+	//ch2                                     *changeHandler2
 
 	actor address.Address
 
@@ -85,6 +90,8 @@ type WindowPoStScheduler struct {
 
 	// failed abi.ChainEpoch // eps
 	// failLk sync.Mutex
+	db         *harmonydb.DB
+	wdPostTask *WdPostTask
 }
 
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
@@ -96,7 +103,9 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
-	actor address.Address) (*WindowPoStScheduler, error) {
+	actor address.Address,
+	db *harmonydb.DB,
+	task *WdPostTask) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -122,12 +131,26 @@ func NewWindowedPoStScheduler(api NodeAPI,
 			evtTypeWdPoStRecoveries: j.RegisterEventType("wdpost", "recoveries_processed"),
 			evtTypeWdPoStFaults:     j.RegisterEventType("wdpost", "faults_processed"),
 		},
-		journal: j,
+		journal:    j,
+		wdPostTask: task,
+		db:         db,
 	}, nil
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	// Initialize change handler.
+
+	wdPostTask := NewWdPostTask(s.db, s)
+
+	taskEngine, er := harmonytask.New(s.db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
+	if er != nil {
+		//return nil, xerrors.Errorf("failed to create task engine: %w", err)
+		log.Errorf("failed to create task engine: %w", er)
+	}
+	handler := gin.New()
+
+	taskEngine.ApplyHttpHandlers(handler.Group("/"))
+	defer taskEngine.GracefullyTerminate(time.Hour)
 
 	// callbacks is a union of the fullNodeFilteredAPI and ourselves.
 	callbacks := struct {
@@ -135,9 +158,17 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		*WindowPoStScheduler
 	}{s.api, s}
 
-	s.ch = newChangeHandler(callbacks, s.actor)
-	defer s.ch.shutdown()
-	s.ch.start()
+	run_on_lotus_provider := true
+
+	if !run_on_lotus_provider {
+		s.ch = newChangeHandler(callbacks, s.actor)
+		defer s.ch.shutdown()
+		s.ch.start()
+	} else {
+		s.ch = newChangeHandler2(callbacks, s.actor, wdPostTask)
+		defer s.ch.shutdown()
+		s.ch.start()
+	}
 
 	var (
 		notifs <-chan []*api.HeadChange
@@ -222,6 +253,11 @@ func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.T
 	if err != nil {
 		log.Errorf("handling head updates in window post sched: %+v", err)
 	}
+
+	//err = s.ch2.update(ctx, revert, apply)
+	//if err != nil {
+	//	log.Errorf("handling head updates in window post sched: %+v", err)
+	//}
 }
 
 // onAbort is called when generating proofs or submitting proofs is aborted

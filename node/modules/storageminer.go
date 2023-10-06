@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -300,8 +301,8 @@ func SealingPipeline(fc config.MinerFeeConfig) func(params SealingPipelineParams
 	}
 }
 
-func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func(params SealingPipelineParams) (*wdpost.WindowPoStScheduler, error) {
-	return func(params SealingPipelineParams) (*wdpost.WindowPoStScheduler, error) {
+func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func(params SealingPipelineParams, db *harmonydb.DB) (*wdpost.WindowPoStScheduler, error) {
+	return func(params SealingPipelineParams, db *harmonydb.DB) (*wdpost.WindowPoStScheduler, error) {
 		var (
 			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle
@@ -315,7 +316,18 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr)
+		//wdPostTask := wdpost.NewWdPostTask(db)
+
+		//taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
+		//if err != nil {
+		//	return nil, xerrors.Errorf("failed to create task engine: %w", err)
+		//}
+		////handler := gin.New()
+		////
+		////taskEngine.ApplyHttpHandlers(handler.Group("/"))
+		//defer taskEngine.GracefullyTerminate(time.Hour)
+
+		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr, db, nil)
 
 		if err != nil {
 			return nil, err

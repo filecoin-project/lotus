@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 	"net"
 	"os"
 	"strings"
@@ -176,7 +177,9 @@ var runCmd = &cli.Command{
 		}
 		_ = lp // here is where the config feeds into task runners
 
-		taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{}, address)
+		wdPostTask := wdpost.NewWdPostTask(db, nil)
+
+		taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, address)
 		if err != nil {
 			return err
 		}

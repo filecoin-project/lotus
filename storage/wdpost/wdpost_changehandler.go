@@ -31,6 +31,15 @@ type wdPoStCommands interface {
 	recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info)
 }
 
+type changeHandlerIface interface {
+	start()
+	update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error
+	shutdown()
+	currentTSDI() (*types.TipSet, *dline.Info)
+}
+
+var _ changeHandlerIface = &changeHandler{}
+
 type changeHandler struct {
 	api        wdPoStCommands
 	actor      address.Address
@@ -162,6 +171,8 @@ type proveHandler struct {
 	// Used for testing
 	processedHeadChanges chan *headChange
 	processedPostResults chan *postResult
+
+	wdPostTask *WdPostTask
 }
 
 func newProver(
@@ -211,6 +222,8 @@ func (p *proveHandler) run() {
 
 func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSet, di *dline.Info) {
 	// If the post window has expired, abort the current proof
+	//log.Errorf("--------------------WINDOW POST CHANGE HANDLER PROCESS HC----------------------")
+
 	if p.current != nil && newTS.Height() >= p.current.di.Close {
 		// Cancel the context on the current proof
 		p.current.abort()
@@ -233,6 +246,11 @@ func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSe
 		di = nextDeadline(di)
 		_, complete = p.posts.get(di)
 	}
+
+	//err := p.wdPostTask.AddTask(ctx, newTS, di)
+	//if err != nil {
+	//	log.Errorf("AddTask failed: %v", err)
+	//}
 
 	// Check if the chain is above the Challenge height for the post window
 	if newTS.Height() < di.Challenge+ChallengeConfidence {

@@ -272,6 +272,8 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 
 	start := time.Now()
 
+	log.Errorf("runPoStCycle called with manual: %v, di: %v, ts: %v", manual, di, ts)
+
 	log := log.WithOptions(zap.Fields(zap.Time("cycle", start)))
 	log.Infow("starting PoSt cycle", "manual", manual, "ts", ts, "deadline", di.Index)
 	defer func() {
@@ -313,6 +315,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 	// allowed in a single message
 	partitionBatches, err := s.BatchPartitions(partitions, nv)
 	if err != nil {
+		log.Errorf("batch partitions failed: %+v", err)
 		return nil, err
 	}
 
