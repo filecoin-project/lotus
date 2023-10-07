@@ -12,7 +12,7 @@ import (
 
 type CachedBlockstore struct {
 	write Blockstore
-	cache *lru.ARCCache[cid.Cid, block.Block]
+	cache *lru.Cache[cid.Cid, block.Block]
 
 	writeLk       sync.Mutex
 	pendingWrites map[cid.Cid]block.Block
@@ -21,7 +21,7 @@ type CachedBlockstore struct {
 var CacheBstoreSize = (4 << 30) / 16000 // 4GB with average block size of 16KB
 
 func WithCache(base Blockstore) *CachedBlockstore {
-	c, _ := lru.NewARC[cid.Cid, block.Block](CacheBstoreSize)
+	c, _ := lru.New[cid.Cid, block.Block](CacheBstoreSize)
 
 	bs := &CachedBlockstore{
 		write: base,

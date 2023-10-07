@@ -378,25 +378,9 @@ func (cs *ChainStore) SetGenesis(ctx context.Context, b *types.BlockHeader) erro
 		return xerrors.Errorf("failed to add genesis tipset to tracker: %w", err)
 	}
 
-
-  /* todo test the following block is ok from merging mikers/feat/cassandra-store <-> master */
-	if expanded.Key() != ts.Key() {
-		log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
-
-		tsBlk, err := expanded.Key().ToStorageBlock()
-		if err != nil {
-			return xerrors.Errorf("failed to get tipset key block: %w", err)
-		}
-
-		if err = cs.stateBlockstore.Put(ctx, tsBlk); err != nil {
-			return xerrors.Errorf("failed to put tipset key block: %w", err)
-		}
-  }
-
 	if err := cs.RefreshHeaviestTipSet(ctx, ts.Height()); err != nil {
 		return xerrors.Errorf("failed to put genesis tipset: %w", err)
 	}
-  /* todo test the previous block is ok from merging mikers/feat/cassandra-store <-> master */
 
 	return cs.metadataDs.Put(ctx, dstore.NewKey("0"), b.Cid().Bytes())
 }
