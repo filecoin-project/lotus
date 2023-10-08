@@ -239,9 +239,10 @@ func NewSyncerFollower(params SyncerParams) (*chain.Syncer, error) {
 					}
 					for _, change := range head {
 						fmt.Println("New Tipset!")
-						fmt.Println(change.Val.Cids())
-						fmt.Println(change.Val.Height())
-						sm.ChainStore().MaybeTakeHeavierTipSet(ctx, change.Val)
+						blocks := change.Val.Blocks()
+						for _, block := range blocks {
+							sm.ChainStore().RefreshHeaviestTipSet(ctx, block.Height)
+						}
 					}
 				}
 			}()

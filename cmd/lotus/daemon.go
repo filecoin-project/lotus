@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
-	levelds "github.com/ipfs/go-ds-leveldb"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
