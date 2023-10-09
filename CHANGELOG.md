@@ -9,6 +9,7 @@
 ## Improvements
 - fix: Add time slicing to splitstore purging step during compaction to reduce lock congestion [filecoin-project/lotus#11269](https://github.com/filecoin-project/lotus/pull/11269)
 - feat: Added instructions on how to setup Prometheus/Grafana for monitoring a local Lotus node [filecoin-project/lotus#11276](https://github.com/filecoin-project/lotus/pull/11276)
+- fix: Exclude reverted events in `eth_getLogs` results [filecoin-project/lotus#11318](https://github.com/filecoin-project/lotus/pull/11318)
 
 # v1.23.3 / 2023-08-01
 
