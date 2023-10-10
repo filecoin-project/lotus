@@ -622,7 +622,8 @@ func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, e
 	if err != nil {
 		return 0, err
 	}
-	return int(uint64(maxSectors) / sectorsPerPart), nil
+
+	return min(miner12.PoStedPartitionsMax, int(uint64(maxSectors)/sectorsPerPart)), nil
 }
 
 func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
@@ -864,4 +865,11 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
