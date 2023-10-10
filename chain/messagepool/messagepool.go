@@ -225,17 +225,11 @@ func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.M
 	}
 
 	gaslimit := types.NewInt(uint64(msg.GasLimit))
-
-	if !maximizeFeeCap {
-		totalFee := types.BigMul(msg.GasFeeCap, gaslimit)
-
-		if totalFee.LessThanEqual(maxFee) {
-			msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
-			return
-		}
+	totalFee := types.BigMul(msg.GasFeeCap, gaslimit)
+	if !maximizeFeeCap && totalFee.GreaterThan(maxFee) {
+		msg.GasFeeCap = big.Div(maxFee, gaslimit)
 	}
 
-	msg.GasFeeCap = big.Div(maxFee, gaslimit)
 	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
 
