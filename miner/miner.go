@@ -592,7 +592,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			}
 		}
 
-		if len(refreshedBaseBlocks) != len(base.TipSet.Blocks()) {
+		if len(refreshedBaseBlocks) != 0 && len(refreshedBaseBlocks) != len(base.TipSet.Blocks()) {
 			refreshedBase, err := types.NewTipSet(refreshedBaseBlocks)
 			if err != nil {
 				err = xerrors.Errorf("failed to create new tipset when refreshing: %w", err)
