@@ -1150,7 +1150,7 @@ required to have expiration of at least the soonest-ending deal`,
 
 			Comment: `CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 live before it must be extended or converted into sector containing deals before it is
-terminated. Value must be between 180-1278 days.`,
+terminated. Value must be between 180-1278 days (1278 in nv21, 540 before nv21).`,
 		},
 		{
 			Name: "WaitDealsDelay",
