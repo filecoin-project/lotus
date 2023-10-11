@@ -290,13 +290,10 @@ type ProvingConfig struct {
 	// 'lotus-miner proving compute window-post 0'
 	DisableWDPoStPreChecks bool
 
-	// Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+	// Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
 	//
 	// A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
-	//
-	// The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-	// means that a single message can prove at most 10 partitions
-	//
+	//	//
 	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 	//

@@ -934,10 +934,11 @@ func (a *StateAPI) stateComputeDataCIDv1(ctx context.Context, maddr address.Addr
 		return cid.Undef, xerrors.Errorf("computing params for ComputeDataCommitment: %w", err)
 	}
 	ccmt := &types.Message{
-		To:     market.Address,
-		From:   maddr,
-		Value:  types.NewInt(0),
-		Method: market.Methods.ComputeDataCommitment,
+		To:    market.Address,
+		From:  maddr,
+		Value: types.NewInt(0),
+		// Hard coded, because the method has since been deprecated
+		Method: 8,
 		Params: ccparams,
 	}
 	r, err := a.StateCall(ctx, ccmt, tsk)
@@ -971,10 +972,11 @@ func (a *StateAPI) stateComputeDataCIDv2(ctx context.Context, maddr address.Addr
 		return cid.Undef, xerrors.Errorf("computing params for ComputeDataCommitment: %w", err)
 	}
 	ccmt := &types.Message{
-		To:     market.Address,
-		From:   maddr,
-		Value:  types.NewInt(0),
-		Method: market.Methods.ComputeDataCommitment,
+		To:    market.Address,
+		From:  maddr,
+		Value: types.NewInt(0),
+		// Hard coded, because the method has since been deprecated
+		Method: 8,
 		Params: ccparams,
 	}
 	r, err := a.StateCall(ctx, ccmt, tsk)
