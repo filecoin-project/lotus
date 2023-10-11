@@ -3,31 +3,39 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/wdpost"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -175,14 +183,72 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		_ = lp // here is where the config feeds into task runners
+		// The config feeds into task runners & their helpers
 
-		wdPostTask := wdpost.NewWdPostTask(db, nil)
+		var activeTasks []harmonytask.TaskInterface
 
-		taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, address)
+		ds, dsCloser, err := modules.DatastoreV2(ctx, false, lr)
 		if err != nil {
 			return err
 		}
+		defer dsCloser()
+		maddr, err := modules.MinerAddress(ds)
+		if err != nil {
+			return err
+		}
+		var verif storiface.Verifier = ffiwrapper.ProofVerifier
+
+		as, err := modules.AddressSelector(&lp.Addresses)()
+
+		j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents()) // TODO switch this into DB entries.
+		if err != nil {
+			return err
+		}
+		defer j.Close()
+
+		full, fullCloser, err := cliutil.GetFullNodeAPIV1(cctx) // TODO switch this into DB entries.
+		if err != nil {
+			return err
+		}
+		defer fullCloser()
+
+		si := paths.NewIndexProxy( /*TODO Alerting*/ nil, db, true)
+
+		lstor, err := paths.NewLocal(ctx, lr, si, nil /*TODO URLs*/)
+		if err != nil {
+			return err
+		}
+		sa, err := modules.StorageAuth(ctx, full)
+		if err != nil {
+			return err
+		}
+
+		stor := paths.NewRemote(lstor, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
+		mds, err := lr.Datastore(ctx, "/metadata")
+		if err != nil {
+			return err
+		}
+
+		wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
+		smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
+		sealer, err := sealer.New(ctx, lstor, stor, lr, si, lp.SealerConfig, config.ProvingConfig{}, wsts, smsts)
+		if err != nil {
+			return err
+		}
+
+		if lp.Subsystems.EnableWindowPost {
+			wdPostTask, err := modules.WindowPostSchedulerV2(ctx, lp.Fees, lp.Proving, full, sealer, verif, j,
+				as, maddr, db, lp.Subsystems.WindowPostMaxTasks)
+			if err != nil {
+				return err
+			}
+			activeTasks = append(activeTasks, wdPostTask)
+		}
+		taskEngine, err := harmonytask.New(db, activeTasks, address)
+		if err != nil {
+			return err
+		}
+
 		handler := gin.New()
 
 		taskEngine.ApplyHttpHandlers(handler.Group("/"))
@@ -222,6 +288,7 @@ var runCmd = &cli.Command{
 		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
 
 		<-finishCh
+
 		return nil
 	},
 }

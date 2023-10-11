@@ -20,9 +20,9 @@ const (
 type CompleteGeneratePoSTCb func(posts []miner.SubmitWindowedPoStParams, err error)
 type CompleteSubmitPoSTCb func(err error)
 
-// wdPoStCommands is the subset of the WindowPoStScheduler + full node APIs used
+// WdPoStCommands is the subset of the WindowPoStScheduler + full node APIs used
 // by the changeHandler to execute actions and query state.
-type wdPoStCommands interface {
+type WdPoStCommands interface {
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 
 	startGeneratePoST(ctx context.Context, ts *types.TipSet, deadline *dline.Info, onComplete CompleteGeneratePoSTCb) context.CancelFunc
@@ -31,23 +31,23 @@ type wdPoStCommands interface {
 	recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info)
 }
 
-type changeHandlerIface interface {
+type ChangeHandlerIface interface {
 	start()
 	update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error
 	shutdown()
 	currentTSDI() (*types.TipSet, *dline.Info)
 }
 
-var _ changeHandlerIface = &changeHandler{}
+var _ ChangeHandlerIface = &changeHandler{}
 
 type changeHandler struct {
-	api        wdPoStCommands
+	api        WdPoStCommands
 	actor      address.Address
 	proveHdlr  *proveHandler
 	submitHdlr *submitHandler
 }
 
-func newChangeHandler(api wdPoStCommands, actor address.Address) *changeHandler {
+func newChangeHandler(api WdPoStCommands, actor address.Address) *changeHandler {
 	posts := newPostsCache()
 	p := newProver(api, posts)
 	s := newSubmitter(api, posts)
@@ -157,7 +157,7 @@ type postResult struct {
 
 // proveHandler generates proofs
 type proveHandler struct {
-	api   wdPoStCommands
+	api   WdPoStCommands
 	posts *postsCache
 
 	postResults chan *postResult
@@ -176,7 +176,7 @@ type proveHandler struct {
 }
 
 func newProver(
-	api wdPoStCommands,
+	api WdPoStCommands,
 	posts *postsCache,
 ) *proveHandler {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -315,7 +315,7 @@ type postInfo struct {
 
 // submitHandler submits proofs on-chain
 type submitHandler struct {
-	api   wdPoStCommands
+	api   WdPoStCommands
 	posts *postsCache
 
 	submitResults chan *submitResult
@@ -339,7 +339,7 @@ type submitHandler struct {
 }
 
 func newSubmitter(
-	api wdPoStCommands,
+	api WdPoStCommands,
 	posts *postsCache,
 ) *submitHandler {
 	ctx, cancel := context.WithCancel(context.Background())

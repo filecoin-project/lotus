@@ -2,10 +2,9 @@ package wdpost
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"github.com/gin-gonic/gin"
 	"time"
+
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -80,8 +79,7 @@ type WindowPoStScheduler struct {
 	maxPartitionsPerPostMessage             int
 	maxPartitionsPerRecoveryMessage         int
 	singleRecoveringPartitionPerPostMessage bool
-	ch                                      changeHandlerIface
-	//ch2                                     *changeHandler2
+	ch                                      ChangeHandlerIface
 
 	actor address.Address
 
@@ -140,35 +138,20 @@ func NewWindowedPoStScheduler(api NodeAPI,
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	// Initialize change handler.
 
-	wdPostTask := NewWdPostTask(s.db, s)
-
-	taskEngine, er := harmonytask.New(s.db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
-	if er != nil {
-		//return nil, xerrors.Errorf("failed to create task engine: %w", err)
-		log.Errorf("failed to create task engine: %w", er)
-	}
-	handler := gin.New()
-
-	taskEngine.ApplyHttpHandlers(handler.Group("/"))
-	defer taskEngine.GracefullyTerminate(time.Hour)
-
+	s.RunV2(ctx, func(api WdPoStCommands, actor address.Address) ChangeHandlerIface {
+		return newChangeHandler(api, actor)
+	})
+}
+func (s *WindowPoStScheduler) RunV2(ctx context.Context, f func(api WdPoStCommands, actor address.Address) ChangeHandlerIface) {
 	// callbacks is a union of the fullNodeFilteredAPI and ourselves.
 	callbacks := struct {
 		NodeAPI
 		*WindowPoStScheduler
 	}{s.api, s}
 
-	run_on_lotus_provider := true
-
-	if !run_on_lotus_provider {
-		s.ch = newChangeHandler(callbacks, s.actor)
-		defer s.ch.shutdown()
-		s.ch.start()
-	} else {
-		s.ch = newChangeHandler2(callbacks, s.actor, wdPostTask)
-		defer s.ch.shutdown()
-		s.ch.start()
-	}
+	s.ch = f(callbacks, s.actor)
+	defer s.ch.shutdown()
+	s.ch.start()
 
 	var (
 		notifs <-chan []*api.HeadChange

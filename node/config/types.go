@@ -69,14 +69,17 @@ type StorageMiner struct {
 type LotusProviderConfig struct {
 	Subsystems ProviderSubsystemsConfig
 
-	Fees      LotusProviderFees
-	Addresses LotusProviderAddresses
-	Proving   ProvingConfig
+	Fees          LotusProviderFees
+	Addresses     MinerAddressConfig
+	Proving       ProvingConfig
+	SealingParams SealingConfig // TODO defaults
+	SealerConfig                // TODO defaults
 }
 
 type ProviderSubsystemsConfig struct {
-	EnableWindowPost  bool
-	EnableWinningPost bool
+	EnableWindowPost   bool
+	WindowPostMaxTasks int
+	EnableWinningPost  bool
 }
 
 type DAGStoreConfig struct {

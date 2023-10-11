@@ -57,7 +57,7 @@ type TaskInterface interface {
 	// return null if the task type is not allowed on this machine.
 	// It should select the task it most wants to accomplish.
 	// It is also responsible for determining & reserving disk space (including scratch).
-	CanAccept([]TaskID) (*TaskID, error)
+	CanAccept([]TaskID, *TaskEngine) (*TaskID, error)
 
 	// TypeDetails() returns static details about how this task behaves and
 	// how this machine will run it. Read once at the beginning.

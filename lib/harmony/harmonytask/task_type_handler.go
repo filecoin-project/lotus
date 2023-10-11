@@ -84,7 +84,7 @@ top:
 	}
 
 	// 3. What does the impl say?
-	tID, err := h.CanAccept(ids)
+	tID, err := h.CanAccept(ids, h.TaskEngine)
 	if err != nil {
 		log.Error(err)
 		return false

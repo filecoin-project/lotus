@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -316,17 +317,6 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		//wdPostTask := wdpost.NewWdPostTask(db)
-
-		//taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
-		//if err != nil {
-		//	return nil, xerrors.Errorf("failed to create task engine: %w", err)
-		//}
-		////handler := gin.New()
-		////
-		////taskEngine.ApplyHttpHandlers(handler.Group("/"))
-		//defer taskEngine.GracefullyTerminate(time.Hour)
-
 		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr, db, nil)
 
 		if err != nil {
@@ -344,6 +334,29 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 	}
 }
 
+func WindowPostSchedulerV2(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
+	api api.FullNode, sealer sealer.SectorManager, verif storiface.Verifier, j journal.Journal,
+	as *ctladdr.AddressSelector, maddr dtypes.MinerAddress, db *harmonydb.DB, max int) (*wdpost.WdPostTask, error) {
+
+	fc2 := config.MinerFeeConfig{
+		MaxPreCommitGasFee: fc.MaxPreCommitGasFee,
+		MaxCommitGasFee:    fc.MaxCommitGasFee,
+		MaxTerminateGasFee: fc.MaxTerminateGasFee,
+		MaxPublishDealsFee: fc.MaxPublishDealsFee,
+	}
+	ts := wdpost.NewWdPostTask(db, nil, max)
+	fps, err := wdpost.NewWindowedPoStScheduler(api, fc2, pc, as, sealer, verif, sealer, j, address.Address(maddr), db, ts)
+
+	ts.Scheduler = fps
+	if err != nil {
+		return nil, err
+	}
+	go fps.RunV2(ctx, func(api wdpost.WdPoStCommands, actor address.Address) wdpost.ChangeHandlerIface {
+		return wdpost.NewChangeHandler2(api, actor, ts)
+	})
+	return ts, nil
+
+}
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider, j journal.Journal) {
 	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{

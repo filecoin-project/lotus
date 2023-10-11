@@ -2,6 +2,7 @@ package wdpost
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -28,10 +29,10 @@ import (
 //	recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info)
 //}
 
-var _ changeHandlerIface = &changeHandler2{}
+var _ ChangeHandlerIface = &changeHandler2{}
 
 type changeHandler2 struct {
-	api       wdPoStCommands
+	api       WdPoStCommands
 	actor     address.Address
 	proveHdlr *proveHandler2
 	//submitHdlr *submitHandler
@@ -44,8 +45,8 @@ func (ch *changeHandler2) currentTSDI() (*types.TipSet, *dline.Info) {
 	panic("implement me")
 }
 
-func newChangeHandler2(api wdPoStCommands, actor address.Address, task *WdPostTask) *changeHandler2 {
-	log.Errorf("newChangeHandler2() called with api: %v, actor: %v", api, actor)
+func NewChangeHandler2(api WdPoStCommands, actor address.Address, task *WdPostTask) *changeHandler2 {
+	log.Errorf("NewChangeHandler2() called with api: %v, actor: %v", api, actor)
 	//posts := newPostsCache()
 	p := newProver2(api, task)
 	//s := newSubmitter(api, posts)
@@ -155,7 +156,7 @@ func (ch *changeHandler2) shutdown() {
 
 // proveHandler generates proofs
 type proveHandler2 struct {
-	api wdPoStCommands
+	api WdPoStCommands
 	//posts *postsCache
 
 	//postResults chan *postResult
@@ -175,7 +176,7 @@ type proveHandler2 struct {
 }
 
 func newProver2(
-	api wdPoStCommands,
+	api WdPoStCommands,
 	//posts *postsCache,
 	//db *harmonydb.DB,
 	wdPostTask *WdPostTask,

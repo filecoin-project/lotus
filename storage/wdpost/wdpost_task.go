@@ -2,11 +2,19 @@ package wdpost
 
 import (
 	"context"
+	"sort"
+	"time"
+
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"time"
+	"github.com/filecoin-project/lotus/lib/harmony/resources"
+	"github.com/filecoin-project/lotus/lib/harmony/taskhelp"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/samber/lo"
 )
 
 type WdPostTaskDetails struct {
@@ -17,7 +25,8 @@ type WdPostTaskDetails struct {
 type WdPostTask struct {
 	tasks     chan *WdPostTaskDetails
 	db        *harmonydb.DB
-	scheduler *WindowPoStScheduler
+	Scheduler *WindowPoStScheduler
+	max       int
 }
 
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
@@ -65,12 +74,27 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 
 	log.Errorf("tskEY: %v", tsKeyBytes)
 	tsKey, err := types.TipSetKeyFromBytes(tsKeyBytes)
-	ts, err := t.scheduler.api.ChainGetTipSet(context.Background(), tsKey)
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to get tipset key: %v", err)
+		return false, err
+	}
+	head, err := t.Scheduler.api.ChainHead(context.Background())
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to get chain head: %v", err)
+		return false, err
+	}
+
+	if deadline.Close > head.Height() {
+		log.Errorf("WdPost removed stale task: %v %v", taskID, tsKey)
+		return true, nil
+	}
+
+	ts, err := t.Scheduler.api.ChainGetTipSet(context.Background(), tsKey)
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to get tipset: %v", err)
 		return false, err
 	}
-	submitWdPostParams, err := t.scheduler.runPoStCycle(context.Background(), false, deadline, ts)
+	submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to runPoStCycle: %v", err)
 		return false, err
@@ -81,14 +105,91 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	return true, nil
 }
 
-func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID) (*harmonytask.TaskID, error) {
-	return &ids[0], nil
+func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+	// GetEpoch
+	ts, err := t.Scheduler.api.ChainHead(context.Background())
+
+	if err != nil {
+		return nil, err
+	}
+
+	// GetData for tasks
+	type wdTaskDef struct {
+		abi.RegisteredSealProof
+		Task_id harmonytask.TaskID
+		Tskey   []byte
+		Open    abi.ChainEpoch
+		Close   abi.ChainEpoch
+	}
+	var tasks []wdTaskDef
+	err = t.db.Select(context.Background(), tasks,
+		`Select tskey, 
+			task_id,
+			period_start,
+			open, 
+			close	
+	from wdpost_tasks 
+	where task_id IN $1`, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	// Accept those past deadline, then delete them in Do().
+	for _, task := range tasks {
+		if task.Close < ts.Height() {
+			return &task.Task_id, nil
+		}
+	}
+
+	// Discard those too big for our free RAM
+	freeRAM := te.ResourcesAvailable().Ram
+	tasks = lo.Filter(tasks, func(d wdTaskDef, _ int) bool {
+		return res[d.RegisteredSealProof].MaxMemory <= freeRAM
+	})
+	if len(tasks) == 0 {
+		log.Infof("RAM too small for any WDPost task")
+		return nil, nil
+	}
+
+	// Ignore those with too many failures unless they are the only ones left.
+	tasks, _ = taskhelp.SliceIfFound(tasks, func(d wdTaskDef) bool {
+		var r int
+		err := t.db.QueryRow(context.Background(), `SELECT COUNT(*) 
+		FROM harmony_task_history 
+		WHERE task_id = $1 AND success = false`, d.Task_id).Scan(&r)
+		if err != nil {
+			log.Errorf("WdPostTask.CanAccept() failed to queryRow: %v", err)
+		}
+		return r < 2
+	})
+
+	// Select the one closest to the deadline
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].Close < tasks[j].Close
+	})
+
+	return &tasks[0].Task_id, nil
 }
+
+var res = storiface.ResourceTable[sealtasks.TTGenerateWindowPoSt]
 
 func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
-		Name: "WdPostCompute",
-		Max:  -1,
+		Name:        "WdPost",
+		Max:         t.max,
+		MaxFailures: 3,
+		Follows:     nil,
+		Cost: resources.Resources{
+			Cpu: 1,
+			Gpu: 1,
+			// RAM of smallest proof's max is listed here
+			Ram: lo.Reduce(lo.Keys(res), func(i uint64, k abi.RegisteredSealProof, _ int) uint64 {
+				if res[k].MaxMemory < i {
+					return res[k].MaxMemory
+				}
+				return i
+			}, 1<<63),
+		},
 	}
 }
 
@@ -107,11 +208,12 @@ func (t *WdPostTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	}
 }
 
-func NewWdPostTask(db *harmonydb.DB, scheduler *WindowPoStScheduler) *WdPostTask {
+func NewWdPostTask(db *harmonydb.DB, scheduler *WindowPoStScheduler, max int) *WdPostTask {
 	return &WdPostTask{
 		tasks:     make(chan *WdPostTaskDetails, 2),
 		db:        db,
-		scheduler: scheduler,
+		Scheduler: scheduler,
+		max:       max,
 	}
 }
 

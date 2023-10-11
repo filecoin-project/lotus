@@ -45,7 +45,7 @@ func (t *task1) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, e
 	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[tID]))
 	return true, nil
 }
-func (t *task1) CanAccept(list []harmonytask.TaskID) (*harmonytask.TaskID, error) {
+func (t *task1) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	return &list[0], nil
 }
 func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
@@ -92,15 +92,15 @@ func TestHarmonyTasks(t *testing.T) {
 type passthru struct {
 	dtl       harmonytask.TaskTypeDetails
 	do        func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error)
-	canAccept func(list []harmonytask.TaskID) (*harmonytask.TaskID, error)
+	canAccept func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error)
 	adder     func(add harmonytask.AddTaskFunc)
 }
 
 func (t *passthru) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	return t.do(tID, stillOwned)
 }
-func (t *passthru) CanAccept(list []harmonytask.TaskID) (*harmonytask.TaskID, error) {
-	return t.canAccept(list)
+func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+	return t.canAccept(list, e)
 }
 func (t *passthru) TypeDetails() harmonytask.TaskTypeDetails {
 	return t.dtl
@@ -117,8 +117,10 @@ var lettersMutex sync.Mutex
 
 func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 	return &passthru{
-		dtl:       dtl,
-		canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return nil, nil },
+		dtl: dtl,
+		canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+			return nil, nil
+		},
 		adder: func(add harmonytask.AddTaskFunc) {
 			for _, vTmp := range []string{"A", "B"} {
 				v := vTmp
@@ -133,8 +135,10 @@ func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 }
 func fooLetterSaver(t *testing.T, cdb *harmonydb.DB, dest *[]string) *passthru {
 	return &passthru{
-		dtl:       dtl,
-		canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return &list[0], nil },
+		dtl: dtl,
+		canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+			return &list[0], nil
+		},
 		do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 			var content string
 			err = cdb.QueryRow(context.Background(),
@@ -206,8 +210,10 @@ func TestTaskRetry(t *testing.T) {
 		alreadyFailed := map[string]bool{}
 		var dest []string
 		fails2xPerMsg := &passthru{
-			dtl:       dtl,
-			canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return &list[0], nil },
+			dtl: dtl,
+			canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+				return &list[0], nil
+			},
 			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 				var content string
 				err = cdb.QueryRow(context.Background(),
