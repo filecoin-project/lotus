@@ -253,6 +253,8 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxWindowPoStGasFee:    types.MustParseFIL("5"),
 			MaxPublishDealsFee:     types.MustParseFIL("0.05"),
 			MaxMarketBalanceAddFee: types.MustParseFIL("0.007"),
+
+			MaximizeWindowPoStFeeCap: true,
 		},
 
 		Addresses: MinerAddressConfig{
