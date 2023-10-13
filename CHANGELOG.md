@@ -1,9 +1,54 @@
 # Lotus changelog
 
-# UNRELEASED
+# v1.24.0-rc1 / 2023-10-12
+
+This is the first release candidate of the upcoming MANDATORY Lotus v1.24.0 release, which will deliver the Watermelon network upgrade, upgrading Filecoin mainnet to v21.
+
+This release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.
+
+The Watermelon network upgrade delivers the following FIPs:
+
+- [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
+- [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md)
+- [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md)
+- [FIP0071: Deterministic State Access (IPLD Reachability)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0071.md)
+- [FIP0072: Improved event syscall API](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0072.md) 
+- [FIP0073: Remove beneficiary from the self_destruct syscall](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0073.md)
+- [FIP0075: Improvements to FVM randomness syscalls](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0075.md)
+
+## v12 Builtin Actor Bundles
+
+The actor bundles for the calibration network can be checked as follows:
+
+```
+lotus state actor-cids --network-version=21
+Network Version: 21
+Actor Version: 12
+Manifest CID: bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs
+
+Actor             CID  
+paymentchannel    bafk2bzacebaxhk4itfiuvbftg7kz5zxugqnvdgerobitjq4vl6q4orcwk6wqg
+placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
+ethaccount        bafk2bzaceajmc3y3sedsqymfla3dzzqzmbu5kmr2iskm26ga2u34ll5fpztfw
+evm               bafk2bzaced4sozr7m6rzcgpobzeiupghthfw6afumysu3oz6bxxirv74uo3vw
+system            bafk2bzacecioupndtcnyw6iq2hbrxag3aufvczlv5nobnfbkbywqzcyfaa376
+init              bafk2bzaceaewh7b6zl2egclm7fqzx2lsqr57i75lb6cj43ndoa4mal3k5ld3m
+multisig          bafk2bzacednkwcpw5yzxjceoaliajgupzj6iqxe7ks2ll3unspbprbo5f2now
+eam               bafk2bzacecb6cnwftvavpph4p34zs4psuy5xvbrhf7vszkva4npw6mw3c42xe
+reward            bafk2bzacedra77pcglf7vdca2itcaa4vd6xrxynxmgfgdjdxqxfwqyhtoxehy
+storagemarket     bafk2bzacea7g46y7xxu2zjq2h75x6mmx3utz2uxnlvnwi6tzpsvulna3bmiva
+storageminer      bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq
+storagepower      bafk2bzacedd3ka44k7d46ckbinjhv3diyuu2epgbyvhqqyjkc64qlrg3wlgzi
+verifiedregistry  bafk2bzaceavldupmf7bimeeacs67z5xdfdlfca6p7sn6bev3mt5ggepfqvhqo
+account           bafk2bzacechwwxdqvggkdylm37zldjsra2ivkdzwp7fee56bzxbzs544wv6u6
+cron              bafk2bzacec4gdxxkqwxqqodsv6ug5dmdbqdfqwyqfek3yhxc2wweh5psxaeq6
+datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
+```
 
 ## New features
 - feat: Add move-partition command ([filecoin-project/lotus#11290](https://github.com/filecoin-project/lotus/pull/11290))
+
+A full changelog, along with details of the new SP-facing features, will come soon.
 
 # v1.23.3 / 2023-08-01
 
