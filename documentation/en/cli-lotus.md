@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.23.4-rc1
+   1.25.0
 
 COMMANDS:
    daemon   Start a lotus daemon process
