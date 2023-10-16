@@ -157,7 +157,8 @@ func SealProofType(maddr dtypes.MinerAddress, fnapi v1api.FullNode) (abi.Registe
 		return 0, err
 	}
 
-	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
+	// node seal proof type does not decide whether or not we use synthetic porep
+	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType, false)
 }
 
 func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.AddressSelector, error) {
@@ -1016,6 +1017,7 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				TerminateBatchMin:                      cfg.TerminateBatchMin,
 				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
 				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
+				UseSyntheticPoRep:                      cfg.UseSyntheticPoRep,
 			}
 			c.SetSealingConfig(newCfg)
 		})
@@ -1060,6 +1062,7 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
 		TerminateBatchMin:  sealingCfg.TerminateBatchMin,
 		TerminateBatchWait: time.Duration(sealingCfg.TerminateBatchWait),
+		UseSyntheticPoRep:  sealingCfg.UseSyntheticPoRep,
 	}
 }
 

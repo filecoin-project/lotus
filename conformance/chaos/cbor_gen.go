@@ -44,7 +44,7 @@ func (t *State) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Value))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Value)); err != nil {
+	if _, err := cw.WriteString(string(t.Value)); err != nil {
 		return err
 	}
 
@@ -117,13 +117,32 @@ func (t *State) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v UnmarshallableCBOR
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.Unmarshallable[i] = new(UnmarshallableCBOR)
+					if err := t.Unmarshallable[i].UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.Unmarshallable[i] pointer: %w", err)
+					}
+				}
+
+			}
 		}
-
-		t.Unmarshallable[i] = &v
 	}
 
 	return nil
@@ -177,9 +196,11 @@ func (t *CallerValidationArgs) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Types {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Types: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 	return nil
 }
@@ -252,13 +273,22 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v address.Address
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				if err := t.Addrs[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.Addrs[i]: %w", err)
+				}
+
+			}
 		}
-
-		t.Addrs[i] = v
 	}
 
 	// t.Types ([]cid.Cid) (slice)
@@ -281,12 +311,25 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("reading cid field t.Types failed: %w", err)
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.Types[i]: %w", err)
+				}
+
+				t.Types[i] = c
+
+			}
 		}
-		t.Types[i] = c
 	}
 
 	return nil
@@ -746,7 +789,7 @@ func (t *MutateStateArgs) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Value))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Value)); err != nil {
+	if _, err := cw.WriteString(string(t.Value)); err != nil {
 		return err
 	}
 
@@ -857,7 +900,7 @@ func (t *AbortWithArgs) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Message)); err != nil {
+	if _, err := cw.WriteString(string(t.Message)); err != nil {
 		return err
 	}
 
