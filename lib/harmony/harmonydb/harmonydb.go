@@ -201,9 +201,11 @@ var schemaRE = regexp.MustCompile(schemaREString)
 
 func ensureSchemaExists(connString, schema string) error {
 	// FUTURE allow using fallback DBs for start-up.
-	p, err := pgx.Connect(context.Background(), connString)
+	ctx, cncl := context.WithDeadline(context.Background(), time.Now().Add(3*time.Second))
+	p, err := pgx.Connect(ctx, connString)
+	defer cncl()
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to connect to db: %s, err: %v", connString, err)
 	}
 	defer func() { _ = p.Close(context.Background()) }()
 

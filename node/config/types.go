@@ -74,6 +74,18 @@ type LotusProviderConfig struct {
 	Proving       ProvingConfig
 	SealingParams SealingConfig // TODO defaults
 	SealerConfig                // TODO defaults
+	Journal       JournalConfig
+	Apis          ApisConfig
+}
+
+type ApisConfig struct {
+	// Daemon is the API endpoint for the Lotus daemon.
+	Daemon []string
+}
+
+type JournalConfig struct {
+	//Events of the form: "system1:event1,system1:event2[,...]"
+	DisabledEvents string
 }
 
 type ProviderSubsystemsConfig struct {

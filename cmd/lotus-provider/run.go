@@ -12,6 +12,7 @@ import (
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -39,6 +40,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start a lotus provider process",
@@ -64,7 +69,16 @@ var runCmd = &cli.Command{
 			Value: true,
 		},
 	},
-	Action: func(cctx *cli.Context) error {
+	Action: func(cctx *cli.Context) (err error) {
+		defer func() {
+			if err != nil {
+				if err, ok := err.(stackTracer); ok {
+					for _, f := range err.StackTrace() {
+						fmt.Printf("%+s:%d\n", f, f)
+					}
+				}
+			}
+		}()
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {
@@ -179,7 +193,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		lp, err := getConfig(cctx, db)
+		cfg, err := getConfig(cctx, db)
 		if err != nil {
 			return err
 		}
@@ -187,30 +201,22 @@ var runCmd = &cli.Command{
 
 		var activeTasks []harmonytask.TaskInterface
 
-		ds, dsCloser, err := modules.DatastoreV2(ctx, false, lr)
-		if err != nil {
-			return err
-		}
-		defer dsCloser()
-		maddr, err := modules.MinerAddress(ds)
-		if err != nil {
-			return err
-		}
 		var verif storiface.Verifier = ffiwrapper.ProofVerifier
 
-		as, err := modules.AddressSelector(&lp.Addresses)()
+		as, err := modules.AddressSelector(&cfg.Addresses)()
+		if err != nil {
+			return err
+		}
 
-		j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents()) // TODO switch this into DB entries.
+		de, err := journal.ParseDisabledEvents(cfg.Journal.DisabledEvents)
+		if err != nil {
+			return err
+		}
+		j, err := fsjournal.OpenFSJournal(lr, de)
 		if err != nil {
 			return err
 		}
 		defer j.Close()
-
-		full, fullCloser, err := cliutil.GetFullNodeAPIV1(cctx) // TODO switch this into DB entries.
-		if err != nil {
-			return err
-		}
-		defer fullCloser()
 
 		si := paths.NewIndexProxy( /*TODO Alerting*/ nil, db, true)
 
@@ -218,6 +224,11 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.Daemon) // TODO switch this into DB entries.
+		if err != nil {
+			return err
+		}
+		defer fullCloser()
 		sa, err := modules.StorageAuth(ctx, full)
 		if err != nil {
 			return err
@@ -231,14 +242,24 @@ var runCmd = &cli.Command{
 
 		wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 		smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
-		sealer, err := sealer.New(ctx, lstor, stor, lr, si, lp.SealerConfig, config.ProvingConfig{}, wsts, smsts)
+		sealer, err := sealer.New(ctx, lstor, stor, lr, si, cfg.SealerConfig, config.ProvingConfig{}, wsts, smsts)
 		if err != nil {
 			return err
 		}
 
-		if lp.Subsystems.EnableWindowPost {
-			wdPostTask, err := modules.WindowPostSchedulerV2(ctx, lp.Fees, lp.Proving, full, sealer, verif, j,
-				as, maddr, db, lp.Subsystems.WindowPostMaxTasks)
+		ds, dsCloser, err := modules.DatastoreV2(ctx, false, lr)
+		if err != nil {
+			return err
+		}
+		defer dsCloser()
+		maddr, err := modules.MinerAddress(ds)
+		if err != nil {
+			return err
+		}
+
+		if cfg.Subsystems.EnableWindowPost {
+			wdPostTask, err := modules.WindowPostSchedulerV2(ctx, cfg.Fees, cfg.Proving, full, sealer, verif, j,
+				as, maddr, db, cfg.Subsystems.WindowPostMaxTasks)
 			if err != nil {
 				return err
 			}

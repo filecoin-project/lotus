@@ -101,6 +101,9 @@ lotus-provider: $(BUILD_DEPS)
 	rm -f lotus-provider
 	$(GOCC) build $(GOFLAGS) -o lotus-provider ./cmd/lotus-provider
 
+lp2k: GOFLAGS+=-tags=2k
+lp2k: lotus-provider
+
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	$(GOCC) build $(GOFLAGS) -o lotus-worker ./cmd/lotus-worker

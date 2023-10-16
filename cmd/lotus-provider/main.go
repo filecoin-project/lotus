@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"runtime/debug"
+	"syscall"
 
 	"github.com/fatih/color"
 	logging "github.com/ipfs/go-log/v2"
@@ -17,7 +22,19 @@ import (
 
 var log = logging.Logger("main")
 
+func SetupCloseHandler() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("\r- Ctrl+C pressed in Terminal")
+		debug.PrintStack()
+		os.Exit(1)
+	}()
+}
+
 func main() {
+	SetupCloseHandler()
 
 	lotuslog.SetupLogLevels()
 
