@@ -63,6 +63,7 @@ datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
 - chore: deps: update bulitin-actors, FVM, and go-state-types ([filecoin-project/lotus#11291](https://github.com/filecoin-project/lotus/pull/11291))
 - chore: deps: update FFI, FVM, and actors ([filecoin-project/lotus#11310](https://github.com/filecoin-project/lotus/pull/11310))
 - chore: deps: update to latest actors and FFI ([filecoin-project/lotus#11330](https://github.com/filecoin-project/lotus/pull/11330))
+- chore: deps: update to go-state-types v0.12.5 ([filecoin-project/lotus#11339](https://github.com/filecoin-project/lotus/pull/11339))
 
 ## Others
 - chore: nv-skeleton for feat/nv21-branch ([filecoin-project/lotus#11176](https://github.com/filecoin-project/lotus/pull/11176))
