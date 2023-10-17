@@ -42,7 +42,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Channel"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Channel")); err != nil {
+	if _, err := cw.WriteString(string("Channel")); err != nil {
 		return err
 	}
 
@@ -58,7 +58,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Vouchers"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Vouchers")); err != nil {
+	if _, err := cw.WriteString(string("Vouchers")); err != nil {
 		return err
 	}
 
@@ -83,7 +83,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("WaitSentinel"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("WaitSentinel")); err != nil {
+	if _, err := cw.WriteString(string("WaitSentinel")); err != nil {
 		return err
 	}
 
@@ -163,13 +163,32 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				var v paych.SignedVoucher
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
+					{
+
+						b, err := cr.ReadByte()
+						if err != nil {
+							return err
+						}
+						if b != cbg.CborNull[0] {
+							if err := cr.UnreadByte(); err != nil {
+								return err
+							}
+							t.Vouchers[i] = new(paych.SignedVoucher)
+							if err := t.Vouchers[i].UnmarshalCBOR(cr); err != nil {
+								return xerrors.Errorf("unmarshaling t.Vouchers[i] pointer: %w", err)
+							}
+						}
+
+					}
 				}
-
-				t.Vouchers[i] = &v
 			}
 
 			// t.WaitSentinel (cid.Cid) (struct)
@@ -214,7 +233,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Size"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Size")); err != nil {
+	if _, err := cw.WriteString(string("Size")); err != nil {
 		return err
 	}
 
@@ -230,7 +249,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Offset"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Offset")); err != nil {
+	if _, err := cw.WriteString(string("Offset")); err != nil {
 		return err
 	}
 
@@ -246,7 +265,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("SectorID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("SectorID")); err != nil {
+	if _, err := cw.WriteString(string("SectorID")); err != nil {
 		return err
 	}
 
@@ -369,7 +388,7 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Refs"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Refs")); err != nil {
+	if _, err := cw.WriteString(string("Refs")); err != nil {
 		return err
 	}
 
@@ -447,13 +466,22 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				var v SealedRef
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
+					{
+
+						if err := t.Refs[i].UnmarshalCBOR(cr); err != nil {
+							return xerrors.Errorf("unmarshaling t.Refs[i]: %w", err)
+						}
+
+					}
 				}
-
-				t.Refs[i] = v
 			}
 
 		default:
@@ -484,7 +512,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Epoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Epoch")); err != nil {
+	if _, err := cw.WriteString(string("Epoch")); err != nil {
 		return err
 	}
 
@@ -506,7 +534,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Value")); err != nil {
+	if _, err := cw.WriteString(string("Value")); err != nil {
 		return err
 	}
 
@@ -639,7 +667,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Epoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Epoch")); err != nil {
+	if _, err := cw.WriteString(string("Epoch")); err != nil {
 		return err
 	}
 
@@ -661,7 +689,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Value")); err != nil {
+	if _, err := cw.WriteString(string("Value")); err != nil {
 		return err
 	}
 
@@ -794,7 +822,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealID")); err != nil {
+	if _, err := cw.WriteString(string("DealID")); err != nil {
 		return err
 	}
 
@@ -810,7 +838,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PublishCid"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PublishCid")); err != nil {
+	if _, err := cw.WriteString(string("PublishCid")); err != nil {
 		return err
 	}
 
@@ -832,7 +860,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealProposal"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealProposal")); err != nil {
+	if _, err := cw.WriteString(string("DealProposal")); err != nil {
 		return err
 	}
 
@@ -848,7 +876,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealSchedule"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealSchedule")); err != nil {
+	if _, err := cw.WriteString(string("DealSchedule")); err != nil {
 		return err
 	}
 
@@ -864,7 +892,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("KeepUnsealed"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("KeepUnsealed")); err != nil {
+	if _, err := cw.WriteString(string("KeepUnsealed")); err != nil {
 		return err
 	}
 
@@ -1027,7 +1055,7 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Piece"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Piece")); err != nil {
+	if _, err := cw.WriteString(string("Piece")); err != nil {
 		return err
 	}
 
@@ -1043,7 +1071,7 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealInfo"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealInfo")); err != nil {
+	if _, err := cw.WriteString(string("DealInfo")); err != nil {
 		return err
 	}
 
@@ -1150,7 +1178,7 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("EndEpoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("EndEpoch")); err != nil {
+	if _, err := cw.WriteString(string("EndEpoch")); err != nil {
 		return err
 	}
 
@@ -1172,7 +1200,7 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("StartEpoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("StartEpoch")); err != nil {
+	if _, err := cw.WriteString(string("StartEpoch")); err != nil {
 		return err
 	}
 

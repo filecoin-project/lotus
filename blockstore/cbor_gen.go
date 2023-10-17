@@ -52,9 +52,11 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Cid {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Cid: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 
 	// t.Data ([][]uint8) (slice)
@@ -151,12 +153,25 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("reading cid field t.Cid failed: %w", err)
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.Cid[i]: %w", err)
+				}
+
+				t.Cid[i] = c
+
+			}
 		}
-		t.Cid[i] = c
 	}
 
 	// t.Data ([][]uint8) (slice)
@@ -183,6 +198,9 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 			var maj byte
 			var extra uint64
 			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
 			maj, extra, err = cr.ReadHeader()
 			if err != nil {
@@ -350,7 +368,7 @@ func (t *NetRpcErr) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Msg))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Msg)); err != nil {
+	if _, err := cw.WriteString(string(t.Msg)); err != nil {
 		return err
 	}
 

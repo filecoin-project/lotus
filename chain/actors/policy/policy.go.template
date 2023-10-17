@@ -223,8 +223,20 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 	return ChainFinality
 }
 
-func GetMaxSectorExpirationExtension() abi.ChainEpoch {
-	return miner{{.latestVersion}}.MaxSectorExpirationExtension
+func GetMaxSectorExpirationExtension(nv network.Version) (abi.ChainEpoch, error) {
+	v, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to get actors version: %w", err)
+	}
+	switch v {
+		{{range .versions}}
+			case actorstypes.Version{{.}}:
+				return miner{{.}}.MaxSectorExpirationExtension, nil
+		{{end}}
+	default:
+		return 0, xerrors.Errorf("unsupported network version")
+	}
+
 }
 
 func GetMinSectorExpiration() abi.ChainEpoch {
@@ -240,7 +252,8 @@ func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, e
 	if err != nil {
 		return 0, err
 	}
-	return int(uint64(maxSectors) / sectorsPerPart), nil
+
+	return min(miner{{.latestVersion}}.PoStedPartitionsMax, int(uint64(maxSectors) / sectorsPerPart)), nil
 }
 
 func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
@@ -328,4 +341,11 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
 }

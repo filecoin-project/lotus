@@ -560,8 +560,53 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 	return ChainFinality
 }
 
-func GetMaxSectorExpirationExtension() abi.ChainEpoch {
-	return miner12.MaxSectorExpirationExtension
+func GetMaxSectorExpirationExtension(nv network.Version) (abi.ChainEpoch, error) {
+	v, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to get actors version: %w", err)
+	}
+	switch v {
+
+	case actorstypes.Version0:
+		return miner0.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version2:
+		return miner2.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version3:
+		return miner3.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version4:
+		return miner4.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version5:
+		return miner5.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version6:
+		return miner6.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version7:
+		return miner7.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version8:
+		return miner8.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version9:
+		return miner9.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version10:
+		return miner10.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version11:
+		return miner11.MaxSectorExpirationExtension, nil
+
+	case actorstypes.Version12:
+		return miner12.MaxSectorExpirationExtension, nil
+
+	default:
+		return 0, xerrors.Errorf("unsupported network version")
+	}
+
 }
 
 func GetMinSectorExpiration() abi.ChainEpoch {
@@ -577,7 +622,8 @@ func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, e
 	if err != nil {
 		return 0, err
 	}
-	return int(uint64(maxSectors) / sectorsPerPart), nil
+
+	return min(miner12.PoStedPartitionsMax, int(uint64(maxSectors)/sectorsPerPart)), nil
 }
 
 func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
@@ -819,4 +865,11 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

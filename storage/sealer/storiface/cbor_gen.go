@@ -38,7 +38,7 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("ID")); err != nil {
+	if _, err := cw.WriteString(string("ID")); err != nil {
 		return err
 	}
 
@@ -62,7 +62,7 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sector"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Sector")); err != nil {
+	if _, err := cw.WriteString(string("Sector")); err != nil {
 		return err
 	}
 
@@ -173,7 +173,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Key"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Key")); err != nil {
+	if _, err := cw.WriteString(string("Key")); err != nil {
 		return err
 	}
 
@@ -184,7 +184,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Key))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Key)); err != nil {
+	if _, err := cw.WriteString(string(t.Key)); err != nil {
 		return err
 	}
 
@@ -196,7 +196,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Value")); err != nil {
+	if _, err := cw.WriteString(string("Value")); err != nil {
 		return err
 	}
 
@@ -207,7 +207,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Value))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Value)); err != nil {
+	if _, err := cw.WriteString(string(t.Value)); err != nil {
 		return err
 	}
 	return nil
@@ -302,7 +302,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("URL"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("URL")); err != nil {
+	if _, err := cw.WriteString(string("URL")); err != nil {
 		return err
 	}
 
@@ -313,7 +313,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.URL))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.URL)); err != nil {
+	if _, err := cw.WriteString(string(t.URL)); err != nil {
 		return err
 	}
 
@@ -325,7 +325,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Local"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Local")); err != nil {
+	if _, err := cw.WriteString(string("Local")); err != nil {
 		return err
 	}
 
@@ -341,7 +341,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Headers"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Headers")); err != nil {
+	if _, err := cw.WriteString(string("Headers")); err != nil {
 		return err
 	}
 
@@ -448,13 +448,22 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				var v SecDataHttpHeader
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
+					{
+
+						if err := t.Headers[i].UnmarshalCBOR(cr); err != nil {
+							return xerrors.Errorf("unmarshaling t.Headers[i]: %w", err)
+						}
+
+					}
 				}
-
-				t.Headers[i] = v
 			}
 
 		default:
