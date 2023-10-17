@@ -775,6 +775,10 @@
   # env var: LOTUS_FEES_MAXMARKETBALANCEADDFEE
   #MaxMarketBalanceAddFee = "0.007 FIL"
 
+  # type: bool
+  # env var: LOTUS_FEES_MAXIMIZEWINDOWPOSTFEECAP
+  #MaximizeWindowPoStFeeCap = true
+
   [Fees.MaxPreCommitBatchGasFee]
     # type: types.FIL
     # env var: LOTUS_FEES_MAXPRECOMMITBATCHGASFEE_BASE

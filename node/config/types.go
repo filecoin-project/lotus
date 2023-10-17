@@ -490,6 +490,8 @@ type MinerFeeConfig struct {
 	MaxWindowPoStGasFee    types.FIL
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
+
+	MaximizeWindowPoStFeeCap bool
 }
 
 type MinerAddressConfig struct {

@@ -210,8 +210,10 @@ func ComputeRBF(curPrem abi.TokenAmount, replaceByFeeRatio types.Percent) abi.To
 
 func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.MessageSendSpec) {
 	var maxFee abi.TokenAmount
+	var maximizeFeeCap bool
 	if sendSpec != nil {
 		maxFee = sendSpec.MaxFee
+		maximizeFeeCap = sendSpec.MaximizeFeeCap
 	}
 	if maxFee.Int == nil || maxFee.Equals(big.Zero()) {
 		mf, err := mff()
@@ -222,15 +224,12 @@ func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.M
 		maxFee = mf
 	}
 
-	gl := types.NewInt(uint64(msg.GasLimit))
-	totalFee := types.BigMul(msg.GasFeeCap, gl)
-
-	if totalFee.LessThanEqual(maxFee) {
-		msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
-		return
+	gaslimit := types.NewInt(uint64(msg.GasLimit))
+	totalFee := types.BigMul(msg.GasFeeCap, gaslimit)
+	if maximizeFeeCap || totalFee.GreaterThan(maxFee) {
+		msg.GasFeeCap = big.Div(maxFee, gaslimit)
 	}
 
-	msg.GasFeeCap = big.Div(maxFee, gl)
 	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
 

@@ -767,6 +767,12 @@ over the worker address if this flag is set.`,
 
 			Comment: ``,
 		},
+		{
+			Name: "MaximizeWindowPoStFeeCap",
+			Type: "bool",
+
+			Comment: ``,
+		},
 	},
 	"MinerSubsystemConfig": []DocField{
 		{
