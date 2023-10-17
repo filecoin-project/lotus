@@ -1,12 +1,12 @@
 # Lotus changelog
 
-# v1.24.0-rc1 / 2023-10-12
+# v1.24.0-rc2 / 2023-10-17
 
-This is the first release candidate of the upcoming MANDATORY Lotus v1.24.0 release, which will deliver the Watermelon network upgrade, upgrading Filecoin mainnet to v21.
+This is the second release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
 
-This release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.
+**This release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.** This second release candidate updates go-state-types to v0.12.5, adding a proofs mapping that was missing v0.12.5. Lotus v1.24.0-RC1 remains valid for the network upgrade in the Calibration network. However, storage providers intending to conduct Synthetic PoRep testing are advised to use RC2.
 
-The Watermelon network upgrade delivers the following FIPs:
+The Filecoin network version 21 delivers the following FIPs:
 
 - [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
 - [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md)
@@ -46,9 +46,32 @@ datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
 ```
 
 ## New features
-- feat: Add move-partition command ([filecoin-project/lotus#11290](https://github.com/filecoin-project/lotus/pull/11290))
+- Implement and support [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
+   - fix: docs: Update SectorLifetime to be in line with FIP-0052 ([filecoin-project/lotus#11314](https://github.com/filecoin-project/lotus/pull/11314))
+- Implement and support [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md) - Check out the [Lotus documentation for Synthetic PoRep](https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#synthetic-porep).
+   - feat: implement Synthetic PoRep ([filecoin-project/lotus#11258](https://github.com/filecoin-project/lotus/pull/11258))
+   - chore: config: Update todo in UseSyntheticPoRep ([filecoin-project/lotus#11297](https://github.com/filecoin-project/lotus/pull/11297))
+- Implement and support [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md) - Check out the [Lotus documentation for Moving Partitions](https://lotus.filecoin.io/storage-providers/operate/daily-chores/#move-partitions)
+   - Feat: Lotus cli: actor: Support move partition command to move partitions' deadline ([filecoin-project/lotus#11301](https://github.com/filecoin-project/lotus/pull/11301))
+   - feat: limit PoSted partitions to 3 ([filecoin-project/lotus#11327](https://github.com/filecoin-project/lotus/pull/11327))
+   
+## Improvements
+- Backport: feat: sealing: Switch to calling PreCommitSectorBatch2 ([filecoin-project/lotus#11215](https://github.com/filecoin-project/lotus/pull/11215))
 
-A full changelog, along with details of the new SP-facing features, will come soon.
+## Dependencies
+- github.com/filecoin-project/go-amt-ipld/v4 (v4.0.0 -> v4.2.0)
+- chore: deps: update bulitin-actors, FVM, and go-state-types ([filecoin-project/lotus#11291](https://github.com/filecoin-project/lotus/pull/11291))
+- chore: deps: update FFI, FVM, and actors ([filecoin-project/lotus#11310](https://github.com/filecoin-project/lotus/pull/11310))
+- chore: deps: update to latest actors and FFI ([filecoin-project/lotus#11330](https://github.com/filecoin-project/lotus/pull/11330))
+- chore: deps: update to go-state-types v0.12.5 ([filecoin-project/lotus#11339](https://github.com/filecoin-project/lotus/pull/11339))
+
+## Others
+- chore: nv-skeleton for feat/nv21-branch ([filecoin-project/lotus#11176](https://github.com/filecoin-project/lotus/pull/11176))
+- chore: chain/actors: Use type proxies instead of versioned GST imports ([filecoin-project/lotus#11216](https://github.com/filecoin-project/lotus/pull/11216))
+- chore: butterfly: Add preliminary nv21 assets ([filecoin-project/lotus#11293](https://github.com/filecoin-project/lotus/pull/11293))
+- chore: butterfly: Update Butterfly Assets ([filecoin-project/lotus#11312](https://github.com/filecoin-project/lotus/pull/11312))
+- chore: release: Set calibration upgrade height ([filecoin-project/lotus#11331](https://github.com/filecoin-project/lotus/pull/11331))
+- chore: build: bump version to 1.24.0-rc1 ([filecoin-project/lotus#11332](https://github.com/filecoin-project/lotus/pull/11332))
 
 # v1.23.3 / 2023-08-01
 
