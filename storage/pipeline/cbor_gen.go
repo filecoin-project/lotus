@@ -573,7 +573,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommit1Fails"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PreCommit1Fails")); err != nil {
+	if _, err := cw.WriteString(string("PreCommit1Fails")); err != nil {
 		return err
 	}
 
