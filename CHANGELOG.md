@@ -10,6 +10,9 @@
 - fix: Add time slicing to splitstore purging step during compaction to reduce lock congestion [filecoin-project/lotus#11269](https://github.com/filecoin-project/lotus/pull/11269)
 - feat: Added instructions on how to setup Prometheus/Grafana for monitoring a local Lotus node [filecoin-project/lotus#11276](https://github.com/filecoin-project/lotus/pull/11276)
 
+## New features
+- feat: Add move-partition command ([filecoin-project/lotus#11290](https://github.com/filecoin-project/lotus/pull/11290))
+
 # v1.23.3 / 2023-08-01
 
 This feature release of Lotus includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.

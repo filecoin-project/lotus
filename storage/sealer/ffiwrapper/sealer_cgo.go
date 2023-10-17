@@ -896,13 +896,47 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 		return storiface.SectorCids{}, xerrors.Errorf("unmarshaling pc1 output: %w", err)
 	}
 
-	var ticket abi.SealRandomness
 	ti, found := p1odec["_lotus_SealRandomness"]
 
+	if abi.Synthetic[sector.ProofType] {
+		if !found {
+			return storiface.SectorCids{}, xerrors.Errorf("synthetic mode: ticket not found")
+		}
+	}
+
 	if found {
-		ticket, err = base64.StdEncoding.DecodeString(ti.(string))
+		ticket, err := base64.StdEncoding.DecodeString(ti.(string))
 		if err != nil {
 			return storiface.SectorCids{}, xerrors.Errorf("decoding ticket: %w", err)
+		}
+
+		if abi.Synthetic[sector.ProofType] {
+			// note: we generate synth porep challenges first because the C1 check below reads from those
+
+			err = ffi.GenerateSynthProofs(
+				sector.ProofType,
+				sealedCID,
+				unsealedCID,
+				paths.Cache,
+				paths.Sealed,
+				sector.ID.Number,
+				sector.ID.Miner, ticket,
+				[]abi.PieceInfo{{Size: abi.PaddedPieceSize(ssize), PieceCID: unsealedCID}})
+			if err != nil {
+				log.Warn("GenerateSynthProofs() failed: ", err)
+				log.Warnf("num:%d tkt:%v, sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
+				return storiface.SectorCids{}, xerrors.Errorf("generate synth proofs: %w", err)
+			}
+
+			if err = ffi.ClearLayerData(ssize, paths.Cache); err != nil {
+				log.Warn("failed to GenerateSynthProofs(): ", err)
+				log.Warnf("num:%d tkt:%v, sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
+				return storiface.SectorCids{
+					Unsealed: unsealedCID,
+					Sealed:   sealedCID,
+				}, nil
+				// Note: non-fatal error.
+			}
 		}
 
 		for i := 0; i < PC2CheckRounds; i++ {
@@ -960,6 +994,7 @@ func (sb *Sealer) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
+
 	return output, nil
 }
 
@@ -1149,6 +1184,13 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	}
 	defer done()
 
+	if abi.Synthetic[sector.ProofType] {
+		if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
+			log.Warn("Unable to delete Synth cache:", err)
+			// Pass-Thru on error.
+		}
+	}
+
 	return ffi.ClearCache(uint64(ssize), paths.Cache)
 }
 
@@ -1187,6 +1229,13 @@ func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.Secto
 		}
 	}
 
+	if abi.Synthetic[sector.ProofType] {
+		if err = ffi.ClearSyntheticProofs(uint64(ssize), dest); err != nil {
+			log.Warn("Unable to delete Synth cache:", err)
+			// Pass-Thru on error.
+		}
+	}
+
 	return ffi.ClearCache(uint64(ssize), dest)
 }
 
@@ -1203,6 +1252,12 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 		}
 		defer done()
 
+		if abi.Synthetic[sector.ProofType] {
+			if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
+				return xerrors.Errorf("clear synth cache: %w", err)
+			}
+		}
+
 		if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
 			return xerrors.Errorf("clear cache: %w", err)
 		}
@@ -1214,6 +1269,8 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 			return xerrors.Errorf("acquiring sector cache path: %w", err)
 		}
 		defer done()
+
+		// note: synth cache is not a thing for snapdeals
 
 		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
 			return xerrors.Errorf("clear cache: %w", err)
