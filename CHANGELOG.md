@@ -1,5 +1,9 @@
 # Lotus changelog
 
+# v 1.25.0-rc1 / 2023-10-17
+
+The first release candidate of 1.25 optional upgrade includes the deliverables to 1.23.4 and 1.24.0-mandatory. 
+
 # v1.24.0-rc2 / 2023-10-17
 
 This is the second release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
