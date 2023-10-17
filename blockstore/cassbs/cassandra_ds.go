@@ -201,7 +201,12 @@ func (c *cassandraBatch) Put(ctx context.Context, key datastore.Key, value []byt
 	statement := fmt.Sprintf("UPDATE %s.%s SET value = ? WHERE key = ?", c.nameSpace, c.nameSpace)
 	c.batch.Query(statement, value, toCasKey(key))
 
-	if c.batch.Size() >= 64 {
+	// todo setting a batch size of 1 violates the whole point of the batch writes
+	// however with batch writes, there is some sort of race condition where the leader
+	// will update the chain head and notify the followers before the data has all been commited to the db
+	// this means that the followers will be behind because they do not see the latest chain head when the
+	// hello service notifies them of a new block
+	if c.batch.Size() >= 1 {
 		c.wg.Add(1)
 		go func(batch *gocql.Batch) {
 			defer c.wg.Done()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ipfs/boxo/bitswap"
@@ -185,6 +186,20 @@ type SyncerParams struct {
 	Beacon       beacon.Schedule
 	Gent         chain.Genesis
 	Consensus    consensus.Consensus
+}
+
+type SyncerFollowerParams struct {
+	fx.In
+
+	Lifecycle    fx.Lifecycle
+	MetadataDS   dtypes.MetadataDS
+	StateManager *stmgr.StateManager
+	ChainXchg    exchange.Client
+	SyncMgrCtor  chain.SyncManagerCtor
+	Host         host.Host
+	Beacon       beacon.Schedule
+	Gent         chain.Genesis
+	Consensus    consensus.Consensus
 	GatewayAPI   api.Gateway
 }
 
@@ -216,7 +231,7 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 	return syncer, nil
 }
 
-func NewSyncerFollower(params SyncerParams) (*chain.Syncer, error) {
+func NewSyncerFollower(params SyncerFollowerParams) (*chain.Syncer, error) {
 	var (
 		g  = params.GatewayAPI
 		lc = params.Lifecycle
@@ -234,14 +249,35 @@ func NewSyncerFollower(params SyncerParams) (*chain.Syncer, error) {
 				for {
 					head, ok := <-headChanges
 					if !ok {
+
+						//todo can we auto reconnect to the gateway?
+						//if the gateway disconnects is there a way to retry?
+						//panic is ok response because infrastructure should reboot rpc node upon error
+						// this will happen when the leader is restarted
+
 						log.Error("Notify stream was invalid")
-						continue
+						panic("Notify stream was invalid")
 					}
 					for _, change := range head {
-						fmt.Println("New Tipset!")
 						blocks := change.Val.Blocks()
 						for _, block := range blocks {
-							sm.ChainStore().RefreshHeaviestTipSet(ctx, block.Height)
+							if block.Height != 0 {
+								err := sm.ChainStore().AddToTipSetTracker(ctx, block)
+								if err != nil {
+									//what should we do? panic?
+									panic(xerrors.Errorf("failed to add block to tipset tracker: %w", err))
+								}
+								err = sm.ChainStore().RefreshHeaviestTipSet(ctx, block.Height)
+								if err != nil {
+									if strings.Contains(err.Error(), "write protected access attempted on Readonly Blockstore from method Put") {
+										//expected scenario
+										continue
+									} else {
+										log.Error(xerrors.Errorf("error refreshing heaviest tipset: %w", err))
+									}
+
+								}
+							}
 						}
 					}
 				}

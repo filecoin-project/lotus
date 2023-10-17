@@ -152,7 +152,6 @@ func CassandraBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 
 	rbs := bstore.NewBlockstore(cds, bstore.NoPrefix())
 
-	// only metadata cache
 	cbs, err := bstore.CachedBlockstore(mctx, rbs, copt)
 	if err != nil {
 		return nil, err
