@@ -232,6 +232,7 @@ func retrySoftErr(ctx context.Context, cb func() error) error {
 				fallthrough
 			case storiface.ErrTempAllocateSpace:
 				// retry
+				log.Errorw("retrying soft error", "err", err, "code", cerr.ErrCode())
 			default:
 				// non-temp error
 				return err
