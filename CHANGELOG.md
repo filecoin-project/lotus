@@ -1,10 +1,10 @@
 # Lotus changelog
 
-# v1.24.0-rc1 / 2023-10-12
+# v1.24.0-rc2 / 2023-10-17
 
-This is the first release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
+This is the second release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
 
-**This release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.**
+**This release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.** This second release candidate updates go-state-types to v0.12.5, adding a proofs mapping that was missing v0.12.5. Lotus v1.24.0-RC1 remains valid for the network upgrade in the Calibration network. However, storage providers intending to conduct Synthetic PoRep testing are advised to use RC2.
 
 The Filecoin network version 21 delivers the following FIPs:
 
