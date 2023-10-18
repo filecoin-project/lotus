@@ -16,6 +16,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-statestore"
@@ -67,6 +68,11 @@ var runCmd = &cli.Command{
 			Name:  "manage-fdlimit",
 			Usage: "manage open file limit",
 			Value: true,
+		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base",
+			Value: cli.NewStringSlice("base"),
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
@@ -189,6 +195,9 @@ var runCmd = &cli.Command{
 				log.Error("closing repo", err)
 			}
 		}()
+		if err := lr.SetAPIToken([]byte(address)); err != nil { // our assigned listen address is our unique token
+			return xerrors.Errorf("setting api token: %w", err)
+		}
 		localStore, err := paths.NewLocal(ctx, lr, nil, []string{"http://" + address + "/remote"})
 		if err != nil {
 			return err
@@ -229,6 +238,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		defer fullCloser()
+
 		sa, err := modules.StorageAuth(ctx, full)
 		if err != nil {
 			return err

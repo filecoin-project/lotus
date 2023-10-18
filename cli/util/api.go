@@ -168,7 +168,7 @@ func GetRawAPIMultiV2(ctx *cli.Context, ainfoCfg []string, version string) ([]Ht
 	var httpHeads []HttpHead
 
 	if len(ainfoCfg) == 0 {
-		return httpHeads, xerrors.Errorf("could not get API info: none configured")
+		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './lotus-provider config get base' \nthen adding   \n[APIs] \ndaemon = [\"lotusdaemon:1234\"]\n  and updating it with './lotus-provider config set base.toml'")
 	}
 	for _, i := range ainfoCfg {
 		ainfo := ParseApiInfo(i)
@@ -445,7 +445,7 @@ func GetFullNodeAPIV1LotusProvider(ctx *cli.Context, ainfoCfg []string, opts ...
 	for _, head := range heads {
 		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
 		if err != nil {
-			log.Warnf("Not able to establish connection to node with addr: ", head.addr)
+			log.Warnf("Not able to establish connection to node with addr: %s", head.addr)
 			continue
 		}
 		fullNodes = append(fullNodes, v1api)

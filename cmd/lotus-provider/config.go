@@ -217,7 +217,8 @@ var configViewCmd = &cli.Command{
 func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
 	lp := config.DefaultLotusProvider()
 	have := []string{}
-	for _, layer := range cctx.StringSlice("layers") {
+	layers := cctx.StringSlice("layers")
+	for _, layer := range layers {
 		text := ""
 		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
 		if err != nil {
