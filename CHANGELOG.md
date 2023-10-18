@@ -111,6 +111,7 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - chore: backport #11262 (#11265) ([filecoin-project/lotus#11265](https://github.com/filecoin-project/lotus/pull/11265))
 - chore: backport #11294 into `release/v1.23.4` ([filecoin-project/lotus#11295](https://github.com/filecoin-project/lotus/pull/11295))
 - chore: release: V1.25 rebase ([filecoin-project/lotus#11342](https://github.com/filecoin-project/lotus/pull/11342))
+- backport: tests: add SynthPorep layers to cachefiles ([filecoin-project/lotus#11344](https://github.com/filecoin-project/lotus/pull/11344))
 
 # v1.24.0-rc2 / 2023-10-17
 
