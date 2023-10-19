@@ -116,7 +116,9 @@ func DefaultFullNode() *FullNode {
 				FilterTTL:                Duration(time.Hour * 24),
 				MaxFilters:               100,
 				MaxFilterResults:         10000,
-				MaxFilterHeightRange:     2880, // conservative limit of one day
+				MaxFilterHeightRange:     2880,    // conservative limit of one day
+				FilterThresholdSet:       false,   // use MaxFilterHeightRange by default
+				FilterThresholdEpoch:     2683348, // FEVM start epoch
 			},
 		},
 	}
