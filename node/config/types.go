@@ -79,8 +79,8 @@ type LotusProviderConfig struct {
 }
 
 type ApisConfig struct {
-	// Daemon is the API endpoint for the Lotus daemon.
-	Daemon []string
+	// FULLNODE_API_INFO is the API endpoint for the Lotus daemon.
+	FULLNODE_API_INFO []string
 }
 
 type JournalConfig struct {

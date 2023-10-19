@@ -233,7 +233,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.Daemon) // TODO switch this into DB entries.
+		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.FULLNODE_API_INFO) // TODO switch this into DB entries.
 		if err != nil {
 			return err
 		}

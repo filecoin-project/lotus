@@ -168,7 +168,7 @@ func GetRawAPIMultiV2(ctx *cli.Context, ainfoCfg []string, version string) ([]Ht
 	var httpHeads []HttpHead
 
 	if len(ainfoCfg) == 0 {
-		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './lotus-provider config get base' \nthen adding   \n[APIs] \ndaemon = [\"lotusdaemon:1234\"]\n  and updating it with './lotus-provider config set base.toml'")
+		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './lotus-provider config get base >base.toml' \nthen adding   \n[APIs] \n FULLNODE_API_INFO = [\" result_from lotus auth api-info --perm=admin \"]\n  and updating it with './lotus-provider config set base.toml'")
 	}
 	for _, i := range ainfoCfg {
 		ainfo := ParseApiInfo(i)
