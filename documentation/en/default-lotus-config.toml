@@ -17,7 +17,7 @@
 [Backup]
   # When set to true disables metadata log (.lotus/kvlog). This can save disk
   # space by reducing metadata redundancy.
-  # 
+  #
   # Note that in case of metadata corruption it might be much harder to recover
   # your node if metadata log is disabled
   #
@@ -379,6 +379,21 @@
     # type: uint64
     # env var: LOTUS_FEVM_EVENTS_MAXFILTERHEIGHTRANGE
     #MaxFilterHeightRange = 2880
+
+    # FilterThresholdSet signals whether a FilterThresholdEpoch is set. If it is it will be used instead of
+    # MaxFilterHeightRange to define the supported range.
+    #
+    # type: bool
+    # env var: LOTUS_FEVM_EVENTS_FILTERTHRESHOLDSET
+    #FilterThresholdSet = false
+
+    # FilterThresholdEpoch specifies an epoch above which the node will support returning filtered logs.
+    # This is useful for setting a static start epoch for support, rather than a static window size with a start epoch
+    # that shifts as the chain progresses.
+    #
+    # type: uint64
+    # env var: LOTUS_FEVM_EVENTS_FILTERTHRESHOLDEPOCH
+    #FilterThresholdEpoch = 2683348
 
     # DatabasePath is the full path to a sqlite database that will be used to index actor events to
     # support the historic filter APIs. If the database does not exist it will be created. The directory containing
