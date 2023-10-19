@@ -717,6 +717,16 @@ type Events struct {
 	// the entire chain)
 	MaxFilterHeightRange uint64
 
+	// FilterThresholdSet signals whether a FilterThresholdEpoch is set. If it is it will be used instead of
+	// MaxFilterHeightRange to define the supported range.
+	FilterThresholdSet bool
+
+	// FilterThresholdEpoch specifies an epoch above which the node will support returning filtered logs.
+	// This is useful for setting a static start epoch for support, rather than a static window size with a start epoch
+	// that shifts as the chain progresses.
+	FilterThresholdEpoch uint64
+
+
 	// DatabasePath is the full path to a sqlite database that will be used to index actor events to
 	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
 	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as

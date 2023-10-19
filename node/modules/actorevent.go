@@ -40,6 +40,8 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 		ee := &full.EthEvent{
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
+			FilterThresholdSet:  cfg.Events.FilterThresholdSet,
+			FilterThresholdEpoch: abi.ChainEpoch(cfg.Events.FilterThresholdEpoch),
 			SubscribtionCtx:      ctx,
 		}
 
