@@ -9,6 +9,7 @@
 ## Improvements
 - fix: Add time slicing to splitstore purging step during compaction to reduce lock congestion [filecoin-project/lotus#11269](https://github.com/filecoin-project/lotus/pull/11269)
 - feat: Added instructions on how to setup Prometheus/Grafana for monitoring a local Lotus node [filecoin-project/lotus#11276](https://github.com/filecoin-project/lotus/pull/11276)
+- feat: Add a `FilterThresholdEpoch` configuration option [filecoin-project/lotus#11346](https://github.com/filecoin-project/lotus/pull/11346)
 
 ## New features
 - feat: Add move-partition command ([filecoin-project/lotus#11290](https://github.com/filecoin-project/lotus/pull/11290))
