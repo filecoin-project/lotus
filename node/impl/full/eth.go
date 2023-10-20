@@ -143,6 +143,8 @@ type EthEvent struct {
 	FilterStore          filter.FilterStore
 	SubManager           *EthSubscriptionManager
 	MaxFilterHeightRange abi.ChainEpoch
+	FilterThresholdSet   bool
+	FilterThresholdEpoch abi.ChainEpoch
 	SubscribtionCtx      context.Context
 }
 
@@ -1292,27 +1294,53 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		}
 
 		// Validate height ranges are within limits set by node operator
-		if minHeight == -1 && maxHeight > 0 {
-			// Here the client is looking for events between the head and some future height
-			ts := e.Chain.GetHeaviestTipSet()
-			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", e.MaxFilterHeightRange)
+		if e.FilterThresholdSet {
+			if minHeight == -1 && maxHeight > 0 {
+				// Here the client is looking for events between the head and some future height
+				ts := e.Chain.GetHeaviestTipSet()
+				if maxHeight < ts.Height() {
+					return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", maxHeight, ts.Height())
+				}
+				if ts.Height() < e.FilterThresholdEpoch {
+					return nil, xerrors.Errorf("invalid epoch range: from block (%d) is below the set FilterThresholdEpoch (%d)", ts.Height(), e.FilterThresholdEpoch)
+				}
+			} else if minHeight >= 0 && maxHeight == -1 {
+				// Here the client is looking for events between some time in the past and the current head
+				if minHeight < e.FilterThresholdEpoch {
+					return nil, xerrors.Errorf("invalid epoch range: from block is too far in the past (minimum from epoch: %d)", e.FilterThresholdEpoch)
+				}
+			} else if minHeight >= 0 && maxHeight >= 0 {
+				if minHeight > maxHeight {
+					return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", maxHeight, minHeight)
+				} else if minHeight < e.FilterThresholdEpoch {
+					return nil, xerrors.Errorf("invalid epoch range: from block (%d) is below the set FilterThresholdEpoch (%d)", minHeight, e.FilterThresholdEpoch)
+				}
 			}
-		} else if minHeight >= 0 && maxHeight == -1 {
-			// Here the client is looking for events between some time in the past and the current head
-			ts := e.Chain.GetHeaviestTipSet()
-			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", e.MaxFilterHeightRange)
-			}
+		} else {
+			if minHeight == -1 && maxHeight > 0 {
+				// Here the client is looking for events between the head and some future height
+				ts := e.Chain.GetHeaviestTipSet()
+				if maxHeight < ts.Height() {
+					return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", maxHeight, ts.Height())
+				}
+				if maxHeight-ts.Height() > e.MaxFilterHeightRange {
+					return nil, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", e.MaxFilterHeightRange)
+				}
+			} else if minHeight >= 0 && maxHeight == -1 {
+				// Here the client is looking for events between some time in the past and the current head
+				ts := e.Chain.GetHeaviestTipSet()
+				if ts.Height()-minHeight > e.MaxFilterHeightRange {
+					return nil, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", e.MaxFilterHeightRange)
+				}
 
-		} else if minHeight >= 0 && maxHeight >= 0 {
-			if minHeight > maxHeight {
-				return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
-			} else if maxHeight-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", e.MaxFilterHeightRange)
+			} else if minHeight >= 0 && maxHeight >= 0 {
+				if minHeight > maxHeight {
+					return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", maxHeight, minHeight)
+				} else if maxHeight-minHeight > e.MaxFilterHeightRange {
+					return nil, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", e.MaxFilterHeightRange)
+				}
 			}
 		}
-
 	}
 
 	// Convert all addresses to filecoin f4 addresses

@@ -385,6 +385,21 @@ this time become eligible for automatic deletion.`,
 the entire chain)`,
 		},
 		{
+			Name: "FilterThresholdSet",
+			Type: "bool",
+
+			Comment: `FilterThresholdSet signals whether a FilterThresholdEpoch is set. If it is it will be used instead of
+MaxFilterHeightRange to define the supported range.`,
+		},
+		{
+			Name: "FilterThresholdEpoch",
+			Type: "uint64",
+
+			Comment: `FilterThresholdEpoch specifies an epoch above which the node will support returning filtered logs.
+This is useful for setting a static start epoch for support, rather than a static window size with a start epoch
+that shifts as the chain progresses.`,
+		},
+		{
 			Name: "DatabasePath",
 			Type: "string",
 
