@@ -1,15 +1,36 @@
 # Network Upgrade Skeleton in Lotus
 
-Follow these steps to create a skeleton for a network upgrade in Lotus:
+This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. The process involves making changes in multiple repositories in the following order:
+
+1. [`ref-fvm`](#ref-fvm-checklist)
+2. [`filecoin-ffi`](#filecoin-ffi-checklist)
+3. [`go-state-types`](#go-state-types-skeleton-checklist)
+4. [`lotus`](#lotus-checklist)
+
+Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository.
 
 ## Setup
 
+1. Clone the [ref-fvm](https://github.com/filecoin-project/ref-fvm.git) repository.
+
+1. Clone the [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git) repository.
+
 1. Clone the [go-state-types](https://github.com/filecoin-project/go-state-types) repository.
 
-2. In the Lotus repository, add `replace github.com/filecoin-project/go-state-types => ../go-state-types` to the very end of your Lotus `go.mod` file.
+2. In your Lotus repository, add `replace github.com/filecoin-project/go-state-types => ../go-state-types` to the very end of your Lotus `go.mod` file.
     - This ensures that your local clone copy of `go-state-types` is used. Any changes you make there will be reflected in your Lotus project.
 
-## Actor Version Checklist
+## Ref-FVM Checklist
+
+1. Add support for the new network version in Ref-FVM:
+
+    - In `fvm/src/gas/price_list.rs` add the new network version to the `price_list_by_network_version` function.
+    - In `fvm/src/machine/default.rs` in the new function of your machine context, you will find a `SUPPORTED_VERSIONS` constant that defines the range of network versions (for networks that are not Hyperspace) supported. Bump this range to support your new network version.
+    - In `shared/src/version/mod.rs`, in the `NetworkVersion` implementation, you will find a series of constants representing different network versions. To add a new network version, you need to declare a new constant: `pub const (VXX+1): Self = Self(XX+1);` 
+
+## Filecoin-FFI Checklist
+
+## Go-State-Types Skeleton Checklist
 
 1. Follow the [go-state-types actor version checklist](https://github.com/filecoin-project/go-state-types/blob/master/actors_version_checklist.md):
 
