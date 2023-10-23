@@ -122,7 +122,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		Close   abi.ChainEpoch
 	}
 	var tasks []wdTaskDef
-	err = t.db.Select(context.Background(), tasks,
+	err = t.db.Select(context.Background(), &tasks,
 		`Select tskey, 
 			task_id,
 			period_start,
