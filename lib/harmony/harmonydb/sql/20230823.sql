@@ -20,4 +20,15 @@ create table wdpost_tasks
     fault_declaration_cutoff bigint
 );
 
+create table wdpost_proofs
+(
+    deadline           bigint  not null,
+    partitions         bytea not null,
+    proof_type         bigint,
+    proof_bytes        bytea,
+    chain_commit_epoch bigint,
+    chain_commit_rand  bytea
+);
+
+
 
