@@ -4,7 +4,7 @@ This guide will walk you through the process of creating a skeleton for a networ
 
 1. [`ref-fvm`](#ref-fvm-checklist)
 2. [`filecoin-ffi`](#filecoin-ffi-checklist)
-3. [`go-state-types`](#go-state-types-skeleton-checklist)
+3. [`go-state-types`](#go-state-types-checklist)
 4. [`lotus`](#lotus-checklist)
 
 Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository.
@@ -30,7 +30,13 @@ Each repository has its own set of steps that need to be followed. This guide wi
 
 ## Filecoin-FFI Checklist
 
-## Go-State-Types Skeleton Checklist
+1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
+    - Add the new network version number (XX+1) to the existing match arm for the network version.
+
+2. Patch the FVM-dependency (fvm3) in `rust/cargo.toml` to use the custom branch of the FVM created in the [Ref-FVM Checklist](#ref-fvm-checklist))
+    -  Add `features = ["your-ref-fvm-branch"]` to tell Cargo to use you Ref-FVM branch.
+
+## Go-State-Types Checklist
 
 1. Follow the [go-state-types actor version checklist](https://github.com/filecoin-project/go-state-types/blob/master/actors_version_checklist.md):
 
