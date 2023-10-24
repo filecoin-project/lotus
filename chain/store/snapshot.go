@@ -656,9 +656,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		}
 
 		if b.Height > 0 {
-			for _, p := range b.Parents {
-				blocksToWalk = append(blocksToWalk, p)
-			}
+			blocksToWalk = append(blocksToWalk, b.Parents...)
 		} else {
 			// include the genesis block
 			cids = append(cids, b.Parents...)
