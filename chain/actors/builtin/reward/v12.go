@@ -2,19 +2,18 @@ package reward
 
 import (
 	"fmt"
-
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
-	reward12 "github.com/filecoin-project/go-state-types/builtin/v12/reward"
-	smoothing12 "github.com/filecoin-project/go-state-types/builtin/v12/util/smoothing"
-	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
+	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
+	reward12 "github.com/filecoin-project/go-state-types/builtin/v12/reward"
+	smoothing12 "github.com/filecoin-project/go-state-types/builtin/v12/util/smoothing"
 )
 
 var _ State = (*state12)(nil)

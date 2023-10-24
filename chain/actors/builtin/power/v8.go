@@ -3,21 +3,21 @@ package power
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
-	power8 "github.com/filecoin-project/go-state-types/builtin/v8/power"
-	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
-	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	power8 "github.com/filecoin-project/go-state-types/builtin/v8/power"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)

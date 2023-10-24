@@ -2,16 +2,16 @@ package account
 
 import (
 	"fmt"
-
-	"github.com/ipfs/go-cid"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/filecoin-project/go-address"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/filecoin-project/go-state-types/manifest"
-	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
 )
 
 var _ State = (*state0)(nil)

@@ -3,25 +3,33 @@ package paych
 import (
 	"encoding/base64"
 	"fmt"
-
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
-	ipldcbor "github.com/ipfs/go-ipld-cbor"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -52,6 +60,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version12:
 			return load12(store, act.Head)
+
+		case actorstypes.Version13:
+			return load13(store, act.Head)
 
 		}
 	}
@@ -173,6 +184,9 @@ func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 	case actorstypes.Version12:
 		return message12{from}
 
+	case actorstypes.Version13:
+		return message13{from}
+
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -215,5 +229,6 @@ func AllCodes() []cid.Cid {
 		(&state10{}).Code(),
 		(&state11{}).Code(),
 		(&state12{}).Code(),
+		(&state13{}).Code(),
 	}
 }

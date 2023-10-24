@@ -1,24 +1,25 @@
 package datacap
 
 import (
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin12 "github.com/filecoin-project/go-state-types/builtin"
+	builtin13 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/go-state-types/manifest"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var (
-	Address = builtin12.DatacapActorAddr
-	Methods = builtin12.MethodsDatacap
+	Address = builtin13.DatacapActorAddr
+	Methods = builtin13.MethodsDatacap
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -41,6 +42,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version12:
 			return load12(store, act.Head)
 
+		case actorstypes.Version13:
+			return load13(store, act.Head)
+
 		}
 	}
 
@@ -61,6 +65,9 @@ func MakeState(store adt.Store, av actorstypes.Version, governor address.Address
 
 	case actorstypes.Version12:
 		return make12(store, governor, bitwidth)
+
+	case actorstypes.Version13:
+		return make13(store, governor, bitwidth)
 
 	default:
 		return nil, xerrors.Errorf("datacap actor only valid for actors v9 and above, got %d", av)
@@ -86,5 +93,6 @@ func AllCodes() []cid.Cid {
 		(&state10{}).Code(),
 		(&state11{}).Code(),
 		(&state12{}).Code(),
+		(&state13{}).Code(),
 	}
 }

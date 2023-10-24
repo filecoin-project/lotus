@@ -2,19 +2,19 @@ package paych
 
 import (
 	"fmt"
-
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
-	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
-	"github.com/filecoin-project/go-state-types/manifest"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
+	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
 )
 
 var _ State = (*state10)(nil)

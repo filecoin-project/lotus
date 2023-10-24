@@ -1,63 +1,14 @@
 package builtin
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
 	"reflect"
 	"runtime"
 	"strings"
 
-	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
-	account10 "github.com/filecoin-project/go-state-types/builtin/v10/account"
-	cron10 "github.com/filecoin-project/go-state-types/builtin/v10/cron"
-	datacap10 "github.com/filecoin-project/go-state-types/builtin/v10/datacap"
-	eam10 "github.com/filecoin-project/go-state-types/builtin/v10/eam"
-	ethaccount10 "github.com/filecoin-project/go-state-types/builtin/v10/ethaccount"
-	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
-	_init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
-	market10 "github.com/filecoin-project/go-state-types/builtin/v10/market"
-	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
-	multisig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
-	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
-	placeholder10 "github.com/filecoin-project/go-state-types/builtin/v10/placeholder"
-	power10 "github.com/filecoin-project/go-state-types/builtin/v10/power"
-	reward10 "github.com/filecoin-project/go-state-types/builtin/v10/reward"
-	system10 "github.com/filecoin-project/go-state-types/builtin/v10/system"
-	verifreg10 "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
-	account11 "github.com/filecoin-project/go-state-types/builtin/v11/account"
-	cron11 "github.com/filecoin-project/go-state-types/builtin/v11/cron"
-	datacap11 "github.com/filecoin-project/go-state-types/builtin/v11/datacap"
-	eam11 "github.com/filecoin-project/go-state-types/builtin/v11/eam"
-	ethaccount11 "github.com/filecoin-project/go-state-types/builtin/v11/ethaccount"
-	evm11 "github.com/filecoin-project/go-state-types/builtin/v11/evm"
-	_init11 "github.com/filecoin-project/go-state-types/builtin/v11/init"
-	market11 "github.com/filecoin-project/go-state-types/builtin/v11/market"
-	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
-	multisig11 "github.com/filecoin-project/go-state-types/builtin/v11/multisig"
-	paych11 "github.com/filecoin-project/go-state-types/builtin/v11/paych"
-	placeholder11 "github.com/filecoin-project/go-state-types/builtin/v11/placeholder"
-	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
-	reward11 "github.com/filecoin-project/go-state-types/builtin/v11/reward"
-	system11 "github.com/filecoin-project/go-state-types/builtin/v11/system"
-	verifreg11 "github.com/filecoin-project/go-state-types/builtin/v11/verifreg"
-	account12 "github.com/filecoin-project/go-state-types/builtin/v12/account"
-	cron12 "github.com/filecoin-project/go-state-types/builtin/v12/cron"
-	datacap12 "github.com/filecoin-project/go-state-types/builtin/v12/datacap"
-	eam12 "github.com/filecoin-project/go-state-types/builtin/v12/eam"
-	ethaccount12 "github.com/filecoin-project/go-state-types/builtin/v12/ethaccount"
-	evm12 "github.com/filecoin-project/go-state-types/builtin/v12/evm"
-	_init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
-	market12 "github.com/filecoin-project/go-state-types/builtin/v12/market"
-	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
-	multisig12 "github.com/filecoin-project/go-state-types/builtin/v12/multisig"
-	paych12 "github.com/filecoin-project/go-state-types/builtin/v12/paych"
-	placeholder12 "github.com/filecoin-project/go-state-types/builtin/v12/placeholder"
-	power12 "github.com/filecoin-project/go-state-types/builtin/v12/power"
-	reward12 "github.com/filecoin-project/go-state-types/builtin/v12/reward"
-	system12 "github.com/filecoin-project/go-state-types/builtin/v12/system"
-	verifreg12 "github.com/filecoin-project/go-state-types/builtin/v12/verifreg"
+
 	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
 	_init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
@@ -69,9 +20,9 @@ import (
 	reward8 "github.com/filecoin-project/go-state-types/builtin/v8/reward"
 	system8 "github.com/filecoin-project/go-state-types/builtin/v8/system"
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+
 	account9 "github.com/filecoin-project/go-state-types/builtin/v9/account"
 	cron9 "github.com/filecoin-project/go-state-types/builtin/v9/cron"
-	datacap9 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	_init9 "github.com/filecoin-project/go-state-types/builtin/v9/init"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -81,10 +32,89 @@ import (
 	reward9 "github.com/filecoin-project/go-state-types/builtin/v9/reward"
 	system9 "github.com/filecoin-project/go-state-types/builtin/v9/system"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+
+	datacap9 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
+
+	account10 "github.com/filecoin-project/go-state-types/builtin/v10/account"
+	cron10 "github.com/filecoin-project/go-state-types/builtin/v10/cron"
+	_init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
+	market10 "github.com/filecoin-project/go-state-types/builtin/v10/market"
+	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
+	multisig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
+	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
+	power10 "github.com/filecoin-project/go-state-types/builtin/v10/power"
+	reward10 "github.com/filecoin-project/go-state-types/builtin/v10/reward"
+	system10 "github.com/filecoin-project/go-state-types/builtin/v10/system"
+	verifreg10 "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
+
+	datacap10 "github.com/filecoin-project/go-state-types/builtin/v10/datacap"
+
+	eam10 "github.com/filecoin-project/go-state-types/builtin/v10/eam"
+	ethaccount10 "github.com/filecoin-project/go-state-types/builtin/v10/ethaccount"
+	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	placeholder10 "github.com/filecoin-project/go-state-types/builtin/v10/placeholder"
+
+	account11 "github.com/filecoin-project/go-state-types/builtin/v11/account"
+	cron11 "github.com/filecoin-project/go-state-types/builtin/v11/cron"
+	_init11 "github.com/filecoin-project/go-state-types/builtin/v11/init"
+	market11 "github.com/filecoin-project/go-state-types/builtin/v11/market"
+	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
+	multisig11 "github.com/filecoin-project/go-state-types/builtin/v11/multisig"
+	paych11 "github.com/filecoin-project/go-state-types/builtin/v11/paych"
+	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
+	reward11 "github.com/filecoin-project/go-state-types/builtin/v11/reward"
+	system11 "github.com/filecoin-project/go-state-types/builtin/v11/system"
+	verifreg11 "github.com/filecoin-project/go-state-types/builtin/v11/verifreg"
+
+	datacap11 "github.com/filecoin-project/go-state-types/builtin/v11/datacap"
+
+	eam11 "github.com/filecoin-project/go-state-types/builtin/v11/eam"
+	ethaccount11 "github.com/filecoin-project/go-state-types/builtin/v11/ethaccount"
+	evm11 "github.com/filecoin-project/go-state-types/builtin/v11/evm"
+	placeholder11 "github.com/filecoin-project/go-state-types/builtin/v11/placeholder"
+
+	account12 "github.com/filecoin-project/go-state-types/builtin/v12/account"
+	cron12 "github.com/filecoin-project/go-state-types/builtin/v12/cron"
+	_init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
+	market12 "github.com/filecoin-project/go-state-types/builtin/v12/market"
+	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
+	multisig12 "github.com/filecoin-project/go-state-types/builtin/v12/multisig"
+	paych12 "github.com/filecoin-project/go-state-types/builtin/v12/paych"
+	power12 "github.com/filecoin-project/go-state-types/builtin/v12/power"
+	reward12 "github.com/filecoin-project/go-state-types/builtin/v12/reward"
+	system12 "github.com/filecoin-project/go-state-types/builtin/v12/system"
+	verifreg12 "github.com/filecoin-project/go-state-types/builtin/v12/verifreg"
+
+	datacap12 "github.com/filecoin-project/go-state-types/builtin/v12/datacap"
+
+	eam12 "github.com/filecoin-project/go-state-types/builtin/v12/eam"
+	ethaccount12 "github.com/filecoin-project/go-state-types/builtin/v12/ethaccount"
+	evm12 "github.com/filecoin-project/go-state-types/builtin/v12/evm"
+	placeholder12 "github.com/filecoin-project/go-state-types/builtin/v12/placeholder"
+
+	account13 "github.com/filecoin-project/go-state-types/builtin/v13/account"
+	cron13 "github.com/filecoin-project/go-state-types/builtin/v13/cron"
+	_init13 "github.com/filecoin-project/go-state-types/builtin/v13/init"
+	market13 "github.com/filecoin-project/go-state-types/builtin/v13/market"
+	miner13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	multisig13 "github.com/filecoin-project/go-state-types/builtin/v13/multisig"
+	paych13 "github.com/filecoin-project/go-state-types/builtin/v13/paych"
+	power13 "github.com/filecoin-project/go-state-types/builtin/v13/power"
+	reward13 "github.com/filecoin-project/go-state-types/builtin/v13/reward"
+	system13 "github.com/filecoin-project/go-state-types/builtin/v13/system"
+	verifreg13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
+
+	datacap13 "github.com/filecoin-project/go-state-types/builtin/v13/datacap"
+
+	eam13 "github.com/filecoin-project/go-state-types/builtin/v13/eam"
+	ethaccount13 "github.com/filecoin-project/go-state-types/builtin/v13/ethaccount"
+	evm13 "github.com/filecoin-project/go-state-types/builtin/v13/evm"
+	placeholder13 "github.com/filecoin-project/go-state-types/builtin/v13/placeholder"
+
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	rtt "github.com/filecoin-project/go-state-types/rt"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
@@ -611,6 +641,110 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: ethaccount12.Methods,
+					state:   nil,
+				})
+
+			}
+		}
+
+	case actorstypes.Version13:
+		for key, codeID := range codeIDs {
+			switch key {
+			case manifest.AccountKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: account13.Methods,
+					state:   new(account13.State),
+				})
+			case manifest.CronKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: cron13.Methods,
+					state:   new(cron13.State),
+				})
+			case manifest.InitKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: _init13.Methods,
+					state:   new(_init13.State),
+				})
+			case manifest.MarketKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: market13.Methods,
+					state:   new(market13.State),
+				})
+			case manifest.MinerKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: miner13.Methods,
+					state:   new(miner13.State),
+				})
+			case manifest.MultisigKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: multisig13.Methods,
+					state:   new(multisig13.State),
+				})
+			case manifest.PaychKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: paych13.Methods,
+					state:   new(paych13.State),
+				})
+			case manifest.PowerKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: power13.Methods,
+					state:   new(power13.State),
+				})
+			case manifest.RewardKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: reward13.Methods,
+					state:   new(reward13.State),
+				})
+			case manifest.SystemKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: system13.Methods,
+					state:   new(system13.State),
+				})
+			case manifest.VerifregKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: verifreg13.Methods,
+					state:   new(verifreg13.State),
+				})
+			case manifest.DatacapKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: datacap13.Methods,
+					state:   new(datacap13.State),
+				})
+
+			case manifest.EvmKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: evm13.Methods,
+					state:   new(evm13.State),
+				})
+			case manifest.EamKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: eam13.Methods,
+					state:   nil,
+				})
+			case manifest.PlaceholderKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: placeholder13.Methods,
+					state:   nil,
+				})
+			case manifest.EthAccountKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: ethaccount13.Methods,
 					state:   nil,
 				})
 
