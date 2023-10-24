@@ -56,6 +56,8 @@ var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
 const UpgradeWatermelonHeight = 50
 
+const UpgradeWatermelonFixHeight = 100
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }

@@ -315,31 +315,32 @@ type NetworkParams struct {
 }
 
 type ForkUpgradeParams struct {
-	UpgradeSmokeHeight       abi.ChainEpoch
-	UpgradeBreezeHeight      abi.ChainEpoch
-	UpgradeIgnitionHeight    abi.ChainEpoch
-	UpgradeLiftoffHeight     abi.ChainEpoch
-	UpgradeAssemblyHeight    abi.ChainEpoch
-	UpgradeRefuelHeight      abi.ChainEpoch
-	UpgradeTapeHeight        abi.ChainEpoch
-	UpgradeKumquatHeight     abi.ChainEpoch
-	BreezeGasTampingDuration abi.ChainEpoch
-	UpgradeCalicoHeight      abi.ChainEpoch
-	UpgradePersianHeight     abi.ChainEpoch
-	UpgradeOrangeHeight      abi.ChainEpoch
-	UpgradeClausHeight       abi.ChainEpoch
-	UpgradeTrustHeight       abi.ChainEpoch
-	UpgradeNorwegianHeight   abi.ChainEpoch
-	UpgradeTurboHeight       abi.ChainEpoch
-	UpgradeHyperdriveHeight  abi.ChainEpoch
-	UpgradeChocolateHeight   abi.ChainEpoch
-	UpgradeOhSnapHeight      abi.ChainEpoch
-	UpgradeSkyrHeight        abi.ChainEpoch
-	UpgradeSharkHeight       abi.ChainEpoch
-	UpgradeHyggeHeight       abi.ChainEpoch
-	UpgradeLightningHeight   abi.ChainEpoch
-	UpgradeThunderHeight     abi.ChainEpoch
-	UpgradeWatermelonHeight  abi.ChainEpoch
+	UpgradeSmokeHeight         abi.ChainEpoch
+	UpgradeBreezeHeight        abi.ChainEpoch
+	UpgradeIgnitionHeight      abi.ChainEpoch
+	UpgradeLiftoffHeight       abi.ChainEpoch
+	UpgradeAssemblyHeight      abi.ChainEpoch
+	UpgradeRefuelHeight        abi.ChainEpoch
+	UpgradeTapeHeight          abi.ChainEpoch
+	UpgradeKumquatHeight       abi.ChainEpoch
+	BreezeGasTampingDuration   abi.ChainEpoch
+	UpgradeCalicoHeight        abi.ChainEpoch
+	UpgradePersianHeight       abi.ChainEpoch
+	UpgradeOrangeHeight        abi.ChainEpoch
+	UpgradeClausHeight         abi.ChainEpoch
+	UpgradeTrustHeight         abi.ChainEpoch
+	UpgradeNorwegianHeight     abi.ChainEpoch
+	UpgradeTurboHeight         abi.ChainEpoch
+	UpgradeHyperdriveHeight    abi.ChainEpoch
+	UpgradeChocolateHeight     abi.ChainEpoch
+	UpgradeOhSnapHeight        abi.ChainEpoch
+	UpgradeSkyrHeight          abi.ChainEpoch
+	UpgradeSharkHeight         abi.ChainEpoch
+	UpgradeHyggeHeight         abi.ChainEpoch
+	UpgradeLightningHeight     abi.ChainEpoch
+	UpgradeThunderHeight       abi.ChainEpoch
+	UpgradeWatermelonHeight    abi.ChainEpoch
+	UpgradeWatermelonFixHeight abi.ChainEpoch
 }
 
 type NonceMapType map[address.Address]uint64

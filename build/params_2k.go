@@ -67,6 +67,8 @@ var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
 var UpgradeWatermelonHeight = abi.ChainEpoch(200)
 
+var UpgradeWatermelonFixHeight = abi.ChainEpoch(300)
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
@@ -123,6 +125,7 @@ func init() {
 	UpgradeLightningHeight = getUpgradeHeight("LOTUS_LIGHTNING_HEIGHT", UpgradeLightningHeight)
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
+	UpgradeWatermelonFixHeight = getUpgradeHeight("LOTUS_WATERMELON_FIX_HEIGHT", UpgradeWatermelonFixHeight)
 
 	BuildType |= Build2k
 
