@@ -397,26 +397,31 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	}
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	if err != nil || msgLookup == nil {
+	if err != nil {
+		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
+	}
+	if msgLookup == nil {
+		// This is the best we can do. In theory, we could have just not indexed this
+		// transaction, but there's no way to check that here.
 		return nil, nil
 	}
 
 	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 	if err != nil {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
 	var events []types.Event
 	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
 		events, err = a.ChainAPI.ChainGetEvents(ctx, *rct.EventsRoot)
 		if err != nil {
-			return nil, nil
+			return nil, xerrors.Errorf("failed get events for %s", txHash)
 		}
 	}
 
 	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.Chain, a.StateAPI)
 	if err != nil {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
 	}
 
 	return &receipt, nil
