@@ -1,30 +1,31 @@
 package lpwindow
 
+/*
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 type changeHandler struct {
 	api       WDPoStAPI
-	actor     address.Address
+	actors    []dtypes.MinerAddress
 	proveHdlr *proveHandler
 }
 
-func newChangeHandler(api WDPoStAPI, actor address.Address) *changeHandler {
+func newChangeHandler(api WDPoStAPI, actors []dtypes.MinerAddress) *changeHandler {
 	p := newProver(api)
-	return &changeHandler{api: api, actor: actor, proveHdlr: p}
+	return &changeHandler{api: api, actors: actors, proveHdlr: p}
 }
 
 func (ch *changeHandler) start() {
 	go ch.proveHdlr.run()
 }
 
-func (ch *changeHandler) update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error {
+func (ch *changeHandler) Update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error {
 	// Get the current deadline period
 	di, err := ch.api.StateMinerProvingDeadline(ctx, ch.actor, advance.Key())
 	if err != nil {
@@ -48,26 +49,20 @@ func (ch *changeHandler) update(ctx context.Context, revert *types.TipSet, advan
 	case <-ctx.Done():
 	}
 
-	select {
-	case ch.submitHdlr.hcs <- hc:
-	case <-ch.submitHdlr.shutdownCtx.Done():
-	case <-ctx.Done():
-	}
-
 	return nil
 }
 
 type proveHandler struct {
-	api   WdPoStCommands
+	api   WDPoStAPI
 	posts *postsCache
 
-	postResults chan *postResult
-	hcs         chan *headChange
+	//postResults chan *postResult
+	hcs chan *headChange
 
 	current *currentPost
 
 	shutdownCtx context.Context
-	shutdown    context.CancelFunc
+	shutdownFn  context.CancelFunc
 }
 
 type headChange struct {
@@ -87,16 +82,16 @@ func newProver(
 ) *proveHandler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &proveHandler{
-		api:         api,
-		postResults: make(chan *postResult),
+		api: api,
+		//postResults: make(chan *postResult),
 		hcs:         make(chan *headChange),
 		shutdownCtx: ctx,
-		shutdown:    cancel,
+		shutdownFn:  cancel,
 	}
 }
 
 func (p *proveHandler) run() {
-	// Abort proving on shutdown
+	// Abort proving on shutdownFn
 	defer func() {
 		if p.current != nil {
 			p.current.abort()
@@ -179,3 +174,8 @@ func (p *proveHandler) processPostResult(res *postResult) {
 	// Add the proofs to the cache
 	p.posts.add(di, res.posts)
 }
+
+func (ch *changeHandler) Shutdown() {
+	ch.proveHdlr.shutdownFn()
+}
+*/

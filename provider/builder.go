@@ -7,29 +7,21 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpwindow"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("provider")
 
 func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
 	api api.FullNode, sealer sealer.SectorManager, verif storiface.Verifier, j journal.Journal,
 	as *ctladdr.AddressSelector, maddr []dtypes.MinerAddress, db *harmonydb.DB, max int) (*lpwindow.WdPostTask, error) {
 
-	/*fc2 := config.MinerFeeConfig{
-		MaxPreCommitGasFee: fc.MaxPreCommitGasFee,
-		MaxCommitGasFee:    fc.MaxCommitGasFee,
-		MaxTerminateGasFee: fc.MaxTerminateGasFee,
-		MaxPublishDealsFee: fc.MaxPublishDealsFee,
-	}*/
-	ts := lpwindow.NewWdPostTask(db, nil, max)
+	chainSched := chainsched.New(api)
 
-	panic("change handler thing")
-
-	/*go fps.RunV2(ctx, func(api wdpost.WdPoStCommands, actor address.Address) wdpost.ChangeHandlerIface {
-		return wdpost.NewChangeHandler2(api, actor, ts)
-	})*/
-	return ts, nil
-
+	return lpwindow.NewWdPostTask(db, nil, chainSched, maddr)
 }

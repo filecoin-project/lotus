@@ -5,6 +5,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/lib/promise"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -38,13 +42,23 @@ type WDPoStAPI interface {
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]api.Partition, error)
 }
 
 type WdPostTask struct {
 	api WDPoStAPI
-
 	db  *harmonydb.DB
-	max int
+
+	windowPoStTF promise.Promise[harmonytask.AddTaskFunc]
+
+	actors []dtypes.MinerAddress
+}
+
+type wdTaskIdentity struct {
+	Sp_id                uint64
+	Proving_period_start abi.ChainEpoch
+	Deadline_index       uint64
+	Partition_index      uint64
 }
 
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
@@ -185,7 +199,13 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 			return false
 		}
 
-		return res[mi.WindowPoStProofType].MaxMemory <= freeRAM
+		spt, err := policy.GetSealProofFromPoStProof(mi.WindowPoStProofType)
+		if err != nil {
+			log.Errorf("WdPostTask.CanAccept() failed to GetSealProofFromPoStProof: %v", err)
+			return false
+		}
+
+		return res[spt].MaxMemory <= freeRAM
 	})
 	if len(tasks) == 0 {
 		log.Infof("RAM too small for any WDPost task")
@@ -217,7 +237,7 @@ var res = storiface.ResourceTable[sealtasks.TTGenerateWindowPoSt]
 func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
 		Name:        "WdPost",
-		Max:         t.max,
+		Max:         1, // TODO
 		MaxFailures: 3,
 		Follows:     nil,
 		Cost: resources.Resources{
@@ -235,27 +255,72 @@ func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 }
 
 func (t *WdPostTask) Adder(taskFunc harmonytask.AddTaskFunc) {
-
-	// wait for any channels on t.tasks and call taskFunc on them
-	for taskDetails := range t.tasks {
-
-		//log.Errorf("WdPostTask.Adder() received taskDetails: %v", taskDetails)
-
-		taskFunc(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
-			return t.addTaskToDB(taskDetails.Ts, taskDetails.Deadline, tID, tx)
-		})
-	}
+	t.windowPoStTF.Set(taskFunc)
 }
 
-func NewWdPostTask(db *harmonydb.DB, api WDPoStAPI, max int) *WdPostTask {
-	return &WdPostTask{
+func (t *WdPostTask) processHeadChange(ctx context.Context, revert, apply *types.TipSet) error {
+	for _, act := range t.actors {
+		maddr := address.Address(act)
+
+		aid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return xerrors.Errorf("getting miner ID: %w", err)
+		}
+
+		di, err := t.api.StateMinerProvingDeadline(ctx, maddr, apply.Key())
+		if err != nil {
+			return err
+		}
+
+		if !di.PeriodStarted() {
+			return nil // not proving anything yet
+		}
+
+		partitions, err := t.api.StateMinerPartitions(ctx, maddr, di.Index, apply.Key())
+		if err != nil {
+			return xerrors.Errorf("getting partitions: %w", err)
+		}
+
+		// TODO: Batch Partitions??
+
+		for pidx := range partitions {
+			tid := wdTaskIdentity{
+				Sp_id:                aid,
+				Proving_period_start: di.PeriodStart,
+				Deadline_index:       di.Index,
+				Partition_index:      uint64(pidx),
+			}
+
+			tf := t.windowPoStTF.Val(ctx)
+			if tf == nil {
+				return xerrors.Errorf("no task func")
+			}
+
+			tf(func(id harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+				return t.addTaskToDB(id, tid, tx)
+			})
+		}
+	}
+
+	return nil
+}
+
+func NewWdPostTask(db *harmonydb.DB, api WDPoStAPI, pcs *chainsched.ProviderChainSched, actors []dtypes.MinerAddress) (*WdPostTask, error) {
+	t := &WdPostTask{
 		db:  db,
 		api: api,
-		max: max,
+
+		actors: actors,
 	}
+
+	if err := pcs.AddHandler(t.processHeadChange); err != nil {
+		return nil, err
+	}
+
+	return t, nil
 }
 
-func (t *WdPostTask) addTaskToDB(deadline *dline.Info, taskId harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIdentity, tx *harmonydb.Tx) (bool, error) {
 
 	_, err := tx.Exec(
 		`INSERT INTO wdpost_tasks (
@@ -267,10 +332,10 @@ func (t *WdPostTask) addTaskToDB(deadline *dline.Info, taskId harmonytask.TaskID
                           
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10 , $11, $12, $13, $14)`,
 		taskId,
-		spID,
-		deadline.PeriodStart,
-		deadline.Index,
-		partID,
+		taskIdent.Sp_id,
+		taskIdent.Proving_period_start,
+		taskIdent.Deadline_index,
+		taskIdent.Partition_index,
 	)
 	if err != nil {
 		return false, err
