@@ -304,6 +304,10 @@ func (m *Sealing) TerminateSector(ctx context.Context, sid abi.SectorNumber) err
 	return m.sectors.Send(uint64(sid), SectorTerminate{})
 }
 
+func (m *Sealing) SectorsSummary(ctx context.Context) map[SectorState]int64 {
+	return m.stats.byState
+}
+
 func (m *Sealing) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
 	return m.terminator.Flush(ctx)
 }
