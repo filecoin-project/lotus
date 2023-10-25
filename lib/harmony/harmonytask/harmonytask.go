@@ -76,7 +76,7 @@ type TaskInterface interface {
 	// func (b *BazType)Adder(addTask AddTaskFunc) {
 	//	  for {
 	//      bazMaker := <- bazChannel
-	//	    addTask("baz", func(t harmonytask.TaskID, txn db.Transaction) bool {
+	//	    addTask("baz", func(t harmonytask.TaskID, txn db.Transaction) (bool, error) {
 	//	       _, err := txn.Exec(`INSERT INTO bazInfoTable (taskID, qix, mot)
 	//			  VALUES ($1,$2,$3)`, id, bazMaker.qix, bazMaker.mot)
 	//         if err != nil {
@@ -90,6 +90,12 @@ type TaskInterface interface {
 	Adder(AddTaskFunc)
 }
 
+// AddTaskFunc is responsible for adding a task's details "extra info" to the DB.
+// It should return true if the task should be added, false if it was already there.
+// This is typically accomplished with a "unique" index on your detals table that
+// would cause the insert to fail.
+// The error indicates that instead of a conflict (which we should ignore) that we
+// actually have a serious problem that needs to be logged with context.
 type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) (bool, error))
 
 type TaskEngine struct {

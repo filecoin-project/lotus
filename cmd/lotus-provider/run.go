@@ -26,6 +26,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
@@ -236,13 +237,15 @@ var runCmd = &cli.Command{
 		}
 		defer j.Close()
 
-		si := paths.NewIndexProxy( /*TODO Alerting*/ nil, db, true)
+		al := alerting.NewAlertingSystem(j)
+		si := paths.NewIndexProxy(al, db, true)
 
 		lstor, err := paths.NewLocal(ctx, lr, si, nil /*TODO URLs*/)
 		if err != nil {
 			return err
 		}
-		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.FULLNODE_API_INFO) // TODO switch this into DB entries.
+
+		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.FULLNODE_API_INFO)
 		if err != nil {
 			return err
 		}
@@ -254,7 +257,7 @@ var runCmd = &cli.Command{
 		}
 
 		stor := paths.NewRemote(lstor, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
-		mds, err := lr.Datastore(ctx, "/metadata")
+		mds, err := lr.Datastore(ctx, "/metadata") // TODO rm datastore after sector-info moves to DB
 		if err != nil {
 			return err
 		}
