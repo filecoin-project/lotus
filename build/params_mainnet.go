@@ -99,7 +99,7 @@ const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 var UpgradeWatermelonHeight = abi.ChainEpoch(9999999999)
 
 // ???????
-var UpgradeWatermelonFixHeight = abi.ChainEpoch(9999999999)
+var UpgradeWatermelonFixHeight = abi.ChainEpoch(999999999999)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

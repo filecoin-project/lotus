@@ -3,9 +3,7 @@ package paych
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
 	paych7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/paych"

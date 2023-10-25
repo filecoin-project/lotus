@@ -6,11 +6,11 @@ import (
 	"github.com/ipfs/go-cid"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	cron12 "github.com/filecoin-project/go-state-types/builtin/v12/cron"
 	"github.com/filecoin-project/go-state-types/manifest"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-
-	cron12 "github.com/filecoin-project/go-state-types/builtin/v12/cron"
 )
 
 var _ State = (*state12)(nil)

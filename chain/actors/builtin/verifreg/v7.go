@@ -3,22 +3,20 @@ package verifreg
 import (
 	"fmt"
 
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
-	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"golang.org/x/xerrors"
-
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-
 	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 
-	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state7)(nil)

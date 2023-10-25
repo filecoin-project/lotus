@@ -4,20 +4,19 @@ import (
 	"bytes"
 	"fmt"
 
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
-	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state2)(nil)
