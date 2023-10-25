@@ -840,7 +840,7 @@ func TestMigrationNV22(t *testing.T) {
 		}, stmgr.Upgrade{
 			Network:   network.Version22,
 			Height:    nv22epoch,
-			Migration: filcns.UpgradeActorsV12,
+			Migration: filcns.UpgradeActorsV13,
 		},
 		))
 

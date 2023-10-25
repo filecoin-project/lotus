@@ -1978,7 +1978,7 @@ func UpgradeActorsV13(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	}
 	newRoot, err := upgradeActorsV13Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v11 state: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v12 state: %w", err)
 	}
 	return newRoot, nil
 }
@@ -1991,7 +1991,7 @@ func upgradeActorsV13Common(
 	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
 	adtStore := store.ActorStore(ctx, writeStore)
 	// ensure that the manifest is loaded in the blockstore
-	if err := bundle.LoadBundles(ctx, writeStore, actorstypes.Version12); err != nil {
+	if err := bundle.LoadBundles(ctx, writeStore, actorstypes.Version13); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -2003,21 +2003,21 @@ func upgradeActorsV13Common(
 
 	if stateRoot.Version != types.StateTreeVersion5 {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 5 for actors v12 upgrade, got %d",
+			"expected state root version 5 for actors v13 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
 
 	manifest, ok := actors.GetManifest(actorstypes.Version13)
 	if !ok {
-		return cid.Undef, xerrors.Errorf("no manifest CID for v12 upgrade")
+		return cid.Undef, xerrors.Errorf("no manifest CID for v13 upgrade")
 	}
 
 	// Perform the migration
 	newHamtRoot, err := nv22.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
 		migrationLogger{}, cache)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("upgrading to actors v12: %w", err)
+		return cid.Undef, xerrors.Errorf("upgrading to actors v13: %w", err)
 	}
 
 	// Persist the result.
