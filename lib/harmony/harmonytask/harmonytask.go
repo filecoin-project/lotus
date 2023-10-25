@@ -96,7 +96,7 @@ type TaskInterface interface {
 // would cause the insert to fail.
 // The error indicates that instead of a conflict (which we should ignore) that we
 // actually have a serious problem that needs to be logged with context.
-type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) (bool, error))
+type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) (shouldCommit bool, seriousError error))
 
 type TaskEngine struct {
 	ctx            context.Context
