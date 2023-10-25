@@ -3,12 +3,14 @@ package lpwindow
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/dline"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/stretchr/testify/require"
 )
 
 // test to create WDPostTask, invoke AddTask and check if the task is added to the DB

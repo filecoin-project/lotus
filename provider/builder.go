@@ -2,6 +2,9 @@ package provider
 
 import (
 	"context"
+
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -12,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("provider")

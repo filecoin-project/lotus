@@ -29,6 +29,14 @@ var Doc = map[string][]DocField{
 			Comment: ``,
 		},
 	},
+	"ApisConfig": {
+		{
+			Name: "FULLNODE_API_INFO",
+			Type: "[]string",
+
+			Comment: `FULLNODE_API_INFO is the API endpoint for the Lotus daemon.`,
+		},
+	},
 	"Backup": {
 		{
 			Name: "DisableMetadataLog",
@@ -590,6 +598,14 @@ starts. By default, the cache is rehydrated from previously cached entries store
 datastore if any is present.`,
 		},
 	},
+	"JournalConfig": {
+		{
+			Name: "DisabledEvents",
+			Type: "string",
+
+			Comment: `Events of the form: "system1:event1,system1:event2[,...]"`,
+		},
+	},
 	"Libp2p": {
 		{
 			Name: "ListenAddresses",
@@ -700,6 +716,12 @@ sent automatically, if control addresses are configured.
 A control address that doesn't have enough funds will still be chosen
 over the worker address if this flag is set.`,
 		},
+		{
+			Name: "MinerAddresses",
+			Type: "[]string",
+
+			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
+		},
 	},
 	"LotusProviderConfig": {
 		{
@@ -723,6 +745,30 @@ over the worker address if this flag is set.`,
 		{
 			Name: "Proving",
 			Type: "ProvingConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "SealingParams",
+			Type: "SealingConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "SealerConfig",
+			Type: "//",
+
+			Comment: ``,
+		},
+		{
+			Name: "Journal",
+			Type: "JournalConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Apis",
+			Type: "ApisConfig",
 
 			Comment: ``,
 		},
@@ -919,6 +965,12 @@ This is useful to allow workers to bypass the lotus miner to access sector infor
 		{
 			Name: "EnableWindowPost",
 			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "WindowPostMaxTasks",
+			Type: "int",
 
 			Comment: ``,
 		},
