@@ -145,7 +145,6 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		*WindowPoStScheduler
 	}{s.api, s}
 
-	// Initialize change handler.
 	s.ch = newChangeHandler(callbacks, s.actor)
 	defer s.ch.shutdown()
 	s.ch.start()
@@ -233,11 +232,6 @@ func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.T
 	if err != nil {
 		log.Errorf("handling head updates in window post sched: %+v", err)
 	}
-
-	//err = s.ch2.update(ctx, revert, apply)
-	//if err != nil {
-	//	log.Errorf("handling head updates in window post sched: %+v", err)
-	//}
 }
 
 // onAbort is called when generating proofs or submitting proofs is aborted

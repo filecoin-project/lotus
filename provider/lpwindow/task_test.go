@@ -1,7 +1,6 @@
 package lpwindow
 
 import (
-	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/dline"
@@ -27,7 +26,6 @@ func TestAddTask(t *testing.T) {
 	_ = taskEngine
 	ts := types.TipSet{}
 	deadline := dline.Info{}
-	err = wdPostTask.AddTask(context.Background(), &ts, &deadline)
 
 	require.NoError(t, err)
 }

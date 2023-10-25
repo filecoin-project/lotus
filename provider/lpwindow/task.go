@@ -2,6 +2,7 @@ package lpwindow
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log/v2"
 	"sort"
 	"time"
@@ -28,14 +29,14 @@ type WdPostTaskDetails struct {
 type WDPoStAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 }
 
 type WdPostTask struct {
 	api WDPoStAPI
 
-	tasks chan *WdPostTaskDetails
-	db    *harmonydb.DB
-	max   int
+	db  *harmonydb.DB
+	max int
 }
 
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
@@ -250,23 +251,10 @@ func (t *WdPostTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 
 func NewWdPostTask(db *harmonydb.DB, api WDPoStAPI, max int) *WdPostTask {
 	return &WdPostTask{
-		tasks: make(chan *WdPostTaskDetails, 2),
-		db:    db,
-		api:   api,
-		max:   max,
+		db:  db,
+		api: api,
+		max: max,
 	}
-}
-
-func (t *WdPostTask) AddTask(ctx context.Context, ts *types.TipSet, deadline *dline.Info) error {
-
-	t.tasks <- &WdPostTaskDetails{
-		Ts:       ts,
-		Deadline: deadline,
-	}
-
-	//log.Errorf("WdPostTask.AddTask() called with ts: %v, deadline: %v, taskList: %v", ts, deadline, t.tasks)
-
-	return nil
 }
 
 func (t *WdPostTask) addTaskToDB(ts *types.TipSet, deadline *dline.Info, taskId harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
@@ -312,48 +300,6 @@ func (t *WdPostTask) addTaskToDB(ts *types.TipSet, deadline *dline.Info, taskId 
 	}
 
 	return true, nil
-}
-
-func (t *WdPostTask) AddTaskOld(ctx context.Context, ts *types.TipSet, deadline *dline.Info, taskId harmonytask.TaskID) error {
-
-	tsKey := ts.Key()
-	_, err := t.db.Exec(ctx,
-		`INSERT INTO wdpost_tasks (
-                         task_id,
-                         tskey, 
-                         current_epoch,
-                         period_start,
-                         index,
-                         open,
-                         close,
-                         challenge,
-                         fault_cutoff,
-                         wpost_period_deadlines,
-                         wpost_proving_period,
-                         wpost_challenge_window,
-                         wpost_challenge_lookback,
-                         fault_declaration_cutoff
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10 , $11, $12, $13, $14)`,
-		taskId,
-		tsKey.Bytes(),
-		deadline.CurrentEpoch,
-		deadline.PeriodStart,
-		deadline.Index,
-		deadline.Open,
-		deadline.Close,
-		deadline.Challenge,
-		deadline.FaultCutoff,
-		deadline.WPoStPeriodDeadlines,
-		deadline.WPoStProvingPeriod,
-		deadline.WPoStChallengeWindow,
-		deadline.WPoStChallengeLookback,
-		deadline.FaultDeclarationCutoff,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 var _ harmonytask.TaskInterface = &WdPostTask{}

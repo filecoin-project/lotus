@@ -230,7 +230,7 @@ func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSe
 	// next post window
 	_, complete := p.posts.get(di)
 	for complete {
-		di = nextDeadline(di)
+		di = NextDeadline(di)
 		_, complete = p.posts.get(di)
 	}
 
@@ -525,8 +525,8 @@ func (s *submitHandler) getPostWindow(di *dline.Info) *postWindow {
 	return <-out
 }
 
-// nextDeadline gets deadline info for the subsequent deadline
-func nextDeadline(currentDeadline *dline.Info) *dline.Info {
+// NextDeadline gets deadline info for the subsequent deadline
+func NextDeadline(currentDeadline *dline.Info) *dline.Info {
 	periodStart := currentDeadline.PeriodStart
 	newDeadline := currentDeadline.Index + 1
 	if newDeadline == miner.WPoStPeriodDeadlines {
