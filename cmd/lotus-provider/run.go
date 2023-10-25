@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/provider"
 	"net"
 	"net/http"
 	"os"
@@ -221,7 +222,7 @@ var runCmd = &cli.Command{
 
 		var verif storiface.Verifier = ffiwrapper.ProofVerifier
 
-		as, err := modules.LotusProvderAddressSelector(&cfg.Addresses)()
+		as, err := provider.AddressSelector(&cfg.Addresses)()
 		if err != nil {
 			return err
 		}
@@ -282,7 +283,7 @@ var runCmd = &cli.Command{
 		}
 
 		if cfg.Subsystems.EnableWindowPost {
-			wdPostTask, err := modules.WindowPostSchedulerV2(ctx, cfg.Fees, cfg.Proving, full, sealer, verif, j,
+			wdPostTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, sealer, verif, j,
 				as, maddrs, db, cfg.Subsystems.WindowPostMaxTasks)
 			if err != nil {
 				return err

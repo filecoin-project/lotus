@@ -1,4 +1,4 @@
-package wdpost
+package lpwindow
 
 import (
 	"context"
@@ -24,9 +24,10 @@ func TestAddTask(t *testing.T) {
 	require.NoError(t, err)
 	wdPostTask := NewWdPostTask(db, nil, 0)
 	taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
+	_ = taskEngine
 	ts := types.TipSet{}
 	deadline := dline.Info{}
-	err := wdPostTask.AddTask(context.Background(), &ts, &deadline)
+	err = wdPostTask.AddTask(context.Background(), &ts, &deadline)
 
 	require.NoError(t, err)
 }

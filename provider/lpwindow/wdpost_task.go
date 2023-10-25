@@ -1,8 +1,8 @@
-package wdpost
+package lpwindow
 
 import (
-	"bytes"
 	"context"
+	logging "github.com/ipfs/go-log/v2"
 	"sort"
 	"time"
 
@@ -16,19 +16,26 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/samber/lo"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
+
+var log = logging.Logger("lpwindow")
 
 type WdPostTaskDetails struct {
 	Ts       *types.TipSet
 	Deadline *dline.Info
 }
 
+type WDPoStAPI interface {
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+}
+
 type WdPostTask struct {
-	tasks     chan *WdPostTaskDetails
-	db        *harmonydb.DB
-	Scheduler *WindowPoStScheduler
-	max       int
+	api WDPoStAPI
+
+	tasks chan *WdPostTaskDetails
+	db    *harmonydb.DB
+	max   int
 }
 
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
@@ -80,7 +87,7 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		log.Errorf("WdPostTask.Do() failed to get tipset key: %v", err)
 		return false, err
 	}
-	head, err := t.Scheduler.api.ChainHead(context.Background())
+	head, err := t.api.ChainHead(context.Background())
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to get chain head: %v", err)
 		return false, err
@@ -91,54 +98,58 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return true, nil
 	}
 
-	ts, err := t.Scheduler.api.ChainGetTipSet(context.Background(), tsKey)
+	ts, err := t.api.ChainGetTipSet(context.Background(), tsKey)
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to get tipset: %v", err)
 		return false, err
 	}
-	submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
-	if err != nil {
-		log.Errorf("WdPostTask.Do() failed to runPoStCycle: %v", err)
-		return false, err
-	}
+	_ = ts
 
-	log.Errorf("WdPostTask.Do() called with taskID: %v, submitWdPostParams: %v", taskID, submitWdPostParams)
+	panic("todo")
 
-	// Enter an entry for each wdpost message proof into the wdpost_proofs table
-	for _, params := range submitWdPostParams {
-
-		// Convert submitWdPostParams.Partitions to a byte array using CBOR
-		buf := new(bytes.Buffer)
-		scratch := make([]byte, 9)
-		if err := cbg.WriteMajorTypeHeaderBuf(scratch, buf, cbg.MajArray, uint64(len(params.Partitions))); err != nil {
+	/*submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
+		if err != nil {
+			log.Errorf("WdPostTask.Do() failed to runPoStCycle: %v", err)
 			return false, err
 		}
-		for _, v := range params.Partitions {
-			if err := v.MarshalCBOR(buf); err != nil {
+
+		log.Errorf("WdPostTask.Do() called with taskID: %v, submitWdPostParams: %v", taskID, submitWdPostParams)
+
+		// Enter an entry for each wdpost message proof into the wdpost_proofs table
+		for _, params := range submitWdPostParams {
+
+			// Convert submitWdPostParams.Partitions to a byte array using CBOR
+			buf := new(bytes.Buffer)
+			scratch := make([]byte, 9)
+			if err := cbg.WriteMajorTypeHeaderBuf(scratch, buf, cbg.MajArray, uint64(len(params.Partitions))); err != nil {
 				return false, err
 			}
-		}
+			for _, v := range params.Partitions {
+				if err := v.MarshalCBOR(buf); err != nil {
+					return false, err
+				}
+			}
 
-		// Insert into wdpost_proofs table
-		_, err = t.db.Exec(context.Background(),
-			`INSERT INTO wdpost_proofs (
-                           deadline,
-                           partitions,
-                           proof_type,
-                           proof_bytes)
-    			 VALUES ($1, $2, $3, $4)`,
-			params.Deadline,
-			buf.Bytes(),
-			params.Proofs[0].PoStProof,
-			params.Proofs[0].ProofBytes)
-	}
+			// Insert into wdpost_proofs table
+			_, err = t.db.Exec(context.Background(),
+				`INSERT INTO wdpost_proofs (
+	                           deadline,
+	                           partitions,
+	                           proof_type,
+	                           proof_bytes)
+	    			 VALUES ($1, $2, $3, $4)`,
+				params.Deadline,
+				buf.Bytes(),
+				params.Proofs[0].PoStProof,
+				params.Proofs[0].ProofBytes)
+		}*/
 
 	return true, nil
 }
 
 func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	// GetEpoch
-	ts, err := t.Scheduler.api.ChainHead(context.Background())
+	ts, err := t.api.ChainHead(context.Background())
 
 	if err != nil {
 		return nil, err
@@ -237,12 +248,12 @@ func (t *WdPostTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	}
 }
 
-func NewWdPostTask(db *harmonydb.DB, scheduler *WindowPoStScheduler, max int) *WdPostTask {
+func NewWdPostTask(db *harmonydb.DB, api WDPoStAPI, max int) *WdPostTask {
 	return &WdPostTask{
-		tasks:     make(chan *WdPostTaskDetails, 2),
-		db:        db,
-		Scheduler: scheduler,
-		max:       max,
+		tasks: make(chan *WdPostTaskDetails, 2),
+		db:    db,
+		api:   api,
+		max:   max,
 	}
 }
 
