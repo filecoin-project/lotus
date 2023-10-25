@@ -70,7 +70,7 @@ type LotusProviderConfig struct {
 	Subsystems ProviderSubsystemsConfig
 
 	Fees          LotusProviderFees
-	Addresses     MinerAddressConfig
+	Addresses     LotusProviderAddresses
 	Proving       ProvingConfig
 	SealingParams SealingConfig // TODO defaults
 	SealerConfig                // TODO defaults
@@ -574,6 +574,9 @@ type LotusProviderAddresses struct {
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
+
+	// MinerAddresses are the addresses of the miner actors to use for sending messages
+	MinerAddresses []string
 }
 
 // API contains configs for API endpoint

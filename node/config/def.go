@@ -369,7 +369,7 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			MaxWindowPoStGasFee: types.MustParseFIL("5"),
 			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
 		},
-		Addresses: MinerAddressConfig{
+		Addresses: LotusProviderAddresses{
 			PreCommitControl: []string{},
 			CommitControl:    []string{},
 			TerminateControl: []string{},

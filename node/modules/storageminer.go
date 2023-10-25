@@ -211,6 +211,46 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.Addre
 		return as, nil
 	}
 }
+func LotusProvderAddressSelector(addrConf *config.LotusProviderAddresses) func() (*ctladdr.AddressSelector, error) {
+	return func() (*ctladdr.AddressSelector, error) {
+		as := &ctladdr.AddressSelector{}
+		if addrConf == nil {
+			return as, nil
+		}
+
+		as.DisableOwnerFallback = addrConf.DisableOwnerFallback
+		as.DisableWorkerFallback = addrConf.DisableWorkerFallback
+
+		for _, s := range addrConf.PreCommitControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing precommit control address: %w", err)
+			}
+
+			as.PreCommitControl = append(as.PreCommitControl, addr)
+		}
+
+		for _, s := range addrConf.CommitControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing commit control address: %w", err)
+			}
+
+			as.CommitControl = append(as.CommitControl, addr)
+		}
+
+		for _, s := range addrConf.TerminateControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing terminate control address: %w", err)
+			}
+
+			as.TerminateControl = append(as.TerminateControl, addr)
+		}
+
+		return as, nil
+	}
+}
 
 func PreflightChecks(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, maddr dtypes.MinerAddress) error {
 	ctx := helpers.LifecycleCtx(mctx, lc)
@@ -312,12 +352,11 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 			verif  = params.Verifier
 			j      = params.Journal
 			as     = params.AddrSel
-			maddr  = address.Address(params.Maddr)
 		)
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr, db, nil)
+		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, []dtypes.MinerAddress{params.Maddr}, db, nil)
 
 		if err != nil {
 			return nil, err
@@ -336,7 +375,7 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 
 func WindowPostSchedulerV2(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
 	api api.FullNode, sealer sealer.SectorManager, verif storiface.Verifier, j journal.Journal,
-	as *ctladdr.AddressSelector, maddr dtypes.MinerAddress, db *harmonydb.DB, max int) (*wdpost.WdPostTask, error) {
+	as *ctladdr.AddressSelector, maddr []dtypes.MinerAddress, db *harmonydb.DB, max int) (*wdpost.WdPostTask, error) {
 
 	fc2 := config.MinerFeeConfig{
 		MaxPreCommitGasFee: fc.MaxPreCommitGasFee,
@@ -345,7 +384,7 @@ func WindowPostSchedulerV2(ctx context.Context, fc config.LotusProviderFees, pc 
 		MaxPublishDealsFee: fc.MaxPublishDealsFee,
 	}
 	ts := wdpost.NewWdPostTask(db, nil, max)
-	fps, err := wdpost.NewWindowedPoStScheduler(api, fc2, pc, as, sealer, verif, sealer, j, address.Address(maddr), db, ts)
+	fps, err := wdpost.NewWindowedPoStScheduler(api, fc2, pc, as, sealer, verif, sealer, j, maddr, db, ts)
 
 	ts.Scheduler = fps
 	if err != nil {

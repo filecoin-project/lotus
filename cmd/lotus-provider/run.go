@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -18,6 +17,7 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-statestore"
 
@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
@@ -73,6 +74,11 @@ var runCmd = &cli.Command{
 			Name:  "layers",
 			Usage: "list of layers to be interpreted (atop defaults). Default: base",
 			Value: cli.NewStringSlice("base"),
+		},
+		&cli.StringFlag{
+			Name:  "storage-json",
+			Usage: "path to json file containing storage config",
+			Value: "~/.lotus/storage.json",
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
@@ -131,30 +137,31 @@ var runCmd = &cli.Command{
 			if err := r.Init(repo.Provider); err != nil {
 				return err
 			}
-
-			lr, err := r.Lock(repo.Provider)
-			if err != nil {
-				return err
-			}
-
-			var localPaths []storiface.LocalPath
-
-			if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
-				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
-			}); err != nil {
-				return fmt.Errorf("set storage config: %w", err)
-			}
-
-			{
-				// init datastore for r.Exists
-				_, err := lr.Datastore(context.Background(), "/metadata")
+			/*
+				lr, err := r.Lock(repo.Provider)
 				if err != nil {
 					return err
 				}
-			}
-			if err := lr.Close(); err != nil {
-				return fmt.Errorf("close repo: %w", err)
-			}
+
+				var localPaths []storiface.LocalPath
+
+				if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
+					sc.StoragePaths = append(sc.StoragePaths, localPaths...)
+				}); err != nil {
+					return fmt.Errorf("set storage config: %w", err)
+				}
+
+				{
+					// init datastore for r.Exists
+					_, err := lr.Datastore(context.Background(), "/metadata")
+					if err != nil {
+						return err
+					}
+				}
+				if err := lr.Close(); err != nil {
+					return fmt.Errorf("close repo: %w", err)
+				}
+			*/
 		}
 
 		db, err := makeDB(cctx)
@@ -174,15 +181,15 @@ var runCmd = &cli.Command{
 		*/
 
 		const unspecifiedAddress = "0.0.0.0"
-		address := cctx.String("listen")
-		addressSlice := strings.Split(address, ":")
+		listenAddr := cctx.String("listen")
+		addressSlice := strings.Split(listenAddr, ":")
 		if ip := net.ParseIP(addressSlice[0]); ip != nil {
 			if ip.String() == unspecifiedAddress {
 				rip, err := db.GetRoutableIP()
 				if err != nil {
 					return err
 				}
-				address = rip + ":" + addressSlice[1]
+				listenAddr = rip + ":" + addressSlice[1]
 			}
 		}
 
@@ -195,10 +202,12 @@ var runCmd = &cli.Command{
 				log.Error("closing repo", err)
 			}
 		}()
-		if err := lr.SetAPIToken([]byte(address)); err != nil { // our assigned listen address is our unique token
+		if err := lr.SetAPIToken([]byte(listenAddr)); err != nil { // our assigned listen address is our unique token
 			return xerrors.Errorf("setting api token: %w", err)
 		}
-		localStore, err := paths.NewLocal(ctx, lr, nil, []string{"http://" + address + "/remote"})
+		localStore, err := paths.NewLocal(ctx, &paths.BasicLocalStorage{
+			PathToJSON: cctx.String("storage-json"),
+		}, nil, []string{"http://" + listenAddr + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -212,7 +221,7 @@ var runCmd = &cli.Command{
 
 		var verif storiface.Verifier = ffiwrapper.ProofVerifier
 
-		as, err := modules.AddressSelector(&cfg.Addresses)()
+		as, err := modules.LotusProvderAddressSelector(&cfg.Addresses)()
 		if err != nil {
 			return err
 		}
@@ -257,25 +266,30 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		ds, dsCloser, err := modules.DatastoreV2(ctx, false, lr)
+		//ds, dsCloser, err := modules.DatastoreV2(ctx, false, lr)
 		if err != nil {
 			return err
 		}
-		defer dsCloser()
-		maddr, err := modules.MinerAddress(ds)
-		if err != nil {
-			return err
+		//defer dsCloser()
+
+		var maddrs []dtypes.MinerAddress
+		for _, s := range cfg.Addresses.MinerAddresses {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return err
+			}
+			maddrs = append(maddrs, dtypes.MinerAddress(addr))
 		}
 
 		if cfg.Subsystems.EnableWindowPost {
 			wdPostTask, err := modules.WindowPostSchedulerV2(ctx, cfg.Fees, cfg.Proving, full, sealer, verif, j,
-				as, maddr, db, cfg.Subsystems.WindowPostMaxTasks)
+				as, maddrs, db, cfg.Subsystems.WindowPostMaxTasks)
 			if err != nil {
 				return err
 			}
 			activeTasks = append(activeTasks, wdPostTask)
 		}
-		taskEngine, err := harmonytask.New(db, activeTasks, address)
+		taskEngine, err := harmonytask.New(db, activeTasks, listenAddr)
 		if err != nil {
 			return err
 		}
