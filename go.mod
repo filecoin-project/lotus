@@ -339,4 +339,4 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 
-replace github.com/filecoin-project/go-state-types => github.com/ipfs-force-community/go-state-types v0.1.8-0.20231024065515-3214d4ea4446
+replace github.com/filecoin-project/go-state-types => github.com/ipfs-force-community/go-state-types v0.1.8-0.20231025053544-7ba9a8b46b40
