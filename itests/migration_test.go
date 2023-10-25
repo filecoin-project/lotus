@@ -828,3 +828,61 @@ func TestMigrationNV21(t *testing.T) {
 	//todo @zen Direct data onboarding tests
 
 }
+
+func TestMigrationNV22(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	nv22epoch := abi.ChainEpoch(100)
+	testClient, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version21,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version22,
+			Height:    nv22epoch,
+			Migration: filcns.UpgradeActorsV12,
+		},
+		))
+
+	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+
+	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv22epoch+5))
+
+	// Now that we have upgraded, we need to verify:
+	// - Sector info changes executed successfully
+	// - Direct data onboarding correct
+
+	bs := blockstore.NewAPIBlockstore(testClient)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	currTs, err := clientApi.ChainHead(ctx)
+	require.NoError(t, err)
+
+	newStateTree, err := state.LoadStateTree(ctxStore, currTs.Blocks()[0].ParentStateRoot)
+	require.NoError(t, err)
+
+	require.Equal(t, types.StateTreeVersion5, newStateTree.Version())
+
+	// check the system actor
+	systemAct, err := newStateTree.GetActor(builtin.SystemActorAddr)
+	require.NoError(t, err)
+
+	systemCode, ok := actors.GetActorCodeID(actorstypes.Version13, manifest.SystemKey)
+	require.True(t, ok)
+
+	require.Equal(t, systemCode, systemAct.Code)
+
+	systemSt, err := system.Load(ctxStore, systemAct)
+	require.NoError(t, err)
+
+	manifest13Cid, ok := actors.GetManifest(actorstypes.Version13)
+	require.True(t, ok)
+
+	manifest13, err := actors.LoadManifest(ctx, manifest13Cid, ctxStore)
+	require.NoError(t, err)
+	require.Equal(t, manifest13.Data, systemSt.GetBuiltinActors())
+}
