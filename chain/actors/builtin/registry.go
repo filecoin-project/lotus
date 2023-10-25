@@ -1,11 +1,12 @@
 package builtin
 
 import (
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/ipfs/go-cid"
 	"reflect"
 	"runtime"
 	"strings"
+
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/builtin"
 

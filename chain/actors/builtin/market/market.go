@@ -1,9 +1,10 @@
 package market
 
 import (
+	"unicode/utf8"
+
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
-	"unicode/utf8"
 
 	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"

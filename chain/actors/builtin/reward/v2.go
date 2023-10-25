@@ -2,6 +2,7 @@ package reward
 
 import (
 	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"

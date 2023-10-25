@@ -3,6 +3,7 @@ package power
 import (
 	"bytes"
 	"fmt"
+
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/filecoin-project/go-address"
