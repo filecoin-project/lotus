@@ -10,12 +10,12 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -82,6 +82,11 @@ var runCmd = &cli.Command{
 			Usage: "path to json file containing storage config",
 			Value: "~/.lotus/storage.json",
 		},
+		&cli.StringFlag{
+			Name:  "journal",
+			Usage: "path to journal files",
+			Value: "~/.lotus/",
+		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
 		defer func() {
@@ -139,31 +144,6 @@ var runCmd = &cli.Command{
 			if err := r.Init(repo.Provider); err != nil {
 				return err
 			}
-			/*
-				lr, err := r.Lock(repo.Provider)
-				if err != nil {
-					return err
-				}
-
-				var localPaths []storiface.LocalPath
-
-				if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
-					sc.StoragePaths = append(sc.StoragePaths, localPaths...)
-				}); err != nil {
-					return fmt.Errorf("set storage config: %w", err)
-				}
-
-				{
-					// init datastore for r.Exists
-					_, err := lr.Datastore(context.Background(), "/metadata")
-					if err != nil {
-						return err
-					}
-				}
-				if err := lr.Close(); err != nil {
-					return fmt.Errorf("close repo: %w", err)
-				}
-			*/
 		}
 
 		db, err := makeDB(cctx)
@@ -171,16 +151,6 @@ var runCmd = &cli.Command{
 			return err
 		}
 		shutdownChan := make(chan struct{})
-
-		/* defaults break lockedRepo (below)
-		stop, err := node.New(ctx,
-			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Provider(r),
-		)
-		if err != nil {
-			return fmt.Errorf("creating node: %w", err)
-		}
-		*/
 
 		const unspecifiedAddress = "0.0.0.0"
 		listenAddr := cctx.String("listen")
@@ -195,31 +165,15 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		lr, err := r.Lock(repo.Provider)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err := lr.Close(); err != nil {
-				log.Error("closing repo", err)
-			}
-		}()
-		if err := lr.SetAPIToken([]byte(listenAddr)); err != nil { // our assigned listen address is our unique token
-			return xerrors.Errorf("setting api token: %w", err)
-		}
-		localStore, err := paths.NewLocal(ctx, &paths.BasicLocalStorage{
-			PathToJSON: cctx.String("storage-json"),
-		}, nil, []string{"http://" + listenAddr + "/remote"})
-		if err != nil {
-			return err
-		}
+		///////////////////////////////////////////////////////////////////////
+		///// Dependency Setup
+		///////////////////////////////////////////////////////////////////////
+
+		// The config feeds into task runners & their helpers
 		cfg, err := getConfig(cctx, db)
 		if err != nil {
 			return err
 		}
-		// The config feeds into task runners & their helpers
-
-		var activeTasks []harmonytask.TaskInterface
 
 		var verif storiface.Verifier = ffiwrapper.ProofVerifier
 
@@ -232,19 +186,11 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		j, err := fsjournal.OpenFSJournal(lr, de)
+		j, err := fsjournal.OpenFSJournal2(cctx.String("journal"), de)
 		if err != nil {
 			return err
 		}
 		defer j.Close()
-
-		al := alerting.NewAlertingSystem(j)
-		si := paths.NewIndexProxy(al, db, true)
-
-		lstor, err := paths.NewLocal(ctx, lr, si, nil /*TODO URLs*/)
-		if err != nil {
-			return err
-		}
 
 		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.FULLNODE_API_INFO)
 		if err != nil {
@@ -257,24 +203,25 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		stor := paths.NewRemote(lstor, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
-		mds, err := lr.Datastore(ctx, "/metadata") // TODO rm datastore after sector-info moves to DB
+		al := alerting.NewAlertingSystem(j)
+		si := paths.NewIndexProxy(al, db, true)
+		bls := &paths.BasicLocalStorage{
+			PathToJSON: cctx.String("storage-json"),
+		}
+		localStore, err := paths.NewLocal(ctx, bls, si, []string{"http://" + listenAddr + "/remote"})
 		if err != nil {
 			return err
 		}
 
-		wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
-		smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
-		sealer, err := sealer.New(ctx, lstor, stor, lr, si, cfg.SealerConfig, config.ProvingConfig{}, wsts, smsts)
-		if err != nil {
-			return err
-		}
+		stor := paths.NewRemote(localStore, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 
-		//ds, dsCloser, err := modules.DatastoreV2(ctx, false, lr)
+		unusedDataStore := datastore.NewMapDatastore()
+		wsts := statestore.New(namespace.Wrap(unusedDataStore, modules.WorkerCallsPrefix))
+		smsts := statestore.New(namespace.Wrap(unusedDataStore, modules.ManagerWorkPrefix))
+		sealer, err := sealer.New(ctx, localStore, stor, bls, si, cfg.SealerConfig, config.ProvingConfig{}, wsts, smsts)
 		if err != nil {
 			return err
 		}
-		//defer dsCloser()
 
 		var maddrs []dtypes.MinerAddress
 		for _, s := range cfg.Addresses.MinerAddresses {
@@ -285,13 +232,20 @@ var runCmd = &cli.Command{
 			maddrs = append(maddrs, dtypes.MinerAddress(addr))
 		}
 
-		if cfg.Subsystems.EnableWindowPost {
-			wdPostTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, sealer, verif, j,
-				as, maddrs, db, cfg.Subsystems.WindowPostMaxTasks)
-			if err != nil {
-				return err
+		///////////////////////////////////////////////////////////////////////
+		///// Task Selection
+		///////////////////////////////////////////////////////////////////////
+		var activeTasks []harmonytask.TaskInterface
+		{
+
+			if cfg.Subsystems.EnableWindowPost {
+				wdPostTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, sealer, verif, j,
+					as, maddrs, db, cfg.Subsystems.WindowPostMaxTasks)
+				if err != nil {
+					return err
+				}
+				activeTasks = append(activeTasks, wdPostTask)
 			}
-			activeTasks = append(activeTasks, wdPostTask)
 		}
 		taskEngine, err := harmonytask.New(db, activeTasks, listenAddr)
 		if err != nil {
@@ -333,6 +287,7 @@ var runCmd = &cli.Command{
 		*/
 
 		// Monitor for shutdown.
+		// TODO provide a graceful shutdown API on shutdownChan
 		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
 		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
 

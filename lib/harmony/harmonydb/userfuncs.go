@@ -2,9 +2,12 @@ package harmonydb
 
 import (
 	"context"
+	"errors"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // rawStringOnly is _intentionally_private_ to force only basic strings in SQL queries.
@@ -145,4 +148,9 @@ func (t *Tx) QueryRow(sql rawStringOnly, arguments ...any) Row {
 // Select in a transaction.
 func (t *Tx) Select(sliceOfStructPtr any, sql rawStringOnly, arguments ...any) error {
 	return pgxscan.Select(t.ctx, t.Tx, sliceOfStructPtr, string(sql), arguments...)
+}
+
+func IsErrUniqueContraint(err error) bool {
+	var e2 *pgconn.PgError
+	return errors.As(err, &e2) && e2.Code == pgerrcode.UniqueViolation
 }
