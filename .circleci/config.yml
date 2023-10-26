@@ -1028,7 +1028,7 @@ workflows:
           requires:
             - build
           suite: utest-unit-rest
-          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
+          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./provider/... ./tools/..."
           
       - test:
           name: test-unit-storage

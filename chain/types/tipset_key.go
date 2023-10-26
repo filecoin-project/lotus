@@ -38,7 +38,7 @@ type TipSetKey struct {
 	// self-describing, wrapped as a string.
 	// These gymnastics make the a TipSetKey usable as a map key.
 	// The empty key has value "".
-	Value string
+	value string
 }
 
 // NewTipSetKey builds a new key from a slice of CIDs.
@@ -59,7 +59,7 @@ func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 
 // Cids returns a slice of the CIDs comprising this key.
 func (k TipSetKey) Cids() []cid.Cid {
-	cids, err := decodeKey([]byte(k.Value))
+	cids, err := decodeKey([]byte(k.value))
 	if err != nil {
 		panic("invalid tipset key: " + err.Error())
 	}
@@ -83,7 +83,7 @@ func (k TipSetKey) String() string {
 
 // Bytes() returns a binary representation of the key.
 func (k TipSetKey) Bytes() []byte {
-	return []byte(k.Value)
+	return []byte(k.value)
 }
 
 func (k TipSetKey) MarshalJSON() ([]byte, error) {
@@ -95,7 +95,7 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &cids); err != nil {
 		return err
 	}
-	k.Value = string(encodeKey(cids))
+	k.value = string(encodeKey(cids))
 	return nil
 }
 
@@ -161,7 +161,7 @@ func (k *TipSetKey) UnmarshalCBOR(reader io.Reader) error {
 }
 
 func (k TipSetKey) IsEmpty() bool {
-	return len(k.Value) == 0
+	return len(k.value) == 0
 }
 
 func encodeKey(cids []cid.Cid) []byte {

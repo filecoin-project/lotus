@@ -31,15 +31,6 @@ type WdPoStCommands interface {
 	recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info)
 }
 
-type ChangeHandlerIface interface {
-	start()
-	update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error
-	shutdown()
-	currentTSDI() (*types.TipSet, *dline.Info)
-}
-
-var _ ChangeHandlerIface = &changeHandler{}
-
 type changeHandler struct {
 	api        WdPoStCommands
 	actor      address.Address
@@ -171,8 +162,6 @@ type proveHandler struct {
 	// Used for testing
 	processedHeadChanges chan *headChange
 	processedPostResults chan *postResult
-
-	wdPostTask *WdPostTask
 }
 
 func newProver(
@@ -222,8 +211,6 @@ func (p *proveHandler) run() {
 
 func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSet, di *dline.Info) {
 	// If the post window has expired, abort the current proof
-	//log.Errorf("--------------------WINDOW POST CHANGE HANDLER PROCESS HC----------------------")
-
 	if p.current != nil && newTS.Height() >= p.current.di.Close {
 		// Cancel the context on the current proof
 		p.current.abort()
@@ -243,14 +230,9 @@ func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSe
 	// next post window
 	_, complete := p.posts.get(di)
 	for complete {
-		di = nextDeadline(di)
+		di = NextDeadline(di)
 		_, complete = p.posts.get(di)
 	}
-
-	//err := p.wdPostTask.AddTask(ctx, newTS, di)
-	//if err != nil {
-	//	log.Errorf("AddTask failed: %v", err)
-	//}
 
 	// Check if the chain is above the Challenge height for the post window
 	if newTS.Height() < di.Challenge+ChallengeConfidence {
@@ -543,8 +525,8 @@ func (s *submitHandler) getPostWindow(di *dline.Info) *postWindow {
 	return <-out
 }
 
-// nextDeadline gets deadline info for the subsequent deadline
-func nextDeadline(currentDeadline *dline.Info) *dline.Info {
+// NextDeadline gets deadline info for the subsequent deadline
+func NextDeadline(currentDeadline *dline.Info) *dline.Info {
 	periodStart := currentDeadline.PeriodStart
 	newDeadline := currentDeadline.Index + 1
 	if newDeadline == miner.WPoStPeriodDeadlines {

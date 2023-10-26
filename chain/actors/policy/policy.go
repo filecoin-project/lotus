@@ -820,3 +820,21 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
 }
+
+var PoStToSealMap map[abi.RegisteredPoStProof]abi.RegisteredSealProof
+
+func init() {
+	PoStToSealMap = make(map[abi.RegisteredPoStProof]abi.RegisteredSealProof)
+	for sealProof, info := range abi.SealProofInfos {
+		PoStToSealMap[info.WinningPoStProof] = sealProof
+		PoStToSealMap[info.WindowPoStProof] = sealProof
+	}
+}
+
+func GetSealProofFromPoStProof(postProof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
+	sealProof, exists := PoStToSealMap[postProof]
+	if !exists {
+		return 0, xerrors.New("no corresponding RegisteredSealProof for the given RegisteredPoStProof")
+	}
+	return sealProof, nil
+}

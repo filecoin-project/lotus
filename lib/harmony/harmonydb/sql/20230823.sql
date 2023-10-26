@@ -1,24 +1,21 @@
-create table wdpost_tasks
+create table wdpost_partition_tasks
 (
-    task_id                  int  not null
-        constraint wdpost_tasks_pkey
+    task_id              bigint not null
+        constraint wdpost_partition_tasks_pk
             primary key,
-    tskey                    bytea not null,
-    current_epoch            bigint  not null,
-    period_start             bigint  not null,
-    index                    bigint  not null
-        constraint wdpost_tasks_index_key
-            unique,
-    open                     bigint  not null,
-    close                    bigint  not null,
-    challenge                bigint  not null,
-    fault_cutoff             bigint,
-    wpost_period_deadlines   bigint,
-    wpost_proving_period     bigint,
-    wpost_challenge_window   bigint,
-    wpost_challenge_lookback bigint,
-    fault_declaration_cutoff bigint
+    sp_id                bigint not null,
+    proving_period_start bigint not null,
+    deadline_index       bigint not null,
+    partition_index      bigint not null,
+    constraint wdpost_partition_tasks_identity_key
+        unique (sp_id, proving_period_start, deadline_index, partition_index)
 );
+
+comment on column wdpost_partition_tasks.task_id is 'harmonytask task ID';
+comment on column wdpost_partition_tasks.sp_id is 'storage provider ID';
+comment on column wdpost_partition_tasks.proving_period_start is 'proving period start';
+comment on column wdpost_partition_tasks.deadline_index is 'deadline index within the proving period';
+comment on column wdpost_partition_tasks.partition_index is 'partition index within the deadline';
 
 create table wdpost_proofs
 (

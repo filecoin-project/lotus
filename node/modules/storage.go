@@ -57,22 +57,3 @@ func Datastore(disableLog bool) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, r
 		return bds, nil
 	}
 }
-
-func DatastoreV2(ctx context.Context, disableLog bool, r repo.LockedRepo) (dtypes.MetadataDS, func() error, error) {
-	mds, err := r.Datastore(ctx, "/metadata")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var logdir string
-	if !disableLog {
-		logdir = filepath.Join(r.Path(), "kvlog/metadata")
-	}
-
-	bds, err := backupds.Wrap(mds, logdir)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("opening backupds: %w", err)
-	}
-
-	return bds, bds.CloseLog, nil
-}

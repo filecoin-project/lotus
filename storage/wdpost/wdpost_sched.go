@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -80,7 +78,7 @@ type WindowPoStScheduler struct {
 	maxPartitionsPerPostMessage             int
 	maxPartitionsPerRecoveryMessage         int
 	singleRecoveringPartitionPerPostMessage bool
-	ch                                      ChangeHandlerIface
+	ch                                      *changeHandler
 
 	actor address.Address
 
@@ -89,8 +87,6 @@ type WindowPoStScheduler struct {
 
 	// failed abi.ChainEpoch // eps
 	// failLk sync.Mutex
-	db         *harmonydb.DB
-	wdPostTask *WdPostTask
 }
 
 type ActorInfo struct {
@@ -107,9 +103,7 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
-	actors []dtypes.MinerAddress,
-	db *harmonydb.DB,
-	task *WdPostTask) (*WindowPoStScheduler, error) {
+	actors []dtypes.MinerAddress) (*WindowPoStScheduler, error) {
 	var actorInfos []ActorInfo
 
 	for _, actor := range actors {
@@ -140,27 +134,18 @@ func NewWindowedPoStScheduler(api NodeAPI,
 			evtTypeWdPoStRecoveries: j.RegisterEventType("wdpost", "recoveries_processed"),
 			evtTypeWdPoStFaults:     j.RegisterEventType("wdpost", "faults_processed"),
 		},
-		journal:    j,
-		wdPostTask: task,
-		db:         db,
+		journal: j,
 	}, nil
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
-	// Initialize change handler.
-
-	s.RunV2(ctx, func(api WdPoStCommands, actor address.Address) ChangeHandlerIface {
-		return newChangeHandler(api, actor)
-	})
-}
-func (s *WindowPoStScheduler) RunV2(ctx context.Context, f func(api WdPoStCommands, actor address.Address) ChangeHandlerIface) {
 	// callbacks is a union of the fullNodeFilteredAPI and ourselves.
 	callbacks := struct {
 		NodeAPI
 		*WindowPoStScheduler
 	}{s.api, s}
 
-	s.ch = f(callbacks, s.actor)
+	s.ch = newChangeHandler(callbacks, s.actor)
 	defer s.ch.shutdown()
 	s.ch.start()
 
@@ -247,11 +232,6 @@ func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.T
 	if err != nil {
 		log.Errorf("handling head updates in window post sched: %+v", err)
 	}
-
-	//err = s.ch2.update(ctx, revert, apply)
-	//if err != nil {
-	//	log.Errorf("handling head updates in window post sched: %+v", err)
-	//}
 }
 
 // onAbort is called when generating proofs or submitting proofs is aborted

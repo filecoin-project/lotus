@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -211,46 +209,6 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.Addre
 		return as, nil
 	}
 }
-func LotusProvderAddressSelector(addrConf *config.LotusProviderAddresses) func() (*ctladdr.AddressSelector, error) {
-	return func() (*ctladdr.AddressSelector, error) {
-		as := &ctladdr.AddressSelector{}
-		if addrConf == nil {
-			return as, nil
-		}
-
-		as.DisableOwnerFallback = addrConf.DisableOwnerFallback
-		as.DisableWorkerFallback = addrConf.DisableWorkerFallback
-
-		for _, s := range addrConf.PreCommitControl {
-			addr, err := address.NewFromString(s)
-			if err != nil {
-				return nil, xerrors.Errorf("parsing precommit control address: %w", err)
-			}
-
-			as.PreCommitControl = append(as.PreCommitControl, addr)
-		}
-
-		for _, s := range addrConf.CommitControl {
-			addr, err := address.NewFromString(s)
-			if err != nil {
-				return nil, xerrors.Errorf("parsing commit control address: %w", err)
-			}
-
-			as.CommitControl = append(as.CommitControl, addr)
-		}
-
-		for _, s := range addrConf.TerminateControl {
-			addr, err := address.NewFromString(s)
-			if err != nil {
-				return nil, xerrors.Errorf("parsing terminate control address: %w", err)
-			}
-
-			as.TerminateControl = append(as.TerminateControl, addr)
-		}
-
-		return as, nil
-	}
-}
 
 func PreflightChecks(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, maddr dtypes.MinerAddress) error {
 	ctx := helpers.LifecycleCtx(mctx, lc)
@@ -342,8 +300,8 @@ func SealingPipeline(fc config.MinerFeeConfig) func(params SealingPipelineParams
 	}
 }
 
-func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func(params SealingPipelineParams, db *harmonydb.DB) (*wdpost.WindowPoStScheduler, error) {
-	return func(params SealingPipelineParams, db *harmonydb.DB) (*wdpost.WindowPoStScheduler, error) {
+func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func(params SealingPipelineParams) (*wdpost.WindowPoStScheduler, error) {
+	return func(params SealingPipelineParams) (*wdpost.WindowPoStScheduler, error) {
 		var (
 			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle
@@ -356,7 +314,7 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, []dtypes.MinerAddress{params.Maddr}, db, nil)
+		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, []dtypes.MinerAddress{params.Maddr})
 
 		if err != nil {
 			return nil, err
@@ -373,29 +331,6 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 	}
 }
 
-func WindowPostSchedulerV2(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
-	api api.FullNode, sealer sealer.SectorManager, verif storiface.Verifier, j journal.Journal,
-	as *ctladdr.AddressSelector, maddr []dtypes.MinerAddress, db *harmonydb.DB, max int) (*wdpost.WdPostTask, error) {
-
-	fc2 := config.MinerFeeConfig{
-		MaxPreCommitGasFee: fc.MaxPreCommitGasFee,
-		MaxCommitGasFee:    fc.MaxCommitGasFee,
-		MaxTerminateGasFee: fc.MaxTerminateGasFee,
-		MaxPublishDealsFee: fc.MaxPublishDealsFee,
-	}
-	ts := wdpost.NewWdPostTask(db, nil, max)
-	fps, err := wdpost.NewWindowedPoStScheduler(api, fc2, pc, as, sealer, verif, sealer, j, maddr, db, ts)
-
-	ts.Scheduler = fps
-	if err != nil {
-		return nil, err
-	}
-	go fps.RunV2(ctx, func(api wdpost.WdPoStCommands, actor address.Address) wdpost.ChangeHandlerIface {
-		return wdpost.NewChangeHandler2(api, actor, ts)
-	})
-	return ts, nil
-
-}
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider, j journal.Journal) {
 	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
