@@ -254,7 +254,6 @@ var runCmd = &cli.Command{
 
 		handler := gin.New()
 
-		taskEngine.ApplyHttpHandlers(handler.Group("/"))
 		defer taskEngine.GracefullyTerminate(time.Hour)
 
 		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}

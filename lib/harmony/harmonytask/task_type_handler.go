@@ -4,15 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"runtime"
 	"strconv"
 	"sync/atomic"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/samber/lo"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -29,7 +26,7 @@ type taskTypeHandler struct {
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
 	var tID TaskID
-	did, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
+	_, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
 		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
 			VALUES ($1, $2, CURRENT_TIMESTAMP) `, h.Name, h.TaskEngine.ownerID)
@@ -44,20 +41,12 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 	})
 
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.ConstraintName != "" {
-			log.Debug("addtask saw unique constraint ", pgErr.ConstraintName, ": so it's added already.")
+		if harmonydb.IsErrUniqueContraint(err) {
+			log.Debugf("addtask(%s) saw unique constraint, so it's added already.", h.Name)
 			return
 		}
 		log.Error("Could not add task. AddTasFunc failed: %v", err)
 		return
-	}
-	if !did {
-		return
-	}
-
-	if !h.considerWork("adder", []TaskID{tID}) {
-		h.TaskEngine.bump(h.Name) // We can't do it. How about someone else.
 	}
 }
 
@@ -112,8 +101,8 @@ top:
 		goto top
 	}
 
+	h.Count.Add(1)
 	go func() {
-		h.Count.Add(1)
 		log.Infow("Beginning work on Task", "id", *tID, "from", from, "name", h.Name)
 
 		var done bool
@@ -132,10 +121,12 @@ top:
 
 			h.recordCompletion(*tID, workStart, done, doErr)
 			if done {
-				h.triggerCompletionListeners(*tID)
+				for _, fs := range h.TaskEngine.follows[h.Name] { // Do we know of any follows for this task type?
+					if _, err := fs.f(*tID, fs.h.AddTask); err != nil {
+						log.Error("Could not follow", "error", err, "from", h.Name, "to", fs.name)
+					}
+				}
 			}
-
-			h.TaskEngine.tryAllWork <- true // Activate tasks in this machine
 		}()
 
 		done, doErr = h.Do(*tID, func() bool {
@@ -243,66 +234,4 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	return errors.New("Did not accept " + h.Name + " task: out of GPURam")
 enoughGpuRam:
 	return nil
-}
-
-var hClient = http.Client{}
-
-func init() {
-	hClient.Timeout = 3 * time.Second
-}
-
-// triggerCompletionListeners does in order:
-// 1. Trigger all in-process followers (b/c it's fast).
-// 2. Trigger all living processes with followers via DB
-// 3. Future followers (think partial upgrade) can read harmony_task_history
-// 3a. The Listen() handles slow follows.
-func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
-	// InProcess (#1 from Description)
-	inProcessDefs := h.TaskEngine.follows[h.Name]
-	inProcessFollowers := make([]string, len(inProcessDefs))
-	for _, fs := range inProcessDefs {
-		b, err := fs.f(tID, fs.h.AddTask)
-		if err != nil {
-			log.Error("Could not follow", "error", err, "from", h.Name, "to", fs.name)
-		}
-		if b {
-			inProcessFollowers = append(inProcessFollowers, fs.h.Name)
-		}
-	}
-
-	// Over HTTP (#2 from Description)
-	var hps []struct {
-		HostAndPort string
-		ToType      string
-	}
-	err := h.TaskEngine.db.Select(h.TaskEngine.ctx, &hps, `SELECT m.host_and_port, to_type
-		FROM harmony_task_follow f JOIN harmony_machines m ON m.id=f.owner_id
-		WHERE from_type=$1 AND to_type NOT IN $2 AND f.owner_id != $3`,
-		h.Name, inProcessFollowers, h.TaskEngine.ownerID)
-	if err != nil {
-		log.Warn("Could not fast-trigger partner processes.", err)
-		return
-	}
-	hostsVisited := map[string]bool{}
-	tasksVisited := map[string]bool{}
-	for _, v := range hps {
-		if hostsVisited[v.HostAndPort] || tasksVisited[v.ToType] {
-			continue
-		}
-		resp, err := hClient.Get(v.HostAndPort + "/scheduler/follows/" + h.Name)
-		if err != nil {
-			log.Warn("Couldn't hit http endpoint: ", err)
-			continue
-		}
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Warn("Couldn't hit http endpoint: ", err)
-			continue
-		}
-		hostsVisited[v.HostAndPort], tasksVisited[v.ToType] = true, true
-		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-			log.Error("IO failed for fast nudge: ", string(b))
-			continue
-		}
-	}
 }

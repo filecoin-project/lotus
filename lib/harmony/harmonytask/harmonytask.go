@@ -4,20 +4,18 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/gin-gonic/gin"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 )
 
 // Consts (except for unit test)
-var POLL_DURATION = time.Minute         // Poll for Work this frequently
+var POLL_DURATION = time.Second * 3     // Poll for Work this frequently
 var CLEANUP_FREQUENCY = 5 * time.Minute // Check for dead workers this often * everyone
+var FOLLOW_FREQUENCY = 1 * time.Minute  // Check for work to follow this often
 
 type TaskTypeDetails struct {
 	// Max returns how many tasks this machine can run of this type.
@@ -107,7 +105,6 @@ type TaskEngine struct {
 	grace          context.CancelFunc
 	taskMap        map[string]*taskTypeHandler
 	ownerID        int
-	tryAllWork     chan bool // notify if work completed
 	follows        map[string][]followStruct
 	lastFollowTime time.Time
 	lastCleanup    atomic.Value
@@ -134,14 +131,13 @@ func New(
 	}
 	ctx, grace := context.WithCancel(context.Background())
 	e := &TaskEngine{
-		ctx:        ctx,
-		grace:      grace,
-		db:         db,
-		reg:        reg,
-		ownerID:    reg.Resources.MachineID, // The current number representing "hostAndPort"
-		taskMap:    make(map[string]*taskTypeHandler, len(impls)),
-		tryAllWork: make(chan bool),
-		follows:    make(map[string][]followStruct),
+		ctx:     ctx,
+		grace:   grace,
+		db:      db,
+		reg:     reg,
+		ownerID: reg.Resources.MachineID, // The current number representing "hostAndPort"
+		taskMap: make(map[string]*taskTypeHandler, len(impls)),
+		follows: make(map[string][]followStruct),
 	}
 	e.lastCleanup.Store(time.Now())
 	for _, c := range impls {
@@ -152,23 +148,6 @@ func New(
 		}
 		e.handlers = append(e.handlers, &h)
 		e.taskMap[h.TaskTypeDetails.Name] = &h
-
-		_, err := db.Exec(e.ctx, `INSERT INTO harmony_task_impl (owner_id, name) 
-			VALUES ($1,$2)`, e.ownerID, h.Name)
-		if err != nil {
-			return nil, fmt.Errorf("can't update impl: %w", err)
-		}
-
-		for name, fn := range c.TypeDetails().Follows {
-			e.follows[name] = append(e.follows[name], followStruct{fn, &h, name})
-
-			// populate harmony_task_follows
-			_, err := db.Exec(e.ctx, `INSERT INTO harmony_task_follows (owner_id, from_task, to_task)
-				VALUES ($1,$2,$3)`, e.ownerID, name, h.Name)
-			if err != nil {
-				return nil, fmt.Errorf("can't update harmony_task_follows: %w", err)
-			}
-		}
 	}
 
 	// resurrect old work
@@ -212,18 +191,6 @@ func (e *TaskEngine) GracefullyTerminate(deadline time.Duration) {
 	e.grace()
 	e.reg.Shutdown()
 	deadlineChan := time.NewTimer(deadline).C
-
-	ctx := context.TODO()
-
-	// block bumps & follows by unreg from DBs.
-	_, err := e.db.Exec(ctx, `DELETE FROM harmony_task_impl WHERE owner_id=$1`, e.ownerID)
-	if err != nil {
-		log.Warn("Could not clean-up impl table: %w", err)
-	}
-	_, err = e.db.Exec(ctx, `DELETE FROM harmony_task_follow WHERE owner_id=$1`, e.ownerID)
-	if err != nil {
-		log.Warn("Could not clean-up impl table: %w", err)
-	}
 top:
 	for _, h := range e.handlers {
 		if h.Count.Load() > 0 {
@@ -241,17 +208,18 @@ top:
 func (e *TaskEngine) poller() {
 	for {
 		select {
-		case <-e.tryAllWork: ///////////////////// Find work after some work finished
 		case <-time.NewTicker(POLL_DURATION).C: // Find work periodically
 		case <-e.ctx.Done(): ///////////////////// Graceful exit
 			return
 		}
-		e.followWorkInDB()   // "Follows" the slow way
-		e.pollerTryAllWork() // "Bumps" (round robin tasks) the slow way
+		e.pollerTryAllWork()
+		if time.Since(e.lastFollowTime) > FOLLOW_FREQUENCY {
+			e.followWorkInDB()
+		}
 	}
 }
 
-// followWorkInDB implements "Follows" the slow way
+// followWorkInDB implements "Follows"
 func (e *TaskEngine) followWorkInDB() {
 	// Step 1: What are we following?
 	var lastFollowTime time.Time
@@ -292,14 +260,13 @@ func (e *TaskEngine) followWorkInDB() {
 	}
 }
 
-// pollerTryAllWork implements "Bumps" (next task) the slow way
+// pollerTryAllWork starts the next 1 task
 func (e *TaskEngine) pollerTryAllWork() {
 	if time.Since(e.lastCleanup.Load().(time.Time)) > CLEANUP_FREQUENCY {
 		e.lastCleanup.Store(time.Now())
 		resources.CleanupMachines(e.ctx, e.db)
 	}
 	for _, v := range e.handlers {
-	rerun:
 		if v.AssertMachineHasCapacity() != nil {
 			continue
 		}
@@ -312,90 +279,12 @@ func (e *TaskEngine) pollerTryAllWork() {
 			log.Error("Unable to read work ", err)
 			continue
 		}
-		accepted := v.considerWork("poller", unownedTasks)
-		if !accepted {
-			log.Warn("Work not accepted")
-			continue
-		}
-		if len(unownedTasks) > 1 {
-			e.bump(v.Name) // wait for others before trying again to add work.
-			goto rerun
-		}
-	}
-}
-
-// GetHttpHandlers needs to be used by the http server to register routes.
-// This implements the receiver-side of "follows" and "bumps" the fast way.
-func (e *TaskEngine) ApplyHttpHandlers(root gin.IRouter) {
-	s := root.Group("/scheduler")
-	f := s.Group("/follows")
-	b := s.Group("/bump")
-	for name, vs := range e.follows {
-		name, vs := name, vs
-		f.GET("/"+name+"/:tID", func(c *gin.Context) {
-			tIDString := c.Param("tID")
-			tID, err := strconv.Atoi(tIDString)
-			if err != nil {
-				c.JSON(401, map[string]any{"error": err.Error()})
-				return
+		if len(unownedTasks) > 0 {
+			accepted := v.considerWork("poller", unownedTasks)
+			if accepted {
+				return // accept new work slowly and in priority order
 			}
-			taskAdded := false
-			for _, vTmp := range vs {
-				v := vTmp
-				b, err := v.f(TaskID(tID), v.h.AddTask)
-				if err != nil {
-					log.Errorw("Follow attempt failed", "error", err, "from", name, "to", v.name)
-				}
-				taskAdded = taskAdded || b
-			}
-			if taskAdded {
-				e.tryAllWork <- true
-				c.Status(200)
-				return
-			}
-			c.Status(202) // NOTE: 202 for "accepted" but not worked.
-		})
-	}
-	for _, hTmp := range e.handlers {
-		h := hTmp
-		b.GET("/"+h.Name+"/:tID", func(c *gin.Context) {
-			tIDString := c.Param("tID")
-			tID, err := strconv.Atoi(tIDString)
-			if err != nil {
-				c.JSON(401, map[string]any{"error": err.Error()})
-				return
-			}
-			// We NEED to block while trying to deliver
-			// this work to ease the network impact.
-			if h.considerWork("bump", []TaskID{TaskID(tID)}) {
-				c.Status(200)
-				return
-			}
-			c.Status(202) // NOTE: 202 for "accepted" but not worked.
-		})
-	}
-}
-
-func (e *TaskEngine) bump(taskType string) {
-	var res []string
-	err := e.db.Select(e.ctx, &res, `SELECT host_and_port FROM harmony_machines m
-	JOIN harmony_task_impl i ON i.owner_id=m.id
-	WHERE i.name=$1`, taskType)
-	if err != nil {
-		log.Error("Could not read db for bump: ", err)
-		return
-	}
-	for _, url := range res {
-		if !strings.HasPrefix(strings.ToLower(url), "http") {
-			url = "http://"
-		}
-		resp, err := hClient.Get(url + "/scheduler/bump/" + taskType)
-		if err != nil {
-			log.Info("Server unreachable to bump: ", err)
-			continue
-		}
-		if resp.StatusCode == 200 {
-			return // just want 1 taker.
+			log.Warn("Work not accepted for " + strconv.Itoa(len(unownedTasks)) + " " + v.Name + " task(s)")
 		}
 	}
 }
