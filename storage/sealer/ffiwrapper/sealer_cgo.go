@@ -928,7 +928,7 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 				return storiface.SectorCids{}, xerrors.Errorf("generate synth proofs: %w", err)
 			}
 
-			if err = ffi.ClearCache(ssize, paths.Cache); err != nil {
+			if err = ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
 				log.Warn("failed to GenerateSynthProofs(): ", err)
 				log.Warnf("num:%d tkt:%v, sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
 				return storiface.SectorCids{
