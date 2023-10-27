@@ -19,13 +19,14 @@ comment on column wdpost_partition_tasks.partition_index is 'partition index wit
 
 create table wdpost_proofs
 (
-    deadline           bigint  not null,
-    partitions         bytea not null,
-    proof_type         bigint,
-    proof_bytes        bytea,
-    chain_commit_epoch bigint,
-    chain_commit_rand  bytea
+    sp_id              bigint not null,
+    deadline           bigint not null,
+    partition          bigint not null,
+    submit_at_epoch    bigint not null,
+    submit_by_epoch    bigint not null,
+    proof_message      bytea
 );
+
 
 
 

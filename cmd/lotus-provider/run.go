@@ -10,8 +10,6 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
@@ -19,8 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-statestore"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -213,15 +209,13 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		// todo fetch limit config
 		stor := paths.NewRemote(localStore, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 
-		unusedDataStore := datastore.NewMapDatastore()
-		wsts := statestore.New(namespace.Wrap(unusedDataStore, modules.WorkerCallsPrefix))
-		smsts := statestore.New(namespace.Wrap(unusedDataStore, modules.ManagerWorkPrefix))
-		sealer, err := sealer.New(ctx, localStore, stor, bls, si, cfg.SealerConfig, config.ProvingConfig{}, wsts, smsts)
-		if err != nil {
-			return err
-		}
+		// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
+		//  maybe with a lotus-provider specific abstraction. LocalWorker does persistent call tracking which we probably
+		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
+		lw := sealer.NewLocalWorker(sealer.WorkerConfig{}, stor, localStore, si, nil, nil)
 
 		var maddrs []dtypes.MinerAddress
 		for _, s := range cfg.Addresses.MinerAddresses {
@@ -239,8 +233,8 @@ var runCmd = &cli.Command{
 		{
 
 			if cfg.Subsystems.EnableWindowPost {
-				wdPostTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, sealer, verif, j,
-					as, maddrs, db, cfg.Subsystems.WindowPostMaxTasks)
+				wdPostTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, verif, lw,
+					as, maddrs, db, stor, si)
 				if err != nil {
 					return err
 				}
