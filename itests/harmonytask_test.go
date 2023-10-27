@@ -254,11 +254,3 @@ func TestTaskRetry(t *testing.T) {
 			{2, false, "error: intentional 'error'"}}, res)
 	})
 }
-
-/*
-FUTURE test fast-pass round-robin via http calls (3party) once the API for that is set
-It's necessary for WinningPoSt.
-
-FUTURE test follows.
-It's necessary for sealing work.
-*/
