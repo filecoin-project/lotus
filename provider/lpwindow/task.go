@@ -2,6 +2,10 @@ package lpwindow
 
 import (
 	"context"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/storage/sealer"
 	"sort"
 	"time"
 
@@ -45,11 +49,22 @@ type WDPoStAPI interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]api.Partition, error)
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+}
+
+type ProverPoSt interface {
+	GenerateWindowPoStAdv(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness, allowSkip bool) (storiface.WindowPoStResult, error)
 }
 
 type WdPostTask struct {
 	api WDPoStAPI
 	db  *harmonydb.DB
+
+	faultTracker sealer.FaultTracker
+	prover       ProverPoSt
+	verifier     storiface.Verifier
 
 	windowPoStTF promise.Promise[harmonytask.AddTaskFunc]
 
@@ -67,8 +82,6 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 
 	time.Sleep(5 * time.Second)
 	log.Errorf("WdPostTask.Do() called with taskID: %v", taskID)
-
-	var deadline dline.Info
 
 	var spID, pps, dlIdx, partIdx uint64
 
@@ -89,14 +102,34 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, err
 	}
 
-	wdpost.NewDeadlineInfo(abi.ChainEpoch(pps), dlIdx, head.Height())
+	deadline := wdpost.NewDeadlineInfo(abi.ChainEpoch(pps), dlIdx, head.Height())
 
 	if deadline.PeriodElapsed() {
 		log.Errorf("WdPost removed stale task: %v %v", taskID, deadline)
 		return true, nil
 	}
 
-	panic("todo")
+	maddr, err := address.NewIDAddress(spID)
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to NewIDAddress: %v", err)
+		return false, err
+	}
+
+	ts, err := t.api.ChainGetTipSetAfterHeight(context.Background(), deadline.Challenge, head.Key())
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to ChainGetTipSetAfterHeight: %v", err)
+		return false, err
+	}
+
+	postOut, err := t.doPartition(context.Background(), ts, maddr, deadline, partIdx)
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to doPartition: %v", err)
+		return false, err
+	}
+
+	panic("todo record")
+
+	_ = postOut
 
 	/*submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
 		if err != nil {
@@ -307,10 +340,22 @@ func (t *WdPostTask) processHeadChange(ctx context.Context, revert, apply *types
 	return nil
 }
 
-func NewWdPostTask(db *harmonydb.DB, api WDPoStAPI, pcs *chainsched.ProviderChainSched, actors []dtypes.MinerAddress) (*WdPostTask, error) {
+func NewWdPostTask(db *harmonydb.DB,
+	api WDPoStAPI,
+	faultTracker sealer.FaultTracker,
+	prover ProverPoSt,
+	verifier storiface.Verifier,
+
+	pcs *chainsched.ProviderChainSched,
+	actors []dtypes.MinerAddress,
+) (*WdPostTask, error) {
 	t := &WdPostTask{
 		db:  db,
 		api: api,
+
+		faultTracker: faultTracker,
+		prover:       prover,
+		verifier:     verifier,
 
 		actors: actors,
 	}
