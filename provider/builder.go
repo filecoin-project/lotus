@@ -2,9 +2,10 @@ package provider
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -22,12 +23,12 @@ var log = logging.Logger("provider")
 
 func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
 	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker,
-	as *ctladdr.AddressSelector, maddr []dtypes.MinerAddress, db *harmonydb.DB, stor paths.Store, idx paths.SectorIndex) (*lpwindow.WdPostTask, error) {
+	as *ctladdr.AddressSelector, maddr []dtypes.MinerAddress, db *harmonydb.DB, stor paths.Store, idx paths.SectorIndex, max int) (*lpwindow.WdPostTask, error) {
 
 	chainSched := chainsched.New(api)
 
 	// todo config
 	ft := lpwindow.NewSimpleFaultTracker(stor, idx, 32, 5*time.Second, 300*time.Second)
 
-	return lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, maddr)
+	return lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, maddr, max)
 }
