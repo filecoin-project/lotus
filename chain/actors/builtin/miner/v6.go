@@ -62,7 +62,7 @@ func (s *state6) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmoun
 			available = abi.NewTokenAmount(0)
 		}
 	}()
-	// this panics if the miner doesnt have enough funds to cover their locked pledge
+	// this panics if the miner doesn't have enough funds to cover their locked pledge
 	available, err = s.GetAvailableBalance(bal)
 	return available, err
 }
