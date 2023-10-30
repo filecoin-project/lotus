@@ -51,6 +51,10 @@ func RegisterManifest(av actorstypes.Version, manifestCid cid.Cid, entries map[s
 	}
 }
 
+func AddActorMeta(name string, codeId cid.Cid, av actorstypes.Version) {
+	actorMeta[codeId] = actorEntry{name: name, version: av}
+}
+
 // GetManifest gets a loaded manifest.
 func GetManifest(av actorstypes.Version) (cid.Cid, bool) {
 	manifestMx.RLock()

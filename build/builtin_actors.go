@@ -42,6 +42,10 @@ func init() {
 	if err := loadManifests(NetworkBundle); err != nil {
 		panic(err)
 	}
+
+	if NetworkBundle == "calibrationnet" {
+		actors.AddActorMeta("storageminer", cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"), actorstypes.Version12)
+	}
 }
 
 // UseNetworkBundle switches to a different network bundle, by name.
