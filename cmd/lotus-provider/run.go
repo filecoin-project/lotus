@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-statestore"
+	ds "github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
 	"net"
 	"net/http"
 	"os"
@@ -171,6 +174,8 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		log.Debugw("config", "config", cfg)
+
 		var verif storiface.Verifier = ffiwrapper.ProofVerifier
 
 		as, err := provider.AddressSelector(&cfg.Addresses)()
@@ -212,10 +217,12 @@ var runCmd = &cli.Command{
 		// todo fetch limit config
 		stor := paths.NewRemote(localStore, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 
+		wstates := statestore.New(dssync.MutexWrap(ds.NewMapDatastore()))
+
 		// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
 		//  maybe with a lotus-provider specific abstraction. LocalWorker does persistent call tracking which we probably
 		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
-		lw := sealer.NewLocalWorker(sealer.WorkerConfig{}, stor, localStore, si, nil, nil)
+		lw := sealer.NewLocalWorker(sealer.WorkerConfig{}, stor, localStore, si, nil, wstates)
 
 		var maddrs []dtypes.MinerAddress
 		for _, s := range cfg.Addresses.MinerAddresses {
@@ -225,6 +232,8 @@ var runCmd = &cli.Command{
 			}
 			maddrs = append(maddrs, dtypes.MinerAddress(addr))
 		}
+
+		log.Infow("providers handled", "maddrs", maddrs)
 
 		///////////////////////////////////////////////////////////////////////
 		///// Task Selection
