@@ -232,7 +232,7 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 }
 
 // GetEmbeddedBuiltinActorsBundle returns the builtin-actors bundle for the given actors version.
-func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version) ([]byte, bool) {
+func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version, networkBundleName string) ([]byte, bool) {
 	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("actors/v%d.tar.zst", version))
 	if err != nil {
 		return nil, false
@@ -243,7 +243,7 @@ func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version) ([]byte, bool) 
 	defer uncompressed.Close() //nolint
 
 	tarReader := tar.NewReader(uncompressed)
-	targetFileName := fmt.Sprintf("builtin-actors-%s.car", NetworkBundle)
+	targetFileName := fmt.Sprintf("builtin-actors-%s.car", networkBundleName)
 	for {
 		header, err := tarReader.Next()
 		switch err {
