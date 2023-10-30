@@ -351,6 +351,7 @@ func DefaultLotusProvider() *LotusProviderConfig {
 		}
 	*/
 	return &LotusProviderConfig{
+		Subsystems: ProviderSubsystemsConfig{},
 		Fees: LotusProviderFees{
 			DefaultMaxFee:      DefaultDefaultMaxFee,
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
@@ -379,14 +380,5 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			PartitionCheckTimeout: Duration(20 * time.Minute),
 			SingleCheckTimeout:    Duration(10 * time.Minute),
 		},
-		/*
-			HarmonyDB: HarmonyDB{
-				Hosts:    []string{"127.0.0.1"},
-				Username: "yugabyte",
-				Password: "yugabyte",
-				Database: "yugabyte",
-				Port:     "5433",
-			},
-		*/
 	}
 }

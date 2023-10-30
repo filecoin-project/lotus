@@ -69,13 +69,11 @@ type StorageMiner struct {
 type LotusProviderConfig struct {
 	Subsystems ProviderSubsystemsConfig
 
-	Fees          LotusProviderFees
-	Addresses     LotusProviderAddresses
-	Proving       ProvingConfig
-	SealingParams SealingConfig // TODO defaults
-	SealerConfig                // TODO defaults
-	Journal       JournalConfig
-	Apis          ApisConfig
+	Fees      LotusProviderFees
+	Addresses LotusProviderAddresses
+	Proving   ProvingConfig
+	Journal   JournalConfig
+	Apis      ApisConfig
 }
 
 type ApisConfig struct {
