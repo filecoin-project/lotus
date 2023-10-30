@@ -82,6 +82,8 @@ type wdTaskIdentity struct {
 
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 
+	log.Errorw("WDPOST DO", "taskID", taskID)
+
 	time.Sleep(5 * time.Second)
 	log.Errorf("WdPostTask.Do() called with taskID: %v", taskID)
 
@@ -89,7 +91,7 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 
 	err = t.db.QueryRow(context.Background(),
 		`Select sp_id, proving_period_start, deadline_index, partition_index
-			from wdpost_tasks 
+			from wdpost_partition_tasks 
 			where task_id = $1`, taskID).Scan(
 		&spID, &pps, &dlIdx, &partIdx,
 	)
@@ -174,6 +176,9 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 }
 
 func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+
+	log.Errorw("WDPOST CANACCEPT", "ids", ids)
+
 	// GetEpoch
 	ts, err := t.api.ChainHead(context.Background())
 
@@ -201,7 +206,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 			proving_period_start,
 			deadline_index,
 			partition_index
-	from wdpost_tasks 
+	from wdpost_partition_tasks 
 	where task_id IN $1`, ids)
 	if err != nil {
 		return nil, err
@@ -374,13 +379,13 @@ func NewWdPostTask(db *harmonydb.DB,
 func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIdentity, tx *harmonydb.Tx) (bool, error) {
 
 	_, err := tx.Exec(
-		`INSERT INTO wdpost_tasks (
+		`INSERT INTO wdpost_partition_tasks (
                          task_id,
                           sp_id,
                           proving_period_start,
                           deadline_index,
                           partition_index
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10 , $11, $12, $13, $14)`,
+                        ) VALUES ($1, $2, $3, $4, $5)`,
 		taskId,
 		taskIdent.Sp_id,
 		taskIdent.Proving_period_start,

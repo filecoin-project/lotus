@@ -30,5 +30,12 @@ func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc co
 	// todo config
 	ft := lpwindow.NewSimpleFaultTracker(stor, idx, 32, 5*time.Second, 300*time.Second)
 
-	return lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, maddr, max)
+	task, err := lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, maddr, max)
+	if err != nil {
+		return nil, err
+	}
+
+	go chainSched.Run(ctx)
+
+	return task, nil
 }
