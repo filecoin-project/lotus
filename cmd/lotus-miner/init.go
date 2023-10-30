@@ -47,7 +47,6 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	storageminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -120,33 +119,6 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "select which address to send actor creation message from",
-		},
-		&cli.StringFlag{
-			Name:    "db-host",
-			EnvVars: []string{"LOTUS_DB_HOST"},
-			Usage:   "Command separated list of hostnames for yugabyte cluster",
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-name",
-			EnvVars: []string{"LOTUS_DB_NAME"},
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-user",
-			EnvVars: []string{"LOTUS_DB_USER"},
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-password",
-			EnvVars: []string{"LOTUS_DB_PASSWORD"},
-			Value:   "yugabyte",
-		},
-		&cli.StringFlag{
-			Name:    "db-port",
-			EnvVars: []string{"LOTUS_DB_PORT"},
-			Hidden:  true,
-			Value:   "5433",
 		},
 	},
 	Subcommands: []*cli.Command{
@@ -491,15 +463,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			// TODO: run sector index init only for devnets. This is not needed for longer running networks
-			harmonyDB, err := harmonydb.New([]string{cctx.String("db-host")}, cctx.String("db-name"), cctx.String("db-user"), cctx.String("db-password"), cctx.String("db-port"), "")
-			if err != nil {
-				return err
-			}
-
-			enableSectorIndexDB := true
-
-			si := paths.NewIndexProxy(nil, harmonyDB, enableSectorIndexDB)
+			si := paths.NewIndex(nil)
 
 			lstor, err := paths.NewLocal(ctx, lr, si, nil)
 			if err != nil {
