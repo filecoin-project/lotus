@@ -48,7 +48,11 @@ func CheckUDPBufferSize(wanted int) func(al *alerting.Alerting) {
 			})
 			return
 		}
-		defer conn.Close()
+		defer func() {
+			if err := conn.Close(); err != nil {
+				log.Warnf("Failed to close connection: %s", err)
+			}
+		}()
 
 		udpConn, ok := conn.(*net.UDPConn)
 		if !ok {
@@ -68,7 +72,11 @@ func CheckUDPBufferSize(wanted int) func(al *alerting.Alerting) {
 			})
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Warnf("Failed to close file: %s", err)
+			}
+		}()
 
 		size, err := syscall.GetsockoptInt(int(file.Fd()), syscall.SOL_SOCKET, syscall.SO_RCVBUF)
 		if err != nil {
