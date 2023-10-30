@@ -2,12 +2,13 @@ package lpwindow
 
 import (
 	"context"
+	"sort"
+	"time"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"sort"
-	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
@@ -69,6 +70,7 @@ type WdPostTask struct {
 	windowPoStTF promise.Promise[harmonytask.AddTaskFunc]
 
 	actors []dtypes.MinerAddress
+	max    int
 }
 
 type wdTaskIdentity struct {
@@ -272,7 +274,7 @@ var res = storiface.ResourceTable[sealtasks.TTGenerateWindowPoSt]
 func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
 		Name:        "WdPost",
-		Max:         1, // TODO
+		Max:         t.max,
 		MaxFailures: 3,
 		Follows:     nil,
 		Cost: resources.Resources{
@@ -348,6 +350,7 @@ func NewWdPostTask(db *harmonydb.DB,
 
 	pcs *chainsched.ProviderChainSched,
 	actors []dtypes.MinerAddress,
+	max int,
 ) (*WdPostTask, error) {
 	t := &WdPostTask{
 		db:  db,
@@ -358,6 +361,7 @@ func NewWdPostTask(db *harmonydb.DB,
 		verifier:     verifier,
 
 		actors: actors,
+		max:    max,
 	}
 
 	if err := pcs.AddHandler(t.processHeadChange); err != nil {

@@ -15,9 +15,8 @@ Mental Model:
 		- max was specified and reached
 		- resource exhaustion
 		- CanAccept() interface (per-task implmentation) does not accept it.
-	Ways tasks start: (slowest first)
-		- DB Read every 1 minute
-		- Bump via HTTP if registered in DB
+	Ways tasks start:
+		- DB Read every 3 seconds
 		- Task was added (to db) by this process
 	Ways tasks get added:
 	    - Async Listener task (for chain, etc)
@@ -68,12 +67,5 @@ harmony_task_machines
 	anything, but serves as a discovery mechanism. Paths are hostnames + ports
 	which are presumed to support http, but this assumption is only used by
 	the task system.
-
-harmony_task_follow / harmony_task_impl
-
-	These tables are used to fast-path notifications to other machines instead
-	of waiting for polling. _impl helps round-robin work pick-up. _follow helps
-	discover the machines that are interested in creating tasks following the
-	task that just completed.
 */
 package harmonytask

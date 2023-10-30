@@ -79,13 +79,14 @@ func TestHarmonyTasks(t *testing.T) {
 			toAdd:           []int{56, 73},
 			myPersonalTable: map[harmonytask.TaskID]int{},
 		}
+		harmonytask.POLL_DURATION = time.Millisecond * 100
 		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1")
 		require.NoError(t, err)
 		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
 		e.GracefullyTerminate(time.Minute)
 		expected := []string{"taskResult56", "taskResult73"}
 		sort.Strings(t1.WorkCompleted)
-		require.Equal(t, t1.WorkCompleted, expected, "unexpected results")
+		require.Equal(t, expected, t1.WorkCompleted, "unexpected results")
 	})
 }
 
@@ -253,11 +254,3 @@ func TestTaskRetry(t *testing.T) {
 			{2, false, "error: intentional 'error'"}}, res)
 	})
 }
-
-/*
-FUTURE test fast-pass round-robin via http calls (3party) once the API for that is set
-It's necessary for WinningPoSt.
-
-FUTURE test follows.
-It's necessary for sealing work.
-*/
