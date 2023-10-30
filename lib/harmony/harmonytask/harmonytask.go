@@ -19,7 +19,7 @@ var FOLLOW_FREQUENCY = 1 * time.Minute  // Check for work to follow this often
 
 type TaskTypeDetails struct {
 	// Max returns how many tasks this machine can run of this type.
-	// Negative means unrestricted.
+	// Zero (default) or less means unrestricted.
 	Max int
 
 	// Name is the task name to be added to the task list.

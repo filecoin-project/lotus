@@ -57,7 +57,9 @@ top:
 	}
 
 	// 1. Can we do any more of this task type?
-	if h.Max > -1 && int(h.Count.Load()) == h.Max {
+	// NOTE: 0 is the default value, so this way people don't need to worry about
+	// this setting unless they want to limit the number of tasks of this type.
+	if h.Max > 0 && int(h.Count.Load()) >= h.Max {
 		log.Debugw("did not accept task", "name", h.Name, "reason", "at max already")
 		return false
 	}
