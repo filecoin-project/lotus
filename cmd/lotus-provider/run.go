@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-statestore"
-	ds "github.com/ipfs/go-datastore"
-	dssync "github.com/ipfs/go-datastore/sync"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/go-statestore"
+	ds "github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -79,12 +80,12 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "storage-json",
 			Usage: "path to json file containing storage config",
-			Value: "~/.lotus/storage.json",
+			Value: "~/.lotus-provider/storage.json",
 		},
 		&cli.StringFlag{
 			Name:  "journal",
 			Usage: "path to journal files",
-			Value: "~/.lotus/",
+			Value: "~/.lotus-provider/",
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
