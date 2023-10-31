@@ -1876,6 +1876,8 @@ func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	return newRoot, nil
 }
 
+var calibnetv12BuggyBundle = cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
+
 func upgradeActorsV12Common(
 	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
@@ -1932,9 +1934,8 @@ func upgradeActorsV12Common(
 			return cid.Undef, xerrors.Errorf("failed to load buggy calibnet bundle: %w", err)
 		}
 
-		expectedCid := cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
-		if manifestCid != expectedCid {
-			return cid.Undef, xerrors.Errorf("didn't find expected buggy calibnet bundle manifest: %s != %s", manifestCid, expectedCid)
+		if manifestCid != calibnetv12BuggyBundle {
+			return cid.Undef, xerrors.Errorf("didn't find expected buggy calibnet bundle manifest: %s != %s", manifestCid, calibnetv12BuggyBundle)
 		}
 	} else {
 		ok := false
@@ -1975,10 +1976,17 @@ func upgradeActorsV12Common(
 
 //////////////////////
 
+var calibnetv12BuggyMinerCID = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
+
 func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	stateStore := sm.ChainStore().StateBlockstore()
 	adtStore := store.ActorStore(ctx, stateStore)
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, stateStore, actorstypes.Version12); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
 
 	// Load input state tree
 	actorsIn, err := state.LoadStateTree(adtStore, root)
@@ -2078,7 +2086,7 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		}
 
 		// This is the hard-coded "buggy" miner actor Code ID
-		if inActor.Code != cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq") && inActor.Code != outActor.Code {
+		if inActor.Code != calibnetv12BuggyMinerCID && inActor.Code != outActor.Code {
 			return xerrors.Errorf("unexpected change in code for actor %s", a)
 		}
 

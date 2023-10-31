@@ -43,6 +43,8 @@ func init() {
 		panic(err)
 	}
 
+	// The following code cid existed temporarily on the calibnet testnet, as a "buggy" storage miner actor implementation.
+	// We include it in our builtin bundle, but intentionally omit from metadata.
 	if NetworkBundle == "calibrationnet" {
 		actors.AddActorMeta("storageminer", cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"), actorstypes.Version12)
 	}
