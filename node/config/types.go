@@ -79,6 +79,11 @@ type LotusProviderConfig struct {
 type ApisConfig struct {
 	// FULLNODE_API_INFO is the API endpoint for the Lotus daemon.
 	FULLNODE_API_INFO []string
+
+	// RPC Secret for the storage subsystem.
+	// If integrating with lotus-miner this must match the value from
+	// cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey
+	StorageRPCSecret string
 }
 
 type JournalConfig struct {

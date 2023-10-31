@@ -3,7 +3,6 @@ package resources
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -43,29 +42,33 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 	}
 	ctx := context.Background()
 	{ // Learn our owner_id while updating harmony_machines
-		var ownerID []int
-		err := db.Select(ctx, &ownerID, `SELECT id FROM harmony_machines WHERE host_and_port=$1`, hostnameAndPort)
-		if err != nil {
-			return nil, fmt.Errorf("could not read from harmony_machines: %w", err)
-		}
-		if len(ownerID) == 0 {
-			err = db.QueryRow(ctx, `INSERT INTO harmony_machines 
-		(host_and_port, cpu, ram, gpu, gpuram) VALUES
-		($1,$2,$3,$4,0) RETURNING id`,
-				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu).Scan(&reg.Resources.MachineID)
-			if err != nil {
-				return nil, err
-			}
+		var ownerID int
 
-		} else {
-			reg.MachineID = ownerID[0]
-			_, err := db.Exec(ctx, `UPDATE harmony_machines SET
-		   cpu=$1, ram=$2, gpu=$3 WHERE id=$5`,
-				reg.Cpu, reg.Ram, reg.Gpu, reg.Resources.MachineID)
-			if err != nil {
-				return nil, err
-			}
+		// Upsert query with last_contact update, fetch the machine ID
+		// (note this isn't a simple insert .. on conflict because host_and_port isn't unique)
+		err := db.QueryRow(ctx, `
+			WITH upsert AS (
+				UPDATE harmony_machines
+				SET cpu = $2, ram = $3, gpu = $4, last_contact = CURRENT_TIMESTAMP
+				WHERE host_and_port = $1
+				RETURNING id
+			),
+			inserted AS (
+				INSERT INTO harmony_machines (host_and_port, cpu, ram, gpu, gpuram, last_contact)
+				SELECT $1, $2, $3, $4, CURRENT_TIMESTAMP
+				WHERE NOT EXISTS (SELECT id FROM upsert)
+				RETURNING id
+			)
+			SELECT id FROM upsert
+			UNION ALL
+			SELECT id FROM inserted;
+		`, hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu).Scan(&ownerID)
+		if err != nil {
+			return nil, err
 		}
+
+		reg.MachineID = ownerID
+
 		cleaned := CleanupMachines(context.Background(), db)
 		logger.Infow("Cleaned up machines", "count", cleaned)
 	}

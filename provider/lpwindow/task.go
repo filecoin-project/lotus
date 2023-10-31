@@ -1,8 +1,11 @@
 package lpwindow
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
@@ -20,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
@@ -131,9 +133,27 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, err
 	}
 
-	panic("todo record")
+	var msgbuf bytes.Buffer
+	if err := postOut.MarshalCBOR(&msgbuf); err != nil {
+		return false, xerrors.Errorf("marshaling PoSt: %w", err)
+	}
 
-	_ = postOut
+	// Insert into wdpost_proofs table
+	_, err = t.db.Exec(context.Background(),
+		`INSERT INTO wdpost_proofs (
+                               sp_id,
+	                           deadline,
+	                           partition,
+	                           submit_at_epoch,
+	                           submit_by_epoch,
+                               proof_message)
+	    			 VALUES ($1, $2, $3, $4, $5, $6)`,
+		spID,
+		deadline.Index,
+		partIdx,
+		deadline.Open,
+		deadline.Close,
+		msgbuf.Bytes())
 
 	/*submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
 		if err != nil {
@@ -175,6 +195,10 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	return true, nil
 }
 
+func entToStr[T any](t T, i int) string {
+	return fmt.Sprint(t)
+}
+
 func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 
 	log.Errorw("WDPOST CANACCEPT", "ids", ids)
@@ -207,7 +231,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 			deadline_index,
 			partition_index
 	from wdpost_partition_tasks 
-	where task_id IN $1`, ids)
+	where task_id IN (SELECT unnest(string_to_array($1, ','))::bigint)`, strings.Join(lo.Map(ids, entToStr[harmonytask.TaskID]), ","))
 	if err != nil {
 		return nil, err
 	}
@@ -226,8 +250,12 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		}
 	}
 
+	// todo fix the block below
+	//  workAdderMutex is held by taskTypeHandler.considerWork, which calls this CanAccept
+	//  te.ResourcesAvailable will try to get that lock again, which will deadlock
+
 	// Discard those too big for our free RAM
-	freeRAM := te.ResourcesAvailable().Ram
+	/*freeRAM := te.ResourcesAvailable().Ram
 	tasks = lo.Filter(tasks, func(d wdTaskDef, _ int) bool {
 		maddr, err := address.NewIDAddress(tasks[0].Sp_id)
 		if err != nil {
@@ -248,7 +276,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		}
 
 		return res[spt].MaxMemory <= freeRAM
-	})
+	})*/
 	if len(tasks) == 0 {
 		log.Infof("RAM too small for any WDPost task")
 		return nil, nil
@@ -259,7 +287,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		var r int
 		err := t.db.QueryRow(context.Background(), `SELECT COUNT(*) 
 		FROM harmony_task_history 
-		WHERE task_id = $1 AND success = false`, d.Task_id).Scan(&r)
+		WHERE task_id = $1 AND result = false`, d.Task_id).Scan(&r)
 		if err != nil {
 			log.Errorf("WdPostTask.CanAccept() failed to queryRow: %v", err)
 		}
@@ -284,7 +312,11 @@ func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 		Follows:     nil,
 		Cost: resources.Resources{
 			Cpu: 1,
-			Gpu: 1,
+
+			// todo set to something for 32/64G sector sizes? Technically windowPoSt is happy on a CPU
+			//  but it will use a GPU if available
+			Gpu: 0,
+
 			// RAM of smallest proof's max is listed here
 			Ram: lo.Reduce(lo.Keys(res), func(i uint64, k abi.RegisteredSealProof, _ int) uint64 {
 				if res[k].MaxMemory < i {
