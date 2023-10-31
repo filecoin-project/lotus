@@ -1919,7 +1919,7 @@ func upgradeActorsV12Common(
 			return cid.Undef, xerrors.Errorf("failed to load buggy calibnet bundle: %w")
 		}
 
-		expectedCid := cid.MustParse("bafy2bzacebxmnxdgt2usdrcrpotgodr75culawwv4eklaun4lu6vlxecql6h2")
+		expectedCid := cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
 		if manifestCid != expectedCid {
 			return cid.Undef, xerrors.Errorf("didn't find expected buggy calibnet bundle manifest: %s != %s", manifestCid, expectedCid)
 		}
