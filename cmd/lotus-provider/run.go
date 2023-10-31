@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/filecoin-project/go-statestore"
+	"github.com/gbrlsnchs/jwt/v3"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
+	"golang.org/x/xerrors"
 	"net"
 	"net/http"
 	"os"
@@ -33,7 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
@@ -199,9 +201,9 @@ var runCmd = &cli.Command{
 		}
 		defer fullCloser()
 
-		sa, err := modules.StorageAuth(ctx, full)
+		sa, err := StorageAuth(cfg.Apis.StorageRPCSecret)
 		if err != nil {
-			return err
+			return xerrors.Errorf("parsing Apis.StorageRPCSecret config: %w", err)
 		}
 
 		al := alerting.NewAlertingSystem(j)
@@ -308,5 +310,34 @@ func makeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 		Port:     cctx.String("db-port"),
 	}
 	return harmonydb.NewFromConfig(dbConfig)
+}
 
+type jwtPayload struct {
+	Allow []auth.Permission
+}
+
+func StorageAuth(apiKey string) (sealer.StorageAuth, error) {
+	if apiKey == "" {
+		return nil, xerrors.Errorf("no api key provided")
+	}
+
+	rawKey, err := base64.StdEncoding.DecodeString(apiKey)
+	if err != nil {
+		return nil, xerrors.Errorf("decoding api key: %w", err)
+	}
+
+	key := jwt.NewHS256(rawKey)
+
+	p := jwtPayload{
+		Allow: []auth.Permission{"admin"},
+	}
+
+	token, err := jwt.Sign(&p, key)
+	if err != nil {
+		return nil, err
+	}
+
+	headers := http.Header{}
+	headers.Add("Authorization", "Bearer "+string(token))
+	return sealer.StorageAuth(headers), nil
 }
