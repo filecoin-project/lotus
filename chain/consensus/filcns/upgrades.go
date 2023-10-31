@@ -2055,6 +2055,39 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		return cid.Undef, xerrors.Errorf("failed to perform migration: %w", err)
 	}
 
+	err = actorsIn.ForEach(func(a address.Address, inActor *types.Actor) error {
+		outActor, err := actorsOut.GetActor(a)
+		if err != nil {
+			return xerrors.Errorf("failed to get actor in outTree: %w", err)
+		}
+
+		if inActor.Nonce != outActor.Nonce {
+			return xerrors.Errorf("mismatched nonce for actor %s", a)
+		}
+
+		if !inActor.Balance.Equals(outActor.Balance) {
+			return xerrors.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
+		}
+
+		if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
+			return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+		}
+
+		if inActor.Head != outActor.Head {
+			return xerrors.Errorf("mismatched head for actor %s", a)
+		}
+
+		// This is the hard-coded "buggy" miner actor Code ID
+		if inActor.Code != cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq") && inActor.Code != outActor.Code {
+			return xerrors.Errorf("unexpected change in code for actor %s", a)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to sanity check migration: %w", err)
+	}
+
 	// Persist the result.
 	newRoot, err := actorsOut.Flush(ctx)
 	if err != nil {
