@@ -1,6 +1,7 @@
 package lpwindow
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -133,9 +134,27 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, err
 	}
 
-	panic("todo record")
+	var msgbuf bytes.Buffer
+	if err := postOut.MarshalCBOR(&msgbuf); err != nil {
+		return false, xerrors.Errorf("marshaling PoSt: %w", err)
+	}
 
-	_ = postOut
+	// Insert into wdpost_proofs table
+	_, err = t.db.Exec(context.Background(),
+		`INSERT INTO wdpost_proofs (
+                               sp_id,
+	                           deadline,
+	                           partition,
+	                           submit_at_epoch,
+	                           submit_by_epoch,
+                               proof_message)
+	    			 VALUES ($1, $2, $3, $4, $5, $6)`,
+		spID,
+		deadline.Index,
+		partIdx,
+		deadline.Open,
+		deadline.Close,
+		msgbuf.Bytes())
 
 	/*submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
 		if err != nil {

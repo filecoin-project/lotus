@@ -26,7 +26,3 @@ create table wdpost_proofs
     submit_by_epoch    bigint not null,
     proof_message      bytea
 );
-
-
-
-
