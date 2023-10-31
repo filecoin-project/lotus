@@ -56,6 +56,9 @@ var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
 const UpgradeWatermelonHeight = 50
 
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFixHeight = -1
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
