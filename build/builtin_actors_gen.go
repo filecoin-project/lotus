@@ -203,8 +203,8 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:      "calibrationnet",
 	Version:      12,
-	BundleGitTag: "v12.0.0-rc.1",
-	ManifestCid:  MustParseCid("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs"),
+	BundleGitTag: "v12.0.0-rc.2",
+	ManifestCid:  MustParseCid("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacechwwxdqvggkdylm37zldjsra2ivkdzwp7fee56bzxbzs544wv6u6"),
 		"cron":             MustParseCid("bafk2bzacec4gdxxkqwxqqodsv6ug5dmdbqdfqwyqfek3yhxc2wweh5psxaeq6"),
@@ -218,7 +218,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"placeholder":      MustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
 		"reward":           MustParseCid("bafk2bzacedra77pcglf7vdca2itcaa4vd6xrxynxmgfgdjdxqxfwqyhtoxehy"),
 		"storagemarket":    MustParseCid("bafk2bzacea7g46y7xxu2zjq2h75x6mmx3utz2uxnlvnwi6tzpsvulna3bmiva"),
-		"storageminer":     MustParseCid("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"),
+		"storageminer":     MustParseCid("bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie"),
 		"storagepower":     MustParseCid("bafk2bzacedd3ka44k7d46ckbinjhv3diyuu2epgbyvhqqyjkc64qlrg3wlgzi"),
 		"system":           MustParseCid("bafk2bzacecioupndtcnyw6iq2hbrxag3aufvczlv5nobnfbkbywqzcyfaa376"),
 		"verifiedregistry": MustParseCid("bafk2bzaceavldupmf7bimeeacs67z5xdfdlfca6p7sn6bev3mt5ggepfqvhqo"),
