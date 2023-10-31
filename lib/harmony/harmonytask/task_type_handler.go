@@ -10,7 +10,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/samber/lo"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
@@ -50,6 +49,11 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 	}
 }
 
+// considerWork is called to attempt to start work on a task-id of this task type.
+// It presumes single-threaded calling, so there should not be a multi-threaded re-entry.
+// The only caller should be the one work poller thread. This does spin off other threads,
+// but those should not considerWork. Work completing may lower the resource numbers
+// unexpectedly, but that will not invalidate work being already able to fit.
 func (h *taskTypeHandler) considerWork(from string, ids []TaskID) (workAccepted bool) {
 top:
 	if len(ids) == 0 {
@@ -64,10 +68,8 @@ top:
 		return false
 	}
 
-	h.TaskEngine.workAdderMutex.Lock()
-	defer h.TaskEngine.workAdderMutex.Unlock()
-
-	// 2. Can we do any more work?
+	// 2. Can we do any more work? From here onward, we presume the resource
+	// story will not change, so single-threaded calling is best.
 	err := h.AssertMachineHasCapacity()
 	if err != nil {
 		log.Debugw("did not accept task", "name", h.Name, "reason", "at capacity already: "+err.Error())
@@ -213,7 +215,7 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 }
 
 func (h *taskTypeHandler) AssertMachineHasCapacity() error {
-	r := h.TaskEngine.resoourcesAvailable()
+	r := h.TaskEngine.ResourcesAvailable()
 
 	if r.Cpu-h.Cost.Cpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of cpu")
@@ -224,16 +226,5 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	if r.Gpu-h.Cost.Gpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
 	}
-	gpuRamSum := lo.Sum(h.Cost.GpuRam)
-	if gpuRamSum == 0 {
-		goto enoughGpuRam
-	}
-	for _, u := range r.GpuRam {
-		if u >= gpuRamSum {
-			goto enoughGpuRam
-		}
-	}
-	return errors.New("Did not accept " + h.Name + " task: out of GPURam")
-enoughGpuRam:
 	return nil
 }

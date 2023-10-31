@@ -7,19 +7,14 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pbnjay/memory"
-	"github.com/samber/lo"
 	"golang.org/x/sys/unix"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	cl "github.com/filecoin-project/lotus/lib/harmony/resources/miniopencl"
 )
 
 var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats
@@ -27,7 +22,6 @@ var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats
 type Resources struct {
 	Cpu       int
 	Gpu       float64
-	GpuRam    []uint64
 	Ram       uint64
 	MachineID int
 }
@@ -54,12 +48,11 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not read from harmony_machines: %w", err)
 		}
-		gpuram := uint64(lo.Sum(reg.GpuRam))
 		if len(ownerID) == 0 {
 			err = db.QueryRow(ctx, `INSERT INTO harmony_machines 
 		(host_and_port, cpu, ram, gpu, gpuram) VALUES
-		($1,$2,$3,$4,$5) RETURNING id`,
-				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu, gpuram).Scan(&reg.Resources.MachineID)
+		($1,$2,$3,$4,0) RETURNING id`,
+				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu).Scan(&reg.Resources.MachineID)
 			if err != nil {
 				return nil, err
 			}
@@ -67,8 +60,8 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 		} else {
 			reg.MachineID = ownerID[0]
 			_, err := db.Exec(ctx, `UPDATE harmony_machines SET
-		   cpu=$1, ram=$2, gpu=$3, gpuram=$4 WHERE id=$5`,
-				reg.Cpu, reg.Ram, reg.Gpu, gpuram, reg.Resources.MachineID)
+		   cpu=$1, ram=$2, gpu=$3 WHERE id=$5`,
+				reg.Cpu, reg.Ram, reg.Gpu, reg.Resources.MachineID)
 			if err != nil {
 				return nil, err
 			}
@@ -121,43 +114,12 @@ func getResources() (res Resources, err error) {
 	}
 
 	res = Resources{
-		Cpu:    runtime.NumCPU(),
-		Ram:    memory.FreeMemory(),
-		GpuRam: getGpuRam(),
-	}
-
-	{ // GPU boolean
-		gpus, err := ffi.GetGPUDevices()
-		if err != nil {
-			logger.Errorf("getting gpu devices failed: %+v", err)
-		}
-		all := strings.ToLower(strings.Join(gpus, ","))
-		if len(gpus) > 1 || strings.Contains(all, "ati") || strings.Contains(all, "nvidia") {
-			res.Gpu = float64(len(gpus))
-		}
+		Cpu: runtime.NumCPU(),
+		Ram: memory.FreeMemory(),
+		Gpu: getGPUDevices(),
 	}
 
 	return res, nil
-}
-
-func getGpuRam() (res []uint64) {
-	platforms, err := cl.GetPlatforms()
-	if err != nil {
-		logger.Error(err)
-		return res
-	}
-
-	lo.ForEach(platforms, func(p *cl.Platform, i int) {
-		d, err := p.GetAllDevices()
-		if err != nil {
-			logger.Error(err)
-			return
-		}
-		lo.ForEach(d, func(d *cl.Device, i int) {
-			res = append(res, uint64(d.GlobalMemSize()))
-		})
-	})
-	return res
 }
 
 func DiskFree(path string) (uint64, error) {

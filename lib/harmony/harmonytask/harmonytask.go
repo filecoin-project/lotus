@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -100,7 +99,6 @@ type TaskEngine struct {
 	ctx            context.Context
 	handlers       []*taskTypeHandler
 	db             *harmonydb.DB
-	workAdderMutex sync.Mutex
 	reg            *resources.Reg
 	grace          context.CancelFunc
 	taskMap        map[string]*taskTypeHandler
@@ -289,33 +287,14 @@ func (e *TaskEngine) pollerTryAllWork() {
 	}
 }
 
+// ResourcesAvailable determines what resources are still unassigned.
 func (e *TaskEngine) ResourcesAvailable() resources.Resources {
-	e.workAdderMutex.Lock()
-	defer e.workAdderMutex.Unlock()
-	return e.resoourcesAvailable()
-}
-
-// resoourcesAvailable requires workAdderMutex to be already locked.
-func (e *TaskEngine) resoourcesAvailable() resources.Resources {
 	tmp := e.reg.Resources
-	copy(tmp.GpuRam, e.reg.Resources.GpuRam)
 	for _, t := range e.handlers {
 		ct := t.Count.Load()
 		tmp.Cpu -= int(ct) * t.Cost.Cpu
 		tmp.Gpu -= float64(ct) * t.Cost.Gpu
 		tmp.Ram -= uint64(ct) * t.Cost.Ram
-		if len(t.Cost.GpuRam) == 0 {
-			continue
-		}
-		for i := int32(0); i < ct; i++ {
-			for grIdx, j := range tmp.GpuRam {
-				if j > t.Cost.GpuRam[0] {
-					tmp.GpuRam[grIdx] = 0 // Only 1 per GPU. j - t.Cost.GpuRam[0]
-					break
-				}
-			}
-			log.Warn("We should never get out of gpuram for what's consumed.")
-		}
 	}
 	return tmp
 }
