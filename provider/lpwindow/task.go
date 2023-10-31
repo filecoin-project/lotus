@@ -287,7 +287,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		var r int
 		err := t.db.QueryRow(context.Background(), `SELECT COUNT(*) 
 		FROM harmony_task_history 
-		WHERE task_id = $1 AND success = false`, d.Task_id).Scan(&r)
+		WHERE task_id = $1 AND result = false`, d.Task_id).Scan(&r)
 		if err != nil {
 			log.Errorf("WdPostTask.CanAccept() failed to queryRow: %v", err)
 		}
