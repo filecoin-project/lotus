@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
@@ -251,8 +250,12 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		}
 	}
 
+	// todo fix the block below
+	//  workAdderMutex is held by taskTypeHandler.considerWork, which calls this CanAccept
+	//  te.ResourcesAvailable will try to get that lock again, which will deadlock
+
 	// Discard those too big for our free RAM
-	freeRAM := te.ResourcesAvailable().Ram
+	/*freeRAM := te.ResourcesAvailable().Ram
 	tasks = lo.Filter(tasks, func(d wdTaskDef, _ int) bool {
 		maddr, err := address.NewIDAddress(tasks[0].Sp_id)
 		if err != nil {
@@ -273,7 +276,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		}
 
 		return res[spt].MaxMemory <= freeRAM
-	})
+	})*/
 	if len(tasks) == 0 {
 		log.Infof("RAM too small for any WDPost task")
 		return nil, nil
