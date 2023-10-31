@@ -187,6 +187,12 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 		if err != nil {
 			return nil, xerrors.Errorf("error loading builtin actors bundle: %w", err)
 		}
+
+		// The following manifest cid existed temporarily on the calibnet testnet
+		// We include it in our builtin bundle, but intentionally omit from metadata
+		if root == cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs") {
+			continue
+		}
 		bundles = append(bundles, &BuiltinActorsMetadata{
 			Network:     name,
 			Version:     actorstypes.Version(version),

@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	system11 "github.com/filecoin-project/go-state-types/builtin/v11/system"
-
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -22,7 +20,9 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	nv18 "github.com/filecoin-project/go-state-types/builtin/v10/migration"
+	init11 "github.com/filecoin-project/go-state-types/builtin/v11/init"
 	nv19 "github.com/filecoin-project/go-state-types/builtin/v11/migration"
+	system11 "github.com/filecoin-project/go-state-types/builtin/v11/system"
 	nv21 "github.com/filecoin-project/go-state-types/builtin/v12/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -1901,10 +1901,26 @@ func upgradeActorsV12Common(
 		)
 	}
 
-	isCalibrationnet := true
+	// check whether or not this is a calibnet upgrade
+	// we do this because calibnet upgraded to a "wrong" actors bundle, which was then corrected
+	// we thus upgrade to calibrationnet-buggy in this upgrade
+	actorsIn, err := state.LoadStateTree(adtStore, root)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	initActor, err := actorsIn.GetActor(builtin.InitActorAddr)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
+	}
+
+	var initState init11.State
+	if err := adtStore.Get(ctx, initActor.Head, &initState); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to get system actor state: %w", err)
+	}
+
 	var manifestCid cid.Cid
-	// TODO: check calibrationnet-ness by looking at init actor state
-	if isCalibrationnet {
+	if initState.NetworkName == "calibrationnet" {
 		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, "calibrationnet-buggy")
 		if !ok {
 			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
@@ -1913,7 +1929,7 @@ func upgradeActorsV12Common(
 		var err error
 		manifestCid, err = bundle.LoadBundle(ctx, writeStore, bytes.NewReader(embedded))
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("failed to load buggy calibnet bundle: %w")
+			return cid.Undef, xerrors.Errorf("failed to load buggy calibnet bundle: %w", err)
 		}
 
 		expectedCid := cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
@@ -2009,6 +2025,7 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 			return cid.Undef, xerrors.Errorf("missing manifest entry for %s", oldEntry.Name)
 		}
 
+		// Note: we expect newCID to be the same as oldEntry.Code for all actors except the miner actor
 		codeMapping[oldEntry.Code] = newCID
 	}
 
@@ -2021,8 +2038,13 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 
 	// Perform the migration
 	err = actorsIn.ForEach(func(a address.Address, actor *types.Actor) error {
+		newCid, ok := codeMapping[actor.Code]
+		if !ok {
+			return xerrors.Errorf("didn't find mapping for %s", actor.Code)
+		}
+
 		return actorsOut.SetActor(a, &types.ActorV5{
-			Code:    codeMapping[actor.Code],
+			Code:    newCid,
 			Head:    actor.Head,
 			Nonce:   actor.Nonce,
 			Balance: actor.Balance,
