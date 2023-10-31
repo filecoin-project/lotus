@@ -62,9 +62,6 @@ import (
 //go:embed FVMLiftoff.txt
 var fvmLiftoffBanner string
 
-// TODO: make build constant
-const UpgradeWatermelonFixHeight = 2000000
-
 var (
 	MigrationMaxWorkerCount    int
 	EnvMigrationMaxWorkerCount = "LOTUS_MIGRATION_MAX_WORKER_COUNT"
@@ -280,7 +277,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    UpgradeWatermelonFixHeight,
+		Height:    build.UpgradeWatermelonFixHeight,
 		Network:   network.Version21,
 		Migration: upgradeActorsV12Fix,
 	},
