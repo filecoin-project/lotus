@@ -2,7 +2,9 @@ package lpwindow
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
@@ -175,6 +177,10 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	return true, nil
 }
 
+func entToStr[T any](t T, i int) string {
+	return fmt.Sprint(t)
+}
+
 func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 
 	log.Errorw("WDPOST CANACCEPT", "ids", ids)
@@ -207,7 +213,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 			deadline_index,
 			partition_index
 	from wdpost_partition_tasks 
-	where task_id IN $1`, ids)
+	where task_id IN (SELECT unnest(string_to_array($1, ','))::bigint)`, strings.Join(lo.Map(ids, entToStr[harmonytask.TaskID]), ","))
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +290,11 @@ func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 		Follows:     nil,
 		Cost: resources.Resources{
 			Cpu: 1,
-			Gpu: 1,
+
+			// todo set to something for 32/64G sector sizes? Technically windowPoSt is happy on a CPU
+			//  but it will use a GPU if available
+			Gpu: 0,
+
 			// RAM of smallest proof's max is listed here
 			Ram: lo.Reduce(lo.Keys(res), func(i uint64, k abi.RegisteredSealProof, _ int) uint64 {
 				if res[k].MaxMemory < i {
