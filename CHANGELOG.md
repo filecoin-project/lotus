@@ -1,10 +1,10 @@
 # Lotus changelog
 
-# v1.24.0-rc2 / 2023-10-17
+# v1.24.0-rc3 / 2023-10-31
 
-This is the second release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
+This is the third release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
 
-**This release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.** This second release candidate updates go-state-types to v0.12.5, adding a proofs mapping that was missing v0.12.5. Lotus v1.24.0-RC1 remains valid for the network upgrade in the Calibration network. However, storage providers intending to conduct Synthetic PoRep testing are advised to use RC2.
+**This release candidate does NOT set an upgrade epoch for mainnet. However, it includes a patch for the calibration testnet to fix an issue where partitions with expired sectors had to be compacted before they could be moved. Unfortunately, this bug impacts consensus and necessitates a coordinated upgrade on the Calibration network to deploy the new code. The calibration network is scheduled to upgrade all miner actors to the new, fixed miner actor CID at epoch 1070494, which is expected to occur at 2023-11-07T13:00:00Z.**
 
 The Filecoin network version 21 delivers the following FIPs:
 
@@ -24,7 +24,7 @@ The actor bundles for the calibration network can be checked as follows:
 lotus state actor-cids --network-version=21
 Network Version: 21
 Actor Version: 12
-Manifest CID: bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs
+Manifest CID: bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru
 
 Actor             CID  
 paymentchannel    bafk2bzacebaxhk4itfiuvbftg7kz5zxugqnvdgerobitjq4vl6q4orcwk6wqg
@@ -37,7 +37,7 @@ multisig          bafk2bzacednkwcpw5yzxjceoaliajgupzj6iqxe7ks2ll3unspbprbo5f2now
 eam               bafk2bzacecb6cnwftvavpph4p34zs4psuy5xvbrhf7vszkva4npw6mw3c42xe
 reward            bafk2bzacedra77pcglf7vdca2itcaa4vd6xrxynxmgfgdjdxqxfwqyhtoxehy
 storagemarket     bafk2bzacea7g46y7xxu2zjq2h75x6mmx3utz2uxnlvnwi6tzpsvulna3bmiva
-storageminer      bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq
+storageminer      bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie
 storagepower      bafk2bzacedd3ka44k7d46ckbinjhv3diyuu2epgbyvhqqyjkc64qlrg3wlgzi
 verifiedregistry  bafk2bzaceavldupmf7bimeeacs67z5xdfdlfca6p7sn6bev3mt5ggepfqvhqo
 account           bafk2bzacechwwxdqvggkdylm37zldjsra2ivkdzwp7fee56bzxbzs544wv6u6
@@ -72,6 +72,7 @@ datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
 - chore: butterfly: Update Butterfly Assets ([filecoin-project/lotus#11312](https://github.com/filecoin-project/lotus/pull/11312))
 - chore: release: Set calibration upgrade height ([filecoin-project/lotus#11331](https://github.com/filecoin-project/lotus/pull/11331))
 - chore: build: bump version to 1.24.0-rc1 ([filecoin-project/lotus#11332](https://github.com/filecoin-project/lotus/pull/11332))
+- chore: backport #11365 to release/v1.24.0 ([filecoin-project/lotus#11368](https://github.com/filecoin-project/lotus/pull/11368))
 
 # v1.23.3 / 2023-08-01
 
