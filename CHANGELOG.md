@@ -1,12 +1,12 @@
 # Lotus changelog
 
-# v 1.25.0-rc1 / 2023-10-18
+# v 1.25.0-rc2 / 2023-10-31
 
-This is the first release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the second release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
-**This optional feature release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.**
+**This optional feature release candidate does NOT set an upgrade epoch for mainnet. However, it includes a patch for the calibration testnet to fix an issue where partitions with expired sectors had to be compacted before they could be moved. Unfortunately, this bug impacts consensus and necessitates a coordinated upgrade on the Calibration network to deploy the new code. The calibration network is scheduled to upgrade all miner actors to the new, fixed miner actor CID at epoch 1070494, which is expected to occur at 2023-11-07T13:00:00Z.**
 
-Make sure to check out the release log for [Lotus v1.24.0-rc2](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc2) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
+Make sure to check out the release log for [Lotus v1.24.0-rc3](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc3) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -46,6 +46,7 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - feat: refactor: return randomness base to FVM without hashing ([filecoin-project/lotus#11167](https://github.com/filecoin-project/lotus/pull/11167))
 - feat: Lotus Gateway: add allocation and claim related GET APIs to gateway ([filecoin-project/lotus#11183](https://github.com/filecoin-project/lotus/pull/11183))
 - feat: shed: Add exec traces to `lotus-shed msg` ([filecoin-project/lotus#11188](https://github.com/filecoin-project/lotus/pull/11188))
+- feat: miner: defensive check for equivocation ([filecoin-project/lotus#11328](https://github.com/filecoin-project/lotus/pull/11328))
 
 ## Improvements
 - feat: daemon: improvemens to the consensus slasher ([filecoin-project/lotus#10979](https://github.com/filecoin-project/lotus/pull/10979))
@@ -81,6 +82,7 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - fix: chain: cancel long operations upon ctx cancelation ([filecoin-project/lotus#11206](https://github.com/filecoin-project/lotus/pull/11206))
 - fix(client): single-root error message ([filecoin-project/lotus#11214](https://github.com/filecoin-project/lotus/pull/11214))
 - fix: worker: Convert `DC_[SectorSize]_[ResourceRestriction]` if set ([filecoin-project/lotus#11224](https://github.com/filecoin-project/lotus/pull/11224))
+- chore: backport #11338 onto release/v1.25.0 ([filecoin-project/lotus#11350](https://github.com/filecoin-project/lotus/pull/11350))
 
 ## Dependencies
 - deps: update go-libp2p to v0.28.1 ([filecoin-project/lotus#10998](https://github.com/filecoin-project/lotus/pull/10998))
@@ -88,6 +90,7 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - deps: update go-libp2p to v0.30.0 ([filecoin-project/lotus#11189](https://github.com/filecoin-project/lotus/pull/11189))
 - fix: build: use tagged releases ([filecoin-project/lotus#11194](https://github.com/filecoin-project/lotus/pull/11194))
 - chore: test-vectors: update ([filecoin-project/lotus#11196](https://github.com/filecoin-project/lotus/pull/11196))
+- chore: backport #11365 to release/v1.25.0 ([filecoin-project/lotus#11369](https://github.com/filecoin-project/lotus/pull/11369))
 - github.com/filecoin-project/go-amt-ipld/v4 (v4.0.0 -> v4.2.0)
 - github.com/filecoin-project/test-vectors/schema (v0.0.5 -> v0.0.7)
 
