@@ -68,6 +68,11 @@ Manifest CID: bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs
    
 ## Improvements
 - Backport: feat: sealing: Switch to calling PreCommitSectorBatch2 ([filecoin-project/lotus#11215](https://github.com/filecoin-project/lotus/pull/11215))
+- fix: sync: iterate over returned messages directly #11373
+- fix: api: compute the effective gas cost with the correct base-fee #11357
+- fix: check invariants: v12 check #11371
+- fix: api: compute gasUsedRatio based on max gas in the tipset #11354
+
 
 ## Dependencies
 - github.com/filecoin-project/go-amt-ipld/v4 (v4.0.0 -> v4.2.0)
@@ -188,10 +193,6 @@ This feature release requires a **minimum Go version of v1.19.12 or higher to su
   - fix: cli: Change arg wording in change-beneficiary cmd ([filecoin-project/lotus#10823](https://github.com/filecoin-project/lotus/pull/10823))
   - refactor: streamline error handling in CheckPendingMessages (#10818) ([filecoin-project/lotus#10818](https://github.com/filecoin-project/lotus/pull/10818))
   - feat: Add tmp indices to events table while performing migration to V2
-  - fix: sync: iterate over returned messages directly #11373
-  - fix: api: compute the effective gas cost with the correct base-fee #11357
-  - fix: check invariants: v12 check #11371
-  - fix: api: compute gasUsedRatio based on max gas in the tipset #11354
 
 # v1.23.2 / 2023-06-28
 
