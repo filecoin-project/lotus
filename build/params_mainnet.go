@@ -96,7 +96,7 @@ const UpgradeLightningHeight = 2809800
 const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 
 // 2023-11-29T13:30:00Z
-const UpgradeWatermelonHeight = 3431940
+var UpgradeWatermelonHeight = abi.ChainEpoch(3431940)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
