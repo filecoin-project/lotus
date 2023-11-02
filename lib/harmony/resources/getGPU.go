@@ -18,4 +18,5 @@ func getGPUDevices() float64 { // GPU boolean
 	if len(gpus) > 1 || strings.Contains(all, "ati") || strings.Contains(all, "nvidia") {
 		return float64(len(gpus))
 	}
+	return 0
 }
