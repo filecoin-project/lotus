@@ -1,12 +1,14 @@
 # Lotus changelog
 
-# v 1.25.0-rc2 / 2023-10-31
+# v 1.25.0-rc3 / 2023-11-02
 
 This is the second release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
-**This optional feature release candidate does NOT set an upgrade epoch for mainnet. However, it includes a patch for the calibration testnet to fix an issue where partitions with expired sectors had to be compacted before they could be moved. Unfortunately, this bug impacts consensus and necessitates a coordinated upgrade on the Calibration network to deploy the new code. The calibration network is scheduled to upgrade all miner actors to the new, fixed miner actor CID at epoch 1070494, which is expected to occur at 2023-11-07T13:00:00Z.**
+This release candidate also sets an upgrade epoch for mainnet at 3431940 2023-11-29T13:30:00Z.
 
-Make sure to check out the release log for [Lotus v1.24.0-rc3](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc3) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
+It includes a patch for the calibration testnet to fix an issue where partitions with expired sectors had to be compacted before they could be moved. Unfortunately, this bug impacts consensus and necessitates a coordinated upgrade on the Calibration network to deploy the new code. The calibration network is scheduled to upgrade all miner actors to the new, fixed miner actor CID at epoch 1070494, which is expected to occur at 2023-11-07T13:00:00Z.
+
+Make sure to check out the release log for [Lotus v1.24.0-rc4](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc4) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
 
 ## ☢️ Upgrade Warnings ☢️
 
