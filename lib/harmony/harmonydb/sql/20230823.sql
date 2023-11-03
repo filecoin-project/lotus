@@ -27,6 +27,7 @@ create table wdpost_proofs
     proof_message      bytea,
 
     submit_task_id     bigint not null,
+    message_cid        text not null,
 
     constraint wdpost_proofs_identity_key
         unique (sp_id, deadline, partition)

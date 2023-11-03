@@ -9,15 +9,18 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 )
+
+var log = logging.Logger("lpmessage")
 
 type SenderAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	WalletBalance(ctx context.Context, addr address.Address) (big.Int, error)
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
-	MpoolSend(context.Context, *types.SignedMessage) (cid.Cid, error)
+	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
 }
 
 type SignerAPI interface {
@@ -147,7 +150,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 	}
 
 	// push to mpool
-	_, err = s.api.MpoolSend(ctx, sigMsg)
+	_, err = s.api.MpoolPush(ctx, sigMsg)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("mpool push: failed to push message: %w", err)
 	}
@@ -160,6 +163,8 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 	if cn != 1 {
 		return cid.Undef, xerrors.Errorf("updating db record: expected 1 row to be affected, got %d", c)
 	}
+
+	log.Infow("sent message", "cid", sigMsg.Cid(), "from", fromA, "to", msg.To, "nonce", msg.Nonce, "value", msg.Value, "gaslimit", msg.GasLimit)
 
 	return cid.Undef, nil
 }

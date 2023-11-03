@@ -80,8 +80,37 @@ type wdTaskIdentity struct {
 	Partition_index      uint64
 }
 
+func NewWdPostTask(db *harmonydb.DB,
+	api WDPoStAPI,
+	faultTracker sealer.FaultTracker,
+	prover ProverPoSt,
+	verifier storiface.Verifier,
+
+	pcs *chainsched.ProviderChainSched,
+	actors []dtypes.MinerAddress,
+	max int,
+) (*WdPostTask, error) {
+	t := &WdPostTask{
+		db:  db,
+		api: api,
+
+		faultTracker: faultTracker,
+		prover:       prover,
+		verifier:     verifier,
+
+		actors: actors,
+		max:    max,
+	}
+
+	if err := pcs.AddHandler(t.processHeadChange); err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}
+
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
-	log.Debugw("WdPostTask.Do() called with taskID: %v", taskID)
+	log.Debugw("WdPostTask.Do()", "taskID", taskID)
 
 	var spID, pps, dlIdx, partIdx uint64
 
@@ -331,35 +360,6 @@ func (t *WdPostTask) processHeadChange(ctx context.Context, revert, apply *types
 	}
 
 	return nil
-}
-
-func NewWdPostTask(db *harmonydb.DB,
-	api WDPoStAPI,
-	faultTracker sealer.FaultTracker,
-	prover ProverPoSt,
-	verifier storiface.Verifier,
-
-	pcs *chainsched.ProviderChainSched,
-	actors []dtypes.MinerAddress,
-	max int,
-) (*WdPostTask, error) {
-	t := &WdPostTask{
-		db:  db,
-		api: api,
-
-		faultTracker: faultTracker,
-		prover:       prover,
-		verifier:     verifier,
-
-		actors: actors,
-		max:    max,
-	}
-
-	if err := pcs.AddHandler(t.processHeadChange); err != nil {
-		return nil, err
-	}
-
-	return t, nil
 }
 
 func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIdentity, tx *harmonydb.Tx) (bool, error) {

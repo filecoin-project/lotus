@@ -245,12 +245,12 @@ var runCmd = &cli.Command{
 		{
 
 			if cfg.Subsystems.EnableWindowPost {
-				wdPostTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, verif, lw,
+				wdPostTask, wdPoStSubmitTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, verif, lw,
 					as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
 				if err != nil {
 					return err
 				}
-				activeTasks = append(activeTasks, wdPostTask)
+				activeTasks = append(activeTasks, wdPostTask, wdPoStSubmitTask)
 			}
 		}
 		taskEngine, err := harmonytask.New(db, activeTasks, listenAddr)

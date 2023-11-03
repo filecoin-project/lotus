@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"time"
 
 	"github.com/filecoin-project/lotus/storage/paths"
@@ -23,19 +24,26 @@ var log = logging.Logger("provider")
 
 func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
 	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker,
-	as *ctladdr.AddressSelector, maddr []dtypes.MinerAddress, db *harmonydb.DB, stor paths.Store, idx paths.SectorIndex, max int) (*lpwindow.WdPostTask, error) {
+	as *ctladdr.AddressSelector, maddr []dtypes.MinerAddress, db *harmonydb.DB, stor paths.Store, idx paths.SectorIndex, max int) (*lpwindow.WdPostTask, *lpwindow.WdPostSubmitTask, error) {
 
 	chainSched := chainsched.New(api)
 
 	// todo config
 	ft := lpwindow.NewSimpleFaultTracker(stor, idx, 32, 5*time.Second, 300*time.Second)
 
-	task, err := lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, maddr, max)
+	sender := lpmessage.NewSender(api, api, db)
+
+	computeTask, err := lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, maddr, max)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	submitTask, err := lpwindow.NewWdPostSubmitTask(chainSched, sender, db, api, fc.MaxWindowPoStGasFee, as)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	go chainSched.Run(ctx)
 
-	return task, nil
+	return computeTask, submitTask, nil
 }

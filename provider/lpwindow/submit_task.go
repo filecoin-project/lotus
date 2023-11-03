@@ -1,7 +1,14 @@
 package lpwindow
 
 import (
+	"bytes"
 	"context"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
@@ -9,18 +16,160 @@ import (
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"golang.org/x/xerrors"
 )
+
+type WdPoStSubmitTaskApi interface {
+	ChainHead(context.Context) (*types.TipSet, error)
+
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+
+	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)
+	GasEstimateGasPremium(_ context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
+}
 
 type WdPostSubmitTask struct {
 	sender *lpmessage.Sender
 	db     *harmonydb.DB
+	api    WdPoStSubmitTaskApi
+
+	maxWindowPoStGasFee types.FIL
+	as                  *ctladdr.AddressSelector
 
 	submitPoStTF promise.Promise[harmonytask.AddTaskFunc]
 }
 
+func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sender, db *harmonydb.DB, api WdPoStSubmitTaskApi, maxWindowPoStGasFee types.FIL, as *ctladdr.AddressSelector) (*WdPostSubmitTask, error) {
+	res := &WdPostSubmitTask{
+		sender: send,
+		db:     db,
+		api:    api,
+
+		maxWindowPoStGasFee: maxWindowPoStGasFee,
+		as:                  as,
+	}
+
+	if err := pcs.AddHandler(res.processHeadChange); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
-	//TODO implement me
-	panic("implement me")
+	log.Debugw("WdPostSubmitTask.Do", "taskID", taskID)
+
+	var spID uint64
+	var deadline uint64
+	var partition uint64
+	var submitAtEpoch, submitByEpoch abi.ChainEpoch
+	var proofParamBytes []byte
+	var dbTask uint64
+
+	err = w.db.QueryRow(
+		context.Background(), `select sp_id, deadline, partition, submit_at_epoch, submit_by_epoch, proof_message, submit_task_id
+		from wdpost_proofs where sp_id = $1 and deadline = $2 and partition = $3`, spID, deadline, partition,
+	).Scan(&spID, &deadline, &partition, &submitAtEpoch, &submitByEpoch, &proofParamBytes, &dbTask)
+	if err != nil {
+		return false, xerrors.Errorf("query post proof: %w", err)
+	}
+
+	if dbTask != uint64(taskID) {
+		return false, xerrors.Errorf("taskID mismatch: %d != %d", dbTask, taskID)
+	}
+
+	head, err := w.api.ChainHead(context.Background())
+	if err != nil {
+		return false, xerrors.Errorf("getting chain head: %w", err)
+	}
+
+	if head.Height() > submitByEpoch {
+		// we missed the deadline, no point in submitting
+		log.Errorw("missed submit deadline", "spID", spID, "deadline", deadline, "partition", partition, "submitByEpoch", submitByEpoch, "headHeight", head.Height())
+		return true, nil
+	}
+
+	if head.Height() < submitAtEpoch {
+		log.Errorw("submit epoch not reached", "spID", spID, "deadline", deadline, "partition", partition, "submitAtEpoch", submitAtEpoch, "headHeight", head.Height())
+		return false, xerrors.Errorf("submit epoch not reached: %d < %d", head.Height(), submitAtEpoch)
+	}
+
+	var params miner.SubmitWindowedPoStParams
+	if err := params.UnmarshalCBOR(bytes.NewReader(proofParamBytes)); err != nil {
+		return false, xerrors.Errorf("unmarshaling proof message: %w", err)
+	}
+
+	maddr, err := address.NewIDAddress(spID)
+	if err != nil {
+		return false, xerrors.Errorf("invalid miner address: %w", err)
+	}
+
+	mi, err := w.api.StateMinerInfo(context.Background(), maddr, types.EmptyTSK)
+	if err != nil {
+		return false, xerrors.Errorf("error getting miner info: %w", err)
+	}
+
+	msg := &types.Message{
+		To:     maddr,
+		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
+		Params: proofParamBytes,
+		Value:  big.Zero(),
+
+		From: mi.Worker, // set worker for now for gas estimation
+	}
+
+	// calculate a more frugal estimation; premium is estimated to guarantee
+	// inclusion within 5 tipsets, and fee cap is estimated for inclusion
+	// within 4 tipsets.
+	minGasFeeMsg := *msg
+
+	minGasFeeMsg.GasPremium, err = w.api.GasEstimateGasPremium(context.Background(), 5, msg.From, msg.GasLimit, types.EmptyTSK)
+	if err != nil {
+		log.Errorf("failed to estimate minimum gas premium: %+v", err)
+		minGasFeeMsg.GasPremium = msg.GasPremium
+	}
+
+	minGasFeeMsg.GasFeeCap, err = w.api.GasEstimateFeeCap(context.Background(), &minGasFeeMsg, 4, types.EmptyTSK)
+	if err != nil {
+		log.Errorf("failed to estimate minimum gas fee cap: %+v", err)
+		minGasFeeMsg.GasFeeCap = msg.GasFeeCap
+	}
+
+	// goodFunds = funds needed for optimal inclusion probability.
+	// minFunds  = funds needed for more speculative inclusion probability.
+	goodFunds := big.Add(msg.RequiredFunds(), msg.Value)
+	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
+
+	from, _, err := w.as.AddressFor(context.Background(), w.api, mi, api.PoStAddr, goodFunds, minFunds)
+	if err != nil {
+		return false, xerrors.Errorf("error getting address: %w", err)
+	}
+
+	msg.From = from
+
+	mss := &api.MessageSendSpec{
+		MaxFee: abi.TokenAmount(w.maxWindowPoStGasFee),
+	}
+
+	smsg, err := w.sender.Send(context.Background(), msg, mss, "wdpost")
+	if err != nil {
+		return false, xerrors.Errorf("sending proof message: %w", err)
+	}
+
+	// set message_cid in the wdpost_proofs entry
+
+	_, err = w.db.Exec(context.Background(), `update wdpost_proofs set message_cid = $1 where sp_id = $2 and deadline = $3 and partition = $4`, smsg.String(), spID, deadline, partition)
+	if err != nil {
+		return true, xerrors.Errorf("updating wdpost_proofs: %w", err)
+	}
+
+	return true, nil
 }
 
 func (w *WdPostSubmitTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
@@ -35,18 +184,6 @@ func (w *WdPostSubmitTask) CanAccept(ids []harmonytask.TaskID, engine *harmonyta
 	}
 
 	return &ids[0], nil
-}
-
-func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sender) (*WdPostSubmitTask, error) {
-	res := &WdPostSubmitTask{
-		sender: send,
-	}
-
-	if err := pcs.AddHandler(res.processHeadChange); err != nil {
-		return nil, err
-	}
-
-	return res, nil
 }
 
 func (w *WdPostSubmitTask) TypeDetails() harmonytask.TaskTypeDetails {
