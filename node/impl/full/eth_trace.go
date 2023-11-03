@@ -3,18 +3,13 @@ package full
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
-	"fmt"
-	"io"
 
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
-	"github.com/filecoin-project/go-state-types/exitcode"
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -124,14 +119,8 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 	} else {
 		// we are going to assume a native method, but we may change it in one of the edge cases below
 		// TODO: only do this if we know it's a native method (optimization)
-		trace.Action.Input, err = encodeFilecoinParamsAsABI(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
-		if err != nil {
-			return xerrors.Errorf("buildTraces: %w", err)
-		}
-		trace.Result.Output, err = encodeFilecoinReturnAsABI(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
-		if err != nil {
-			return xerrors.Errorf("buildTraces: %w", err)
-		}
+		trace.Action.Input = encodeFilecoinParamsAsABI(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+		trace.Result.Output = encodeFilecoinReturnAsABI(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
 	}
 
 	// TODO: is it OK to check this here or is this only specific to certain edge case (evm to evm)?
@@ -254,37 +243,6 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func writePadded(w io.Writer, data any, size int) error {
-	tmp := &bytes.Buffer{}
-
-	// first write data to tmp buffer to get the size
-	err := binary.Write(tmp, binary.BigEndian, data)
-	if err != nil {
-		return fmt.Errorf("writePadded: failed writing tmp data to buffer: %w", err)
-	}
-
-	if tmp.Len() > size {
-		return fmt.Errorf("writePadded: data is larger than size")
-	}
-
-	// write tailing zeros to pad up to size
-	cnt := size - tmp.Len()
-	for i := 0; i < cnt; i++ {
-		err = binary.Write(w, binary.BigEndian, uint8(0))
-		if err != nil {
-			return fmt.Errorf("writePadded: failed writing tailing zeros to buffer: %w", err)
-		}
-	}
-
-	// finally write the actual value
-	err = binary.Write(w, binary.BigEndian, tmp.Bytes())
-	if err != nil {
-		return fmt.Errorf("writePadded: failed writing data to buffer: %w", err)
 	}
 
 	return nil

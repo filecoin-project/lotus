@@ -697,64 +697,44 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	return receipt, nil
 }
 
-func encodeFilecoinParamsAsABI(method abi.MethodNum, codec uint64, params []byte) ([]byte, error) {
-	NATIVE_METHOD_SELECTOR := []byte{0x86, 0x8e, 0x10, 0xc4}
-	EVM_WORD_SIZE := 32
-
-	staticArgs := []uint64{
-		uint64(method),
-		codec,
-		uint64(EVM_WORD_SIZE) * 3,
-		uint64(len(params)),
-	}
-	totalWords := len(staticArgs) + (len(params) / EVM_WORD_SIZE)
-	if len(params)%EVM_WORD_SIZE != 0 {
-		totalWords++
-	}
-	len := 4 + totalWords*EVM_WORD_SIZE
-
-	w := &bytes.Buffer{}
-	err := binary.Write(w, binary.BigEndian, NATIVE_METHOD_SELECTOR)
-	if err != nil {
-		return nil, fmt.Errorf("handleFilecoinMethodInput: failed writing method selector: %w", err)
-	}
-
-	for _, arg := range staticArgs {
-		err := writePadded(w, arg, 32)
-		if err != nil {
-			return nil, fmt.Errorf("handleFilecoinMethodInput: %w", err)
-		}
-	}
-	err = binary.Write(w, binary.BigEndian, params)
-	if err != nil {
-		return nil, fmt.Errorf("handleFilecoinMethodInput: failed writing params: %w", err)
-	}
-	remain := len - w.Len()
-	for i := 0; i < remain; i++ {
-		err = binary.Write(w, binary.BigEndian, uint8(0))
-		if err != nil {
-			return nil, fmt.Errorf("handleFilecoinMethodInput: failed writing tailing zeros: %w", err)
-		}
-	}
-
-	return w.Bytes(), nil
+func encodeFilecoinParamsAsABI(method abi.MethodNum, codec uint64, params []byte) []byte {
+	buf := []byte{0x86, 0x8e, 0x10, 0xc4} // Native method selector.
+	return append(buf, encodeAsABIHelper(uint64(method), codec, params)...)
 }
 
-func encodeFilecoinReturnAsABI(exitCode exitcode.ExitCode, codec uint64, data []byte) ([]byte, error) {
-	w := &bytes.Buffer{}
+func encodeFilecoinReturnAsABI(exitCode exitcode.ExitCode, codec uint64, data []byte) []byte {
+	return encodeAsABIHelper(uint64(exitCode), codec, data)
+}
 
-	values := []interface{}{uint32(exitCode), codec, uint32(w.Len()), uint32(len(data))}
-	for _, v := range values {
-		err := writePadded(w, v, 32)
-		if err != nil {
-			return nil, fmt.Errorf("handleFilecoinMethodOutput: %w", err)
-		}
+// Format 2 numbers followed by an arbitrary byte array as solidity ABI. Both our native
+// inputs/outputs follow the same pattern, so we can reuse this code.
+func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
+	const EVM_WORD_SIZE = 32
+
+	// The first two params are "static" numbers. Then, we record the offset of the "data" arg,
+	// then, at that offset, we record the length of the data.
+	//
+	// In practice, this means we have 4 256-bit words back to back where the third arg (the
+	// offset) is _always_ '32*3'.
+	staticArgs := []uint64{param1, param2, EVM_WORD_SIZE * 3, uint64(len(data))}
+	// We always pad out to the next EVM "word" (32 bytes).
+	totalWords := len(staticArgs) + (len(data) / EVM_WORD_SIZE)
+	if len(data)%EVM_WORD_SIZE != 0 {
+		totalWords++
+	}
+	len := totalWords * EVM_WORD_SIZE
+	buf := make([]byte, len)
+	offset := 0
+	// Below, we use copy instead of "appending" to preserve all the zero padding.
+	for _, arg := range staticArgs {
+		// Write each "arg" into the last 8 bytes of each 32 byte word.
+		offset += EVM_WORD_SIZE
+		start := offset - 8
+		binary.BigEndian.PutUint64(buf[start:offset], arg)
 	}
 
-	err := binary.Write(w, binary.BigEndian, data)
-	if err != nil {
-		return nil, fmt.Errorf("handleFilecoinMethodOutput: failed writing data: %w", err)
-	}
+	// Finally, we copy in the data.
+	copy(buf[offset:], data)
 
-	return w.Bytes(), nil
+	return buf
 }
