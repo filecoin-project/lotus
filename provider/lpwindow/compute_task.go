@@ -149,43 +149,6 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		deadline.Close,
 		msgbuf.Bytes())
 
-	/*submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
-		if err != nil {
-			log.Errorf("WdPostTask.Do() failed to runPoStCycle: %v", err)
-			return false, err
-		}
-
-		log.Errorf("WdPostTask.Do() called with taskID: %v, submitWdPostParams: %v", taskID, submitWdPostParams)
-
-		// Enter an entry for each wdpost message proof into the wdpost_proofs table
-		for _, params := range submitWdPostParams {
-
-			// Convert submitWdPostParams.Partitions to a byte array using CBOR
-			buf := new(bytes.Buffer)
-			scratch := make([]byte, 9)
-			if err := cbg.WriteMajorTypeHeaderBuf(scratch, buf, cbg.MajArray, uint64(len(params.Partitions))); err != nil {
-				return false, err
-			}
-			for _, v := range params.Partitions {
-				if err := v.MarshalCBOR(buf); err != nil {
-					return false, err
-				}
-			}
-
-			// Insert into wdpost_proofs table
-			_, err = t.db.Exec(context.Background(),
-				`INSERT INTO wdpost_proofs (
-	                           deadline,
-	                           partitions,
-	                           proof_type,
-	                           proof_bytes)
-	    			 VALUES ($1, $2, $3, $4)`,
-				params.Deadline,
-				buf.Bytes(),
-				params.Proofs[0].PoStProof,
-				params.Proofs[0].ProofBytes)
-		}*/
-
 	return true, nil
 }
 

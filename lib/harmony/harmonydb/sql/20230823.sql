@@ -24,5 +24,10 @@ create table wdpost_proofs
     partition          bigint not null,
     submit_at_epoch    bigint not null,
     submit_by_epoch    bigint not null,
-    proof_message      bytea
+    proof_message      bytea,
+
+    submit_task_id     bigint not null,
+
+    constraint wdpost_proofs_identity_key
+        unique (sp_id, deadline, partition)
 );
