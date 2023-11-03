@@ -379,7 +379,6 @@ var runCmd = &cli.Command{
 			}
 		}
 		defer closer()
-		defer cancel()
 		// Register all metric views
 		if err := view.Register(
 			metrics.DefaultViews...,
