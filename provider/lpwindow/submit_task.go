@@ -24,8 +24,17 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 }
 
 func (w *WdPostSubmitTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	//TODO implement me
-	panic("implement me")
+	if len(ids) == 0 {
+		// probably can't happen, but panicking is bad
+		return nil, nil
+	}
+
+	if w.sender == nil {
+		// we can't send messages
+		return nil, nil
+	}
+
+	return &ids[0], nil
 }
 
 func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sender) (*WdPostSubmitTask, error) {
