@@ -1022,6 +1022,9 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	})
 
+	// Record the current size of the Mpool
+	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
+
 	return nil
 }
 
