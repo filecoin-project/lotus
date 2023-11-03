@@ -21,6 +21,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
+	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -1021,6 +1022,9 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	})
 
+	// Record the current size of the Mpool
+	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
+
 	return nil
 }
 
@@ -1213,6 +1217,9 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 			return
 		}
 	}
+
+	// Record the current size of the Mpool
+	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 }
 
 func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
