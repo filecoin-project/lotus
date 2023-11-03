@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"sort"
-	"strings"
-	"time"
-
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/storage/sealer"
+	"sort"
+	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
@@ -83,11 +81,7 @@ type wdTaskIdentity struct {
 }
 
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
-
-	log.Errorw("WDPOST DO", "taskID", taskID)
-
-	time.Sleep(5 * time.Second)
-	log.Errorf("WdPostTask.Do() called with taskID: %v", taskID)
+	log.Debugw("WdPostTask.Do() called with taskID: %v", taskID)
 
 	var spID, pps, dlIdx, partIdx uint64
 
@@ -200,9 +194,6 @@ func entToStr[T any](t T, i int) string {
 }
 
 func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-
-	log.Errorw("WDPOST CANACCEPT", "ids", ids)
-
 	// GetEpoch
 	ts, err := t.api.ChainHead(context.Background())
 
