@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -348,6 +349,18 @@ var runCmd = &cli.Command{
 		// Connect to storage-miner
 		ctx := lcli.ReqContext(cctx)
 
+		// Create a new context with cancel function
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		// Listen for interrupt signals
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
+			cancel()
+		}()
+
 		var nodeApi api.StorageMiner
 		var closer func()
 		for {
@@ -359,14 +372,13 @@ var runCmd = &cli.Command{
 				}
 			}
 			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
-			time.Sleep(time.Second)
-			continue
+			select {
+			case <-ctx.Done():
+				return xerrors.New("Interrupted by user")
+			case <-time.After(time.Second):
+			}
 		}
-
 		defer closer()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
 		// Register all metric views
 		if err := view.Register(
 			metrics.DefaultViews...,
