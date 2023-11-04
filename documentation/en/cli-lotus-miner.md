@@ -66,10 +66,6 @@ OPTIONS:
    --no-local-storage                                         don't use storageminer repo for sector storage (default: false)
    --gas-premium value                                        set gas premium for initialization messages in AttoFIL (default: "0")
    --from value                                               select which address to send actor creation message from
-   --db-host value                                            Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$LOTUS_DB_HOST]
-   --db-name value                                            (default: "yugabyte") [$LOTUS_DB_NAME]
-   --db-user value                                            (default: "yugabyte") [$LOTUS_DB_USER]
-   --db-password value                                        (default: "yugabyte") [$LOTUS_DB_PASSWORD]
    --help, -h                                                 show help
 ```
 

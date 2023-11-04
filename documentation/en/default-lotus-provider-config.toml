@@ -2,6 +2,9 @@
   # type: bool
   #EnableWindowPost = false
 
+  # type: int
+  #WindowPostMaxTasks = 0
+
   # type: bool
   #EnableWinningPost = false
 
@@ -187,4 +190,20 @@
   #
   # type: bool
   #SingleRecoveringPartitionPerPostMessage = false
+
+
+[Journal]
+  # Events of the form: "system1:event1,system1:event2[,...]"
+  #
+  # type: string
+  #DisabledEvents = ""
+
+
+[Apis]
+  # RPC Secret for the storage subsystem.
+  # If integrating with lotus-miner this must match the value from
+  # cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey
+  #
+  # type: string
+  #StorageRPCSecret = ""
 
