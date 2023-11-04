@@ -2,11 +2,7 @@ package provider
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"time"
-
-	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/sealer"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -15,8 +11,11 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/provider/chainsched"
+	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"github.com/filecoin-project/lotus/provider/lpwindow"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 

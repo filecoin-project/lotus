@@ -3,6 +3,7 @@ package resources
 import (
 	"bytes"
 	"context"
+	"golang.org/x/xerrors"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -42,7 +43,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 	}
 	ctx := context.Background()
 	{ // Learn our owner_id while updating harmony_machines
-		var ownerID int
+		var ownerID *int
 
 		// Upsert query with last_contact update, fetch the machine ID
 		// (note this isn't a simple insert .. on conflict because host_and_port isn't unique)
@@ -54,7 +55,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 				RETURNING id
 			),
 			inserted AS (
-				INSERT INTO harmony_machines (host_and_port, cpu, ram, gpu, gpuram, last_contact)
+				INSERT INTO harmony_machines (host_and_port, cpu, ram, gpu, last_contact)
 				SELECT $1, $2, $3, $4, CURRENT_TIMESTAMP
 				WHERE NOT EXISTS (SELECT id FROM upsert)
 				RETURNING id
@@ -64,10 +65,13 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 			SELECT id FROM inserted;
 		`, hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu).Scan(&ownerID)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("inserting machine entry: %w", err)
+		}
+		if ownerID == nil {
+			return nil, xerrors.Errorf("no owner id")
 		}
 
-		reg.MachineID = ownerID
+		reg.MachineID = *ownerID
 
 		cleaned := CleanupMachines(context.Background(), db)
 		logger.Infow("Cleaned up machines", "count", cleaned)
@@ -87,9 +91,10 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 
 	return &reg, nil
 }
+
 func CleanupMachines(ctx context.Context, db *harmonydb.DB) int {
 	ct, err := db.Exec(ctx, `DELETE FROM harmony_machines WHERE last_contact < $1`,
-		time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
+		time.Now().Add(-1*LOOKS_DEAD_TIMEOUT).UTC())
 	if err != nil {
 		logger.Warn("unable to delete old machines: ", err)
 	}

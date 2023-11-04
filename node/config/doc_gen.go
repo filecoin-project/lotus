@@ -36,6 +36,14 @@ var Doc = map[string][]DocField{
 
 			Comment: `FULLNODE_API_INFO is the API endpoint for the Lotus daemon.`,
 		},
+		{
+			Name: "StorageRPCSecret",
+			Type: "string",
+
+			Comment: `RPC Secret for the storage subsystem.
+If integrating with lotus-miner this must match the value from
+cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey`,
+		},
 	},
 	"Backup": {
 		{
@@ -745,18 +753,6 @@ over the worker address if this flag is set.`,
 		{
 			Name: "Proving",
 			Type: "ProvingConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "SealingParams",
-			Type: "SealingConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "SealerConfig",
-			Type: "//",
 
 			Comment: ``,
 		},
