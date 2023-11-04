@@ -3,6 +3,8 @@ package lpwindow
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 
 	"golang.org/x/xerrors"
 
@@ -32,6 +34,7 @@ type WdPoStSubmitTaskApi interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 
 	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)
 	GasEstimateGasPremium(_ context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
@@ -71,14 +74,14 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	var spID uint64
 	var deadline uint64
 	var partition uint64
-	var submitAtEpoch, submitByEpoch abi.ChainEpoch
-	var proofParamBytes []byte
+	var pps, submitAtEpoch, submitByEpoch abi.ChainEpoch
+	var earlyParamBytes []byte
 	var dbTask uint64
 
 	err = w.db.QueryRow(
-		context.Background(), `select sp_id, deadline, partition, submit_at_epoch, submit_by_epoch, proof_message, submit_task_id
-		from wdpost_proofs where sp_id = $1 and deadline = $2 and partition = $3`, spID, deadline, partition,
-	).Scan(&spID, &deadline, &partition, &submitAtEpoch, &submitByEpoch, &proofParamBytes, &dbTask)
+		context.Background(), `select sp_id, proving_period_start, deadline, partition, submit_at_epoch, submit_by_epoch, proof_message, submit_task_id
+		from wdpost_proofs where submit_task_id = $1`, taskID,
+	).Scan(&spID, &pps, &deadline, &partition, &submitAtEpoch, &submitByEpoch, &earlyParamBytes, &dbTask)
 	if err != nil {
 		return false, xerrors.Errorf("query post proof: %w", err)
 	}
@@ -103,9 +106,29 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 		return false, xerrors.Errorf("submit epoch not reached: %d < %d", head.Height(), submitAtEpoch)
 	}
 
+	dlInfo := wdpost.NewDeadlineInfo(pps, deadline, head.Height())
+
 	var params miner.SubmitWindowedPoStParams
-	if err := params.UnmarshalCBOR(bytes.NewReader(proofParamBytes)); err != nil {
+	if err := params.UnmarshalCBOR(bytes.NewReader(earlyParamBytes)); err != nil {
 		return false, xerrors.Errorf("unmarshaling proof message: %w", err)
+	}
+
+	commEpoch := dlInfo.Challenge
+
+	commRand, err := w.api.StateGetRandomnessFromTickets(context.Background(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil, head.Key())
+	if err != nil {
+		err = xerrors.Errorf("failed to get chain randomness from tickets for windowPost (epoch=%d): %w", commEpoch, err)
+		log.Errorf("submitPoStMessage failed: %+v", err)
+
+		return false, xerrors.Errorf("getting post commit randomness: %w", err)
+	}
+
+	params.ChainCommitEpoch = commEpoch
+	params.ChainCommitRand = commRand
+
+	var pbuf bytes.Buffer
+	if err := params.MarshalCBOR(&pbuf); err != nil {
+		return false, xerrors.Errorf("marshaling proof message: %w", err)
 	}
 
 	maddr, err := address.NewIDAddress(spID)
@@ -121,7 +144,7 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	msg := &types.Message{
 		To:     maddr,
 		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
-		Params: proofParamBytes,
+		Params: pbuf.Bytes(),
 		Value:  big.Zero(),
 
 		From: mi.Worker, // set worker for now for gas estimation
@@ -146,7 +169,7 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 
 	// goodFunds = funds needed for optimal inclusion probability.
 	// minFunds  = funds needed for more speculative inclusion probability.
-	goodFunds := big.Add(msg.RequiredFunds(), msg.Value)
+	goodFunds := big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value)
 	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
 
 	from, _, err := w.as.AddressFor(context.Background(), w.api, mi, api.PoStAddr, goodFunds, minFunds)
@@ -167,7 +190,7 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 
 	// set message_cid in the wdpost_proofs entry
 
-	_, err = w.db.Exec(context.Background(), `update wdpost_proofs set message_cid = $1 where sp_id = $2 and deadline = $3 and partition = $4`, smsg.String(), spID, deadline, partition)
+	_, err = w.db.Exec(context.Background(), `update wdpost_proofs set message_cid = $1 where sp_id = $2 and proving_period_start = $3 and deadline = $4 and partition = $5`, smsg.String(), spID, pps, deadline, partition)
 	if err != nil {
 		return true, xerrors.Errorf("updating wdpost_proofs: %w", err)
 	}
@@ -210,7 +233,7 @@ func (w *WdPostSubmitTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 func (w *WdPostSubmitTask) processHeadChange(ctx context.Context, revert, apply *types.TipSet) error {
 	tf := w.submitPoStTF.Val(ctx)
 
-	qry, err := w.db.Query(ctx, `select sp_id, deadline, partition, submit_at_epoch from wdpost_proofs where submit_task_id is null and submit_at_epoch <= $1`, apply.Height())
+	qry, err := w.db.Query(ctx, `select sp_id, proving_period_start, deadline, partition, submit_at_epoch from wdpost_proofs where submit_task_id is null and submit_at_epoch <= $1`, apply.Height())
 	if err != nil {
 		return err
 	}
@@ -218,18 +241,19 @@ func (w *WdPostSubmitTask) processHeadChange(ctx context.Context, revert, apply 
 
 	for qry.Next() {
 		var spID int64
+		var pps int64
 		var deadline uint64
 		var partition uint64
 		var submitAtEpoch uint64
-		if err := qry.Scan(&spID, &deadline, &partition, &submitAtEpoch); err != nil {
-			return err
+		if err := qry.Scan(&spID, &pps, &deadline, &partition, &submitAtEpoch); err != nil {
+			return xerrors.Errorf("scan submittable posts: %w", err)
 		}
 
 		tf(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, err error) {
 			// update in transaction iff submit_task_id is still null
-			res, err := tx.Exec(`update wdpost_proofs set submit_task_id = $1 where sp_id = $2 and deadline = $3 and partition = $4 and submit_task_id is null`, id, spID, deadline, partition)
+			res, err := tx.Exec(`update wdpost_proofs set submit_task_id = $1 where sp_id = $2 and proving_period_start = $3 and deadline = $4 and partition = $5 and submit_task_id is null`, id, spID, pps, deadline, partition)
 			if err != nil {
-				return false, err
+				return false, xerrors.Errorf("query ready proof: %w", err)
 			}
 			if res != 1 {
 				return false, nil

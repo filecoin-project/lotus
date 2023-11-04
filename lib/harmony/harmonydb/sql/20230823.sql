@@ -19,16 +19,17 @@ comment on column wdpost_partition_tasks.partition_index is 'partition index wit
 
 create table wdpost_proofs
 (
-    sp_id              bigint not null,
-    deadline           bigint not null,
-    partition          bigint not null,
-    submit_at_epoch    bigint not null,
-    submit_by_epoch    bigint not null,
-    proof_message      bytea,
+    sp_id                bigint not null,
+    proving_period_start bigint not null,
+    deadline             bigint not null,
+    partition            bigint not null,
+    submit_at_epoch      bigint not null,
+    submit_by_epoch      bigint not null,
+    proof_message        bytea,
 
-    submit_task_id     bigint not null,
-    message_cid        text not null,
+    submit_task_id       bigint,
+    message_cid          text,
 
     constraint wdpost_proofs_identity_key
-        unique (sp_id, deadline, partition)
+        unique (sp_id, proving_period_start, deadline, partition)
 );

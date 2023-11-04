@@ -162,21 +162,32 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	}
 
 	// Insert into wdpost_proofs table
-	_, err = t.db.Exec(context.Background(),
+	n, err := t.db.Exec(context.Background(),
 		`INSERT INTO wdpost_proofs (
                                sp_id,
+                               proving_period_start,
 	                           deadline,
 	                           partition,
 	                           submit_at_epoch,
 	                           submit_by_epoch,
                                proof_message)
-	    			 VALUES ($1, $2, $3, $4, $5, $6)`,
+	    			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		spID,
+		pps,
 		deadline.Index,
 		partIdx,
 		deadline.Open,
 		deadline.Close,
 		msgbuf.Bytes())
+
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to insert into wdpost_proofs: %v", err)
+		return false, err
+	}
+	if n != 1 {
+		log.Errorf("WdPostTask.Do() failed to insert into wdpost_proofs: %v", err)
+		return false, err
+	}
 
 	return true, nil
 }
@@ -379,7 +390,7 @@ func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIden
 		taskIdent.Partition_index,
 	)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("insert partition task: %w", err)
 	}
 
 	return true, nil

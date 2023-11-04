@@ -77,6 +77,8 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		return cid.Undef, xerrors.Errorf("getting key address: %w", err)
 	}
 
+	msg.From = fromA
+
 	if msg.Nonce != 0 {
 		return cid.Undef, xerrors.Errorf("Send expects message nonce to be 0, was %d", msg.Nonce)
 	}
@@ -107,14 +109,14 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		}
 
 		// get nonce from db
-		var dbNonce uint64
+		var dbNonce *uint64
 		r := tx.QueryRow(`select max(nonce) from message_sends where from_key = $1`, fromA.String())
 		if err := r.Scan(&dbNonce); err != nil {
 			return false, xerrors.Errorf("getting nonce from db: %w", err)
 		}
 
-		if dbNonce+1 > msgNonce {
-			msgNonce = dbNonce + 1
+		if dbNonce != nil && *dbNonce+1 > msgNonce {
+			msgNonce = *dbNonce + 1
 		}
 
 		msg.Nonce = msgNonce
@@ -169,5 +171,5 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 
 	log.Infow("sent message", "cid", sigMsg.Cid(), "from", fromA, "to", msg.To, "nonce", msg.Nonce, "value", msg.Value, "gaslimit", msg.GasLimit)
 
-	return cid.Undef, nil
+	return sigMsg.Cid(), nil
 }
