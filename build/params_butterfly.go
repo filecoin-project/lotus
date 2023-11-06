@@ -57,8 +57,8 @@ const UpgradeThunderHeight = -23
 
 const UpgradeWatermelonHeight = 400
 
-// This fix upgrade only ran on calibrationnet
-const UpgradeWatermelonFixHeight = -100
+// Sanity-check on Butterflynet
+const UpgradeWatermelonFixHeight = 17311
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,

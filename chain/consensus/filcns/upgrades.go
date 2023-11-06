@@ -1922,20 +1922,20 @@ func upgradeActorsV12Common(
 	}
 
 	var manifestCid cid.Cid
-	if initState.NetworkName == "calibrationnet" {
-		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, "calibrationnet-buggy")
+	if initState.NetworkName == "butterflynet" {
+		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, "butterflynet-buggy")
 		if !ok {
-			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
+			return cid.Undef, xerrors.Errorf("didn't find buggy butterflynet bundle")
 		}
 
 		var err error
 		manifestCid, err = bundle.LoadBundle(ctx, writeStore, bytes.NewReader(embedded))
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("failed to load buggy calibnet bundle: %w", err)
+			return cid.Undef, xerrors.Errorf("failed to load buggy butterflynet bundle: %w", err)
 		}
 
 		if manifestCid != calibnetv12BuggyBundle {
-			return cid.Undef, xerrors.Errorf("didn't find expected buggy calibnet bundle manifest: %s != %s", manifestCid, calibnetv12BuggyBundle)
+			return cid.Undef, xerrors.Errorf("didn't find expected buggy butterfly bundle manifest: %s != %s", manifestCid, calibnetv12BuggyBundle)
 		}
 	} else {
 		ok := false
@@ -1976,7 +1976,7 @@ func upgradeActorsV12Common(
 
 //////////////////////
 
-var calibnetv12BuggyMinerCID = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
+var Butterflyv12BuggyMinerCID = cid.MustParse("bafk2bzaceaaztuglvw6pw5xohwfekbw47iyugbyftxrp6hwygsaiu6rebtcty")
 
 func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
@@ -2086,7 +2086,7 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		}
 
 		// This is the hard-coded "buggy" miner actor Code ID
-		if inActor.Code != calibnetv12BuggyMinerCID && inActor.Code != outActor.Code {
+		if inActor.Code != Butterflyv12BuggyMinerCID && inActor.Code != outActor.Code {
 			return xerrors.Errorf("unexpected change in code for actor %s", a)
 		}
 
