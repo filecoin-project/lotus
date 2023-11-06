@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -301,7 +302,7 @@ func TestMigrationNV17(t *testing.T) {
 	minerInfo, err := testClient.StateMinerInfo(ctx, testMiner.ActorAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	spt, err := miner.SealProofTypeFromSectorSize(minerInfo.SectorSize, network.Version17)
+	spt, err := miner.SealProofTypeFromSectorSize(minerInfo.SectorSize, network.Version17, false)
 	require.NoError(t, err)
 
 	preCommitParams := miner9.PreCommitSectorParams{
@@ -760,5 +761,70 @@ waitForProof20:
 	require.NoError(t, err)
 
 	require.Equal(t, v1proof, minerInfo.WindowPoStProofType)
+
+}
+
+func TestMigrationNV21(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	nv21epoch := abi.ChainEpoch(100)
+	testClient, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version20,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version21,
+			Height:    nv21epoch,
+			Migration: filcns.UpgradeActorsV12,
+		},
+		))
+
+	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+
+	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv21epoch+5))
+
+	// Now that we have upgraded, we need to verify:
+	// - Sector info changes executed successfully
+	// - Direct data onboarding correct
+
+	bs := blockstore.NewAPIBlockstore(testClient)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	currTs, err := clientApi.ChainHead(ctx)
+	require.NoError(t, err)
+
+	newStateTree, err := state.LoadStateTree(ctxStore, currTs.Blocks()[0].ParentStateRoot)
+	require.NoError(t, err)
+
+	require.Equal(t, types.StateTreeVersion5, newStateTree.Version())
+
+	// check the system actor
+	systemAct, err := newStateTree.GetActor(builtin.SystemActorAddr)
+	require.NoError(t, err)
+
+	systemCode, ok := actors.GetActorCodeID(actorstypes.Version12, manifest.SystemKey)
+	require.True(t, ok)
+
+	require.Equal(t, systemCode, systemAct.Code)
+
+	systemSt, err := system.Load(ctxStore, systemAct)
+	require.NoError(t, err)
+
+	manifest12Cid, ok := actors.GetManifest(actorstypes.Version12)
+	require.True(t, ok)
+
+	manifest12, err := actors.LoadManifest(ctx, manifest12Cid, ctxStore)
+	require.NoError(t, err)
+	require.Equal(t, manifest12.Data, systemSt.GetBuiltinActors())
+
+	// start post migration checks
+
+	//todo @aayush sector info changes
+
+	//todo @zen Direct data onboarding tests
 
 }

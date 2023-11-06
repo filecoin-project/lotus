@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -15,6 +16,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -627,7 +629,13 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
 	}
 
-	baseFee := ts.Blocks()[0].ParentBaseFee
+	// The tx is located in the parent tipset
+	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
+	if err != nil {
+		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
+	}
+
+	baseFee := parentTs.Blocks()[0].ParentBaseFee
 	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.MaxFeePerGas), big.Int(tx.MaxPriorityFeePerGas), true)
 	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
 
@@ -665,6 +673,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 				continue
 			}
 			for _, topic := range topics {
+				log.Debug("LogsBloom set for ", topic)
 				ethtypes.EthBloomSet(receipt.LogsBloom, topic[:])
 			}
 			l.Data = data
@@ -686,4 +695,46 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	return receipt, nil
+}
+
+func encodeFilecoinParamsAsABI(method abi.MethodNum, codec uint64, params []byte) []byte {
+	buf := []byte{0x86, 0x8e, 0x10, 0xc4} // Native method selector.
+	return append(buf, encodeAsABIHelper(uint64(method), codec, params)...)
+}
+
+func encodeFilecoinReturnAsABI(exitCode exitcode.ExitCode, codec uint64, data []byte) []byte {
+	return encodeAsABIHelper(uint64(exitCode), codec, data)
+}
+
+// Format 2 numbers followed by an arbitrary byte array as solidity ABI. Both our native
+// inputs/outputs follow the same pattern, so we can reuse this code.
+func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
+	const EVM_WORD_SIZE = 32
+
+	// The first two params are "static" numbers. Then, we record the offset of the "data" arg,
+	// then, at that offset, we record the length of the data.
+	//
+	// In practice, this means we have 4 256-bit words back to back where the third arg (the
+	// offset) is _always_ '32*3'.
+	staticArgs := []uint64{param1, param2, EVM_WORD_SIZE * 3, uint64(len(data))}
+	// We always pad out to the next EVM "word" (32 bytes).
+	totalWords := len(staticArgs) + (len(data) / EVM_WORD_SIZE)
+	if len(data)%EVM_WORD_SIZE != 0 {
+		totalWords++
+	}
+	len := totalWords * EVM_WORD_SIZE
+	buf := make([]byte, len)
+	offset := 0
+	// Below, we use copy instead of "appending" to preserve all the zero padding.
+	for _, arg := range staticArgs {
+		// Write each "arg" into the last 8 bytes of each 32 byte word.
+		offset += EVM_WORD_SIZE
+		start := offset - 8
+		binary.BigEndian.PutUint64(buf[start:offset], arg)
+	}
+
+	// Finally, we copy in the data.
+	copy(buf[offset:], data)
+
+	return buf
 }

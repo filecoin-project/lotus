@@ -71,10 +71,10 @@ For other distributions you can find the required dependencies [here.](https://l
 
 #### Go
 
-To build Lotus, you need a working installation of [Go 1.19.12 or higher](https://golang.org/dl/):
+To build Lotus, you need a working installation of [Go 1.20.10 or higher](https://golang.org/dl/):
 
 ```bash
-wget -c https://golang.org/dl/go1.19.12.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+wget -c https://golang.org/dl/go1.20.10.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
 ```
 
 **TIP:**
@@ -132,6 +132,8 @@ Note: The default branch `master` is the dev branch where the latest new feature
    `lotus` will use the `$HOME/.lotus` folder by default for storage (configuration, chain data, wallets, etc). See [advanced options](https://lotus.filecoin.io/lotus/configure/defaults/#environment-variables) for information on how to customize the Lotus folder.
 
 6. You should now have Lotus installed. You can now [start the Lotus daemon and sync the chain](https://lotus.filecoin.io/lotus/install/linux/#start-the-lotus-daemon-and-sync-the-chain).
+
+7. (Optional) Follow the [Setting Up Prometheus and Grafana](https://github.com/filecoin-project/lotus/tree/master/metrics/README.md) guide for detailed instructions on setting up a working monitoring system running against a local running lotus node.
 
 ## License
 

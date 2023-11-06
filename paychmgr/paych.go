@@ -482,7 +482,7 @@ func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address)
 // the data store over the chain state
 func (ca *channelAccessor) laneState(ctx context.Context, state lpaych.State, ch address.Address) (map[uint64]lpaych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
-	//  (but technically dont't need to)
+	//  (but technically don't need to)
 
 	laneCount, err := state.LaneCount()
 	if err != nil {

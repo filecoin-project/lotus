@@ -4,9 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/sealer"
-
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/api"
@@ -16,6 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpwindow"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 

@@ -1920,8 +1920,29 @@ var StateSysActorCIDsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		for name, cid := range actorsCids {
-			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, cid)
+
+		var actorsCidTuples []struct {
+			actorName string
+			actorCid  cid.Cid
+		}
+
+		for name, actorCid := range actorsCids {
+			keyVal := struct {
+				actorName string
+				actorCid  cid.Cid
+			}{
+				actorName: name,
+				actorCid:  actorCid,
+			}
+			actorsCidTuples = append(actorsCidTuples, keyVal)
+		}
+
+		sort.Slice(actorsCidTuples, func(i, j int) bool {
+			return actorsCidTuples[i].actorName < actorsCidTuples[j].actorName
+		})
+
+		for _, keyVal := range actorsCidTuples {
+			_, _ = fmt.Fprintf(tw, "%v\t%v\n", keyVal.actorName, keyVal.actorCid)
 		}
 		return tw.Flush()
 	},

@@ -41,7 +41,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Proof"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Proof")); err != nil {
+	if _, err := cw.WriteString(string("Proof")); err != nil {
 		return err
 	}
 
@@ -65,7 +65,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Voucher"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Voucher")); err != nil {
+	if _, err := cw.WriteString(string("Voucher")); err != nil {
 		return err
 	}
 
@@ -81,7 +81,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Submitted"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Submitted")); err != nil {
+	if _, err := cw.WriteString(string("Submitted")); err != nil {
 		return err
 	}
 
@@ -218,7 +218,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Amount"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Amount")); err != nil {
+	if _, err := cw.WriteString(string("Amount")); err != nil {
 		return err
 	}
 
@@ -234,7 +234,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Target"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Target")); err != nil {
+	if _, err := cw.WriteString(string("Target")); err != nil {
 		return err
 	}
 
@@ -250,7 +250,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Channel"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Channel")); err != nil {
+	if _, err := cw.WriteString(string("Channel")); err != nil {
 		return err
 	}
 
@@ -266,7 +266,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Control"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Control")); err != nil {
+	if _, err := cw.WriteString(string("Control")); err != nil {
 		return err
 	}
 
@@ -282,7 +282,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("NextLane"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("NextLane")); err != nil {
+	if _, err := cw.WriteString(string("NextLane")); err != nil {
 		return err
 	}
 
@@ -298,7 +298,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Settling"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Settling")); err != nil {
+	if _, err := cw.WriteString(string("Settling")); err != nil {
 		return err
 	}
 
@@ -314,7 +314,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Vouchers"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Vouchers")); err != nil {
+	if _, err := cw.WriteString(string("Vouchers")); err != nil {
 		return err
 	}
 
@@ -339,7 +339,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ChannelID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("ChannelID")); err != nil {
+	if _, err := cw.WriteString(string("ChannelID")); err != nil {
 		return err
 	}
 
@@ -350,7 +350,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.ChannelID))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.ChannelID)); err != nil {
+	if _, err := cw.WriteString(string(t.ChannelID)); err != nil {
 		return err
 	}
 
@@ -362,7 +362,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CreateMsg"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("CreateMsg")); err != nil {
+	if _, err := cw.WriteString(string("CreateMsg")); err != nil {
 		return err
 	}
 
@@ -384,7 +384,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Direction"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Direction")); err != nil {
+	if _, err := cw.WriteString(string("Direction")); err != nil {
 		return err
 	}
 
@@ -400,7 +400,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("AddFundsMsg"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("AddFundsMsg")); err != nil {
+	if _, err := cw.WriteString(string("AddFundsMsg")); err != nil {
 		return err
 	}
 
@@ -422,7 +422,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PendingAmount"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PendingAmount")); err != nil {
+	if _, err := cw.WriteString(string("PendingAmount")); err != nil {
 		return err
 	}
 
@@ -438,7 +438,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("AvailableAmount"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("AvailableAmount")); err != nil {
+	if _, err := cw.WriteString(string("AvailableAmount")); err != nil {
 		return err
 	}
 
@@ -454,7 +454,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PendingAvailableAmount"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PendingAvailableAmount")); err != nil {
+	if _, err := cw.WriteString(string("PendingAvailableAmount")); err != nil {
 		return err
 	}
 
@@ -606,13 +606,32 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				var v VoucherInfo
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
+					{
+
+						b, err := cr.ReadByte()
+						if err != nil {
+							return err
+						}
+						if b != cbg.CborNull[0] {
+							if err := cr.UnreadByte(); err != nil {
+								return err
+							}
+							t.Vouchers[i] = new(VoucherInfo)
+							if err := t.Vouchers[i].UnmarshalCBOR(cr); err != nil {
+								return xerrors.Errorf("unmarshaling t.Vouchers[i] pointer: %w", err)
+							}
+						}
+
+					}
 				}
-
-				t.Vouchers[i] = &v
 			}
 
 			// t.ChannelID (string) (string)
@@ -746,7 +765,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Err"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Err")); err != nil {
+	if _, err := cw.WriteString(string("Err")); err != nil {
 		return err
 	}
 
@@ -757,7 +776,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Err))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Err)); err != nil {
+	if _, err := cw.WriteString(string(t.Err)); err != nil {
 		return err
 	}
 
@@ -769,7 +788,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("MsgCid"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("MsgCid")); err != nil {
+	if _, err := cw.WriteString(string("MsgCid")); err != nil {
 		return err
 	}
 
@@ -785,7 +804,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Received"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Received")); err != nil {
+	if _, err := cw.WriteString(string("Received")); err != nil {
 		return err
 	}
 
@@ -801,7 +820,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ChannelID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("ChannelID")); err != nil {
+	if _, err := cw.WriteString(string("ChannelID")); err != nil {
 		return err
 	}
 
@@ -812,7 +831,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.ChannelID))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.ChannelID)); err != nil {
+	if _, err := cw.WriteString(string(t.ChannelID)); err != nil {
 		return err
 	}
 	return nil

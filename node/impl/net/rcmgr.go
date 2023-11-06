@@ -36,7 +36,7 @@ func (a *NetAPI) NetStat(ctx context.Context, scope string) (result api.NetStat,
 		if len(stat.Peers) > 0 {
 			result.Peers = make(map[string]network.ScopeStat, len(stat.Peers))
 			for p, stat := range stat.Peers {
-				result.Peers[p.Pretty()] = stat
+				result.Peers[p.String()] = stat
 			}
 		}
 

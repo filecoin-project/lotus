@@ -106,6 +106,7 @@ var (
 	MpoolAddTsDuration                  = stats.Float64("mpool/addts_ms", "Duration of addTs in mpool", stats.UnitMilliseconds)
 	MpoolAddDuration                    = stats.Float64("mpool/add_ms", "Duration of Add in mpool", stats.UnitMilliseconds)
 	MpoolPushDuration                   = stats.Float64("mpool/push_ms", "Duration of Push in mpool", stats.UnitMilliseconds)
+	MpoolMessageCount                   = stats.Int64("mpool/message_count", "Number of messages in the mpool", stats.UnitDimensionless)
 	BlockPublished                      = stats.Int64("block/published", "Counter for total locally published blocks", stats.UnitDimensionless)
 	BlockReceived                       = stats.Int64("block/received", "Counter for total received blocks", stats.UnitDimensionless)
 	BlockValidationFailure              = stats.Int64("block/failure", "Counter for block validation failures", stats.UnitDimensionless)
@@ -306,6 +307,10 @@ var (
 	MpoolPushDurationView = &view.View{
 		Measure:     MpoolPushDuration,
 		Aggregation: defaultMillisecondsDistribution,
+	}
+	MpoolMessageCountView = &view.View{
+		Measure:     MpoolMessageCount,
+		Aggregation: view.LastValue(),
 	}
 	PeerCountView = &view.View{
 		Measure:     PeerCount,
@@ -770,6 +775,7 @@ var ChainNodeViews = append([]*view.View{
 	MpoolAddTsDurationView,
 	MpoolAddDurationView,
 	MpoolPushDurationView,
+	MpoolMessageCountView,
 	PubsubPublishMessageView,
 	PubsubDeliverMessageView,
 	PubsubRejectMessageView,

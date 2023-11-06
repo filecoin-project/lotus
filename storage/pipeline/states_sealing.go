@@ -17,7 +17,6 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
@@ -232,6 +232,7 @@ func retrySoftErr(ctx context.Context, cb func() error) error {
 				fallthrough
 			case storiface.ErrTempAllocateSpace:
 				// retry
+				log.Errorw("retrying soft error", "err", err, "code", cerr.ErrCode())
 			default:
 				// non-temp error
 				return err
@@ -399,7 +400,12 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 	}
 
 	// Assume: both precommit msg & commit msg land on chain as early as possible
-	maxExpiration := ts.Height() + policy.GetPreCommitChallengeDelay() + policy.GetMaxSectorExpirationExtension()
+	maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
+	if err != nil {
+		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get max extension: %w", err)})
+	}
+
+	maxExpiration := ts.Height() + policy.GetPreCommitChallengeDelay() + maxExtension
 	if expiration > maxExpiration {
 		expiration = maxExpiration
 	}
@@ -630,6 +636,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 		porepProof, err = m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
 		if err != nil {
+			log.Errorw("Commit2 error", "error", err)
 			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
 		}
 	} else {

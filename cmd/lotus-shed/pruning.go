@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -144,13 +144,6 @@ var stateTreePruneCmd = &cli.Command{
 			}
 		}()
 
-		// After migrating to native blockstores, this has been made
-		// database-specific.
-		badgbs, ok := bs.(*badgerbs.Blockstore)
-		if !ok {
-			return fmt.Errorf("only badger blockstores are supported")
-		}
-
 		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
@@ -160,8 +153,12 @@ var stateTreePruneCmd = &cli.Command{
 		const DiscardRatio = 0.2
 		if cctx.Bool("only-ds-gc") {
 			fmt.Println("running datastore gc....")
+			gbs, ok := bs.(blockstore.BlockstoreGCOnce)
+			if !ok {
+				return xerrors.Errorf("blockstore %T does not support GC", bs)
+			}
 			for i := 0; i < cctx.Int("gc-count"); i++ {
-				if err := badgbs.DB().RunValueLogGC(DiscardRatio); err != nil {
+				if err := gbs.GCOnce(ctx, blockstore.WithThreshold(DiscardRatio)); err != nil {
 					return xerrors.Errorf("datastore GC failed: %w", err)
 				}
 			}
@@ -208,13 +205,6 @@ var stateTreePruneCmd = &cli.Command{
 			return nil
 		}
 
-		b := badgbs.DB().NewWriteBatch()
-		defer b.Cancel()
-
-		markForRemoval := func(c cid.Cid) error {
-			return b.Delete(badgbs.StorageKey(nil, c))
-		}
-
 		keys, err := bs.AllKeysChan(context.Background())
 		if err != nil {
 			return xerrors.Errorf("failed to query blockstore: %w", err)
@@ -225,12 +215,12 @@ var stateTreePruneCmd = &cli.Command{
 		var deleteCount int
 		var goodHits int
 		for k := range keys {
-			if goodSet.HasRaw(k.Bytes()) {
+			if goodSet.Has(k) {
 				goodHits++
 				continue
 			}
 
-			if err := markForRemoval(k); err != nil {
+			if err := bs.DeleteBlock(ctx, k); err != nil {
 				return fmt.Errorf("failed to remove cid %s: %w", k, err)
 			}
 
@@ -243,13 +233,15 @@ var stateTreePruneCmd = &cli.Command{
 			}
 		}
 
-		if err := b.Flush(); err != nil {
-			return xerrors.Errorf("failed to flush final batch delete: %w", err)
+		fmt.Println("running datastore gc....")
+		gbs, ok := bs.(blockstore.BlockstoreGCOnce)
+		if !ok {
+			fmt.Println("gc not supported...")
+			return nil
 		}
 
-		fmt.Println("running datastore gc....")
 		for i := 0; i < cctx.Int("gc-count"); i++ {
-			if err := badgbs.DB().RunValueLogGC(DiscardRatio); err != nil {
+			if err := gbs.GCOnce(ctx, blockstore.WithThreshold(DiscardRatio)); err != nil {
 				return xerrors.Errorf("datastore GC failed: %w", err)
 			}
 		}

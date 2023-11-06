@@ -571,7 +571,7 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 			}
 
 			// no need to record anything here, there are no duplicates in the actors HAMT
-			// iself.
+			// itself.
 			if _, ok := seen[addr]; ok {
 				return nil
 			}
@@ -589,7 +589,7 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 		}
 
 		// no need to record anything here, there are no duplicates in the actors HAMT
-		// iself.
+		// itself.
 		if _, ok := seen[addr]; ok {
 			return nil
 		}

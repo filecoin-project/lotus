@@ -66,10 +66,6 @@ OPTIONS:
    --no-local-storage                                         don't use storageminer repo for sector storage (default: false)
    --gas-premium value                                        set gas premium for initialization messages in AttoFIL (default: "0")
    --from value                                               select which address to send actor creation message from
-   --db-host value                                            Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$LOTUS_DB_HOST]
-   --db-name value                                            (default: "yugabyte") [$LOTUS_DB_NAME]
-   --db-user value                                            (default: "yugabyte") [$LOTUS_DB_USER]
-   --db-password value                                        (default: "yugabyte") [$LOTUS_DB_PASSWORD]
    --help, -h                                                 show help
 ```
 
@@ -227,6 +223,7 @@ COMMANDS:
    propose-change-worker       Propose a worker address change
    confirm-change-worker       Confirm a worker address change
    compact-allocated           compact allocated sectors bitfield
+   move-partitions             move deadline of specified partitions from one to another
    propose-change-beneficiary  Propose a beneficiary address change
    confirm-change-beneficiary  Confirm a beneficiary address change
    help, h                     Shows a list of commands or help for one command
@@ -370,10 +367,26 @@ USAGE:
    lotus-miner actor compact-allocated [command options] [arguments...]
 
 OPTIONS:
-   --mask-last-offset value  Mask sector IDs from 0 to 'higest_allocated - offset' (default: 0)
+   --mask-last-offset value  Mask sector IDs from 0 to 'highest_allocated - offset' (default: 0)
    --mask-upto-n value       Mask sector IDs from 0 to 'n' (default: 0)
    --really-do-it            Actually send transaction performing the action (default: false)
    --help, -h                show help
+```
+
+### lotus-miner actor move-partitions
+```
+NAME:
+   lotus-miner actor move-partitions - move deadline of specified partitions from one to another
+
+USAGE:
+   lotus-miner actor move-partitions [command options] [arguments...]
+
+OPTIONS:
+   --partition-indices value [ --partition-indices value ]  Indices of partitions to update, separated by comma
+   --orig-deadline value                                    Deadline to move partition from (default: 0)
+   --dest-deadline value                                    Deadline to move partition to (default: 0)
+   --really-do-it                                           Actually send transaction performing the action (default: false)
+   --help, -h                                               show help
 ```
 
 ### lotus-miner actor propose-change-beneficiary

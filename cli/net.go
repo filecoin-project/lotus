@@ -282,7 +282,7 @@ var NetDisconnect = &cli.Command{
 				fmt.Println("failure")
 				return err
 			}
-			fmt.Printf("disconnect %s: ", pid.Pretty())
+			fmt.Printf("disconnect %s: ", pid)
 			err = api.NetDisconnect(ctx, pid)
 			if err != nil {
 				fmt.Println("failure")
@@ -312,7 +312,7 @@ var NetConnect = &cli.Command{
 		}
 
 		for _, pi := range pis {
-			fmt.Printf("connect %s: ", pi.ID.Pretty())
+			fmt.Printf("connect %s: ", pi.ID)
 			err := api.NetConnect(ctx, pi)
 			if err != nil {
 				fmt.Println("failure")

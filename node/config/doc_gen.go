@@ -36,6 +36,14 @@ var Doc = map[string][]DocField{
 
 			Comment: `FULLNODE_API_INFO is the API endpoint for the Lotus daemon.`,
 		},
+		{
+			Name: "StorageRPCSecret",
+			Type: "string",
+
+			Comment: `RPC Secret for the storage subsystem.
+If integrating with lotus-miner this must match the value from
+cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey`,
+		},
 	},
 	"Backup": {
 		{
@@ -749,18 +757,6 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 		{
-			Name: "SealingParams",
-			Type: "SealingConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "SealerConfig",
-			Type: "//",
-
-			Comment: ``,
-		},
-		{
 			Name: "Journal",
 			Type: "JournalConfig",
 
@@ -911,6 +907,12 @@ over the worker address if this flag is set.`,
 		{
 			Name: "MaxMarketBalanceAddFee",
 			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaximizeWindowPoStFeeCap",
+			Type: "bool",
 
 			Comment: ``,
 		},
@@ -1072,13 +1074,10 @@ After changing this option, confirm that the new value works in your setup by in
 			Name: "MaxPartitionsPerPoStMessage",
 			Type: "int",
 
-			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
 
 A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
-
-The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-means that a single message can prove at most 10 partitions
-
+//
 Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 
@@ -1369,7 +1368,7 @@ required to have expiration of at least the soonest-ending deal`,
 
 			Comment: `CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 live before it must be extended or converted into sector containing deals before it is
-terminated. Value must be between 180-540 days inclusive`,
+terminated. Value must be between 180-1278 days (1278 in nv21, 540 before nv21).`,
 		},
 		{
 			Name: "WaitDealsDelay",
@@ -1514,6 +1513,12 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 
 			Comment: ``,
 		},
+		{
+			Name: "UseSyntheticPoRep",
+			Type: "bool",
+
+			Comment: `UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.`,
+		},
 	},
 	"Splitstore": {
 		{
@@ -1521,7 +1526,7 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 			Type: "string",
 
 			Comment: `ColdStoreType specifies the type of the coldstore.
-It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.`,
+It can be "discard" (default) for discarding cold blocks, "messages" to store only messages or "universal" to store all chain state..`,
 		},
 		{
 			Name: "HotStoreType",

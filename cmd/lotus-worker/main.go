@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -348,6 +349,18 @@ var runCmd = &cli.Command{
 		// Connect to storage-miner
 		ctx := lcli.ReqContext(cctx)
 
+		// Create a new context with cancel function
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		// Listen for interrupt signals
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
+			cancel()
+		}()
+
 		var nodeApi api.StorageMiner
 		var closer func()
 		for {
@@ -359,14 +372,13 @@ var runCmd = &cli.Command{
 				}
 			}
 			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
-			time.Sleep(time.Second)
-			continue
+			select {
+			case <-ctx.Done():
+				return xerrors.New("Interrupted by user")
+			case <-time.After(time.Second):
+			}
 		}
-
 		defer closer()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
 		// Register all metric views
 		if err := view.Register(
 			metrics.DefaultViews...,
@@ -627,7 +639,7 @@ var runCmd = &cli.Command{
 			Storage:    lr,
 		}
 
-		log.Info("Setting up control endpoint at " + address)
+		log.Info("Setting up control endpoint at " + newAddress)
 
 		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
 		if err != nil {
@@ -652,13 +664,13 @@ var runCmd = &cli.Command{
 			log.Warn("Graceful shutdown successful")
 		}()
 
-		nl, err := net.Listen("tcp", address)
+		nl, err := net.Listen("tcp", newAddress)
 		if err != nil {
 			return err
 		}
 
 		{
-			a, err := net.ResolveTCPAddr("tcp", address)
+			a, err := net.ResolveTCPAddr("tcp", newAddress)
 			if err != nil {
 				return xerrors.Errorf("parsing address: %w", err)
 			}
@@ -739,7 +751,7 @@ var runCmd = &cli.Command{
 
 					select {
 					case <-readyCh:
-						if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
+						if err := nodeApi.WorkerConnect(ctx, "http://"+newAddress+"/rpc/v0"); err != nil {
 							log.Errorf("Registering worker failed: %+v", err)
 							cancel()
 							return
@@ -801,15 +813,13 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	}
 
 	minerIP, _ := maddr.ValueForProtocol(multiaddr.P_IP6)
+	if minerIP == "" {
+		minerIP, _ = maddr.ValueForProtocol(multiaddr.P_IP4)
+	}
 	minerPort, _ := maddr.ValueForProtocol(multiaddr.P_TCP)
 
-	// Check if the IP is IPv6 and format the address appropriately
-	var addressToDial string
-	if ip := net.ParseIP(minerIP); ip.To4() == nil && ip.To16() != nil {
-		addressToDial = "[" + minerIP + "]:" + minerPort
-	} else {
-		addressToDial = minerIP + ":" + minerPort
-	}
+	// Format the address appropriately
+	addressToDial := net.JoinHostPort(minerIP, minerPort)
 
 	conn, err := net.DialTimeout("tcp", addressToDial, timeout)
 	if err != nil {

@@ -3,6 +3,14 @@ package lpwindow
 import (
 	"bytes"
 	"context"
+	"sort"
+	"sync"
+	"time"
+
+	"github.com/ipfs/go-cid"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -12,16 +20,11 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/build"
 	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-	"github.com/ipfs/go-cid"
-	"go.uber.org/multierr"
-	"golang.org/x/xerrors"
-	"sort"
-	"sync"
-	"time"
 )
 
 const disablePreChecks = false // todo config
