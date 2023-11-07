@@ -842,16 +842,6 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
 
-	tsParent, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, ts.Height()+1, a.Chain.GetHeaviestTipSet().Key())
-	if err != nil {
-		return nil, xerrors.Errorf("cannot get tipset at height: %v", ts.Height()+1)
-	}
-
-	msgs, err := a.ChainGetParentMessages(ctx, tsParent.Blocks()[0].Cid())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get parent messages: %w", err)
-	}
-
 	cid, err := ts.Key().Cid()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
@@ -870,11 +860,6 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 			continue
 		}
 
-		// as we include TransactionPosition in the results, lets do sanity checking that the
-		// traces are indeed in the message execution order
-		if ir.Msg.Cid() != msgs[msgIdx].Message.Cid() {
-			return nil, xerrors.Errorf("traces are not in message execution order")
-		}
 		msgIdx++
 
 		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
