@@ -168,3 +168,5 @@ type Allocation = verifregtypes.Allocation
 type AllocationId = verifregtypes.AllocationId
 type Claim = verifregtypes.Claim
 type ClaimId = verifregtypes.ClaimId
+
+const NoAllocationID = verifregtypes.NoAllocationID

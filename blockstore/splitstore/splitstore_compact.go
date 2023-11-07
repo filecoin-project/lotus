@@ -66,8 +66,9 @@ var (
 )
 
 const (
-	batchSize  = 16384
-	cidKeySize = 128
+	batchSize              = 16384
+	cidKeySize             = 128
+	purgeWorkSliceDuration = time.Second
 )
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
@@ -1372,9 +1373,21 @@ func (s *SplitStore) purge(coldr *ColdSetReader, checkpoint *Checkpoint, markSet
 		return err
 	}
 
+	now := time.Now()
+
 	err := coldr.ForEach(func(c cid.Cid) error {
 		batch = append(batch, c)
 		if len(batch) == batchSize {
+			// add some time slicing to the purge as this a very disk I/O heavy operation that
+			// requires write access to txnLk that may starve other operations that require
+			// access to the blockstore.
+			elapsed := time.Since(now)
+			if elapsed > purgeWorkSliceDuration {
+				// work 1 slice, sleep 4 slices, or 20% utilization
+				time.Sleep(4 * elapsed)
+				now = time.Now()
+			}
+
 			return deleteBatch()
 		}
 

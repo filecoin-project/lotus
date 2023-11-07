@@ -167,7 +167,7 @@ func (t walkSchedTaskType) String() string {
 	case dagTask:
 		return "dag"
 	}
-	panic(fmt.Sprintf("unknow task %d", t))
+	panic(fmt.Sprintf("unknown task %d", t))
 }
 
 type walkTask struct {
@@ -656,9 +656,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		}
 
 		if b.Height > 0 {
-			for _, p := range b.Parents {
-				blocksToWalk = append(blocksToWalk, p)
-			}
+			blocksToWalk = append(blocksToWalk, b.Parents...)
 		} else {
 			// include the genesis block
 			cids = append(cids, b.Parents...)

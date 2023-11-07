@@ -554,7 +554,7 @@ workflows:
           [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
           resource_class: 2xlarge
           [[- end]]
-          [[- if (eq $name "wdpost")]]
+          [[- if or (eq $name "wdpost") (eq $name "sector_pledge")]]
           get-params: true
           [[end]]
       [[- end ]][[- end]]
@@ -567,6 +567,8 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
           [[if eq $suite "unit-cli"]]get-params: true[[end]]
+          [[if eq $suite "unit-cli"]]executor: golang-2xl[[end]]
+          [[- if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
       [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"

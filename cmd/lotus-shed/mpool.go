@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/urfave/cli/v2"
 
@@ -43,10 +44,20 @@ var minerSelectMsgsCmd = &cli.Command{
 			return err
 		}
 
+		// Get the size of the mempool
+		pendingMsgs, err := api.MpoolPending(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+		mpoolSize := len(pendingMsgs)
+
+		// Measure the time taken by MpoolSelect
+		startTime := time.Now()
 		msgs, err := api.MpoolSelect(ctx, head.Key(), cctx.Float64("ticket-quality"))
 		if err != nil {
 			return err
 		}
+		duration := time.Since(startTime)
 
 		var totalGas int64
 		for i, f := range msgs {
@@ -64,6 +75,9 @@ var minerSelectMsgsCmd = &cli.Command{
 			totalGas += f.Message.GasLimit
 		}
 
+		// Log the duration, size of the mempool, selected messages and total gas limit of selected messages
+		fmt.Printf("Message selection took %s\n", duration)
+		fmt.Printf("Size of the mempool: %d\n", mpoolSize)
 		fmt.Println("selected messages: ", len(msgs))
 		fmt.Printf("total gas limit of selected messages: %d / %d (%0.2f%%)\n", totalGas, build.BlockGasLimit, 100*float64(totalGas)/float64(build.BlockGasLimit))
 		return nil

@@ -397,26 +397,31 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	}
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	if err != nil || msgLookup == nil {
+	if err != nil {
+		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
+	}
+	if msgLookup == nil {
+		// This is the best we can do. In theory, we could have just not indexed this
+		// transaction, but there's no way to check that here.
 		return nil, nil
 	}
 
 	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 	if err != nil {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
 	var events []types.Event
 	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
 		events, err = a.ChainAPI.ChainGetEvents(ctx, *rct.EventsRoot)
 		if err != nil {
-			return nil, nil
+			return nil, xerrors.Errorf("failed get events for %s", txHash)
 		}
 	}
 
 	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.Chain, a.StateAPI)
 	if err != nil {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
 	}
 
 	return &receipt, nil
@@ -728,10 +733,11 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		}
 
 		rewards, totalGasUsed := calculateRewardsAndGasUsed(rewardPercentiles, txGasRewards)
+		maxGas := build.BlockGasLimit * int64(len(ts.Blocks()))
 
 		// arrays should be reversed at the end
 		baseFeeArray = append(baseFeeArray, ethtypes.EthBigInt(basefee))
-		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(build.BlockGasLimit))
+		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(maxGas))
 		rewardsArray = append(rewardsArray, rewards)
 		oldestBlkHeight = uint64(ts.Height())
 		blocksIncluded++
@@ -942,10 +948,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 				return nil, xerrors.Errorf("failed to decode payload: %w", err)
 			}
 		} else {
-			output, err = handleFilecoinMethodOutput(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
-			if err != nil {
-				return nil, xerrors.Errorf("could not convert output: %w", err)
-			}
+			output = encodeFilecoinReturnAsABI(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
 		}
 
 		t := ethtypes.EthTraceReplayBlockTransaction{

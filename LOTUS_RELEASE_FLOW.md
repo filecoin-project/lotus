@@ -73,7 +73,7 @@ All releases under an odd minor version number indicate **feature releases**. Th
 
 Feature releases include new development and bug fixes. They are not mandatory, but still highly recommended, **as they may contain critical security fixes**. Note that some of these releases may be very small patch releases that include critical hotfixes.  There is no way to distinguish between a bug fix release and a feature release on the "feature" version. Both cases will use the "patch" version number.
 
-We aim to ship a new feature release of the Lotus software from our development (master) branch every 3 weeks, so users can expect a regular cadence of Lotus feature releases. Note that mandatory releases for network upgrades may disrupt this schedule. For more, see the Release Cycle section (TODO: Link).
+We aim to ship a new feature release of the Lotus software from our development (master) branch every 3 weeks, so users can expect a regular cadence of Lotus feature releases. Note that mandatory releases for network upgrades may disrupt this schedule. For more, see the [Release Cycle section](#release-cycle).
 
 ### Examples Scenarios
 

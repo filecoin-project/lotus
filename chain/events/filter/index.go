@@ -481,7 +481,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 }
 
 // PrefillFilter fills a filter's collection of events from the historic index
-func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
+func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter, excludeReverted bool) error {
 	clauses := []string{}
 	values := []any{}
 	joins := []string{}
@@ -498,6 +498,11 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			clauses = append(clauses, "event.height<=?")
 			values = append(values, f.maxHeight)
 		}
+	}
+
+	if excludeReverted {
+		clauses = append(clauses, "event.reverted=?")
+		values = append(values, false)
 	}
 
 	if len(f.addresses) > 0 {

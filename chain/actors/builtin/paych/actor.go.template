@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// Load returns an abstract copy of payment channel state, irregardless of actor version
+// Load returns an abstract copy of payment channel state, regardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
        if name != manifest.PaychKey {

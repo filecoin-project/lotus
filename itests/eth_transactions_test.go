@@ -81,12 +81,16 @@ func TestValueTransferValidSignature(t *testing.T) {
 	receipt, err := waitForEthTxReceipt(ctx, client, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
+	require.EqualValues(t, ethAddr, receipt.From)
+	require.EqualValues(t, ethAddr2, *receipt.To)
+	require.EqualValues(t, hash, receipt.TransactionHash)
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
 
+	// Validate that we sent the expected transaction.
 	ethTx, err := client.EthGetTransactionByHash(ctx, &hash)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.EqualValues(t, ethAddr, ethTx.From)
 	require.EqualValues(t, ethAddr2, *ethTx.To)
 	require.EqualValues(t, tx.ChainID, ethTx.ChainID)
@@ -269,6 +273,17 @@ func TestContractInvocation(t *testing.T) {
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	// Validate that we correctly computed the gas outputs.
+	mCid, err := client.EthGetMessageCidByTransactionHash(ctx, &hash)
+	require.NoError(t, err)
+	require.NotNil(t, mCid)
+
+	invokResult, err := client.StateReplay(ctx, types.EmptyTSK, *mCid)
+	require.NoError(t, err)
+	require.EqualValues(t, invokResult.GasCost.GasUsed, big.NewInt(int64(receipt.GasUsed)))
+	effectiveGasPrice := big.Div(invokResult.GasCost.TotalCost, invokResult.GasCost.GasUsed)
+	require.EqualValues(t, effectiveGasPrice, big.Int(receipt.EffectiveGasPrice))
 }
 
 func TestGetBlockByNumber(t *testing.T) {

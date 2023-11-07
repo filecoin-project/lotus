@@ -217,7 +217,6 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		// todo fetch limit config
 		stor := paths.NewRemote(localStore, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 
 		wstates := statestore.New(dssync.MutexWrap(ds.NewMapDatastore()))

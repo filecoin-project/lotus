@@ -844,7 +844,7 @@ loop:
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
 	if base.IsChildOf(knownParent) {
-		// common case: receiving a block thats potentially part of the same tipset as our best block
+		// common case: receiving a block that's potentially part of the same tipset as our best block
 		return blockSet, nil
 	}
 
@@ -1094,8 +1094,8 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 						requestErr = multierror.Append(requestErr, err)
 					} else {
 						isGood := true
-						for index, ts := range headers[nextI:lastI] {
-							cm := result[index]
+						for index, cm := range result {
+							ts := headers[nextI+index]
 							if err := checkMsgMeta(ts, cm.Bls, cm.Secpk, cm.BlsIncludes, cm.SecpkIncludes); err != nil {
 								log.Errorf("fetched messages not as expected: %s", err)
 								isGood = false
