@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -78,8 +80,8 @@ func fromMiner(cctx *cli.Context) error {
 
 	db, err := harmonydb.NewFromConfig(smCfg.HarmonyDB)
 	if err != nil {
-		return fmt.Errorf("Could not reach the database. Ensure the Miner config toml's HarmonyDB entry" +
-			" is setup to reach Yugabyte correctly.")
+		return fmt.Errorf("could not reach the database. Ensure the Miner config toml's HarmonyDB entry"+
+			" is setup to reach Yugabyte correctly: %w", err)
 	}
 
 	var titles []string
@@ -94,13 +96,14 @@ func fromMiner(cctx *cli.Context) error {
 	}
 	msg := "Layer " + name + ` created. `
 
-	// Step 1: copy over identical settings:
-	buf := &bytes.Buffer{}
-	if err = toml.NewEncoder(buf).Encode(smCfg); err != nil {
-		return err
+	// Copy over identical settings:
+
+	buf, err := os.ReadFile(path.Join(lr.Path(), "config.toml"))
+	if err != nil {
+		return fmt.Errorf("could not read config.toml: %w", err)
 	}
 	var lpCfg config.LotusProviderConfig
-	_, err = toml.Decode(buf.String(), &lpCfg)
+	_, err = toml.Decode(string(buf), &lpCfg)
 	if err != nil {
 		return fmt.Errorf("could not decode toml: %w", err)
 	}
@@ -124,18 +127,18 @@ func fromMiner(cctx *cli.Context) error {
 	// Populate API Key
 	_, header, err := cliutil.GetRawAPI(cctx, repo.FullNode, "v0")
 	if err != nil {
-		return fmt.Errorf("Cannot read API: %w", err)
+		return fmt.Errorf("cannot read API: %w", err)
 	}
 
 	lpCfg.Apis.FULLNODE_API_INFO = []string{header.Get("Authorization")[7:]}
 
-	// Step 4: Enable WindowPoSt
+	// Enable WindowPoSt
 	lpCfg.Subsystems.EnableWindowPost = true
 	msg += `\nBefore running lotus-provider, ensure any miner/worker answering of WindowPost is disabled.\n`
 
-	// Step 5 Express as configTOML
+	// Express as configTOML
 	configTOML := &bytes.Buffer{}
-	if err = toml.NewEncoder(buf).Encode(lpCfg); err != nil {
+	if err = toml.NewEncoder(configTOML).Encode(lpCfg); err != nil {
 		return err
 	}
 
