@@ -6,7 +6,7 @@ create table message_sends
     signed_data  bytea              not null,
     signed_json  jsonb              not null,
     signed_cid   text               not null,
-    send_time    date default CURRENT_TIMESTAMP,
+    send_time    timestamp default CURRENT_TIMESTAMP,
     send_reason  text,
     send_success bool default false not null,
     constraint message_sends_pk
