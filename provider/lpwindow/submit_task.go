@@ -79,7 +79,7 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	var dbTask uint64
 
 	err = w.db.QueryRow(
-		context.Background(), `SELECT sp_id, proving_period_start, deadline, partition, submit_at_epoch, submit_by_epoch, proof_message, submit_task_id
+		context.Background(), `SELECT sp_id, proving_period_start, deadline, partition, submit_at_epoch, submit_by_epoch, proof_params, submit_task_id
 		FROM wdpost_proofs WHERE submit_task_id = $1`, taskID,
 	).Scan(&spID, &pps, &deadline, &partition, &submitAtEpoch, &submitByEpoch, &earlyParamBytes, &dbTask)
 	if err != nil {

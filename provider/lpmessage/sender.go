@@ -157,6 +157,8 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 	// push to mpool
 	_, err = s.api.MpoolPush(ctx, sigMsg)
 	if err != nil {
+		// TODO: We may get nonce gaps here..
+
 		return cid.Undef, xerrors.Errorf("mpool push: failed to push message: %w", err)
 	}
 

@@ -170,7 +170,7 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	                           partition,
 	                           submit_at_epoch,
 	                           submit_by_epoch,
-                               proof_message)
+                               proof_params)
 	    			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		spID,
 		pps,

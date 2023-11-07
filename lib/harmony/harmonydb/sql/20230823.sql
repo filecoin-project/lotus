@@ -25,7 +25,7 @@ create table wdpost_proofs
     partition            bigint not null,
     submit_at_epoch      bigint not null,
     submit_by_epoch      bigint not null,
-    proof_message        bytea,
+    proof_params         bytea,
 
     submit_task_id       bigint,
     message_cid          text,
