@@ -132,7 +132,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    FlagRepoPath,
 				EnvVars: []string{"LOTUS_REPO_PATH"},
-				Value:   "~/.lotus",
+				Value:   "~/.lotusprovider",
 			},
 			cliutil.FlagVeryVerbose,
 		},
