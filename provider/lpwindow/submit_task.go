@@ -79,8 +79,8 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	var dbTask uint64
 
 	err = w.db.QueryRow(
-		context.Background(), `select sp_id, proving_period_start, deadline, partition, submit_at_epoch, submit_by_epoch, proof_message, submit_task_id
-		from wdpost_proofs where submit_task_id = $1`, taskID,
+		context.Background(), `SELECT sp_id, proving_period_start, deadline, partition, submit_at_epoch, submit_by_epoch, proof_message, submit_task_id
+		FROM wdpost_proofs WHERE submit_task_id = $1`, taskID,
 	).Scan(&spID, &pps, &deadline, &partition, &submitAtEpoch, &submitByEpoch, &earlyParamBytes, &dbTask)
 	if err != nil {
 		return false, xerrors.Errorf("query post proof: %w", err)
@@ -190,7 +190,7 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 
 	// set message_cid in the wdpost_proofs entry
 
-	_, err = w.db.Exec(context.Background(), `update wdpost_proofs set message_cid = $1 where sp_id = $2 and proving_period_start = $3 and deadline = $4 and partition = $5`, smsg.String(), spID, pps, deadline, partition)
+	_, err = w.db.Exec(context.Background(), `UPDATE wdpost_proofs SET message_cid = $1 WHERE sp_id = $2 AND proving_period_start = $3 AND deadline = $4 AND partition = $5`, smsg.String(), spID, pps, deadline, partition)
 	if err != nil {
 		return true, xerrors.Errorf("updating wdpost_proofs: %w", err)
 	}
@@ -233,7 +233,7 @@ func (w *WdPostSubmitTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 func (w *WdPostSubmitTask) processHeadChange(ctx context.Context, revert, apply *types.TipSet) error {
 	tf := w.submitPoStTF.Val(ctx)
 
-	qry, err := w.db.Query(ctx, `select sp_id, proving_period_start, deadline, partition, submit_at_epoch from wdpost_proofs where submit_task_id is null and submit_at_epoch <= $1`, apply.Height())
+	qry, err := w.db.Query(ctx, `SELECT sp_id, proving_period_start, deadline, partition, submit_at_epoch FROM wdpost_proofs WHERE submit_task_id IS NULL AND submit_at_epoch <= $1`, apply.Height())
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func (w *WdPostSubmitTask) processHeadChange(ctx context.Context, revert, apply 
 
 		tf(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, err error) {
 			// update in transaction iff submit_task_id is still null
-			res, err := tx.Exec(`update wdpost_proofs set submit_task_id = $1 where sp_id = $2 and proving_period_start = $3 and deadline = $4 and partition = $5 and submit_task_id is null`, id, spID, pps, deadline, partition)
+			res, err := tx.Exec(`UPDATE wdpost_proofs SET submit_task_id = $1 WHERE sp_id = $2 AND proving_period_start = $3 AND deadline = $4 AND partition = $5 AND submit_task_id IS NULL`, id, spID, pps, deadline, partition)
 			if err != nil {
 				return false, xerrors.Errorf("query ready proof: %w", err)
 			}
