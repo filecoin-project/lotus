@@ -29,6 +29,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
+// The address used in messages to actors that have since been deleted.
+//
+// 0xff0000000000000000000000ffffffffffffffff
+var revertedEthAddress ethtypes.EthAddress
+
+func init() {
+	revertedEthAddress[0] = 0xff
+	for i := 20 - 8; i < 20; i++ {
+		revertedEthAddress[i] = 0xff
+	}
+}
+
 func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
 		return nil, fmt.Errorf("block param \"earliest\" is not supported")
@@ -463,13 +475,19 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to calculate hash for ethTx: %w", err)
 		}
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
-		tx = ethTxFromNativeMessage(smsg.VMMessage(), st)
+		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
+		if err != nil {
+			return ethtypes.EthTx{}, err
+		}
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
 		if err != nil {
 			return ethtypes.EthTx{}, err
 		}
 	} else { // BLS Filecoin message
-		tx = ethTxFromNativeMessage(smsg.VMMessage(), st)
+		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
+		if err != nil {
+			return ethtypes.EthTx{}, err
+		}
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
 		if err != nil {
 			return ethtypes.EthTx{}, err
@@ -482,19 +500,33 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 // Convert a native message to an eth transaction.
 //
 //   - The state-tree must be from after the message was applied (ideally the following tipset).
+//   - In some cases, the "to" address may be `0xff0000000000000000000000ffffffffffffffff`. This
+//     means that the "to" address has not been assigned in the passed state-tree and can only
+//     happen if the transaction reverted.
 //
 // ethTxFromNativeMessage does NOT populate:
 // - BlockHash
 // - BlockNumber
 // - TransactionIndex
 // - Hash
-func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) ethtypes.EthTx {
-	// We don't care if we error here, conversion is best effort for non-eth transactions
-	from, _ := lookupEthAddress(msg.From, st)
-	to, _ := lookupEthAddress(msg.To, st)
+func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.EthTx, error) {
+	// Lookup the from address. This must succeed.
+	from, err := lookupEthAddress(msg.From, st)
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup sender address %s when converting a native message to an eth txn: %w", msg.From, err)
+	}
+	// Lookup the to address. If the recipient doesn't exist, we replace the address with a
+	// known sentinel address.
+	to, err := lookupEthAddress(msg.To, st)
+	if err != nil {
+		if !errors.Is(err, types.ErrActorNotFound) {
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup receiver address %s when convertin a native message to an eth txn: %w", msg.To, err)
+		}
+		to = revertedEthAddress
+	}
 	toPtr := &to
 
-	// Convert the input parameters to "solidity ABI".
+	// Finally, convert the input parameters to "solidity ABI".
 
 	// For empty, we use "0" as the codec. Otherwise, we use CBOR for message
 	// parameters.
@@ -536,7 +568,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) ethtypes.Et
 		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
 		AccessList:           []ethtypes.EthHash{},
-	}
+	}, nil
 }
 
 func getSignedMessage(ctx context.Context, cs *store.ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {
