@@ -65,6 +65,7 @@ Each repository has its own set of steps that need to be followed. This guide wi
             - Add `UpgradeXxxxxHeight = getUpgradeHeight("LOTUS_XXXXX_HEIGHT", UpgradeXXXXHeight)`
             - Set `const GenesisNetworkVersion = network.VersionXX` where XX is the network version you are upgrading from.
         - `params_butterfly.go`
+            - set previous upgrade to `var UpgradeXxxxxHeigh = abi.ChainEpoch(-xx-1)`
             - Add comment with ?????? signaling that the new upgrade date is unkown
             - Add `const UpgradeXxxxxHeight = 999999999999999`
         - `params_calibnet.go`
