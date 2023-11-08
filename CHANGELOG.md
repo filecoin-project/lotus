@@ -2,7 +2,7 @@
 
 # v 1.25.0-rc4 / 2023-11-08
 
-This is the fifth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the fourth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 ## Calibration Testnet WatermelonFix Upgrade Recovery
 
