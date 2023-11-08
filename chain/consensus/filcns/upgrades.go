@@ -2063,6 +2063,19 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		return cid.Undef, xerrors.Errorf("failed to perform migration: %w", err)
 	}
 
+	systemState.BuiltinActors = newManifest.Data
+	newSystemHead, err := adtStore.Put(ctx, systemState)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to put new system state: %w", err)
+	}
+
+	systemActor.Head = newSystemHead
+	if err = actorsOut.SetActor(builtin.SystemActorAddr, systemActor); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to put new system actor: %w", err)
+	}
+
+	// Sanity checking
+
 	err = actorsIn.ForEach(func(a address.Address, inActor *types.Actor) error {
 		outActor, err := actorsOut.GetActor(a)
 		if err != nil {

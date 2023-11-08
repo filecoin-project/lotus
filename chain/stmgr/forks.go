@@ -177,7 +177,7 @@ func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, err
 func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
 	retCid := root
 	u := sm.stateMigrations[height]
-	if u != nil && u.upgrade != nil {
+	if u != nil && u.upgrade != nil && height != build.UpgradeWatermelonFixHeight {
 		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
 		if err == nil {
 			if ok {
