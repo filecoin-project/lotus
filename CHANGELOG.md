@@ -1,12 +1,24 @@
 # Lotus changelog
 
-# 1.24.0-rc4 / 2023-11-02
+# 1.24.0-rc5 / 2023-11-08
 
-This is the 4th release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
+This is the 5th release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
+
+
+## Calibration Testnet WatermelonFix Upgrade Recovery
+
+The Calibration Testnet halted 60 epochs after the WatermelonFix upgrade, we believe the cause is the new fixed miner actor CID isn't registered in the system actor state. Fortunately, this could be fixedby winding back the time prior to the upgrade, and reperform the migration with new miner actor CID registered in the system actor state. We would like to ask all calibrationnet node operators to run the following:
+- Upgrade your nodes and miners to v1.24.0-rc5
+- Shut down your daemon and restart it (miners too if applicable)
+
+Please reach out to us in #fil-net-calibration-discuss if you have any questions!
+
+
+
+-----------------
 
 This release candidate also sets an upgrade epoch for mainnet at `3431940` 2023-11-29T13:30:00Z.
 
-**It includes a patch for the calibration testnet to fix an issue where partitions with expired sectors had to be compacted before they could be moved. Unfortunately, this bug impacts consensus and necessitates a coordinated upgrade on the Calibration network to deploy the new code. The calibration network is scheduled to upgrade all miner actors to the new, fixed miner actor CID at epoch 1070494, which is expected to occur at 2023-11-07T13:00:00Z.**
 
 The Filecoin network version 21 delivers the following FIPs:
 
