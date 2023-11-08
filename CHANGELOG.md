@@ -1,14 +1,18 @@
 # Lotus changelog
 
-# v 1.25.0-rc3 / 2023-11-02
+# v 1.25.0-rc4 / 2023-11-08
 
-This is the second release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the fifth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
-This release candidate also sets an upgrade epoch for mainnet at 3431940 2023-11-29T13:30:00Z.
+## Calibration Testnet WatermelonFix Upgrade Recovery
 
-It includes a patch for the calibration testnet to fix an issue where partitions with expired sectors had to be compacted before they could be moved. Unfortunately, this bug impacts consensus and necessitates a coordinated upgrade on the Calibration network to deploy the new code. The calibration network is scheduled to upgrade all miner actors to the new, fixed miner actor CID at epoch 1070494, which is expected to occur at 2023-11-07T13:00:00Z.
+The Calibration Testnet halted 60 epochs after the WatermelonFix upgrade, we believe the cause is the new fixed miner actor CID isn't registered in the system actor state. Fortunately, this could be fixedby winding back the time prior to the upgrade, and reperform the migration with new miner actor CID registered in the system actor state. We would like to ask all calibrationnet node operators to run the following:
+- Upgrade your nodes and miners to v1.25.0-rc4
+- Shut down your daemon and restart it (miners too if applicable)
 
-Make sure to check out the release log for [Lotus v1.24.0-rc4](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc4) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
+Please reach out to us in #fil-net-calibration-discuss if you have any questions!
+
+Make sure to check out the release log for [Lotus v1.24.0-rc5](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc5) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
 
 ## ☢️ Upgrade Warnings ☢️
 
