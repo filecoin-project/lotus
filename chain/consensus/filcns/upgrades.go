@@ -2064,7 +2064,7 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 	}
 
 	systemState.BuiltinActors = newManifest.Data
-	newSystemHead, err := adtStore.Put(ctx, systemState)
+	newSystemHead, err := adtStore.Put(ctx, &systemState)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to put new system state: %w", err)
 	}
@@ -2094,7 +2094,7 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 			return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
 		}
 
-		if inActor.Head != outActor.Head {
+		if inActor.Head != outActor.Head && a != builtin.SystemActorAddr {
 			return xerrors.Errorf("mismatched head for actor %s", a)
 		}
 
