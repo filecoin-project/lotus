@@ -9,7 +9,6 @@ This is the 5th release candidate of the upcoming **MANDATORY Lotus v1.24.0** re
 
 The Calibration Testnet halted 60 epochs after the WatermelonFix upgrade, we believe the cause is the new fixed miner actor CID isn't registered in the system actor state. Fortunately, this could be fixedby winding back the time prior to the upgrade, and reperform the migration with new miner actor CID registered in the system actor state. We would like to ask all calibrationnet node operators to run the following:
 - Upgrade your nodes and miners to v1.24.0-rc5
-- Run `./lotus chain sethead --epoch=1070490`
 - Shut down your daemon and restart it (miners too if applicable)
 
 Please reach out to us in #fil-net-calibration-discuss if you have any questions!
