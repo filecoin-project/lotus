@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
@@ -81,12 +80,37 @@ type wdTaskIdentity struct {
 	Partition_index      uint64
 }
 
+func NewWdPostTask(db *harmonydb.DB,
+	api WDPoStAPI,
+	faultTracker sealer.FaultTracker,
+	prover ProverPoSt,
+	verifier storiface.Verifier,
+
+	pcs *chainsched.ProviderChainSched,
+	actors []dtypes.MinerAddress,
+	max int,
+) (*WdPostTask, error) {
+	t := &WdPostTask{
+		db:  db,
+		api: api,
+
+		faultTracker: faultTracker,
+		prover:       prover,
+		verifier:     verifier,
+
+		actors: actors,
+		max:    max,
+	}
+
+	if err := pcs.AddHandler(t.processHeadChange); err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}
+
 func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
-
-	log.Errorw("WDPOST DO", "taskID", taskID)
-
-	time.Sleep(5 * time.Second)
-	log.Errorf("WdPostTask.Do() called with taskID: %v", taskID)
+	log.Debugw("WdPostTask.Do()", "taskID", taskID)
 
 	var spID, pps, dlIdx, partIdx uint64
 
@@ -138,58 +162,32 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	}
 
 	// Insert into wdpost_proofs table
-	_, err = t.db.Exec(context.Background(),
+	n, err := t.db.Exec(context.Background(),
 		`INSERT INTO wdpost_proofs (
                                sp_id,
+                               proving_period_start,
 	                           deadline,
 	                           partition,
 	                           submit_at_epoch,
 	                           submit_by_epoch,
-                               proof_message)
-	    			 VALUES ($1, $2, $3, $4, $5, $6)`,
+                               proof_params)
+	    			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		spID,
+		pps,
 		deadline.Index,
 		partIdx,
 		deadline.Open,
 		deadline.Close,
 		msgbuf.Bytes())
 
-	/*submitWdPostParams, err := t.Scheduler.runPoStCycle(context.Background(), false, deadline, ts)
-		if err != nil {
-			log.Errorf("WdPostTask.Do() failed to runPoStCycle: %v", err)
-			return false, err
-		}
-
-		log.Errorf("WdPostTask.Do() called with taskID: %v, submitWdPostParams: %v", taskID, submitWdPostParams)
-
-		// Enter an entry for each wdpost message proof into the wdpost_proofs table
-		for _, params := range submitWdPostParams {
-
-			// Convert submitWdPostParams.Partitions to a byte array using CBOR
-			buf := new(bytes.Buffer)
-			scratch := make([]byte, 9)
-			if err := cbg.WriteMajorTypeHeaderBuf(scratch, buf, cbg.MajArray, uint64(len(params.Partitions))); err != nil {
-				return false, err
-			}
-			for _, v := range params.Partitions {
-				if err := v.MarshalCBOR(buf); err != nil {
-					return false, err
-				}
-			}
-
-			// Insert into wdpost_proofs table
-			_, err = t.db.Exec(context.Background(),
-				`INSERT INTO wdpost_proofs (
-	                           deadline,
-	                           partitions,
-	                           proof_type,
-	                           proof_bytes)
-	    			 VALUES ($1, $2, $3, $4)`,
-				params.Deadline,
-				buf.Bytes(),
-				params.Proofs[0].PoStProof,
-				params.Proofs[0].ProofBytes)
-		}*/
+	if err != nil {
+		log.Errorf("WdPostTask.Do() failed to insert into wdpost_proofs: %v", err)
+		return false, err
+	}
+	if n != 1 {
+		log.Errorf("WdPostTask.Do() failed to insert into wdpost_proofs: %v", err)
+		return false, err
+	}
 
 	return true, nil
 }
@@ -199,9 +197,6 @@ func entToStr[T any](t T, i int) string {
 }
 
 func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-
-	log.Errorw("WDPOST CANACCEPT", "ids", ids)
-
 	// GetEpoch
 	ts, err := t.api.ChainHead(context.Background())
 
@@ -378,35 +373,6 @@ func (t *WdPostTask) processHeadChange(ctx context.Context, revert, apply *types
 	return nil
 }
 
-func NewWdPostTask(db *harmonydb.DB,
-	api WDPoStAPI,
-	faultTracker sealer.FaultTracker,
-	prover ProverPoSt,
-	verifier storiface.Verifier,
-
-	pcs *chainsched.ProviderChainSched,
-	actors []dtypes.MinerAddress,
-	max int,
-) (*WdPostTask, error) {
-	t := &WdPostTask{
-		db:  db,
-		api: api,
-
-		faultTracker: faultTracker,
-		prover:       prover,
-		verifier:     verifier,
-
-		actors: actors,
-		max:    max,
-	}
-
-	if err := pcs.AddHandler(t.processHeadChange); err != nil {
-		return nil, err
-	}
-
-	return t, nil
-}
-
 func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIdentity, tx *harmonydb.Tx) (bool, error) {
 
 	_, err := tx.Exec(
@@ -424,7 +390,7 @@ func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIden
 		taskIdent.Partition_index,
 	)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("insert partition task: %w", err)
 	}
 
 	return true, nil

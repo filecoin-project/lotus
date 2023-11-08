@@ -115,7 +115,7 @@ top:
 
 		defer func() {
 			if r := recover(); r != nil {
-				stackSlice := make([]byte, 512)
+				stackSlice := make([]byte, 4092)
 				sz := runtime.Stack(stackSlice, false)
 				log.Error("Recovered from a serious error "+
 					"while processing "+h.Name+" task "+strconv.Itoa(int(*tID))+": ", r,

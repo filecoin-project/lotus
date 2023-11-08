@@ -6,8 +6,7 @@ CREATE TABLE harmony_machines (
     host_and_port varchar(300) NOT NULL, 
     cpu INTEGER NOT NULL, 
     ram BIGINT NOT NULL, 
-    gpu FLOAT NOT NULL, 
-    gpuram BIGINT NOT NULL
+    gpu FLOAT NOT NULL
 );
 
 CREATE TABLE harmony_task (
