@@ -92,6 +92,15 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 		log.Info("invalid consensus fault: submitted blocks are the same")
 		return ret, totalGas
 	}
+
+	// workaround chain halt
+	if build.IsNearUpgrade(blockA.Height, build.UpgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+	if build.IsNearUpgrade(blockB.Height, build.UpgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?

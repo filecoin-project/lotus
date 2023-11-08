@@ -3,7 +3,6 @@ package resources
 import (
 	"bytes"
 	"context"
-	"golang.org/x/xerrors"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -13,6 +12,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pbnjay/memory"
 	"golang.org/x/sys/unix"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )

@@ -271,7 +271,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Migration: UpgradeActorsV12,
 		PreMigrations: []stmgr.PreMigration{{
 			PreMigration:    PreUpgradeActorsV12,
-			StartWithin:     120,
+			StartWithin:     180,
 			DontStartWithin: 15,
 			StopWithin:      10,
 		}},
@@ -2063,6 +2063,19 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 		return cid.Undef, xerrors.Errorf("failed to perform migration: %w", err)
 	}
 
+	systemState.BuiltinActors = newManifest.Data
+	newSystemHead, err := adtStore.Put(ctx, &systemState)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to put new system state: %w", err)
+	}
+
+	systemActor.Head = newSystemHead
+	if err = actorsOut.SetActor(builtin.SystemActorAddr, systemActor); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to put new system actor: %w", err)
+	}
+
+	// Sanity checking
+
 	err = actorsIn.ForEach(func(a address.Address, inActor *types.Actor) error {
 		outActor, err := actorsOut.GetActor(a)
 		if err != nil {
@@ -2081,7 +2094,7 @@ func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmg
 			return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
 		}
 
-		if inActor.Head != outActor.Head {
+		if inActor.Head != outActor.Head && a != builtin.SystemActorAddr {
 			return xerrors.Errorf("mismatched head for actor %s", a)
 		}
 
