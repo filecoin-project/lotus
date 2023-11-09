@@ -33,3 +33,16 @@ create table wdpost_proofs
     constraint wdpost_proofs_identity_key
         unique (sp_id, proving_period_start, deadline, partition)
 );
+
+create table wdpost_recovery_tasks
+(
+    task_id              bigint not null
+        constraint wdpost_partition_tasks_pk
+            primary key,
+    sp_id                bigint not null,
+    proving_period_start bigint not null,
+    deadline_index       bigint not null,
+    partition_index      bigint not null,
+    constraint wdpost_partition_tasks_identity_key
+        unique (sp_id, proving_period_start, deadline_index, partition_index)
+);

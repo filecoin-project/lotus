@@ -36,6 +36,7 @@ type WdPoStSubmitTaskApi interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 
+	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
 	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)
 	GasEstimateGasPremium(_ context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
 }
@@ -136,51 +137,16 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 		return false, xerrors.Errorf("invalid miner address: %w", err)
 	}
 
-	mi, err := w.api.StateMinerInfo(context.Background(), maddr, types.EmptyTSK)
-	if err != nil {
-		return false, xerrors.Errorf("error getting miner info: %w", err)
-	}
-
 	msg := &types.Message{
 		To:     maddr,
 		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params: pbuf.Bytes(),
 		Value:  big.Zero(),
-
-		From: mi.Worker, // set worker for now for gas estimation
 	}
 
-	// calculate a more frugal estimation; premium is estimated to guarantee
-	// inclusion within 5 tipsets, and fee cap is estimated for inclusion
-	// within 4 tipsets.
-	minGasFeeMsg := *msg
-
-	minGasFeeMsg.GasPremium, err = w.api.GasEstimateGasPremium(context.Background(), 5, msg.From, msg.GasLimit, types.EmptyTSK)
+	msg, mss, err := preparePoStMessage(w.api, w.as, maddr, msg, abi.TokenAmount(w.maxWindowPoStGasFee))
 	if err != nil {
-		log.Errorf("failed to estimate minimum gas premium: %+v", err)
-		minGasFeeMsg.GasPremium = msg.GasPremium
-	}
-
-	minGasFeeMsg.GasFeeCap, err = w.api.GasEstimateFeeCap(context.Background(), &minGasFeeMsg, 4, types.EmptyTSK)
-	if err != nil {
-		log.Errorf("failed to estimate minimum gas fee cap: %+v", err)
-		minGasFeeMsg.GasFeeCap = msg.GasFeeCap
-	}
-
-	// goodFunds = funds needed for optimal inclusion probability.
-	// minFunds  = funds needed for more speculative inclusion probability.
-	goodFunds := big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value)
-	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
-
-	from, _, err := w.as.AddressFor(context.Background(), w.api, mi, api.PoStAddr, goodFunds, minFunds)
-	if err != nil {
-		return false, xerrors.Errorf("error getting address: %w", err)
-	}
-
-	msg.From = from
-
-	mss := &api.MessageSendSpec{
-		MaxFee: abi.TokenAmount(w.maxWindowPoStGasFee),
+		return false, xerrors.Errorf("preparing proof message: %w", err)
 	}
 
 	smsg, err := w.sender.Send(context.Background(), msg, mss, "wdpost")
@@ -267,6 +233,72 @@ func (w *WdPostSubmitTask) processHeadChange(ctx context.Context, revert, apply 
 	}
 
 	return nil
+}
+
+type MsgPrepAPI interface {
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
+	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)
+	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
+
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+}
+
+func preparePoStMessage(w MsgPrepAPI, as *ctladdr.AddressSelector, maddr address.Address, msg *types.Message, maxFee abi.TokenAmount) (*types.Message, *api.MessageSendSpec, error) {
+	mi, err := w.StateMinerInfo(context.Background(), maddr, types.EmptyTSK)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("error getting miner info: %w", err)
+	}
+
+	// set the worker as a fallback
+	msg.From = mi.Worker
+
+	mss := &api.MessageSendSpec{
+		MaxFee: abi.TokenAmount(maxFee),
+	}
+
+	// (optimal) initial estimation with some overestimation that guarantees
+	// block inclusion within the next 20 tipsets.
+	gm, err := w.GasEstimateMessageGas(context.Background(), msg, mss, types.EmptyTSK)
+	if err != nil {
+		log.Errorw("estimating gas", "error", err)
+		return nil, nil, xerrors.Errorf("estimating gas: %w", err)
+	}
+	*msg = *gm
+
+	// calculate a more frugal estimation; premium is estimated to guarantee
+	// inclusion within 5 tipsets, and fee cap is estimated for inclusion
+	// within 4 tipsets.
+	minGasFeeMsg := *msg
+
+	minGasFeeMsg.GasPremium, err = w.GasEstimateGasPremium(context.Background(), 5, msg.From, msg.GasLimit, types.EmptyTSK)
+	if err != nil {
+		log.Errorf("failed to estimate minimum gas premium: %+v", err)
+		minGasFeeMsg.GasPremium = msg.GasPremium
+	}
+
+	minGasFeeMsg.GasFeeCap, err = w.GasEstimateFeeCap(context.Background(), &minGasFeeMsg, 4, types.EmptyTSK)
+	if err != nil {
+		log.Errorf("failed to estimate minimum gas fee cap: %+v", err)
+		minGasFeeMsg.GasFeeCap = msg.GasFeeCap
+	}
+
+	// goodFunds = funds needed for optimal inclusion probability.
+	// minFunds  = funds needed for more speculative inclusion probability.
+	goodFunds := big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value)
+	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
+
+	from, _, err := as.AddressFor(context.Background(), w, mi, api.PoStAddr, goodFunds, minFunds)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("error getting address: %w", err)
+	}
+
+	msg.From = from
+
+	return msg, mss, nil
 }
 
 var _ harmonytask.TaskInterface = &WdPostSubmitTask{}
