@@ -3,44 +3,48 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/samber/lo"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
 )
 
-var providerCmd = &cli.Command{
-	Name:        "provider",
-	Description: "Run a lotus-provider helper",
-	Subcommands: []*cli.Command{
-		{
-			Name:        "from-miner",
-			Description: "Express a database config from an existing miner.",
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:    FlagMinerRepo,
-					Aliases: []string{FlagMinerRepoDeprecation},
-					EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
-					Value:   "~/.lotusminer",
-					Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
-				},
-				&cli.StringFlag{
-					Name:    "layer",
-					Aliases: []string{"l"},
-					Usage:   "The layer name for this data push. 'base' is recommended for single-miner setup. Overwrites.",
-				},
-			},
-			Action: fromMiner,
+var configMigrateCmd = &cli.Command{
+	Name:        "from-miner",
+	Description: "Express a database config (for lotus-provider) from an existing miner.",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    FlagMinerRepo,
+			Aliases: []string{FlagMinerRepoDeprecation},
+			EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
+			Value:   "~/.lotusminer",
+			Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
+		},
+		&cli.StringFlag{
+			Name:    "layer",
+			Aliases: []string{"l"},
+			Usage:   "The layer name for this data push. 'base' is recommended for single-miner setup.",
+		},
+		&cli.BoolFlag{
+			Name:    "overwrite",
+			Aliases: []string{"o"},
+			Usage:   "Use this with layer to overwrite an existing layer",
 		},
 	},
+	Action: fromMiner,
 }
 
 const (
@@ -49,7 +53,7 @@ const (
 
 const FlagMinerRepoDeprecation = "storagerepo"
 
-func fromMiner(cctx *cli.Context) error {
+func fromMiner(cctx *cli.Context) (err error) {
 	ctx := context.Background()
 
 	r, err := repo.NewFS(cctx.String(FlagMinerRepo))
@@ -85,7 +89,7 @@ func fromMiner(cctx *cli.Context) error {
 	}
 
 	var titles []string
-	err = db.Select(ctx, &titles, `SELECT title FROM harmony_config`)
+	err = db.Select(ctx, &titles, `SELECT title FROM harmony_config WHERE LENGTH(config) > 0`)
 	if err != nil {
 		return fmt.Errorf("miner cannot reach the db. Ensure the config toml's HarmonyDB entry"+
 			" is setup to reach Yugabyte correctly: %s", err.Error())
@@ -93,6 +97,10 @@ func fromMiner(cctx *cli.Context) error {
 	name := cctx.String("layer")
 	if name == "" {
 		name = fmt.Sprintf("mig%d", len(titles))
+	} else {
+		if lo.Contains(titles, name) && !cctx.Bool("overwrite") {
+			return errors.New("the overwrite flag is needed to replace existing layer: " + name)
+		}
 	}
 	msg := "Layer " + name + ` created. `
 
@@ -121,8 +129,15 @@ func fromMiner(cctx *cli.Context) error {
 
 	lpCfg.Addresses.MinerAddresses = []string{addr.String()}
 
-	// TODO Apis.StorageSecret  storage repo and reading the rpc secret
-	//lr.??
+	ks, err := lr.KeyStore()
+	if err != nil {
+		return xerrors.Errorf("keystore err: %w", err)
+	}
+	js, err := ks.Get(modules.JWTSecretName)
+	if err != nil {
+		return xerrors.Errorf("error getting JWTSecretName: %w", err)
+	}
+	lpCfg.Apis.StorageRPCSecret = base64.RawStdEncoding.EncodeToString(js.PrivateKey)
 
 	// Populate API Key
 	_, header, err := cliutil.GetRawAPI(cctx, repo.FullNode, "v0")
@@ -130,11 +145,14 @@ func fromMiner(cctx *cli.Context) error {
 		return fmt.Errorf("cannot read API: %w", err)
 	}
 
-	lpCfg.Apis.FULLNODE_API_INFO = []string{header.Get("Authorization")[7:]}
+	lpCfg.Apis.ChainApiInfo = []string{header.Get("Authorization")[7:]}
 
 	// Enable WindowPoSt
 	lpCfg.Subsystems.EnableWindowPost = true
-	msg += `\nBefore running lotus-provider, ensure any miner/worker answering of WindowPost is disabled.\n`
+	msg += `\nBefore running lotus-provider, ensure any miner/worker answering of WindowPost is disabled by
+(on Miner) DisableBuiltinWindowPoSt=true and (on Workers) not enabling windowpost on CLI or via
+environment variable LOTUS_WORKER_WINDOWPOST.
+`
 
 	// Express as configTOML
 	configTOML := &bytes.Buffer{}
@@ -148,6 +166,7 @@ func fromMiner(cctx *cli.Context) error {
 			return err
 		}
 	}
+
 	_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ($1, $2)", name, configTOML.String())
 	if err != nil {
 		return err

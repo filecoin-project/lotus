@@ -92,7 +92,6 @@ func main() {
 		FevmAnalyticsCmd,
 		mismatchesCmd,
 		blockCmd,
-		providerCmd,
 	}
 
 	app := &cli.App{

@@ -196,7 +196,7 @@ var runCmd = &cli.Command{
 		}
 		defer j.Close()
 
-		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.FULLNODE_API_INFO)
+		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
 		if err != nil {
 			return err
 		}
