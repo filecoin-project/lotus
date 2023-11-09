@@ -154,7 +154,12 @@ type MinerSubsystemConfig struct {
 	// for all sectors that are eligible for window post
 	// IF WINDOW POST IS DISABLED, THE MINER WILL NOT SUBMIT WINDOW POST PROOFS
 	// THIS WILL RESULT IN FAULTS AND PENALTIES IF NO OTHER MECHANISM IS RUNNING
-	// TO SUBMIT WINDOW POST PROOFS
+	// TO SUBMIT WINDOW POST PROOFS.
+	// Note: This option is entirely disabling the window post scheduler,
+	//   not just the builtin PoSt computation like Proving.DisableBuiltinWindowPoSt.
+	//   This option will stop lotus-miner from performing any actions related
+	//   to window post, including scheduling, submitting proofs, and recovering
+	//   sectors.
 	DisableWindowPoSt bool
 }
 
