@@ -34,14 +34,14 @@ var configMigrateCmd = &cli.Command{
 			Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 		},
 		&cli.StringFlag{
-			Name:    "layer",
-			Aliases: []string{"l"},
+			Name:    "to-layer",
+			Aliases: []string{"t"},
 			Usage:   "The layer name for this data push. 'base' is recommended for single-miner setup.",
 		},
 		&cli.BoolFlag{
-			Name:    "overwrite",
-			Aliases: []string{"o"},
-			Usage:   "Use this with layer to overwrite an existing layer",
+			Name:    "replace",
+			Aliases: []string{"r"},
+			Usage:   "Use this with --to-layer to replace an existing layer",
 		},
 	},
 	Action: fromMiner,
@@ -94,7 +94,7 @@ func fromMiner(cctx *cli.Context) (err error) {
 		return fmt.Errorf("miner cannot reach the db. Ensure the config toml's HarmonyDB entry"+
 			" is setup to reach Yugabyte correctly: %s", err.Error())
 	}
-	name := cctx.String("layer")
+	name := cctx.String("to-layer")
 	if name == "" {
 		name = fmt.Sprintf("mig%d", len(titles))
 	} else {
