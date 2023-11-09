@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
@@ -51,6 +52,33 @@ type WdPostRecoverDeclareTaskApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+}
+
+func NewWdPostRecoverDeclareTask(sender *lpmessage.Sender,
+	db *harmonydb.DB,
+	api WdPostRecoverDeclareTaskApi,
+	faultTracker sealer.FaultTracker,
+	as *ctladdr.AddressSelector,
+	pcs *chainsched.ProviderChainSched,
+
+	maxDeclareRecoveriesGasFee types.FIL,
+	actors []dtypes.MinerAddress) (*WdPostRecoverDeclareTask, error) {
+	t := &WdPostRecoverDeclareTask{
+		sender:       sender,
+		db:           db,
+		api:          api,
+		faultTracker: faultTracker,
+
+		maxDeclareRecoveriesGasFee: maxDeclareRecoveriesGasFee,
+		as:                         as,
+		actors:                     actors,
+	}
+
+	if err := pcs.AddHandler(t.processHeadChange); err != nil {
+		return nil, err
+	}
+
+	return t, nil
 }
 
 func (w *WdPostRecoverDeclareTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
