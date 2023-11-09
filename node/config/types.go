@@ -149,6 +149,13 @@ type MinerSubsystemConfig struct {
 
 	SealerApiInfo      string // if EnableSealing == false
 	SectorIndexApiInfo string // if EnableSectorStorage == false
+
+	// When window post is enabled, the miner will automatically submit window post proofs
+	// for all sectors that are eligible for window post
+	// IF WINDOW POST IS DISABLED, THE MINER WILL NOT SUBMIT WINDOW POST PROOFS
+	// THIS WILL RESULT IN FAULTS AND PENALTIES IF NO OTHER MECHANISM IS RUNNING
+	// TO SUBMIT WINDOW POST PROOFS
+	DisableWindowPoSt bool
 }
 
 type DealmakingConfig struct {
