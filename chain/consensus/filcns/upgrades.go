@@ -299,7 +299,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 }
 
 var calibnetv12BuggyMinerCID = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
-var calibnetv12BuggyMinerCID2 = cid.MustParse("TODO")
+var calibnetv12BuggyMinerCID2 = cid.MustParse("bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie")
 
 func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, em stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Some initial parameters
