@@ -279,8 +279,13 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeWatermelonFixHeight,
 		Network:   network.Version21,
-		Migration: upgradeActorsV12Fix,
+		Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID),
 	},
+		{
+			Height:    build.UpgradeWatermelonFix2Height,
+			Network:   network.Version21,
+			Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID2),
+		},
 	}
 
 	for _, u := range updates {
@@ -292,6 +297,9 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}
 	return us
 }
+
+var calibnetv12BuggyMinerCID = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
+var calibnetv12BuggyMinerCID2 = cid.MustParse("TODO")
 
 func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, em stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Some initial parameters
@@ -1974,135 +1982,136 @@ func upgradeActorsV12Common(
 	return newRoot, nil
 }
 
-//////////////////////
+// ////////////////////
+func buildUpgradeActorsV12MinerFix(minerCid cid.Cid) func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	return func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+		stateStore := sm.ChainStore().StateBlockstore()
+		adtStore := store.ActorStore(ctx, stateStore)
 
-var calibnetv12BuggyMinerCID = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
-
-func upgradeActorsV12Fix(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	stateStore := sm.ChainStore().StateBlockstore()
-	adtStore := store.ActorStore(ctx, stateStore)
-
-	// ensure that the manifest is loaded in the blockstore
-	if err := bundle.LoadBundles(ctx, stateStore, actorstypes.Version12); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
-	}
-
-	// Load input state tree
-	actorsIn, err := state.LoadStateTree(adtStore, root)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("loading state tree: %w", err)
-	}
-
-	// load old manifest data
-	systemActor, err := actorsIn.GetActor(builtin.SystemActorAddr)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
-	}
-
-	var systemState system11.State
-	if err := adtStore.Get(ctx, systemActor.Head, &systemState); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to get system actor state: %w", err)
-	}
-
-	var oldManifestData manifest.ManifestData
-	if err := adtStore.Get(ctx, systemState.BuiltinActors, &oldManifestData); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to get old manifest data: %w", err)
-	}
-
-	newManifestCID, ok := actors.GetManifest(actorstypes.Version12)
-	if !ok {
-		return cid.Undef, xerrors.Errorf("no manifest CID for v12 upgrade")
-	}
-
-	// load new manifest
-	var newManifest manifest.Manifest
-	if err := adtStore.Get(ctx, newManifestCID, &newManifest); err != nil {
-		return cid.Undef, xerrors.Errorf("error reading actor manifest: %w", err)
-	}
-
-	if err := newManifest.Load(ctx, adtStore); err != nil {
-		return cid.Undef, xerrors.Errorf("error loading actor manifest: %w", err)
-	}
-
-	// build the CID mapping
-	codeMapping := make(map[cid.Cid]cid.Cid, len(oldManifestData.Entries))
-	for _, oldEntry := range oldManifestData.Entries {
-		newCID, ok := newManifest.Get(oldEntry.Name)
-		if !ok {
-			return cid.Undef, xerrors.Errorf("missing manifest entry for %s", oldEntry.Name)
+		// ensure that the manifest is loaded in the blockstore
+		if err := bundle.LoadBundles(ctx, stateStore, actorstypes.Version12); err != nil {
+			return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 		}
 
-		// Note: we expect newCID to be the same as oldEntry.Code for all actors except the miner actor
-		codeMapping[oldEntry.Code] = newCID
-	}
-
-	// Create empty actorsOut
-
-	actorsOut, err := state.NewStateTree(adtStore, actorsIn.Version())
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create new tree: %w", err)
-	}
-
-	// Perform the migration
-	err = actorsIn.ForEach(func(a address.Address, actor *types.Actor) error {
-		newCid, ok := codeMapping[actor.Code]
-		if !ok {
-			return xerrors.Errorf("didn't find mapping for %s", actor.Code)
-		}
-
-		return actorsOut.SetActor(a, &types.ActorV5{
-			Code:    newCid,
-			Head:    actor.Head,
-			Nonce:   actor.Nonce,
-			Balance: actor.Balance,
-			Address: actor.Address,
-		})
-	})
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to perform migration: %w", err)
-	}
-
-	err = actorsIn.ForEach(func(a address.Address, inActor *types.Actor) error {
-		outActor, err := actorsOut.GetActor(a)
+		// Load input state tree
+		actorsIn, err := state.LoadStateTree(adtStore, root)
 		if err != nil {
-			return xerrors.Errorf("failed to get actor in outTree: %w", err)
+			return cid.Undef, xerrors.Errorf("loading state tree: %w", err)
 		}
 
-		if inActor.Nonce != outActor.Nonce {
-			return xerrors.Errorf("mismatched nonce for actor %s", a)
+		// load old manifest data
+		systemActor, err := actorsIn.GetActor(builtin.SystemActorAddr)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
 		}
 
-		if !inActor.Balance.Equals(outActor.Balance) {
-			return xerrors.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
+		var systemState system11.State
+		if err := adtStore.Get(ctx, systemActor.Head, &systemState); err != nil {
+			return cid.Undef, xerrors.Errorf("failed to get system actor state: %w", err)
 		}
 
-		if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
-			return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+		var oldManifestData manifest.ManifestData
+		if err := adtStore.Get(ctx, systemState.BuiltinActors, &oldManifestData); err != nil {
+			return cid.Undef, xerrors.Errorf("failed to get old manifest data: %w", err)
 		}
 
-		if inActor.Head != outActor.Head {
-			return xerrors.Errorf("mismatched head for actor %s", a)
+		newManifestCID, ok := actors.GetManifest(actorstypes.Version12)
+		if !ok {
+			return cid.Undef, xerrors.Errorf("no manifest CID for v12 upgrade")
 		}
 
-		// This is the hard-coded "buggy" miner actor Code ID
-		if inActor.Code != calibnetv12BuggyMinerCID && inActor.Code != outActor.Code {
-			return xerrors.Errorf("unexpected change in code for actor %s", a)
+		// load new manifest
+		var newManifest manifest.Manifest
+		if err := adtStore.Get(ctx, newManifestCID, &newManifest); err != nil {
+			return cid.Undef, xerrors.Errorf("error reading actor manifest: %w", err)
 		}
 
-		return nil
-	})
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to sanity check migration: %w", err)
+		if err := newManifest.Load(ctx, adtStore); err != nil {
+			return cid.Undef, xerrors.Errorf("error loading actor manifest: %w", err)
+		}
+
+		// build the CID mapping
+		codeMapping := make(map[cid.Cid]cid.Cid, len(oldManifestData.Entries))
+		for _, oldEntry := range oldManifestData.Entries {
+			newCID, ok := newManifest.Get(oldEntry.Name)
+			if !ok {
+				return cid.Undef, xerrors.Errorf("missing manifest entry for %s", oldEntry.Name)
+			}
+
+			// Note: we expect newCID to be the same as oldEntry.Code for all actors except the miner actor
+			codeMapping[oldEntry.Code] = newCID
+		}
+
+		// Create empty actorsOut
+
+		actorsOut, err := state.NewStateTree(adtStore, actorsIn.Version())
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to create new tree: %w", err)
+		}
+
+		// Perform the migration
+		err = actorsIn.ForEach(func(a address.Address, actor *types.Actor) error {
+			newCid, ok := codeMapping[actor.Code]
+			if !ok {
+				return xerrors.Errorf("didn't find mapping for %s", actor.Code)
+			}
+
+			return actorsOut.SetActor(a, &types.ActorV5{
+				Code:    newCid,
+				Head:    actor.Head,
+				Nonce:   actor.Nonce,
+				Balance: actor.Balance,
+				Address: actor.Address,
+			})
+		})
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to perform migration: %w", err)
+		}
+
+		err = actorsIn.ForEach(func(a address.Address, inActor *types.Actor) error {
+			outActor, err := actorsOut.GetActor(a)
+			if err != nil {
+				return xerrors.Errorf("failed to get actor in outTree: %w", err)
+			}
+
+			if inActor.Nonce != outActor.Nonce {
+				return xerrors.Errorf("mismatched nonce for actor %s", a)
+			}
+
+			if !inActor.Balance.Equals(outActor.Balance) {
+				return xerrors.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
+			}
+
+			if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
+				return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+			}
+
+			if inActor.Head != outActor.Head {
+				return xerrors.Errorf("mismatched head for actor %s", a)
+			}
+
+			// This is the hard-coded "buggy" miner actor Code ID
+			if inActor.Code != minerCid && inActor.Code != outActor.Code {
+				return xerrors.Errorf("unexpected change in code for actor %s", a)
+			}
+
+			if inActor.Code == minerCid && outActor.Code == minerCid {
+				return xerrors.Errorf("miner actor code was not updated")
+			}
+			return nil
+		})
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to sanity check migration: %w", err)
+		}
+
+		// Persist the result.
+		newRoot, err := actorsOut.Flush(ctx)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+		}
+
+		return newRoot, nil
 	}
-
-	// Persist the result.
-	newRoot, err := actorsOut.Flush(ctx)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
-	}
-
-	return newRoot, nil
 }
 
 ////////////////////

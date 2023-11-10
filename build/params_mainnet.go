@@ -101,6 +101,9 @@ var UpgradeWatermelonHeight = abi.ChainEpoch(3431940)
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
 
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFix2Height = -2
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,

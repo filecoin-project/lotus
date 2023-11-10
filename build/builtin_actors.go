@@ -47,6 +47,7 @@ func init() {
 	// We include it in our builtin bundle, but intentionally omit from metadata.
 	if NetworkBundle == "calibrationnet" {
 		actors.AddActorMeta("storageminer", cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"), actorstypes.Version12)
+		actors.AddActorMeta("storageminer", cid.MustParse("TODO"), actorstypes.Version12)
 	}
 }
 
@@ -190,9 +191,10 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 			return nil, xerrors.Errorf("error loading builtin actors bundle: %w", err)
 		}
 
-		// The following manifest cid existed temporarily on the calibnet testnet
+		// The following manifest cids existed temporarily on the calibnet testnet
 		// We include it in our builtin bundle, but intentionally omit from metadata
-		if root == cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs") {
+		if root == cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs") ||
+			root == cid.MustParse("TODO") {
 			continue
 		}
 		bundles = append(bundles, &BuiltinActorsMetadata{
