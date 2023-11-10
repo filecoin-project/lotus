@@ -3,6 +3,8 @@ package lpwindow
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/storage/sealer"
 	"sort"
 	"sync"
 	"time"
@@ -92,7 +94,7 @@ func (t *WdPostTask) doPartition(ctx context.Context, ts *types.TipSet, maddr ad
 			return nil, xerrors.Errorf("copy toProve: %w", err)
 		}
 		if !disablePreChecks {
-			good, err = t.checkSectors(ctx, maddr, toProve, ts.Key())
+			good, err = checkSectors(ctx, t.api, t.faultTracker, maddr, toProve, ts.Key())
 			if err != nil {
 				return nil, xerrors.Errorf("checking sectors to skip: %w", err)
 			}
@@ -222,13 +224,18 @@ func (t *WdPostTask) doPartition(ctx context.Context, ts *types.TipSet, maddr ad
 	return nil, xerrors.Errorf("failed to generate window post")
 }
 
-func (t *WdPostTask) checkSectors(ctx context.Context, maddr address.Address, check bitfield.BitField, tsk types.TipSetKey) (bitfield.BitField, error) {
+type CheckSectorsAPI interface {
+	StateMinerSectors(ctx context.Context, addr address.Address, bf *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+}
+
+func checkSectors(ctx context.Context, api CheckSectorsAPI, ft sealer.FaultTracker,
+	maddr address.Address, check bitfield.BitField, tsk types.TipSetKey) (bitfield.BitField, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("failed to convert to ID addr: %w", err)
 	}
 
-	sectorInfos, err := t.api.StateMinerSectors(ctx, maddr, &check, tsk)
+	sectorInfos, err := api.StateMinerSectors(ctx, maddr, &check, tsk)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("failed to get sector infos: %w", err)
 	}
@@ -267,7 +274,7 @@ func (t *WdPostTask) checkSectors(ctx context.Context, maddr address.Address, ch
 		return bitfield.BitField{}, xerrors.Errorf("failed to convert to v1_1 post proof: %w", err)
 	}
 
-	bad, err := t.faultTracker.CheckProvable(ctx, pp, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+	bad, err := ft.CheckProvable(ctx, pp, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
 		s, ok := sectors[id.Number]
 		if !ok {
 			return cid.Undef, false, xerrors.Errorf("sealed CID not found")
