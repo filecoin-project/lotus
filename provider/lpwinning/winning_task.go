@@ -6,11 +6,19 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"time"
+
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -22,10 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
-	"time"
 )
 
 var log = logging.Logger("lpwinning")
@@ -63,7 +67,7 @@ type WinPostAPI interface {
 }
 
 type ProverWinningPoSt interface {
-	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []prooftypes.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, error)
+	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, error)
 }
 
 func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors []dtypes.MinerAddress) *WinPostTask {
@@ -216,7 +220,28 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 
 		prand := abi.PoStRandomness(brand)
 
-		wpostProof, err = t.prover.GenerateWinningPoSt(ctx, mi.WindowPoStProofType, abi.ActorID(details.SpID), mbi.Sectors, prand)
+		sectorNums := make([]abi.SectorNumber, len(mbi.Sectors))
+		for i, s := range mbi.Sectors {
+			sectorNums[i] = s.SectorNumber
+		}
+
+		postChallenges, err := ffi.GeneratePoStFallbackSectorChallenges(mi.WindowPoStProofType, abi.ActorID(details.SpID), prand, sectorNums)
+		if err != nil {
+			return false, xerrors.Errorf("generating fallback challenges: %v", err)
+		}
+
+		sectorChallenges := make([]storiface.PostSectorChallenge, len(mbi.Sectors))
+		for i, s := range mbi.Sectors {
+			sectorChallenges[i] = storiface.PostSectorChallenge{
+				SealProof:    s.SealProof,
+				SectorNumber: s.SectorNumber,
+				SealedCID:    s.SealedCID,
+				Challenge:    postChallenges.Challenges[s.SectorNumber],
+				Update:       s.SectorKey != nil,
+			}
+		}
+
+		wpostProof, err = t.prover.GenerateWinningPoSt(ctx, mi.WindowPoStProofType, abi.ActorID(details.SpID), sectorChallenges, prand)
 		if err != nil {
 			err = xerrors.Errorf("failed to compute winning post proof: %w", err)
 			return false, err

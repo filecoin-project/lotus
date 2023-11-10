@@ -997,6 +997,12 @@ sectors.`,
 
 			Comment: ``,
 		},
+		{
+			Name: "WinningPostMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
 	},
 	"ProvingConfig": {
 		{
