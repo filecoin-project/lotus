@@ -21,7 +21,7 @@ import (
 var log = logging.Logger("lpwinning")
 
 type WinPostTask struct {
-	max abi.SectorNumber
+	max int
 
 	// lastWork holds the last MiningBase we built upon.
 	lastWork *MiningBase
@@ -52,14 +52,18 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 }
 
 func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	//TODO implement me
-	panic("implement me")
+	if len(ids) == 0 {
+		// probably can't happen, but panicking is bad
+		return nil, nil
+	}
+
+	return &ids[0], nil
 }
 
 func (t *WinPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
 		Name:        "WinPost",
-		Max:         10, // todo
+		Max:         t.max,
 		MaxFailures: 3,
 		Follows:     nil,
 		Cost: resources.Resources{
@@ -102,18 +106,6 @@ func (mb MiningBase) afterPropDelay() time.Time {
 	base := mb.baseTime()
 	base.Add(randTimeOffset(time.Second))
 	return base
-}
-
-func retry1[R any](f func() (R, error)) R {
-	for {
-		r, err := f()
-		if err == nil {
-			return r
-		}
-
-		log.Errorw("error in mining loop, retrying", "error", err)
-		time.Sleep(time.Second)
-	}
 }
 
 func (t *WinPostTask) mineBasic(ctx context.Context) {
@@ -383,12 +375,25 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 		return t.lastWork, nil
 	}
 */
+
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
 	rand.Reader.Read(buf) //nolint:errcheck
 	val := time.Duration(binary.BigEndian.Uint64(buf) % uint64(width))
 
 	return val - (width / 2)
+}
+
+func retry1[R any](f func() (R, error)) R {
+	for {
+		r, err := f()
+		if err == nil {
+			return r
+		}
+
+		log.Errorw("error in mining loop, retrying", "error", err)
+		time.Sleep(time.Second)
+	}
 }
 
 var _ harmonytask.TaskInterface = &WinPostTask{}
