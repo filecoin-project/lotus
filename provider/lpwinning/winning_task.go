@@ -80,7 +80,81 @@ type MiningBase struct {
 	NullRounds  abi.ChainEpoch
 }
 
-func (t *WinPostTask) mine(ctx context.Context) {
+func (mb MiningBase) baseTime() time.Time {
+	tsTime := time.Unix(int64(mb.TipSet.MinTimestamp()), 0)
+	nullDelay := build.BlockDelaySecs * uint64(mb.NullRounds)
+	tsTime = tsTime.Add(time.Duration(nullDelay) * time.Second)
+	return tsTime
+}
+
+func (mb MiningBase) afterPropDelay() time.Time {
+	base := mb.baseTime()
+	base.Add(randTimeOffset(time.Second))
+	return base
+}
+
+func retry1[R any](f func() (R, error)) R {
+	for {
+		r, err := f()
+		if err == nil {
+			return r
+		}
+
+		log.Errorw("error in mining loop, retrying", "error", err)
+		time.Sleep(time.Second)
+	}
+}
+
+func (t *WinPostTask) mineBasic(ctx context.Context) {
+	var workBase MiningBase
+
+	{
+		head := retry1(func() (*types.TipSet, error) {
+			return t.api.ChainHead(ctx)
+		})
+
+		workBase = MiningBase{
+			TipSet:      head,
+			NullRounds:  0,
+			ComputeTime: time.Now(),
+		}
+	}
+
+	for {
+		// wait for propagation delay
+		time.Sleep(time.Until(workBase.afterPropDelay()))
+
+		// check current best candidate
+		maybeBase := retry1(func() (*types.TipSet, error) {
+			return t.api.ChainHead(ctx)
+		})
+
+		if workBase.TipSet.Equals(maybeBase) {
+			workBase.NullRounds++
+		} else {
+			btsw := retry1(func() (types.BigInt, error) {
+				return t.api.ChainTipSetWeight(ctx, maybeBase.Key())
+			})
+
+			ltsw := retry1(func() (types.BigInt, error) {
+				return t.api.ChainTipSetWeight(ctx, workBase.TipSet.Key())
+			})
+
+			if types.BigCmp(btsw, ltsw) <= 0 {
+				workBase.NullRounds++
+			} else {
+				workBase = MiningBase{
+					TipSet:      maybeBase,
+					NullRounds:  0,
+					ComputeTime: time.Now(),
+				}
+			}
+		}
+
+	}
+}
+
+func (t *WinPostTask) mine2(ctx context.Context) {
 	var lastBase MiningBase
 
 	// Start the main mining loop.
