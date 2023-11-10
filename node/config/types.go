@@ -92,9 +92,10 @@ type JournalConfig struct {
 }
 
 type ProviderSubsystemsConfig struct {
-	EnableWindowPost   bool
-	WindowPostMaxTasks int
-	EnableWinningPost  bool
+	EnableWindowPost    bool
+	WindowPostMaxTasks  int
+	EnableWinningPost   bool
+	WinningPostMaxTasks int
 }
 
 type DAGStoreConfig struct {

@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -32,7 +33,9 @@ var log = logging.Logger("lpwinning")
 type WinPostTask struct {
 	max int
 	db  *harmonydb.DB
-	epp gen.WinningPoStProver
+
+	prover   ProverWinningPoSt
+	verifier storiface.Verifier
 
 	api    WinPostAPI
 	actors []dtypes.MinerAddress
@@ -50,6 +53,7 @@ type WinPostAPI interface {
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
 	MinerCreateBlock(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)
@@ -58,13 +62,18 @@ type WinPostAPI interface {
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
 
-func NewWinPostTask(max int, db *harmonydb.DB, epp gen.WinningPoStProver, api WinPostAPI, actors []dtypes.MinerAddress) *WinPostTask {
+type ProverWinningPoSt interface {
+	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []prooftypes.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, error)
+}
+
+func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors []dtypes.MinerAddress) *WinPostTask {
 	return &WinPostTask{
-		max:    max,
-		db:     db,
-		epp:    epp,
-		api:    api,
-		actors: actors,
+		max:      max,
+		db:       db,
+		prover:   prover,
+		verifier: verifier,
+		api:      api,
+		actors:   actors,
 	}
 	// TODO: run warmup
 }
@@ -114,6 +123,11 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	maddr, err := address.NewIDAddress(details.SpID)
 	if err != nil {
 		return false, err
+	}
+
+	mi, err := t.api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return false, xerrors.Errorf("getting sector size: %w", err)
 	}
 
 	var bcids []cid.Cid
@@ -194,20 +208,15 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 			return false, err
 		}
 
-		rand, err := lrand.DrawRandomnessFromBase(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+		brand, err := lrand.DrawRandomnessFromBase(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for winning post: %w", err)
 			return false, err
 		}
 
-		prand := abi.PoStRandomness(rand)
+		prand := abi.PoStRandomness(brand)
 
-		nv, err := t.api.StateNetworkVersion(ctx, base.TipSet.Key())
-		if err != nil {
-			return false, err
-		}
-
-		wpostProof, err = t.epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
+		wpostProof, err = t.prover.GenerateWinningPoSt(ctx, mi.WindowPoStProofType, abi.ActorID(details.SpID), mbi.Sectors, prand)
 		if err != nil {
 			err = xerrors.Errorf("failed to compute winning post proof: %w", err)
 			return false, err
@@ -331,6 +340,11 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		}
 	}
 
+	// wait until block timestamp
+	{
+		time.Sleep(time.Until(time.Unix(int64(blockMsg.Header.Timestamp), 0)))
+	}
+
 	// submit block!!
 	{
 		if err := t.api.SyncSubmitBlock(ctx, blockMsg); err != nil {
@@ -415,6 +429,7 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 
 	taskFn := t.mineTF.Val(ctx)
 
+	// initialize workbase
 	{
 		head := retry1(func() (*types.TipSet, error) {
 			return t.api.ChainHead(ctx)
@@ -507,176 +522,6 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 		}
 	}
 }
-
-/*
-	func (t *WinPostTask) mine2(ctx context.Context) {
-		var lastBase MiningBase
-
-		// Start the main mining loop.
-		for {
-			// todo handle stop signals?
-
-			var base *MiningBase
-
-			// Look for the best mining candidate.
-			for {
-				prebase, err := t.GetBestMiningCandidate(ctx)
-				if err != nil {
-					log.Errorf("failed to get best mining candidate: %s", err)
-					time.Sleep(5 * time.Second)
-					continue
-				}
-
-				// Check if we have a new base or if the current base is still valid.
-				if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.AddRounds == prebase.AddRounds {
-					// We have a valid base.
-					base = prebase
-					break
-				}
-
-				// TODO: need to change the orchestration here. the problem is that
-				// we are waiting *after* we enter this loop and selecta mining
-				// candidate, which is almost certain to change in multiminer
-				// tests. Instead, we should block before entering the loop, so
-				// that when the test 'MineOne' function is triggered, we pull our
-				// best mining candidate at that time.
-
-				// Wait until propagation delay period after block we plan to mine on
-				{
-					// if we're mining a block in the past via catch-up/rush mining,
-					// such as when recovering from a network halt, this sleep will be
-					// for a negative duration, and therefore **will return
-					// immediately**.
-					//
-					// the result is that we WILL NOT wait, therefore fast-forwarding
-					// and thus healing the chain by backfilling it with null rounds
-					// rapidly.
-					baseTs := prebase.TipSet.MinTimestamp() + build.PropagationDelaySecs
-					baseT := time.Unix(int64(baseTs), 0)
-					baseT = baseT.Add(randTimeOffset(time.Second))
-					time.Sleep(time.Until(baseT))
-				}
-
-				// Ensure the beacon entry is available before finalizing the mining base.
-				_, err = t.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.AddRounds+1)
-				if err != nil {
-					log.Errorf("failed getting beacon entry: %s", err)
-					time.Sleep(time.Second)
-					continue
-				}
-
-				base = prebase
-			}
-
-			// Check for repeated mining candidates and handle sleep for the next round.
-			if base.TipSet.Equals(lastBase.TipSet) && lastBase.AddRounds == base.AddRounds {
-				log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.TipSet.Cids(), lastBase.AddRounds)
-				time.Sleep(time.Duration(build.BlockDelaySecs) * time.Second)
-				continue
-			}
-
-			// Attempt to mine a block.
-			b, err := m.mineOne(ctx, base)
-			if err != nil {
-				log.Errorf("mining block failed: %+v", err)
-				time.Sleep(time.Second)
-				continue
-			}
-			lastBase = *base
-
-			// todo figure out this whole bottom section
-			//   we won't know if we've mined a block here, we just submit a task
-			//   making attempts to mine one
-
-			// Process the mined block.
-			if b != nil {
-				btime := time.Unix(int64(b.Header.Timestamp), 0)
-				now := build.Clock.Now()
-				// Handle timing for broadcasting the block.
-				switch {
-				case btime == now:
-					// block timestamp is perfectly aligned with time.
-				case btime.After(now):
-					// Wait until it's time to broadcast the block.
-					if !m.niceSleep(build.Clock.Until(btime)) {
-						log.Warnf("received interrupt while waiting to broadcast block, will shutdown after block is sent out")
-						build.Clock.Sleep(build.Clock.Until(btime))
-					}
-				default:
-					// Log if the block was mined in the past.
-					log.Warnw("mined block in the past",
-						"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
-				}
-
-				// Check for slash filter conditions.
-				if os.Getenv("LOTUS_MINER_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" && !build.IsNearUpgrade(base.TipSet.Height(), build.UpgradeWatermelonFixHeight) {
-					witness, fault, err := m.sf.MinedBlock(ctx, b.Header, base.TipSet.Height()+base.AddRounds)
-					if err != nil {
-						log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
-						// Continue here, because it's _probably_ wiser to not submit this block
-						continue
-					}
-
-					if fault {
-						log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to blocks %s and %s", b.Header.Cid(), witness)
-						continue
-					}
-				}
-
-				// Submit the newly mined block.
-				if err := t.api.SyncSubmitBlock(ctx, b); err != nil {
-					log.Errorf("failed to submit newly mined block: %+v", err)
-				}
-			} else {
-				// If no block was mined, increase the null rounds and wait for the next epoch.
-				base.AddRounds++
-
-				// Calculate the time for the next round.
-				nextRound := time.Unix(int64(base.TipSet.MinTimestamp()+build.BlockDelaySecs*uint64(base.AddRounds))+int64(build.PropagationDelaySecs), 0)
-
-				// Wait for the next round.
-				time.Sleep(time.Until(nextRound))
-			}
-		}
-	}
-
-// GetBestMiningCandidate implements the fork choice rule from a miner's
-// perspective.
-//
-// It obtains the current chain head (HEAD), and compares it to the last tipset
-// we selected as our mining base (LAST). If HEAD's weight is larger than
-// LAST's weight, it selects HEAD to build on. Else, it selects LAST.
-
-	func (t *WinPostTask) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
-		bts, err := t.api.ChainHead(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		if t.lastWork != nil {
-			if t.lastWork.TipSet.Equals(bts) {
-				return t.lastWork, nil
-			}
-
-			btsw, err := t.api.ChainTipSetWeight(ctx, bts.Key())
-			if err != nil {
-				return nil, err
-			}
-			ltsw, err := t.api.ChainTipSetWeight(ctx, t.lastWork.TipSet.Key())
-			if err != nil {
-				t.lastWork = nil
-				return nil, err
-			}
-
-			if types.BigCmp(btsw, ltsw) <= 0 {
-				return t.lastWork, nil
-			}
-		}
-
-		t.lastWork = &MiningBase{TipSet: bts, ComputeTime: time.Now()}
-		return t.lastWork, nil
-	}
-*/
 
 func (t *WinPostTask) computeTicket(ctx context.Context, maddr address.Address, brand *types.BeaconEntry, round abi.ChainEpoch, chainRand *types.Ticket, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/filecoin-project/lotus/provider/lpwinning"
 	"net"
 	"net/http"
 	"os"
@@ -250,6 +251,11 @@ var runCmd = &cli.Command{
 					return err
 				}
 				activeTasks = append(activeTasks, wdPostTask, wdPoStSubmitTask, derlareRecoverTask)
+			}
+
+			if cfg.Subsystems.EnableWinningPost {
+				winPoStTask := lpwinning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
+				activeTasks = append(activeTasks, winPoStTask)
 			}
 		}
 		taskEngine, err := harmonytask.New(db, activeTasks, listenAddr)
