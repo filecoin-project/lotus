@@ -27,6 +27,7 @@ var configCmd = &cli.Command{
 		configListCmd,
 		configViewCmd,
 		configRmCmd,
+		configMigrateCmd,
 	},
 }
 
@@ -225,6 +226,10 @@ func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 		if err != nil {
 			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
 				return nil, fmt.Errorf("missing layer '%s' ", layer)
+			}
+			if layer == "base" {
+				return nil, errors.New(`lotus-provider defaults to a layer named 'base'. 
+				Either use 'migrate' command or edit a base.toml and upload it with: lotus-provider config set base.toml`)
 			}
 			return nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
 		}
