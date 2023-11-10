@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -84,7 +85,7 @@ var configSetCmd = &cli.Command{
 				return fmt.Errorf("cannot open file %s: %w", args.First(), err)
 			}
 			if name == "" {
-				name = strings.Split(args.First(), ".")[0]
+				name = strings.Split(path.Base(args.First()), ".")[0]
 			}
 		}
 		bytes, err := io.ReadAll(stream)
