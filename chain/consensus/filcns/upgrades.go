@@ -302,7 +302,8 @@ var (
 	calibnetv12BuggyMinerCID  = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
 	calibnetv12BuggyMinerCID2 = cid.MustParse("bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie")
 
-	calibnetv12BuggyManifest2CID   = cid.MustParse("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru")
+	calibnetv12BuggyManifest2CID = cid.MustParse("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru")
+	// TODO Update based on manifest of new release
 	calibnetv12CorrectManifestCID1 = cid.MustParse("")
 )
 
