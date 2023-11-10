@@ -257,6 +257,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		gin.SetMode(gin.ReleaseMode)
 		handler := gin.New()
 
 		defer taskEngine.GracefullyTerminate(time.Hour)

@@ -805,6 +805,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	if err != nil {
 		log.Errorf("getting gpu devices failed: %+v", err)
 	}
+	log.Infow("Detected GPU devices.", "count", len(gpus))
 
 	memPhysical, memUsed, memSwap, memSwapUsed, err := l.memInfo()
 	if err != nil {
