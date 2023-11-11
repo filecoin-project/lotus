@@ -36,6 +36,12 @@ var configMigrateCmd = &cli.Command{
 			Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 		},
 		&cli.StringFlag{
+			Name:    "repo",
+			EnvVars: []string{"LOTUS_PATH"},
+			Hidden:  true,
+			Value:   "~/.lotus",
+		},
+		&cli.StringFlag{
 			Name:    "to-layer",
 			Aliases: []string{"t"},
 			Usage:   "The layer name for this data push. 'base' is recommended for single-miner setup.",
@@ -169,7 +175,7 @@ environment variable LOTUS_WORKER_WINDOWPOST.
 	}
 
 	if !lo.Contains(titles, "base") {
-		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', '')", "base")
+		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', '')")
 		if err != nil {
 			return err
 		}
