@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-datastore"
 	"os"
 	"path"
 	"strings"
@@ -117,14 +119,20 @@ func fromMiner(cctx *cli.Context) (err error) {
 	}
 
 	// Populate Miner Address
-	sm, cc, err := cliutil.GetStorageMinerAPI(cctx)
+	mmeta, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
-		return fmt.Errorf("could not get storageMiner API: %w", err)
+		return xerrors.Errorf("opening miner metadata datastore: %w", err)
 	}
-	defer cc()
-	addr, err := sm.ActorAddress(ctx)
+	defer mmeta.Close()
+
+	maddrBytes, err := mmeta.Get(ctx, datastore.NewKey("miner-address"))
 	if err != nil {
-		return fmt.Errorf("could not read actor address: %w", err)
+		return xerrors.Errorf("getting miner address datastore entry: %w", err)
+	}
+
+	addr, err := address.NewFromBytes(maddrBytes)
+	if err != nil {
+		return xerrors.Errorf("parsing miner actor address: %w", err)
 	}
 
 	lpCfg.Addresses.MinerAddresses = []string{addr.String()}
