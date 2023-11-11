@@ -398,7 +398,23 @@ func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.Ta
 		return nil, nil
 	}
 
-	return &ids[0], nil
+	// select lowest epoch
+	var lowestEpoch abi.ChainEpoch
+	var lowestEpochID = ids[0]
+	for _, id := range ids {
+		var epoch uint64
+		err := t.db.QueryRow(context.Background(), `SELECT epoch FROM mining_tasks WHERE task_id = $1`, id).Scan(&epoch)
+		if err != nil {
+			return nil, err
+		}
+
+		if lowestEpoch == 0 || abi.ChainEpoch(epoch) < lowestEpoch {
+			lowestEpoch = abi.ChainEpoch(epoch)
+			lowestEpochID = id
+		}
+	}
+
+	return &lowestEpochID, nil
 }
 
 func (t *WinPostTask) TypeDetails() harmonytask.TaskTypeDetails {
