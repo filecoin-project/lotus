@@ -154,6 +154,15 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		ComputeTime: details.CompTime,
 	}
 
+	persistNoWin := func() error {
+		_, err := t.db.Exec(ctx, `UPDATE mining_base_block SET no_win = true WHERE task_id = $1`, taskID)
+		if err != nil {
+			return xerrors.Errorf("marking base as not-won: %w", err)
+		}
+
+		return nil
+	}
+
 	// ensure we have a beacon entry for the epoch we're mining on
 	round := base.epoch()
 
@@ -166,17 +175,16 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 
 	mbi, err := t.api.MinerGetBaseInfo(ctx, maddr, round, base.TipSet.Key())
 	if err != nil {
-		err = xerrors.Errorf("failed to get mining base info: %w", err)
-		return false, err
+		return false, xerrors.Errorf("failed to get mining base info: %w", err)
 	}
 	if mbi == nil {
-		// not elloigible to mine on this base, we're done here
-		return true, nil
+		// not eligible to mine on this base, we're done here
+		return true, persistNoWin()
 	}
 
 	if !mbi.EligibleForMining {
 		// slashed or just have no power yet, we're done here
-		return true, nil
+		return true, persistNoWin()
 	}
 
 	if len(mbi.Sectors) == 0 {
@@ -202,7 +210,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 
 		if eproof == nil {
 			// not a winner, we're done here
-			return true, nil
+			return true, persistNoWin()
 		}
 	}
 
@@ -561,7 +569,7 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 				}
 
 				for _, c := range workBase.TipSet.Cids() {
-					_, err = tx.Exec(`INSERT INTO mining_base_block (task_id, block_cid) VALUES ($1, $2)`, id, c)
+					_, err = tx.Exec(`INSERT INTO mining_base_block (task_id, sp_id, block_cid) VALUES ($1, $2, $3)`, id, spID, c)
 					if err != nil {
 						return false, xerrors.Errorf("inserting mining base blocks: %w", err)
 					}

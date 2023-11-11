@@ -27,7 +27,13 @@ create table mining_base_block
         constraint mining_base_block_mining_tasks_task_id_fk
             references mining_tasks
             on delete cascade,
-    block_cid text      not null
-        constraint mining_base_block_cid_k
-            unique
+    sp_id     bigint,
+    block_cid text      not null,
+
+    no_win    bool      not null default false,
+
+    constraint mining_base_block_pk2
+        unique (sp_id, task_id, block_cid)
 );
+
+CREATE UNIQUE INDEX mining_base_block_cid_k ON mining_base_block (sp_id, block_cid) WHERE no_win = false;
