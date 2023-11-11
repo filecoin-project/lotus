@@ -71,7 +71,7 @@ type ProverWinningPoSt interface {
 }
 
 func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors []dtypes.MinerAddress) *WinPostTask {
-	return &WinPostTask{
+	t := &WinPostTask{
 		max:      max,
 		db:       db,
 		prover:   prover,
@@ -80,6 +80,10 @@ func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifie
 		actors:   actors,
 	}
 	// TODO: run warmup
+
+	go t.mineBasic(context.TODO())
+
+	return t
 }
 
 func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
@@ -129,11 +133,6 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		return false, err
 	}
 
-	mi, err := t.api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return false, xerrors.Errorf("getting sector size: %w", err)
-	}
-
 	var bcids []cid.Cid
 	for _, c := range details.BlockCIDs {
 		bcid, err := cid.Parse(c.CID)
@@ -180,6 +179,10 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		return true, nil
 	}
 
+	if len(mbi.Sectors) == 0 {
+		return false, xerrors.Errorf("no sectors selected for winning PoSt")
+	}
+
 	var rbase types.BeaconEntry
 	var bvals []types.BeaconEntry
 	var eproof *types.ElectionProof
@@ -219,15 +222,21 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		}
 
 		prand := abi.PoStRandomness(brand)
+		prand[31] &= 0x3f // make into fr
 
 		sectorNums := make([]abi.SectorNumber, len(mbi.Sectors))
 		for i, s := range mbi.Sectors {
 			sectorNums[i] = s.SectorNumber
 		}
 
-		postChallenges, err := ffi.GeneratePoStFallbackSectorChallenges(mi.WindowPoStProofType, abi.ActorID(details.SpID), prand, sectorNums)
+		ppt, err := mbi.Sectors[0].SealProof.RegisteredWinningPoStProof()
 		if err != nil {
-			return false, xerrors.Errorf("generating fallback challenges: %v", err)
+			return false, xerrors.Errorf("mapping sector seal proof type to post proof type: %w", err)
+		}
+
+		postChallenges, err := ffi.GeneratePoStFallbackSectorChallenges(ppt, abi.ActorID(details.SpID), prand, sectorNums)
+		if err != nil {
+			return false, xerrors.Errorf("generating election challenges: %v", err)
 		}
 
 		sectorChallenges := make([]storiface.PostSectorChallenge, len(mbi.Sectors))
@@ -241,7 +250,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 			}
 		}
 
-		wpostProof, err = t.prover.GenerateWinningPoSt(ctx, mi.WindowPoStProofType, abi.ActorID(details.SpID), sectorChallenges, prand)
+		wpostProof, err = t.prover.GenerateWinningPoSt(ctx, ppt, abi.ActorID(details.SpID), sectorChallenges, prand)
 		if err != nil {
 			err = xerrors.Errorf("failed to compute winning post proof: %w", err)
 			return false, err
