@@ -151,7 +151,7 @@ func fromMiner(cctx *cli.Context) (err error) {
 	if err != nil {
 		return xerrors.Errorf("error getting JWTSecretName: %w", err)
 	}
-	lpCfg.Apis.StorageRPCSecret = base64.RawStdEncoding.EncodeToString(js.PrivateKey)
+	lpCfg.Apis.StorageRPCSecret = base64.StdEncoding.EncodeToString(js.PrivateKey)
 
 	// Populate API Key
 	_, header, err := cliutil.GetRawAPI(cctx, repo.FullNode, "v0")
