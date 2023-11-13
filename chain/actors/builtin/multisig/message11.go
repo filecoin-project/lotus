@@ -10,7 +10,6 @@ import (
 	multisig11 "github.com/filecoin-project/go-state-types/builtin/v11/multisig"
 	init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
 	"github.com/filecoin-project/go-state-types/manifest"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"

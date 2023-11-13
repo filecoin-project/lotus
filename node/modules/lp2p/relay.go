@@ -2,7 +2,6 @@ package lp2p
 
 import (
 	"fmt"
-
 	"github.com/libp2p/go-libp2p"
 	coredisc "github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/routing"

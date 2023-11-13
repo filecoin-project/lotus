@@ -3,13 +3,11 @@ package net
 import (
 	"context"
 	"strings"
-
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/lotus/api"
 )
 

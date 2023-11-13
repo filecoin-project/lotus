@@ -5,9 +5,7 @@ import (
 	"embed"
 	"path"
 	"strings"
-
 	"github.com/libp2p/go-libp2p/core/peer"
-
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
 

@@ -3,7 +3,6 @@ package build
 import (
 	"embed"
 	"path"
-
 	logging "github.com/ipfs/go-log/v2"
 )
 

@@ -11,7 +11,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-
 	"github.com/filecoin-project/lotus/api"
 	lbstore "github.com/filecoin-project/lotus/blockstore"
 )

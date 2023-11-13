@@ -13,8 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
-	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -23,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 )
 
 var verifRegCmd = &cli.Command{

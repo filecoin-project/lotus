@@ -2,9 +2,7 @@ package conformance
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/rand"
 )
 

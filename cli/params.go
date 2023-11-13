@@ -6,7 +6,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-paramfetch"
-
 	"github.com/filecoin-project/lotus/build"
 )
 

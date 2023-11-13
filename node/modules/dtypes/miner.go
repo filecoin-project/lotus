@@ -3,14 +3,11 @@ package dtypes
 import (
 	"context"
 	"time"
-
 	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 

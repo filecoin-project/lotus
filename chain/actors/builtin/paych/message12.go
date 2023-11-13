@@ -10,7 +10,6 @@ import (
 	init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
 	paych12 "github.com/filecoin-project/go-state-types/builtin/v12/paych"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"

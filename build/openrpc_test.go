@@ -3,7 +3,6 @@ package build
 
 import (
 	"testing"
-
 	apitypes "github.com/filecoin-project/lotus/api/types"
 )
 

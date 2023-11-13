@@ -5,10 +5,8 @@ import (
 	"net/http"
 	"sync/atomic"
 	"time"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
-
 	lapi "github.com/filecoin-project/lotus/api"
 )
 

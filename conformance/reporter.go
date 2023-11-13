@@ -5,7 +5,6 @@ import (
 	"os"
 	"sync/atomic"
 	"testing"
-
 	"github.com/fatih/color"
 )
 

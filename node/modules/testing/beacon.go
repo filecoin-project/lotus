@@ -2,7 +2,6 @@ package testing
 
 import (
 	"time"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 )

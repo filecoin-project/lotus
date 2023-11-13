@@ -3,7 +3,6 @@ package lp2p
 import (
 	"context"
 	"sort"
-
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"
 	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"

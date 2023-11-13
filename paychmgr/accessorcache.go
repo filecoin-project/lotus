@@ -2,7 +2,6 @@ package paychmgr
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-address"
 )
 

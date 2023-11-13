@@ -13,11 +13,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
-	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state2)(nil)

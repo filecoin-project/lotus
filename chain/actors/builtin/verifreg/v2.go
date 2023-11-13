@@ -11,11 +11,10 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
-	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
-	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state2)(nil)

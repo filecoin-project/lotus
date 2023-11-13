@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -21,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 )
 
 func TestPledgeSectors(t *testing.T) {

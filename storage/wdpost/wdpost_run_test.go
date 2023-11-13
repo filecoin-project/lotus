@@ -22,8 +22,6 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -32,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 )
 
 type mockStorageMinerAPI struct {

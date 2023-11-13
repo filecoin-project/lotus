@@ -3,9 +3,7 @@ package build
 import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/protocol"
-
 	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 

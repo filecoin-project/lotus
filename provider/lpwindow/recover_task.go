@@ -2,6 +2,9 @@ package lpwindow
 
 import (
 	"context"
+
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -21,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/wdpost"
-	"golang.org/x/xerrors"
 )
 
 type WdPostRecoverDeclareTask struct {

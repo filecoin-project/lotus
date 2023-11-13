@@ -3,11 +3,9 @@ package net
 import (
 	"context"
 	"net"
-
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/lotus/api"
 )
 

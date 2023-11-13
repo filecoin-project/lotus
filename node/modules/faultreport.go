@@ -2,7 +2,6 @@ package modules
 
 import (
 	"go.uber.org/fx"
-
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter/slashsvc"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"

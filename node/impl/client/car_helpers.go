@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"io"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-car/util"

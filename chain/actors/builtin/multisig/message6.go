@@ -6,13 +6,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-	init6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/init"
-	multisig6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/multisig"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+	init6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/init"
+	multisig6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/multisig"
 )
 
 type message6 struct{ message0 }

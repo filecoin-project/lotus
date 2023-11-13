@@ -13,8 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -25,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
+	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var terminationsCmd = &cli.Command{

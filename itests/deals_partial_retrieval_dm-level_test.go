@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/api"
 	api0 "github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/itests/kit"
