@@ -106,6 +106,7 @@ type TaskEngine struct {
 	follows        map[string][]followStruct
 	lastFollowTime time.Time
 	lastCleanup    atomic.Value
+	hostAndPort    string
 }
 type followStruct struct {
 	f    func(TaskID, AddTaskFunc) (bool, error)
@@ -129,13 +130,14 @@ func New(
 	}
 	ctx, grace := context.WithCancel(context.Background())
 	e := &TaskEngine{
-		ctx:     ctx,
-		grace:   grace,
-		db:      db,
-		reg:     reg,
-		ownerID: reg.Resources.MachineID, // The current number representing "hostAndPort"
-		taskMap: make(map[string]*taskTypeHandler, len(impls)),
-		follows: make(map[string][]followStruct),
+		ctx:         ctx,
+		grace:       grace,
+		db:          db,
+		reg:         reg,
+		ownerID:     reg.Resources.MachineID, // The current number representing "hostAndPort"
+		taskMap:     make(map[string]*taskTypeHandler, len(impls)),
+		follows:     make(map[string][]followStruct),
+		hostAndPort: hostnameAndPort,
 	}
 	e.lastCleanup.Store(time.Now())
 	for _, c := range impls {

@@ -198,8 +198,8 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 			}
 		}
 		_, err = tx.Exec(`INSERT INTO harmony_task_history 
-												(task_id, name, posted,    work_start, work_end, result, err)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7)`, tID, h.Name, postedTime, workStart, workEnd, done, result)
+									 (task_id,   name, posted,    work_start, work_end, result, by_host_and_port,      err)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, tID, h.Name, postedTime, workStart, workEnd, done, h.TaskEngine.hostAndPort, result)
 		if err != nil {
 			return false, fmt.Errorf("could not write history: %w", err)
 		}
