@@ -3,7 +3,6 @@ package dtypes
 import (
 	"context"
 	"sync"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 )

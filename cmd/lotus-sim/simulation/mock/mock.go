@@ -12,10 +12,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
-
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // Ideally, we'd use extern/sealer/mock. Unfortunately, those mocks are a bit _too_ accurate

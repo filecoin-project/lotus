@@ -7,9 +7,8 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 )
 
 type apres struct {

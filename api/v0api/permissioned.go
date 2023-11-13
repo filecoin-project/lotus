@@ -2,7 +2,6 @@ package v0api
 
 import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
-
 	"github.com/filecoin-project/lotus/api"
 )
 

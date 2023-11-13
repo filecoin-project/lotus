@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 	"github.com/ipfs/boxo/blockservice"
 	blockstore "github.com/ipfs/boxo/blockstore"
 	offline "github.com/ipfs/boxo/exchange/offline"
@@ -22,7 +21,6 @@ import (
 	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/repo/imports"

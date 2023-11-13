@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -19,7 +18,6 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"

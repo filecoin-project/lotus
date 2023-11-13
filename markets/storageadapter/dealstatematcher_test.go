@@ -12,15 +12,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
-	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
-
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	test "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 func TestDealStateMatcher(t *testing.T) {

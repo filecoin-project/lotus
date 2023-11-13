@@ -16,9 +16,8 @@ import (
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
-
 	"github.com/filecoin-project/lotus/chain/types"
+	tutils "github.com/filecoin-project/specs-actors/support/testing"
 )
 
 var dummyCid cid.Cid

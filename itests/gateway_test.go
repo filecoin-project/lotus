@@ -17,9 +17,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -29,6 +26,8 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/multisig"
 	"github.com/filecoin-project/lotus/node"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 )
 
 const (

@@ -6,9 +6,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 )
 
 type scalingCost struct {

@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-
 	"github.com/filecoin-project/lotus/api/docgen"
 )
 

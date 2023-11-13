@@ -28,9 +28,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
-	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -38,6 +35,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 )
 
 var minerCmd = &cli.Command{

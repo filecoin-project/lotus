@@ -25,8 +25,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -37,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 )
 
 var sectorsCmd = &cli.Command{

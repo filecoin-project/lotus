@@ -30,10 +30,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-statestore"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
-	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
-
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -58,6 +54,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 )
 
 var initCmd = &cli.Command{

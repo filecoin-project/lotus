@@ -21,8 +21,6 @@ import (
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -30,6 +28,7 @@ import (
 	test "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 )
 
 func TestOnDealSectorPreCommitted(t *testing.T) {

@@ -16,15 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
-	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
-	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
-	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
-	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
-	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -36,6 +27,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/metrics"
+	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
+	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
+	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
+	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
+	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
+	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
 )
 
 func NewActorRegistry() *vm.ActorRegistry {

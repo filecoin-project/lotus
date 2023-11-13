@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-
 	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
@@ -19,7 +18,6 @@ import (
 	"github.com/multiformats/go-base32"
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -346,7 +344,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 
 	f, err := os.Open(p)
 	if os.IsNotExist(err) {
-		return nil, ErrNoAPIEndpoint
+		return nil, xerrors.Errorf("No file (%s): %w", p, ErrNoAPIEndpoint)
 	} else if err != nil {
 		return nil, err
 	}

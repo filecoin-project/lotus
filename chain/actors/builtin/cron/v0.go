@@ -7,10 +7,9 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
-	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	cron0 "github.com/filecoin-project/specs-actors/actors/builtin/cron"
 )
 
 var _ State = (*state0)(nil)

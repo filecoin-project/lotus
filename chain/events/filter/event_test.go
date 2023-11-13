@@ -15,11 +15,10 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 func TestEventFilterCollectEvents(t *testing.T) {

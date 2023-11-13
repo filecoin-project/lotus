@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
 	"github.com/ipfs/go-datastore"
 	provider "github.com/ipni/index-provider"
 	"github.com/libp2p/go-libp2p"
@@ -13,9 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
-
 	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

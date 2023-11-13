@@ -19,7 +19,6 @@ import (
 	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"

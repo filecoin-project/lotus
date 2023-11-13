@@ -10,9 +10,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
-
 	"github.com/filecoin-project/lotus/chain/types"
+	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 )
 
 var mathCmd = &cli.Command{

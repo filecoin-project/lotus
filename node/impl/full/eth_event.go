@@ -4,14 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
-
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/zyedidia/generic/queue"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-jsonrpc"
-
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"

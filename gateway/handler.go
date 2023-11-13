@@ -6,14 +6,11 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/gorilla/mux"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
-
 	"github.com/filecoin-project/go-jsonrpc"
-
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"

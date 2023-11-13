@@ -19,8 +19,6 @@ import (
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -32,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 )
 
 type ClientNodeAdapter struct {

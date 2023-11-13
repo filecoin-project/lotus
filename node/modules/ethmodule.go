@@ -5,11 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
 	"go.uber.org/fx"
-
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/messagepool"

@@ -9,7 +9,6 @@ import (
 	gocrypto "github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/go-state-types/builtin"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 

@@ -3,7 +3,6 @@ package tracer
 import (
 	"testing"
 	"time"
-
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/peer"

@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-
 	dgbadger "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"

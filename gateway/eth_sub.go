@@ -3,9 +3,7 @@ package gateway
 import (
 	"context"
 	"sync"
-
 	"github.com/filecoin-project/go-jsonrpc"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )

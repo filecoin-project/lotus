@@ -8,10 +8,9 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
-	system5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/system"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	system5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/system"
 )
 
 var _ State = (*state5)(nil)

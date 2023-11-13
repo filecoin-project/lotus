@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerstates"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-statemachine/fsm"
-
 	"github.com/filecoin-project/lotus/node/config"
 )
 

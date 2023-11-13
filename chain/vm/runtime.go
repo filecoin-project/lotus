@@ -21,14 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
-	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
-	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
-	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
-	rt4 "github.com/filecoin-project/specs-actors/v4/actors/runtime"
-	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
-	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
-	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -36,6 +28,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
+	rt4 "github.com/filecoin-project/specs-actors/v4/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
+	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 )
 
 type Message struct {

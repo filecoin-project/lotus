@@ -18,7 +18,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
@@ -119,7 +118,7 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 		}
 	}
 
-	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t.Type())
+	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v. Try setting environment variable: %s", t.Type(), primaryEnv)
 }
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {

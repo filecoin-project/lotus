@@ -2,15 +2,12 @@ package genesis
 
 import (
 	"encoding/json"
-
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/lotus/chain/types"
 )
 

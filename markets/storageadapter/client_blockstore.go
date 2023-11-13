@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
-
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 

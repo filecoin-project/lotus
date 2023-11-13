@@ -3,7 +3,6 @@ package lp2p
 import (
 	"crypto/rand"
 	"time"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -12,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )

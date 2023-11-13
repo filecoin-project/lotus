@@ -31,10 +31,10 @@ var Doc = map[string][]DocField{
 	},
 	"ApisConfig": {
 		{
-			Name: "FULLNODE_API_INFO",
+			Name: "ChainApiInfo",
 			Type: "[]string",
 
-			Comment: `FULLNODE_API_INFO is the API endpoint for the Lotus daemon.`,
+			Comment: `ChainApiInfo is the API endpoint for the Lotus daemon.`,
 		},
 		{
 			Name: "StorageRPCSecret",

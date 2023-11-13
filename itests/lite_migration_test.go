@@ -16,8 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	gstStore "github.com/filecoin-project/go-state-types/store"
-	"github.com/filecoin-project/specs-actors/v8/actors/util/adt"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -25,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/specs-actors/v8/actors/util/adt"
 )
 
 func TestLiteMigration(t *testing.T) {

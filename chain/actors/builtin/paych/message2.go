@@ -4,13 +4,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 )
 
 type message2 struct{ from address.Address }

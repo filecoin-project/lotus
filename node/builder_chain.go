@@ -2,16 +2,13 @@ package node
 
 import (
 	"os"
-
 	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"

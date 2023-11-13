@@ -2,7 +2,6 @@ package build
 
 import (
 	"sort"
-
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 

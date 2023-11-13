@@ -3,7 +3,6 @@ package modules
 import (
 	"context"
 	"time"
-
 	"github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
@@ -12,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.opencensus.io/stats"
 	"go.uber.org/fx"
-
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
