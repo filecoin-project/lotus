@@ -204,7 +204,10 @@ var runCmd = &cli.Command{
 
 		sa, err := StorageAuth(cfg.Apis.StorageRPCSecret)
 		if err != nil {
-			return xerrors.Errorf("parsing Apis.StorageRPCSecret config: %w", err)
+			return xerrors.Errorf(`'%w' while parsing the config toml's 
+	[Apis]
+	StorageRPCSecret=%v
+Get it from the JSON documents in ~/.lotus-miner/keystore called .PrivateKey`, err, cfg.Apis.StorageRPCSecret)
 		}
 
 		al := alerting.NewAlertingSystem(j)
