@@ -87,6 +87,8 @@ func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifie
 }
 
 func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+	log.Debugw("WinPostTask.Do()", "taskID", taskID)
+
 	ctx := context.TODO()
 
 	type BlockCID struct {
@@ -179,15 +181,18 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	}
 	if mbi == nil {
 		// not eligible to mine on this base, we're done here
+		log.Debugw("WinPoSt not eligible to mine on this base", "tipset", types.LogCids(base.TipSet.Cids()))
 		return true, persistNoWin()
 	}
 
 	if !mbi.EligibleForMining {
 		// slashed or just have no power yet, we're done here
+		log.Debugw("WinPoSt not eligible for mining", "tipset", types.LogCids(base.TipSet.Cids()))
 		return true, persistNoWin()
 	}
 
 	if len(mbi.Sectors) == 0 {
+		log.Warnw("WinPoSt no sectors to mine", "tipset", types.LogCids(base.TipSet.Cids()))
 		return false, xerrors.Errorf("no sectors selected for winning PoSt")
 	}
 
@@ -205,11 +210,13 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 
 		eproof, err = gen.IsRoundWinner(ctx, round, maddr, rbase, mbi, t.api)
 		if err != nil {
+			log.Warnw("WinPoSt failed to check if we win next round", "error", err)
 			return false, xerrors.Errorf("failed to check if we win next round: %w", err)
 		}
 
 		if eproof == nil {
 			// not a winner, we're done here
+			log.Debugw("WinPoSt not a winner", "tipset", types.LogCids(base.TipSet.Cids()))
 			return true, persistNoWin()
 		}
 	}
@@ -514,6 +521,11 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 	*/
 
 	for {
+		// limit the rate at which we mine blocks to at least EquivocationDelaySecs
+		// this is to prevent races on devnets in catch up mode. Acts as a minimum
+		// delay for the sleep below.
+		time.Sleep(time.Duration(build.EquivocationDelaySecs)*time.Second + time.Second)
+
 		// wait for *NEXT* propagation delay
 		time.Sleep(time.Until(workBase.afterPropDelay()))
 
