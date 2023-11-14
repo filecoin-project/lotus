@@ -208,7 +208,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf(`'%w' while parsing the config toml's 
 	[Apis]
 	StorageRPCSecret=%v
-Get it from the JSON documents in ~/.lotus-miner/keystore called .PrivateKey`, err, cfg.Apis.StorageRPCSecret)
+Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`, err, cfg.Apis.StorageRPCSecret)
 		}
 
 		al := alerting.NewAlertingSystem(j)
