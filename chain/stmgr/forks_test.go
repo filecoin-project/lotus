@@ -23,6 +23,10 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -39,9 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 )
 
 func init() {

@@ -9,6 +9,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 

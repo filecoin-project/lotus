@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/node"

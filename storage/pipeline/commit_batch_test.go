@@ -20,6 +20,8 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
@@ -27,7 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 )
 
 func TestCommitBatcher(t *testing.T) {

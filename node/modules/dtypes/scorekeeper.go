@@ -2,6 +2,7 @@ package dtypes
 
 import (
 	"sync"
+
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 )

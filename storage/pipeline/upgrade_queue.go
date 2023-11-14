@@ -6,8 +6,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {

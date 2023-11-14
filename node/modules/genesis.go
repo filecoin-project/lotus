@@ -3,10 +3,12 @@ package modules
 import (
 	"bytes"
 	"os"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipld/go-car"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

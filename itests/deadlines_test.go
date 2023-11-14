@@ -18,6 +18,8 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -28,7 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/storage/sealer/mock"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 )
 
 // TestDeadlineToggling:

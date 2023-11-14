@@ -19,6 +19,10 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -43,9 +47,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/bundle"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 const AccountStart = 100

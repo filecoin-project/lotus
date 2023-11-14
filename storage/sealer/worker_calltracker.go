@@ -8,6 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-statestore"
+
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 

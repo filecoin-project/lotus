@@ -10,8 +10,9 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
-	"github.com/filecoin-project/lotus/api"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 func TestSectorInfoSerialization(t *testing.T) {

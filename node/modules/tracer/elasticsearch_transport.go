@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 )

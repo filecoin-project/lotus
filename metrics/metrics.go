@@ -9,6 +9,7 @@ import (
 	"go.opencensus.io/tag"
 
 	rpcmetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+
 	"github.com/filecoin-project/lotus/blockstore"
 )
 
