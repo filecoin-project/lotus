@@ -1989,7 +1989,7 @@ func upgradeActorsV12Common(
 }
 
 // ////////////////////
-func buildUpgradeActorsV12MinerFix(minerCid, newManifestCID cid.Cid) func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+func buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestCID cid.Cid) func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	return func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 		stateStore := sm.ChainStore().StateBlockstore()
 		adtStore := store.ActorStore(ctx, stateStore)
@@ -2105,7 +2105,7 @@ func buildUpgradeActorsV12MinerFix(minerCid, newManifestCID cid.Cid) func(ctx co
 			}
 
 			// This is the hard-coded "buggy" miner actor Code ID
-			if inActor.Code != minerCid && inActor.Code != outActor.Code {
+			if inActor.Code != oldBuggyMinerCID && inActor.Code != outActor.Code {
 				return xerrors.Errorf("unexpected change in code for actor %s", a)
 			}
 
