@@ -1888,10 +1888,9 @@ var (
 	calibnetv12BuggyBundleSuffix1 = "calibrationnet-12-rc1"
 	calibnetv12BuggyBundleSuffix2 = "calibrationnet-12-rc2"
 
-	calibnetv12BuggyManifestCID1 = cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
-	calibnetv12BuggyManifestCID2 = cid.MustParse("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru")
-	// TODO Update based on manifest of new release
-	calibnetv12CorrectManifestCID1 = cid.Undef
+	calibnetv12BuggyManifestCID1   = cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
+	calibnetv12BuggyManifestCID2   = cid.MustParse("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru")
+	calibnetv12CorrectManifestCID1 = cid.MustParse("bafy2bzacednzb3pkrfnbfhmoqtb3bc6dgvxszpqklf3qcc7qzcage4ewzxsca")
 )
 
 func upgradeActorsV12Common(
