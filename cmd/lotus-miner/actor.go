@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	minerV12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -50,7 +49,6 @@ var actorCmd = &cli.Command{
 		actorProposeChangeWorker,
 		actorConfirmChangeWorker,
 		actorCompactAllocatedCmd,
-		actorMovePartitionsCmd,
 		actorProposeChangeBeneficiary,
 		actorConfirmChangeBeneficiary,
 	},
@@ -1283,142 +1281,6 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 		} else {
 			fmt.Println("Beneficiary address change awaiting additional confirmations")
 		}
-
-		return nil
-	},
-}
-
-var actorMovePartitionsCmd = &cli.Command{
-	Name:  "move-partitions",
-	Usage: "move deadline of specified partitions from one to another",
-	Flags: []cli.Flag{
-		&cli.Int64SliceFlag{
-			Name:  "partition-indices",
-			Usage: "Indices of partitions to update, separated by comma",
-		},
-		&cli.Uint64Flag{
-			Name:  "orig-deadline",
-			Usage: "Deadline to move partition from",
-		},
-		&cli.Uint64Flag{
-			Name:  "dest-deadline",
-			Usage: "Deadline to move partition to",
-		},
-		&cli.BoolFlag{
-			Name:  "really-do-it",
-			Usage: "Actually send transaction performing the action",
-			Value: false,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
-			return nil
-		}
-
-		if cctx.Args().Present() {
-			return fmt.Errorf("please use flags to provide arguments")
-		}
-
-		ctx := lcli.ReqContext(cctx)
-
-		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		maddr, err := minerApi.ActorAddress(ctx)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
-
-		fullNodeApi, acloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer acloser()
-
-		minfo, err := fullNodeApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		origDeadline := cctx.Uint64("orig-deadline")
-		if origDeadline > miner.WPoStPeriodDeadlines {
-			return fmt.Errorf("orig-deadline %d out of range", origDeadline)
-		}
-		destDeadline := cctx.Uint64("dest-deadline")
-		if destDeadline > miner.WPoStPeriodDeadlines {
-			return fmt.Errorf("dest-deadline %d out of range", destDeadline)
-		}
-		if origDeadline == destDeadline {
-			return fmt.Errorf("dest-desdline cannot be the same as orig-deadline")
-		}
-
-		partitions := cctx.Int64Slice("partition-indices")
-		if len(partitions) == 0 {
-			return fmt.Errorf("must include at least one partition to move")
-		}
-
-		curPartitions, err := fullNodeApi.StateMinerPartitions(ctx, maddr, origDeadline, types.EmptyTSK)
-		if err != nil {
-			return fmt.Errorf("getting partitions for deadline %d: %w", origDeadline, err)
-		}
-		if len(partitions) > len(curPartitions) {
-			return fmt.Errorf("partition size(%d) cannot be bigger than current partition size(%d) for deadline %d", len(partitions), len(curPartitions), origDeadline)
-		}
-
-		fmt.Printf("Moving %d paritions\n", len(partitions))
-
-		partitionsBf := bitfield.New()
-		for _, partition := range partitions {
-			if partition >= int64(len(curPartitions)) {
-				return fmt.Errorf("partition index(%d) doesn't exist", partition)
-			}
-			partitionsBf.Set(uint64(partition))
-		}
-
-		params := minerV12.MovePartitionsParams{
-			OrigDeadline: origDeadline,
-			DestDeadline: destDeadline,
-			Partitions:   partitionsBf,
-		}
-
-		serializedParams, err := actors.SerializeParams(&params)
-		if err != nil {
-			return fmt.Errorf("serializing params: %w", err)
-		}
-
-		smsg, err := fullNodeApi.MpoolPushMessage(ctx, &types.Message{
-			From:   minfo.Worker,
-			To:     maddr,
-			Method: builtin.MethodsMiner.MovePartitions,
-			Value:  big.Zero(),
-			Params: serializedParams,
-		}, nil)
-		if err != nil {
-			return fmt.Errorf("mpool push: %w", err)
-		}
-
-		fmt.Println("MovePartitions Message CID:", smsg.Cid())
-
-		// wait for it to get mined into a block
-		fmt.Println("Waiting for block confirmation...")
-		wait, err := fullNodeApi.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
-		if err != nil {
-			return err
-		}
-
-		// check it executed successfully
-		if wait.Receipt.ExitCode.IsError() {
-			fmt.Println("Moving partitions failed!")
-			return err
-		}
-
-		fmt.Println("Move partition confirmed")
 
 		return nil
 	},
