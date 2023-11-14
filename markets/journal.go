@@ -3,6 +3,7 @@ package markets
 import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+
 	"github.com/filecoin-project/lotus/journal"
 )
 

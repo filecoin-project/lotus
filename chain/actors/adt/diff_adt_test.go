@@ -12,9 +12,10 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	bstore "github.com/filecoin-project/lotus/blockstore"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+
+	bstore "github.com/filecoin-project/lotus/blockstore"
 )
 
 func TestDiffAdtArray(t *testing.T) {

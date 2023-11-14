@@ -14,12 +14,13 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor, remainder genesis.Actor, av actorstypes.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {

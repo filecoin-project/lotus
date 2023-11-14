@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-data-transfer/v2/channelmonitor"
 	dtimpl "github.com/filecoin-project/go-data-transfer/v2/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/v2/network"
@@ -24,6 +26,7 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/journal"

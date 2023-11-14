@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
 	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/require"
 )

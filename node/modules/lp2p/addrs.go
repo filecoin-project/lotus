@@ -2,6 +2,7 @@ package lp2p
 
 import (
 	"fmt"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	p2pbhost "github.com/libp2p/go-libp2p/p2p/host/basic"

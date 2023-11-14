@@ -20,12 +20,13 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	evtmock "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 )
 
 var errNotFound = errors.New("could not find")

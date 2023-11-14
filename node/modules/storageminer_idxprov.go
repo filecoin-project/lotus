@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	provider "github.com/ipni/index-provider"
@@ -10,7 +11,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

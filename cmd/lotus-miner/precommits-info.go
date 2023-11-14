@@ -7,11 +7,12 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/specs-actors/v7/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 )
 
 var sectorPreCommitsCmd = &cli.Command{

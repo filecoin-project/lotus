@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+
 	"github.com/filecoin-project/lotus/api/docgen"
 	docgen_openrpc "github.com/filecoin-project/lotus/api/docgen-openrpc"
 )

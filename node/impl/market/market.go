@@ -2,9 +2,12 @@ package market
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/market"

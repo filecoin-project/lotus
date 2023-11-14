@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"time"
+
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -19,6 +20,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"

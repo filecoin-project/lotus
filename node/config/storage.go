@@ -7,7 +7,9 @@ import (
 	"io/fs"
 	"os"
 	"path"
+
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 

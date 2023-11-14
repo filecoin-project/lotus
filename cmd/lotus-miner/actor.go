@@ -24,6 +24,7 @@ import (
 	minerV12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"

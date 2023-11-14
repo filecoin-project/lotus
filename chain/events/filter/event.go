@@ -14,9 +14,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	cstore "github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 func isIndexedValue(b uint8) bool {

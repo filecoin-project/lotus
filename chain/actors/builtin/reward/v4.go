@@ -8,12 +8,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
 	smoothing4 "github.com/filecoin-project/specs-actors/v4/actors/util/smoothing"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 var _ State = (*state4)(nil)

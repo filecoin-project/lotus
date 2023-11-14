@@ -5,10 +5,13 @@ import (
 	"crypto/rand"
 	"math"
 	"time"
+
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/chain/types"
 )
 

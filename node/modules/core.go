@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log/v2"
 	record "github.com/libp2p/go-libp2p-record"
@@ -16,8 +17,10 @@ import (
 	"github.com/raulk/go-watchdog"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"

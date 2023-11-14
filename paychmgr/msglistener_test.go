@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"testing"
+
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"

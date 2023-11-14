@@ -12,6 +12,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -19,8 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
-	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 )
 
 var minerPeeridCmd = &cli.Command{

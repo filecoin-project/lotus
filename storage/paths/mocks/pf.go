@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
+
 	partialfile "github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )

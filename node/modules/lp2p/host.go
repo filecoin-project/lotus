@@ -3,6 +3,7 @@ package lp2p
 import (
 	"context"
 	"fmt"
+
 	nilrouting "github.com/ipfs/boxo/routing/none"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -14,6 +15,7 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"go.uber.org/fx"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"

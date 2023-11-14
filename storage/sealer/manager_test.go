@@ -28,13 +28,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 )
 
 func init() {

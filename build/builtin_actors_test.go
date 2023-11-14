@@ -2,9 +2,12 @@ package build_test
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/require"
+
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 )

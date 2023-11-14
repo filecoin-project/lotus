@@ -12,8 +12,9 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func (m *Manager) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {

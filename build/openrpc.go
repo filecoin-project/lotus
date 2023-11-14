@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"embed"
 	"encoding/json"
+
 	apitypes "github.com/filecoin-project/lotus/api/types"
 )
 

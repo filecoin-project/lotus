@@ -29,6 +29,9 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statestore"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
@@ -62,8 +65,6 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/mock"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 )
 
 func init() {

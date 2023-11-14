@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
