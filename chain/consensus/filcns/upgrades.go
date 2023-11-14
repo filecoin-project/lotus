@@ -279,7 +279,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeWatermelonFixHeight,
 		Network:   network.Version21,
-		Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID, calibnetv12BuggyManifest2CID),
+		Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID1, calibnetv12BuggyManifestCID2),
 	},
 		{
 			Height:    build.UpgradeWatermelonFix2Height,
@@ -297,15 +297,6 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}
 	return us
 }
-
-var (
-	calibnetv12BuggyMinerCID  = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
-	calibnetv12BuggyMinerCID2 = cid.MustParse("bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie")
-
-	calibnetv12BuggyManifest2CID = cid.MustParse("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru")
-	// TODO Update based on manifest of new release
-	calibnetv12CorrectManifestCID1 = cid.MustParse("")
-)
 
 func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, em stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Some initial parameters
@@ -1890,7 +1881,18 @@ func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	return newRoot, nil
 }
 
-var calibnetv12BuggyBundle = cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
+var (
+	calibnetv12BuggyMinerCID1 = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
+	calibnetv12BuggyMinerCID2 = cid.MustParse("bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie")
+
+	calibnetv12BuggyBundleSuffix1 = "calibrationnet-12-rc1"
+	calibnetv12BuggyBundleSuffix2 = "calibrationnet-12-rc2"
+
+	calibnetv12BuggyManifestCID1 = cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
+	calibnetv12BuggyManifestCID2 = cid.MustParse("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru")
+	// TODO Update based on manifest of new release
+	calibnetv12CorrectManifestCID1 = cid.Undef
+)
 
 func upgradeActorsV12Common(
 	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
@@ -1937,7 +1939,7 @@ func upgradeActorsV12Common(
 
 	var manifestCid cid.Cid
 	if initState.NetworkName == "calibrationnet" {
-		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, "calibrationnet-buggy")
+		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix1)
 		if !ok {
 			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
 		}
@@ -1948,8 +1950,8 @@ func upgradeActorsV12Common(
 			return cid.Undef, xerrors.Errorf("failed to load buggy calibnet bundle: %w", err)
 		}
 
-		if manifestCid != calibnetv12BuggyBundle {
-			return cid.Undef, xerrors.Errorf("didn't find expected buggy calibnet bundle manifest: %s != %s", manifestCid, calibnetv12BuggyBundle)
+		if manifestCid != calibnetv12BuggyManifestCID1 {
+			return cid.Undef, xerrors.Errorf("didn't find expected buggy calibnet bundle manifest: %s != %s", manifestCid, calibnetv12BuggyManifestCID1)
 		}
 	} else {
 		ok := false
@@ -1995,8 +1997,23 @@ func buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestCID cid.Cid) fun
 		adtStore := store.ActorStore(ctx, stateStore)
 
 		// ensure that the manifest is loaded in the blockstore
+
+		// this loads the "correct" bundle for UpgradeWatermelonFix2Height
 		if err := bundle.LoadBundles(ctx, stateStore, actorstypes.Version12); err != nil {
 			return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+		}
+
+		// this loads the second buggy bundle, for UpgradeWatermelonFixHeight
+		_, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix2)
+		if !ok {
+			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
+		}
+
+		// now confirm we have the one we're migrating to
+		if haveManifest, err := stateStore.Has(ctx, newManifestCID); err != nil {
+			return cid.Undef, xerrors.Errorf("blockstore error when loading manifest %s: %w", newManifestCID, err)
+		} else if !haveManifest {
+			return cid.Undef, xerrors.Errorf("missing new manifest %s in blockstore", newManifestCID)
 		}
 
 		// Load input state tree
@@ -2104,7 +2121,7 @@ func buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestCID cid.Cid) fun
 				return xerrors.Errorf("mismatched head for actor %s", a)
 			}
 
-			// This is the hard-coded "buggy" miner actor Code ID
+			// Actor Codes are only expected to change for the miner actor
 			if inActor.Code != oldBuggyMinerCID && inActor.Code != outActor.Code {
 				return xerrors.Errorf("unexpected change in code for actor %s", a)
 			}
