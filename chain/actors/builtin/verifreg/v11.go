@@ -15,6 +15,7 @@ import (
 	verifreg11 "github.com/filecoin-project/go-state-types/builtin/v11/verifreg"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )

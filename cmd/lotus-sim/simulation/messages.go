@@ -6,8 +6,9 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // toArray converts the given set of CIDs to an AMT. This is usually used to pack messages into blocks.

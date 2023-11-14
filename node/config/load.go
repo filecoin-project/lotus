@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
 	"github.com/BurntSushi/toml"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/xerrors"

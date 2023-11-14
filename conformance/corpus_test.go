@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
 	"github.com/filecoin-project/test-vectors/schema"
 )
 

@@ -5,9 +5,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
 	bstore "github.com/ipfs/boxo/blockstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"

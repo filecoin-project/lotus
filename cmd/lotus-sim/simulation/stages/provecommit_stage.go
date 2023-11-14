@@ -11,6 +11,9 @@ import (
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	power5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/power"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -19,8 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
-	power5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/power"
 )
 
 const (

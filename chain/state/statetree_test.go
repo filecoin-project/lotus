@@ -11,9 +11,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/network"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 func BenchmarkStateTreeSet(b *testing.B) {

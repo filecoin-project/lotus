@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"

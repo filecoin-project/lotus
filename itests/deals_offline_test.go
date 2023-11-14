@@ -13,6 +13,7 @@ import (
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/itests/kit"
 )

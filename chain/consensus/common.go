@@ -19,6 +19,8 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -30,7 +32,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/metrics"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 // Common operations shared by all consensus algorithm implementations.

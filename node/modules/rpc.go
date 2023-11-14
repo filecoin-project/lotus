@@ -2,10 +2,12 @@ package modules
 
 import (
 	"context"
+
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"

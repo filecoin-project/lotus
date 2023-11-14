@@ -3,15 +3,18 @@ package paychmgr
 import (
 	"context"
 	"testing"
+
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	tutils2 "github.com/filecoin-project/specs-actors/v2/support/testing"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
 	"github.com/filecoin-project/lotus/chain/types"

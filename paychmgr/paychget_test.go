@@ -6,10 +6,12 @@ import (
 	"sync"
 	"testing"
 	"time"
+
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -17,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"

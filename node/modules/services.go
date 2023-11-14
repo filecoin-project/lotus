@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -15,8 +16,10 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"

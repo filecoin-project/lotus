@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -18,6 +19,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
+
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 )

@@ -3,8 +3,10 @@ package repo
 import (
 	"context"
 	"errors"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"

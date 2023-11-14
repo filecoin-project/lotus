@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"

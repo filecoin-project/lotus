@@ -21,6 +21,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
+
 	"github.com/filecoin-project/lotus/build"
 )
 

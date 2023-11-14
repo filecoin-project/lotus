@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/mock"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"

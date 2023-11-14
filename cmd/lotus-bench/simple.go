@@ -18,11 +18,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
+	prf "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	prf "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 )
 
 var simpleCmd = &cli.Command{

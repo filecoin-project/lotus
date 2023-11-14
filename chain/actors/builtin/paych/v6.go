@@ -10,10 +10,11 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	paych6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/paych"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state6)(nil)

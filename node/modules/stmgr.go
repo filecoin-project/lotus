@@ -2,6 +2,7 @@ package modules
 
 import (
 	"go.uber.org/fx"
+
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/stmgr"

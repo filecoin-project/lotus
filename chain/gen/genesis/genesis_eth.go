@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"

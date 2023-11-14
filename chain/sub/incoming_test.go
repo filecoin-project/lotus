@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/mocks"
 	"github.com/filecoin-project/lotus/chain/types"

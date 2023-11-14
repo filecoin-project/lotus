@@ -30,6 +30,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
+	adt "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -41,7 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	adt "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
 )
 
 var log = logging.Logger("lotus-bench")

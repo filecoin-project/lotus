@@ -11,6 +11,8 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -21,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 )
 
 func TestPublishDealsBatching(t *testing.T) {
