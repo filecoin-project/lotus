@@ -2003,9 +2003,14 @@ func buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestCID cid.Cid) fun
 		}
 
 		// this loads the second buggy bundle, for UpgradeWatermelonFixHeight
-		_, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix2)
+		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix2)
 		if !ok {
 			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
+		}
+
+		_, err := bundle.LoadBundle(ctx, stateStore, bytes.NewReader(embedded))
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to load buggy calibnet bundle: %w", err)
 		}
 
 		// now confirm we have the one we're migrating to
