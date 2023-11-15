@@ -58,17 +58,24 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 		}
 
 		// prefill the whole skiplist cache maintained internally by the GetTipsetByHeight
+		ctx := helpers.LifecycleCtx(mctx, lc)
 		go func() {
 			start := time.Now()
 			log.Infoln("Start prefilling GetTipsetByHeight cache")
+			head := cs.GetHeaviestTipSet()
+			if head == nil {
+				// Nothing to prefill.
+				return
+			}
+
 			_, err := cs.GetTipsetByHeight(mctx, abi.ChainEpoch(0), cs.GetHeaviestTipSet(), false)
 			if err != nil {
 				log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
 			}
+
 			log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
 		}()
 
-		ctx := helpers.LifecycleCtx(mctx, lc)
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
 				ev, err := events.NewEvents(ctx, &evapi)
