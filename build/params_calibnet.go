@@ -85,9 +85,8 @@ const UpgradeWatermelonHeight = 1013134
 // 2023-11-07T13:00:00Z
 const UpgradeWatermelonFixHeight = 1070494
 
-// 2023-11-07T13:00:00Z
-// TODO INSERT VALUE HERE ONCE DECIDED
-const UpgradeWatermelonFix2Height = -1
+// 2023-11-21T13:00:00Z
+const UpgradeWatermelonFix2Height = 1108174
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
