@@ -94,7 +94,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 
 func CleanupMachines(ctx context.Context, db *harmonydb.DB) int {
 	ct, err := db.Exec(ctx, `DELETE FROM harmony_machines WHERE last_contact < $1`,
-		time.Now().Add(-1*LOOKS_DEAD_TIMEOUT).UTC())
+		time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
 	if err != nil {
 		logger.Warn("unable to delete old machines: ", err)
 	}

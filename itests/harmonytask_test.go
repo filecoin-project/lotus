@@ -72,7 +72,13 @@ func (t *task1) Adder(add harmonytask.AddTaskFunc) {
 	}
 }
 
+func init() {
+	//logging.SetLogLevel("harmonydb", "debug")
+	//logging.SetLogLevel("harmonytask", "debug")
+}
+
 func TestHarmonyTasks(t *testing.T) {
+	t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		t1 := &task1{
@@ -82,7 +88,7 @@ func TestHarmonyTasks(t *testing.T) {
 		harmonytask.POLL_DURATION = time.Millisecond * 100
 		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1")
 		require.NoError(t, err)
-		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
+		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
 		e.GracefullyTerminate(time.Minute)
 		expected := []string{"taskResult56", "taskResult73"}
 		sort.Strings(t1.WorkCompleted)
@@ -154,6 +160,7 @@ func fooLetterSaver(t *testing.T, cdb *harmonydb.DB, dest *[]string) *passthru {
 }
 
 func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
+	t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
@@ -164,7 +171,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 		require.NoError(t, err)
 		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{workerParty}, "test:2")
 		require.NoError(t, err)
-		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
+		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
 		sender.GracefullyTerminate(time.Second * 5)
 		worker.GracefullyTerminate(time.Second * 5)
 		sort.Strings(dest)
@@ -173,14 +180,15 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 }
 
 func TestWorkStealing(t *testing.T) {
+	t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		ctx := context.Background()
 
 		// The dead worker will be played by a few SQL INSERTS.
 		_, err := cdb.Exec(ctx, `INSERT INTO harmony_machines
-		(id, last_contact,host_and_port, cpu, ram, gpu, gpuram)
-		VALUES (300, DATE '2000-01-01', 'test:1', 4, 400000, 1, 1000000)`)
+		(id, last_contact,host_and_port, cpu, ram, gpu)
+		VALUES (300, DATE '2000-01-01', 'test:1', 4, 400000, 1)`)
 		require.ErrorIs(t, err, nil)
 		_, err = cdb.Exec(ctx, `INSERT INTO harmony_task 
 		(id, name, owner_id, posted_time, added_by) 
@@ -194,13 +202,14 @@ func TestWorkStealing(t *testing.T) {
 		var dest []string
 		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fooLetterSaver(t, cdb, &dest)}, "test:2")
 		require.ErrorIs(t, err, nil)
-		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
+		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
 		worker.GracefullyTerminate(time.Second * 5)
 		require.Equal(t, []string{"M"}, dest)
 	})
 }
 
 func TestTaskRetry(t *testing.T) {
+	t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
@@ -232,7 +241,7 @@ func TestTaskRetry(t *testing.T) {
 		}
 		rcv, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fails2xPerMsg}, "test:2")
 		require.NoError(t, err)
-		time.Sleep(3 * time.Second)
+		time.Sleep(time.Second)
 		sender.GracefullyTerminate(time.Hour)
 		rcv.GracefullyTerminate(time.Hour)
 		sort.Strings(dest)

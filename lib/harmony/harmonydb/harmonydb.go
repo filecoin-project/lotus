@@ -3,7 +3,6 @@ package harmonydb
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -17,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/config"
 )
@@ -205,16 +205,16 @@ func ensureSchemaExists(connString, schema string) error {
 	p, err := pgx.Connect(ctx, connString)
 	defer cncl()
 	if err != nil {
-		return fmt.Errorf("unable to connect to db: %s, err: %v", connString, err)
+		return xerrors.Errorf("unable to connect to db: %s, err: %v", connString, err)
 	}
 	defer func() { _ = p.Close(context.Background()) }()
 
 	if len(schema) < 5 || !schemaRE.MatchString(schema) {
-		return errors.New("schema must be of the form " + schemaREString + "\n Got: " + schema)
+		return xerrors.New("schema must be of the form " + schemaREString + "\n Got: " + schema)
 	}
 	_, err = p.Exec(context.Background(), "CREATE SCHEMA IF NOT EXISTS "+schema)
 	if err != nil {
-		return fmt.Errorf("cannot create schema: %w", err)
+		return xerrors.Errorf("cannot create schema: %w", err)
 	}
 	return nil
 }
@@ -232,7 +232,7 @@ func (db *DB) upgrade() error {
 	)`)
 	if err != nil {
 		logger.Error("Upgrade failed.")
-		return err
+		return xerrors.Errorf("Cannot create base table %w", err)
 	}
 
 	// __Run scripts in order.__
@@ -243,7 +243,7 @@ func (db *DB) upgrade() error {
 		err = db.Select(context.Background(), &landedEntries, "SELECT entry FROM base")
 		if err != nil {
 			logger.Error("Cannot read entries: " + err.Error())
-			return err
+			return xerrors.Errorf("cannot read entries: %w", err)
 		}
 		for _, l := range landedEntries {
 			landed[l.Entry] = true
@@ -278,7 +278,7 @@ func (db *DB) upgrade() error {
 			if err != nil {
 				msg := fmt.Sprintf("Could not upgrade! File %s, Query: %s, Returned: %s", name, s, err.Error())
 				logger.Error(msg)
-				return errors.New(msg) // makes devs lives easier by placing message at the end.
+				return xerrors.New(msg) // makes devs lives easier by placing message at the end.
 			}
 		}
 
@@ -286,7 +286,7 @@ func (db *DB) upgrade() error {
 		_, err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUES ($1)", name)
 		if err != nil {
 			logger.Error("Cannot update base: " + err.Error())
-			return fmt.Errorf("cannot insert into base: %w", err)
+			return xerrors.Errorf("cannot insert into base: %w", err)
 		}
 	}
 	return nil

@@ -16,7 +16,7 @@ import (
 func basicTest(t *testing.T, repo Repo) {
 	apima, err := repo.APIEndpoint()
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrNoAPIEndpoint, err)
+		assert.ErrorContains(t, err, ErrNoAPIEndpoint.Error())
 	}
 	assert.Nil(t, apima, "with no api endpoint, return should be nil")
 
@@ -72,7 +72,7 @@ func basicTest(t *testing.T, repo Repo) {
 	apima, err = repo.APIEndpoint()
 
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrNoAPIEndpoint, err, "after closing repo, api should be nil")
+		assert.ErrorContains(t, err, ErrNoAPIEndpoint.Error(), "after closing repo, api should be nil")
 	}
 	assert.Nil(t, apima, "with closed repo, apima should be set back to nil")
 
