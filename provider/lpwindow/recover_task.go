@@ -166,7 +166,7 @@ func (w *WdPostRecoverDeclareTask) Do(taskID harmonytask.TaskID, stillOwned func
 
 	recDecl := miner.RecoveryDeclaration{
 		Deadline:  dlIdx,
-		Partition: uint64(partIdx),
+		Partition: partIdx,
 		Sectors:   recovered,
 	}
 
@@ -187,6 +187,9 @@ func (w *WdPostRecoverDeclareTask) Do(taskID harmonytask.TaskID, stillOwned func
 	}
 
 	msg, mss, err := preparePoStMessage(w.api, w.as, maddr, msg, abi.TokenAmount(w.maxDeclareRecoveriesGasFee))
+	if err != nil {
+		return false, xerrors.Errorf("sending declare recoveries message: %w", err)
+	}
 
 	mc, err := w.sender.Send(ctx, msg, mss, "declare-recoveries")
 	if err != nil {
@@ -279,10 +282,10 @@ func (w *WdPostRecoverDeclareTask) processHeadChange(ctx context.Context, revert
 			}
 
 			tid := wdTaskIdentity{
-				Sp_id:                aid,
-				Proving_period_start: pps,
-				Deadline_index:       declDeadline,
-				Partition_index:      uint64(pidx),
+				SpID:               aid,
+				ProvingPeriodStart: pps,
+				DeadlineIndex:      declDeadline,
+				PartitionIndex:     uint64(pidx),
 			}
 
 			tf(func(id harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
@@ -304,10 +307,10 @@ func (w *WdPostRecoverDeclareTask) addTaskToDB(taskId harmonytask.TaskID, taskId
                           partition_index
                         ) VALUES ($1, $2, $3, $4, $5)`,
 		taskId,
-		taskIdent.Sp_id,
-		taskIdent.Proving_period_start,
-		taskIdent.Deadline_index,
-		taskIdent.Partition_index,
+		taskIdent.SpID,
+		taskIdent.ProvingPeriodStart,
+		taskIdent.DeadlineIndex,
+		taskIdent.PartitionIndex,
 	)
 	if err != nil {
 		return false, xerrors.Errorf("insert partition task: %w", err)

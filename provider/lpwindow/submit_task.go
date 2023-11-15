@@ -257,7 +257,7 @@ func preparePoStMessage(w MsgPrepAPI, as *ctladdr.AddressSelector, maddr address
 	msg.From = mi.Worker
 
 	mss := &api.MessageSendSpec{
-		MaxFee: abi.TokenAmount(maxFee),
+		MaxFee: maxFee,
 	}
 
 	// (optimal) initial estimation with some overestimation that guarantees

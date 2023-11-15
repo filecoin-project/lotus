@@ -65,7 +65,7 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 	Action: func(cctx *cli.Context) error {
 
 		ctx := context.Background()
-		deps, err := getDeps(cctx, ctx)
+		deps, err := getDeps(ctx, cctx)
 		if err != nil {
 			return err
 		}

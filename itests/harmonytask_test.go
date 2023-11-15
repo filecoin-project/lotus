@@ -78,7 +78,7 @@ func init() {
 }
 
 func TestHarmonyTasks(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		t1 := &task1{
@@ -160,7 +160,7 @@ func fooLetterSaver(t *testing.T, cdb *harmonydb.DB, dest *[]string) *passthru {
 }
 
 func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
@@ -180,7 +180,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 }
 
 func TestWorkStealing(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		ctx := context.Background()
@@ -209,7 +209,7 @@ func TestWorkStealing(t *testing.T) {
 }
 
 func TestTaskRetry(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)

@@ -134,7 +134,7 @@ var runCmd = &cli.Command{
 		}
 
 		shutdownChan := make(chan struct{})
-		deps, err := getDeps(cctx, ctx)
+		deps, err := getDeps(ctx, cctx)
 
 		if err != nil {
 			return err
@@ -267,7 +267,7 @@ type Deps struct {
 	listenAddr string
 }
 
-func getDeps(cctx *cli.Context, ctx context.Context) (*Deps, error) {
+func getDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 	// Open repo
 
 	repoPath := cctx.String(FlagRepoPath)
@@ -319,7 +319,7 @@ func getDeps(cctx *cli.Context, ctx context.Context) (*Deps, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer j.Close()
+	defer func() { _ = j.Close() }()
 
 	full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
 	if err != nil {

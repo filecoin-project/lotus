@@ -207,8 +207,9 @@ func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr ad
 				time.Sleep(5 * time.Second)
 				continue todo retry loop */
 			} else if !correct {
+				_ = correct
 				/*log.Errorw("generated incorrect window post proof", "post", postOut, "error", err)
-				continue todo retry loop */
+				continue todo retry loop*/
 			}
 
 			// Proof generation successful, stop retrying
@@ -322,11 +323,11 @@ func (t *WdPostTask) sectorsForProof(ctx context.Context, maddr address.Address,
 	if err := allSectors.ForEach(func(sectorNo uint64) error {
 		if info, found := sectorByID[sectorNo]; found {
 			proofSectors = append(proofSectors, info)
-		} else {
-			//skip
-			// todo: testing: old logic used to put 'substitute' sectors here
-			//  that probably isn't needed post nv19, but we do need to check that
-		}
+		} //else {
+		//skip
+		// todo: testing: old logic used to put 'substitute' sectors here
+		//  that probably isn't needed post nv19, but we do need to check that
+		//}
 		return nil
 	}); err != nil {
 		return nil, xerrors.Errorf("iterating partition sector bitmap: %w", err)

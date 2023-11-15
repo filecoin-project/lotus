@@ -168,7 +168,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		return cid.Undef, xerrors.Errorf("updating db record: %w", err)
 	}
 	if cn != 1 {
-		return cid.Undef, xerrors.Errorf("updating db record: expected 1 row to be affected, got %d", c)
+		return cid.Undef, xerrors.Errorf("updating db record: expected 1 row to be affected, got %d", cn)
 	}
 
 	log.Infow("sent message", "cid", sigMsg.Cid(), "from", fromA, "to", msg.To, "nonce", msg.Nonce, "value", msg.Value, "gaslimit", msg.GasLimit)
