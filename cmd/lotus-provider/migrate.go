@@ -6,11 +6,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-datastore"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-datastore"
 
 	"github.com/BurntSushi/toml"
 	"github.com/samber/lo"
@@ -151,6 +152,7 @@ func fromMiner(cctx *cli.Context) (err error) {
 	if err != nil {
 		return xerrors.Errorf("error getting JWTSecretName: %w", err)
 	}
+
 	lpCfg.Apis.StorageRPCSecret = base64.StdEncoding.EncodeToString(js.PrivateKey)
 
 	// Populate API Key
@@ -159,7 +161,11 @@ func fromMiner(cctx *cli.Context) (err error) {
 		return fmt.Errorf("cannot read API: %w", err)
 	}
 
-	lpCfg.Apis.ChainApiInfo = []string{header.Get("Authorization")[7:]}
+	ainfo, err := cliutil.GetAPIInfo(&cli.Context{}, repo.FullNode)
+	if err != nil {
+		return xerrors.Errorf("could not get API info for FullNode: %w", err)
+	}
+	lpCfg.Apis.ChainApiInfo = []string{header.Get("Authorization")[7:] + ":" + ainfo.Addr}
 
 	// Enable WindowPoSt
 	lpCfg.Subsystems.EnableWindowPost = true
