@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/lotus/provider"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/dline"
+
+	"github.com/filecoin-project/lotus/provider"
 )
 
 var provingCmd = &cli.Command{

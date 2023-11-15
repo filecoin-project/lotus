@@ -329,7 +329,7 @@ func getDeps(cctx *cli.Context, ctx context.Context) (*Deps, error) {
 
 	sa, err := StorageAuth(cfg.Apis.StorageRPCSecret)
 	if err != nil {
-			return xerrors.Errorf(`'%w' while parsing the config toml's 
+		return nil, xerrors.Errorf(`'%w' while parsing the config toml's 
 	[Apis]
 	StorageRPCSecret=%v
 Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`, err, cfg.Apis.StorageRPCSecret)
