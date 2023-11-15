@@ -92,9 +92,10 @@ type JournalConfig struct {
 }
 
 type ProviderSubsystemsConfig struct {
-	EnableWindowPost   bool
-	WindowPostMaxTasks int
-	EnableWinningPost  bool
+	EnableWindowPost    bool
+	WindowPostMaxTasks  int
+	EnableWinningPost   bool
+	WinningPostMaxTasks int
 }
 
 type DAGStoreConfig struct {
@@ -161,6 +162,13 @@ type MinerSubsystemConfig struct {
 	//   to window post, including scheduling, submitting proofs, and recovering
 	//   sectors.
 	DisableWindowPoSt bool
+
+	// When winning post is disabled, the miner process will NOT attempt to mine
+	// blocks. This should only be set when there's an external process mining
+	// blocks on behalf of the miner.
+	// When disabled and no external block producers are configured, all potential
+	// block rewards will be missed!
+	DisableWinningPoSt bool
 }
 
 type DealmakingConfig struct {

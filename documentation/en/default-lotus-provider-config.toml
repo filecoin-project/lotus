@@ -8,6 +8,9 @@
   # type: bool
   #EnableWinningPost = false
 
+  # type: int
+  #WinningPostMaxTasks = 0
+
 
 [Fees]
   # type: types.FIL

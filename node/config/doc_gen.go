@@ -977,6 +977,16 @@ This option will stop lotus-miner from performing any actions related
 to window post, including scheduling, submitting proofs, and recovering
 sectors.`,
 		},
+		{
+			Name: "DisableWinningPoSt",
+			Type: "bool",
+
+			Comment: `When winning post is disabled, the miner process will NOT attempt to mine
+blocks. This should only be set when there's an external process mining
+blocks on behalf of the miner.
+When disabled and no external block producers are configured, all potential
+block rewards will be missed!`,
+		},
 	},
 	"ProviderSubsystemsConfig": {
 		{
@@ -994,6 +1004,12 @@ sectors.`,
 		{
 			Name: "EnableWinningPost",
 			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "WinningPostMaxTasks",
+			Type: "int",
 
 			Comment: ``,
 		},

@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
+	"github.com/filecoin-project/lotus/provider/lpwinning"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -253,6 +254,11 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 					return err
 				}
 				activeTasks = append(activeTasks, wdPostTask, wdPoStSubmitTask, derlareRecoverTask)
+			}
+
+			if cfg.Subsystems.EnableWinningPost {
+				winPoStTask := lpwinning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
+				activeTasks = append(activeTasks, winPoStTask)
 			}
 		}
 		taskEngine, err := harmonytask.New(db, activeTasks, listenAddr)

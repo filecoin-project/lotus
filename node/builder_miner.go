@@ -121,8 +121,12 @@ func ConfigStorageMiner(c interface{}) Option {
 
 			// Mining / proving
 			Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
-			Override(new(*miner.Miner), modules.SetupBlockProducer),
-			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
+
+			If(!cfg.Subsystems.DisableWinningPoSt,
+				Override(new(*miner.Miner), modules.SetupBlockProducer),
+				Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
+			),
+
 			Override(PreflightChecksKey, modules.PreflightChecks),
 			Override(new(*sealing.Sealing), modules.SealingPipeline(cfg.Fees)),
 
