@@ -136,8 +136,15 @@ func ConfigStorageMiner(c interface{}) Option {
 
 		If(cfg.Subsystems.EnableSectorStorage,
 			// Sector storage
-			Override(new(*paths.IndexProxy), paths.NewIndexProxyHelper(cfg.Subsystems.EnableSectorIndexDB)),
-			Override(new(paths.SectorIndex), From(new(*paths.IndexProxy))),
+			If(cfg.Subsystems.EnableSectorIndexDB,
+				Override(new(*paths.DBIndex), paths.NewDBIndex),
+				Override(new(paths.SectorIndex), From(new(*paths.DBIndex))),
+			),
+			If(!cfg.Subsystems.EnableSectorIndexDB,
+				Override(new(*paths.MemIndex), paths.NewMemIndex),
+				Override(new(paths.SectorIndex), From(new(*paths.MemIndex))),
+			),
+
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),

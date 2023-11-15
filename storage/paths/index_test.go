@@ -42,7 +42,7 @@ const s32g = 32 << 30
 func TestFindSimple(t *testing.T) {
 	ctx := context.Background()
 
-	i := NewIndex(nil)
+	i := NewMemIndex(nil)
 	stor1 := newTestStorage()
 	stor2 := newTestStorage()
 
@@ -79,7 +79,7 @@ func TestFindSimple(t *testing.T) {
 func TestFindNoAllow(t *testing.T) {
 	ctx := context.Background()
 
-	i := NewIndex(nil)
+	i := NewMemIndex(nil)
 	stor1 := newTestStorage()
 	stor1.AllowTo = []storiface.Group{"grp1"}
 	stor2 := newTestStorage()
@@ -111,7 +111,7 @@ func TestFindNoAllow(t *testing.T) {
 func TestFindAllow(t *testing.T) {
 	ctx := context.Background()
 
-	i := NewIndex(nil)
+	i := NewMemIndex(nil)
 
 	stor1 := newTestStorage()
 	stor1.AllowTo = []storiface.Group{"grp1"}

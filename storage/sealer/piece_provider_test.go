@@ -180,7 +180,7 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 
 type pieceProviderTestHarness struct {
 	ctx         context.Context
-	index       *paths.Index
+	index       *paths.MemIndex
 	pp          PieceProvider
 	sector      storiface.SectorRef
 	mgr         *Manager
@@ -210,7 +210,7 @@ func newPieceProviderTestHarness(t *testing.T, mgrConfig config.SealerConfig, se
 	require.NoError(t, err)
 
 	// create index, storage, local store & remote store.
-	index := paths.NewIndex(nil)
+	index := paths.NewMemIndex(nil)
 	storage := newTestStorage(t)
 	localStore, err := paths.NewLocal(ctx, storage, index, []string{"http://" + nl.Addr().String() + "/remote"})
 	require.NoError(t, err)
