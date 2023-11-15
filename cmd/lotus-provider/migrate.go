@@ -10,13 +10,13 @@ import (
 	"path"
 	"strings"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-datastore"
-
 	"github.com/BurntSushi/toml"
+	"github.com/ipfs/go-datastore"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
 
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
