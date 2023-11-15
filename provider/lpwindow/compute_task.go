@@ -74,10 +74,10 @@ type WdPostTask struct {
 }
 
 type wdTaskIdentity struct {
-	SpID               uint64
-	ProvingPeriodStart abi.ChainEpoch
-	DeadlineIndex      uint64
-	PartitionIndex     uint64
+	SpID               uint64         `db:"sp_id"`
+	ProvingPeriodStart abi.ChainEpoch `db:"proving_period_start"`
+	DeadlineIndex      uint64         `db:"deadline_index"`
+	PartitionIndex     uint64         `db:"partition_index"`
 }
 
 func NewWdPostTask(db *harmonydb.DB,

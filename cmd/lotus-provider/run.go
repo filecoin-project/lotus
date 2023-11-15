@@ -23,7 +23,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-statestore"
 
@@ -116,6 +115,12 @@ var runCmd = &cli.Command{
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "provider"),
 		)
+		shutdownChan := make(chan struct{})
+		ctx, ctxclose := context.WithCancel(ctx)
+		go func() {
+			<-shutdownChan
+			ctxclose()
+		}()
 		// Register all metric views
 		/*
 			if err := view.Register(
@@ -133,14 +138,12 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		shutdownChan := make(chan struct{})
 		deps, err := getDeps(ctx, cctx)
 
 		if err != nil {
 			return err
 		}
 		cfg, db, full, verif, lw, as, maddrs, stor, si, localStore := deps.cfg, deps.db, deps.full, deps.verif, deps.lw, deps.as, deps.maddrs, deps.stor, deps.si, deps.localStore
-		defer deps.fullCloser()
 
 		///////////////////////////////////////////////////////////////////////
 		///// Task Selection
@@ -206,7 +209,6 @@ var runCmd = &cli.Command{
 		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
 
 		<-finishCh
-
 		return nil
 	},
 }
@@ -256,7 +258,6 @@ type Deps struct {
 	cfg        *config.LotusProviderConfig
 	db         *harmonydb.DB
 	full       api.FullNode
-	fullCloser jsonrpc.ClientCloser
 	verif      storiface.Verifier
 	lw         *sealer.LocalWorker
 	as         *ctladdr.AddressSelector
@@ -319,14 +320,19 @@ func getDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = j.Close() }()
 
 	full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
 	if err != nil {
 		return nil, err
 	}
-	defer fullCloser()
 
+	go func() {
+		select {
+		case <-ctx.Done():
+			fullCloser()
+			_ = j.Close()
+		}
+	}()
 	sa, err := StorageAuth(cfg.Apis.StorageRPCSecret)
 	if err != nil {
 		return nil, xerrors.Errorf(`'%w' while parsing the config toml's 
@@ -380,7 +386,6 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		cfg,
 		db,
 		full,
-		fullCloser,
 		verif,
 		lw,
 		as,

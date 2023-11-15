@@ -69,7 +69,6 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 		if err != nil {
 			return err
 		}
-		defer deps.fullCloser()
 
 		wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := provider.WindowPostScheduler(ctx, deps.cfg.Fees, deps.cfg.Proving, deps.full, deps.verif, deps.lw,
 			deps.as, deps.maddrs, deps.db, deps.stor, deps.si, deps.cfg.Subsystems.WindowPostMaxTasks)
