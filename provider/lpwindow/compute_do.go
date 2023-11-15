@@ -31,7 +31,7 @@ import (
 
 const disablePreChecks = false // todo config
 
-func (t *WdPostTask) doPartition(ctx context.Context, ts *types.TipSet, maddr address.Address, di *dline.Info, partIdx uint64) (out *miner2.SubmitWindowedPoStParams, err error) {
+func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr address.Address, di *dline.Info, partIdx uint64) (out *miner2.SubmitWindowedPoStParams, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("recover: %s", r)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -42,17 +43,24 @@ var configDefaultCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		c := config.DefaultLotusProvider()
-
-		cb, err := config.ConfigUpdate(c, nil, config.Commented(!cctx.Bool("no-comment")), config.DefaultKeepUncommented(), config.NoEnv())
+		comment := !cctx.Bool("no-comment")
+		cfg, err := getDefaultConfig(comment)
 		if err != nil {
 			return err
 		}
-
-		fmt.Print(string(cb))
+		fmt.Print(cfg)
 
 		return nil
 	},
+}
+
+func getDefaultConfig(comment bool) (string, error) {
+	c := config.DefaultLotusProvider()
+	cb, err := config.ConfigUpdate(c, nil, config.Commented(comment), config.DefaultKeepUncommented(), config.NoEnv())
+	if err != nil {
+		return "", err
+	}
+	return string(cb), nil
 }
 
 var configSetCmd = &cli.Command{
@@ -190,7 +198,7 @@ var configRmCmd = &cli.Command{
 var configViewCmd = &cli.Command{
 	Name:      "interpret",
 	Aliases:   []string{"view", "stacked", "stack"},
-	Usage:     "Interpret stacked config layers by this version of lotus-provider.",
+	Usage:     "Interpret stacked config layers by this version of lotus-provider, with system-generated comments.",
 	ArgsUsage: "a list of layers to be interpreted as the final config",
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
@@ -209,10 +217,12 @@ var configViewCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		e := toml.NewEncoder(os.Stdout)
-		e.Indent = "  "
-		return e.Encode(lp)
+		cb, err := config.ConfigUpdate(lp, config.DefaultLotusProvider(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+		if err != nil {
+			return xerrors.Errorf("cannot interpret config: %w", err)
+		}
+		fmt.Println(string(cb))
+		return nil
 	},
 }
 

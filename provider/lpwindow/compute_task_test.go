@@ -1,4 +1,4 @@
-package lpwindow
+package lpwindow_test
 
 import (
 	"testing"
@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/provider/lpwindow"
 )
 
 // test to create WDPostTask, invoke AddTask and check if the task is added to the DB
@@ -23,7 +24,8 @@ func TestAddTask(t *testing.T) {
 		Database: "yugabyte",
 	})
 	require.NoError(t, err)
-	wdPostTask := NewWdPostTask(db, nil, 0)
+	wdPostTask, err := lpwindow.NewWdPostTask(db, nil, 0)
+	require.NoError(t, err)
 	taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
 	_ = taskEngine
 	ts := types.TipSet{}

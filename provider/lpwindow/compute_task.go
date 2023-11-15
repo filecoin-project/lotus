@@ -150,7 +150,7 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, err
 	}
 
-	postOut, err := t.doPartition(context.Background(), ts, maddr, deadline, partIdx)
+	postOut, err := t.DoPartition(context.Background(), ts, maddr, deadline, partIdx)
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to doPartition: %v", err)
 		return false, err
