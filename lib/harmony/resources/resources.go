@@ -3,7 +3,6 @@ package resources
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -95,8 +94,8 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 
 func CleanupMachines(ctx context.Context, db *harmonydb.DB) int {
 	ct, err := db.Exec(ctx,
-		`DELETE FROM harmony_machines WHERE last_contact < CURRENT_TIMESTAMP - INTERVAL $1 `,
-		fmt.Sprintf("%d MILLISECOND", LOOKS_DEAD_TIMEOUT.Milliseconds())) // ms enables unit testing to change timeout.
+		`DELETE FROM harmony_machines WHERE last_contact < CURRENT_TIMESTAMP - INTERVAL '1 MILLISECOND' * $1 `,
+		LOOKS_DEAD_TIMEOUT.Milliseconds()) // ms enables unit testing to change timeout.
 	if err != nil {
 		logger.Warn("unable to delete old machines: ", err)
 	}
