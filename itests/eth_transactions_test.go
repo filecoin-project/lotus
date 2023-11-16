@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -377,15 +378,12 @@ func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr eth
 }
 
 func waitForEthTxReceipt(ctx context.Context, client *kit.TestFullNode, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	var receipt *api.EthTxReceipt
-	var err error
-	for i := 0; i < 10000000000; i++ {
-		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
-		if err != nil || receipt == nil {
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		break
+	if mcid, err := client.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
+		return nil, err
+	} else if mcid == nil {
+		return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
+	} else {
+		client.WaitMsg(ctx, *mcid)
+		return client.EthGetTransactionReceipt(ctx, hash)
 	}
-	return receipt, err
 }
