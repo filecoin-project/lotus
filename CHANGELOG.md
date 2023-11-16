@@ -4,23 +4,27 @@
 
 This is the fifth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
-## FIP0070 descoped for nv21
+## :exclamation: Mainnet Upgrade Date Update
 
-We've got a bit of news regarding [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md), which was originally scoped for network version 21. This FIP has proven to be quite challenging to implement due to the complexity of the code. During testing on the Calibration network, an additional bug has been discovered.
+Mainnet upgrade date has been adjusted due to the rescope of nv21 & retesting on test network, as well as giving the community enough time to upgrade their infrastructure.
 
-As the path to resolving this bug is not yet clear, the governance team [initiated a decision matrix for FIP0070](https://www.notion.so/filecoin/nv21-decision-matrix-for-FIP0070-bug-a39174216ee1479eab9a55b2f23da520?d=0500c3734f494a8482e2fcd848a12776#bc8c149b1bf241949f87ce854bfe5c3c). This was then presented to the core developers for further discussion.
+**The new date and epoch for the Mainnet nv21 upgrade has therefore been set to epoch 3469380 - 2023-12-12T13:30:00Z.**
 
-Based on this, the core devs have decided to descope FIP-0070 from the upcoming nv21 upgrade. This decision was made to ensure the security and stability of the network upgrade. However, FIP-0070 will remain in the Accepted status. This allows implementation teams to continue investigating the bug, find a solution, and prepare the FIP for inclusion in a future upgrade.
+
+### FIP0070 descoped for nv21
+
+ [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md) was originally scoped for network version 21. However, during the testing on calibrationnet testing, this FIP has proven to be quite error prune to implement due to the complexity of the protocol and a couple bugs were discovered.
+
+As the path to resolving this bug is not yet clear, core devs have decided to descope FIP-0070 from the upcoming nv21 upgrade ensure the security and stability of the network post upgrade.
+
 
 ## Calibration WatermelonFix2
 
-For the calibration network, the descoping of FIP0070 means that we will need to do another CodeCID migration to drop FIP0070 from nv21, and to get the network into a state which will be similar to when the mainnet upgrades to nv21.
+For the calibration network, the descoping of FIP0070 means that we will need to do another CodeCID migration to drop FIP0070 from nv21, and to get the test network into a state which will be similar to when the mainnet upgrades to nv21.
 
 **This migration will happen at epoch 1108174 - 2023-11-21T13:00:00Z.**
 
-Make sure to upgrade you calibration network nodes and storage providers to this release candidate, or the Lotus v1.24.0-rc6 before this epoch.
-
-Make sure to check out the release log for [Lotus v1.24.0-rc6](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc6) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
+Make sure to upgrade you calibration network nodes and storage providers to v1.24.0-rcx & ^ before this epoch.
 
 ## ☢️ Upgrade Warnings ☢️
 
