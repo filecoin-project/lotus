@@ -1,30 +1,36 @@
 # Lotus changelog
 
-# 1.24.0-rc5 / 2023-11-08
+# 1.24.0-rc6 / 2023-11-16
 
-This is the 5th release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
+This is the 6th release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
 
+## FIP0070 descoped for nv21
 
-## Calibration Testnet WatermelonFix Upgrade Recovery
+We've got a bit of news regarding [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md), which was originally scoped for network version 21. This FIP has proven to be quite challenging to implement due to the complexity of the code. During testing on the Calibration network, an additional bug has been discovered.
 
-The Calibration Testnet halted 60 epochs after the WatermelonFix upgrade, we believe the cause is the new fixed miner actor CID isn't registered in the system actor state. Fortunately, this could be fixedby winding back the time prior to the upgrade, and reperform the migration with new miner actor CID registered in the system actor state. We would like to ask all calibrationnet node operators to run the following:
-- Upgrade your nodes and miners to v1.24.0-rc5
-- Shut down your daemon and restart it (miners too if applicable)
+As the path to resolving this bug is not yet clear, the governance team [initiated a decision matrix for FIP0070](https://www.notion.so/filecoin/nv21-decision-matrix-for-FIP0070-bug-a39174216ee1479eab9a55b2f23da520?d=0500c3734f494a8482e2fcd848a12776#bc8c149b1bf241949f87ce854bfe5c3c). This was then presented to the core developers for further discussion.
 
-Please reach out to us in #fil-net-calibration-discuss if you have any questions!
+Based on this, the core devs have decided to descope FIP-0070 from the upcoming nv21 upgrade. This decision was made to ensure the security and stability of the network upgrade. However, FIP-0070 will remain in the Accepted status. This allows implementation teams to continue investigating the bug, find a solution, and prepare the FIP for inclusion in a future upgrade.
 
+## Calibration WatermelonFix2
 
+For the calibration network, the descoping of FIP0070 means that we will need to do another CodeCID migration to drop FIP0070 from nv21, and to get the network into a state which will be similar to when the mainnet upgrades to nv21.
+
+**This migration will happen at epoch 1108174 - 2023-11-21T13:00:00Z.**
+
+Make sure to upgrade you calibration network nodes and storage providers to this release candidate before this epoch.
 
 -----------------
 
-This release candidate also sets an upgrade epoch for mainnet at `3431940` 2023-11-29T13:30:00Z.
+As FIP-0070 has been descoped from the nv21 upgrade, the Mainnet upgrade date has been adjusted to give enough time to land the fix on the calibration network, as well as giving the community enough time to upgrade their infrastructure.
+
+**The new date and epoch for the Mainnet nv21 upgrade has therefore been set to epoch 3469380 - 2023-12-12T13:30:00Z.**
 
 
 The Filecoin network version 21 delivers the following FIPs:
 
 - [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
 - [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md)
-- [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md)
 - [FIP0071: Deterministic State Access (IPLD Reachability)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0071.md)
 - [FIP0072: Improved event syscall API](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0072.md) 
 - [FIP0073: Remove beneficiary from the self_destruct syscall](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0073.md)
@@ -34,38 +40,29 @@ The Filecoin network version 21 delivers the following FIPs:
 
 The actor bundles for the calibration network can be checked as follows:
 
-**before 1070494**
 ```
 lotus state actor-cids --network-version=21
 Network Version: 21
 Actor Version: 12
-Manifest CID: bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru
+Manifest CID: bafy2bzacednzb3pkrfnbfhmoqtb3bc6dgvxszpqklf3qcc7qzcage4ewzxsca
 
-Actor             CID  
-paymentchannel    bafk2bzacebaxhk4itfiuvbftg7kz5zxugqnvdgerobitjq4vl6q4orcwk6wqg
+Actor             CID
+verifiedregistry  bafk2bzaceavldupmf7bimeeacs67z5xdfdlfca6p7sn6bev3mt5ggepfqvhqo
+cron              bafk2bzacec4gdxxkqwxqqodsv6ug5dmdbqdfqwyqfek3yhxc2wweh5psxaeq6
 placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
-ethaccount        bafk2bzaceajmc3y3sedsqymfla3dzzqzmbu5kmr2iskm26ga2u34ll5fpztfw
-evm               bafk2bzaced4sozr7m6rzcgpobzeiupghthfw6afumysu3oz6bxxirv74uo3vw
+storagepower      bafk2bzacedd3ka44k7d46ckbinjhv3diyuu2epgbyvhqqyjkc64qlrg3wlgzi
 system            bafk2bzacecioupndtcnyw6iq2hbrxag3aufvczlv5nobnfbkbywqzcyfaa376
+evm               bafk2bzaced4sozr7m6rzcgpobzeiupghthfw6afumysu3oz6bxxirv74uo3vw
 init              bafk2bzaceaewh7b6zl2egclm7fqzx2lsqr57i75lb6cj43ndoa4mal3k5ld3m
-multisig          bafk2bzacednkwcpw5yzxjceoaliajgupzj6iqxe7ks2ll3unspbprbo5f2now
+storagemarket     bafk2bzacea7g46y7xxu2zjq2h75x6mmx3utz2uxnlvnwi6tzpsvulna3bmiva
+account           bafk2bzacechwwxdqvggkdylm37zldjsra2ivkdzwp7fee56bzxbzs544wv6u6
+datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
 eam               bafk2bzacecb6cnwftvavpph4p34zs4psuy5xvbrhf7vszkva4npw6mw3c42xe
 reward            bafk2bzacedra77pcglf7vdca2itcaa4vd6xrxynxmgfgdjdxqxfwqyhtoxehy
-storagemarket     bafk2bzacea7g46y7xxu2zjq2h75x6mmx3utz2uxnlvnwi6tzpsvulna3bmiva
-storageminer      bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie
-storagepower      bafk2bzacedd3ka44k7d46ckbinjhv3diyuu2epgbyvhqqyjkc64qlrg3wlgzi
-verifiedregistry  bafk2bzaceavldupmf7bimeeacs67z5xdfdlfca6p7sn6bev3mt5ggepfqvhqo
-account           bafk2bzacechwwxdqvggkdylm37zldjsra2ivkdzwp7fee56bzxbzs544wv6u6
-cron              bafk2bzacec4gdxxkqwxqqodsv6ug5dmdbqdfqwyqfek3yhxc2wweh5psxaeq6
-datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
-```
-
-**after 1070494**
-```
-lotus state actor-cids --network-version=21
-Network Version: 21
-Actor Version: 12
-Manifest CID: bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs
+ethaccount        bafk2bzaceajmc3y3sedsqymfla3dzzqzmbu5kmr2iskm26ga2u34ll5fpztfw
+multisig          bafk2bzacednkwcpw5yzxjceoaliajgupzj6iqxe7ks2ll3unspbprbo5f2now
+paymentchannel    bafk2bzacebaxhk4itfiuvbftg7kz5zxugqnvdgerobitjq4vl6q4orcwk6wqg
+storageminer      bafk2bzaceb7qzqsi5uyxe4o5iuasi47l2hnznvmqr2eu4pl3qscvarjqlnuxo
 ```
 
 ## New features
@@ -87,6 +84,7 @@ Manifest CID: bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs
 - chore: deps: update FFI, FVM, and actors ([filecoin-project/lotus#11310](https://github.com/filecoin-project/lotus/pull/11310))
 - chore: deps: update to latest actors and FFI ([filecoin-project/lotus#11330](https://github.com/filecoin-project/lotus/pull/11330))
 - chore: deps: update to go-state-types v0.12.5 ([filecoin-project/lotus#11339](https://github.com/filecoin-project/lotus/pull/11339))
+- chore: backport calibnet lightweight patch ([filecoin-project/lotus#11423](https://github.com/filecoin-project/lotus/pull/11423))
 
 ## Others
 - chore: nv-skeleton for feat/nv21-branch ([filecoin-project/lotus#11176](https://github.com/filecoin-project/lotus/pull/11176))
@@ -96,6 +94,8 @@ Manifest CID: bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs
 - chore: release: Set calibration upgrade height ([filecoin-project/lotus#11331](https://github.com/filecoin-project/lotus/pull/11331))
 - chore: build: bump version to 1.24.0-rc1 ([filecoin-project/lotus#11332](https://github.com/filecoin-project/lotus/pull/11332))
 - chore: backport #11365 to release/v1.24.0 ([filecoin-project/lotus#11368](https://github.com/filecoin-project/lotus/pull/11368))
+- chore: backport #11395 to release/v1.24.0 ([filecoin-project/lotus#11395](https://github.com/filecoin-project/lotus/pull/11396))
+- chore: backport #11408 to release/v1.24.0 ([filecoin-project/lotus#11408](https://github.com/filecoin-project/lotus/pull/11413))
 
 # v1.23.3 / 2023-08-01
 
