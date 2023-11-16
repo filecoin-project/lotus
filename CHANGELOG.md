@@ -1,18 +1,26 @@
 # Lotus changelog
 
-# v 1.25.0-rc4 / 2023-11-08
+# v 1.25.0-rc5 / 2023-11-16
 
-This is the fourth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the fifth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
-## Calibration Testnet WatermelonFix Upgrade Recovery
+## FIP0070 descoped for nv21
 
-The Calibration Testnet halted 60 epochs after the WatermelonFix upgrade, we believe the cause is the new fixed miner actor CID isn't registered in the system actor state. Fortunately, this could be fixedby winding back the time prior to the upgrade, and reperform the migration with new miner actor CID registered in the system actor state. We would like to ask all calibrationnet node operators to run the following:
-- Upgrade your nodes and miners to v1.25.0-rc4
-- Shut down your daemon and restart it (miners too if applicable)
+We've got a bit of news regarding [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md), which was originally scoped for network version 21. This FIP has proven to be quite challenging to implement due to the complexity of the code. During testing on the Calibration network, an additional bug has been discovered.
 
-Please reach out to us in #fil-net-calibration-discuss if you have any questions!
+As the path to resolving this bug is not yet clear, the governance team [initiated a decision matrix for FIP0070](https://www.notion.so/filecoin/nv21-decision-matrix-for-FIP0070-bug-a39174216ee1479eab9a55b2f23da520?d=0500c3734f494a8482e2fcd848a12776#bc8c149b1bf241949f87ce854bfe5c3c). This was then presented to the core developers for further discussion.
 
-Make sure to check out the release log for [Lotus v1.24.0-rc5](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc5) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
+Based on this, the core devs have decided to descope FIP-0070 from the upcoming nv21 upgrade. This decision was made to ensure the security and stability of the network upgrade. However, FIP-0070 will remain in the Accepted status. This allows implementation teams to continue investigating the bug, find a solution, and prepare the FIP for inclusion in a future upgrade.
+
+## Calibration WatermelonFix2
+
+For the calibration network, the descoping of FIP0070 means that we will need to do another CodeCID migration to drop FIP0070 from nv21, and to get the network into a state which will be similar to when the mainnet upgrades to nv21.
+
+**This migration will happen at epoch 1108174 - 2023-11-21T13:00:00Z.**
+
+Make sure to upgrade you calibration network nodes and storage providers to this release candidate, or the Lotus v1.24.0-rc6 before this epoch.
+
+Make sure to check out the release log for [Lotus v1.24.0-rc6](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc6) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -121,6 +129,8 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - chore: backport #11294 into `release/v1.23.4` ([filecoin-project/lotus#11295](https://github.com/filecoin-project/lotus/pull/11295))
 - chore: release: V1.25 rebase ([filecoin-project/lotus#11342](https://github.com/filecoin-project/lotus/pull/11342))
 - backport: tests: add SynthPorep layers to cachefiles ([filecoin-project/lotus#11344](https://github.com/filecoin-project/lotus/pull/11344))
+- chore: backport #11408 to release/v1.25.0 ([filecoin-project/lotus#11414](https://github.com/filecoin-project/lotus/pull/11414))
+- chore: backport calibnet lightweight patch ([filecoin-project/lotus#11422](https://github.com/filecoin-project/lotus/pull/11422))
 
 # v1.24.0-rc2 / 2023-10-17
 
