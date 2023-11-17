@@ -458,7 +458,7 @@ func TestEthTxFromNativeAccount(t *testing.T) {
 	// Invoke a random method with the same input. We expect the same result as above, but with
 	// a different method number.
 
-	msg.Method += 1
+	msg.Method++
 
 	sMsg, err = client.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
