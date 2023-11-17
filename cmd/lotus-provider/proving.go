@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/dline"
 
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/provider"
 )
 
@@ -30,6 +31,69 @@ var provingCompute = &cli.Command{
 	Usage: "Compute a proof-of-spacetime for a sector (requires the sector to be pre-sealed)",
 	Subcommands: []*cli.Command{
 		provingComputeWindowPoStCmd,
+		scheduleWindowPostCmd,
+	},
+}
+
+var scheduleWindowPostCmd = &cli.Command{
+	Name:  "test-window-post",
+	Usage: "FOR TESTING: a way to test the windowpost scheduler. Use with 1 lotus-provider running only",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "i_have_set_LOTUS_PROVDER_NO_SEND_to_true",
+		},
+		&cli.Uint64Flag{
+			Name:  "deadline",
+			Usage: "deadline to compute WindowPoSt for ",
+			Value: 0,
+		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base",
+			Value: cli.NewStringSlice("base"),
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := context.Background()
+
+		if !cctx.Bool("i_have_set_LOTUS_PROVDER_NO_SEND_to_true") {
+			log.Info("This command is for testing only. It will not send any messages to the chain. If you want to run it, set LOTUS_PROVDER_NO_SEND=true on the lotus-provider environment.")
+			return nil
+		}
+		deps, err := getDeps(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		ts, err := deps.full.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("cannot get chainhead %w", err)
+		}
+
+		ht := ts.Height()
+		maddr, err := address.IDFromAddress(address.Address(deps.maddrs[0]))
+		if err != nil {
+			return xerrors.Errorf("cannot get miner id %w", err)
+		}
+		_ = ht
+		deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+			_, err = tx.Exec(`INSERT INTO harmony_task (name) VALUES ('WdPost')`)
+			if err != nil {
+				return false, xerrors.Errorf("inserting harmony_task: %w", err)
+			}
+			var id int64
+			if err = tx.QueryRow(`SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1`).Scan(&id); err != nil {
+				return false, xerrors.Errorf("getting inserted id: %w", err)
+			}
+			_, err = tx.Exec(`INSERT INTO wdpost_partition_tasks 
+			(task_id, sp_id, proving_period_start, deadline_index, partition_index) VALUES ($1, $2, $3, $4, $5)`,
+				id, maddr, ht, 1, cctx.Uint64("deadline"), 0)
+			if err != nil {
+				return false, xerrors.Errorf("inserting wdpost_partition_tasks: %w", err)
+			}
+			return true, nil
+		})
+		return nil
 	},
 }
 

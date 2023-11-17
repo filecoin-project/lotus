@@ -2,6 +2,7 @@ package lpmessage
 
 import (
 	"context"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -39,7 +40,8 @@ type Sender struct {
 	api    SenderAPI
 	signer SignerAPI
 
-	db *harmonydb.DB
+	db     *harmonydb.DB
+	noSend bool // For early testing with only 1 lotus-provider
 }
 
 // NewSender creates a new Sender.
@@ -47,8 +49,8 @@ func NewSender(api SenderAPI, signer SignerAPI, db *harmonydb.DB) *Sender {
 	return &Sender{
 		api:    api,
 		signer: signer,
-
-		db: db,
+		db:     db,
+		noSend: os.Getenv("LOTUS_PROVDER_NO_SEND") != "",
 	}
 }
 
@@ -137,6 +139,18 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			return false, xerrors.Errorf("marshaling message: %w", err)
 		}
 
+		if s.noSend {
+			log.Errorw("SKIPPED SENDING MESSAGE PER ENVIRONMENT VARIABLE - NOT PRODUCTION SAFE",
+				"from_key", fromA.String(),
+				"nonce", msg.Nonce,
+				"to_addr", msg.To.String(),
+				"signed_data", data,
+				"signed_json", string(jsonBytes),
+				"signed_cid", sigMsg.Cid(),
+				"send_reason", reason,
+			)
+			return true, nil // nothing committed
+		}
 		// write to db
 		c, err := tx.Exec(`insert into message_sends (from_key, nonce, to_addr, signed_data, signed_json, signed_cid, send_reason) values ($1, $2, $3, $4, $5, $6, $7)`,
 			fromA.String(), msg.Nonce, msg.To.String(), data, string(jsonBytes), sigMsg.Cid().String(), reason)
@@ -152,6 +166,9 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 	})
 	if err != nil || !c {
 		return cid.Undef, xerrors.Errorf("transaction failed or didn't commit: %w", err)
+	}
+	if s.noSend {
+		return sigMsg.Cid(), nil
 	}
 
 	// push to mpool
