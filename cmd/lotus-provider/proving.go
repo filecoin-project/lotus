@@ -69,30 +69,40 @@ var scheduleWindowPostCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("cannot get chainhead %w", err)
 		}
-
 		ht := ts.Height()
-		maddr, err := address.IDFromAddress(address.Address(deps.maddrs[0]))
+
+		addr, err := address.NewFromString(deps.cfg.Addresses.MinerAddresses[0])
+		if err != nil {
+			return xerrors.Errorf("cannot get miner address %w", err)
+		}
+		maddr, err := address.IDFromAddress(addr)
 		if err != nil {
 			return xerrors.Errorf("cannot get miner id %w", err)
 		}
-		_ = ht
-		deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
-			_, err = tx.Exec(`INSERT INTO harmony_task (name) VALUES ('WdPost')`)
+		did, err := deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+			_, err = tx.Exec(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123)`)
 			if err != nil {
+				log.Error("inserting harmony_task: ", err)
 				return false, xerrors.Errorf("inserting harmony_task: %w", err)
 			}
 			var id int64
 			if err = tx.QueryRow(`SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1`).Scan(&id); err != nil {
+				log.Error("getting inserted id: ", err)
 				return false, xerrors.Errorf("getting inserted id: %w", err)
 			}
 			_, err = tx.Exec(`INSERT INTO wdpost_partition_tasks 
 			(task_id, sp_id, proving_period_start, deadline_index, partition_index) VALUES ($1, $2, $3, $4, $5)`,
-				id, maddr, ht, 1, cctx.Uint64("deadline"), 0)
+				id, maddr, ht, cctx.Uint64("deadline"), 0)
 			if err != nil {
+				log.Error("inserting wdpost_partition_tasks: ", err)
 				return false, xerrors.Errorf("inserting wdpost_partition_tasks: %w", err)
 			}
 			return true, nil
 		})
+		if err != nil {
+			return xerrors.Errorf("writing SQL transaction: %w", err)
+		}
+		log.Infof("Inserted task %v", did)
 		return nil
 	},
 }

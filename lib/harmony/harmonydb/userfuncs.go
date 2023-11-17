@@ -111,7 +111,9 @@ func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, er
 	var commit bool
 	defer func() { // Panic clean-up.
 		if !commit {
-			retErr = tx.Rollback(ctx)
+			if tmp := tx.Rollback(ctx); tmp != nil {
+				retErr = tmp
+			}
 		}
 	}()
 	commit, err = f(&Tx{tx, ctx})
@@ -119,7 +121,7 @@ func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, er
 		return false, err
 	}
 	if commit {
-		err := tx.Commit(ctx)
+		err = tx.Commit(ctx)
 		if err != nil {
 			return false, err
 		}
