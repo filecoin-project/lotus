@@ -187,6 +187,18 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	toEth, err := client.FilecoinAddressToEthAddress(ctx, toId)
 	require.NoError(t, err)
 	require.Equal(t, &toEth, chainTx.To)
+
+	const expectedHex = "868e10c4" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000060" +
+		"0000000000000000000000000000000000000000000000000000000000000000"
+
+	// verify that the params are correctly encoded.
+	expected, err := hex.DecodeString(expectedHex)
+	require.NoError(t, err)
+
+	require.Equal(t, ethtypes.EthBytes(expected), chainTx.Input)
 }
 
 // TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
@@ -266,6 +278,18 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	toEth, err := client.FilecoinAddressToEthAddress(ctx, toId)
 	require.NoError(t, err)
 	require.Equal(t, &toEth, chainTx.To)
+
+	const expectedHex = "868e10c4" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000060" +
+		"0000000000000000000000000000000000000000000000000000000000000000"
+
+	// verify that the params are correctly encoded.
+	expected, err := hex.DecodeString(expectedHex)
+	require.NoError(t, err)
+
+	require.Equal(t, ethtypes.EthBytes(expected), chainTx.Input)
 }
 
 // TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash

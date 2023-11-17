@@ -9,11 +9,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtin2 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -78,7 +80,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	client.EVM().SignTransaction(&tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 
-	receipt, err := waitForEthTxReceipt(ctx, client, hash)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 	require.EqualValues(t, ethAddr, receipt.From)
@@ -166,7 +168,7 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
 
-	receipt, err := waitForEthTxReceipt(ctx, client, hash)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 
@@ -213,7 +215,7 @@ func TestContractInvocation(t *testing.T) {
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
 
-	receipt, err := waitForEthTxReceipt(ctx, client, hash)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
@@ -267,7 +269,7 @@ func TestContractInvocation(t *testing.T) {
 	client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
 	hash = client.EVM().SubmitTransaction(ctx, &invokeTx)
 
-	receipt, err = waitForEthTxReceipt(ctx, client, hash)
+	receipt, err = client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 
@@ -376,16 +378,108 @@ func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr eth
 	}, nil
 }
 
-func waitForEthTxReceipt(ctx context.Context, client *kit.TestFullNode, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	var receipt *api.EthTxReceipt
-	var err error
-	for i := 0; i < 10000000000; i++ {
-		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
-		if err != nil || receipt == nil {
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		break
+func TestEthTxFromNativeAccount(t *testing.T) {
+	blockTime := 10 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	msg := &types.Message{
+		From:   client.DefaultKey.Address,
+		To:     client.DefaultKey.Address,
+		Value:  abi.TokenAmount(types.MustParseFIL("100")),
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
-	return receipt, err
+
+	// Send a message with no input.
+
+	sMsg, err := client.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+	client.WaitMsg(ctx, sMsg.Cid())
+
+	hash, err := client.EthGetTransactionHashByCid(ctx, sMsg.Cid())
+	require.NoError(t, err)
+	tx, err := client.EthGetTransactionByHash(ctx, hash)
+	require.NoError(t, err)
+
+	// Expect empty input params given that we "invoked" the contract (well, invoked ourselves).
+	require.Equal(t, ethtypes.EthBytes{}, tx.Input)
+
+	// Send a message with some input.
+
+	input := abi.CborBytes([]byte{0x1, 0x2, 0x3, 0x4})
+	msg.Params, err = actors.SerializeParams(&input)
+	require.NoError(t, err)
+
+	sMsg, err = client.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+	client.WaitMsg(ctx, sMsg.Cid())
+	hash, err = client.EthGetTransactionHashByCid(ctx, sMsg.Cid())
+	require.NoError(t, err)
+	tx, err = client.EthGetTransactionByHash(ctx, hash)
+	require.NoError(t, err)
+
+	// Expect the decoded input.
+	require.EqualValues(t, input, tx.Input)
+
+	// Invoke the contract, but with incorrectly encoded input. We expect this to be abi-encoded
+	// as if it were any other method call.
+
+	msg.Params = input
+	require.NoError(t, err)
+
+	sMsg, err = client.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+	client.WaitMsg(ctx, sMsg.Cid())
+	hash, err = client.EthGetTransactionHashByCid(ctx, sMsg.Cid())
+	require.NoError(t, err)
+	tx, err = client.EthGetTransactionByHash(ctx, hash)
+	require.NoError(t, err)
+
+	const expectedHex1 = "868e10c4" + // "handle filecoin method" function selector
+		// InvokeEVM method number
+		"00000000000000000000000000000000000000000000000000000000e525aa15" +
+		// CBOR multicodec (0x51)
+		"0000000000000000000000000000000000000000000000000000000000000051" +
+		// Offset
+		"0000000000000000000000000000000000000000000000000000000000000060" +
+		// Number of bytes in the input (4)
+		"0000000000000000000000000000000000000000000000000000000000000004" +
+		// Input: 1, 2, 3, 4
+		"0102030400000000000000000000000000000000000000000000000000000000"
+
+	input, err = hex.DecodeString(expectedHex1)
+	require.NoError(t, err)
+	require.EqualValues(t, input, tx.Input)
+
+	// Invoke a random method with the same input. We expect the same result as above, but with
+	// a different method number.
+
+	msg.Method++
+
+	sMsg, err = client.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+	client.WaitMsg(ctx, sMsg.Cid())
+	hash, err = client.EthGetTransactionHashByCid(ctx, sMsg.Cid())
+	require.NoError(t, err)
+	tx, err = client.EthGetTransactionByHash(ctx, hash)
+	require.NoError(t, err)
+
+	const expectedHex2 = "868e10c4" + // "handle filecoin method" function selector
+		// InvokeEVM+1
+		"00000000000000000000000000000000000000000000000000000000e525aa16" +
+		// CBOR multicodec (0x51)
+		"0000000000000000000000000000000000000000000000000000000000000051" +
+		// Offset
+		"0000000000000000000000000000000000000000000000000000000000000060" +
+		// Number of bytes in the input (4)
+		"0000000000000000000000000000000000000000000000000000000000000004" +
+		// Input: 1, 2, 3, 4
+		"0102030400000000000000000000000000000000000000000000000000000000"
+	input, err = hex.DecodeString(expectedHex2)
+	require.NoError(t, err)
+	require.EqualValues(t, input, tx.Input)
 }

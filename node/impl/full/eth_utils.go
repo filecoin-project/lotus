@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -465,19 +466,23 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 		tx = ethTxFromNativeMessage(smsg.VMMessage(), st)
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
 		if err != nil {
-			return tx, err
+			return ethtypes.EthTx{}, err
 		}
 	} else { // BLS Filecoin message
 		tx = ethTxFromNativeMessage(smsg.VMMessage(), st)
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
 		if err != nil {
-			return tx, err
+			return ethtypes.EthTx{}, err
 		}
 	}
 
 	return tx, nil
 }
 
+// Convert a native message to an eth transaction.
+//
+//   - The state-tree must be from after the message was applied (ideally the following tipset).
+//
 // ethTxFromNativeMessage does NOT populate:
 // - BlockHash
 // - BlockNumber
@@ -487,9 +492,42 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) ethtypes.Et
 	// We don't care if we error here, conversion is best effort for non-eth transactions
 	from, _ := lookupEthAddress(msg.From, st)
 	to, _ := lookupEthAddress(msg.To, st)
+	toPtr := &to
+
+	// Convert the input parameters to "solidity ABI".
+
+	// For empty, we use "0" as the codec. Otherwise, we use CBOR for message
+	// parameters.
+	var codec uint64
+	if len(msg.Params) > 0 {
+		codec = uint64(multicodec.Cbor)
+	}
+
+	// We try to decode the input as an EVM method invocation and/or a contract creation. If
+	// that fails, we encode the "native" parameters as Solidity ABI.
+	var input []byte
+	switch msg.Method {
+	case builtintypes.MethodsEVM.InvokeContract, builtintypes.MethodsEAM.CreateExternal:
+		inp, err := decodePayload(msg.Params, codec)
+		if err == nil {
+			// If this is a valid "create external", unset the "to" address.
+			if msg.Method == builtintypes.MethodsEAM.CreateExternal {
+				toPtr = nil
+			}
+			input = []byte(inp)
+			break
+		}
+		// Yeah, we're going to ignore errors here because the user can send whatever they
+		// want and may send garbage.
+		fallthrough
+	default:
+		input = encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params)
+	}
+
 	return ethtypes.EthTx{
-		To:                   &to,
+		To:                   toPtr,
 		From:                 from,
+		Input:                input,
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),

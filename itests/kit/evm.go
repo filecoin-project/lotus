@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
@@ -289,6 +290,17 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 	entryPoint := CalcFuncSignature(funcSignature)
 	wait, _ := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
 	require.Equal(e.t, exit, wait.Receipt.ExitCode)
+}
+
+func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
+	if mcid, err := e.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
+		return nil, err
+	} else if mcid == nil {
+		return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
+	} else {
+		e.WaitMsg(ctx, *mcid)
+		return e.EthGetTransactionReceipt(ctx, hash)
+	}
 }
 
 // function signatures are the first 4 bytes of the hash of the function name and types

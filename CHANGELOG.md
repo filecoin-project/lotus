@@ -13,6 +13,9 @@
 - feat: Added instructions on how to setup Prometheus/Grafana for monitoring a local Lotus node [filecoin-project/lotus#11276](https://github.com/filecoin-project/lotus/pull/11276)
 - fix: Exclude reverted events in `eth_getLogs` results [filecoin-project/lotus#11318](https://github.com/filecoin-project/lotus/pull/11318)
 - fix: The Ethereum API will now use the correct state-tree when resolving "native" addresses into masked ID addresses. Additionally, pending messages from native account types won't be visible in the Ethereum API because there is no "correct" state-tree to pick in this case. However, pending _Ethereum_ transactions and native messages that have landed on-chain will still be visible through the Ethereum API.
+- feat: Unambiguously translate native messages to Ethereum transactions by:
+    - Detecting native messages that "look" like Ethereum transactions (creating smart contracts, invoking a smart contract, etc.), and decoding them as such.
+    - Otherwise, ABI-encoding the inputs as if they were calls to a `handle_filecoin_method` Solidity method.
 
 ## New features
 - feat: Add move-partition command ([filecoin-project/lotus#11290](https://github.com/filecoin-project/lotus/pull/11290))
