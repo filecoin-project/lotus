@@ -69,17 +69,6 @@ func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode
 	return receipt
 }
 
-func getEthAddressTX(ctx context.Context, t *testing.T, client *kit.TestFullNode, wait *api.MsgLookup, ethAddr ethtypes.EthAddress) ethtypes.EthAddress {
-	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
-	var createExternalReturn eam.CreateExternalReturn
-	err := createExternalReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
-	require.NoError(t, err)
-
-	createdEthAddr, err := ethtypes.CastEthAddress(createExternalReturn.EthAddress[:])
-	require.NoError(t, err)
-	return createdEthAddr
-}
-
 func TestAddressCreationBeforeDeploy(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
