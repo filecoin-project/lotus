@@ -2,7 +2,6 @@ package full
 
 import (
 	"bytes"
-	"context"
 
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -12,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -39,18 +39,18 @@ func decodePayload(payload []byte, codec uint64) (ethtypes.EthBytes, error) {
 }
 
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
-func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr []int, et types.ExecutionTrace, height int64, sa StateAPI) error {
+func buildTraces(traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr []int, et types.ExecutionTrace, height int64, st *state.StateTree) error {
 	// lookup the eth address from the from/to addresses. Note that this may fail but to support
 	// this we need to include the ActorID in the trace. For now, just log a warning and skip
 	// this trace.
 	//
 	// TODO: Add ActorID in trace, see https://github.com/filecoin-project/lotus/pull/11100#discussion_r1302442288
-	from, err := lookupEthAddress(ctx, et.Msg.From, sa)
+	from, err := lookupEthAddress(et.Msg.From, st)
 	if err != nil {
 		log.Warnf("buildTraces: failed to lookup from address %s: %v", et.Msg.From, err)
 		return nil
 	}
-	to, err := lookupEthAddress(ctx, et.Msg.To, sa)
+	to, err := lookupEthAddress(et.Msg.To, st)
 	if err != nil {
 		log.Warnf("buildTraces: failed to lookup to address %s: %w", et.Msg.To, err)
 		return nil
@@ -239,7 +239,7 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 	*traces = append(*traces, trace)
 
 	for i, call := range et.Subcalls {
-		err := buildTraces(ctx, traces, trace, append(addr, i), call, height, sa)
+		err := buildTraces(traces, trace, append(addr, i), call, height, st)
 		if err != nil {
 			return err
 		}
