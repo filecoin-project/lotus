@@ -63,7 +63,7 @@ func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode
 	txHash, err := client.EthGetTransactionHashByCid(ctx, smsg.Cid())
 	require.NoError(t, err)
 
-	receipt, err := waitForEthTxReceipt(ctx, client, *txHash)
+	receipt, err := client.EVM().WaitTransaction(ctx, *txHash)
 	require.NoError(t, err)
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
 	return receipt

@@ -266,6 +266,12 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	toEth, err := client.FilecoinAddressToEthAddress(ctx, toId)
 	require.NoError(t, err)
 	require.Equal(t, &toEth, chainTx.To)
+
+	// verify that the params are correctly encoded.
+	expected, err := hex.DecodeString("868e10c40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000")
+	require.NoError(t, err)
+
+	require.Equal(t, expected, chainTx.Input)
 }
 
 // TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash

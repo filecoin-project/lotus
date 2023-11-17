@@ -8,12 +8,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -79,7 +77,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	client.EVM().SignTransaction(&tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 
-	receipt, err := waitForEthTxReceipt(ctx, client, hash)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 	require.EqualValues(t, ethAddr, receipt.From)
@@ -167,7 +165,7 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
 
-	receipt, err := waitForEthTxReceipt(ctx, client, hash)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 
@@ -214,7 +212,7 @@ func TestContractInvocation(t *testing.T) {
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
 
-	receipt, err := waitForEthTxReceipt(ctx, client, hash)
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
@@ -268,7 +266,7 @@ func TestContractInvocation(t *testing.T) {
 	client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
 	hash = client.EVM().SubmitTransaction(ctx, &invokeTx)
 
-	receipt, err = waitForEthTxReceipt(ctx, client, hash)
+	receipt, err = client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 
@@ -375,15 +373,4 @@ func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr eth
 		R:                    big.Zero(),
 		S:                    big.Zero(),
 	}, nil
-}
-
-func waitForEthTxReceipt(ctx context.Context, client *kit.TestFullNode, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	if mcid, err := client.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
-		return nil, err
-	} else if mcid == nil {
-		return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
-	} else {
-		client.WaitMsg(ctx, *mcid)
-		return client.EthGetTransactionReceipt(ctx, hash)
-	}
 }
