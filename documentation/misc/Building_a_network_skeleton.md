@@ -114,7 +114,7 @@ Each repository has its own set of steps that need to be followed. This guide wi
 And you're done! This should create a network upgrade skeleton that you are able to run locally with your local go-state-types clones, and a mock Actors-bundle. This will allow you to:
 
 - Have a local developer network that starts at the current network version.
-- Be able to see the Actor CIDs/Actor version for the mock v12-bundle through `lotus state actors-cids --network-version XX+1`
+- Be able to see the Actor CIDs/Actor version for the mock v12-bundle through `lotus state actor-cids --network-version XX+1`
 - Have a successful pre-migration.
 - Complete Migration at upgrade epoch, but fail immidiately after the upgrade.
 
