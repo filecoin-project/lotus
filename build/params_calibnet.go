@@ -88,6 +88,9 @@ const UpgradeWatermelonFixHeight = 1070494
 // 2023-11-21T13:00:00Z
 const UpgradeWatermelonFix2Height = 1108174
 
+// ??????
+const UpgradePineappleHeight = 999999999999999
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,

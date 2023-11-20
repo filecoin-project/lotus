@@ -96,7 +96,10 @@ const UpgradeLightningHeight = 2809800
 const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 
 // 2023-12-12T13:30:00Z
-var UpgradeWatermelonHeight = abi.ChainEpoch(3469380)
+const UpgradeWatermelonHeight = 3469380
+
+// ??????
+var UpgradePineappleHeight = abi.ChainEpoch(999999999999999)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
@@ -119,8 +122,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_WATERMELON") == "1" {
-		UpgradeWatermelonHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_PINEAPPLE") == "1" {
+		UpgradePineappleHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
