@@ -54,8 +54,10 @@ const UpgradeSharkHeight = -20
 const UpgradeHyggeHeight = -21
 const UpgradeLightningHeight = -22
 const UpgradeThunderHeight = -23
+const UpgradeWatermelonHeight = -24
 
-const UpgradeWatermelonHeight = 400
+// ??????
+const UpgradePineappleHeight = 999999999999999
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
