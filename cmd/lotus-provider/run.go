@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net"
@@ -15,6 +16,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -40,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/provider/lpwinning"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
@@ -113,6 +116,12 @@ var runCmd = &cli.Command{
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "provider"),
 		)
+		shutdownChan := make(chan struct{})
+		ctx, ctxclose := context.WithCancel(ctx)
+		go func() {
+			<-shutdownChan
+			ctxclose()
+		}()
 		// Register all metric views
 		/*
 			if err := view.Register(
@@ -130,116 +139,12 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		// Open repo
+		deps, err := getDeps(ctx, cctx)
 
-		repoPath := cctx.String(FlagRepoPath)
-		fmt.Println("repopath", repoPath)
-		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
 		}
-
-		ok, err := r.Exists()
-		if err != nil {
-			return err
-		}
-		if !ok {
-			if err := r.Init(repo.Provider); err != nil {
-				return err
-			}
-		}
-
-		db, err := makeDB(cctx)
-		if err != nil {
-			return err
-		}
-		shutdownChan := make(chan struct{})
-
-		const unspecifiedAddress = "0.0.0.0"
-		listenAddr := cctx.String("listen")
-		addressSlice := strings.Split(listenAddr, ":")
-		if ip := net.ParseIP(addressSlice[0]); ip != nil {
-			if ip.String() == unspecifiedAddress {
-				rip, err := db.GetRoutableIP()
-				if err != nil {
-					return err
-				}
-				listenAddr = rip + ":" + addressSlice[1]
-			}
-		}
-
-		///////////////////////////////////////////////////////////////////////
-		///// Dependency Setup
-		///////////////////////////////////////////////////////////////////////
-
-		// The config feeds into task runners & their helpers
-		cfg, err := getConfig(cctx, db)
-		if err != nil {
-			return err
-		}
-
-		log.Debugw("config", "config", cfg)
-
-		var verif storiface.Verifier = ffiwrapper.ProofVerifier
-
-		as, err := provider.AddressSelector(&cfg.Addresses)()
-		if err != nil {
-			return err
-		}
-
-		de, err := journal.ParseDisabledEvents(cfg.Journal.DisabledEvents)
-		if err != nil {
-			return err
-		}
-		j, err := fsjournal.OpenFSJournalPath(cctx.String("journal"), de)
-		if err != nil {
-			return err
-		}
-		defer j.Close()
-
-		full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
-		if err != nil {
-			return err
-		}
-		defer fullCloser()
-
-		sa, err := StorageAuth(cfg.Apis.StorageRPCSecret)
-		if err != nil {
-			return xerrors.Errorf(`'%w' while parsing the config toml's 
-	[Apis]
-	StorageRPCSecret=%v
-Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`, err, cfg.Apis.StorageRPCSecret)
-		}
-
-		al := alerting.NewAlertingSystem(j)
-		si := paths.NewIndexProxy(al, db, true)
-		bls := &paths.BasicLocalStorage{
-			PathToJSON: cctx.String("storage-json"),
-		}
-		localStore, err := paths.NewLocal(ctx, bls, si, []string{"http://" + listenAddr + "/remote"})
-		if err != nil {
-			return err
-		}
-
-		stor := paths.NewRemote(localStore, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
-
-		wstates := statestore.New(dssync.MutexWrap(ds.NewMapDatastore()))
-
-		// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
-		//  maybe with a lotus-provider specific abstraction. LocalWorker does persistent call tracking which we probably
-		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
-		lw := sealer.NewLocalWorker(sealer.WorkerConfig{}, stor, localStore, si, nil, wstates)
-
-		var maddrs []dtypes.MinerAddress
-		for _, s := range cfg.Addresses.MinerAddresses {
-			addr, err := address.NewFromString(s)
-			if err != nil {
-				return err
-			}
-			maddrs = append(maddrs, dtypes.MinerAddress(addr))
-		}
-
-		log.Infow("providers handled", "maddrs", maddrs)
+		cfg, db, full, verif, lw, as, maddrs, stor, si, localStore := deps.cfg, deps.db, deps.full, deps.verif, deps.lw, deps.as, deps.maddrs, deps.stor, deps.si, deps.localStore
 
 		///////////////////////////////////////////////////////////////////////
 		///// Task Selection
@@ -261,7 +166,11 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 				activeTasks = append(activeTasks, winPoStTask)
 			}
 		}
-		taskEngine, err := harmonytask.New(db, activeTasks, listenAddr)
+		log.Infow("This lotus_provider instance handles",
+			"miner_addresses", maddrs,
+			"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
+
+		taskEngine, err := harmonytask.New(db, activeTasks, deps.listenAddr)
 		if err != nil {
 			return err
 		}
@@ -306,7 +215,6 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
 
 		<-finishCh
-
 		return nil
 	},
 }
@@ -350,4 +258,148 @@ func StorageAuth(apiKey string) (sealer.StorageAuth, error) {
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 	return sealer.StorageAuth(headers), nil
+}
+
+type Deps struct {
+	cfg        *config.LotusProviderConfig
+	db         *harmonydb.DB
+	full       api.FullNode
+	verif      storiface.Verifier
+	lw         *sealer.LocalWorker
+	as         *ctladdr.AddressSelector
+	maddrs     []dtypes.MinerAddress
+	stor       *paths.Remote
+	si         *paths.IndexProxy
+	localStore *paths.Local
+	listenAddr string
+}
+
+func getDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
+	// Open repo
+
+	repoPath := cctx.String(FlagRepoPath)
+	fmt.Println("repopath", repoPath)
+	r, err := repo.NewFS(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	ok, err := r.Exists()
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		if err := r.Init(repo.Provider); err != nil {
+			return nil, err
+		}
+	}
+
+	db, err := makeDB(cctx)
+	if err != nil {
+		return nil, err
+	}
+
+	///////////////////////////////////////////////////////////////////////
+	///// Dependency Setup
+	///////////////////////////////////////////////////////////////////////
+
+	// The config feeds into task runners & their helpers
+	cfg, err := getConfig(cctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugw("config", "config", cfg)
+
+	var verif storiface.Verifier = ffiwrapper.ProofVerifier
+
+	as, err := provider.AddressSelector(&cfg.Addresses)()
+	if err != nil {
+		return nil, err
+	}
+
+	de, err := journal.ParseDisabledEvents(cfg.Journal.DisabledEvents)
+	if err != nil {
+		return nil, err
+	}
+	j, err := fsjournal.OpenFSJournalPath(cctx.String("journal"), de)
+	if err != nil {
+		return nil, err
+	}
+
+	full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			fullCloser()
+			_ = j.Close()
+		}
+	}()
+	sa, err := StorageAuth(cfg.Apis.StorageRPCSecret)
+	if err != nil {
+		return nil, xerrors.Errorf(`'%w' while parsing the config toml's 
+	[Apis]
+	StorageRPCSecret=%v
+Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`, err, cfg.Apis.StorageRPCSecret)
+	}
+
+	al := alerting.NewAlertingSystem(j)
+	si := paths.NewIndexProxy(al, db, true)
+	bls := &paths.BasicLocalStorage{
+		PathToJSON: cctx.String("storage-json"),
+	}
+
+	listenAddr := cctx.String("listen")
+	const unspecifiedAddress = "0.0.0.0"
+	addressSlice := strings.Split(listenAddr, ":")
+	if ip := net.ParseIP(addressSlice[0]); ip != nil {
+		if ip.String() == unspecifiedAddress {
+			rip, err := db.GetRoutableIP()
+			if err != nil {
+				return nil, err
+			}
+			listenAddr = rip + ":" + addressSlice[1]
+		}
+	}
+	localStore, err := paths.NewLocal(ctx, bls, si, []string{"http://" + listenAddr + "/remote"})
+	if err != nil {
+		return nil, err
+	}
+
+	stor := paths.NewRemote(localStore, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
+
+	wstates := statestore.New(dssync.MutexWrap(ds.NewMapDatastore()))
+
+	// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
+	//  maybe with a lotus-provider specific abstraction. LocalWorker does persistent call tracking which we probably
+	//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
+	lw := sealer.NewLocalWorker(sealer.WorkerConfig{}, stor, localStore, si, nil, wstates)
+
+	var maddrs []dtypes.MinerAddress
+	for _, s := range cfg.Addresses.MinerAddresses {
+		addr, err := address.NewFromString(s)
+		if err != nil {
+			return nil, err
+		}
+		maddrs = append(maddrs, dtypes.MinerAddress(addr))
+	}
+
+	return &Deps{ // lint: intentionally not-named so it will fail if one is forgotten
+		cfg,
+		db,
+		full,
+		verif,
+		lw,
+		as,
+		maddrs,
+		stor,
+		si,
+		localStore,
+		listenAddr,
+	}, nil
+
 }

@@ -74,10 +74,10 @@ type WdPostTask struct {
 }
 
 type wdTaskIdentity struct {
-	Sp_id                uint64
-	Proving_period_start abi.ChainEpoch
-	Deadline_index       uint64
-	Partition_index      uint64
+	SpID               uint64         `db:"sp_id"`
+	ProvingPeriodStart abi.ChainEpoch `db:"proving_period_start"`
+	DeadlineIndex      uint64         `db:"deadline_index"`
+	PartitionIndex     uint64         `db:"partition_index"`
 }
 
 func NewWdPostTask(db *harmonydb.DB,
@@ -150,7 +150,7 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, err
 	}
 
-	postOut, err := t.doPartition(context.Background(), ts, maddr, deadline, partIdx)
+	postOut, err := t.DoPartition(context.Background(), ts, maddr, deadline, partIdx)
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to doPartition: %v", err)
 		return false, err
@@ -206,11 +206,11 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 
 	// GetData for tasks
 	type wdTaskDef struct {
-		Task_id              harmonytask.TaskID
-		Sp_id                uint64
-		Proving_period_start abi.ChainEpoch
-		Deadline_index       uint64
-		Partition_index      uint64
+		TaskID             harmonytask.TaskID
+		SpID               uint64
+		ProvingPeriodStart abi.ChainEpoch
+		DeadlineIndex      uint64
+		PartitionIndex     uint64
 
 		dlInfo *dline.Info `pgx:"-"`
 		openTs *types.TipSet
@@ -232,10 +232,10 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 
 	// Accept those past deadline, then delete them in Do().
 	for i := range tasks {
-		tasks[i].dlInfo = wdpost.NewDeadlineInfo(tasks[i].Proving_period_start, tasks[i].Deadline_index, ts.Height())
+		tasks[i].dlInfo = wdpost.NewDeadlineInfo(tasks[i].ProvingPeriodStart, tasks[i].DeadlineIndex, ts.Height())
 
 		if tasks[i].dlInfo.PeriodElapsed() {
-			return &tasks[i].Task_id, nil
+			return &tasks[i].TaskID, nil
 		}
 
 		tasks[i].openTs, err = t.api.ChainGetTipSetAfterHeight(context.Background(), tasks[i].dlInfo.Open, ts.Key())
@@ -281,7 +281,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		var r int
 		err := t.db.QueryRow(context.Background(), `SELECT COUNT(*) 
 		FROM harmony_task_history 
-		WHERE task_id = $1 AND result = false`, d.Task_id).Scan(&r)
+		WHERE task_id = $1 AND result = false`, d.TaskID).Scan(&r)
 		if err != nil {
 			log.Errorf("WdPostTask.CanAccept() failed to queryRow: %v", err)
 		}
@@ -293,7 +293,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		return tasks[i].dlInfo.Open < tasks[j].dlInfo.Open
 	})
 
-	return &tasks[0].Task_id, nil
+	return &tasks[0].TaskID, nil
 }
 
 var res = storiface.ResourceTable[sealtasks.TTGenerateWindowPoSt]
@@ -353,10 +353,10 @@ func (t *WdPostTask) processHeadChange(ctx context.Context, revert, apply *types
 
 		for pidx := range partitions {
 			tid := wdTaskIdentity{
-				Sp_id:                aid,
-				Proving_period_start: di.PeriodStart,
-				Deadline_index:       di.Index,
-				Partition_index:      uint64(pidx),
+				SpID:               aid,
+				ProvingPeriodStart: di.PeriodStart,
+				DeadlineIndex:      di.Index,
+				PartitionIndex:     uint64(pidx),
 			}
 
 			tf := t.windowPoStTF.Val(ctx)
@@ -384,10 +384,10 @@ func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIden
                           partition_index
                         ) VALUES ($1, $2, $3, $4, $5)`,
 		taskId,
-		taskIdent.Sp_id,
-		taskIdent.Proving_period_start,
-		taskIdent.Deadline_index,
-		taskIdent.Partition_index,
+		taskIdent.SpID,
+		taskIdent.ProvingPeriodStart,
+		taskIdent.DeadlineIndex,
+		taskIdent.PartitionIndex,
 	)
 	if err != nil {
 		return false, xerrors.Errorf("insert partition task: %w", err)

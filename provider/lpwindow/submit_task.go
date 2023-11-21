@@ -149,14 +149,15 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 		return false, xerrors.Errorf("preparing proof message: %w", err)
 	}
 
-	smsg, err := w.sender.Send(context.Background(), msg, mss, "wdpost")
+	ctx := context.WithValue(context.Background(), lpmessage.CtxTaskID, taskID)
+	smsg, err := w.sender.Send(ctx, msg, mss, "wdpost")
 	if err != nil {
 		return false, xerrors.Errorf("sending proof message: %w", err)
 	}
 
 	// set message_cid in the wdpost_proofs entry
 
-	_, err = w.db.Exec(context.Background(), `UPDATE wdpost_proofs SET message_cid = $1 WHERE sp_id = $2 AND proving_period_start = $3 AND deadline = $4 AND partition = $5`, smsg.String(), spID, pps, deadline, partition)
+	_, err = w.db.Exec(ctx, `UPDATE wdpost_proofs SET message_cid = $1 WHERE sp_id = $2 AND proving_period_start = $3 AND deadline = $4 AND partition = $5`, smsg.String(), spID, pps, deadline, partition)
 	if err != nil {
 		return true, xerrors.Errorf("updating wdpost_proofs: %w", err)
 	}
@@ -257,7 +258,7 @@ func preparePoStMessage(w MsgPrepAPI, as *ctladdr.AddressSelector, maddr address
 	msg.From = mi.Worker
 
 	mss := &api.MessageSendSpec{
-		MaxFee: abi.TokenAmount(maxFee),
+		MaxFee: maxFee,
 	}
 
 	// (optimal) initial estimation with some overestimation that guarantees
