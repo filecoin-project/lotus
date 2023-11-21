@@ -6,7 +6,6 @@ retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
 retract v1.20.2 // Wrongfully cherry picked PR, use v1.20.2+ instead.
 
-
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.2.1
