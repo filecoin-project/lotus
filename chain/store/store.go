@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -120,8 +120,8 @@ type ChainStore struct {
 	reorgCh        chan<- reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	mmCache *lru.ARCCache[cid.Cid, mmCids]
-	tsCache *lru.ARCCache[types.TipSetKey, *types.TipSet]
+	mmCache *arc.ARCCache[cid.Cid, mmCids]
+	tsCache *arc.ARCCache[types.TipSetKey, *types.TipSet]
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -133,8 +133,8 @@ type ChainStore struct {
 }
 
 func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
-	c, _ := lru.NewARC[cid.Cid, mmCids](DefaultMsgMetaCacheSize)
-	tsc, _ := lru.NewARC[types.TipSetKey, *types.TipSet](DefaultTipSetCacheSize)
+	c, _ := arc.NewARC[cid.Cid, mmCids](DefaultMsgMetaCacheSize)
+	tsc, _ := arc.NewARC[types.TipSetKey, *types.TipSet](DefaultTipSetCacheSize)
 	if j == nil {
 		j = journal.NilJournal()
 	}
