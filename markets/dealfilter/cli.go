@@ -21,6 +21,7 @@ func CliStorageDealFilter(cmd string) dtypes.StorageDealFilter {
 			MinerDeal: deal,
 			DealType:  "storage",
 		}
+		
 		return runDealFilter(ctx, cmd, d)
 	}
 }
