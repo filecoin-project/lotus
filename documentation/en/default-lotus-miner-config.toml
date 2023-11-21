@@ -176,6 +176,16 @@
   # env var: LOTUS_SUBSYSTEMS_DISABLEWINDOWPOST
   #DisableWindowPoSt = false
 
+  # When winning post is disabled, the miner process will NOT attempt to mine
+  # blocks. This should only be set when there's an external process mining
+  # blocks on behalf of the miner.
+  # When disabled and no external block producers are configured, all potential
+  # block rewards will be missed!
+  #
+  # type: bool
+  # env var: LOTUS_SUBSYSTEMS_DISABLEWINNINGPOST
+  #DisableWinningPoSt = false
+
 
 [Dealmaking]
   # When enabled, the miner can accept online deals

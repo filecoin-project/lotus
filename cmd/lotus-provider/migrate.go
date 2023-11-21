@@ -11,9 +11,12 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ipfs/go-datastore"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
 
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -32,6 +35,12 @@ var configMigrateCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
 			Value:   "~/.lotusminer",
 			Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
+		},
+		&cli.StringFlag{
+			Name:    "repo",
+			EnvVars: []string{"LOTUS_PATH"},
+			Hidden:  true,
+			Value:   "~/.lotus",
 		},
 		&cli.StringFlag{
 			Name:    "to-layer",
@@ -117,14 +126,20 @@ func fromMiner(cctx *cli.Context) (err error) {
 	}
 
 	// Populate Miner Address
-	sm, cc, err := cliutil.GetStorageMinerAPI(cctx)
+	mmeta, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
-		return fmt.Errorf("could not get storageMiner API: %w", err)
+		return xerrors.Errorf("opening miner metadata datastore: %w", err)
 	}
-	defer cc()
-	addr, err := sm.ActorAddress(ctx)
+	defer mmeta.Close()
+
+	maddrBytes, err := mmeta.Get(ctx, datastore.NewKey("miner-address"))
 	if err != nil {
-		return fmt.Errorf("could not read actor address: %w", err)
+		return xerrors.Errorf("getting miner address datastore entry: %w", err)
+	}
+
+	addr, err := address.NewFromBytes(maddrBytes)
+	if err != nil {
+		return xerrors.Errorf("parsing miner actor address: %w", err)
 	}
 
 	lpCfg.Addresses.MinerAddresses = []string{addr.String()}
@@ -137,7 +152,8 @@ func fromMiner(cctx *cli.Context) (err error) {
 	if err != nil {
 		return xerrors.Errorf("error getting JWTSecretName: %w", err)
 	}
-	lpCfg.Apis.StorageRPCSecret = base64.RawStdEncoding.EncodeToString(js.PrivateKey)
+
+	lpCfg.Apis.StorageRPCSecret = base64.StdEncoding.EncodeToString(js.PrivateKey)
 
 	// Populate API Key
 	_, header, err := cliutil.GetRawAPI(cctx, repo.FullNode, "v0")
@@ -145,7 +161,11 @@ func fromMiner(cctx *cli.Context) (err error) {
 		return fmt.Errorf("cannot read API: %w", err)
 	}
 
-	lpCfg.Apis.ChainApiInfo = []string{header.Get("Authorization")[7:]}
+	ainfo, err := cliutil.GetAPIInfo(&cli.Context{}, repo.FullNode)
+	if err != nil {
+		return xerrors.Errorf("could not get API info for FullNode: %w", err)
+	}
+	lpCfg.Apis.ChainApiInfo = []string{header.Get("Authorization")[7:] + ":" + ainfo.Addr}
 
 	// Enable WindowPoSt
 	lpCfg.Subsystems.EnableWindowPost = true
@@ -166,6 +186,7 @@ environment variable LOTUS_WORKER_WINDOWPOST.
 			return xerrors.Errorf("Cannot get default config: %w", err)
 		}
 		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', '$1')", cfg)
+
 		if err != nil {
 			return err
 		}

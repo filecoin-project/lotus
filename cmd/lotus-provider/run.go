@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/provider/lpwinning"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -158,6 +159,11 @@ var runCmd = &cli.Command{
 					return err
 				}
 				activeTasks = append(activeTasks, wdPostTask, wdPoStSubmitTask, derlareRecoverTask)
+			}
+
+			if cfg.Subsystems.EnableWinningPost {
+				winPoStTask := lpwinning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
+				activeTasks = append(activeTasks, winPoStTask)
 			}
 		}
 		log.Infow("This lotus_provider instance handles",
