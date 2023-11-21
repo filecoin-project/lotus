@@ -13,11 +13,11 @@ Each repository has its own set of steps that need to be followed. This guide wi
 
 1. Clone the [ref-fvm](https://github.com/filecoin-project/ref-fvm.git) repository.
 
-1. Clone the [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git) repository.
+2. Clone the [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi.git) repository.
 
-1. Clone the [go-state-types](https://github.com/filecoin-project/go-state-types) repository.
+3. Clone the [go-state-types](https://github.com/filecoin-project/go-state-types) repository.
 
-2. In your Lotus repository, add `replace github.com/filecoin-project/go-state-types => ../go-state-types` to the very end of your Lotus `go.mod` file.
+4. In your Lotus repository, add `replace github.com/filecoin-project/go-state-types => ../go-state-types` to the very end of your Lotus `go.mod` file.
     - This ensures that your local clone copy of `go-state-types` is used. Any changes you make there will be reflected in your Lotus project.
 
 ## Ref-FVM Checklist
@@ -28,6 +28,8 @@ Each repository has its own set of steps that need to be followed. This guide wi
     - In `fvm/src/machine/default.rs` in the new function of your machine context, you will find a `SUPPORTED_VERSIONS` constant that defines the range of network versions (for networks that are not Hyperspace) supported. Bump this range to support your new network version.
     - In `shared/src/version/mod.rs`, in the `NetworkVersion` implementation, you will find a series of constants representing different network versions. To add a new network version, you need to declare a new constant: `pub const (VXX+1): Self = Self(XX+1);` 
 
+You can take a look at [this Ref-FVM PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/1929), which added the skeleton for network version 22.
+
 ## Filecoin-FFI Checklist
 
 1. Update the `TryFrom<u32>` implementation for `EngineVersion` in `rust/src/fvm/engine.rs`
@@ -35,6 +37,8 @@ Each repository has its own set of steps that need to be followed. This guide wi
 
 2. Patch the FVM-dependency (fvm3) in `rust/cargo.toml` to use the custom branch of the FVM created in the [Ref-FVM Checklist](#ref-fvm-checklist))
     -  Add `features = ["your-ref-fvm-branch"]` to tell Cargo to use you Ref-FVM branch.
+
+You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/filecoin-project/filecoin-ffi/pull/438), which added the skeleton for network version 22.
 
 ## Go-State-Types Checklist
 
@@ -48,8 +52,10 @@ Each repository has its own set of steps that need to be followed. This guide wi
         - In `func VersionForNetwork` add `case network.Version(XX+1): return Version(XX+1), nil`.
     - Add the new version to the gen step of the makefile.
         - Add `$(GO_BIN) run ./builtin/v(XX+1)/gen/gen.go`.
+
+You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/232), which added the skeleton for network version 22.
     
-## Actor Version Lotus Integration Checklist
+## Lotus Checklist
 
 1. Import new actors:
 
@@ -118,7 +124,7 @@ And you're done! This should create a network upgrade skeleton that you are able
 - Have a successful pre-migration.
 - Complete Migration at upgrade epoch, but fail immidiately after the upgrade.
 
-At this point you are blocked on FVM/Actors work landing.
+You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11432), which added the skeleton for network version 22.
 
 // TODO: Create a video-tutorial going through all the steps
 
