@@ -246,7 +246,7 @@ func (db *DB) upgrade() error {
 			return xerrors.Errorf("cannot read entries: %w", err)
 		}
 		for _, l := range landedEntries {
-			landed[l.Entry] = true
+			landed[l.Entry[:8]] = true
 		}
 	}
 	dir, err := fs.ReadDir("sql")
@@ -261,7 +261,11 @@ func (db *DB) upgrade() error {
 	}
 	for _, e := range dir {
 		name := e.Name()
-		if landed[name] || !strings.HasSuffix(name, ".sql") {
+		if !strings.HasSuffix(name, ".sql") {
+			logger.Debug("Must have only SQL files here, found: " + name)
+			continue
+		}
+		if landed[name[:8]] {
 			logger.Debug("DB Schema " + name + " already applied.")
 			continue
 		}
@@ -283,7 +287,7 @@ func (db *DB) upgrade() error {
 		}
 
 		// Mark Completed.
-		_, err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUES ($1)", name)
+		_, err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUES ($1)", name[:8])
 		if err != nil {
 			logger.Error("Cannot update base: " + err.Error())
 			return xerrors.Errorf("cannot insert into base: %w", err)

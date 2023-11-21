@@ -43,7 +43,7 @@ func main() {
 		runCmd,
 		stopCmd,
 		configCmd,
-		provingCmd,
+		testCmd,
 		//backupCmd,
 		//lcli.WithCategory("chain", actorCmd),
 		//lcli.WithCategory("storage", sectorsCmd),

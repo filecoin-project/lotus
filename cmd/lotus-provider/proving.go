@@ -17,31 +17,30 @@ import (
 	"github.com/filecoin-project/lotus/provider"
 )
 
-var provingCmd = &cli.Command{
-	Name:  "proving",
-	Usage: "Utility functions for proving sectors",
+var testCmd = &cli.Command{
+	Name:  "test",
+	Usage: "Utility functions for testing",
 	Subcommands: []*cli.Command{
 		//provingInfoCmd,
-		provingCompute,
+		wdPostCmd,
 	},
 }
 
-var provingCompute = &cli.Command{
-	Name:  "compute",
-	Usage: "Compute a proof-of-spacetime for a sector (requires the sector to be pre-sealed)",
+var wdPostCmd = &cli.Command{
+	Name:    "window-post",
+	Aliases: []string{"wd", "windowpost", "wdpost"},
+	Usage:   "Compute a proof-of-spacetime for a sector (requires the sector to be pre-sealed). These will not send to the chain.",
 	Subcommands: []*cli.Command{
-		provingComputeWindowPoStCmd,
-		scheduleWindowPostCmd,
+		wdPostHereCmd,
+		wdPostTaskCmd,
 	},
 }
 
-var scheduleWindowPostCmd = &cli.Command{
-	Name:  "test-window-post",
-	Usage: "FOR TESTING: a way to test the windowpost scheduler. Use with 1 lotus-provider running only",
+var wdPostTaskCmd = &cli.Command{
+	Name:    "task",
+	Aliases: []string{"scheduled", "schedule", "async", "asynchronous"},
+	Usage:   "Test the windowpost scheduler by running it on the next available lotus-provider. ",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name: "i_have_set_LOTUS_PROVDER_NO_SEND_to_true",
-		},
 		&cli.Uint64Flag{
 			Name:  "deadline",
 			Usage: "deadline to compute WindowPoSt for ",
@@ -56,10 +55,6 @@ var scheduleWindowPostCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
 
-		if !cctx.Bool("i_have_set_LOTUS_PROVDER_NO_SEND_to_true") {
-			log.Info("This command is for testing only. It will not send any messages to the chain. If you want to run it, set LOTUS_PROVDER_NO_SEND=true on the lotus-provider environment.")
-			return nil
-		}
 		deps, err := getDeps(ctx, cctx)
 		if err != nil {
 			return err
@@ -97,19 +92,24 @@ var scheduleWindowPostCmd = &cli.Command{
 				log.Error("inserting wdpost_partition_tasks: ", err)
 				return false, xerrors.Errorf("inserting wdpost_partition_tasks: %w", err)
 			}
+			_, err = tx.Exec("INSERT INTO harmony_test (task_id) VALUES ($1)", id)
+			if err != nil {
+				return false, xerrors.Errorf("inserting into harmony_tests: %w", err)
+			}
 			return true, nil
 		})
 		if err != nil {
 			return xerrors.Errorf("writing SQL transaction: %w", err)
 		}
 		log.Infof("Inserted task %v", did)
+		log.Infof("Check your lotus-provider logs for more details.")
 		return nil
 	},
 }
 
-var provingComputeWindowPoStCmd = &cli.Command{
-	Name:    "windowed-post",
-	Aliases: []string{"window-post"},
+var wdPostHereCmd = &cli.Command{
+	Name:    "here",
+	Aliases: []string{"cli"},
 	Usage:   "Compute WindowPoSt for performance and configuration testing.",
 	Description: `Note: This command is intended to be used to verify PoSt compute performance.
 It will not send any messages to the chain. Since it can compute any deadline, output may be incorrectly timed for the chain.`,

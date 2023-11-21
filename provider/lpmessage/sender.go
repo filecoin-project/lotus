@@ -2,7 +2,6 @@ package lpmessage
 
 import (
 	"context"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -18,6 +17,10 @@ import (
 )
 
 var log = logging.Logger("lpmessage")
+
+type str string // makes ctx value collissions impossible
+
+var CtxTaskID str = "task_id"
 
 type SenderAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
@@ -40,8 +43,7 @@ type Sender struct {
 	api    SenderAPI
 	signer SignerAPI
 
-	db     *harmonydb.DB
-	noSend bool // For early testing with only 1 lotus-provider
+	db *harmonydb.DB
 }
 
 // NewSender creates a new Sender.
@@ -50,7 +52,6 @@ func NewSender(api SenderAPI, signer SignerAPI, db *harmonydb.DB) *Sender {
 		api:    api,
 		signer: signer,
 		db:     db,
-		noSend: os.Getenv("LOTUS_PROVDER_NO_SEND") != "",
 	}
 }
 
@@ -102,6 +103,14 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 
 	var sigMsg *types.SignedMessage
 
+	var idCount int
+	err = s.db.QueryRow(ctx, `SELECT COUNT(*) FROM harmony_test WHERE task_id=$1`,
+		ctx.Value(CtxTaskID)).Scan(&idCount)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("reading harmony_test: %w", err)
+	}
+	noSend := idCount == 1
+
 	// start db tx
 	c, err := s.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 		// assign nonce (max(api.MpoolGetNonce, db nonce+1))
@@ -139,7 +148,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			return false, xerrors.Errorf("marshaling message: %w", err)
 		}
 
-		if s.noSend {
+		if noSend {
 			log.Errorw("SKIPPED SENDING MESSAGE PER ENVIRONMENT VARIABLE - NOT PRODUCTION SAFE",
 				"from_key", fromA.String(),
 				"nonce", msg.Nonce,
@@ -167,7 +176,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 	if err != nil || !c {
 		return cid.Undef, xerrors.Errorf("transaction failed or didn't commit: %w", err)
 	}
-	if s.noSend {
+	if noSend {
 		return sigMsg.Cid(), nil
 	}
 

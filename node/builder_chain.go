@@ -60,6 +60,7 @@ var ChainNode = Options(
 	Override(new(dtypes.NetworkName), modules.NetworkName),
 	Override(new(modules.Genesis), modules.ErrorGenesis),
 	Override(new(dtypes.AfterGenesisSet), modules.SetGenesis),
+	Override(SetGenesisKey, modules.DoSetGenesis),
 	Override(new(beacon.Schedule), modules.RandomSchedule),
 
 	// Network bootstrap
