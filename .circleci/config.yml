@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.12
+      - image: cimg/go:1.20.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.12
+      - image: cimg/go:1.20.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -1009,7 +1009,7 @@ workflows:
           requires:
             - build
           suite: utest-unit-rest
-          target: "./api/... ./blockstore/... ./build/... ./chain/... ./cli/... ./cmd/... ./conformance/... ./extern/... ./gateway/... ./journal/... ./lib/... ./markets/... ./node/... ./paychmgr/... ./storage/... ./tools/..."
+          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
           executor: golang-2xl
       - test:
           name: test-unit-storage

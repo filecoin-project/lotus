@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -61,7 +61,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 // NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
 // address (which can be different from the worker's address).
 func NewMiner(api v1api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter, j journal.Journal) *Miner {
-	arc, err := lru.NewARC[abi.ChainEpoch, bool](10000)
+	arc, err := arc.NewARC[abi.ChainEpoch, bool](10000)
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +122,7 @@ type Miner struct {
 	// minedBlockHeights is a safeguard that caches the last heights we mined.
 	// It is consulted before publishing a newly mined block, for a sanity check
 	// intended to avoid slashings in case of a bug.
-	minedBlockHeights *lru.ARCCache[abi.ChainEpoch, bool]
+	minedBlockHeights *arc.ARCCache[abi.ChainEpoch, bool]
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
