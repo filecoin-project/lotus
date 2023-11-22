@@ -5,3 +5,4 @@ CREATE TABLE harmony_test (
     options text,
     result text
 );
+ALTER TABLE wdpost_proofs ADD COLUMN test_task_id bigint;

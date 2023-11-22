@@ -21,7 +21,7 @@ var log = logging.Logger("lpmessage")
 
 type str string // makes ctx value collissions impossible
 
-var CtxTaskID str = "task_id"
+var CtxTestTaskID str = "task_id"
 
 type SenderAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
@@ -106,7 +106,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 
 	var idCount int
 	err = s.db.QueryRow(ctx, `SELECT COUNT(*) FROM harmony_test WHERE task_id=$1`,
-		ctx.Value(CtxTaskID)).Scan(&idCount)
+		ctx.Value(CtxTestTaskID)).Scan(&idCount)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("reading harmony_test: %w", err)
 	}
@@ -163,7 +163,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			if err != nil {
 				return false, xerrors.Errorf("marshaling message: %w", err)
 			}
-			id := ctx.Value(CtxTaskID)
+			id := ctx.Value(CtxTestTaskID)
 			tx.Exec(`UPDATE harmony_test SET result=$1 WHERE task_id=$2`, string(data), id)
 			log.Infof("SKIPPED sending test message to chain. Query harmony_test WHERE task_id= %v", id)
 			return true, nil // nothing committed

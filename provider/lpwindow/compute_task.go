@@ -161,6 +161,14 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, xerrors.Errorf("marshaling PoSt: %w", err)
 	}
 
+	testTaskID := 0
+	testTaskIDCt := 0
+	if err = t.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM harmony_test WHERE task_id = $1`, taskID).Scan(&testTaskIDCt); err != nil {
+		return false, xerrors.Errorf("querying for test task: %w", err)
+	}
+	if testTaskIDCt == 1 {
+		testTaskID = int(taskID)
+	}
 	// Insert into wdpost_proofs table
 	n, err := t.db.Exec(context.Background(),
 		`INSERT INTO wdpost_proofs (
@@ -170,15 +178,18 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	                           partition,
 	                           submit_at_epoch,
 	                           submit_by_epoch,
-                               proof_params)
-	    			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                               proof_params,
+							   test_task_id)
+	    			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		spID,
 		pps,
 		deadline.Index,
 		partIdx,
 		deadline.Open,
 		deadline.Close,
-		msgbuf.Bytes())
+		msgbuf.Bytes(),
+		testTaskID,
+	)
 
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to insert into wdpost_proofs: %v", err)
