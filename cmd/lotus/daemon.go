@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -32,6 +33,8 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/cassbs"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -133,6 +136,10 @@ var DaemonCmd = &cli.Command{
 			Name:  "lite",
 			Usage: "start lotus in lite mode",
 		},
+		&cli.BoolFlag{
+			Name:  "follower",
+			Usage: "start lotus in experimental follower mode",
+		},
 		&cli.StringFlag{
 			Name:  "pprof",
 			Usage: "specify name of file for writing cpu profile to",
@@ -169,6 +176,15 @@ var DaemonCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		isLite := cctx.Bool("lite")
+
+		isFollower := cctx.Bool("follower")
+		if isFollower {
+			if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") == "" {
+				return xerrors.Errorf("follower nodes must have LOTUS_CASSANDRA_UNIVERSAL_STORE set to connect to Cassandra db campatible database")
+			}
+		}
+
+		//here
 
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
 			EnableCPU:    true,
@@ -351,7 +367,7 @@ var DaemonCmd = &cli.Command{
 		// If the daemon is started in "lite mode", provide a  Gateway
 		// for RPC calls
 		liteModeDeps := node.Options()
-		if isLite {
+		if isLite || isFollower {
 			gapi, closer, err := lcli.GetGatewayAPI(cctx)
 			if err != nil {
 				return err
@@ -370,7 +386,7 @@ var DaemonCmd = &cli.Command{
 
 		var api lapi.FullNode
 		stop, err := node.New(ctx,
-			node.FullAPI(&api, node.Lite(isLite)),
+			node.FullAPI(&api, node.Lite(isLite), node.Follower(isFollower)),
 
 			node.Base(),
 			node.Repo(r),
@@ -524,6 +540,19 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	mds, err := lr.Datastore(ctx, "/metadata")
+
+	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
+		mds, err = cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "metadata")
+		if err != nil {
+			return xerrors.Errorf("open cassandra store: %w", err)
+		}
+		chain_ds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "data")
+		if err != nil {
+			return xerrors.Errorf("open cassandra store: %w", err)
+		}
+		bs = blockstore.Adapt(bstore.NewBlockstore(chain_ds, bstore.NoPrefix()))
+	}
+
 	if err != nil {
 		return err
 	}
@@ -565,7 +594,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	bar.Start()
-	ts, err := cst.Import(ctx, ir)
+	ts, gen, err := cst.Import(ctx, ir)
 	bar.Finish()
 
 	if err != nil {
@@ -576,17 +605,17 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
-	gb, err := cst.GetTipsetByHeight(ctx, 0, ts, true)
-	if err != nil {
-		return err
-	}
-
-	err = cst.SetGenesis(ctx, gb.Blocks()[0])
+	log.Infof("setting genesis")
+	err = cst.SetGenesis(ctx, gen)
 	if err != nil {
 		return err
 	}
 
 	if !snapshot {
+		gb, err := cst.GetTipsetByHeight(ctx, 0, ts, true)
+		if err != nil {
+			return err
+		}
 		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gb.MinTimestamp(), nil)
 		if err != nil {
 			return xerrors.Errorf("failed to construct beacon schedule: %w", err)

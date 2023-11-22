@@ -859,7 +859,7 @@ func (cs *ChainStore) Contains(ctx context.Context, ts *types.TipSet) (bool, err
 // blockstore.ErrNotFound if the block was not found in the BlockStore.
 func (cs *ChainStore) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {
 	var blk *types.BlockHeader
-	err := cs.chainLocalBlockstore.View(ctx, c, func(b []byte) (err error) {
+	err := cs.stateBlockstore.View(ctx, c, func(b []byte) (err error) {
 		blk, err = types.DecodeBlock(b)
 		return err
 	})
@@ -1045,7 +1045,7 @@ func (cs *ChainStore) PersistTipsets(ctx context.Context, tipsets []*types.TipSe
 		return xerrors.Errorf("failed to persist block headers: %w", err)
 	}
 
-	if err := cs.chainLocalBlockstore.PutMany(ctx, tsBlks); err != nil {
+	if err := cs.stateBlockstore.PutMany(ctx, tsBlks); err != nil {
 		return xerrors.Errorf("failed to put tipset key blocks: %w", err)
 	}
 
@@ -1074,7 +1074,7 @@ func (cs *ChainStore) persistBlockHeaders(ctx context.Context, b ...*types.Block
 			end = len(b)
 		}
 
-		err = multierr.Append(err, cs.chainLocalBlockstore.PutMany(ctx, sbs[start:end]))
+		err = multierr.Append(err, cs.stateBlockstore.PutMany(ctx, sbs[start:end]))
 	}
 
 	return err
@@ -1204,7 +1204,7 @@ func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
 }
 
 func (cs *ChainStore) ChainLocalBlockstore() bstore.Blockstore {
-	return cs.chainLocalBlockstore
+	return cs.stateBlockstore
 }
 
 func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {

@@ -304,7 +304,7 @@ var importBenchCmd = &cli.Command{
 				return fmt.Errorf("no CAR file provided for import")
 			}
 
-			head, err = cs.Import(cctx.Context, carFile)
+			head, _, err = cs.Import(cctx.Context, carFile)
 			if err != nil {
 				return err
 			}

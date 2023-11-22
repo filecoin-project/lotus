@@ -68,6 +68,7 @@ OPTIONS:
    --remove-existing-chain   remove existing chain and splitstore data on a snapshot-import (default: false)
    --halt-after-import       halt the process after importing chain from file (default: false)
    --lite                    start lotus in lite mode (default: false)
+   --follower                start lotus in experimental follower mode (default: false)
    --pprof value             specify name of file for writing cpu profile to
    --profile value           specify type of node
    --manage-fdlimit          manage open file limit (default: true)

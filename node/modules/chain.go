@@ -2,6 +2,9 @@ package modules
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/ipfs/boxo/bitswap"
@@ -12,7 +15,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/cassbs"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -111,6 +116,42 @@ func ChainStore(lc fx.Lifecycle,
 	return chain
 }
 
+func CassandraMetadataChainStore(lc fx.Lifecycle,
+	mctx helpers.MetricsCtx,
+	cbs dtypes.ChainBlockstore,
+	sbs dtypes.StateBlockstore,
+	ds dtypes.MetadataDS,
+	basebs dtypes.BaseBlockstore,
+	weight store.WeightFunc,
+	us stmgr.UpgradeSchedule,
+	j journal.Journal) *store.ChainStore {
+
+	metadataserver, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "metadata")
+	if err != nil {
+		fmt.Println(err)
+	}
+	return ChainStore(lc, mctx, cbs, sbs, metadataserver, basebs, weight, us, j)
+
+}
+
+func CassandraReadonlyMetadataChainStore(lc fx.Lifecycle,
+	mctx helpers.MetricsCtx,
+	cbs dtypes.ChainBlockstore,
+	sbs dtypes.StateBlockstore,
+	ds dtypes.MetadataDS,
+	basebs dtypes.BaseBlockstore,
+	weight store.WeightFunc,
+	us stmgr.UpgradeSchedule,
+	j journal.Journal) *store.ChainStore {
+
+	readonlyMetaDataBs, err := cassbs.NewCassandraDSReadonly(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "metadata")
+	if err != nil {
+		fmt.Println(err)
+	}
+	return ChainStore(lc, mctx, cbs, sbs, readonlyMetaDataBs, basebs, weight, us, j)
+
+}
+
 func NetworkName(mctx helpers.MetricsCtx,
 	lc fx.Lifecycle,
 	cs *store.ChainStore,
@@ -147,6 +188,21 @@ type SyncerParams struct {
 	Consensus    consensus.Consensus
 }
 
+type SyncerFollowerParams struct {
+	fx.In
+
+	Lifecycle    fx.Lifecycle
+	MetadataDS   dtypes.MetadataDS
+	StateManager *stmgr.StateManager
+	ChainXchg    exchange.Client
+	SyncMgrCtor  chain.SyncManagerCtor
+	Host         host.Host
+	Beacon       beacon.Schedule
+	Gent         chain.Genesis
+	Consensus    consensus.Consensus
+	GatewayAPI   api.Gateway
+}
+
 func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 	var (
 		lc     = params.Lifecycle
@@ -173,6 +229,68 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 		},
 	})
 	return syncer, nil
+}
+
+func NewSyncerFollower(params SyncerFollowerParams) (*chain.Syncer, error) {
+	var (
+		g  = params.GatewayAPI
+		lc = params.Lifecycle
+		sm = params.StateManager
+	)
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+
+			headChanges, err := g.ChainNotify(ctx)
+			if err != nil {
+				return nil
+			}
+
+			go func() {
+				for {
+					head, ok := <-headChanges
+					if !ok {
+
+						//todo can we auto reconnect to the gateway?
+						//if the gateway disconnects is there a way to retry?
+						//panic is ok response because infrastructure should reboot rpc node upon error
+						// this will happen when the leader is restarted
+
+						log.Error("Notify stream was invalid")
+						panic("Notify stream was invalid")
+					}
+					for _, change := range head {
+						blocks := change.Val.Blocks()
+						for _, block := range blocks {
+							if block.Height != 0 {
+								err := sm.ChainStore().AddToTipSetTracker(ctx, block)
+								if err != nil {
+									//what should we do? panic?
+									panic(xerrors.Errorf("failed to add block to tipset tracker: %w", err))
+								}
+								err = sm.ChainStore().RefreshHeaviestTipSet(ctx, block.Height)
+								if err != nil {
+									if strings.Contains(err.Error(), "write protected access attempted on Readonly Blockstore from method Put") {
+										//expected scenario
+										continue
+									} else {
+										log.Error(xerrors.Errorf("error refreshing heaviest tipset: %w", err))
+									}
+
+								}
+							}
+						}
+					}
+				}
+			}()
+
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			return nil
+		},
+	})
+
+	return nil, nil
 }
 
 func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {

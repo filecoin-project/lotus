@@ -118,7 +118,7 @@ func TestChainExportImport(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, err := cs.Import(context.TODO(), buf)
+	root, _, err := cs.Import(context.TODO(), buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, err := cs.Import(ctx, buf)
+	root, _, err := cs.Import(ctx, buf)
 	require.NoError(t, err)
 
 	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
@@ -202,7 +202,7 @@ func TestChainExportImportFull(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, ds, filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, err := cs.Import(context.TODO(), buf)
+	root, _, err := cs.Import(context.TODO(), buf)
 	if err != nil {
 		t.Fatal(err)
 	}
