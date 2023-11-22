@@ -31,7 +31,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{184, 38}); err != nil {
+	if _, err := cw.Write([]byte{184, 39}); err != nil {
 		return err
 	}
 
@@ -563,6 +563,22 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := cbg.WriteCid(cw, *t.UpdateUnsealed); err != nil {
 			return xerrors.Errorf("failed to write cid field t.UpdateUnsealed: %w", err)
 		}
+	}
+
+	// t.PreCommit1Fails (uint64) (uint64)
+	if len("PreCommit1Fails") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommit1Fails\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommit1Fails"))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string("PreCommit1Fails")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.PreCommit1Fails)); err != nil {
+		return err
 	}
 
 	// t.PreCommit2Fails (uint64) (uint64)
@@ -1428,6 +1444,21 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 					t.UpdateUnsealed = &c
 				}
+
+			}
+			// t.PreCommit1Fails (uint64) (uint64)
+		case "PreCommit1Fails":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.PreCommit1Fails = uint64(extra)
 
 			}
 			// t.PreCommit2Fails (uint64) (uint64)

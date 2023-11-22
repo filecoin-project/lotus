@@ -197,7 +197,7 @@ func OwnerAddr(wk *key.Key) NodeOpt {
 // the node.
 func ConstructorOpts(extra ...node.Option) NodeOpt {
 	return func(opts *nodeOpts) error {
-		opts.extraNodeOpts = extra
+		opts.extraNodeOpts = append(opts.extraNodeOpts, extra...)
 		return nil
 	}
 }
@@ -286,6 +286,13 @@ func SplitstoreMessges() NodeOpt {
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "messages"  // universal bs is coldstore, and it accepts messages
+		return nil
+	})
+}
+
+func SplitstoreDisable() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Chainstore.EnableSplitstore = false
 		return nil
 	})
 }

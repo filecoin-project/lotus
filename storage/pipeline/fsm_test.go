@@ -1,14 +1,18 @@
 package sealing
 
 import (
+	"context"
 	"testing"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine"
+
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func init() {
@@ -450,4 +454,25 @@ func TestCreationTimeCleared(t *testing.T) {
 	require.Equal(m.t, m.state.State, SnapDealsAddPiece)
 
 	require.NotEqual(t, int64(0), m.state.CreationTime)
+}
+
+func TestRetrySoftErr(t *testing.T) {
+	i := 0
+
+	tf := func() error {
+		i++
+		switch i {
+		case 1:
+			return storiface.Err(storiface.ErrTempAllocateSpace, xerrors.New("foo"))
+		case 2:
+			return nil
+		default:
+			t.Fatalf("what")
+			return xerrors.Errorf("this error didn't ever happen, and will never happen")
+		}
+	}
+
+	err := retrySoftErr(context.Background(), tf)
+	require.NoError(t, err)
+	require.Equal(t, 2, i)
 }

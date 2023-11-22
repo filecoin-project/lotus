@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,9 +9,16 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/ipfs/boxo/blockservice"
+	"github.com/ipfs/boxo/ipld/merkledag"
+	"github.com/ipfs/go-cid"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"github.com/mitchellh/go-homedir"
@@ -20,10 +28,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
+	adt "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -104,6 +116,7 @@ func main() {
 		DisableSliceFlagSeparator: true,
 		Commands: []*cli.Command{
 			proveCmd,
+			amtBenchCmd,
 			sealBenchCmd,
 			simpleCmd,
 			importBenchCmd,
@@ -115,6 +128,211 @@ func main() {
 		log.Warnf("%+v", err)
 		return
 	}
+}
+
+type amtStatCollector struct {
+	ds   format.NodeGetter
+	walk func(format.Node) ([]*format.Link, error)
+
+	statsLk               sync.Mutex
+	totalAMTLinks         int
+	totalAMTValues        int
+	totalAMTLinkNodes     int
+	totalAMTValueNodes    int
+	totalAMTLinkNodeSize  int
+	totalAMTValueNodeSize int
+}
+
+func (asc *amtStatCollector) String() string {
+	asc.statsLk.Lock()
+	defer asc.statsLk.Unlock()
+
+	str := "\n------------\n"
+	str += fmt.Sprintf("Link Count: %d\n", asc.totalAMTLinks)
+	str += fmt.Sprintf("Value Count: %d\n", asc.totalAMTValues)
+	str += fmt.Sprintf("%d link nodes %d bytes\n", asc.totalAMTLinkNodes, asc.totalAMTLinkNodeSize)
+	str += fmt.Sprintf("%d value nodes %d bytes\n", asc.totalAMTValueNodes, asc.totalAMTValueNodeSize)
+	str += fmt.Sprintf("Total bytes: %d\n------------\n", asc.totalAMTLinkNodeSize+asc.totalAMTValueNodeSize)
+	return str
+}
+
+func (asc *amtStatCollector) record(ctx context.Context, nd format.Node) error {
+	size, err := nd.Size()
+	if err != nil {
+		return err
+	}
+
+	var node AMTNode
+	if err := node.UnmarshalCBOR(bytes.NewReader(nd.RawData())); err != nil {
+		// try to deserialize root
+		var root AMTRoot
+		if err := root.UnmarshalCBOR(bytes.NewReader(nd.RawData())); err != nil {
+			return err
+		}
+		node = root.AMTNode
+	}
+
+	asc.statsLk.Lock()
+	defer asc.statsLk.Unlock()
+
+	link := len(node.Links) > 0
+	value := len(node.Values) > 0
+
+	if link {
+		asc.totalAMTLinks += len(node.Links)
+		asc.totalAMTLinkNodes++
+		asc.totalAMTLinkNodeSize += int(size)
+	} else if value {
+		asc.totalAMTValues += len(node.Values)
+		asc.totalAMTValueNodes++
+		asc.totalAMTValueNodeSize += int(size)
+	} else {
+		return xerrors.Errorf("unexpected AMT node %x: neither link nor value", nd.RawData())
+	}
+
+	return nil
+}
+
+func (asc *amtStatCollector) walkLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+	nd, err := asc.ds.Get(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := asc.record(ctx, nd); err != nil {
+		return nil, err
+	}
+
+	return asc.walk(nd)
+}
+
+func carWalkFunc(nd format.Node) (out []*format.Link, err error) {
+	for _, link := range nd.Links() {
+		if link.Cid.Prefix().Codec == cid.FilCommitmentSealed || link.Cid.Prefix().Codec == cid.FilCommitmentUnsealed {
+			continue
+		}
+		out = append(out, link)
+	}
+	return out, nil
+}
+
+var amtBenchCmd = &cli.Command{
+	Name:  "amt",
+	Usage: "Benchmark AMT churn",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "rounds",
+			Usage: "rounds of churn to measure",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "interval",
+			Usage: "AMT idx interval for churning values",
+			Value: 2880,
+		},
+		&cli.IntFlag{
+			Name:  "bitwidth",
+			Usage: "AMT bitwidth",
+			Value: 6,
+		},
+	},
+	Action: func(c *cli.Context) error {
+		bs := blockstore.NewMemory()
+		ctx := c.Context
+		store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
+
+		// Setup in memory blockstore
+		bitwidth := c.Int("bitwidth")
+		array, err := adt.MakeEmptyArray(store, bitwidth)
+		if err != nil {
+			return err
+		}
+
+		// Using motivating empirical example: market actor states AMT
+		// Create 40,000,000 states for realistic workload
+		fmt.Printf("Populating AMT\n")
+		for i := 0; i < 40000000; i++ {
+			if err := array.Set(uint64(i), &market.DealState{
+				SectorStartEpoch: abi.ChainEpoch(2000000 + i),
+				LastUpdatedEpoch: abi.ChainEpoch(-1),
+				SlashEpoch:       -1,
+				VerifiedClaim:    verifreg.AllocationId(i),
+			}); err != nil {
+				return err
+			}
+		}
+
+		r, err := array.Root()
+		if err != nil {
+			return err
+		}
+
+		// Measure ratio of internal / leaf nodes / sizes
+		dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+		asc := &amtStatCollector{
+			ds:   dag,
+			walk: carWalkFunc,
+		}
+
+		fmt.Printf("Measuring AMT\n")
+		seen := cid.NewSet()
+		if err := merkledag.Walk(ctx, asc.walkLinks, r, seen.Visit, merkledag.Concurrent()); err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", asc)
+
+		// Overwrite ids with idx % interval: one epoch of market cron
+		rounds := c.Int("rounds")
+		interval := c.Int("interval")
+
+		fmt.Printf("Overwrite 1 out of %d values for %d rounds\n", interval, rounds)
+		array, err = adt.AsArray(store, r, bitwidth)
+		if err != nil {
+			return err
+		}
+		roots := make([]cid.Cid, rounds)
+		for j := 0; j < rounds; j++ {
+			if j%10 == 0 {
+				fmt.Printf("round: %d\n", j)
+			}
+			for i := j; i < 40000000; i += interval {
+				if i%interval == j {
+					if err := array.Set(uint64(i), &market.DealState{
+						SectorStartEpoch: abi.ChainEpoch(2000000 + i),
+						LastUpdatedEpoch: abi.ChainEpoch(1),
+						SlashEpoch:       -1,
+						VerifiedClaim:    verifreg.AllocationId(i),
+					}); err != nil {
+						return err
+					}
+				}
+			}
+			roots[j], err = array.Root()
+			if err != nil {
+				return err
+			}
+
+		}
+
+		// Measure churn
+		dag = merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+		asc = &amtStatCollector{
+			ds:   dag,
+			walk: carWalkFunc,
+		}
+
+		fmt.Printf("Measuring %d rounds of churn\n", rounds)
+
+		for _, r := range roots {
+			if err := merkledag.Walk(ctx, asc.walkLinks, r, seen.Visit, merkledag.Concurrent()); err != nil {
+				return err
+			}
+		}
+
+		fmt.Printf("%s\n", asc)
+		return nil
+	},
 }
 
 var sealBenchCmd = &cli.Command{

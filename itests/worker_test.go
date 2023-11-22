@@ -730,3 +730,82 @@ waitForProof:
 	require.NoError(t, params.UnmarshalCBOR(bytes.NewBuffer(slmsg.Params)))
 	require.Equal(t, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1, params.Proofs[0].PoStProof)
 }
+
+func TestWorkerPledgeExpireCommit(t *testing.T) {
+	kit.QuietMiningLogs()
+	_ = logging.SetLogLevel("sectors", "debug")
+
+	var tasksNoC2 = kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTDataCid, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2,
+		sealtasks.TTUnseal, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed})
+
+	fc := config.DefaultStorageMiner().Fees
+	fc.MaxCommitGasFee = types.FIL(abi.NewTokenAmount(10000)) // 10000 attofil, way too low for anything to land
+
+	ctx := context.Background()
+	client, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
+		kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+			sc.AggregateCommits = true
+		}),
+		kit.ConstructorOpts(
+			node.Override(new(*sealing.Sealing), modules.SealingPipeline(fc)),
+		),
+		kit.SplitstoreDisable(), // disable splitstore because messages which take a long time may get dropped
+		tasksNoC2)               // no mock proofs
+
+	ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)
+
+	e, err := worker.Enabled(ctx)
+	require.NoError(t, err)
+	require.True(t, e)
+
+	dh := kit.NewDealHarness(t, client, miner, miner)
+
+	startEpoch := abi.ChainEpoch(4 << 10)
+
+	dh.StartRandomDeal(ctx, kit.MakeFullDealParams{
+		Rseed:      7,
+		StartEpoch: startEpoch,
+	})
+
+	var sn abi.SectorNumber
+
+	require.Eventually(t, func() bool {
+		s, err := miner.SectorsListNonGenesis(ctx)
+		require.NoError(t, err)
+		if len(s) == 0 {
+			return false
+		}
+		if len(s) > 1 {
+			t.Fatalf("expected 1 sector, got %d", len(s))
+		}
+		sn = s[0]
+		return true
+	}, 30*time.Second, 1*time.Second)
+
+	t.Log("sector", sn)
+
+	t.Log("sector committing")
+
+	// wait until after startEpoch
+	client.WaitTillChain(ctx, kit.HeightAtLeast(startEpoch+20))
+
+	t.Log("after start")
+
+	sstate, err := miner.SectorsStatus(ctx, sn, false)
+	require.NoError(t, err)
+	require.Equal(t, api.SectorState(sealing.SubmitCommitAggregate), sstate.State)
+
+	_, err = miner.SectorCommitFlush(ctx)
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		sstate, err := miner.SectorsStatus(ctx, sn, false)
+		require.NoError(t, err)
+
+		t.Logf("sector state: %s", sstate.State)
+
+		return sstate.State == api.SectorState(sealing.Removed)
+	}, 30*time.Second, 1*time.Second)
+
+	t.Log("sector removed")
+}

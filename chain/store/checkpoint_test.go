@@ -70,7 +70,7 @@ func TestChainCheckpoint(t *testing.T) {
 	}
 
 	// See if the chain will take the fork, it shouldn't.
-	err = cs.MaybeTakeHeavierTipSet(context.Background(), last)
+	err = cs.RefreshHeaviestTipSet(context.Background(), last.Height())
 	require.NoError(t, err)
 	head = cs.GetHeaviestTipSet()
 	require.True(t, head.Equals(checkpoint))
@@ -80,7 +80,7 @@ func TestChainCheckpoint(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now switch to the other fork.
-	err = cs.MaybeTakeHeavierTipSet(context.Background(), last)
+	err = cs.RefreshHeaviestTipSet(context.Background(), last.Height())
 	require.NoError(t, err)
 	head = cs.GetHeaviestTipSet()
 	require.True(t, head.Equals(last))

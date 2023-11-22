@@ -536,7 +536,7 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 
 	// At this point we have accepted and synced to the new `maybeHead`
 	// (`StageSyncComplete`).
-	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
+	if err := syncer.store.RefreshHeaviestTipSet(ctx, maybeHead.Height()); err != nil {
 		span.AddAttributes(trace.StringAttribute("put_error", err.Error()))
 		span.SetStatus(trace.Status{
 			Code:    13,
