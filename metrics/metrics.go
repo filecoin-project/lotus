@@ -848,7 +848,7 @@ var GatewayNodeViews = append([]*view.View{
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
 func SinceInMilliseconds(startTime time.Time) float64 {
-	return float64(time.Since(startTime).Nanoseconds()) / 1e6
+	return float64(time.Since(startTime).Milliseconds())
 }
 
 // Timer is a function stopwatch, calling it starts the timer,

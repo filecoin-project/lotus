@@ -62,9 +62,14 @@ type EthTxArgs struct {
 // - BlockHash
 // - BlockNumber
 // - TransactionIndex
-// - From
 // - Hash
 func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
+	// The from address is always an f410f address, never an ID or other address.
+	if !IsEthAddress(smsg.Message.From) {
+		return EthTx{}, xerrors.Errorf("sender must be an eth account, was %s", smsg.Message.From)
+	}
+
+	// Probably redundant, but we might as well check.
 	if smsg.Signature.Type != typescrypto.SigTypeDelegated {
 		return EthTx{}, xerrors.Errorf("signature is not delegated type, is type: %d", smsg.Signature.Type)
 	}
@@ -79,10 +84,18 @@ func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
 		return EthTx{}, xerrors.Errorf("failed to recover signature: %w", err)
 	}
 
+	from, err := EthAddressFromFilecoinAddress(smsg.Message.From)
+	if err != nil {
+		// This should be impossible as we've already asserted that we have an EthAddress
+		// sender...
+		return EthTx{}, xerrors.Errorf("sender was not an eth account")
+	}
+
 	return EthTx{
 		Nonce:                EthUint64(txArgs.Nonce),
 		ChainID:              EthUint64(txArgs.ChainID),
 		To:                   txArgs.To,
+		From:                 from,
 		Value:                EthBigInt(txArgs.Value),
 		Type:                 Eip1559TxType,
 		Gas:                  EthUint64(txArgs.GasLimit),
