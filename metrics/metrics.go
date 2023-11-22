@@ -116,6 +116,7 @@ var (
 	PubsubDeliverMessage                = stats.Int64("pubsub/delivered", "Counter for total delivered messages", stats.UnitDimensionless)
 	PubsubRejectMessage                 = stats.Int64("pubsub/rejected", "Counter for total rejected messages", stats.UnitDimensionless)
 	PubsubDuplicateMessage              = stats.Int64("pubsub/duplicate", "Counter for total duplicate messages", stats.UnitDimensionless)
+	PubsubPruneMessage                  = stats.Int64("pubsub/prune", "Counter for total prune messages", stats.UnitDimensionless)
 	PubsubRecvRPC                       = stats.Int64("pubsub/recv_rpc", "Counter for total received RPCs", stats.UnitDimensionless)
 	PubsubSendRPC                       = stats.Int64("pubsub/send_rpc", "Counter for total sent RPCs", stats.UnitDimensionless)
 	PubsubDropRPC                       = stats.Int64("pubsub/drop_rpc", "Counter for total dropped RPCs", stats.UnitDimensionless)
@@ -324,6 +325,10 @@ var (
 	}
 	PubsubDuplicateMessageView = &view.View{
 		Measure:     PubsubDuplicateMessage,
+		Aggregation: view.Count(),
+	}
+	PubsubPruneMessageView = &view.View{
+		Measure:     PubsubPruneMessage,
 		Aggregation: view.Count(),
 	}
 	PubsubRecvRPCView = &view.View{
@@ -760,6 +765,7 @@ var ChainNodeViews = append([]*view.View{
 	PubsubDeliverMessageView,
 	PubsubRejectMessageView,
 	PubsubDuplicateMessageView,
+	PubsubPruneMessageView,
 	PubsubRecvRPCView,
 	PubsubSendRPCView,
 	PubsubDropRPCView,

@@ -997,12 +997,14 @@ workflows:
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
           get-params: true
+          executor: golang-2xl
       - test:
           name: test-unit-node
           requires:
             - build
           suite: utest-unit-node
           target: "./node/..."
+          
           
       - test:
           name: test-unit-rest
@@ -1017,6 +1019,7 @@ workflows:
             - build
           suite: utest-unit-storage
           target: "./storage/... ./extern/..."
+          
           
       - test:
           go-test-flags: "-run=TestMulticoreSDR"

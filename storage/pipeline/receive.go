@@ -123,7 +123,7 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		if err := m.maddr.MarshalCBOR(maddrBuf); err != nil {
 			return SectorInfo{}, xerrors.Errorf("marshal miner address for seed check: %w", err)
 		}
-		rand, err := m.Api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, meta.SeedEpoch, maddrBuf.Bytes(), ts.Key())
+		rand, err := m.Api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, meta.SeedEpoch, maddrBuf.Bytes(), ts.Key())
 		if err != nil {
 			return SectorInfo{}, xerrors.Errorf("generating check seed: %w", err)
 		}

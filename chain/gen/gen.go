@@ -362,7 +362,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		rbase = entries[len(entries)-1]
 	}
 
-	eproof, err := IsRoundWinner(ctx, pts, round, m, rbase, mbi, mc)
+	eproof, err := IsRoundWinner(ctx, round, m, rbase, mbi, mc)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -449,18 +449,19 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 }
 
 func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet, miners []address.Address, msgs [][]*types.SignedMessage, nulls abi.ChainEpoch) (*store.FullTipSet, error) {
+	ctx := context.TODO()
 	var blks []*types.FullBlock
 
 	for round := base.Height() + nulls + 1; len(blks) == 0; round++ {
 		for mi, m := range miners {
-			bvals, et, ticket, err := cg.nextBlockProof(context.TODO(), base, m, round)
+			bvals, et, ticket, err := cg.nextBlockProof(ctx, base, m, round)
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
 
 			if et != nil {
 				// TODO: maybe think about passing in more real parameters to this?
-				wpost, err := cg.eppProvs[m].ComputeProof(context.TODO(), nil, nil, round, network.Version0)
+				wpost, err := cg.eppProvs[m].ComputeProof(ctx, nil, nil, round, network.Version0)
 				if err != nil {
 					return nil, err
 				}
@@ -476,8 +477,18 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet,
 	}
 
 	fts := store.NewFullTipSet(blks)
-	if err := cg.cs.PutTipSet(context.TODO(), fts.TipSet()); err != nil {
-		return nil, err
+	if err := cg.cs.PersistTipsets(ctx, []*types.TipSet{fts.TipSet()}); err != nil {
+		return nil, xerrors.Errorf("failed to persist tipset: %w", err)
+	}
+
+	for _, blk := range blks {
+		if err := cg.cs.AddToTipSetTracker(ctx, blk.Header); err != nil {
+			return nil, xerrors.Errorf("failed to add to tipset tracker: %w", err)
+		}
+	}
+
+	if err := cg.cs.RefreshHeaviestTipSet(ctx, fts.TipSet().Height()); err != nil {
+		return nil, xerrors.Errorf("failed to put tipset: %w", err)
 	}
 
 	cg.CurTipset = fts
@@ -628,7 +639,7 @@ func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInf
 	return ValidWpostForTesting, nil
 }
 
-func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
+func IsRoundWinner(ctx context.Context, round abi.ChainEpoch,
 	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)

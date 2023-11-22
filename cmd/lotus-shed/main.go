@@ -24,6 +24,7 @@ func main() {
 	local := []*cli.Command{
 		addressCmd,
 		statActorCmd,
+		statSnapshotCmd,
 		statObjCmd,
 		base64Cmd,
 		base32Cmd,
@@ -90,6 +91,7 @@ func main() {
 		indexesCmd,
 		FevmAnalyticsCmd,
 		mismatchesCmd,
+		blockCmd,
 	}
 
 	app := &cli.App{

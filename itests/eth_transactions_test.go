@@ -325,13 +325,23 @@ func TestGetBlockByNumber(t *testing.T) {
 
 	afterNullHeight := hc[0].Val.Height()
 
+	nullHeight := afterNullHeight - 1
+	for nullHeight > 0 {
+		ts, err := client.ChainGetTipSetByHeight(ctx, nullHeight, types.EmptyTSK)
+		require.NoError(t, err)
+		if ts.Height() == nullHeight {
+			nullHeight--
+		} else {
+			break
+		}
+	}
+
 	// Fail when trying to fetch a null round.
-	_, err = client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(afterNullHeight - 1)).Hex(), true)
+	_, err = client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(nullHeight)).Hex(), true)
 	require.Error(t, err)
 
 	// Fetch balance on a null round; should not fail and should return previous balance.
-	// Should be lower than original balance.
-	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(afterNullHeight-1)))
+	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(nullHeight)))
 	require.NoError(t, err)
 	require.NotEqual(t, big.Zero(), bal)
 	require.Equal(t, types.FromFil(10).Int, bal.Int)
