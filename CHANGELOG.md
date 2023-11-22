@@ -259,7 +259,7 @@ This feature release requires a **minimum Go version of v1.19.12 or higher to su
   - feat: sealing: flag to run data_cid untied from addpiece ([filecoin-project/lotus#10797](https://github.com/filecoin-project/lotus/pull/10797))
   - feat: Lotus Gateway: add MpoolPending, ChainGetBlock and MinerGetBaseInfo ([filecoin-project/lotus#10929](https://github.com/filecoin-project/lotus/pull/10929))
 
-## Improvements && Bug Fixe
+## Improvements && Bug Fixes
   - chore: update ffi & fvm ([filecoin-project/lotus#11040](https://github.com/filecoin-project/lotus/pull/11040))
   - feat: Make sure we don't store duplidate actor events caused to reorgs in events.db ([filecoin-project/lotus#11015](https://github.com/filecoin-project/lotus/pull/11015))
   - sealing: Use only non-assigned deals when selecting snap sectors ([filecoin-project/lotus#11002](https://github.com/filecoin-project/lotus/pull/11002))
