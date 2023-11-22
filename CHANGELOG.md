@@ -1,34 +1,17 @@
 # Lotus changelog
 
-# v 1.25.0-rc5 / 2023-11-16
+# v 1.25.0 / 2023-11-22
 
-This is the fifth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is a highly recommended feature release of Lotus. This optional release supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
-## :exclamation: Mainnet Upgrade Date Update
+**The Filecoin network upgrade v21, codenamed Watermelon 🍉, is at epoch 3469380 - 2023-12-12T13:30:00Z**
 
-Mainnet upgrade date has been adjusted due to the rescope of nv21 & retesting on test network, as well as giving the community enough time to upgrade their infrastructure.
-
-**The new date and epoch for the Mainnet nv21 upgrade has therefore been set to epoch 3469380 - 2023-12-12T13:30:00Z.**
-
-
-### FIP0070 descoped for nv21
-
- [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md) was originally scoped for network version 21. However, during the testing on calibrationnet testing, this FIP has proven to be quite error prune to implement due to the complexity of the protocol and a couple bugs were discovered.
-
-As the path to resolving this bug is not yet clear, core devs have decided to descope FIP-0070 from the upcoming nv21 upgrade ensure the security and stability of the network post upgrade.
-
-
-## Calibration WatermelonFix2
-
-For the calibration network, the descoping of FIP0070 means that we will need to do another CodeCID migration to drop FIP0070 from nv21, and to get the test network into a state which will be similar to when the mainnet upgrades to nv21.
-
-**This migration will happen at epoch 1108174 - 2023-11-21T13:00:00Z.**
-
-Make sure to upgrade you calibration network nodes and storage providers to v1.24.0-rcx & ^ before this epoch.
+The full list of [protocol improvements delivered in the network upgrade can be found here](https://github.com/filecoin-project/core-devs/blob/master/Network%20Upgrades/v21.md).
 
 ## ☢️ Upgrade Warnings ☢️
 
-- Please remove and clone a new Lotus repo (`git clone https://github.com/filecoin-project/lotus.git`) when upgrading to this version. 
+- Read through the [changelog of the mandatory v1.24.0 release](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0). Especially the `Migration` and `v12 Builtin Actor Bundle` sections.
+- Please remove and clone a new Lotus repo (`git clone https://github.com/filecoin-project/lotus.git`) when upgrading to this release. 
 - This feature release requires a minimum Go version of v1.20.7 or higher to successfully build Lotus. Go version 1.21.x is not supported yet.
 - EthRPC providers, please check out the [new tracing API to Lotus RPC](https://github.com/filecoin-project/lotus/pull/11100)
 
@@ -109,6 +92,8 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - fix: build: use tagged releases ([filecoin-project/lotus#11194](https://github.com/filecoin-project/lotus/pull/11194))
 - chore: test-vectors: update ([filecoin-project/lotus#11196](https://github.com/filecoin-project/lotus/pull/11196))
 - chore: backport #11365 to release/v1.25.0 ([filecoin-project/lotus#11369](https://github.com/filecoin-project/lotus/pull/11369))
+- chore: deps: update to go-state-types v0.12.8 ([filecoin-project/lotus#11339](https://github.com/filecoin-project/lotus/pull/11437))
+- chore: deps: update to final actors ([filecoin-project/lotus#11330](https://github.com/filecoin-project/lotus/pull/11440))
 - github.com/filecoin-project/go-amt-ipld/v4 (v4.0.0 -> v4.2.0)
 - github.com/filecoin-project/test-vectors/schema (v0.0.5 -> v0.0.7)
 
@@ -135,6 +120,8 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - backport: tests: add SynthPorep layers to cachefiles ([filecoin-project/lotus#11344](https://github.com/filecoin-project/lotus/pull/11344))
 - chore: backport #11408 to release/v1.25.0 ([filecoin-project/lotus#11414](https://github.com/filecoin-project/lotus/pull/11414))
 - chore: backport calibnet lightweight patch ([filecoin-project/lotus#11422](https://github.com/filecoin-project/lotus/pull/11422))
+- chore: update bootstrap nodes ([filecoin-project/lotus#11288](https://github.com/filecoin-project/lotus/pull/11288))
+- chore: add bootstrap node on calibration ([filecoin-project/lotus#11175](https://github.com/filecoin-project/lotus/pull/11175))
 
 # v1.24.0-rc2 / 2023-10-17
 
