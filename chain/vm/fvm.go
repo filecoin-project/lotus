@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -43,7 +44,7 @@ var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
 
 type FvmExtern struct {
-	Rand
+	rand.Rand
 	blockstore.Blockstore
 	epoch   abi.ChainEpoch
 	lbState LookbackStateGetter
@@ -91,6 +92,15 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 		log.Info("invalid consensus fault: submitted blocks are the same")
 		return ret, totalGas
 	}
+
+	// workaround chain halt
+	if build.IsNearUpgrade(blockA.Height, build.UpgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+	if build.IsNearUpgrade(blockB.Height, build.UpgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?

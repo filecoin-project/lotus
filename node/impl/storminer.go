@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -43,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
@@ -488,7 +488,7 @@ func (sm *StorageMinerAPI) SectorReceive(ctx context.Context, meta api.RemoteSec
 	return err
 }
 
-func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]minertypes.SubmitWindowedPoStParams, error) {
+func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]lminer.SubmitWindowedPoStParams, error) {
 	var ts *types.TipSet
 	var err error
 	if tsk == types.EmptyTSK {
@@ -1395,7 +1395,7 @@ func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.Token
 		amount = available
 	}
 
-	params, err := actors.SerializeParams(&minertypes.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&lminer.WithdrawBalanceParams{
 		AmountRequested: amount,
 	})
 	if err != nil {

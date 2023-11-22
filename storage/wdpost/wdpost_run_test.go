@@ -298,7 +298,7 @@ func TestWDPostDoPostPartLimitConfig(t *testing.T) {
 	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	ctx := context.Background()
-	expectedMsgCount := 364
+	expectedMsgCount := 8
 
 	proofType := abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
 	postAct := tutils.NewIDAddr(t, 100)
@@ -318,15 +318,15 @@ func TestWDPostDoPostPartLimitConfig(t *testing.T) {
 		partitionsPerMsg = minertypes.AddressedPartitionsMax
 	}
 
-	partitionCount := 4 * partitionsPerMsg
+	partitionCount := 5 * partitionsPerMsg
 
 	// Assert that user config is less than network limit
-	userPartLimit := 33
-	lastMsgParts := 21
-	require.Greater(t, partitionCount, userPartLimit)
+	userPartLimit := 2
+	lastMsgParts := 1
+	require.Greater(t, partitionsPerMsg, userPartLimit)
 
 	// Assert that we consts are correct
-	require.Equal(t, (expectedMsgCount-1)*userPartLimit+lastMsgParts, 4*partitionsPerMsg)
+	require.Equal(t, (expectedMsgCount-1)*userPartLimit+lastMsgParts, partitionCount)
 
 	var partitions []api.Partition
 	for p := 0; p < partitionCount; p++ {
@@ -398,7 +398,7 @@ func TestBatchPartitionsRecoverySectors(t *testing.T) {
 
 	mockStgMinerAPI := newMockStorageMinerAPI()
 
-	userPartLimit := 4
+	userPartLimit := 2
 
 	scheduler := &WindowPoStScheduler{
 		api:          mockStgMinerAPI,
@@ -426,12 +426,12 @@ func TestBatchPartitionsRecoverySectors(t *testing.T) {
 	}
 	partitions = append(partitions, generatePartition(100, 10))
 
-	expectedBatchLens := []int{4, 1, 1, 4, 2, 1}
+	expectedBatchLens := []int{2, 2, 1, 1, 2, 2, 2, 1}
 
-	batches, err := scheduler.BatchPartitions(partitions, network.Version16)
+	batches, err := scheduler.BatchPartitions(partitions, network.Version21)
 	require.NoError(t, err)
 
-	require.Equal(t, len(batches), 6)
+	require.Equal(t, len(batches), len(expectedBatchLens))
 
 	for i, batch := range batches {
 		require.Equal(t, len(batch), expectedBatchLens[i])

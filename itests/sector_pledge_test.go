@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
@@ -197,48 +197,29 @@ func TestPledgeMaxBatching(t *testing.T) {
 	t.Run("Force max prove commit aggregate size", runTest)
 }
 
-func TestPledgeBeforeNv13(t *testing.T) {
-	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
-	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
-	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
-	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+func TestPledgeSynth(t *testing.T) {
+	kit.QuietMiningLogs()
 
-	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
-	blocktime := 50 * time.Millisecond
+	blockTime := 50 * time.Millisecond
 
 	runTest := func(t *testing.T, nSectors int) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
-			kit.GenesisNetworkVersion(network.Version12))
-		ens.InterconnectAll().BeginMining(blocktime)
+		_, miner, ens := kit.EnsembleMinimal(t, kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+			sc.UseSyntheticPoRep = true
+		})) // no mock proofs
 
-		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
-		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
-
-		for len(toCheck) > 0 {
-			states := map[api.SectorState]int{}
-
-			for n := range toCheck {
-				st, err := miner.SectorsStatus(ctx, n, false)
-				require.NoError(t, err)
-				states[st.State]++
-				if st.State == api.SectorState(sealing.Proving) {
-					delete(toCheck, n)
-				}
-				if strings.Contains(string(st.State), "Fail") {
-					t.Fatal("sector in a failed state", st.State)
-				}
-			}
-
-			build.Clock.Sleep(100 * time.Millisecond)
-			fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
-		}
+		miner.PledgeSectors(ctx, nSectors, 0, nil)
 	}
 
-	t.Run("100-before-nv13", func(t *testing.T) {
-		runTest(t, 100)
+	t.Run("1", func(t *testing.T) {
+		runTest(t, 1)
+	})
+
+	t.Run("3", func(t *testing.T) {
+		runTest(t, 3)
 	})
 }

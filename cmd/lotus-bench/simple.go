@@ -181,7 +181,7 @@ var simpleAddPiece = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, false),
 		}
 
 		data, err := os.Open(cctx.Args().First())
@@ -217,6 +217,10 @@ var simplePreCommit1 = &cli.Command{
 			Name:  "miner-addr",
 			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
 			Value: "t01000",
+		},
+		&cli.BoolFlag{
+			Name:  "synthetic",
+			Usage: "generate synthetic PoRep proofs",
 		},
 	},
 	ArgsUsage: "[unsealed] [sealed] [cache] [[piece cid] [piece size]]...",
@@ -254,7 +258,7 @@ var simplePreCommit1 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
 		}
 
 		var ticket [32]byte // all zero
@@ -291,6 +295,10 @@ var simplePreCommit2 = &cli.Command{
 			Name:  "miner-addr",
 			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
 			Value: "t01000",
+		},
+		&cli.BoolFlag{
+			Name:  "synthetic",
+			Usage: "generate synthetic PoRep proofs",
 		},
 	},
 	ArgsUsage: "[sealed] [cache] [pc1 out]",
@@ -332,7 +340,7 @@ var simplePreCommit2 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
 		}
 
 		start := time.Now()
@@ -362,6 +370,10 @@ var simpleCommit1 = &cli.Command{
 			Name:  "miner-addr",
 			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
 			Value: "t01000",
+		},
+		&cli.BoolFlag{
+			Name:  "synthetic",
+			Usage: "generate synthetic PoRep proofs",
 		},
 	},
 	ArgsUsage: "[sealed] [cache] [comm D] [comm R] [c1out.json]",
@@ -398,7 +410,7 @@ var simpleCommit1 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
 		}
 
 		start := time.Now()
@@ -464,6 +476,10 @@ var simpleCommit2 = &cli.Command{
 			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
 			Value: "t01000",
 		},
+		&cli.BoolFlag{
+			Name:  "synthetic",
+			Usage: "generate synthetic PoRep proofs",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("no-gpu") {
@@ -510,7 +526,7 @@ var simpleCommit2 = &cli.Command{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(c2in.SectorNum),
 			},
-			ProofType: spt(abi.SectorSize(c2in.SectorSize)),
+			ProofType: spt(abi.SectorSize(c2in.SectorSize), c.Bool("synthetic")),
 		}
 
 		start := time.Now()
@@ -568,7 +584,7 @@ var simpleWindowPost = &cli.Command{
 			return xerrors.Errorf("parse commr: %w", err)
 		}
 
-		wpt, err := spt(sectorSize).RegisteredWindowPoStProof()
+		wpt, err := spt(sectorSize, false).RegisteredWindowPoStProof()
 		if err != nil {
 			return err
 		}
@@ -588,7 +604,7 @@ var simpleWindowPost = &cli.Command{
 
 		vp, err := ffi.GenerateSingleVanillaProof(ffi.PrivateSectorInfo{
 			SectorInfo: prf.SectorInfo{
-				SealProof:    spt(sectorSize),
+				SealProof:    spt(sectorSize, false),
 				SectorNumber: sn,
 				SealedCID:    commr,
 			},
@@ -655,7 +671,7 @@ var simpleWinningPost = &cli.Command{
 			return xerrors.Errorf("parse commr: %w", err)
 		}
 
-		wpt, err := spt(sectorSize).RegisteredWinningPoStProof()
+		wpt, err := spt(sectorSize, false).RegisteredWinningPoStProof()
 		if err != nil {
 			return err
 		}
@@ -675,7 +691,7 @@ var simpleWinningPost = &cli.Command{
 
 		vp, err := ffi.GenerateSingleVanillaProof(ffi.PrivateSectorInfo{
 			SectorInfo: prf.SectorInfo{
-				SealProof:    spt(sectorSize),
+				SealProof:    spt(sectorSize, false),
 				SectorNumber: sn,
 				SealedCID:    commr,
 			},
@@ -758,7 +774,7 @@ var simpleReplicaUpdate = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, false),
 		}
 
 		start := time.Now()
@@ -826,7 +842,7 @@ var simpleProveReplicaUpdate1 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, false),
 		}
 
 		start := time.Now()
@@ -913,7 +929,7 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, false),
 		}
 
 		start := time.Now()

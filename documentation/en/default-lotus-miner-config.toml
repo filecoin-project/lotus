@@ -427,13 +427,10 @@
   # env var: LOTUS_PROVING_DISABLEWDPOSTPRECHECKS
   #DisableWDPoStPreChecks = false
 
-  # Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+  # Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
   # 
   # A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
-  # 
-  # The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-  # means that a single message can prove at most 10 partitions
-  # 
+  # //
   # Note that setting this value lower may result in less efficient gas use - more messages will be sent,
   # to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
   # 
@@ -523,7 +520,7 @@
 
   # CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
   # live before it must be extended or converted into sector containing deals before it is
-  # terminated. Value must be between 180-540 days inclusive
+  # terminated. Value must be between 180-1278 days (1278 in nv21, 540 before nv21).
   #
   # type: Duration
   # env var: LOTUS_SEALING_COMMITTEDCAPACITYSECTORLIFETIME
@@ -581,12 +578,6 @@
   # env var: LOTUS_SEALING_DISABLECOLLATERALFALLBACK
   #DisableCollateralFallback = false
 
-  # enable / disable precommit batching (takes effect after nv13)
-  #
-  # type: bool
-  # env var: LOTUS_SEALING_BATCHPRECOMMITS
-  #BatchPreCommits = true
-
   # maximum precommit batch size - batches will be sent immediately above this size
   #
   # type: int
@@ -636,7 +627,8 @@
   #CommitBatchSlack = "1h0m0s"
 
   # network BaseFee below which to stop doing precommit batching, instead
-  # sending precommit messages to the chain individually
+  # sending precommit messages to the chain individually. When the basefee is
+  # below this threshold, precommit messages will get sent out immediately.
   #
   # type: types.FIL
   # env var: LOTUS_SEALING_BATCHPRECOMMITABOVEBASEFEE
@@ -670,6 +662,12 @@
   # type: Duration
   # env var: LOTUS_SEALING_TERMINATEBATCHWAIT
   #TerminateBatchWait = "5m0s"
+
+  # UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_USESYNTHETICPOREP
+  #UseSyntheticPoRep = false
 
 
 [Storage]

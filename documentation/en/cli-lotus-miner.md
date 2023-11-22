@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.23.3
+   1.24.0
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -366,7 +366,7 @@ USAGE:
    lotus-miner actor compact-allocated [command options] [arguments...]
 
 OPTIONS:
-   --mask-last-offset value  Mask sector IDs from 0 to 'higest_allocated - offset' (default: 0)
+   --mask-last-offset value  Mask sector IDs from 0 to 'highest_allocated - offset' (default: 0)
    --mask-upto-n value       Mask sector IDs from 0 to 'n' (default: 0)
    --really-do-it            Actually send transaction performing the action (default: false)
    --help, -h                show help

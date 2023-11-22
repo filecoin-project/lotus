@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"os"
 	"sort"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -176,12 +178,18 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 	retCid := root
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
-		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
-		if err == nil && ok {
-			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
-			return migCid, nil
-		} else if err != nil {
-			log.Errorw("failed to lookup previous migration result", "err", err)
+		if height != build.UpgradeWatermelonFixHeight {
+			migCid, ok, err := u.migrationResultCache.Get(ctx, root)
+			if err == nil {
+				if ok {
+					log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
+					return migCid, nil
+				}
+			} else if !errors.Is(err, datastore.ErrNotFound) {
+				log.Errorw("failed to lookup previous migration result", "err", err)
+			} else {
+				log.Debug("no cached migration found, migrating from scratch")
+			}
 		}
 
 		startTime := time.Now()
@@ -189,6 +197,7 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
 		// have to migrate multiple times.
 		tmpCache := u.cache.Clone()
+		var err error
 		retCid, err = u.upgrade(ctx, sm, tmpCache, cb, root, height, ts)
 		if err != nil {
 			log.Errorw("FAILED migration", "height", height, "from", root, "error", err)

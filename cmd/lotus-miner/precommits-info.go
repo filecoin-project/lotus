@@ -7,7 +7,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -39,8 +38,8 @@ var sectorPreCommitsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		preCommitSector := make([]minertypes.SectorPreCommitOnChainInfo, 0)
-		err = mst.ForEachPrecommittedSector(func(info minertypes.SectorPreCommitOnChainInfo) error {
+		preCommitSector := make([]miner.SectorPreCommitOnChainInfo, 0)
+		err = mst.ForEachPrecommittedSector(func(info miner.SectorPreCommitOnChainInfo) error {
 			preCommitSector = append(preCommitSector, info)
 			return err
 		})

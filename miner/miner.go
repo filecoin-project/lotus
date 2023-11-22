@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -61,7 +61,7 @@ func randTimeOffset(width time.Duration) time.Duration {
 // NewMiner instantiates a miner with a concrete WinningPoStProver and a miner
 // address (which can be different from the worker's address).
 func NewMiner(api v1api.FullNode, epp gen.WinningPoStProver, addr address.Address, sf *slashfilter.SlashFilter, j journal.Journal) *Miner {
-	arc, err := lru.NewARC[abi.ChainEpoch, bool](10000)
+	arc, err := arc.NewARC[abi.ChainEpoch, bool](10000)
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +122,7 @@ type Miner struct {
 	// minedBlockHeights is a safeguard that caches the last heights we mined.
 	// It is consulted before publishing a newly mined block, for a sanity check
 	// intended to avoid slashings in case of a bug.
-	minedBlockHeights *lru.ARCCache[abi.ChainEpoch, bool]
+	minedBlockHeights *arc.ARCCache[abi.ChainEpoch, bool]
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -324,7 +324,7 @@ minerLoop:
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
 
-			if os.Getenv("LOTUS_MINER_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" {
+			if os.Getenv("LOTUS_MINER_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" && !build.IsNearUpgrade(base.TipSet.Height(), build.UpgradeWatermelonFixHeight) {
 				witness, fault, err := m.sf.MinedBlock(ctx, b.Header, base.TipSet.Height()+base.NullRounds)
 				if err != nil {
 					log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
@@ -531,7 +531,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
-	rand, err := lrand.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+	rand, err := lrand.DrawRandomnessFromBase(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
 		err = xerrors.Errorf("failed to get randomness for winning post: %w", err)
 		return nil, err
@@ -600,7 +600,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 		buf.Write(base.TipSet.MinTicket().VRFProof)
 	}
 
-	input, err := lrand.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
+	input, err := lrand.DrawRandomnessFromBase(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}

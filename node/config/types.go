@@ -290,13 +290,10 @@ type ProvingConfig struct {
 	// 'lotus-miner proving compute window-post 0'
 	DisableWDPoStPreChecks bool
 
-	// Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+	// Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
 	//
 	// A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
-	//
-	// The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-	// means that a single message can prove at most 10 partitions
-	//
+	//	//
 	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 	//
@@ -358,7 +355,7 @@ type SealingConfig struct {
 
 	// CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 	// live before it must be extended or converted into sector containing deals before it is
-	// terminated. Value must be between 180-540 days inclusive
+	// terminated. Value must be between 180-1278 days (1278 in nv21, 540 before nv21).
 	CommittedCapacitySectorLifetime Duration
 
 	// Period of time that a newly created sector will wait for more deals to be packed in to before it starts to seal.
@@ -387,8 +384,6 @@ type SealingConfig struct {
 	// Don't send collateral with messages even if there is no available balance in the miner actor
 	DisableCollateralFallback bool
 
-	// enable / disable precommit batching (takes effect after nv13)
-	BatchPreCommits bool
 	// maximum precommit batch size - batches will be sent immediately above this size
 	MaxPreCommitBatch int
 	// how long to wait before submitting a batch after crossing the minimum batch size
@@ -408,7 +403,8 @@ type SealingConfig struct {
 	CommitBatchSlack Duration
 
 	// network BaseFee below which to stop doing precommit batching, instead
-	// sending precommit messages to the chain individually
+	// sending precommit messages to the chain individually. When the basefee is
+	// below this threshold, precommit messages will get sent out immediately.
 	BatchPreCommitAboveBaseFee types.FIL
 
 	// network BaseFee below which to stop doing commit aggregation, instead
@@ -430,6 +426,9 @@ type SealingConfig struct {
 	// todo TargetSealingSectors uint64
 
 	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
+
+	// UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.
+	UseSyntheticPoRep bool
 }
 
 type SealerConfig struct {

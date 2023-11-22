@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
+var InitActorAddr = builtin.InitActorAddr
 var SystemActorAddr = builtin.SystemActorAddr
 var BurntFundsActorAddr = builtin.BurntFundsActorAddr
 var CronActorAddr = builtin.CronActorAddr

@@ -8,6 +8,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 )
 
+var MinSyntheticPoRepVersion = network.Version21
+
 func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) (bitfield.BitField, error) {
 	var parts []bitfield.BitField
 
@@ -31,7 +33,7 @@ func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) 
 
 // SealProofTypeFromSectorSize returns preferred seal proof type for creating
 // new miner actors and new sectors
-func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.RegisteredSealProof, error) {
+func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synthetic bool) (abi.RegisteredSealProof, error) {
 	switch {
 	case nv < network.Version7:
 		switch ssize {
@@ -49,23 +51,47 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 	case nv >= network.Version7:
+		var v abi.RegisteredSealProof
 		switch ssize {
 		case 2 << 10:
-			return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg2KiBV1_1
 		case 8 << 20:
-			return abi.RegisteredSealProof_StackedDrg8MiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg8MiBV1_1
 		case 512 << 20:
-			return abi.RegisteredSealProof_StackedDrg512MiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg512MiBV1_1
 		case 32 << 30:
-			return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg32GiBV1_1
 		case 64 << 30:
-			return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg64GiBV1_1
 		default:
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+		}
+
+		if nv >= MinSyntheticPoRepVersion && synthetic {
+			return toSynthetic(v)
+		} else {
+			return v, nil
 		}
 	}
 
 	return 0, xerrors.Errorf("unsupported network version")
+}
+
+func toSynthetic(in abi.RegisteredSealProof) (abi.RegisteredSealProof, error) {
+	switch in {
+	case abi.RegisteredSealProof_StackedDrg2KiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg8MiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg8MiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg512MiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg512MiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg32GiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg64GiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep, nil
+	default:
+		return 0, xerrors.Errorf("unsupported conversion to synthetic: %v", in)
+	}
 }
 
 // WindowPoStProofTypeFromSectorSize returns preferred post proof type for creating

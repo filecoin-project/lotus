@@ -10,13 +10,13 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 // FullAPI is a JSON-RPC client targeting a full node. It's initialized in a
 // cli.BeforeFunc.
-var FullAPI v0api.FullNode
+var FullAPI v1api.FullNode
 
 // Closer is the closer for the JSON-RPC client, which must be called on
 // cli.AfterFunc.
@@ -102,7 +102,7 @@ func initialize(c *cli.Context) error {
 
 	// Make the API client.
 	var err error
-	if FullAPI, Closer, err = lcli.GetFullNodeAPI(c); err != nil {
+	if FullAPI, Closer, err = lcli.GetFullNodeAPIV1(c); err != nil {
 		err = fmt.Errorf("failed to locate Lotus node; err: %w", err)
 	}
 	return err

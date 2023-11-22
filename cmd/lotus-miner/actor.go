@@ -1292,7 +1292,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
 			Name:  "mask-last-offset",
-			Usage: "Mask sector IDs from 0 to 'higest_allocated - offset'",
+			Usage: "Mask sector IDs from 0 to 'highest_allocated - offset'",
 		},
 		&cli.Uint64Flag{
 			Name:  "mask-upto-n",

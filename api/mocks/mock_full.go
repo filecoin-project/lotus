@@ -3263,6 +3263,36 @@ func (mr *MockFullNodeMockRecorder) StateGetNetworkParams(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetNetworkParams", reflect.TypeOf((*MockFullNode)(nil).StateGetNetworkParams), arg0)
 }
 
+// StateGetRandomnessDigestFromBeacon mocks base method.
+func (m *MockFullNode) StateGetRandomnessDigestFromBeacon(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessDigestFromBeacon", arg0, arg1, arg2)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessDigestFromBeacon indicates an expected call of StateGetRandomnessDigestFromBeacon.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessDigestFromBeacon(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessDigestFromBeacon", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessDigestFromBeacon), arg0, arg1, arg2)
+}
+
+// StateGetRandomnessDigestFromTickets mocks base method.
+func (m *MockFullNode) StateGetRandomnessDigestFromTickets(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessDigestFromTickets", arg0, arg1, arg2)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessDigestFromTickets indicates an expected call of StateGetRandomnessDigestFromTickets.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessDigestFromTickets(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessDigestFromTickets", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessDigestFromTickets), arg0, arg1, arg2)
+}
+
 // StateGetRandomnessFromBeacon mocks base method.
 func (m *MockFullNode) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
 	m.ctrl.T.Helper()
