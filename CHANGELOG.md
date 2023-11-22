@@ -1,22 +1,31 @@
 # Lotus changelog
 
-# v 1.25.0-rc4 / 2023-11-08
+# UNRELEASED
+- chore: Auto remove local chain data when importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
+- feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
+- feat: sealing: load SectorsSummary from sealing SectorStats instead of calling API each time ([filecoin-project/lotus#11353](https://github.com/filecoin-project/lotus/pull/11353))
 
-This is the fourth release candidate of the upcoming OPTIONAL release Lotus v1.25.0. This optional release also supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+## Improvements
+- fix: Add time slicing to splitstore purging step during compaction to reduce lock congestion [filecoin-project/lotus#11269](https://github.com/filecoin-project/lotus/pull/11269)
+- feat: Added instructions on how to setup Prometheus/Grafana for monitoring a local Lotus node [filecoin-project/lotus#11276](https://github.com/filecoin-project/lotus/pull/11276)
+- fix: Exclude reverted events in `eth_getLogs` results [filecoin-project/lotus#11318](https://github.com/filecoin-project/lotus/pull/11318)
+- fix: The Ethereum API will now use the correct state-tree when resolving "native" addresses into masked ID addresses. Additionally, pending messages from native account types won't be visible in the Ethereum API because there is no "correct" state-tree to pick in this case. However, pending _Ethereum_ transactions and native messages that have landed on-chain will still be visible through the Ethereum API.
+- feat: Unambiguously translate native messages to Ethereum transactions by:
+  - Detecting native messages that "look" like Ethereum transactions (creating smart contracts, invoking a smart contract, etc.), and decoding them as such.
+  - Otherwise, ABI-encoding the inputs as if they were calls to a `handle_filecoin_method` Solidity method.
 
-## Calibration Testnet WatermelonFix Upgrade Recovery
+# v 1.25.0 / 2023-11-22
 
-The Calibration Testnet halted 60 epochs after the WatermelonFix upgrade, we believe the cause is the new fixed miner actor CID isn't registered in the system actor state. Fortunately, this could be fixedby winding back the time prior to the upgrade, and reperform the migration with new miner actor CID registered in the system actor state. We would like to ask all calibrationnet node operators to run the following:
-- Upgrade your nodes and miners to v1.25.0-rc4
-- Shut down your daemon and restart it (miners too if applicable)
+This is a highly recommended feature release of Lotus. This optional release supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
-Please reach out to us in #fil-net-calibration-discuss if you have any questions!
+**The Filecoin network upgrade v21, codenamed Watermelon 🍉, is at epoch 3469380 - 2023-12-12T13:30:00Z**
 
-Make sure to check out the release log for [Lotus v1.24.0-rc5](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0-rc5) to see the FIPs delivered in the network version 21 upgrade, v12 Builtin Actor Bundles, features and improvements.
+The full list of [protocol improvements delivered in the network upgrade can be found here](https://github.com/filecoin-project/core-devs/blob/master/Network%20Upgrades/v21.md).
 
 ## ☢️ Upgrade Warnings ☢️
 
-- Please remove and clone a new Lotus repo (`git clone https://github.com/filecoin-project/lotus.git`) when upgrading to this version. 
+- Read through the [changelog of the mandatory v1.24.0 release](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0). Especially the `Migration` and `v12 Builtin Actor Bundle` sections.
+- Please remove and clone a new Lotus repo (`git clone https://github.com/filecoin-project/lotus.git`) when upgrading to this release.
 - This feature release requires a minimum Go version of v1.20.7 or higher to successfully build Lotus. Go version 1.21.x is not supported yet.
 - EthRPC providers, please check out the [new tracing API to Lotus RPC](https://github.com/filecoin-project/lotus/pull/11100)
 
@@ -97,6 +106,8 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - fix: build: use tagged releases ([filecoin-project/lotus#11194](https://github.com/filecoin-project/lotus/pull/11194))
 - chore: test-vectors: update ([filecoin-project/lotus#11196](https://github.com/filecoin-project/lotus/pull/11196))
 - chore: backport #11365 to release/v1.25.0 ([filecoin-project/lotus#11369](https://github.com/filecoin-project/lotus/pull/11369))
+- chore: deps: update to go-state-types v0.12.8 ([filecoin-project/lotus#11339](https://github.com/filecoin-project/lotus/pull/11437))
+- chore: deps: update to final actors ([filecoin-project/lotus#11330](https://github.com/filecoin-project/lotus/pull/11440))
 - github.com/filecoin-project/go-amt-ipld/v4 (v4.0.0 -> v4.2.0)
 - github.com/filecoin-project/test-vectors/schema (v0.0.5 -> v0.0.7)
 
@@ -121,51 +132,82 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - chore: backport #11294 into `release/v1.23.4` ([filecoin-project/lotus#11295](https://github.com/filecoin-project/lotus/pull/11295))
 - chore: release: V1.25 rebase ([filecoin-project/lotus#11342](https://github.com/filecoin-project/lotus/pull/11342))
 - backport: tests: add SynthPorep layers to cachefiles ([filecoin-project/lotus#11344](https://github.com/filecoin-project/lotus/pull/11344))
+- chore: backport #11408 to release/v1.25.0 ([filecoin-project/lotus#11414](https://github.com/filecoin-project/lotus/pull/11414))
+- chore: backport calibnet lightweight patch ([filecoin-project/lotus#11422](https://github.com/filecoin-project/lotus/pull/11422))
+- chore: update bootstrap nodes ([filecoin-project/lotus#11288](https://github.com/filecoin-project/lotus/pull/11288))
+- chore: add bootstrap node on calibration ([filecoin-project/lotus#11175](https://github.com/filecoin-project/lotus/pull/11175))
 
-# v1.24.0-rc2 / 2023-10-17
+# 1.24.0 / 2023-11-22
 
-This is the second release candidate of the upcoming **MANDATORY Lotus v1.24.0** release, which will deliver the Filecoin network version 21, codenamed Watermelon 🍉.
+This is the stable release for the upcoming **MANDATORY**  Filecoin network upgrade v21, codenamed Watermelon 🍉, at **epoch 3469380 - 2023-12-12T13:30:00Z**.
 
-**This release candidate does NOT set an upgrade epoch for mainnet, but sets the calibration network to upgrade at epoch 1013134, which is 2023-10-19T13:00:00Z.** This second release candidate updates go-state-types to v0.12.5, adding a proofs mapping that was missing v0.12.5. Lotus v1.24.0-RC1 remains valid for the network upgrade in the Calibration network. However, storage providers intending to conduct Synthetic PoRep testing are advised to use RC2.
 
 The Filecoin network version 21 delivers the following FIPs:
 
 - [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
 - [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md)
-- [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md)
 - [FIP0071: Deterministic State Access (IPLD Reachability)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0071.md)
 - [FIP0072: Improved event syscall API](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0072.md) 
 - [FIP0073: Remove beneficiary from the self_destruct syscall](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0073.md)
 - [FIP0075: Improvements to FVM randomness syscalls](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0075.md)
 
+
+Full list of the other protocol improvements we are delivering can be found [here](https://github.com/filecoin-project/core-devs/blob/master/Network%20Upgrades/v21.md).
+
+## ☢️ Upgrade Warnings ☢️
+
+This feature release requires a minimum Go version of v1.20.7 or higher to successfully build Lotus. Go version 1.21.x is not supported yet.
+
 ## v12 Builtin Actor Bundles
 
-The actor bundles for the calibration network can be checked as follows:
+[Builtin actor v12.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v12.0.0) is used for supporting this upgrade.
+Make sure that your lotus actor bundle matches the v12 actors manifest by running the following cli after upgrading:
 
 ```
-lotus state actor-cids --network-version=21
+./lotus state actor-cids --network-version 21
 Network Version: 21
 Actor Version: 12
-Manifest CID: bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs
+Manifest CID: bafy2bzaceapkgfggvxyllnmuogtwasmsv5qi2qzhc2aybockd6kag2g5lzaio
 
 Actor             CID  
-paymentchannel    bafk2bzacebaxhk4itfiuvbftg7kz5zxugqnvdgerobitjq4vl6q4orcwk6wqg
+datacap           bafk2bzacebpiwb2ml4qbnnaayxumtk43ryhc63exdgnhivy3hwgmzemawsmpq
+paymentchannel    bafk2bzacectv4cm47bnhga5febf3lo3fq47g72kmmp2xd5s6tcxz7hiqdywa4
+storagemarket     bafk2bzacedylkg5am446lcuih4voyzdn4yjeqfsxfzh5b6mcuhx4mok5ph5c4
+storagepower      bafk2bzacecsij5tpfzjpfuckxvccv2p3bdqjklkrfyyoei6lx5dyj5j4fvjm6
+cron              bafk2bzacechxjkfe2cehx4s7skj3wzfpzf7zolds64khrrrs66bhazsemktls
+eam               bafk2bzaceb3elj4hfbbjp7g5bptc7su7mptszl4nlqfedilxvstjo5ungm6oe
+ethaccount        bafk2bzaceb4gkau2vgsijcxpfuq33bd7w3efr2rrhxrwiacjmns2ntdiamswq
+reward            bafk2bzacealqnxn5lwzwexd6reav4dppypquklx2ujlnvaxiqk2tzstyvkp5u
+verifiedregistry  bafk2bzacedudgflxc75c77c6zkmfyq4u2xuk7k6xw6dfdccarjrvxx453b77q
+evm               bafk2bzacecmnyfiwb52tkbwmm2dsd7ysi3nvuxl3lmspy7pl26wxj4zj7w4wi
 placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
-ethaccount        bafk2bzaceajmc3y3sedsqymfla3dzzqzmbu5kmr2iskm26ga2u34ll5fpztfw
-evm               bafk2bzaced4sozr7m6rzcgpobzeiupghthfw6afumysu3oz6bxxirv74uo3vw
-system            bafk2bzacecioupndtcnyw6iq2hbrxag3aufvczlv5nobnfbkbywqzcyfaa376
-init              bafk2bzaceaewh7b6zl2egclm7fqzx2lsqr57i75lb6cj43ndoa4mal3k5ld3m
-multisig          bafk2bzacednkwcpw5yzxjceoaliajgupzj6iqxe7ks2ll3unspbprbo5f2now
-eam               bafk2bzacecb6cnwftvavpph4p34zs4psuy5xvbrhf7vszkva4npw6mw3c42xe
-reward            bafk2bzacedra77pcglf7vdca2itcaa4vd6xrxynxmgfgdjdxqxfwqyhtoxehy
-storagemarket     bafk2bzacea7g46y7xxu2zjq2h75x6mmx3utz2uxnlvnwi6tzpsvulna3bmiva
-storageminer      bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq
-storagepower      bafk2bzacedd3ka44k7d46ckbinjhv3diyuu2epgbyvhqqyjkc64qlrg3wlgzi
-verifiedregistry  bafk2bzaceavldupmf7bimeeacs67z5xdfdlfca6p7sn6bev3mt5ggepfqvhqo
-account           bafk2bzacechwwxdqvggkdylm37zldjsra2ivkdzwp7fee56bzxbzs544wv6u6
-cron              bafk2bzacec4gdxxkqwxqqodsv6ug5dmdbqdfqwyqfek3yhxc2wweh5psxaeq6
-datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
+storageminer      bafk2bzacedo75pabe4i2l3hvhtsjmijrcytd2y76xwe573uku25fi7sugqld6
+system            bafk2bzacebfqrja2hip7esf4eafxjmu6xcogoqu5xxtgdg7xa5szgvvdguchu
+account           bafk2bzaceboftg75mdiba7xbo2i3uvgtca4brhnr3u5ptihonixgpnrvhpxoa
+init              bafk2bzacebllyegx5r6lggf6ymyetbp7amacwpuxakhtjvjtvoy2bfkzk3vms
 ```
+
+## Migration
+
+We are expecting a heavier than normal state migration for this upgrade due to the amount of state changes introduced for miner sector info. (This is a similar migration as the Shark upgrade, however, we have introduced a couple of migration performance optimizations since then for a smoother upgrade experience.)
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 180 epochs before the upgrade, around 2023-12-12T12:00:00Z. It will take around 20-30 minutes for the pre-migration and less than 30 seconds for the final migration, depending on the amount of historical state in the node blockstore and the hardware specs the node is running on. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries (during our testing, it topped out about 205 RAM(htop) on a 1TiB box).
+
+We recommend node operators (who haven't enabled splitstore `discard` mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+Note to full archival node operators: you may expect it takes some time  for the node to complete the final migration, during this period your node will fall out of sync and your chain service may have some disruption. However, you can expect the node to catch up soon after the migration completes. You can test out the migration by running the following on your node in offline mode:
+
+1. `lotus chain head | head -n1`
+2. Stop Lotus daemon
+3. `./lotus-shed migrate-state --repo=[path-to-your-lotus-repo] 21 [output-of-step-1]`
+
+You can check out the [tutorial for benchmarking the network migration here.](https://lotus.filecoin.io/kb/test-migration/)
+
+
+## BREAKING CHANGE
+
+There is a new protocol limit on how many partition could be submited in one PoSt - if you have any customized tooling for batching PoSts, please update accordingly.
+- feat: limit PoSted partitions to 3 ([filecoin-project/lotus#11327](https://github.com/filecoin-project/lotus/pull/11327))
 
 ## New features
 - Implement and support [FIP0052: Increase Max Sector Commitment to 3.5 years](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
@@ -173,27 +215,23 @@ datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
 - Implement and support [FIP0059: Synthetic PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0059.md) - Check out the [Lotus documentation for Synthetic PoRep](https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#synthetic-porep).
    - feat: implement Synthetic PoRep ([filecoin-project/lotus#11258](https://github.com/filecoin-project/lotus/pull/11258))
    - chore: config: Update todo in UseSyntheticPoRep ([filecoin-project/lotus#11297](https://github.com/filecoin-project/lotus/pull/11297))
-- Implement and support [FIP0070: Allow SPs to move partitions between deadlines](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0070.md) - Check out the [Lotus documentation for Moving Partitions](https://lotus.filecoin.io/storage-providers/operate/daily-chores/#move-partitions)
-   - Feat: Lotus cli: actor: Support move partition command to move partitions' deadline ([filecoin-project/lotus#11301](https://github.com/filecoin-project/lotus/pull/11301))
-   - feat: limit PoSted partitions to 3 ([filecoin-project/lotus#11327](https://github.com/filecoin-project/lotus/pull/11327))
    
 ## Improvements
 - Backport: feat: sealing: Switch to calling PreCommitSectorBatch2 ([filecoin-project/lotus#11215](https://github.com/filecoin-project/lotus/pull/11215))
+- updated the boostrap nodes
 
 ## Dependencies
 - github.com/filecoin-project/go-amt-ipld/v4 (v4.0.0 -> v4.2.0)
-- chore: deps: update bulitin-actors, FVM, and go-state-types ([filecoin-project/lotus#11291](https://github.com/filecoin-project/lotus/pull/11291))
 - chore: deps: update FFI, FVM, and actors ([filecoin-project/lotus#11310](https://github.com/filecoin-project/lotus/pull/11310))
-- chore: deps: update to latest actors and FFI ([filecoin-project/lotus#11330](https://github.com/filecoin-project/lotus/pull/11330))
-- chore: deps: update to go-state-types v0.12.5 ([filecoin-project/lotus#11339](https://github.com/filecoin-project/lotus/pull/11339))
+- chore: deps: update to final actors ([filecoin-project/lotus#11330](https://github.com/filecoin-project/lotus/pull/11440))
+- chore: deps: update to go-state-types v0.12.8 ([filecoin-project/lotus#11339](https://github.com/filecoin-project/lotus/pull/11437))
+- chore: deps: update libp2p to v0.30.0 #11434
 
-## Others
-- chore: nv-skeleton for feat/nv21-branch ([filecoin-project/lotus#11176](https://github.com/filecoin-project/lotus/pull/11176))
-- chore: chain/actors: Use type proxies instead of versioned GST imports ([filecoin-project/lotus#11216](https://github.com/filecoin-project/lotus/pull/11216))
-- chore: butterfly: Add preliminary nv21 assets ([filecoin-project/lotus#11293](https://github.com/filecoin-project/lotus/pull/11293))
-- chore: butterfly: Update Butterfly Assets ([filecoin-project/lotus#11312](https://github.com/filecoin-project/lotus/pull/11312))
-- chore: release: Set calibration upgrade height ([filecoin-project/lotus#11331](https://github.com/filecoin-project/lotus/pull/11331))
-- chore: build: bump version to 1.24.0-rc1 ([filecoin-project/lotus#11332](https://github.com/filecoin-project/lotus/pull/11332))
+
+## Snapshots
+
+The [Forest team](https://filecoinproject.slack.com/archives/C029LPZ5N73) at Chainsafe has launched a brand new lightweight snapshot service that is backed up by forest nodes! This is a great alternative service along with the fil-infra one, and it is compatible with lotus! We recommend lotus users to check it out [here](https://docs.filecoin.io/networks/mainnet#resources)!
+
 
 
 # v1.23.3 / 2023-08-01
@@ -221,7 +259,7 @@ This feature release requires a **minimum Go version of v1.19.12 or higher to su
   - feat: sealing: flag to run data_cid untied from addpiece ([filecoin-project/lotus#10797](https://github.com/filecoin-project/lotus/pull/10797))
   - feat: Lotus Gateway: add MpoolPending, ChainGetBlock and MinerGetBaseInfo ([filecoin-project/lotus#10929](https://github.com/filecoin-project/lotus/pull/10929))
 
-## Improvements
+## Improvements && Bug Fixes
   - chore: update ffi & fvm ([filecoin-project/lotus#11040](https://github.com/filecoin-project/lotus/pull/11040))
   - feat: Make sure we don't store duplidate actor events caused to reorgs in events.db ([filecoin-project/lotus#11015](https://github.com/filecoin-project/lotus/pull/11015))
   - sealing: Use only non-assigned deals when selecting snap sectors ([filecoin-project/lotus#11002](https://github.com/filecoin-project/lotus/pull/11002))
@@ -299,6 +337,10 @@ This feature release requires a **minimum Go version of v1.19.12 or higher to su
   - fix: cli: Change arg wording in change-beneficiary cmd ([filecoin-project/lotus#10823](https://github.com/filecoin-project/lotus/pull/10823))
   - refactor: streamline error handling in CheckPendingMessages (#10818) ([filecoin-project/lotus#10818](https://github.com/filecoin-project/lotus/pull/10818))
   - feat: Add tmp indices to events table while performing migration to V2
+  - fix: sync: iterate over returned messages directly #11373
+  - fix: api: compute the effective gas cost with the correct base-fee #11357
+  - fix: check invariants: v12 check #11371
+  - fix: api: compute gasUsedRatio based on max gas in the tipset #11354
 
 # v1.23.2 / 2023-06-28
 

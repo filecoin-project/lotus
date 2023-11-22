@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 type EthTxHashManager struct {
@@ -64,7 +65,7 @@ func (m *EthTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) er
 				continue
 			}
 
-			hash, err := ethTxHashFromSignedMessage(ctx, smsg, m.StateAPI)
+			hash, err := ethTxHashFromSignedMessage(smsg)
 			if err != nil {
 				return err
 			}
@@ -84,13 +85,18 @@ func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.
 		return
 	}
 
-	ethTx, err := newEthTxFromSignedMessage(ctx, msg, m.StateAPI)
+	ethTx, err := ethtypes.EthTxFromSignedEthMessage(msg)
 	if err != nil {
 		log.Errorf("error converting filecoin message to eth tx: %s", err)
 		return
 	}
+	txHash, err := ethTx.TxHash()
+	if err != nil {
+		log.Errorf("error hashing transaction: %s", err)
+		return
+	}
 
-	err = m.TransactionHashLookup.UpsertHash(ethTx.Hash, msg.Cid())
+	err = m.TransactionHashLookup.UpsertHash(txHash, msg.Cid())
 	if err != nil {
 		log.Errorf("error inserting tx mapping to db: %s", err)
 		return

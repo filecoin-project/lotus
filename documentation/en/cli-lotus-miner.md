@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.25.0-rc4
+   1.25.1-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -223,7 +223,6 @@ COMMANDS:
    propose-change-worker       Propose a worker address change
    confirm-change-worker       Confirm a worker address change
    compact-allocated           compact allocated sectors bitfield
-   move-partitions             move deadline of specified partitions from one to another
    propose-change-beneficiary  Propose a beneficiary address change
    confirm-change-beneficiary  Confirm a beneficiary address change
    help, h                     Shows a list of commands or help for one command
@@ -371,22 +370,6 @@ OPTIONS:
    --mask-upto-n value       Mask sector IDs from 0 to 'n' (default: 0)
    --really-do-it            Actually send transaction performing the action (default: false)
    --help, -h                show help
-```
-
-### lotus-miner actor move-partitions
-```
-NAME:
-   lotus-miner actor move-partitions - move deadline of specified partitions from one to another
-
-USAGE:
-   lotus-miner actor move-partitions [command options] [arguments...]
-
-OPTIONS:
-   --partition-indices value [ --partition-indices value ]  Indices of partitions to update, separated by comma
-   --orig-deadline value                                    Deadline to move partition from (default: 0)
-   --dest-deadline value                                    Deadline to move partition to (default: 0)
-   --really-do-it                                           Actually send transaction performing the action (default: false)
-   --help, -h                                               show help
 ```
 
 ### lotus-miner actor propose-change-beneficiary

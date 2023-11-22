@@ -339,19 +339,9 @@ func (sm *StorageMinerAPI) SectorsListInStates(ctx context.Context, states []api
 	return sns, nil
 }
 
+// Use SectorsSummary from stats (prometheus) for faster result
 func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorState]int, error) {
-	sectors, err := sm.Miner.ListSectors()
-	if err != nil {
-		return nil, err
-	}
-
-	out := make(map[api.SectorState]int)
-	for i := range sectors {
-		state := api.SectorState(sectors[i].State)
-		out[state]++
-	}
-
-	return out, nil
+	return sm.Miner.SectorsSummary(ctx), nil
 }
 
 func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
