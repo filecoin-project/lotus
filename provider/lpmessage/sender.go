@@ -2,6 +2,7 @@ package lpmessage
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -149,15 +150,22 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		}
 
 		if noSend {
-			log.Errorw("SKIPPED SENDING MESSAGE PER ENVIRONMENT VARIABLE - NOT PRODUCTION SAFE",
-				"from_key", fromA.String(),
-				"nonce", msg.Nonce,
-				"to_addr", msg.To.String(),
-				"signed_data", data,
-				"signed_json", string(jsonBytes),
-				"signed_cid", sigMsg.Cid(),
-				"send_reason", reason,
-			)
+
+			data, err := json.MarshalIndent(map[string]any{
+				"from_key":    fromA.String(),
+				"nonce":       msg.Nonce,
+				"to_addr":     msg.To.String(),
+				"signed_data": data,
+				"signed_json": string(jsonBytes),
+				"signed_cid":  sigMsg.Cid(),
+				"send_reason": reason,
+			}, "", "  ")
+			if err != nil {
+				return false, xerrors.Errorf("marshaling message: %w", err)
+			}
+			id := ctx.Value(CtxTaskID)
+			tx.Exec(`UPDATE harmony_test SET result=$1 WHERE task_id=$2`, string(data), id)
+			log.Infof("SKIPPED sending test message to chain. Query harmony_test WHERE task_id= %v", id)
 			return true, nil // nothing committed
 		}
 		// write to db
