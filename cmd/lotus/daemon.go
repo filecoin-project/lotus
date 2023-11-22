@@ -583,7 +583,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	if !snapshot {
-		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gb.MinTimestamp(), nil)
+		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gen.Timestamp, nil)
 		if err != nil {
 			return xerrors.Errorf("failed to construct beacon schedule: %w", err)
 		}
