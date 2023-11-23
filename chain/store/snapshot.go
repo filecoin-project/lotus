@@ -60,7 +60,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	})
 }
 
-func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipSet, tail *types.BlockHeader, err error) {
+func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipSet, genesis *types.BlockHeader, err error) {
 	// TODO: writing only to the state blockstore is incorrect.
 	//  At this time, both the state and chain blockstores are backed by the
 	//  universal store. When we physically segregate the stores, we will need
@@ -80,7 +80,11 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		putThrottle <- nil
 	}
 
+	if len(br.Roots) == 0 {
+		return nil, nil, xerrors.Errorf("no roots in snapshot car file")
+	}
 	nextTailCid := br.Roots[0]
+
 	var tailBlock types.BlockHeader
 	tailBlock.Height = abi.ChainEpoch(-1)
 
@@ -105,10 +109,13 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		// check for header block, looking for genesis
 		if blk.Cid() == nextTailCid && tailBlock.Height != 0 {
 			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
-				return nil, nil, xerrors.Errorf("failed to unmarshal tail block: %w", err)
+				return nil, nil, xerrors.Errorf("failed to unmarshal genesis block: %w", err)
 			}
 			if len(tailBlock.Parents) > 0 {
 				nextTailCid = tailBlock.Parents[0]
+			} else {
+				// note: even the 0th block has a parent linking to the cbor genesis block
+				return nil, nil, xerrors.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
 			}
 		}
 
@@ -135,7 +142,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 	}
 
 	if tailBlock.Height != 0 {
-		return nil, nil, xerrors.Errorf("expected tail block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
+		return nil, nil, xerrors.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
 	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(br.Roots...))
