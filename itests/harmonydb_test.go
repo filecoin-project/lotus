@@ -16,6 +16,7 @@ func withSetup(t *testing.T, f func(*kit.TestMiner)) {
 	_, miner, _ := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
+		kit.WithSectorIndexDB(),
 	)
 
 	f(miner)
