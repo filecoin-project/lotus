@@ -104,9 +104,6 @@ func ConfigStorageMiner(c interface{}) Option {
 			If(cfg.Subsystems.EnableSectorStorage, Error(xerrors.Errorf("sealing can only be enabled on a mining node"))),
 		),
 
-		Override(new(*harmonydb.DB), func(cfg config.HarmonyDB, id harmonydb.ITestID) (*harmonydb.DB, error) {
-			return harmonydb.NewFromConfigWithITestID(cfg)(id)
-		}),
 		If(cfg.Subsystems.EnableMining,
 			If(!cfg.Subsystems.EnableSealing, Error(xerrors.Errorf("sealing can't be disabled on a mining node yet"))),
 			If(!cfg.Subsystems.EnableSectorStorage, Error(xerrors.Errorf("sealing can't be disabled on a mining node yet"))),
@@ -136,8 +133,20 @@ func ConfigStorageMiner(c interface{}) Option {
 
 		If(cfg.Subsystems.EnableSectorStorage,
 			// Sector storage
-			Override(new(*paths.IndexProxy), paths.NewIndexProxyHelper(cfg.Subsystems.EnableSectorIndexDB)),
-			Override(new(paths.SectorIndex), From(new(*paths.IndexProxy))),
+			If(cfg.Subsystems.EnableSectorIndexDB,
+				Override(new(*paths.DBIndex), paths.NewDBIndex),
+				Override(new(paths.SectorIndex), From(new(*paths.DBIndex))),
+
+				// sector index db is the only thing on lotus-miner that will use harmonydb
+				Override(new(*harmonydb.DB), func(cfg config.HarmonyDB, id harmonydb.ITestID) (*harmonydb.DB, error) {
+					return harmonydb.NewFromConfigWithITestID(cfg)(id)
+				}),
+			),
+			If(!cfg.Subsystems.EnableSectorIndexDB,
+				Override(new(*paths.MemIndex), paths.NewMemIndex),
+				Override(new(paths.SectorIndex), From(new(*paths.MemIndex))),
+			),
+
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),

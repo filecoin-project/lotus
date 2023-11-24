@@ -187,7 +187,7 @@ func (s *schedTestWorker) Close() error {
 
 var _ Worker = &schedTestWorker{}
 
-func addTestWorker(t *testing.T, sched *Scheduler, index *paths.Index, name string, taskTypes map[sealtasks.TaskType]struct{}, resources storiface.WorkerResources, ignoreResources bool) {
+func addTestWorker(t *testing.T, sched *Scheduler, index *paths.MemIndex, name string, taskTypes map[sealtasks.TaskType]struct{}, resources storiface.WorkerResources, ignoreResources bool) {
 	w := &schedTestWorker{
 		name:      name,
 		taskTypes: taskTypes,
@@ -231,7 +231,7 @@ func TestSchedStartStop(t *testing.T) {
 	require.NoError(t, err)
 	go sched.runSched()
 
-	addTestWorker(t, sched, paths.NewIndex(nil), "fred", nil, decentWorkerResources, false)
+	addTestWorker(t, sched, paths.NewMemIndex(nil), "fred", nil, decentWorkerResources, false)
 
 	require.NoError(t, sched.Close(context.TODO()))
 }
@@ -264,13 +264,13 @@ func TestSched(t *testing.T) {
 		wg sync.WaitGroup
 	}
 
-	type task func(*testing.T, *Scheduler, *paths.Index, *runMeta)
+	type task func(*testing.T, *Scheduler, *paths.MemIndex, *runMeta)
 
 	sched := func(taskName, expectWorker string, sid abi.SectorNumber, taskType sealtasks.TaskType) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
 
-		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.MemIndex, rm *runMeta) {
 			done := make(chan struct{})
 			rm.done[taskName] = done
 
@@ -324,7 +324,7 @@ func TestSched(t *testing.T) {
 	taskStarted := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.MemIndex, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 			case <-ctx.Done():
@@ -336,7 +336,7 @@ func TestSched(t *testing.T) {
 	taskDone := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.MemIndex, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 			case <-ctx.Done():
@@ -349,7 +349,7 @@ func TestSched(t *testing.T) {
 	taskNotScheduled := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.MemIndex, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 				t.Fatal("not expected", l, l2)
@@ -360,7 +360,7 @@ func TestSched(t *testing.T) {
 
 	testFunc := func(workers []workerSpec, tasks []task) func(t *testing.T) {
 		return func(t *testing.T) {
-			index := paths.NewIndex(nil)
+			index := paths.NewMemIndex(nil)
 
 			sched, err := newScheduler(ctx, "")
 			require.NoError(t, err)
@@ -389,7 +389,7 @@ func TestSched(t *testing.T) {
 	}
 
 	multTask := func(tasks ...task) task {
-		return func(t *testing.T, s *Scheduler, index *paths.Index, meta *runMeta) {
+		return func(t *testing.T, s *Scheduler, index *paths.MemIndex, meta *runMeta) {
 			for _, tsk := range tasks {
 				tsk(t, s, index, meta)
 			}
@@ -503,7 +503,7 @@ func TestSched(t *testing.T) {
 	}
 
 	diag := func() task {
-		return func(t *testing.T, s *Scheduler, index *paths.Index, meta *runMeta) {
+		return func(t *testing.T, s *Scheduler, index *paths.MemIndex, meta *runMeta) {
 			time.Sleep(20 * time.Millisecond)
 			for _, request := range s.diag().Requests {
 				log.Infof("!!! sDIAG: sid(%d) task(%s)", request.Sector.Number, request.TaskType)

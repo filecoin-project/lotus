@@ -124,7 +124,7 @@ type StorageMinerAPI struct {
 	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc                 `optional:"true"`
 	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc                 `optional:"true"`
 
-	HarmonyDB *harmonydb.DB
+	HarmonyDB *harmonydb.DB `optional:"true"`
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

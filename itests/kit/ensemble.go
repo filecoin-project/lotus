@@ -607,6 +607,7 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
+		cfg.Subsystems.EnableSectorIndexDB = m.options.subsystems.Has(SHarmony)
 		cfg.Dealmaking.MaxStagingDealsBytes = m.options.maxStagingDealsBytes
 
 		if m.options.mainMiner != nil {
@@ -787,7 +788,9 @@ func (n *Ensemble) Start() *Ensemble {
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
 		mCopy := m
 		n.t.Cleanup(func() {
-			mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
+			if mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB != nil {
+				mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
+			}
 		})
 
 		m.BaseAPI = m.StorageMiner

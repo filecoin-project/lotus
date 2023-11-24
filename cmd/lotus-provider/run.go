@@ -269,7 +269,7 @@ type Deps struct {
 	as         *ctladdr.AddressSelector
 	maddrs     []dtypes.MinerAddress
 	stor       *paths.Remote
-	si         *paths.IndexProxy
+	si         *paths.DBIndex
 	localStore *paths.Local
 	listenAddr string
 }
@@ -348,7 +348,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 	}
 
 	al := alerting.NewAlertingSystem(j)
-	si := paths.NewIndexProxy(al, db, true)
+	si := paths.NewDBIndex(al, db)
 	bls := &paths.BasicLocalStorage{
 		PathToJSON: cctx.String("storage-json"),
 	}
