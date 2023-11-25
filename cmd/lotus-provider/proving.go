@@ -107,7 +107,10 @@ var wdPostTaskCmd = &cli.Command{
 		var result string
 		for {
 			time.Sleep(time.Second)
-			deps.db.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, id).Scan(&result)
+			err = deps.db.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, id).Scan(&result)
+			if err != nil {
+				return xerrors.Errorf("reading result from harmony_test: %w", err)
+			}
 			if result != "" {
 				break
 			}

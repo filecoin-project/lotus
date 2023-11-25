@@ -164,7 +164,10 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 				return false, xerrors.Errorf("marshaling message: %w", err)
 			}
 			id := ctx.Value(CtxTestTaskID)
-			tx.Exec(`UPDATE harmony_test SET result=$1 WHERE task_id=$2`, string(data), id)
+			_, err = tx.Exec(`UPDATE harmony_test SET result=$1 WHERE task_id=$2`, string(data), id)
+			if err != nil {
+				return false, xerrors.Errorf("updating harmony_test: %w", err)
+			}
 			log.Infof("SKIPPED sending test message to chain. Query harmony_test WHERE task_id= %v", id)
 			return true, nil // nothing committed
 		}
