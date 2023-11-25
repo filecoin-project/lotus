@@ -565,7 +565,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	bar.Start()
-	ts, err := cst.Import(ctx, ir)
+	ts, gen, err := cst.Import(ctx, ir)
 	bar.Finish()
 
 	if err != nil {
@@ -576,18 +576,14 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
-	gb, err := cst.GetTipsetByHeight(ctx, 0, ts, true)
-	if err != nil {
-		return err
-	}
-
-	err = cst.SetGenesis(ctx, gb.Blocks()[0])
+	log.Infof("setting genesis")
+	err = cst.SetGenesis(ctx, gen)
 	if err != nil {
 		return err
 	}
 
 	if !snapshot {
-		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gb.MinTimestamp(), nil)
+		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gen.Timestamp, nil)
 		if err != nil {
 			return xerrors.Errorf("failed to construct beacon schedule: %w", err)
 		}
