@@ -1091,7 +1091,11 @@ func TestDCAPCloses(t *testing.T) {
 }
 
 func TestSealAndVerifySynth(t *testing.T) {
+	origSealProofType := sealProofType
 	sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep
+	t.Cleanup(func() {
+		sealProofType = origSealProofType
+	})
 
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
