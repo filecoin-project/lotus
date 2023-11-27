@@ -996,23 +996,20 @@ workflows:
             - build
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
-          get-params: true
           executor: golang-2xl
+          get-params: true
       - test:
           name: test-unit-node
           requires:
             - build
           suite: utest-unit-node
           target: "./node/..."
-          
-          
       - test:
           name: test-unit-rest
           requires:
             - build
           suite: utest-unit-rest
           target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
-          
           executor: golang-2xl
       - test:
           name: test-unit-storage
@@ -1020,8 +1017,7 @@ workflows:
             - build
           suite: utest-unit-storage
           target: "./storage/... ./extern/..."
-          
-          
+          get-params: true
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
           requires:

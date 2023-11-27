@@ -266,7 +266,10 @@ var simplePreCommit1 = &cli.Command{
 			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
 		}
 
-		var ticket [32]byte // all zero
+		ticket := [32]byte{}
+		for i := range ticket {
+			ticket[i] = 1
+		}
 
 		pieces, err := ParsePieceInfos(cctx, 3)
 		if err != nil {
@@ -460,7 +463,12 @@ var simpleCommit1 = &cli.Command{
 
 		start := time.Now()
 
-		var ticket, seed [32]byte // all zero
+		ticket := [32]byte{}
+		seed := [32]byte{}
+		for i := range ticket {
+			ticket[i] = 1
+			seed[i] = 1
+		}
 
 		commd, err := cid.Parse(cctx.Args().Get(2))
 		if err != nil {
