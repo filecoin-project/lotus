@@ -48,7 +48,7 @@ func (dbi *DBIndex) StorageList(ctx context.Context) (map[storiface.ID][]storifa
 		StorageId      string
 		MinerId        sql.NullInt64
 		SectorNum      sql.NullInt64
-		SectorFiletype sql.NullInt32
+		SectorFiletype sql.NullInt32 `db:"sector_filetype"`
 		IsPrimary      sql.NullBool
 	}
 
@@ -742,7 +742,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 	}
 
 	var rows []struct {
-		SectorFileType storiface.SectorFileType
+		SectorFileType storiface.SectorFileType `db:"sector_filetype"`
 		ReadTs         sql.NullTime
 		ReadRefs       int
 		WriteTs        sql.NullTime
@@ -946,7 +946,7 @@ func (dbi *DBIndex) StorageGetLocks(ctx context.Context) (storiface.SectorLocks,
 	var rows []struct {
 		MinerId        uint64
 		SectorNum      uint64
-		SectorFileType int
+		SectorFileType int `db:"sector_filetype"`
 		ReadTs         sql.NullTime
 		ReadRefs       int
 		WriteTs        sql.NullTime
