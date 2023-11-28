@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -567,6 +569,8 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 		// dispatch mining task
 		// (note equivocation prevention is handled by the mining code)
 
+		baseEpoch := workBase.TipSet.Height()
+
 		for _, act := range t.actors {
 			spID, err := address.IDFromAddress(address.Address(act))
 			if err != nil {
@@ -575,7 +579,36 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 			}
 
 			taskFn(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-				_, err := tx.Exec(`INSERT INTO mining_tasks (task_id, sp_id, epoch, base_compute_time) VALUES ($1, $2, $3, $4)`, id, spID, workBase.epoch(), workBase.ComputeTime.UTC())
+				// First we check if the mining base includes blocks we may have mined previously to avoid getting slashed
+				// select mining_tasks where epoch==base_epoch if win=true to maybe get base block cid which has to be included in our tipset
+				var baseBlockCid string
+				err := tx.QueryRow(`SELECT mined_cid FROM mining_tasks WHERE epoch = $1 AND sp_id = $2 AND won = true`, baseEpoch, spID).Scan(&baseBlockCid)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					return false, xerrors.Errorf("querying mining_tasks: %w", err)
+				}
+				if baseBlockCid != "" {
+					c, err := cid.Parse(baseBlockCid)
+					if err != nil {
+						return false, xerrors.Errorf("parsing mined_cid: %w", err)
+					}
+
+					// we have mined in the previous round, make sure that our block is included in the tipset
+					// if it's not we risk getting slashed
+
+					var foundOurs bool
+					for _, c2 := range workBase.TipSet.Cids() {
+						if c == c2 {
+							foundOurs = true
+							break
+						}
+					}
+					if !foundOurs {
+						log.Errorw("our block was not included in the tipset, aborting", "tipset", workBase.TipSet.Cids(), "ourBlock", c)
+						return false, xerrors.Errorf("our block was not included in the tipset, aborting")
+					}
+				}
+
+				_, err = tx.Exec(`INSERT INTO mining_tasks (task_id, sp_id, epoch, base_compute_time) VALUES ($1, $2, $3, $4)`, id, spID, workBase.epoch(), workBase.ComputeTime.UTC())
 				if err != nil {
 					return false, xerrors.Errorf("inserting mining_tasks: %w", err)
 				}
