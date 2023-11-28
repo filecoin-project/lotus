@@ -35,7 +35,7 @@ type ethAPIRaw struct {
 	EthBlockNumber                         func(context.Context) (json.RawMessage, error)
 	EthCall                                func(context.Context, ethtypes.EthCall, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthChainId                             func(context.Context) (json.RawMessage, error)
-	EthEstimateGas                         func(context.Context, ethtypes.EthCall) (json.RawMessage, error)
+	EthEstimateGas                         func(context.Context, ethtypes.EthCall, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthFeeHistory                          func(context.Context, ethtypes.EthUint64, string, []float64) (json.RawMessage, error)
 	EthGasPrice                            func(context.Context) (json.RawMessage, error)
 	EthGetBalance                          func(context.Context, ethtypes.EthAddress, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
@@ -185,7 +185,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 				return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
 					From: &senderEthAddr,
 					Data: contractBin,
-				})
+				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 			},
 		},
 
@@ -451,7 +451,7 @@ func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFul
 	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From: &senderEthAddr,
 		Data: contractBin,
-	})
+	}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)

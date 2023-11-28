@@ -66,7 +66,7 @@ type EthModuleAPI interface {
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
-	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error)
+	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error)
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
@@ -1007,7 +1007,7 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	return res, nil
 }
 
-func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error) {
+func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	msg, err := ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
 		return ethtypes.EthUint64(0), err
@@ -1017,7 +1017,11 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (et
 	// gas estimation actually run.
 	msg.GasLimit = 0
 
-	ts := a.Chain.GetHeaviestTipSet()
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blkParam)
+	if err != nil {
+		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+	}
+
 	gassedMsg, err := a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {
 		// On failure, GasEstimateMessageGas doesn't actually return the invocation result,

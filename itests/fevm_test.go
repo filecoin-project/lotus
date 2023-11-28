@@ -661,7 +661,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 				From: &ethAddr,
 				To:   &contractAddr,
 				Data: params,
-			})
+			}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 			require.NoError(t, err)
 			require.LessOrEqual(t, int64(gaslimit), build.BlockGasLimit)
 
@@ -820,7 +820,7 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 		From:  &accntEth,
 		To:    &contractEth,
 		Value: ethtypes.EthBigInt(big.NewInt(100)),
-	})
+	}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -1037,7 +1037,7 @@ func TestFEVMErrorParsing(t *testing.T) {
 				_, err := e.EthEstimateGas(ctx, ethtypes.EthCall{
 					To:   &contractAddrEth,
 					Data: entryPoint,
-				})
+				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.ErrorContains(t, err, expected)
 			})
 		})

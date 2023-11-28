@@ -122,7 +122,7 @@ func (e *EthModuleDummy) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, e
 	return ethtypes.EthBigIntZero, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error) {
+func (e *EthModuleDummy) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
 

@@ -353,13 +353,13 @@ func (gw *Node) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt
 	return gw.target.EthMaxPriorityFeePerGas(ctx)
 }
 
-func (gw *Node) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error) {
+func (gw *Node) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return 0, err
 	}
 
 	// todo limit gas? to what?
-	return gw.target.EthEstimateGas(ctx, tx)
+	return gw.target.EthEstimateGas(ctx, tx, blkParam)
 }
 
 func (gw *Node) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {

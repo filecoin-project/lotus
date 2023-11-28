@@ -47,7 +47,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -235,7 +235,7 @@ func TestContractInvocation(t *testing.T) {
 		From: &ethAddr,
 		To:   &contractAddr,
 		Data: params,
-	})
+	}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -353,7 +353,7 @@ func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr eth
 	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	if err != nil {
 		return nil, err
 	}

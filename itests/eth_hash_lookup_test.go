@@ -50,7 +50,7 @@ func TestTransactionHashLookup(t *testing.T) {
 	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -353,7 +353,7 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)

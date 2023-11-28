@@ -2409,7 +2409,8 @@ Inputs:
     "gasPrice": "0x0",
     "value": "0x0",
     "data": "0x07"
-  }
+  },
+  "string value"
 ]
 ```
 
