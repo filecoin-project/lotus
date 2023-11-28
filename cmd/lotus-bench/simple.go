@@ -659,7 +659,7 @@ var simpleWinningPost = &cli.Command{
 			Value: "t01000",
 		},
 		&cli.BoolFlag{
-			Name:  "output-inputs",
+			Name:  "show-inputs",
 			Usage: "output inputs for winning post generation",
 		},
 	},
@@ -733,7 +733,7 @@ var simpleWinningPost = &cli.Command{
 		fmt.Printf("Proof %s (%s)\n", end.Sub(challenge), bps(sectorSize, 1, end.Sub(challenge)))
 		fmt.Println(base64.StdEncoding.EncodeToString(proof[0].ProofBytes))
 
-		if cctx.Bool("output-inputs") {
+		if cctx.Bool("show-inputs") {
 			fmt.Println("GenerateWinningPoStWithVanilla info:")
 
 			fmt.Printf(" wpt: %d\n", wpt)
