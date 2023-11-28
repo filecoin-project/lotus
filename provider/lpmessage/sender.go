@@ -2,7 +2,6 @@ package lpmessage
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -18,10 +17,6 @@ import (
 )
 
 var log = logging.Logger("lpmessage")
-
-type str string // makes ctx value collissions impossible
-
-var CtxTestTaskID str = "task_id"
 
 type SenderAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
@@ -104,14 +99,6 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 
 	var sigMsg *types.SignedMessage
 
-	var idCount int
-	err = s.db.QueryRow(ctx, `SELECT COUNT(*) FROM harmony_test WHERE task_id=$1`,
-		ctx.Value(CtxTestTaskID)).Scan(&idCount)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("reading harmony_test: %w", err)
-	}
-	noSend := idCount == 1
-
 	// start db tx
 	c, err := s.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 		// assign nonce (max(api.MpoolGetNonce, db nonce+1))
@@ -149,28 +136,6 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			return false, xerrors.Errorf("marshaling message: %w", err)
 		}
 
-		if noSend {
-
-			data, err := json.MarshalIndent(map[string]any{
-				"from_key":    fromA.String(),
-				"nonce":       msg.Nonce,
-				"to_addr":     msg.To.String(),
-				"signed_data": data,
-				"signed_json": string(jsonBytes),
-				"signed_cid":  sigMsg.Cid(),
-				"send_reason": reason,
-			}, "", "  ")
-			if err != nil {
-				return false, xerrors.Errorf("marshaling message: %w", err)
-			}
-			id := ctx.Value(CtxTestTaskID)
-			_, err = tx.Exec(`UPDATE harmony_test SET result=$1 WHERE task_id=$2`, string(data), id)
-			if err != nil {
-				return false, xerrors.Errorf("updating harmony_test: %w", err)
-			}
-			log.Infof("SKIPPED sending test message to chain. Query harmony_test WHERE task_id= %v", id)
-			return true, nil // nothing committed
-		}
 		// write to db
 		c, err := tx.Exec(`insert into message_sends (from_key, nonce, to_addr, signed_data, signed_json, signed_cid, send_reason) values ($1, $2, $3, $4, $5, $6, $7)`,
 			fromA.String(), msg.Nonce, msg.To.String(), data, string(jsonBytes), sigMsg.Cid().String(), reason)
@@ -186,9 +151,6 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 	})
 	if err != nil || !c {
 		return cid.Undef, xerrors.Errorf("transaction failed or didn't commit: %w", err)
-	}
-	if noSend {
-		return sigMsg.Cid(), nil
 	}
 
 	// push to mpool

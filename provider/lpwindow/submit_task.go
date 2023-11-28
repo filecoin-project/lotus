@@ -78,12 +78,11 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	var pps, submitAtEpoch, submitByEpoch abi.ChainEpoch
 	var earlyParamBytes []byte
 	var dbTask uint64
-	var testTaskID uint64
 
 	err = w.db.QueryRow(
-		context.Background(), `SELECT sp_id, proving_period_start, deadline, partition, submit_at_epoch, submit_by_epoch, proof_params, submit_task_id, test_task_id
+		context.Background(), `SELECT sp_id, proving_period_start, deadline, partition, submit_at_epoch, submit_by_epoch, proof_params, submit_task_id
 		FROM wdpost_proofs WHERE submit_task_id = $1`, taskID,
-	).Scan(&spID, &pps, &deadline, &partition, &submitAtEpoch, &submitByEpoch, &earlyParamBytes, &dbTask, &testTaskID)
+	).Scan(&spID, &pps, &deadline, &partition, &submitAtEpoch, &submitByEpoch, &earlyParamBytes, &dbTask)
 	if err != nil {
 		return false, xerrors.Errorf("query post proof: %w", err)
 	}
@@ -150,7 +149,7 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 		return false, xerrors.Errorf("preparing proof message: %w", err)
 	}
 
-	ctx := context.WithValue(context.Background(), lpmessage.CtxTestTaskID, testTaskID)
+	ctx := context.Background()
 	smsg, err := w.sender.Send(ctx, msg, mss, "wdpost")
 	if err != nil {
 		return false, xerrors.Errorf("sending proof message: %w", err)

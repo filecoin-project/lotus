@@ -3,6 +3,7 @@ package lpwindow
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -161,13 +162,32 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, xerrors.Errorf("marshaling PoSt: %w", err)
 	}
 
-	testTaskID := 0
 	testTaskIDCt := 0
 	if err = t.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM harmony_test WHERE task_id = $1`, taskID).Scan(&testTaskIDCt); err != nil {
 		return false, xerrors.Errorf("querying for test task: %w", err)
 	}
 	if testTaskIDCt == 1 {
-		testTaskID = int(taskID)
+		// Do not send test tasks to the chain but to harmony_test & stdout.
+
+		data, err := json.MarshalIndent(map[string]any{
+			"sp_id":                spID,
+			"proving_period_start": pps,
+			"deadline":             deadline.Index,
+			"partition":            partIdx,
+			"submit_at_epoch":      deadline.Open,
+			"submit_by_epoch":      deadline.Close,
+			"proof_params":         msgbuf.Bytes(),
+		}, "", "  ")
+		if err != nil {
+			return false, xerrors.Errorf("marshaling message: %w", err)
+		}
+		ctx := context.Background()
+		_, err = t.db.Exec(ctx, `UPDATE harmony_test SET result=$1 WHERE task_id=$2`, string(data), taskID)
+		if err != nil {
+			return false, xerrors.Errorf("updating harmony_test: %w", err)
+		}
+		log.Infof("SKIPPED sending test message to chain. SELECT * FROM harmony_test WHERE task_id= %v", taskID)
+		return true, nil // nothing committed
 	}
 	// Insert into wdpost_proofs table
 	n, err := t.db.Exec(context.Background(),
@@ -178,9 +198,8 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	                           partition,
 	                           submit_at_epoch,
 	                           submit_by_epoch,
-                               proof_params,
-							   test_task_id)
-	    			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                               proof_params)
+	    			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		spID,
 		pps,
 		deadline.Index,
@@ -188,7 +207,6 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		deadline.Open,
 		deadline.Close,
 		msgbuf.Bytes(),
-		testTaskID,
 	)
 
 	if err != nil {
