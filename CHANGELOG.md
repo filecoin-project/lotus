@@ -4,6 +4,8 @@
 - chore: Auto remove local chain data when importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
 - feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
 - feat: sealing: load SectorsSummary from sealing SectorStats instead of calling API each time ([filecoin-project/lotus#11353](https://github.com/filecoin-project/lotus/pull/11353))
+- fix: miner info: Show correct sector state counts ([filecoin-project/lotus#11456](https://github.com/filecoin-project/lotus/pull/11456))
+- feat: add support for specifying block number when calling `eth_estimateGas` ([filecoin-project/lotus#11462](https://github.com/filecoin-project/lotus/pull/11462)).
 
 ## Improvements
 - fix: Add time slicing to splitstore purging step during compaction to reduce lock congestion [filecoin-project/lotus#11269](https://github.com/filecoin-project/lotus/pull/11269)
@@ -13,6 +15,7 @@
 - feat: Unambiguously translate native messages to Ethereum transactions by:
   - Detecting native messages that "look" like Ethereum transactions (creating smart contracts, invoking a smart contract, etc.), and decoding them as such.
   - Otherwise, ABI-encoding the inputs as if they were calls to a `handle_filecoin_method` Solidity method.
+- fix: ensure that the Ethereum API never returns "empty" addresses for native messages. When a "to" address cannot be resolved to a 0x-style address, it will be re-written to `0xff0000000000000000000000ffffffffffffffff`. This can only happen when the native transaction _reverted_ (failing to create an account at the specified "to" address).
 
 # v 1.25.0 / 2023-11-22
 

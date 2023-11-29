@@ -567,6 +567,16 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
           [[if eq $suite "unit-cli"]]get-params: true[[end]]
+          [[- if eq $suite "unit-storage"]]
+          get-params: true
+          [[- end -]]
+          [[- if eq $suite "unit-cli"]]
+          executor: golang-2xl
+          get-params: true
+          [[- end -]]
+          [[- if eq $suite "unit-rest"]]
+          executor: golang-2xl
+          [[- end -]]
       [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"

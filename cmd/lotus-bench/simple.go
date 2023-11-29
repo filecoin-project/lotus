@@ -658,6 +658,10 @@ var simpleWinningPost = &cli.Command{
 			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
 			Value: "t01000",
 		},
+		&cli.BoolFlag{
+			Name:  "show-inputs",
+			Usage: "output inputs for winning post generation",
+		},
 	},
 	ArgsUsage: "[sealed] [cache] [comm R] [sector num]",
 	Action: func(cctx *cli.Context) error {
@@ -728,6 +732,17 @@ var simpleWinningPost = &cli.Command{
 		fmt.Printf("Vanilla %s (%s)\n", challenge.Sub(start), bps(sectorSize, 1, challenge.Sub(start)))
 		fmt.Printf("Proof %s (%s)\n", end.Sub(challenge), bps(sectorSize, 1, end.Sub(challenge)))
 		fmt.Println(base64.StdEncoding.EncodeToString(proof[0].ProofBytes))
+
+		if cctx.Bool("show-inputs") {
+			fmt.Println("GenerateWinningPoStWithVanilla info:")
+
+			fmt.Printf(" wpt: %d\n", wpt)
+			fmt.Printf(" mid: %d\n", mid)
+			fmt.Printf(" rand: %x\n", rand)
+			fmt.Printf(" vp: %x\n", vp)
+			fmt.Printf(" proof: %x\n", proof)
+		}
+
 		return nil
 	},
 }
