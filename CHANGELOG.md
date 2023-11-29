@@ -14,6 +14,7 @@
 - feat: Unambiguously translate native messages to Ethereum transactions by:
   - Detecting native messages that "look" like Ethereum transactions (creating smart contracts, invoking a smart contract, etc.), and decoding them as such.
   - Otherwise, ABI-encoding the inputs as if they were calls to a `handle_filecoin_method` Solidity method.
+- fix: ensure that the Ethereum API never returns "empty" addresses for native messages. When a "to" address cannot be resolved to a 0x-style address, it will be re-written to `0xff0000000000000000000000ffffffffffffffff`. This can only happen when the native transaction _reverted_ (failing to create an account at the specified "to" address).
 
 # v 1.25.0 / 2023-11-22
 
