@@ -3110,7 +3110,8 @@ Response:
     "traceAddress": [
       123
     ],
-    "Type": "string value",
+    "type": "string value",
+    "error": "string value",
     "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
     "blockNumber": 9,
     "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
@@ -3159,7 +3160,8 @@ Response:
         "traceAddress": [
           123
         ],
-        "Type": "string value"
+        "type": "string value",
+        "error": "string value"
       }
     ],
     "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",

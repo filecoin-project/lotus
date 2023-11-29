@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -875,19 +874,21 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
 		}
 		if txHash == nil {
-			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
-			continue
+			return nil, xerrors.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
 		}
 
-		traces := []*ethtypes.EthTrace{}
-		err = buildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), st)
+		env, err := baseEnvironment(st, ir.Msg.From)
 		if err != nil {
-			return nil, xerrors.Errorf("failed building traces: %w", err)
+			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
 
-		traceBlocks := make([]*ethtypes.EthTraceBlock, 0, len(traces))
-		for _, trace := range traces {
-			traceBlocks = append(traceBlocks, &ethtypes.EthTraceBlock{
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		if err != nil {
+			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
+		}
+
+		for _, trace := range env.traces {
+			allTraces = append(allTraces, &ethtypes.EthTraceBlock{
 				EthTrace:            trace,
 				BlockHash:           blkHash,
 				BlockNumber:         int64(ts.Height()),
@@ -895,8 +896,6 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 				TransactionPosition: msgIdx,
 			})
 		}
-
-		allTraces = append(allTraces, traceBlocks...)
 	}
 
 	return allTraces, nil
@@ -934,34 +933,31 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
 		}
 		if txHash == nil {
-			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
-			continue
+			return nil, xerrors.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
 		}
 
-		var output ethtypes.EthBytes
-		invokeCreateOnEAM := ir.Msg.To == builtin.EthereumAddressManagerActorAddr && (ir.Msg.Method == builtin.MethodsEAM.Create || ir.Msg.Method == builtin.MethodsEAM.Create2)
-		if ir.Msg.Method == builtin.MethodsEVM.InvokeContract || invokeCreateOnEAM {
-			output, err = decodePayload(ir.ExecutionTrace.MsgRct.Return, ir.ExecutionTrace.MsgRct.ReturnCodec)
-			if err != nil {
-				return nil, xerrors.Errorf("failed to decode payload: %w", err)
-			}
-		} else {
-			output = encodeFilecoinReturnAsABI(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
+		env, err := baseEnvironment(st, ir.Msg.From)
+		if err != nil {
+			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
 
-		t := ethtypes.EthTraceReplayBlockTransaction{
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		if err != nil {
+			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
+		}
+
+		var output []byte
+		if len(env.traces) > 0 {
+			output = env.traces[0].Result.Output
+		}
+
+		allTraces = append(allTraces, &ethtypes.EthTraceReplayBlockTransaction{
 			Output:          output,
 			TransactionHash: *txHash,
+			Trace:           env.traces,
 			StateDiff:       nil,
 			VmTrace:         nil,
-		}
-
-		err = buildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), st)
-		if err != nil {
-			return nil, xerrors.Errorf("failed building traces: %w", err)
-		}
-
-		allTraces = append(allTraces, &t)
+		})
 	}
 
 	return allTraces, nil
