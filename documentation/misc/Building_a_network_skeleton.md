@@ -24,8 +24,9 @@ Each repository has its own set of steps that need to be followed. This guide wi
 
 1. Add support for the new network version in Ref-FVM:
 
-    - In `fvm/src/gas/price_list.rs` add the new network version to the `price_list_by_network_version` function.
-    - In `fvm/src/machine/default.rs` in the new function of your machine context, you will find a `SUPPORTED_VERSIONS` constant that defines the range of network versions (for networks that are not Hyperspace) supported. Bump this range to support your new network version.
+    - In `fvm/Cargo.toml` add `nvXX-dev` as a feature flag in the [features]-section.
+    - In `fvm/src/gas/price_list.rs`, extend the `price_list_by_network_version` function to support the new network version with the `nvXX-dev` feature flag.
+    - In fvm/src/machine/default.rs, locate the new function within your machine context. You'll find a SUPPORTED_VERSIONS constant that sets the range of supported network versions. Update this range to include the new network version. Do this by replacing the existing feature flag nvXX-dev and NetworkVersion::VXX with the new ones corresponding to your new network version.
     - In `shared/src/version/mod.rs`, in the `NetworkVersion` implementation, you will find a series of constants representing different network versions. To add a new network version, you need to declare a new constant: `pub const (VXX+1): Self = Self(XX+1);` 
 
 You can take a look at [this Ref-FVM PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/1929), which added the skeleton for network version 22.
