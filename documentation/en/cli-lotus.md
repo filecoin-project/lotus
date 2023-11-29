@@ -434,6 +434,7 @@ COMMANDS:
      list-asks     List asks for top miners
      deal-stats    Print statistics about local storage deals
      inspect-deal  Inspect detailed information about deal's lifecycle and the various stages it goes through
+     extend        extend datacap expiration
    UTIL:
      commP             Calculate the piece-cid (commP) of a CAR file
      generate-car      Generate a car file from input
@@ -810,6 +811,26 @@ OPTIONS:
    --deal-id value       (default: 0)
    --proposal-cid value  
    --help, -h            show help
+```
+
+### lotus client extend
+```
+NAME:
+   lotus client extend - extend datacap expiration
+
+USAGE:
+   lotus client extend [command options] <provider address>
+
+CATEGORY:
+   STORAGE
+
+OPTIONS:
+   --max-term value                     datacap max term (default: 0)
+   --claimId value [ --claimId value ]  claim id array
+   --from value                         address to send the message
+   --auto                               automatically select eligible datacap renewals (default: false)
+   --expiration-cutoff value            when use --auto flag, skip datacap whose current expiration is more than <cutoff> epochs from now (infinity if unspecified) (default: 0)
+   --help, -h                           show help
 ```
 
 ### lotus client commP
