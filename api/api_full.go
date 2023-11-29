@@ -904,9 +904,6 @@ type FullNode interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	RaftState(ctx context.Context) (*RaftStateData, error) //perm:read
-	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
-
 	// Actor events
 
 	// GetActorEventsRaw returns all user-programmed and built-in actor events that match the given

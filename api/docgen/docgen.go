@@ -356,10 +356,6 @@ func init() {
 	addExample(map[string]bitfield.BitField{
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
-	addExample(&api.RaftStateData{
-		NonceMap: make(map[address.Address]uint64),
-		MsgUuids: make(map[uuid.UUID]*types.SignedMessage),
-	})
 
 	addExample(http.Header{
 		"Authorization": []string{"Bearer ey.."},
