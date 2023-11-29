@@ -106,7 +106,6 @@ func DefaultFullNode() *FullNode {
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},
 		},
-		Cluster: *DefaultUserRaftConfig(),
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
@@ -327,28 +326,6 @@ const (
 	// worker. The scheduler may assign any task to this worker.
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
-
-var (
-	DefaultDataSubFolder        = "raft"
-	DefaultWaitForLeaderTimeout = 15 * time.Second
-	DefaultCommitRetries        = 1
-	DefaultNetworkTimeout       = 100 * time.Second
-	DefaultCommitRetryDelay     = 200 * time.Millisecond
-	DefaultBackupsRotate        = 6
-)
-
-func DefaultUserRaftConfig() *UserRaftConfig {
-	var cfg UserRaftConfig
-	cfg.DataFolder = "" // empty so it gets omitted
-	cfg.InitPeersetMultiAddr = []string{}
-	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
-	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
-	cfg.CommitRetries = DefaultCommitRetries
-	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
-	cfg.BackupsRotate = DefaultBackupsRotate
-
-	return &cfg
-}
 
 func DefaultLotusProvider() *LotusProviderConfig {
 	return &LotusProviderConfig{
