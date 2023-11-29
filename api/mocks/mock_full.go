@@ -1042,18 +1042,18 @@ func (mr *MockFullNodeMockRecorder) EthChainId(arg0 interface{}) *gomock.Call {
 }
 
 // EthEstimateGas mocks base method.
-func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 ethtypes.EthCall, arg2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
+func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1)
 	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EthEstimateGas indicates an expected call of EthEstimateGas.
-func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthEstimateGas", reflect.TypeOf((*MockFullNode)(nil).EthEstimateGas), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthEstimateGas", reflect.TypeOf((*MockFullNode)(nil).EthEstimateGas), arg0, arg1)
 }
 
 // EthFeeHistory mocks base method.

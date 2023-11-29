@@ -66,7 +66,7 @@ type EthModuleAPI interface {
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
-	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error)
+	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error)
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
@@ -1007,8 +1007,13 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	return res, nil
 }
 
-func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
-	msg, err := ethCallToFilecoinMessage(ctx, tx)
+func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
+	if err != nil {
+		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
+	}
+
+	msg, err := ethCallToFilecoinMessage(ctx, params.Tx)
 	if err != nil {
 		return ethtypes.EthUint64(0), err
 	}
@@ -1017,9 +1022,14 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall, blk
 	// gas estimation actually run.
 	msg.GasLimit = 0
 
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blkParam)
-	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+	var ts *types.TipSet
+	if params.BlkParam == nil {
+		ts = a.Chain.GetHeaviestTipSet()
+	} else {
+		ts, err = getTipsetByEthBlockNumberOrHash(ctx, a.Chain, *params.BlkParam)
+		if err != nil {
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", params.BlkParam, err)
+		}
 	}
 
 	gassedMsg, err := a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
