@@ -478,7 +478,8 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof
 	}
 
 	buf := make([]byte, usize)
-	_, _ = rand.Read(buf) // nolint:gosec lint:ignore SA1019 we need predictable "randomness" here
+	// lint:ignore SA1019 we need predictable "randomness" here
+	_, _ = rand.Read(buf) // nolint:gosec
 
 	id := storiface.SectorRef{
 		ID: abi.SectorID{
