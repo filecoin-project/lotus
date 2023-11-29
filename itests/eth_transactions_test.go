@@ -45,10 +45,14 @@ func TestValueTransferValidSignature(t *testing.T) {
 
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
 
-	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
-	}})
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{
+		Tx: ethtypes.EthCall{
+			From: &ethAddr,
+			Data: contract,
+		},
+		BlkParam: &blkParam,
+	})
 	require.NoError(t, err)
 
 	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
