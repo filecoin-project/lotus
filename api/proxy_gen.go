@@ -453,10 +453,6 @@ type FullNodeMethods struct {
 
 	PaychVoucherSubmit func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) `perm:"sign"`
 
-	RaftLeader func(p0 context.Context) (peer.ID, error) `perm:"read"`
-
-	RaftState func(p0 context.Context) (*RaftStateData, error) `perm:"read"`
-
 	StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
 	StateActorCodeCIDs func(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) `perm:"read"`
@@ -3221,28 +3217,6 @@ func (s *FullNodeStruct) PaychVoucherSubmit(p0 context.Context, p1 address.Addre
 
 func (s *FullNodeStub) PaychVoucherSubmit(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) {
 	return *new(cid.Cid), ErrNotSupported
-}
-
-func (s *FullNodeStruct) RaftLeader(p0 context.Context) (peer.ID, error) {
-	if s.Internal.RaftLeader == nil {
-		return *new(peer.ID), ErrNotSupported
-	}
-	return s.Internal.RaftLeader(p0)
-}
-
-func (s *FullNodeStub) RaftLeader(p0 context.Context) (peer.ID, error) {
-	return *new(peer.ID), ErrNotSupported
-}
-
-func (s *FullNodeStruct) RaftState(p0 context.Context) (*RaftStateData, error) {
-	if s.Internal.RaftState == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.RaftState(p0)
-}
-
-func (s *FullNodeStub) RaftState(p0 context.Context) (*RaftStateData, error) {
-	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {

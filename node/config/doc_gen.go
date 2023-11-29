@@ -479,12 +479,6 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 		{
-			Name: "Cluster",
-			Type: "UserRaftConfig",
-
-			Comment: ``,
-		},
-		{
 			Name: "Fevm",
 			Type: "FevmConfig",
 
@@ -1426,68 +1420,6 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 			Type: "DAGStoreConfig",
 
 			Comment: ``,
-		},
-	},
-	"UserRaftConfig": []DocField{
-		{
-			Name: "ClusterModeEnabled",
-			Type: "bool",
-
-			Comment: `EXPERIMENTAL. config to enabled node cluster with raft consensus`,
-		},
-		{
-			Name: "DataFolder",
-			Type: "string",
-
-			Comment: `A folder to store Raft's data.`,
-		},
-		{
-			Name: "InitPeersetMultiAddr",
-			Type: "[]string",
-
-			Comment: `InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
-peers (with no prior state). It is ignored when Raft was already
-initialized or when starting in staging mode.`,
-		},
-		{
-			Name: "WaitForLeaderTimeout",
-			Type: "Duration",
-
-			Comment: `LeaderTimeout specifies how long to wait for a leader before
-failing an operation.`,
-		},
-		{
-			Name: "NetworkTimeout",
-			Type: "Duration",
-
-			Comment: `NetworkTimeout specifies how long before a Raft network
-operation is timed out`,
-		},
-		{
-			Name: "CommitRetries",
-			Type: "int",
-
-			Comment: `CommitRetries specifies how many times we retry a failed commit until
-we give up.`,
-		},
-		{
-			Name: "CommitRetryDelay",
-			Type: "Duration",
-
-			Comment: `How long to wait between retries`,
-		},
-		{
-			Name: "BackupsRotate",
-			Type: "int",
-
-			Comment: `BackupsRotate specifies the maximum number of Raft's DataFolder
-copies that we keep as backups (renaming) after cleanup.`,
-		},
-		{
-			Name: "Tracing",
-			Type: "bool",
-
-			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
 		},
 	},
 	"Wallet": []DocField{
