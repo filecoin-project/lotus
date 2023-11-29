@@ -3,6 +3,7 @@ package itests
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -47,10 +48,17 @@ func TestValueTransferValidSignature(t *testing.T) {
 
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{
+		Tx: ethtypes.EthCall{
+			From: &ethAddr,
+			Data: contract,
+		},
+		BlkParam: &blkParam,
 	})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -234,11 +242,14 @@ func TestContractInvocation(t *testing.T) {
 	params, err := hex.DecodeString("f8b2cb4f000000000000000000000000ff00000000000000000000000000000000000064")
 	require.NoError(t, err)
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		To:   &contractAddr,
 		Data: params,
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -353,10 +364,15 @@ func TestGetBlockByNumber(t *testing.T) {
 }
 
 func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthTxArgs, error) {
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}})
+	if err != nil {
+		return nil, err
+	}
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	if err != nil {
 		return nil, err
 	}

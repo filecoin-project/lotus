@@ -353,13 +353,19 @@ func (gw *Node) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt
 	return gw.target.EthMaxPriorityFeePerGas(ctx)
 }
 
-func (gw *Node) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error) {
+func (gw *Node) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+	// validate params
+	_, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
+	if err != nil {
+		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
+	}
+
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return 0, err
 	}
 
 	// todo limit gas? to what?
-	return gw.target.EthEstimateGas(ctx, tx)
+	return gw.target.EthEstimateGas(ctx, p)
 }
 
 func (gw *Node) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {

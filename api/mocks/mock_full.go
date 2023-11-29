@@ -1042,7 +1042,7 @@ func (mr *MockFullNodeMockRecorder) EthChainId(arg0 interface{}) *gomock.Call {
 }
 
 // EthEstimateGas mocks base method.
-func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 ethtypes.EthCall) (ethtypes.EthUint64, error) {
+func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 jsonrpc.RawParams) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1)
 	ret0, _ := ret[0].(ethtypes.EthUint64)

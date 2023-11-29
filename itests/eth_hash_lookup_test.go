@@ -3,6 +3,7 @@ package itests
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -47,10 +48,13 @@ func TestTransactionHashLookup(t *testing.T) {
 	// send some funds to the f410 address
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -350,10 +354,13 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 	// send some funds to the f410 address
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
