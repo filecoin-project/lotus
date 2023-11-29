@@ -5,5 +5,8 @@ import (
 )
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
-	return upgradeEpoch >= 0 && epoch > upgradeEpoch-Finality && epoch < upgradeEpoch+Finality
+	if upgradeEpoch < 0 {
+		return false
+	}
+	return epoch > upgradeEpoch-Finality && epoch < upgradeEpoch+Finality
 }
