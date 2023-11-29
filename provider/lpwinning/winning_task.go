@@ -486,9 +486,7 @@ func (mb MiningBase) baseTime() time.Time {
 }
 
 func (mb MiningBase) afterPropDelay() time.Time {
-	base := mb.baseTime()
-	base.Add(randTimeOffset(time.Second))
-	return base
+	return mb.baseTime().Add(randTimeOffset(time.Second))
 }
 
 func (t *WinPostTask) mineBasic(ctx context.Context) {

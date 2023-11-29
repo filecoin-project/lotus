@@ -134,7 +134,9 @@ func fromMiner(cctx *cli.Context) (err error) {
 	if err != nil {
 		return xerrors.Errorf("opening miner metadata datastore: %w", err)
 	}
-	defer mmeta.Close()
+	defer func() {
+		_ = mmeta.Close()
+	}()
 
 	maddrBytes, err := mmeta.Get(ctx, datastore.NewKey("miner-address"))
 	if err != nil {
