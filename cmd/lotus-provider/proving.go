@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -36,6 +37,11 @@ var wdPostCmd = &cli.Command{
 	},
 }
 
+// wdPostTaskCmd writes to harmony_task and wdpost_partition_tasks, then waits for the result.
+// It is intended to be used to test the windowpost scheduler.
+// The end of the compute task puts the task_id onto wdpost_proofs, which is read by the submit task.
+// The submit task will not send test tasks to the chain, and instead will write the result to harmony_test.
+// The result is read by this command, and printed to stdout.
 var wdPostTaskCmd = &cli.Command{
 	Name:    "task",
 	Aliases: []string{"scheduled", "schedule", "async", "asynchronous"},
@@ -74,16 +80,12 @@ var wdPostTaskCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("cannot get miner id %w", err)
 		}
-		did, err := deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
-			_, err = tx.Exec(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123)`)
+		var id int64
+		_, err = deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+			err = tx.QueryRow(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123) RETURNING id`).Scan(&id)
 			if err != nil {
 				log.Error("inserting harmony_task: ", err)
 				return false, xerrors.Errorf("inserting harmony_task: %w", err)
-			}
-			var id int64
-			if err = tx.QueryRow(`SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1`).Scan(&id); err != nil {
-				log.Error("getting inserted id: ", err)
-				return false, xerrors.Errorf("getting inserted id: %w", err)
 			}
 			_, err = tx.Exec(`INSERT INTO wdpost_partition_tasks 
 			(task_id, sp_id, proving_period_start, deadline_index, partition_index) VALUES ($1, $2, $3, $4, $5)`,
@@ -101,12 +103,27 @@ var wdPostTaskCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("writing SQL transaction: %w", err)
 		}
-		log.Infof("Inserted task %v", did)
-		log.Infof("Check your lotus-provider logs for more details.")
+		fmt.Printf("Inserted task %v. Waiting for success ", id)
+		var result string
+		for {
+			time.Sleep(time.Second)
+			err = deps.db.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, id).Scan(&result)
+			if err != nil {
+				return xerrors.Errorf("reading result from harmony_test: %w", err)
+			}
+			if result != "" {
+				break
+			}
+			fmt.Print(".")
+		}
+		log.Infof("Result:", result)
 		return nil
 	},
 }
 
+// This command is intended to be used to verify PoSt compute performance.
+// It will not send any messages to the chain. Since it can compute any deadline, output may be incorrectly timed for the chain.
+// The entire processing happens in this process while you wait. It does not use the scheduler.
 var wdPostHereCmd = &cli.Command{
 	Name:    "here",
 	Aliases: []string{"cli"},

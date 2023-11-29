@@ -3,6 +3,7 @@ package lpwindow
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -161,6 +162,33 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		return false, xerrors.Errorf("marshaling PoSt: %w", err)
 	}
 
+	testTaskIDCt := 0
+	if err = t.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM harmony_test WHERE task_id = $1`, taskID).Scan(&testTaskIDCt); err != nil {
+		return false, xerrors.Errorf("querying for test task: %w", err)
+	}
+	if testTaskIDCt == 1 {
+		// Do not send test tasks to the chain but to harmony_test & stdout.
+
+		data, err := json.MarshalIndent(map[string]any{
+			"sp_id":                spID,
+			"proving_period_start": pps,
+			"deadline":             deadline.Index,
+			"partition":            partIdx,
+			"submit_at_epoch":      deadline.Open,
+			"submit_by_epoch":      deadline.Close,
+			"proof_params":         msgbuf.Bytes(),
+		}, "", "  ")
+		if err != nil {
+			return false, xerrors.Errorf("marshaling message: %w", err)
+		}
+		ctx := context.Background()
+		_, err = t.db.Exec(ctx, `UPDATE harmony_test SET result=$1 WHERE task_id=$2`, string(data), taskID)
+		if err != nil {
+			return false, xerrors.Errorf("updating harmony_test: %w", err)
+		}
+		log.Infof("SKIPPED sending test message to chain. SELECT * FROM harmony_test WHERE task_id= %v", taskID)
+		return true, nil // nothing committed
+	}
 	// Insert into wdpost_proofs table
 	n, err := t.db.Exec(context.Background(),
 		`INSERT INTO wdpost_proofs (
@@ -178,7 +206,8 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		partIdx,
 		deadline.Open,
 		deadline.Close,
-		msgbuf.Bytes())
+		msgbuf.Bytes(),
+	)
 
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to insert into wdpost_proofs: %v", err)

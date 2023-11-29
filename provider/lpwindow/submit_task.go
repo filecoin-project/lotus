@@ -149,7 +149,7 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 		return false, xerrors.Errorf("preparing proof message: %w", err)
 	}
 
-	ctx := context.WithValue(context.Background(), lpmessage.CtxTaskID, taskID)
+	ctx := context.Background()
 	smsg, err := w.sender.Send(ctx, msg, mss, "wdpost")
 	if err != nil {
 		return false, xerrors.Errorf("sending proof message: %w", err)

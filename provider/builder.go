@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -19,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var log = logging.Logger("provider")
+//var log = logging.Logger("provider")
 
 func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
 	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker,
