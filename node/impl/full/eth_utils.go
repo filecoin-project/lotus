@@ -520,7 +520,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 	to, err := lookupEthAddress(msg.To, st)
 	if err != nil {
 		if !errors.Is(err, types.ErrActorNotFound) {
-			return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup receiver address %s when convertin a native message to an eth txn: %w", msg.To, err)
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup receiver address %s when converting a native message to an eth txn: %w", msg.To, err)
 		}
 		to = revertedEthAddress
 	}
