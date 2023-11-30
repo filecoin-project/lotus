@@ -232,52 +232,52 @@ func OnSingleNode(ctx context.Context) context.Context {
 	return context.WithValue(ctx, contextKey("retry-node"), new(*int))
 }
 
-func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
+const initialBackoff = time.Second
+
+func FullNodeProxy(ins []api.FullNode, outstr *api.FullNodeStruct) {
 	outs := api.GetInternalStructs(outstr)
 
-	var rins []reflect.Value
+	var apiProviders []reflect.Value
 	for _, in := range ins {
-		rins = append(rins, reflect.ValueOf(in))
+		apiProviders = append(apiProviders, reflect.ValueOf(in))
 	}
 
 	for _, out := range outs {
-		rProxyInternal := reflect.ValueOf(out).Elem()
+		rOutStruct := reflect.ValueOf(out).Elem()
 
-		for f := 0; f < rProxyInternal.NumField(); f++ {
-			field := rProxyInternal.Type().Field(f)
+		for f := 0; f < rOutStruct.NumField(); f++ {
+			field := rOutStruct.Type().Field(f)
 
-			var fns []reflect.Value
-			for _, rin := range rins {
-				fns = append(fns, rin.MethodByName(field.Name))
+			var providerFuncs []reflect.Value
+			for _, rin := range apiProviders {
+				providerFuncs = append(providerFuncs, rin.MethodByName(field.Name))
 			}
 
-			rProxyInternal.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+			rOutStruct.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
 				errorsToRetry := []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
-				initialBackoff, err := time.ParseDuration("1s")
-				if err != nil {
-					return nil
-				}
 
 				ctx := args[0].Interface().(context.Context)
 
-				curr := -1
+				preferredProvider := new(int)
 
 				// for calls that need to be performed on the same node
 				// primarily for miner when calling create block and submit block subsequently
 				key := contextKey("retry-node")
 				if ctx.Value(key) != nil {
 					if (*ctx.Value(key).(**int)) == nil {
-						*ctx.Value(key).(**int) = &curr
+						*ctx.Value(key).(**int) = preferredProvider
 					} else {
-						curr = **ctx.Value(key).(**int) - 1
+						preferredProvider = *ctx.Value(key).(**int)
 					}
 				}
 
-				total := len(rins)
-				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() ([]reflect.Value, error) {
-					curr = (curr + 1) % total
+				total := len(apiProviders)
+				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func(isRetry bool) ([]reflect.Value, error) {
+					if isRetry {
+						*preferredProvider = (*preferredProvider + 1) % total
+					}
 
-					result := fns[curr].Call(args)
+					result := providerFuncs[*preferredProvider].Call(args)
 					if result[len(result)-1].IsNil() {
 						return result, nil
 					}
