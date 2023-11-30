@@ -24,6 +24,8 @@ import (
 
 var log = logging.Logger("lpmessage")
 
+var SendLockedWait = 100 * time.Millisecond
+
 type SenderAPI interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
@@ -107,7 +109,7 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 
 		// we didn't get the lock, wait a bit and try again
 		log.Infow("waiting for send lock", "task_id", taskID, "from", dbMsg.FromKey)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(SendLockedWait)
 	}
 
 	// defer release db send lock
@@ -331,13 +333,6 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 	)
 
 	for {
-		time.Sleep(pollInterval)
-		pollLoops++
-		pollInterval *= time.Duration(pollIntervalMul)
-		if pollInterval > maxPollInterval {
-			pollInterval = maxPollInterval
-		}
-
 		var err error
 		var sigCidStr, sendError string
 		var sendSuccess *bool
@@ -348,6 +343,13 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		}
 
 		if sendSuccess == nil {
+			time.Sleep(pollInterval)
+			pollLoops++
+			pollInterval *= time.Duration(pollIntervalMul)
+			if pollInterval > maxPollInterval {
+				pollInterval = maxPollInterval
+			}
+
 			continue
 		}
 
