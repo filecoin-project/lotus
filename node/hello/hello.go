@@ -100,23 +100,13 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		}
 	}()
 
-	protos, err := hs.h.Peerstore().GetProtocols(s.Conn().RemotePeer())
-	if err != nil {
-		log.Warnf("got error from peerstore.GetProtocols: %s", err)
-	}
-	if len(protos) == 0 {
-		log.Warn("other peer hasnt completed libp2p identify, waiting a bit")
-		// TODO: this better
-		build.Clock.Sleep(time.Millisecond * 300)
-	}
-
 	if hs.pmgr != nil {
 		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
 
 	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
-		log.Errorf("failed to fetch tipset from peer during hello: %+v", err)
+		log.Debugf("failed to fetch tipset from peer during hello: %+v", err)
 		return
 	}
 
