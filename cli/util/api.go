@@ -245,7 +245,7 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	providerCount := len(ins)
 
 	var healthyLk sync.Mutex
-	unhealthyProviders := make([]bool, 0, providerCount)
+	unhealthyProviders := make([]bool, providerCount)
 
 	nextHealthyProvider := func(start int) int {
 		healthyLk.Lock()
@@ -319,6 +319,7 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 		}
 	}()
 
+	// populate output api proxy
 	outs := api.GetInternalStructs(outstr)
 
 	var apiProviders []reflect.Value
