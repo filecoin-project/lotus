@@ -56,6 +56,8 @@ var ddls = []string{
 		value BLOB NOT NULL
 	)`,
 
+	`CREATE INDEX IF NOT EXISTS event_entry_key_index ON event_entry (key)`,
+
 	// metadata containing version of schema
 	`CREATE TABLE IF NOT EXISTS _meta (
     	version UINT64 NOT NULL UNIQUE
@@ -63,6 +65,7 @@ var ddls = []string{
 
 	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
 	`INSERT OR IGNORE INTO _meta (version) VALUES (2)`,
+	`INSERT OR IGNORE INTO _meta (version) VALUES (3)`,
 }
 
 var (
@@ -70,7 +73,7 @@ var (
 )
 
 const (
-	schemaVersion = 2
+	schemaVersion = 3
 
 	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
 	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
@@ -319,6 +322,21 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 			}
 
 			version = 2
+		}
+
+		if version == 2 {
+			log.Infof("upgrading event index from version 1 to version 2")
+
+			// to upgrade to version 3 we only need to create an index on the event entries table (key) column
+			// which means we can just reapply the schema (it will not have any effect on existing data)
+			for _, ddl := range ddls {
+				if _, err := db.Exec(ddl); err != nil {
+					_ = db.Close()
+					return nil, xerrors.Errorf("could not upgrade index to version 3, exec ddl %q: %w", ddl, err)
+				}
+			}
+
+			version = 3
 		}
 
 		if version != schemaVersion {
