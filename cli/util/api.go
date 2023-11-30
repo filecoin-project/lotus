@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"reflect"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -233,8 +234,51 @@ func OnSingleNode(ctx context.Context) context.Context {
 }
 
 const initialBackoff = time.Second
+const maxRetryAttempts = 5
 
-func FullNodeProxy(ins []api.FullNode, outstr *api.FullNodeStruct) {
+var errorsToRetry = []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
+
+func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
+	providerCount := len(ins)
+
+	var healthyLk sync.Mutex
+	unhealthyProviders := make([]bool, 0, providerCount)
+
+	nextHealthyProvider := func(start int) int {
+		healthyLk.Lock()
+		defer healthyLk.Unlock()
+
+		for i := 0; i < providerCount; i++ {
+			idx := (start + i) % providerCount
+			if !unhealthyProviders[idx] {
+				return idx
+			}
+		}
+		return -1
+	}
+
+	// watch provider health
+	go func() {
+		// don't bother for short-running commands
+		time.Sleep(250 * time.Millisecond)
+
+		for {
+			for i := 0; i < providerCount; i++ {
+				// todo chain height heuristic
+
+				toctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // todo better timeout
+				_, err := ins[i].Version(toctx)
+				cancel()
+
+				healthyLk.Lock()
+				unhealthyProviders[i] = err != nil
+				healthyLk.Unlock()
+			}
+
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
 	outs := api.GetInternalStructs(outstr)
 
 	var apiProviders []reflect.Value
@@ -254,11 +298,10 @@ func FullNodeProxy(ins []api.FullNode, outstr *api.FullNodeStruct) {
 			}
 
 			rOutStruct.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
-				errorsToRetry := []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
-
 				ctx := args[0].Interface().(context.Context)
 
 				preferredProvider := new(int)
+				*preferredProvider = nextHealthyProvider(0)
 
 				// for calls that need to be performed on the same node
 				// primarily for miner when calling create block and submit block subsequently
@@ -271,10 +314,14 @@ func FullNodeProxy(ins []api.FullNode, outstr *api.FullNodeStruct) {
 					}
 				}
 
-				total := len(apiProviders)
-				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func(isRetry bool) ([]reflect.Value, error) {
+				result, _ := retry.Retry(ctx, maxRetryAttempts, initialBackoff, errorsToRetry, func(isRetry bool) ([]reflect.Value, error) {
 					if isRetry {
-						*preferredProvider = (*preferredProvider + 1) % total
+						//*preferredProvider = (*preferredProvider + 1) % len(apiProviders)
+						pp := nextHealthyProvider(*preferredProvider + 1)
+						if pp == -1 {
+							return nil, xerrors.Errorf("no healthy providers")
+						}
+						*preferredProvider = pp
 					}
 
 					result := providerFuncs[*preferredProvider].Call(args)
