@@ -4,16 +4,14 @@ After=network-online.target
 Requires=network-online.target
 
 [Service]
-Environment=GOLOG_FILE="/var/log/lotus/daemon.log"
-Environment=GOLOG_LOG_FMT="json"
-ExecStart=/usr/local/bin/lotus daemon
+User=lotus
+Group=lotus
+ExecStartPre=/usr/bin/lotus-init.sh
+ExecStart=/usr/bin/lotus daemon
+Environment=LOTUS_PATH=/var/lib/lotus
 Restart=always
-RestartSec=10
-
-MemoryAccounting=true
-MemoryHigh=8G
-MemoryMax=10G
-LimitNOFILE=8192:10240
+RestartSec=30
+TimeoutSec=infinity
 
 [Install]
 WantedBy=multi-user.target

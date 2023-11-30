@@ -15,6 +15,13 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
+DESTDIR?=/
+PREFIX?=/usr
+
+BINDIR=$(DESTDIR)$(PREFIX)/bin
+SYSTEMDDIR=$(DESTDIR)/usr/lib/systemd/system
+SHAREDIR=$(DESTDIR)$(PREFIX)/share
+
 # git modules that need to be loaded
 MODULES:=
 
@@ -121,19 +128,28 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker
+install: install-daemon install-miner install-worker install-services install-completions
 
-install-daemon:
-	install -C ./lotus /usr/local/bin/lotus
+install-daemon: lotus
+	install -D -s -m 755 ./lotus $(BINDIR)/lotus
+	install -D -C -m 755 ./scripts/lotus-init.sh $(BINDIR)/lotus-init.sh
 
-install-miner:
-	install -C ./lotus-miner /usr/local/bin/lotus-miner
+install-miner: lotus-miner
+	install -D -s -m 755 ./lotus-miner $(BINDIR)/lotus-miner
 
-install-worker:
-	install -C ./lotus-worker /usr/local/bin/lotus-worker
+install-worker: lotus-worker
+	install -D -s -m 755 ./lotus-worker $(BINDIR)/lotus-worker
 
-install-app:
-	install -C ./$(APP) /usr/local/bin/$(APP)
+uninstall-daemon:
+	rm $(BINDIR)/lotus
+
+uninstall-lotus-miner:
+	rm $(BINDIR)/lotus-miner
+
+uninstall-lotus-worker:
+	rm $(BINDIR)/lotus-worker
+
+uninstall-daemons: uninstall-daemon uninstall-lotus-miner uninstall-lotus-worker
 
 uninstall: uninstall-daemon uninstall-miner uninstall-worker
 .PHONY: uninstall
@@ -226,53 +242,48 @@ BINS+=lotus-sim
 # SYSTEMD
 
 install-daemon-service: install-daemon
-	mkdir -p /etc/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-daemon.service /etc/systemd/system/lotus-daemon.service
-	systemctl daemon-reload
+	install -D -C -m 0644 ./scripts/lotus-daemon.service $(SYSTEMDDIR)/lotus-daemon.service
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus install $?
 	@echo
 	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
 
 install-miner-service: install-miner install-daemon-service
-	mkdir -p /etc/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-miner.service /etc/systemd/system/lotus-miner.service
-	systemctl daemon-reload
+	install -D -C -m 0644 ./scripts/lotus-miner.service $(SYSTEMDDIR)/lotus-miner.service
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus-miner install $?
 	@echo
 	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
 
-install-main-services: install-miner-service
 
-install-all-services: install-main-services
+uninstall-daemon-service:
+	systemctl stop lotus-daemon || echo failed to stop lotus-daemon $?
+	systemctl disable lotus-daemon || echo failed to disable lotus-daemon $?
+	rm -f $(SYSTEMDDIR)/lotus-daemon.service
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus uninstall $?
 
-install-services: install-main-services
+uninstall-miner-service:
+	systemctl stop lotus-miner || echo failed to stop lotus-miner $?
+	systemctl disable lotus-miner || echo failed to disable lotus-miner $?
+	rm -f $(SYSTEMDDIR)/lotus-miner.service
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus-miner uninstall $?
 
-clean-daemon-service: clean-miner-service
-	-systemctl stop lotus-daemon
-	-systemctl disable lotus-daemon
-	rm -f /etc/systemd/system/lotus-daemon.service
-	systemctl daemon-reload
 
-clean-miner-service:
-	-systemctl stop lotus-miner
-	-systemctl disable lotus-miner
-	rm -f /etc/systemd/system/lotus-miner.service
-	systemctl daemon-reload
+install-services: install-daemon-service install-miner-service
 
-clean-main-services: clean-daemon-service
+uninstall-services: uninstall-daemon-service uninstall-miner-service
 
-clean-all-services: clean-main-services
-
-clean-services: clean-all-services
+uninstall: uninstall-daemons uninstall-services uninstall-completions
 
 # MISC
 
 buildall: $(BINS)
 
 install-completions:
-	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
-	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
-	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
+	install -D -C ./scripts/bash-completion/lotus $(SHAREDIR)/bash-completion/completions/lotus
+	install -D -C ./scripts/zsh-completion/lotus $(SHAREDIR)/zsh/site-functions/_lotus
+
+uninstall-completions:
+	rm $(SHAREDIR)/bash-completion/completions/lotus
+	rm $(SHAREDIR)/zsh/site-functions/_lotus
 
 clean:
 	rm -rf $(CLEAN) $(BINS)
