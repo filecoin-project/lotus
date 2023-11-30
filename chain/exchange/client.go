@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"go.opencensus.io/trace"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -394,18 +393,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 			}
 		}
 	}()
-	// -- TRACE --
-
-	supported, err := c.host.Peerstore().SupportsProtocols(peer, ChainExchangeProtocolID)
-	if err != nil {
-		c.RemovePeer(peer)
-		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
-	}
-	if len(supported) == 0 || (supported[0] != ChainExchangeProtocolID) {
-		return nil, xerrors.Errorf("peer %s does not support protocols %s",
-			peer, []string{ChainExchangeProtocolID})
-	}
-
+// -- TRACE --
 	connectionStart := build.Clock.Now()
 
 	// Open stream to peer.
