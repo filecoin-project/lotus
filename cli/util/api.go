@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -241,6 +242,8 @@ const maxBehinhBestHealthy = 1
 
 var errorsToRetry = []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
 
+const preferredAllBad = -1
+
 func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	providerCount := len(ins)
 
@@ -257,7 +260,7 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 				return idx
 			}
 		}
-		return -1
+		return preferredAllBad
 	}
 
 	// watch provider health
@@ -290,7 +293,7 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 						unhealthyProviders[i] = true
 						healthyLk.Unlock()
 
-						log.Warnw("rpc check chain head call failed", "fail_type", "rpc_error", "provider", i, "error", err)
+						log.Errorw("rpc check chain head call failed", "fail_type", "rpc_error", "provider", i, "error", err)
 						return
 					}
 
@@ -302,10 +305,10 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 					if bestKnownTipset != nil {
 						// if we're behind the best tipset, mark as unhealthy
-						unhealthyProviders[i] = ch.Height() >= bestKnownTipset.Height()-maxBehinhBestHealthy
+						unhealthyProviders[i] = ch.Height() < bestKnownTipset.Height()-maxBehinhBestHealthy
 
 						if unhealthyProviders[i] {
-							log.Warnw("rpc check chain head call failed", "fail_type", "behind_best", "provider", i, "height", ch.Height(), "best_height", bestKnownTipset.Height())
+							log.Errorw("rpc check chain head call failed", "fail_type", "behind_best", "provider", i, "height", ch.Height(), "best_height", bestKnownTipset.Height())
 						}
 					}
 					healthyLk.Unlock()
@@ -348,6 +351,10 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 				preferredProvider := new(int)
 				*preferredProvider = nextHealthyProvider(0)
+				if *preferredProvider == preferredAllBad {
+					// select at random, retry will do it's best..
+					*preferredProvider = rand.Intn(providerCount)
+				}
 
 				// for calls that need to be performed on the same node
 				// primarily for miner when calling create block and submit block subsequently
