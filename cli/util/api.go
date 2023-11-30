@@ -19,11 +19,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/retry"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -235,6 +237,7 @@ func OnSingleNode(ctx context.Context) context.Context {
 
 const initialBackoff = time.Second
 const maxRetryAttempts = 5
+const maxBehinhBestHealthy = 1
 
 var errorsToRetry = []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
 
@@ -259,21 +262,58 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 	// watch provider health
 	go func() {
+		if len(ins) == 1 {
+			// not like we have any onter node to go to..
+			return
+		}
+
 		// don't bother for short-running commands
 		time.Sleep(250 * time.Millisecond)
 
+		var bestKnownTipset, nextBestKnownTipset *types.TipSet
+
 		for {
+			var wg sync.WaitGroup
+			wg.Add(providerCount)
+
 			for i := 0; i < providerCount; i++ {
-				// todo chain height heuristic
+				go func(i int) {
+					defer wg.Done()
 
-				toctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // todo better timeout
-				_, err := ins[i].Version(toctx)
-				cancel()
+					toctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // todo better timeout
+					ch, err := ins[i].ChainHead(toctx)
+					cancel()
 
-				healthyLk.Lock()
-				unhealthyProviders[i] = err != nil
-				healthyLk.Unlock()
+					// error is definitely not healthy
+					if err != nil {
+						healthyLk.Lock()
+						unhealthyProviders[i] = true
+						healthyLk.Unlock()
+
+						log.Warnw("rpc check chain head call failed", "fail_type", "rpc_error", "provider", i, "error", err)
+						return
+					}
+
+					healthyLk.Lock()
+					// maybe set best next
+					if nextBestKnownTipset == nil || big.Cmp(ch.ParentWeight(), nextBestKnownTipset.ParentWeight()) > 0 || len(ch.Blocks()) > len(nextBestKnownTipset.Blocks()) {
+						nextBestKnownTipset = ch
+					}
+
+					if bestKnownTipset != nil {
+						// if we're behind the best tipset, mark as unhealthy
+						unhealthyProviders[i] = ch.Height() >= bestKnownTipset.Height()-maxBehinhBestHealthy
+
+						if unhealthyProviders[i] {
+							log.Warnw("rpc check chain head call failed", "fail_type", "behind_best", "provider", i, "height", ch.Height(), "best_height", bestKnownTipset.Height())
+						}
+					}
+					healthyLk.Unlock()
+				}(i)
 			}
+
+			wg.Wait()
+			bestKnownTipset = nextBestKnownTipset
 
 			time.Sleep(5 * time.Second)
 		}
@@ -316,7 +356,6 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 				result, _ := retry.Retry(ctx, maxRetryAttempts, initialBackoff, errorsToRetry, func(isRetry bool) ([]reflect.Value, error) {
 					if isRetry {
-						//*preferredProvider = (*preferredProvider + 1) % len(apiProviders)
 						pp := nextHealthyProvider(*preferredProvider + 1)
 						if pp == -1 {
 							return nil, xerrors.Errorf("no healthy providers")
