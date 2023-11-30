@@ -261,7 +261,7 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	}
 
 	// watch provider health
-	go func() {
+	startWatch := func() {
 		if len(ins) == 1 {
 			// not like we have any onter node to go to..
 			return
@@ -317,7 +317,8 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 			time.Sleep(5 * time.Second)
 		}
-	}()
+	}
+	var starWatchOnce sync.Once
 
 	// populate output api proxy
 	outs := api.GetInternalStructs(outstr)
@@ -339,6 +340,10 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 			}
 
 			rOutStruct.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+				starWatchOnce.Do(func() {
+					go startWatch()
+				})
+
 				ctx := args[0].Interface().(context.Context)
 
 				preferredProvider := new(int)
