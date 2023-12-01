@@ -114,13 +114,13 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 
 	// defer release db send lock
 	defer func() {
-		_, err := s.db.Exec(ctx, `delete from message_send_locks where from_key = $1 and task_id = $2`, dbMsg.FromKey, taskID)
-		if err != nil {
-			log.Errorw("releasing send lock", "task_id", taskID, "from", dbMsg.FromKey, "error", err)
+		_, err2 := s.db.Exec(ctx, `delete from message_send_locks where from_key = $1 and task_id = $2`, dbMsg.FromKey, taskID)
+		if err2 != nil {
+			log.Errorw("releasing send lock", "task_id", taskID, "from", dbMsg.FromKey, "error", err2)
 
 			// make sure harmony retries this task so that we eventually release this lock
 			done = false
-			err = multierr.Append(err, xerrors.Errorf("releasing send lock: %w", err))
+			err = multierr.Append(err, xerrors.Errorf("releasing send lock: %w", err2))
 		}
 	}()
 
