@@ -13,7 +13,11 @@ create table sector_location
         primary key (miner_id, sector_num, sector_filetype, storage_id)
 );
 
+alter table lotus.sector_location
+    alter column read_refs set not null;
 
+alter table lotus.sector_location
+    alter column read_refs set default 0;
 
 create table storage_path
 (
