@@ -41,6 +41,8 @@ const (
 )
 
 // FIXME: Rename. Make private.
+// jiejie: 如果想要服用这个Request类别的发送，接受和处理机制，我们就必须让这个Request可以
+// 包含上FinalityCertificate这种信息。但目前这个写法是写死给EC block用的
 type Request struct {
 	// List of ordered CIDs comprising a `TipSetKey` from where to start
 	// fetching backwards.

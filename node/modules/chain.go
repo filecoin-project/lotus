@@ -147,6 +147,7 @@ type SyncerParams struct {
 	Consensus    consensus.Consensus
 }
 
+// jiejie: 会有一个不一样的syncer
 func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 	var (
 		lc     = params.Lifecycle
