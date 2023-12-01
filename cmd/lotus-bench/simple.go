@@ -308,7 +308,36 @@ var simplePreCommit2 = &cli.Command{
 			Name:  "synthetic",
 			Usage: "generate synthetic PoRep proofs",
 		},
+		&cli.StringFlag{
+			Name:  "external-pc2",
+			Usage: "command for computing PC2 externally",
+		},
 	},
+	Description: `Compute PreCommit2 inputs and seal a sector.
+
+--external-pc2 can be used to compute the PreCommit2 inputs externally.
+The flag behaves similarly to the related lotus-worker flag, using it in
+lotus-bench may be useful for testing if the external PreCommit2 command is
+invoked correctly.
+
+The command will be called with a number of environment variables set:
+* EXTSEAL_PC2_SECTOR_NUM: the sector number
+* EXTSEAL_PC2_SECTOR_MINER: the miner id
+* EXTSEAL_PC2_PROOF_TYPE: the proof type
+* EXTSEAL_PC2_SECTOR_SIZE: the sector size in bytes
+* EXTSEAL_PC2_CACHE: the path to the cache directory
+* EXTSEAL_PC2_SEALED: the path to the sealed sector file (initialized with unsealed data by the caller)
+* EXTSEAL_PC2_PC1OUT: output from rust-fil-proofs precommit1 phase (base64 encoded json)
+
+The command is expected to:
+* Create cache sc-02-data-tree-r* files
+* Create cache sc-02-data-tree-c* files
+* Create cache p_aux / t_aux files
+* Transform the sealed file in place
+
+Example invocation of lotus-bench as external executor:
+'./lotus-bench simple precommit2 --sector-size $EXTSEAL_PC2_SECTOR_SIZE $EXTSEAL_PC2_SEALED $EXTSEAL_PC2_CACHE $EXTSEAL_PC2_PC1OUT'
+`,
 	ArgsUsage: "[sealed] [cache] [pc1 out]",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -333,7 +362,18 @@ var simplePreCommit2 = &cli.Command{
 			storiface.FTSealed: cctx.Args().Get(0),
 			storiface.FTCache:  cctx.Args().Get(1),
 		}
-		sealer, err := ffiwrapper.New(pp)
+
+		var opts []ffiwrapper.FFIWrapperOpt
+
+		if cctx.IsSet("external-pc2") {
+			extSeal := ffiwrapper.ExternalSealer{
+				PreCommit2: ffiwrapper.MakeExternPrecommit2(cctx.String("external-pc2")),
+			}
+
+			opts = append(opts, ffiwrapper.WithExternalSealCalls(extSeal))
+		}
+
+		sealer, err := ffiwrapper.New(pp, opts...)
 		if err != nil {
 			return err
 		}

@@ -40,9 +40,29 @@ import (
 
 var _ storiface.Storage = &Sealer{}
 
-func New(sectors SectorProvider) (*Sealer, error) {
+type FFIWrapperOpts struct {
+	ext ExternalSealer
+}
+
+type FFIWrapperOpt func(*FFIWrapperOpts)
+
+func WithExternalSealCalls(ext ExternalSealer) FFIWrapperOpt {
+	return func(o *FFIWrapperOpts) {
+		o.ext = ext
+	}
+}
+
+func New(sectors SectorProvider, opts ...FFIWrapperOpt) (*Sealer, error) {
+	options := &FFIWrapperOpts{}
+
+	for _, o := range opts {
+		o(options)
+	}
+
 	sb := &Sealer{
 		sectors: sectors,
+
+		externCalls: options.ext,
 
 		stopping: make(chan struct{}),
 	}
@@ -881,9 +901,18 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 	}
 	defer done()
 
-	sealedCID, unsealedCID, err := ffi.SealPreCommitPhase2(phase1Out, paths.Cache, paths.Sealed)
-	if err != nil {
-		return storiface.SectorCids{}, xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
+	var sealedCID, unsealedCID cid.Cid
+
+	if sb.externCalls.PreCommit2 == nil {
+		sealedCID, unsealedCID, err = ffi.SealPreCommitPhase2(phase1Out, paths.Cache, paths.Sealed)
+		if err != nil {
+			return storiface.SectorCids{}, xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
+		}
+	} else {
+		sealedCID, unsealedCID, err = sb.externCalls.PreCommit2(ctx, sector, paths.Cache, paths.Sealed, phase1Out)
+		if err != nil {
+			return storiface.SectorCids{}, xerrors.Errorf("presealing sector (extern-pc2) %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
+		}
 	}
 
 	ssize, err := sector.ProofType.SectorSize()
