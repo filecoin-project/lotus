@@ -191,7 +191,7 @@ func fromMiner(cctx *cli.Context) (err error) {
 		if err != nil {
 			return xerrors.Errorf("Cannot get default config: %w", err)
 		}
-		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', '$1')", cfg)
+		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', $1)", cfg)
 
 		if err != nil {
 			return err
