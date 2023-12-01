@@ -570,11 +570,11 @@ workflows:
           get-params: true
           [[- end -]]
           [[- if eq $suite "unit-cli"]]
-          executor: golang-2xl
+          resource-class: 2xlarge
           get-params: true
           [[- end -]]
           [[- if eq $suite "unit-rest"]]
-          executor: golang-2xl
+          resource-class: 2xlarge
           [[- end -]]
       [[- end]]
       - test:
