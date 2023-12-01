@@ -570,11 +570,11 @@ workflows:
           get-params: true
           [[- end -]]
           [[- if eq $suite "unit-cli"]]
-          resource-class: 2xlarge
+          resource_class: 2xlarge
           get-params: true
           [[- end -]]
           [[- if eq $suite "unit-rest"]]
-          resource-class: 2xlarge
+          resource_class: 2xlarge
           [[- end -]]
       [[- end]]
       - test:

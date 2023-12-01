@@ -18,7 +18,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -195,6 +194,16 @@ func fromMiner(cctx *cli.Context) (err error) {
 
 		if err != nil {
 			return err
+		}
+	}
+
+	if cctx.Bool("overwrite") {
+		i, err := db.Exec(ctx, "DELETE FROM harmony_config WHERE title=$1", name)
+		if i != 0 {
+			fmt.Println("Overwriting existing layer")
+		}
+		if err != nil {
+			fmt.Println("Got error while deleting existing layer: " + err.Error())
 		}
 	}
 

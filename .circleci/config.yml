@@ -1017,7 +1017,7 @@ workflows:
             - build
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
-          resource-class: 2xlarge
+          resource_class: 2xlarge
           get-params: true
       - test:
           name: test-unit-node
@@ -1031,7 +1031,7 @@ workflows:
             - build
           suite: utest-unit-rest
           target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
-          resource-class: 2xlarge
+          resource_class: 2xlarge
       - test:
           name: test-unit-storage
           requires:
