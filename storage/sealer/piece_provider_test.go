@@ -289,7 +289,7 @@ func (p *pieceProviderTestHarness) addRemoteWorker(t *testing.T, tasks []sealtas
 	dstore := ds_sync.MutexWrap(datastore.NewMapDatastore())
 	csts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/stmgr/calls")))
 
-	worker := newLocalWorker(nil, WorkerConfig{
+	worker := NewLocalWorkerWithExecutor(nil, WorkerConfig{
 		TaskTypes: tasks,
 	}, os.LookupEnv, remote, localStore, p.index, p.mgr, csts)
 
