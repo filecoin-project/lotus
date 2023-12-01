@@ -134,7 +134,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, chain *store.ChainStor
 	return nil, errors.New("invalid block param")
 }
 
-func ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.Message, error) {
+func ethCallToFilecoinMessage(_ context.Context, tx ethtypes.EthCall) (*types.Message, error) {
 	var from address.Address
 	if tx.From == nil || *tx.From == (ethtypes.EthAddress{}) {
 		// Send from the filecoin "system" address.
@@ -156,8 +156,8 @@ func ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.
 	}
 
 	var params []byte
-	if len(tx.Data) > 0 {
-		initcode := abi.CborBytes(tx.Data)
+	if data := tx.Data_(); len(data) > 0 {
+		initcode := abi.CborBytes(data)
 		params2, err := actors.SerializeParams(&initcode)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize params: %w", err)

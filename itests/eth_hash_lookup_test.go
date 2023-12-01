@@ -50,7 +50,7 @@ func TestTransactionHashLookup(t *testing.T) {
 
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
-		Data: contract,
+		Data: (*ethtypes.EthBytes)(&contract),
 	}})
 	require.NoError(t, err)
 
@@ -356,7 +356,7 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
-		Data: contract,
+		Data: (*ethtypes.EthBytes)(&contract),
 	}})
 	require.NoError(t, err)
 

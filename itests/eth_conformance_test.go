@@ -167,7 +167,32 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
 					From: &senderEthAddr,
-					Data: contractBin,
+					Data: (*ethtypes.EthBytes)(&contractBin),
+				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+			},
+		},
+
+		// same but using the 'input' field
+		{
+			method:  "eth_call",
+			variant: "latest",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
+					From:  &senderEthAddr,
+					Input: (*ethtypes.EthBytes)(&contractBin),
+				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
+			},
+		},
+
+		// same but using both fields ('input' prioritized)
+		{
+			method:  "eth_call",
+			variant: "latest",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
+					From:  &senderEthAddr,
+					Input: (*ethtypes.EthBytes)(&contractBin),
+					Data:  &ethtypes.EthBytes{'g', 'a', 'r', 'b', 'a', 'g', 'e'},
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 			},
 		},
@@ -184,7 +209,36 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 					From: &senderEthAddr,
-					Data: contractBin,
+					Data: (*ethtypes.EthBytes)(&contractBin),
+				}})
+				require.NoError(t, err)
+
+				return ethapi.EthEstimateGas(ctx, gasParams)
+			},
+		},
+
+		// same but using the 'input' field
+		{
+			method: "eth_estimateGas",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+					From:  &senderEthAddr,
+					Input: (*ethtypes.EthBytes)(&contractBin),
+				}})
+				require.NoError(t, err)
+
+				return ethapi.EthEstimateGas(ctx, gasParams)
+			},
+		},
+
+		// same but using both fields ('input' prioritized)
+		{
+			method: "eth_estimateGas",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+					From:  &senderEthAddr,
+					Input: (*ethtypes.EthBytes)(&contractBin),
+					Data:  &ethtypes.EthBytes{'g', 'a', 'r', 'b', 'a', 'g', 'e'},
 				}})
 				require.NoError(t, err)
 
@@ -453,7 +507,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFullNode, senderEthAddr ethtypes.EthAddress, receiverEthAddr ethtypes.EthAddress, senderKey *key.Key, contractBin []byte) []byte {
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &senderEthAddr,
-		Data: contractBin,
+		Data: (*ethtypes.EthBytes)(&contractBin),
 	}})
 	require.NoError(t, err)
 

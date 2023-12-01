@@ -129,7 +129,7 @@ var EvmCallSimulateCmd = &cli.Command{
 		res, err := api.EthCall(ctx, ethtypes.EthCall{
 			From: &fromEthAddr,
 			To:   &toEthAddr,
-			Data: params,
+			Data: (*ethtypes.EthBytes)(&params),
 		}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		if err != nil {
 			fmt.Println("Eth call fails, return val: ", res)

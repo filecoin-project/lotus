@@ -662,7 +662,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 				From: &ethAddr,
 				To:   &contractAddr,
-				Data: params,
+				Data: (*ethtypes.EthBytes)(&params),
 			}})
 			require.NoError(t, err)
 
@@ -1037,14 +1037,14 @@ func TestFEVMErrorParsing(t *testing.T) {
 			t.Run("EthCall", func(t *testing.T) {
 				_, err := e.EthCall(ctx, ethtypes.EthCall{
 					To:   &contractAddrEth,
-					Data: entryPoint,
+					Data: (*ethtypes.EthBytes)(&entryPoint),
 				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.ErrorContains(t, err, expected)
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
 				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 					To:   &contractAddrEth,
-					Data: entryPoint,
+					Data: (*ethtypes.EthBytes)(&entryPoint),
 				}})
 				require.NoError(t, err)
 

@@ -225,7 +225,8 @@ type EthCall struct {
 	Gas      EthUint64   `json:"gas"`
 	GasPrice EthBigInt   `json:"gasPrice"`
 	Value    EthBigInt   `json:"value"`
-	Data     EthBytes    `json:"data"`
+	Data     *EthBytes   `json:"data"`
+	Input    *EthBytes   `json:"input"`
 }
 
 func (c *EthCall) UnmarshalJSON(b []byte) error {
@@ -236,6 +237,16 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*c = EthCall(params)
+	return nil
+}
+
+func (c *EthCall) Data_() EthBytes {
+	if c.Input != nil {
+		return *c.Input
+	}
+	if c.Data != nil {
+		return *c.Data
+	}
 	return nil
 }
 

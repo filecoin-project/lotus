@@ -52,7 +52,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{
 		Tx: ethtypes.EthCall{
 			From: &ethAddr,
-			Data: contract,
+			Data: (*ethtypes.EthBytes)(&contract),
 		},
 		BlkParam: &blkParam,
 	})
@@ -245,7 +245,24 @@ func TestContractInvocation(t *testing.T) {
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		To:   &contractAddr,
-		Data: params,
+		Data: (*ethtypes.EthBytes)(&params),
+	}})
+	require.NoError(t, err)
+
+	// same using the 'input' field
+	gasParams, err = json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From:  &ethAddr,
+		To:    &contractAddr,
+		Input: (*ethtypes.EthBytes)(&params),
+	}})
+	require.NoError(t, err)
+
+	// using both results in 'input' being preferred
+	gasParams, err = json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From:  &ethAddr,
+		To:    &contractAddr,
+		Input: (*ethtypes.EthBytes)(&params),
+		Data:  &ethtypes.EthBytes{'g', 'a', 'r', 'b', 'a', 'g', 'e'},
 	}})
 	require.NoError(t, err)
 
@@ -366,7 +383,7 @@ func TestGetBlockByNumber(t *testing.T) {
 func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthTxArgs, error) {
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
-		Data: contract,
+		Data: (*ethtypes.EthBytes)(&contract),
 	}})
 	if err != nil {
 		return nil, err
