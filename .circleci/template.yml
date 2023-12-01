@@ -566,7 +566,6 @@ workflows:
             - build
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
-          [[if eq $suite "unit-cli"]]get-params: true[[end]]
           [[- if eq $suite "unit-storage"]]
           get-params: true
           [[- end -]]
