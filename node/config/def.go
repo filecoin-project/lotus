@@ -350,12 +350,6 @@ func DefaultUserRaftConfig() *UserRaftConfig {
 }
 
 func DefaultLotusProvider() *LotusProviderConfig {
-	/*
-		reqs := map[string]*regexp.Regexp{}
-		for _, str := range LotusRequired {
-			reqs[str]=regexp.MustCompile("(?i)"+str)
-		}
-	*/
 	return &LotusProviderConfig{
 		Subsystems: ProviderSubsystemsConfig{},
 		Fees: LotusProviderFees{

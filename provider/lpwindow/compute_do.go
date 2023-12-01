@@ -428,9 +428,9 @@ func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredP
 
 	wg.Wait()
 
-	/*	if len(skipped) > 0 {
-		return nil, skipped, multierr.Append(xerrors.Errorf("some sectors (%d) were skipped", len(skipped)), retErr)
-	}*/
+	if len(skipped) > 0 {
+		log.Warnw("generateWindowPoSt skipped sectors", "skipped", len(skipped))
+	}
 
 	postProofs, err := ffi.MergeWindowPoStPartitionProofs(ppt, proofList)
 	if err != nil {
