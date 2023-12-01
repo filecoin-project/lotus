@@ -42,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
+	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"github.com/filecoin-project/lotus/provider/lpwinning"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/paths"
@@ -146,14 +147,18 @@ var runCmd = &cli.Command{
 		}
 		cfg, db, full, verif, lw, as, maddrs, stor, si, localStore := deps.cfg, deps.db, deps.full, deps.verif, deps.lw, deps.as, deps.maddrs, deps.stor, deps.si, deps.localStore
 
+		var activeTasks []harmonytask.TaskInterface
+
+		sender, sendTask := lpmessage.NewSender(full, full, db)
+		activeTasks = append(activeTasks, sendTask)
+
 		///////////////////////////////////////////////////////////////////////
 		///// Task Selection
 		///////////////////////////////////////////////////////////////////////
-		var activeTasks []harmonytask.TaskInterface
 		{
 
 			if cfg.Subsystems.EnableWindowPost {
-				wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, verif, lw,
+				wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, verif, lw, sender,
 					as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
 				if err != nil {
 					return err

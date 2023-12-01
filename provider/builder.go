@@ -20,7 +20,7 @@ import (
 //var log = logging.Logger("provider")
 
 func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
-	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker,
+	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker, sender *lpmessage.Sender,
 	as *ctladdr.AddressSelector, addresses []dtypes.MinerAddress, db *harmonydb.DB,
 	stor paths.Store, idx paths.SectorIndex, max int) (*lpwindow.WdPostTask, *lpwindow.WdPostSubmitTask, *lpwindow.WdPostRecoverDeclareTask, error) {
 
@@ -28,8 +28,6 @@ func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc co
 
 	// todo config
 	ft := lpwindow.NewSimpleFaultTracker(stor, idx, 32, 5*time.Second, 300*time.Second)
-
-	sender := lpmessage.NewSender(api, api, db)
 
 	computeTask, err := lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, addresses, max)
 	if err != nil {
