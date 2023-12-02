@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net"
 	"net/http"
 	"os"
@@ -11,8 +13,6 @@ import (
 	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
-	"github.com/gin-contrib/pprof"
-	"github.com/gin-gonic/gin"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/pkg/errors"
@@ -180,38 +180,51 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		gin.SetMode(gin.ReleaseMode)
-		handler := gin.New()
-
 		defer taskEngine.GracefullyTerminate(time.Hour)
 
 		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
-		handler.NoRoute(gin.HandlerFunc(func(c *gin.Context) {
-			if !auth.HasPerm(c, nil, api.PermAdmin) {
-				c.JSON(401, struct{ Error string }{"unauthorized: missing admin permission"})
+		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
+			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
+				w.WriteHeader(401)
+				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
 				return
 			}
 
-			fh.ServeHTTP(c.Writer, c.Request)
-		}))
+			fh.ServeHTTP(w, r)
+		}
 		// local APIs
 		{
 			// debugging
-			handler.GET("/debug/metrics", gin.WrapH(metrics.Exporter()))
-			pprof.Register(handler)
+			mux := mux.NewRouter()
+			mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+			mux.PathPrefix("/remote").HandlerFunc(remoteHandler)
+
+			/*ah := &auth.Handler{
+				Verify: authv,
+				Next:   mux.ServeHTTP,
+			}*/ // todo
+
 		}
 
 		// Serve the RPC.
 		/*
-			endpoint, err := r.APIEndpoint()
-			fmt.Println("Endpoint: ", endpoint)
-			if err != nil {
-				return fmt.Errorf("getting API endpoint: %w", err)
+			srv := &http.Server{
+				Handler:           sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+				ReadHeaderTimeout: timeout,
+				BaseContext: func(listener net.Listener) context.Context {
+					ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
+					return ctx
+				},
 			}
-			rpcStopper, err := node.ServeRPC(handler, "lotus-provider", endpoint)
-			if err != nil {
-				return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
-			}
+
+			go func() {
+				<-ctx.Done()
+				log.Warn("Shutting down...")
+				if err := srv.Shutdown(context.TODO()); err != nil {
+					log.Errorf("shutting down RPC server failed: %s", err)
+				}
+				log.Warn("Graceful shutdown successful")
+			}()
 		*/
 
 		// Monitor for shutdown.
