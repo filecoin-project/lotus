@@ -146,7 +146,7 @@ func TestWindowPostWorker(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)[0]
 
 	di = di.NextNotElapsed()
 
@@ -685,7 +685,7 @@ func TestWindowPostV1P1NV20Worker(t *testing.T) {
 		kit.ThroughRPC(),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}))
 
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
