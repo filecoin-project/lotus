@@ -551,7 +551,7 @@ func TestWindowPostV1P1NV20WorkerFault(t *testing.T) {
 			}
 		}))
 
-	bm := ens.InterconnectAll().BeginMining(blocktime)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(blocktime)[0]
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

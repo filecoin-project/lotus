@@ -139,7 +139,7 @@ func TestWindowPostNoBuiltinWindowWithWorker(t *testing.T) {
 
 	t.Log("post message landed")
 
-	bm.MineBlocks(ctx, 2*time.Millisecond)
+	bm.MineBlocksMustPost(ctx, 2*time.Millisecond)
 
 	waitUntil = di.Open + di.WPoStChallengeWindow*3
 	t.Logf("End for head.Height > %d", waitUntil)
