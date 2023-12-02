@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -104,19 +105,19 @@ var wdPostTaskCmd = &cli.Command{
 			return xerrors.Errorf("writing SQL transaction: %w", err)
 		}
 		fmt.Printf("Inserted task %v. Waiting for success ", id)
-		var result string
+		var result sql.NullString
 		for {
 			time.Sleep(time.Second)
 			err = deps.db.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, id).Scan(&result)
 			if err != nil {
 				return xerrors.Errorf("reading result from harmony_test: %w", err)
 			}
-			if result != "" {
+			if result.Valid {
 				break
 			}
 			fmt.Print(".")
 		}
-		log.Infof("Result:", result)
+		log.Infof("Result:", result.String)
 		return nil
 	},
 }
