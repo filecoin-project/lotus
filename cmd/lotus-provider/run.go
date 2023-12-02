@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"net"
 	"net/http"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
+	"github.com/gorilla/mux"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/pkg/errors"
