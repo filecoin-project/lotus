@@ -10,6 +10,12 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
+func MetricedAPI[T any](a T) T {
+	var out T
+	proxy(a, &out)
+	return out
+}
+
 func MetricedStorMinerAPI(a api.StorageMiner) api.StorageMiner {
 	var out api.StorageMinerStruct
 	proxy(a, &out)
