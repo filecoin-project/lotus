@@ -5,12 +5,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
@@ -119,6 +121,10 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "select which address to send actor creation message from",
+		},
+		&cli.StringFlag{
+			Name:  "peer-id-keyfile",
+			Usage: "imports existing libp2p host peer private key instead of generating a new one",
 		},
 	},
 	Subcommands: []*cli.Command{
@@ -265,7 +271,7 @@ var initCmd = &cli.Command{
 			}
 		}
 
-		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice); err != nil {
+		if err := storageMinerInit(ctx, cctx, api, r, ssize, gasPrice, cctx.String("peer-id-keyfile")); err != nil {
 			log.Errorf("Failed to initialize lotus-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -414,24 +420,31 @@ func findMarketDealID(ctx context.Context, api v1api.FullNode, deal markettypes.
 	return 0, xerrors.New("deal not found")
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt, hostKeyFilepath string) error {
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
 	}
 	defer lr.Close() //nolint:errcheck
 
-	log.Info("Initializing libp2p identity")
+	var p2pSk crypto.PrivKey
+	if _, err := os.Stat(hostKeyFilepath); os.IsNotExist(err) {
+		log.Infof("Generating new libp2p host key")
+		p2pSk, err = makeHostKey(lr)
+	} else {
+		log.Infof("Importing prvoided libp2p host keyfile: %v", hostKeyFilepath)
+		p2pSk, err = importHostKey(lr, hostKeyFilepath)
+	}
 
-	p2pSk, err := makeHostKey(lr)
 	if err != nil {
-		return xerrors.Errorf("make host key: %w", err)
+		return xerrors.Errorf("libp2p peer key initialization error: %w", err)
 	}
 
 	peerid, err := peer.IDFromPrivateKey(p2pSk)
 	if err != nil {
 		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
+	log.Infof("initialized libp2p peerid: %v", peerid)
 
 	mds, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
@@ -561,6 +574,47 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 	}
 
 	return nil
+}
+
+func importHostKey(lr repo.LockedRepo, pathToKeyFile string) (crypto.PrivKey, error) {
+	encoded, err := os.ReadFile(pathToKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	decoded, err := hex.DecodeString(strings.TrimSpace(string(encoded)))
+	if err != nil {
+		return nil, err
+	}
+
+	var keyInfo types.KeyInfo
+	if err := json.Unmarshal(decoded, &keyInfo); err != nil {
+		return nil, err
+	}
+
+	pk, err := crypto.UnmarshalPrivateKey(keyInfo.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ks, err := lr.KeyStore()
+	if err != nil {
+		return nil, err
+	}
+
+	kbytes, err := crypto.MarshalPrivateKey(pk)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ks.Put("libp2p-host", types.KeyInfo{
+		Type:       "libp2p-host",
+		PrivateKey: kbytes,
+	}); err != nil {
+		return nil, err
+	}
+
+	return pk, nil
 }
 
 func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
