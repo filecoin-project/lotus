@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/rpc"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
@@ -118,11 +119,14 @@ var runCmd = &cli.Command{
 			tag.Insert(metrics.NodeType, "provider"),
 		)
 		shutdownChan := make(chan struct{})
-		ctx, ctxclose := context.WithCancel(ctx)
-		go func() {
-			<-shutdownChan
-			ctxclose()
-		}()
+		{
+			var ctxclose func()
+			ctx, ctxclose = context.WithCancel(ctx)
+			go func() {
+				<-shutdownChan
+				ctxclose()
+			}()
+		}
 		// Register all metric views
 		/*
 			if err := view.Register(
@@ -206,26 +210,43 @@ var runCmd = &cli.Command{
 
 		}
 
-		// Serve the RPC.
-		/*
-			srv := &http.Server{
-				Handler:           sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
-				ReadHeaderTimeout: timeout,
-				BaseContext: func(listener net.Listener) context.Context {
-					ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
-					return ctx
-				},
+		var authVerify func(context.Context, string) ([]auth.Permission, error)
+		{
+			privateKey, err := base64.RawStdEncoding.DecodeString(deps.cfg.Apis.StorageRPCSecret)
+			if err != nil {
+				return err
 			}
-
-			go func() {
-				<-ctx.Done()
-				log.Warn("Shutting down...")
-				if err := srv.Shutdown(context.TODO()); err != nil {
-					log.Errorf("shutting down RPC server failed: %s", err)
+			authVerify = func(ctx context.Context, token string) ([]auth.Permission, error) {
+				var payload jwtPayload
+				if _, err := jwt.Verify([]byte(token), jwt.NewHS256(privateKey), &payload); err != nil {
+					return nil, xerrors.Errorf("JWT Verification failed: %w", err)
 				}
-				log.Warn("Graceful shutdown successful")
-			}()
-		*/
+
+				return payload.Allow, nil
+			}
+		}
+		// Serve the RPC.
+		srv := &http.Server{
+			Handler: rpc.LotusProviderHandler(
+				authVerify,
+				remoteHandler,
+				&ProviderAPI{deps, shutdownChan},
+				true),
+			ReadHeaderTimeout: time.Minute * 3,
+			BaseContext: func(listener net.Listener) context.Context {
+				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
+				return ctx
+			},
+		}
+
+		go func() {
+			<-ctx.Done()
+			log.Warn("Shutting down...")
+			if err := srv.Shutdown(context.TODO()); err != nil {
+				log.Errorf("shutting down RPC server failed: %s", err)
+			}
+			log.Warn("Graceful shutdown successful")
+		}()
 
 		// Monitor for shutdown.
 		// TODO provide a graceful shutdown API on shutdownChan
@@ -420,4 +441,19 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		listenAddr,
 	}, nil
 
+}
+
+type ProviderAPI struct {
+	*Deps
+	ShutdownChan chan struct{}
+}
+
+func (p *ProviderAPI) Version(context.Context) (api.Version, error) {
+	return api.Version(api.ProviderAPIVersion0), nil
+}
+
+// Trigger shutdown
+func (p *ProviderAPI) Shutdown(context.Context) error {
+	close(p.ShutdownChan)
+	return nil
 }

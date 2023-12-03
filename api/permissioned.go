@@ -41,6 +41,12 @@ func PermissionedWorkerAPI(a Worker) Worker {
 	return &out
 }
 
+func PermissionedAPI[T any](a T) T {
+	var out T
+	permissionedProxies(a, &out)
+	return out
+}
+
 func PermissionedWalletAPI(a Wallet) Wallet {
 	var out WalletStruct
 	permissionedProxies(a, &out)
