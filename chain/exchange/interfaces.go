@@ -2,7 +2,6 @@ package exchange
 
 import (
 	"context"
-
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -39,6 +38,11 @@ type Client interface {
 	// GetFullTipSet fetches a full tipset from a given peer. If successful,
 	// the fetched object contains block headers and all messages in full form.
 	GetFullTipSet(ctx context.Context, peer peer.ID, tsk types.TipSetKey) (*store.FullTipSet, error)
+
+	// TODO(jie): 看要不要需要GossipPubSub只是发送一个FinalityCertificate的CID，然后再在这里调用这个
+	//   函数来读FinalityCertificate本体了。我感觉为了scalable还是要这么做的。但是开发阶段是可以先跳过的，
+	//   也就是直接GossipPubSub就拿到完整的FinalityCertificate本体
+	//GetFinalityCertificate(ctx context.Context, cid cid.Cid) (types.FinalityCertificate, error)
 
 	// AddPeer adds a peer to the pool of peers that the Client requests
 	// data from.

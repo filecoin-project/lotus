@@ -195,6 +195,9 @@ type FullNode interface {
 	// network through this node
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error //perm:write
 
+	// TODO(jie): Add comments as godoc
+	SyncSubmitFinalityCertificate(ctx context.Context, fc *types.FinalityCertificate) error //perm:write
+
 	// SyncIncomingBlocks returns a channel streaming incoming, potentially not
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) //perm:read

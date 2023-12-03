@@ -1,7 +1,8 @@
-package finality_sync
+package consensus
 
 import (
-	types "github.com/filecoin-project/lotus/chain/types/finality_sync"
+	"fmt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 )
 
@@ -13,6 +14,8 @@ type FinalityState struct {
 
 func (fs *FinalityState) ValidateFinalityCertificate(fc *types.FinalityCertificate) error {
 	if fc == nil {
+		// TODO(jie): 换成log.Info()?
+		fmt.Println("Empty FinalityCertificate. Skip.")
 		return nil
 	}
 

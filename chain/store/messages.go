@@ -29,6 +29,7 @@ func PutMessage(ctx context.Context, bs bstore.Blockstore, m storable) (cid.Cid,
 		return cid.Undef, err
 	}
 
+	// jiejie: 这里生成了新的cid!
 	if err := bs.Put(ctx, b); err != nil {
 		return cid.Undef, err
 	}

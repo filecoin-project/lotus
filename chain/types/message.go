@@ -92,6 +92,7 @@ func (m *Message) ToStorageBlock() (block.Block, error) {
 		return nil, err
 	}
 
+	// jiejie: 看到没，CidBuilder! 把[]byte来生成cid!
 	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {
 		return nil, err

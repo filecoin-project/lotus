@@ -13,6 +13,9 @@ import (
 
 func BlocksTopic(netName dtypes.NetworkName) string   { return "/fil/blocks/" + string(netName) }
 func MessagesTopic(netName dtypes.NetworkName) string { return "/fil/msgs/" + string(netName) }
+func FinalityCertificateTopic(netName dtypes.NetworkName) string {
+	return "/fil/finality_certificates/" + string(netName)
+}
 func IndexerIngestTopic(netName dtypes.NetworkName) string {
 
 	nn := string(netName)

@@ -386,6 +386,8 @@ type FullNodeMethods struct {
 
 	SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) error `perm:"write"`
 
+	SyncSubmitFinalityCertificate func(p0 context.Context, p1 *types.FinalityCertificate) error `perm:"write"`
+
 	SyncUnmarkAllBad func(p0 context.Context) error `perm:"admin"`
 
 	SyncUnmarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
@@ -2417,6 +2419,17 @@ func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg)
 }
 
 func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+	return ErrNotSupported
+}
+
+func (s *FullNodeStruct) SyncSubmitFinalityCertificate(p0 context.Context, p1 *types.FinalityCertificate) error {
+	if s.Internal.SyncSubmitFinalityCertificate == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SyncSubmitFinalityCertificate(p0, p1)
+}
+
+func (s *FullNodeStub) SyncSubmitFinalityCertificate(p0 context.Context, p1 *types.FinalityCertificate) error {
 	return ErrNotSupported
 }
 

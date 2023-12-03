@@ -69,6 +69,7 @@ type validatedRequest struct {
 const (
 	Headers = 1 << iota
 	Messages
+	FinalityCertificate
 )
 
 // Decompressed options into separate struct members for easy access

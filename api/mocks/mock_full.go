@@ -4004,10 +4004,24 @@ func (m *MockFullNode) SyncSubmitBlock(arg0 context.Context, arg1 *types.BlockMs
 	return ret0
 }
 
+// SyncSubmitFinalityCertificate mocks base method.
+func (m *MockFullNode) SyncSubmitFinalityCertificate(arg0 context.Context, arg1 *types.FinalityCertificate) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SyncSubmitFinalityCertificate", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
 // SyncSubmitBlock indicates an expected call of SyncSubmitBlock.
 func (mr *MockFullNodeMockRecorder) SyncSubmitBlock(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncSubmitBlock", reflect.TypeOf((*MockFullNode)(nil).SyncSubmitBlock), arg0, arg1)
+}
+
+// SyncSubmitFinalityCertificate indicates an expected call of SyncSubmitFinalityCertificate.
+func (mr *MockFullNodeMockRecorder) SyncSubmitFinalityCertificate(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncSubmitFinalityCertificate", reflect.TypeOf((*MockFullNode)(nil).SyncSubmitFinalityCertificate), arg0, arg1)
 }
 
 // SyncUnmarkAllBad mocks base method.

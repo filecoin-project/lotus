@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"sync"
 	"time"
 
@@ -48,8 +49,12 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	// this point.
 	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
 
+	log.Info("jiejie: Start HandleIncomingBlocks() in another goroutine")
+
 	for {
+		// jiejie: 这步调用Next()是真的从topic上读数据([]byte)来着
 		msg, err := bsub.Next(ctx)
+		log.Info("jiejie: Received a incoming block data from topic")
 		if err != nil {
 			if ctx.Err() != nil {
 				log.Warn("quitting HandleIncomingBlocks loop")
@@ -59,6 +64,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			continue
 		}
 
+		// jiejie: []byte变成BlockMsg类型
 		blk, ok := msg.ValidatorData.(*types.BlockMsg)
 		if !ok {
 			log.Warnf("pubsub block validator passed on wrong type: %#v", msg.ValidatorData)
@@ -110,6 +116,93 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				cmgr.TagPeer(msg.ReceivedFrom, "blkprop", 5)
 			}
 		}()
+	}
+}
+
+func HandleIncomingFinalityCertificate(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
+	//// Timeout after (block time + propagation delay). This is useless at
+	//// this point.
+	//timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+
+	log.Info("jiejie: Inside sub.HandleIncomingFinalityCertificate()")
+
+	for {
+		// jiejie: 这步调用Next()是真的从topic上读数据([]byte)来着
+		msg, err := bsub.Next(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				log.Warn("quitting HandleIncomingFinalityCertificate loop")
+				return
+			}
+			log.Error("error from block subscription: ", err)
+			continue
+		}
+
+		log.Info("jiejie: ready to receive data from FC topic (in the loop already)")
+		received := string(msg.Message.GetData())
+		fmt.Printf("jiejie: Received FinalityCertificate from pubsub: %s\n", received)
+
+		// TODO(jie): msg应该变成FinalityCertificate类型
+		//blk, ok := msg.ValidatorData.(*types.BlockMsg)
+		//if !ok {
+		//	log.Warnf("pubsub block validator passed on wrong type: %#v", msg.ValidatorData)
+		//	return
+		//}
+
+		//src := msg.GetFrom()
+
+		// TODO(jie): 这里应该用上真正的FinalityCertificate object，而不是nil
+		// 需要我实现完FinalityCertificate的Deserialize()再说了
+		if err := s.ProcessFinalityCertificate(nil); err != nil {
+			log.Errorf("failed to process finality certificate")
+			return
+		}
+
+		// TODO(jie): 考虑一下，有必要使用go func的形式来异步执行吗？如果执行的过程较慢，比如依赖新的网络请求，
+		// 那么就可以用一个goroutine来执行
+		//go func() {
+		//	ctx, cancel := context.WithTimeout(ctx, timeout)
+		//	defer cancel()
+		//
+		//	// NOTE: we could also share a single session between
+		//	// all requests but that may have other consequences.
+		//	ses := bserv.NewSession(ctx, bs)
+		//
+		//	start := build.Clock.Now()
+		//	log.Debug("about to fetch messages for block from pubsub")
+		//	bmsgs, err := FetchMessagesByCids(ctx, ses, blk.BlsMessages)
+		//	if err != nil {
+		//		log.Errorf("failed to fetch all bls messages for block received over pubsub: %s; source: %s", err, src)
+		//		return
+		//	}
+		//
+		//	smsgs, err := FetchSignedMessagesByCids(ctx, ses, blk.SecpkMessages)
+		//	if err != nil {
+		//		log.Errorf("failed to fetch all secpk messages for block received over pubsub: %s; source: %s", err, src)
+		//		return
+		//	}
+		//
+		//	took := build.Clock.Since(start)
+		//	log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+		//	if took > 3*time.Second {
+		//		log.Warnw("Slow msg fetch", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+		//	}
+		//	if delay := build.Clock.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
+		//		_ = stats.RecordWithTags(ctx,
+		//			[]tag.Mutator{tag.Insert(metrics.MinerID, blk.Header.Miner.String())},
+		//			metrics.BlockDelay.M(delay),
+		//		)
+		//		log.Warnw("received block with large delay from miner", "block", blk.Cid(), "delay", delay, "miner", blk.Header.Miner)
+		//	}
+		//
+		//	if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
+		//		Header:        blk.Header,
+		//		BlsMessages:   bmsgs,
+		//		SecpkMessages: smsgs,
+		//	}) {
+		//		cmgr.TagPeer(msg.ReceivedFrom, "blkprop", 5)
+		//	}
+		//}()
 	}
 }
 

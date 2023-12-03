@@ -108,6 +108,7 @@ const (
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
+	HandleIncomingFinalityCertificateKey
 	HandleMigrateClientFundsKey
 	HandlePaymentChannelManagerKey
 

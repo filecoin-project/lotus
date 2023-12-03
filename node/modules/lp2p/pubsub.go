@@ -231,6 +231,41 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 			InvalidMessageDeliveriesWeight: -1000,
 			InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 		},
+		build.FinalityCertificateTopic(in.Nn): {
+			// TODO(jie): 现在是照抄上面的，这个之后要单独设置
+			// expected > 1 tx/second
+			TopicWeight: 0.1, // max cap is 5, single invalid message is -100
+
+			// 1 tick per second, maxes at 1 hour
+			TimeInMeshWeight:  0.0002778, // ~1/3600
+			TimeInMeshQuantum: time.Second,
+			TimeInMeshCap:     1,
+
+			// deliveries decay after 10min, cap at 100 tx
+			FirstMessageDeliveriesWeight: 0.5, // max value is 50
+			FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
+			FirstMessageDeliveriesCap:    100, // 100 messages in 10 minutes
+
+			// Mesh Delivery Failure is currently turned off for messages
+			// This is on purpose as the network is still too small, which results in
+			// asymmetries and potential unmeshing from negative scores.
+			// // tracks deliveries in the last minute
+			// // penalty activates at 1 min and expects 2.5 txs
+			// MeshMessageDeliveriesWeight:     -16, // max penalty is -100
+			// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+			// MeshMessageDeliveriesCap:        100, // 100 txs in a minute
+			// MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
+			// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+			// MeshMessageDeliveriesActivation: time.Minute,
+
+			// // decays after 5min
+			// MeshFailurePenaltyWeight: -16,
+			// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
+
+			// invalid messages decay after 1 hour
+			InvalidMessageDeliveriesWeight: -1000,
+			InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+		},
 	}
 
 	pgTopicWeights := map[string]float64{
@@ -376,6 +411,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics := []string{
 		build.BlocksTopic(in.Nn),
 		build.MessagesTopic(in.Nn),
+		build.FinalityCertificateTopic(in.Nn),
 		build.IndexerIngestTopic(in.Nn),
 	}
 	allowTopics = append(allowTopics, drandTopics...)

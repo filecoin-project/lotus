@@ -92,6 +92,8 @@ type Syncer struct {
 
 	consensus consensus.Consensus
 
+	finalityState consensus.FinalityState
+
 	// The known Genesis tipset
 	Genesis *types.TipSet
 
@@ -1241,4 +1243,8 @@ func (syncer *Syncer) UnmarkAllBad() {
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
 	bbr, ok := syncer.bad.Has(blk)
 	return bbr.String(), ok
+}
+
+func (syncer *Syncer) ProcessFinalityCertificate(fc *types.FinalityCertificate) error {
+	return syncer.finalityState.ValidateFinalityCertificate(fc)
 }

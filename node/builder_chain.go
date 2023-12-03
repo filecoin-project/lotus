@@ -172,6 +172,7 @@ var ChainNode = Options(
 		Override(RunPeerMgrKey, modules.RunPeerMgr),
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+		Override(HandleIncomingFinalityCertificateKey, modules.HandleIncomingFinalityCertificate),
 	),
 )
 

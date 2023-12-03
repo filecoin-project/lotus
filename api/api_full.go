@@ -227,6 +227,10 @@ type FullNode interface {
 	// network through this node
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error //perm:write
 
+	// SyncSubmitBlock can be used to submit a newly created FinalityCertificate to the
+	// network through this node
+	SyncSubmitFinalityCertificate(ctx context.Context, fc *types.FinalityCertificate) error //perm:write
+
 	// SyncIncomingBlocks returns a channel streaming incoming, potentially not
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) //perm:read

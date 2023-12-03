@@ -2,8 +2,11 @@ package full
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strconv"
 	"sync/atomic"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -52,6 +55,7 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+	fmt.Println("jiejie: Inside SyncSubmitBlock()")
 	parent, err := a.Syncer.ChainStore().GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %w", err)
@@ -105,7 +109,88 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
 	}
 
+	// jiejie: 向 /file/blocks 这个GossipSub pubsub topic发送block
 	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
+}
+
+func (a *SyncAPI) SyncSubmitFinalityCertificate(ctx context.Context, blk *types.FinalityCertificate) error {
+	log.Info("jiejie: In SyncSubmitFinalityCertificate(), Publishing FinalityCertificate")
+	//parent, err := a.Syncer.ChainStore().GetBlock(ctx, blk.Header.Parents[0])
+	//if err != nil {
+	//	return xerrors.Errorf("loading parent block: %w", err)
+	//}
+	//
+	//if a.SlashFilter != nil && os.Getenv("LOTUS_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" && !build.IsNearUpgrade(blk.Header.Height, build.UpgradeWatermelonFixHeight) {
+	//	witness, fault, err := a.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height)
+	//	if err != nil {
+	//		log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
+	//		// Return an error here, because it's _probably_ wiser to not submit this block
+	//		return xerrors.Errorf("<!!> SLASH FILTER ERRORED: %w", err)
+	//	}
+	//
+	//	if fault {
+	//		log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to witness %s", witness)
+	//		return xerrors.Errorf("<!!> SLASH FILTER DETECTED FAULT due to witness %s", witness)
+	//	}
+	//}
+	//
+	//// TODO: should we have some sort of fast path to adding a local block?
+	//bmsgs, err := a.Syncer.ChainStore().LoadMessagesFromCids(ctx, blk.BlsMessages)
+	//if err != nil {
+	//	return xerrors.Errorf("failed to load bls messages: %w", err)
+	//}
+	//
+	//smsgs, err := a.Syncer.ChainStore().LoadSignedMessagesFromCids(ctx, blk.SecpkMessages)
+	//if err != nil {
+	//	return xerrors.Errorf("failed to load secpk message: %w", err)
+	//}
+	//
+	//fb := &types.FullBlock{
+	//	Header:        blk.Header,
+	//	BlsMessages:   bmsgs,
+	//	SecpkMessages: smsgs,
+	//}
+	//
+	//if err := a.Syncer.ValidateMsgMeta(fb); err != nil {
+	//	return xerrors.Errorf("provided messages did not match block: %w", err)
+	//}
+	//
+	//ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
+	//if err != nil {
+	//	return xerrors.Errorf("somehow failed to make a tipset out of a single block: %w", err)
+	//}
+	//if err := a.Syncer.Sync(ctx, ts); err != nil {
+	//	return xerrors.Errorf("sync to submitted block failed: %w", err)
+	//}
+	//
+	//b, err := blk.Serialize()
+	//if err != nil {
+	//	return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
+	//}
+
+	// jiejie: 向 /file/blocks 这个GossipSub pubsub topic发送block
+	//return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
+
+	//gc := types.GraniteDecision{
+	//	InstanceNumber:     123,
+	//	FinalizedTipSetKey: types.TipSetKey{},
+	//	Epoch:              456,
+	//	PowerTableDelta:    nil,
+	//}
+	//
+	//fc := types.FinalityCertificate{
+	//	GraniteDecision: gc,
+	//	Voters:          bitfield.New(),
+	//	BlsSignature: crypto.Signature{
+	//		Type: crypto.SigTypeBLS,
+	//		Data: nil,
+	//	},
+	//}
+
+	// TODO(jie): Serialize the actual FinalityCertificate object instead of using dummy []byte
+
+	data := []byte("侯杰.蒋雨薇.没有后来的后来 @ " + strconv.FormatInt(time.Now().UTC().UnixMilli(), 10))
+	return a.PubSub.Publish(build.FinalityCertificateTopic(a.NetName), data)
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
