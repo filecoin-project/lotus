@@ -449,7 +449,7 @@ type ProviderAPI struct {
 }
 
 func (p *ProviderAPI) Version(context.Context) (api.Version, error) {
-	return api.Version(api.ProviderAPIVersion0), nil
+	return api.ProviderAPIVersion0, nil
 }
 
 // Trigger shutdown
