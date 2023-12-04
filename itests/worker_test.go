@@ -3,6 +3,7 @@ package itests
 import (
 	"bytes"
 	"context"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -172,7 +173,7 @@ func TestWindowPostWorker(t *testing.T) {
 
 	t.Log("post message landed")
 
-	bm.MineBlocks(ctx, 2*time.Millisecond)
+	bm.MineBlocksMustPost(ctx, 2*time.Millisecond)
 
 	waitUntil = di.Open + di.WPoStChallengeWindow*3
 	t.Logf("End for head.Height > %d", waitUntil)
@@ -647,6 +648,11 @@ waitForProof:
 	var params miner11.SubmitWindowedPoStParams
 	require.NoError(t, params.UnmarshalCBOR(bytes.NewBuffer(slmsg.Params)))
 	require.Equal(t, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1, params.Proofs[0].PoStProof)
+
+	// sort params.Partitions by index
+	sort.Slice(params.Partitions, func(i, j int) bool {
+		return params.Partitions[i].Index < params.Partitions[j].Index
+	})
 
 	require.Len(t, params.Partitions, 2)
 	sc0, err := params.Partitions[0].Skipped.Count()
