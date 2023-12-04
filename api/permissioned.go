@@ -41,8 +41,8 @@ func PermissionedWorkerAPI(a Worker) Worker {
 	return &out
 }
 
-func PermissionedAPI[T any](a T) T {
-	var out T
+func PermissionedAPI[T, P any](a T) P {
+	var out P
 	permissionedProxies(a, &out)
 	return out
 }

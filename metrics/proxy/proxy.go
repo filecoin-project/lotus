@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
-func MetricedAPI[T any](a T) T {
-	var out T
+func MetricedAPI[T, P any](a T) P {
+	var out P
 	proxy(a, &out)
 	return out
 }
