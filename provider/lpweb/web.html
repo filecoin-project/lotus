@@ -1,0 +1,174 @@
+<html>
+<head>
+    <title>Lotus Provider Cluster Overview</title>
+    <style>
+        html, body {
+            background: #0f0f0f;
+            color: #ffffff;
+            padding: 0;
+            margin: 0;
+
+            font-family: monospace;
+        }
+
+        .app-head {
+            width: 100%;
+        }
+        .head-left {
+            display: inline-block;
+        }
+        .head-right {
+            display: inline-block;
+            float: right;
+        }
+
+        .info-section {
+            height: max-content;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(25rem, 1fr));
+            grid-gap: 1rem;
+        }
+
+        a:link {
+            color: #cfc;
+        }
+
+        a:visited {
+            color: #dfa;
+        }
+
+        a:hover {
+            color: #af7;
+        }
+
+        .dash-tile {
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem;
+            background: #3f3f3f;
+
+            & b {
+                padding-bottom: 0.5rem;
+                color: deeppink;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="app-head">
+        <div class="head-left">
+            <h1>LP WEB</h1>
+        </div>
+        <div class="head-right">
+            rpc: ok
+        </div>
+    </div>
+    <hr/>
+    <div>
+        <div class="page">
+            <div class="page-head">
+                <h2>Cluster Overview</h2>
+            </div>
+            <div>
+                Managed SP IDs: <span><a href="#">[f01234]</a></span>
+            </div>
+            <div class="info-block">
+                <div><h4>Cluster Nodes</h4></div>
+
+                <div class="info-section">
+                    <div class="dash-tile">
+                        <b>Resources</b>
+                        <div>23 Nodes</div>
+                        <div>34 Tasks Running</div>
+                        <div>543 CPU Cores in use</div>
+                        <div>4 245 GiB Memory in use</div>
+                    </div>
+
+                    <div class="dash-tile">
+                        <b>Compute Tasks</b>
+                        <div>43 Task queued</div>
+                        <div>3 WindowPoSt</div>
+                        <div>54 SDR</div>
+                        <div>34 TreeR</div>
+                        <div>33 TreeC</div>
+                        <div>20 PoRepSnark</div>
+                    </div>
+                </div>
+            </div>
+            <div class="info-block">
+                <h4>Storage</h4>
+
+                <div class="info-section">
+                    <div class="dash-tile">
+                        <b>Long Term Storage</b>
+                        <div>23 Buckets <i>(paths)</i></div>
+                        <div>12.443PiB Available</div>
+                        <div>4.243PiB Used</div>
+                        <div>25%</div>
+                    </div>
+                    <div class="dash-tile">
+                        <b>Sealing Storage</b>
+                        <div>23 Buckets <i>(paths)</i></div>
+                        <div>12.443TiB Available</div>
+                        <div>4.243TiB Used</div>
+                        <div>25%</div>
+                    </div>
+                    <div class="dash-tile">
+                        <b>Storage Transfers</b>
+                        <div>412 Gbps (40 tx) sealing-to-sealing</div>
+                        <div>12 Gbps (10 tx) sealing-to-longterm</div>
+                        <div>0 Mbps (0 tx) longterm-to-sealing</div>
+                    </div>
+                </div>
+            </div>
+            <div class="info-block">
+                <h4>Proving</h4>
+
+                <div class="info-section">
+                    <div class="dash-tile">
+                        <b>Current deadline</b>
+                        <div>4 Partitions</div>
+                        <div>Sectors: 5243 Sectors (243 TiB QAP)</div>
+                        <div>Submitted: 0 partitions</div>
+                        <div>Faults: 0 (0b)</div>
+                    </div>
+                    <div class="dash-tile">
+                        <b>WindowPoSt compute</b>
+                        <div>0 Queued Tasks</div>
+                        <div>4 Executing Tasks</div>
+                        <div>3 Proofs Waiting for submit</div>
+                    </div>
+                    <div class="dash-tile">
+                        <b>Recent WindowPoSt submissions</b>
+                        <div>
+                            [f0123] DL3 P1 <a href="#">bafyaenaub..</a> PENDING
+                        </div>
+                        <div>
+                            [f0123] DL2 P0 <a href="#">bafyonueti..</a> SUCCESS
+                        </div>
+                        <div>
+                            [f0123] DL2 P0 <a href="#">bafyaoetum..</a> SUCCESS
+                        </div>
+                        <div>
+                            <a href="#">[More]</a>
+                        </div>
+                    </div>
+                    <div class="dash-tile">
+                        <b>Recent Recovery submissions</b>
+                        <div>
+                            [f0123] DL3 P1 <a href="#">bafyaenaub..</a> 43 sectors SUCCESS
+                        </div>
+                        <div>
+                            [f0123] DL2 P0 <a href="#">bafyonueti..</a> 64 sectors SUCCESS
+                        </div>
+                        <div>
+                            <a href="#">[More]</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
