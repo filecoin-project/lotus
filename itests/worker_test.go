@@ -651,9 +651,11 @@ waitForProof:
 	require.Len(t, params.Partitions, 2)
 	sc0, err := params.Partitions[0].Skipped.Count()
 	require.NoError(t, err)
+	require.Equal(t, uint64(0), params.Partitions[0].Index)
 	require.Equal(t, uint64(1), sc0)
 	sc1, err := params.Partitions[1].Skipped.Count()
 	require.NoError(t, err)
+	require.Equal(t, uint64(1), params.Partitions[1].Index)
 	require.Equal(t, uint64(0), sc1)
 }
 
