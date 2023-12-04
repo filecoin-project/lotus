@@ -26,9 +26,9 @@ func LotusProviderHandler(
 	readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 	rpcServer := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors), readerServerOpt)
 
-	wapi := proxy.MetricedAPI[api.LotusProvider, *api.LotusProviderStruct](a)
+	wapi := proxy.MetricedAPI[api.LotusProvider, api.LotusProviderStruct](a)
 	if permissioned {
-		wapi = api.PermissionedAPI[api.LotusProvider, *api.LotusProviderStruct](wapi)
+		wapi = api.PermissionedAPI[api.LotusProvider, api.LotusProviderStruct](wapi)
 	}
 
 	rpcServer.Register("Filecoin", wapi)
