@@ -212,9 +212,9 @@ var runCmd = &cli.Command{
 
 		var authVerify func(context.Context, string) ([]auth.Permission, error)
 		{
-			privateKey, err := base64.RawStdEncoding.DecodeString(deps.cfg.Apis.StorageRPCSecret)
+			privateKey, err := base64.StdEncoding.DecodeString(deps.cfg.Apis.StorageRPCSecret)
 			if err != nil {
-				return err
+				return xerrors.Errorf("decoding storage rpc secret: %w", err)
 			}
 			authVerify = func(ctx context.Context, token string) ([]auth.Permission, error) {
 				var payload jwtPayload
