@@ -106,28 +106,28 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "db-name",
-				EnvVars: []string{"LOTUS_DB_NAME"},
+				EnvVars: []string{"LOTUS_DB_NAME", "LOTUS_HARMONYDB_HOSTS"},
 				Value:   "yugabyte",
 			},
 			&cli.StringFlag{
 				Name:    "db-user",
-				EnvVars: []string{"LOTUS_DB_USER"},
+				EnvVars: []string{"LOTUS_DB_USER", "LOTUS_HARMONYDB_USERNAME"},
 				Value:   "yugabyte",
 			},
 			&cli.StringFlag{
 				Name:    "db-password",
-				EnvVars: []string{"LOTUS_DB_PASSWORD"},
+				EnvVars: []string{"LOTUS_DB_PASSWORD", "LOTUS_HARMONYDB_PASSWORD"},
 				Value:   "yugabyte",
 			},
 			&cli.StringFlag{
 				Name:    "db-port",
-				EnvVars: []string{"LOTUS_DB_PORT"},
+				EnvVars: []string{"LOTUS_DB_PORT", "LOTUS_HARMONYDB_PORT"},
 				Hidden:  true,
 				Value:   "5433",
 			},
 			&cli.StringFlag{
 				Name:    "layers",
-				EnvVars: []string{"LOTUS_LAYERS"},
+				EnvVars: []string{"LOTUS_LAYERS", "LOTUS_CONFIG_LAYERS"},
 				Value:   "base",
 			},
 			&cli.StringFlag{

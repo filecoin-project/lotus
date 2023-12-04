@@ -65,7 +65,7 @@ func getDefaultConfig(comment bool) (string, error) {
 
 var configSetCmd = &cli.Command{
 	Name:      "set",
-	Aliases:   []string{"add"},
+	Aliases:   []string{"add", "update", "create"},
 	Usage:     "Set a config layer or the base by providing a filename or stdin.",
 	ArgsUsage: "a layer's file name",
 	Flags: []cli.Flag{
