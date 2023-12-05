@@ -259,6 +259,9 @@ Lotus-workers can now be built to leverage the SupraSeal C2 sealing optimization
 - fix(client): single-root error message ([filecoin-project/lotus#11214](https://github.com/filecoin-project/lotus/pull/11214))
 - fix: worker: Convert `DC_[SectorSize]_[ResourceRestriction]` if set ([filecoin-project/lotus#11224](https://github.com/filecoin-project/lotus/pull/11224))
 - chore: backport #11338 onto release/v1.25.0 ([filecoin-project/lotus#11350](https://github.com/filecoin-project/lotus/pull/11350))
+- fix: lotus-provider: lotus-provider msg sending ([filecoin-project/lotus#11480](https://github.com/filecoin-project/lotus/pull/11480))
+- fix: lotus-provider: Fix winning PoSt ([filecoin-project/lotus#11483](https://github.com/filecoin-project/lotus/pull/11483))
+- chore: fix: sql Scan cannot write to an object ([filecoin-project/lotus#11487](https://github.com/filecoin-project/lotus/pull/11487))
 
 ## Dependencies
 - deps: update go-libp2p to v0.28.1 ([filecoin-project/lotus#10998](https://github.com/filecoin-project/lotus/pull/10998))
