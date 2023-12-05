@@ -17,28 +17,26 @@ There are no upgrade warnings as of this first release candidate.
 ### Lotus-Provider
 The feature release ships the alpha release of the new Lotus-Provider binary, together with its initial features - High Availability of WindowPoSt and WinningPoSt.
 
-Over the next couple of days, we will sanity check some features and build up a catalogue of documentation for how you can test out `Lotus-Provider`. Once out, they will be linked in this section here, and sent as an update in the relevant Slack channels.
+Over the next couple of days, we will build up a catalogue of documentation for how you can test out `Lotus-Provider`. Once out, they will be linked in this section here, and sent as an update in the relevant Slack channels. If you are interested in testing out Lotus-Provider in your setup on the Calibration network feel free to reach out to us in the `#fil-lotus-dev` channel.
 
 So what is so exciting about Lotus-Provider:
 
 **High Availability**
-- You can run as many instances as you want.
+- You can run as many `Lotus-Provider` instances as you want for both WindowPoSt and WinningPOSt.
 - You can connect them to as many clustered Yugabyte instances as you want to. This allows for an NxN configuration where all instances can communicate with all others.
 - You have the option to connect different instances to different chain daemons.
 
 **Simplicity**
-- Once the configuration is in the database, setting up a new machine with Lotus-Provider is straightforward. Simply start the binary with the correct flags to find Yugabyte and specify which configuration layers it should use.
+- Once the configuration is in the database, setting up a new machine with Lotus-Provider is straightforward. Simply start the binary with the correct flags to find YugabyteDB and specify which configuration layers it should use.
 
 **Durability**
-- Feel free to update one of your Lotus-Provider machines. The system is designed to handle updates and maintain performance and reliability.
+- `Lotus-Provider` is designed with robustness in mind. Updates to the system are handled seamlessly, ensuring that performance and stability are maintained when taking down machines in your cluster for updates.
 
 ### External PC2-binaries 
 
-In this release candidate, storage providers have the ability to call external PC2-binaries during the sealing process. Sealing is a critical part of preparing data for storage in Filecoin, and the PC2 phase is a part of this process.
+In this release candidate, storage providers have the ability to call external PC2-binaries during the sealing process. This allows storage providers to leverage the SupraSeal PC2 binary, which has been shown to improve sealing speed in the PC2-phase. For instance, our current benchmarks show that an NVIDIA RTX A5000 card was able to complete PC2 in approximately 2.5 minutes.
 
-This feature allows storage providers to leverage the SupraSeal PC2 binary, which has been shown to improve sealing speed in the PC2-phase. For instance, our current benchmarks show that an A5000 card was able to complete PC2 in approximately 2.5 minutes.
-
-We have verified that SupraSeal PC2 functions properly with Committed Capacity (CC) sectors that are non-Synthetic, and with SyntheticPoReps that will be introduced in the upcoming nv21-version.
+We have verified that SupraSeal PC2 functions properly with Committed Capacity (CC) sectors that are non-Synthetic, and with SyntheticPoReps that is introduced in the upcoming nv21-version.
 
 However, we have encountered errors when using SupraSeal PC2 with deal sectors. As a result, we advise against using SupraSeal PC2 through the `lotus-worker` with deal sectors in the sealing pipeline, except in testing environments. We plan to update this guideline in future release candidates, once we have a fix for deal sectors.
 
