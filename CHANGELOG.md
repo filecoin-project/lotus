@@ -1,21 +1,156 @@
 # Lotus changelog
 
 # UNRELEASED
-- chore: Auto remove local chain data when importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
-- feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
-- feat: sealing: load SectorsSummary from sealing SectorStats instead of calling API each time ([filecoin-project/lotus#11353](https://github.com/filecoin-project/lotus/pull/11353))
-- fix: miner info: Show correct sector state counts ([filecoin-project/lotus#11456](https://github.com/filecoin-project/lotus/pull/11456))
-- feat: add support for specifying block number when calling `eth_estimateGas` ([filecoin-project/lotus#11462](https://github.com/filecoin-project/lotus/pull/11462)).
 
 ## Improvements
-- fix: Add time slicing to splitstore purging step during compaction to reduce lock congestion [filecoin-project/lotus#11269](https://github.com/filecoin-project/lotus/pull/11269)
-- feat: Added instructions on how to setup Prometheus/Grafana for monitoring a local Lotus node [filecoin-project/lotus#11276](https://github.com/filecoin-project/lotus/pull/11276)
-- fix: Exclude reverted events in `eth_getLogs` results [filecoin-project/lotus#11318](https://github.com/filecoin-project/lotus/pull/11318)
-- fix: The Ethereum API will now use the correct state-tree when resolving "native" addresses into masked ID addresses. Additionally, pending messages from native account types won't be visible in the Ethereum API because there is no "correct" state-tree to pick in this case. However, pending _Ethereum_ transactions and native messages that have landed on-chain will still be visible through the Ethereum API.
-- feat: Unambiguously translate native messages to Ethereum transactions by:
-  - Detecting native messages that "look" like Ethereum transactions (creating smart contracts, invoking a smart contract, etc.), and decoding them as such.
-  - Otherwise, ABI-encoding the inputs as if they were calls to a `handle_filecoin_method` Solidity method.
-- fix: ensure that the Ethereum API never returns "empty" addresses for native messages. When a "to" address cannot be resolved to a 0x-style address, it will be re-written to `0xff0000000000000000000000ffffffffffffffff`. This can only happen when the native transaction _reverted_ (failing to create an account at the specified "to" address).
+
+# v1.25.1-rc1 / 2023-12-05 
+
+This is the first release candidate of the upcoming optional release of Lotus v1.25.1. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+
+## ☢️ Upgrade Warnings ☢️
+
+There are no upgrade warnings as of this first release candidate.
+
+## ⭐️ Highlights ⭐️
+
+**Lotus-Provider**
+The feature release ships the new Lotus-Provider binary, together with its initial features - High Availability of WindowPoSt and WinningPoSt.
+
+Over the next couple of days, we will sanity check some feature and build up a larger cataloge of documentation. Once out, they will be linked here.
+
+**SupraSeal PC2**
+
+In this release candidate we have verified SupraSeal PC2 to function properly with Committed Capacity (CC) sectors non-Synthetic, and SyntheticPoReps that is coming with the nv21-version.
+
+However, we have experienced errors when using it with deal sectors. As a result, we advise against using SupraSeal PC2 called through the `lotus-worker` for now with deal sectors in the sealing pipeline, except in testing environments. We will update this guidline in later release candidates, once we have a fix for deal sectors.
+
+[Refer to the documentation to learn how to use SupraSeal PC2](https://lotus.filecoin.io/tutorials/lotus-miner/supra-seal-pc2/) with your `lotus-worker`, as well as how to perform benchmarks using this feature.
+
+## New features
+- feat: sturdypost work branch ([filecoin-project/lotus#11405](https://github.com/filecoin-project/lotus/pull/11405))
+- feat: worker: Support delegating precommit2 to external binary ([filecoin-project/lotus#11185](https://github.com/filecoin-project/lotus/pull/11185))
+- feat: build: Add SupraSeal-PC2 binary script ([filecoin-project/lotus#11430](https://github.com/filecoin-project/lotus/pull/11430))
+- Feat: daemon: Auto remove existing chain if importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
+- feat: mpool/wdpost: Maximize feecap config ([filecoin-project/lotus#9746](https://github.com/filecoin-project/lotus/pull/9746))
+- feat: Add lotus-bench cli option to stress test any binary ([filecoin-project/lotus#11270](https://github.com/filecoin-project/lotus/pull/11270))
+- feat: chain import: don't walk to genesis - 2-3x faster snapshot import (#11446) ([filecoin-project/lotus#11446](https://github.com/filecoin-project/lotus/pull/11446))
+- feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
+- feat: bench: flag to output GenerateWinningPoStWithVanilla params ([filecoin-project/lotus#11460](https://github.com/filecoin-project/lotus/pull/11460))
+- feat: Add ETA to lotus sync wait (#11211) ([filecoin-project/lotus#11211](https://github.com/filecoin-project/lotus/pull/11211))
+
+
+## Improvements
+- feat: bootstrap: add glif bootstrap node on calibration ([filecoin-project/lotus#11175](https://github.com/filecoin-project/lotus/pull/11175))
+- fix: bench: Set ticket and seed to a non-all zero value ([filecoin-project/lotus#11429](https://github.com/filecoin-project/lotus/pull/11429))
+- fix: alert: Check UDPbuffer-size ([filecoin-project/lotus#11360](https://github.com/filecoin-project/lotus/pull/11360))
+- feat: cli: sort actor CIDs alphabetically before printing (#11345) ([filecoin-project/lotus#11345](https://github.com/filecoin-project/lotus/pull/11345))
+- fix: worker: Connect when --listen is not set ([filecoin-project/lotus#11294](https://github.com/filecoin-project/lotus/pull/11294))
+- fix: miner info: Show correct sector state counts ([filecoin-project/lotus#11456](https://github.com/filecoin-project/lotus/pull/11456))
+- feat: miner: defensive check for equivocation ([filecoin-project/lotus#11321](https://github.com/filecoin-project/lotus/pull/11321))
+- feat: Instructions for setting up Grafana/Prometheus for monitoring local lotus node ([filecoin-project/lotus#11276](https://github.com/filecoin-project/lotus/pull/11276))
+- fix: cli: Wrap error in wallet sign ([filecoin-project/lotus#11273](https://github.com/filecoin-project/lotus/pull/11273))
+- fix: Add time slicing to splitstore purging to reduce lock congestion ([filecoin-project/lotus#11269](https://github.com/filecoin-project/lotus/pull/11269))
+- feat: sealing: load SectorsSummary from sealing SectorStats instead of calling API each time ([filecoin-project/lotus#11353](https://github.com/filecoin-project/lotus/pull/11353))
+- fix: shed: additional metrics in `mpool miner-select-messages` ([filecoin-project/lotus#11253](https://github.com/filecoin-project/lotus/pull/11253))
+- storage: Return soft err when sector alloc fails in acquire ([filecoin-project/lotus#11338](https://github.com/filecoin-project/lotus/pull/11338))
+- feat: miner: log detailed timing breakdown when mining takes longer than the block's timestamp ([filecoin-project/lotus#11228](https://github.com/filecoin-project/lotus/pull/11228))
+- fix: shed: make invariants checker work with splitstore ([filecoin-project/lotus#11391](https://github.com/filecoin-project/lotus/pull/11391))
+- feat: eth: encode eth tx input as solidity ABI (#11402) ([filecoin-project/lotus#11402](https://github.com/filecoin-project/lotus/pull/11402))
+- fix: eth: use the correct state-tree when resolving addresses (#11387) ([filecoin-project/lotus#11387](https://github.com/filecoin-project/lotus/pull/11387))
+- fix: eth: remove trace sanity check (#11385) ([filecoin-project/lotus#11385](https://github.com/filecoin-project/lotus/pull/11385))
+- fix: chain: make failure to load the chain state fatal (#11426) ([filecoin-project/lotus#11426](https://github.com/filecoin-project/lotus/pull/11426))
+- fix: build: an epoch is near an upgrade iff the upgrade is enabled (#11401) ([filecoin-project/lotus#11401](https://github.com/filecoin-project/lotus/pull/11401))
+- fix: eth: handle unresolvable addresses (#11433) ([filecoin-project/lotus#11433](https://github.com/filecoin-project/lotus/pull/11433))
+- fix: eth: correctly encode and simplify native input/output encoding (#11382) ([filecoin-project/lotus#11382](https://github.com/filecoin-project/lotus/pull/11382))
+- fix: worker: listen for interrupt signals in GetStorageMinerAPI loop (#11309) ([filecoin-project/lotus#11309](https://github.com/filecoin-project/lotus/pull/11309))
+- fix: sync: iterate over returned messages directly (#11373) ([filecoin-project/lotus#11373](https://github.com/filecoin-project/lotus/pull/11373))
+- fix: miner: correct duration logs in mineOne ([filecoin-project/lotus#11241](https://github.com/filecoin-project/lotus/pull/11241))
+- fix: cli: Add print to unseal cmd ([filecoin-project/lotus#11271](https://github.com/filecoin-project/lotus/pull/11271))
+- fix: networking: avoid dialing when trying to handshake peers ([filecoin-project/lotus#11262](https://github.com/filecoin-project/lotus/pull/11262))
+- metric milliseconds computation with golang original method (#11403) ([filecoin-project/lotus#11403](https://github.com/filecoin-project/lotus/pull/11403))
+- feat: shed: fix blockstore prune (#11197) ([filecoin-project/lotus#11197](https://github.com/filecoin-project/lotus/pull/11197))
+- refactor:ffi: replace ClearLayerData with ClearCache (#11352) ([filecoin-project/lotus#11352](https://github.com/filecoin-project/lotus/pull/11352))
+- fix: api: compute gasUsedRatio based on max gas in the tipset (#11354) ([filecoin-project/lotus#11354](https://github.com/filecoin-project/lotus/pull/11354))
+- fix: api: compute the effective gas cost with the correct base-fee (#11357) ([filecoin-project/lotus#11357](https://github.com/filecoin-project/lotus/pull/11357))
+- fix: api: return errors on failure to lookup an eth txn receipt (#11329) ([filecoin-project/lotus#11329](https://github.com/filecoin-project/lotus/pull/11329))
+- fix: api: exclude reverted events in `eth_getLogs` results (#11318) ([filecoin-project/lotus#11318](https://github.com/filecoin-project/lotus/pull/11318))
+- api: Add block param to eth_estimateGas ([filecoin-project/lotus#11462](https://github.com/filecoin-project/lotus/pull/11462))
+- opt: fix duplicate check exitcode ([filecoin-project/lotus#11171](https://github.com/filecoin-project/lotus/pull/11171))
+
+## Dependencies
+- update go-libp2p to v0.31.0 ([filecoin-project/lotus#11225](https://github.com/filecoin-project/lotus/pull/11225))
+- deps: gostatetype (#11437) ([filecoin-project/lotus#11437](https://github.com/filecoin-project/lotus/pull/11437))
+- fix: deps: stop using go-libp2p deprecated peer.ID.Pretty ([filecoin-project/lotus#11263](https://github.com/filecoin-project/lotus/pull/11263))
+
+## Others
+- chore: update FFI (#11431) ([filecoin-project/lotus#11431](https://github.com/filecoin-project/lotus/pull/11431))
+- chore: build: bump master to v1.25.1-dev ([filecoin-project/lotus#11450](https://github.com/filecoin-project/lotus/pull/11450))
+- chore: releases :merge releases into master  ([filecoin-project/lotus#11448](https://github.com/filecoin-project/lotus/pull/11448))
+- chore: actors: update v12 to the final release ([filecoin-project/lotus#11440](https://github.com/filecoin-project/lotus/pull/11440))
+- chore: Remove ipfs main bootstrap nodes (#11200) ([filecoin-project/lotus#11200](https://github.com/filecoin-project/lotus/pull/11200))
+- Remove PL's european bootstrap nodes from mainnet.pi ([filecoin-project/lotus#11315](https://github.com/filecoin-project/lotus/pull/11315))
+- chore: deps: update to go-state-types v0.12.7 ([filecoin-project/lotus#11428](https://github.com/filecoin-project/lotus/pull/11428))
+- fix: Add .vscode to gitignore ([filecoin-project/lotus#11275](https://github.com/filecoin-project/lotus/pull/11275))
+- fix: test: temporarily exempt SynthPorep constants from test ([filecoin-project/lotus#11259](https://github.com/filecoin-project/lotus/pull/11259))
+- feat: skip TestSealAndVerify3 until it's fixed ([filecoin-project/lotus#11230](https://github.com/filecoin-project/lotus/pull/11230))
+- Update RELEASE_ISSUE_TEMPLATE.md ([filecoin-project/lotus#11250](https://github.com/filecoin-project/lotus/pull/11250))
+- fix: config: Update ColdStoreType comments ([filecoin-project/lotus#11274](https://github.com/filecoin-project/lotus/pull/11274))
+- readme: bump up golang version (#11347) ([filecoin-project/lotus#11347](https://github.com/filecoin-project/lotus/pull/11347))
+- chore: watermelon: upgrade epoch ([filecoin-project/lotus#11374](https://github.com/filecoin-project/lotus/pull/11374))
+- add support for v12 check invariants and also a default case to reduce future confusion (#11371) ([filecoin-project/lotus#11371](https://github.com/filecoin-project/lotus/pull/11371))
+- test: drand: switch tests to drand testnet (from devnet) (#11359) ([filecoin-project/lotus#11359](https://github.com/filecoin-project/lotus/pull/11359))
+- feat: chain: light-weight patch to fix calibrationnet again by removing move_partitions from built-in actors (#11409) ([filecoin-project/lotus#11409](https://github.com/filecoin-project/lotus/pull/11409))
+- chore: cli: Revert move-partitions cmd ([filecoin-project/lotus#11408](https://github.com/filecoin-project/lotus/pull/11408))
+- chore: forward-port calibnet hotfix to master ([filecoin-project/lotus#11407](https://github.com/filecoin-project/lotus/pull/11407))
+- fix: migration: set premigration to 90 minutes ([filecoin-project/lotus#11395](https://github.com/filecoin-project/lotus/pull/11395))
+- feat: chain: light-weight patch to fix calibrationnet (#11363) ([filecoin-project/lotus#11363](https://github.com/filecoin-project/lotus/pull/11363))
+- chore: merge feat/nv21 into master ([filecoin-project/lotus#11336](https://github.com/filecoin-project/lotus/pull/11336))
+- docs: Link the release section in the release flow doc ([filecoin-project/lotus#11299](https://github.com/filecoin-project/lotus/pull/11299))
+- fix: ci: fetch params for the storage unit tests ([filecoin-project/lotus#11441](https://github.com/filecoin-project/lotus/pull/11441))
+- Update mainnet.pi ([filecoin-project/lotus#11288](https://github.com/filecoin-project/lotus/pull/11288))
+- add go linter - "unused" (#11235) ([filecoin-project/lotus#11235](https://github.com/filecoin-project/lotus/pull/11235))
+- Fix/texts (#11298) ([filecoin-project/lotus#11298](https://github.com/filecoin-project/lotus/pull/11298))
+- fix typo in rate-limit flag description (#11316) ([filecoin-project/lotus#11316](https://github.com/filecoin-project/lotus/pull/11316))
+- eth_filter flake debug ([filecoin-project/lotus#11261](https://github.com/filecoin-project/lotus/pull/11261))
+- fix: sealing: typo in FinalizeReplicaUpdate ([filecoin-project/lotus#11255](https://github.com/filecoin-project/lotus/pull/11255))
+- chore: slice loop replace (#11349) ([filecoin-project/lotus#11349](https://github.com/filecoin-project/lotus/pull/11349))
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Andrew Jackson (Ajax) | 161 | +24328/-12464 | 4148 |
+| Łukasz Magiera | 99 | +5238/-2690 | 260 |
+| Shrenuj Bansal | 27 | +3402/-1265 | 76 |
+| Fridrik Asmundsson | 15 | +1148/-307 | 58 |
+| Steven Allen | 15 | +674/-337 | 35 |
+| Ian Norden | 1 | +625/-3 | 4 |
+| Aarsh Shah | 4 | +227/-167 | 14 |
+| Phi | 19 | +190/-183 | 32 |
+| Aayush Rajasekaran | 3 | +291/-56 | 16 |
+| Mikers | 2 | +76/-262 | 19 |
+| Aayush | 14 | +111/-59 | 21 |
+| Friðrik Ásmundsson | 1 | +101/-1 | 2 |
+| Alejandro Criado-Pérez | 1 | +36/-36 | 27 |
+| Jie Hou | 5 | +36/-10 | 5 |
+| Florian RUEN | 2 | +24/-19 | 5 |
+| Phi-rjan | 3 | +20/-8 | 3 |
+| Icarus9913 | 1 | +11/-11 | 6 |
+| Jiaying Wang | 3 | +8/-7 | 5 |
+| guangwu | 1 | +3/-10 | 2 |
+| Marten Seemann | 1 | +6/-6 | 2 |
+| simlecode | 1 | +0/-6 | 2 |
+| GlacierWalrus | 2 | +0/-5 | 2 |
+| Anton Evangelatov | 1 | +2/-2 | 1 |
+| Ales Dumikau | 3 | +2/-2 | 3 |
+| renran | 1 | +2/-1 | 1 |
+| Volker Mische | 1 | +1/-1 | 1 |
+| Icarus Wu | 1 | +1/-1 | 1 |
+| Hubert | 1 | +1/-1 | 1 |
+| Aloxaf | 1 | +1/-1 | 1 |
+| Alejandro | 1 | +1/-1 | 1 |
+| lazavikmaria | 1 | +1/-0 | 1 |
 
 # v 1.25.0 / 2023-11-22
 
