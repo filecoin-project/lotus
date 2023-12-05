@@ -53,14 +53,17 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
    - Adds a script for building the SupraSeal-PC2 binary easily.
 - Feat: daemon: Auto remove existing chain if importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
    - Auto removes the existing chain when importing a snapshot. 
+- feat: Add ETA to lotus sync wait (#11211) ([filecoin-project/lotus#11211](https://github.com/filecoin-project/lotus/pull/11211))
+   - Adds a ETA indicator to `lotus sync wait`, so you can get an estimate for how long until sync is completed.
 - feat: mpool/wdpost: Maximize feecap config ([filecoin-project/lotus#9746](https://github.com/filecoin-project/lotus/pull/9746))
    - Adds a Maximixe FeeCap Config
 - feat: Add lotus-bench cli option to stress test any binary ([filecoin-project/lotus#11270](https://github.com/filecoin-project/lotus/pull/11270))
+   - Enables the `Lotus-Bench` to run any binary and analyze their latency and histogram distribution, track most common errors, perform stress testing under different concurrency levels and see how it works under different QPS.
 - feat: chain import: don't walk to genesis - 2-3x faster snapshot import (#11446) ([filecoin-project/lotus#11446](https://github.com/filecoin-project/lotus/pull/11446))
+   - Improves Snapshot import speed, by not walking back to genesis on import.
 - feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
+   - Adds the mpool count as a prometheus metric.
 - feat: bench: flag to output GenerateWinningPoStWithVanilla params ([filecoin-project/lotus#11460](https://github.com/filecoin-project/lotus/pull/11460))
-- feat: Add ETA to lotus sync wait (#11211) ([filecoin-project/lotus#11211](https://github.com/filecoin-project/lotus/pull/11211))
-
 
 ## Improvements
 - feat: bootstrap: add glif bootstrap node on calibration ([filecoin-project/lotus#11175](https://github.com/filecoin-project/lotus/pull/11175))
