@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -579,12 +577,13 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 			taskFn(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 				// First we check if the mining base includes blocks we may have mined previously to avoid getting slashed
 				// select mining_tasks where epoch==base_epoch if win=true to maybe get base block cid which has to be included in our tipset
-				var baseBlockCid string
-				err := tx.QueryRow(`SELECT mined_cid FROM mining_tasks WHERE epoch = $1 AND sp_id = $2 AND won = true`, baseEpoch, spID).Scan(&baseBlockCid)
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				var baseBlockCids []string
+				err := tx.Select(&baseBlockCids, `SELECT mined_cid FROM mining_tasks WHERE epoch = $1 AND sp_id = $2 AND won = true`, baseEpoch, spID)
+				if err != nil {
 					return false, xerrors.Errorf("querying mining_tasks: %w", err)
 				}
-				if baseBlockCid != "" {
+				if len(baseBlockCids) >= 1 {
+					baseBlockCid := baseBlockCids[0]
 					c, err := cid.Parse(baseBlockCid)
 					if err != nil {
 						return false, xerrors.Errorf("parsing mined_cid: %w", err)
