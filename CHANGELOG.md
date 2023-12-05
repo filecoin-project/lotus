@@ -14,25 +14,47 @@ There are no upgrade warnings as of this first release candidate.
 
 ## ⭐️ Highlights ⭐️
 
-**Lotus-Provider**
-The feature release ships the new Lotus-Provider binary, together with its initial features - High Availability of WindowPoSt and WinningPoSt.
+### Lotus-Provider
+The feature release ships the alpha release of the new Lotus-Provider binary, together with its initial features - High Availability of WindowPoSt and WinningPoSt.
 
-Over the next couple of days, we will sanity check some feature and build up a larger cataloge of documentation. Once out, they will be linked here.
+Over the next couple of days, we will sanity check some features and build up a catalogue of documentation for how you can test out `Lotus-Provider`. Once out, they will be linked in this section here, and sent as an update in the relevant Slack channels.
 
-**SupraSeal PC2**
+So what is so exciting about Lotus-Provider:
 
-In this release candidate we have verified SupraSeal PC2 to function properly with Committed Capacity (CC) sectors non-Synthetic, and SyntheticPoReps that is coming with the nv21-version.
+**High Availability**
+- You can run as many instances as you want.
+- You can connect them to as many clustered Yugabyte instances as you want to. This allows for an NxN configuration where all instances can communicate with all others.
+- You have the option to connect different instances to different chain daemons.
 
-However, we have experienced errors when using it with deal sectors. As a result, we advise against using SupraSeal PC2 called through the `lotus-worker` for now with deal sectors in the sealing pipeline, except in testing environments. We will update this guidline in later release candidates, once we have a fix for deal sectors.
+**Simplicity**
+- Once the configuration is in the database, setting up a new machine with Lotus-Provider is straightforward. Simply start the binary with the correct flags to find Yugabyte and specify which configuration layers it should use.
 
-[Refer to the documentation to learn how to use SupraSeal PC2](https://lotus.filecoin.io/tutorials/lotus-miner/supra-seal-pc2/) with your `lotus-worker`, as well as how to perform benchmarks using this feature.
+**Durability**
+- Feel free to update one of your Lotus-Provider machines. The system is designed to handle updates and maintain performance and reliability.
+
+### External PC2-binaries 
+
+In this release candidate, storage providers have the ability to call external PC2-binaries during the sealing process. Sealing is a critical part of preparing data for storage in Filecoin, and the PC2 phase is a part of this process.
+
+This feature allows storage providers to leverage the SupraSeal PC2 binary, which has been shown to improve sealing speed in the PC2-phase. For instance, our current benchmarks show that an A5000 card was able to complete PC2 in approximately 2.5 minutes.
+
+We have verified that SupraSeal PC2 functions properly with Committed Capacity (CC) sectors that are non-Synthetic, and with SyntheticPoReps that will be introduced in the upcoming nv21-version.
+
+However, we have encountered errors when using SupraSeal PC2 with deal sectors. As a result, we advise against using SupraSeal PC2 through the `lotus-worker` with deal sectors in the sealing pipeline, except in testing environments. We plan to update this guideline in future release candidates, once we have a fix for deal sectors.
+
+For more information on how to use SupraSeal PC2 with your `lotus-worker`, as well as how to perform benchmarks using this feature, please [refer to the documentation](https://lotus.filecoin.io/tutorials/lotus-miner/supra-seal-pc2/).
 
 ## New features
 - feat: sturdypost work branch ([filecoin-project/lotus#11405](https://github.com/filecoin-project/lotus/pull/11405))
+   - Adds the `Lotus-Provider` binary, and the HarmonyDB framework.
 - feat: worker: Support delegating precommit2 to external binary ([filecoin-project/lotus#11185](https://github.com/filecoin-project/lotus/pull/11185))
+   - Allows for delegating PreCommit2 to an exteranl binary.
 - feat: build: Add SupraSeal-PC2 binary script ([filecoin-project/lotus#11430](https://github.com/filecoin-project/lotus/pull/11430))
+   - Adds a script for building the SupraSeal-PC2 binary easily.
 - Feat: daemon: Auto remove existing chain if importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
+   - Auto removes the existing chain when importing a snapshot. 
 - feat: mpool/wdpost: Maximize feecap config ([filecoin-project/lotus#9746](https://github.com/filecoin-project/lotus/pull/9746))
+   - Adds a Maximixe FeeCap Config
 - feat: Add lotus-bench cli option to stress test any binary ([filecoin-project/lotus#11270](https://github.com/filecoin-project/lotus/pull/11270))
 - feat: chain import: don't walk to genesis - 2-3x faster snapshot import (#11446) ([filecoin-project/lotus#11446](https://github.com/filecoin-project/lotus/pull/11446))
 - feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
