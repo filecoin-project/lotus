@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/dline"
 
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/provider"
 )
@@ -62,18 +63,18 @@ var wdPostTaskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
 
-		deps, err := getDeps(ctx, cctx)
+		deps, err := deps.GetDeps(ctx, cctx)
 		if err != nil {
 			return err
 		}
 
-		ts, err := deps.full.ChainHead(ctx)
+		ts, err := deps.Full.ChainHead(ctx)
 		if err != nil {
 			return xerrors.Errorf("cannot get chainhead %w", err)
 		}
 		ht := ts.Height()
 
-		addr, err := address.NewFromString(deps.cfg.Addresses.MinerAddresses[0])
+		addr, err := address.NewFromString(deps.Cfg.Addresses.MinerAddresses[0])
 		if err != nil {
 			return xerrors.Errorf("cannot get miner address %w", err)
 		}
@@ -82,7 +83,7 @@ var wdPostTaskCmd = &cli.Command{
 			return xerrors.Errorf("cannot get miner id %w", err)
 		}
 		var id int64
-		_, err = deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+		_, err = deps.DB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			err = tx.QueryRow(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123) RETURNING id`).Scan(&id)
 			if err != nil {
 				log.Error("inserting harmony_task: ", err)
@@ -108,7 +109,7 @@ var wdPostTaskCmd = &cli.Command{
 		var result sql.NullString
 		for {
 			time.Sleep(time.Second)
-			err = deps.db.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, id).Scan(&result)
+			err = deps.DB.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, id).Scan(&result)
 			if err != nil {
 				return xerrors.Errorf("reading result from harmony_test: %w", err)
 			}
@@ -157,29 +158,29 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 	Action: func(cctx *cli.Context) error {
 
 		ctx := context.Background()
-		deps, err := getDeps(ctx, cctx)
+		deps, err := deps.GetDeps(ctx, cctx)
 		if err != nil {
 			return err
 		}
 
-		wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := provider.WindowPostScheduler(ctx, deps.cfg.Fees, deps.cfg.Proving, deps.full, deps.verif, deps.lw, nil,
-			deps.as, deps.maddrs, deps.db, deps.stor, deps.si, deps.cfg.Subsystems.WindowPostMaxTasks)
+		wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := provider.WindowPostScheduler(ctx, deps.Cfg.Fees, deps.Cfg.Proving, deps.Full, deps.Verif, deps.LW, nil,
+			deps.As, deps.Maddrs, deps.DB, deps.Stor, deps.Si, deps.Cfg.Subsystems.WindowPostMaxTasks)
 		if err != nil {
 			return err
 		}
 		_, _ = wdPoStSubmitTask, derlareRecoverTask
 
-		if len(deps.maddrs) == 0 {
+		if len(deps.Maddrs) == 0 {
 			return errors.New("no miners to compute WindowPoSt for")
 		}
-		head, err := deps.full.ChainHead(ctx)
+		head, err := deps.Full.ChainHead(ctx)
 		if err != nil {
 			return xerrors.Errorf("failed to get chain head: %w", err)
 		}
 
 		di := dline.NewInfo(head.Height(), cctx.Uint64("deadline"), 0, 0, 0, 10 /*challenge window*/, 0, 0)
 
-		for _, maddr := range deps.maddrs {
+		for _, maddr := range deps.Maddrs {
 			out, err := wdPostTask.DoPartition(ctx, head, address.Address(maddr), di, cctx.Uint64("partition"))
 			if err != nil {
 				fmt.Println("Error computing WindowPoSt for miner", maddr, err)

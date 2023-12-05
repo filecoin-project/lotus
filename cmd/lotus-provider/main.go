@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -131,7 +132,7 @@ func main() {
 				Value:   "base",
 			},
 			&cli.StringFlag{
-				Name:    FlagRepoPath,
+				Name:    deps.FlagRepoPath,
 				EnvVars: []string{"LOTUS_REPO_PATH"},
 				Value:   "~/.lotusprovider",
 			},
@@ -144,7 +145,7 @@ func main() {
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagRepoPath), c.App.Name)
+				build.GeneratePanicReport(c.String("panic-reports"), c.String(deps.FlagRepoPath), c.App.Name)
 				panic(r)
 			}
 			return nil
@@ -154,7 +155,3 @@ func main() {
 	app.Metadata["repoType"] = repo.Provider
 	lcli.RunApp(app)
 }
-
-const (
-	FlagRepoPath = "repo-path"
-)

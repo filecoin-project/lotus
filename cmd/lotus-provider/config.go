@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -77,7 +76,7 @@ var configSetCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		args := cctx.Args()
 
-		db, err := makeDB(cctx)
+		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err
 		}
@@ -131,7 +130,7 @@ var configGetCmd = &cli.Command{
 		if args.Len() != 1 {
 			return fmt.Errorf("want 1 layer arg, got %d", args.Len())
 		}
-		db, err := makeDB(cctx)
+		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err
 		}
@@ -153,7 +152,7 @@ var configListCmd = &cli.Command{
 	Usage:   "List config layers you can get.",
 	Flags:   []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		db, err := makeDB(cctx)
+		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err
 		}
@@ -180,7 +179,7 @@ var configRmCmd = &cli.Command{
 		if args.Len() != 1 {
 			return errors.New("must have exactly 1 arg for the layer name")
 		}
-		db, err := makeDB(cctx)
+		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err
 		}
@@ -209,11 +208,11 @@ var configViewCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		db, err := makeDB(cctx)
+		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err
 		}
-		lp, err := getConfig(cctx, db)
+		lp, err := deps.GetConfig(cctx, db)
 		if err != nil {
 			return err
 		}
@@ -224,36 +223,4 @@ var configViewCmd = &cli.Command{
 		fmt.Println(string(cb))
 		return nil
 	},
-}
-
-func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
-	lp := config.DefaultLotusProvider()
-	have := []string{}
-	layers := cctx.StringSlice("layers")
-	for _, layer := range layers {
-		text := ""
-		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
-		if err != nil {
-			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
-				return nil, fmt.Errorf("missing layer '%s' ", layer)
-			}
-			if layer == "base" {
-				return nil, errors.New(`lotus-provider defaults to a layer named 'base'. 
-				Either use 'migrate' command or edit a base.toml and upload it with: lotus-provider config set base.toml`)
-			}
-			return nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
-		}
-		meta, err := toml.Decode(text, &lp)
-		if err != nil {
-			return nil, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
-		}
-		for _, k := range meta.Keys() {
-			have = append(have, strings.Join(k, " "))
-		}
-	}
-	_ = have // FUTURE: verify that required fields are here.
-	// If config includes 3rd-party config, consider JSONSchema as a way that
-	// 3rd-parties can dynamically include config requirements and we can
-	// validate the config. Because of layering, we must validate @ startup.
-	return lp, nil
 }
