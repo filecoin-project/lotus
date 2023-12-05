@@ -76,7 +76,7 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 		SignedData []byte  `db:"signed_data"`
 	}
 
-	err = s.db.QueryRow(ctx, `select from_key, nonce, to_addr, unsigned_data, unsigned_cid from message_sends where id = $1`, taskID).Scan(&dbMsg)
+	err = s.db.QueryRow(ctx, `select from_key, nonce, to_addr, unsigned_data, unsigned_cid from message_sends where send_task_id = $1`, taskID).Scan(&dbMsg)
 	if err != nil {
 		return false, xerrors.Errorf("getting message from db: %w", err)
 	}
