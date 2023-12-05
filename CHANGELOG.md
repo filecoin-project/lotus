@@ -28,7 +28,7 @@ The full list of [protocol improvements delivered in the network upgrade can be 
 ## ☢️ Upgrade Warnings ☢️
 
 - Read through the [changelog of the mandatory v1.24.0 release](https://github.com/filecoin-project/lotus/releases/tag/v1.24.0). Especially the `Migration` and `v12 Builtin Actor Bundle` sections.
-- Please remove and clone a new Lotus repo (`git clone https://github.com/filecoin-project/lotus.git`) when upgrading to this release. 
+- Please remove and clone a new Lotus repo (`git clone https://github.com/filecoin-project/lotus.git`) when upgrading to this release.
 - This feature release requires a minimum Go version of v1.20.7 or higher to successfully build Lotus. Go version 1.21.x is not supported yet.
 - EthRPC providers, please check out the [new tracing API to Lotus RPC](https://github.com/filecoin-project/lotus/pull/11100)
 
@@ -190,7 +190,7 @@ account           bafk2bzaceboftg75mdiba7xbo2i3uvgtca4brhnr3u5ptihonixgpnrvhpxoa
 init              bafk2bzacebllyegx5r6lggf6ymyetbp7amacwpuxakhtjvjtvoy2bfkzk3vms
 ```
 
-## Migration  
+## Migration
 
 We are expecting a heavier than normal state migration for this upgrade due to the amount of state changes introduced for miner sector info. (This is a similar migration as the Shark upgrade, however, we have introduced a couple of migration performance optimizations since then for a smoother upgrade experience.)
 
@@ -209,7 +209,7 @@ You can check out the [tutorial for benchmarking the network migration here.](ht
 
 ## BREAKING CHANGE
 
-There is a new protocol limit on how many partition could be submited in one PoSt - if you have any customized tooling for batching PoSts, please update accordingly. 
+There is a new protocol limit on how many partition could be submited in one PoSt - if you have any customized tooling for batching PoSts, please update accordingly.
 - feat: limit PoSted partitions to 3 ([filecoin-project/lotus#11327](https://github.com/filecoin-project/lotus/pull/11327))
 
 ## New features
@@ -221,7 +221,7 @@ There is a new protocol limit on how many partition could be submited in one PoS
    
 ## Improvements
 - Backport: feat: sealing: Switch to calling PreCommitSectorBatch2 ([filecoin-project/lotus#11215](https://github.com/filecoin-project/lotus/pull/11215))
-- updated the boostrap nodes 
+- updated the boostrap nodes
 
 ## Dependencies
 - github.com/filecoin-project/go-amt-ipld/v4 (v4.0.0 -> v4.2.0)
@@ -231,9 +231,9 @@ There is a new protocol limit on how many partition could be submited in one PoS
 - chore: deps: update libp2p to v0.30.0 #11434
 
 
-## Snapshots 
+## Snapshots
 
-The [Forest team](https://filecoinproject.slack.com/archives/C029LPZ5N73) at Chainsafe has launched a brand new lightweight snapshot service that is backed up by forest nodes! This is a great alternative service along with the fil-infra one, and it is compatible with lotus! We recommend lotus users to check it out [here](https://docs.filecoin.io/networks/mainnet#resources)! 
+The [Forest team](https://filecoinproject.slack.com/archives/C029LPZ5N73) at Chainsafe has launched a brand new lightweight snapshot service that is backed up by forest nodes! This is a great alternative service along with the fil-infra one, and it is compatible with lotus! We recommend lotus users to check it out [here](https://docs.filecoin.io/networks/mainnet#resources)!
 
 
 

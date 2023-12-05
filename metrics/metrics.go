@@ -705,45 +705,54 @@ var (
 	}
 )
 
+var views = []*view.View{
+	InfoView,
+	PeerCountView,
+	APIRequestDurationView,
+
+	GraphsyncReceivingPeersCountView,
+	GraphsyncReceivingActiveCountView,
+	GraphsyncReceivingCountCountView,
+	GraphsyncReceivingTotalMemoryAllocatedView,
+	GraphsyncReceivingTotalPendingAllocationsView,
+	GraphsyncReceivingPeersPendingView,
+	GraphsyncSendingPeersCountView,
+	GraphsyncSendingActiveCountView,
+	GraphsyncSendingCountCountView,
+	GraphsyncSendingTotalMemoryAllocatedView,
+	GraphsyncSendingTotalPendingAllocationsView,
+	GraphsyncSendingPeersPendingView,
+
+	RcmgrAllowConnView,
+	RcmgrBlockConnView,
+	RcmgrAllowStreamView,
+	RcmgrBlockStreamView,
+	RcmgrAllowPeerView,
+	RcmgrBlockPeerView,
+	RcmgrAllowProtoView,
+	RcmgrBlockProtoView,
+	RcmgrBlockProtoPeerView,
+	RcmgrAllowSvcView,
+	RcmgrBlockSvcView,
+	RcmgrBlockSvcPeerView,
+	RcmgrAllowMemView,
+	RcmgrBlockMemView,
+}
+
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
 var DefaultViews = func() []*view.View {
-	views := []*view.View{
-		InfoView,
-		PeerCountView,
-		APIRequestDurationView,
-
-		GraphsyncReceivingPeersCountView,
-		GraphsyncReceivingActiveCountView,
-		GraphsyncReceivingCountCountView,
-		GraphsyncReceivingTotalMemoryAllocatedView,
-		GraphsyncReceivingTotalPendingAllocationsView,
-		GraphsyncReceivingPeersPendingView,
-		GraphsyncSendingPeersCountView,
-		GraphsyncSendingActiveCountView,
-		GraphsyncSendingCountCountView,
-		GraphsyncSendingTotalMemoryAllocatedView,
-		GraphsyncSendingTotalPendingAllocationsView,
-		GraphsyncSendingPeersPendingView,
-
-		RcmgrAllowConnView,
-		RcmgrBlockConnView,
-		RcmgrAllowStreamView,
-		RcmgrBlockStreamView,
-		RcmgrAllowPeerView,
-		RcmgrBlockPeerView,
-		RcmgrAllowProtoView,
-		RcmgrBlockProtoView,
-		RcmgrBlockProtoPeerView,
-		RcmgrAllowSvcView,
-		RcmgrBlockSvcView,
-		RcmgrBlockSvcPeerView,
-		RcmgrAllowMemView,
-		RcmgrBlockMemView,
-	}
-	views = append(views, blockstore.DefaultViews...)
-	views = append(views, rpcmetrics.DefaultViews...)
 	return views
 }()
+
+// RegisterViews adds views to the default list without modifying this file.
+func RegisterViews(v ...*view.View) {
+	views = append(views, v...)
+}
+
+func init() {
+	RegisterViews(blockstore.DefaultViews...)
+	RegisterViews(rpcmetrics.DefaultViews...)
+}
 
 var ChainNodeViews = append([]*view.View{
 	ChainNodeHeightView,

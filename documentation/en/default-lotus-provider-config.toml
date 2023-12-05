@@ -1,0 +1,209 @@
+[Subsystems]
+  # type: bool
+  #EnableWindowPost = false
+
+  # type: int
+  #WindowPostMaxTasks = 0
+
+  # type: bool
+  #EnableWinningPost = false
+
+  # type: int
+  #WinningPostMaxTasks = 0
+
+
+[Fees]
+  # type: types.FIL
+  #DefaultMaxFee = "0.07 FIL"
+
+  # type: types.FIL
+  #MaxPreCommitGasFee = "0.025 FIL"
+
+  # type: types.FIL
+  #MaxCommitGasFee = "0.05 FIL"
+
+  # type: types.FIL
+  #MaxTerminateGasFee = "0.5 FIL"
+
+  # WindowPoSt is a high-value operation, so the default fee should be high.
+  #
+  # type: types.FIL
+  #MaxWindowPoStGasFee = "5 FIL"
+
+  # type: types.FIL
+  #MaxPublishDealsFee = "0.05 FIL"
+
+  [Fees.MaxPreCommitBatchGasFee]
+    # type: types.FIL
+    #Base = "0 FIL"
+
+    # type: types.FIL
+    #PerSector = "0.02 FIL"
+
+  [Fees.MaxCommitBatchGasFee]
+    # type: types.FIL
+    #Base = "0 FIL"
+
+    # type: types.FIL
+    #PerSector = "0.03 FIL"
+
+
+[Addresses]
+  # Addresses to send PreCommit messages from
+  #
+  # type: []string
+  #PreCommitControl = []
+
+  # Addresses to send Commit messages from
+  #
+  # type: []string
+  #CommitControl = []
+
+  # type: []string
+  #TerminateControl = []
+
+  # DisableOwnerFallback disables usage of the owner address for messages
+  # sent automatically
+  #
+  # type: bool
+  #DisableOwnerFallback = false
+
+  # DisableWorkerFallback disables usage of the worker address for messages
+  # sent automatically, if control addresses are configured.
+  # A control address that doesn't have enough funds will still be chosen
+  # over the worker address if this flag is set.
+  #
+  # type: bool
+  #DisableWorkerFallback = false
+
+
+[Proving]
+  # Maximum number of sector checks to run in parallel. (0 = unlimited)
+  # 
+  # WARNING: Setting this value too high may make the node crash by running out of stack
+  # WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
+  # to late submission.
+  # 
+  # After changing this option, confirm that the new value works in your setup by invoking
+  # 'lotus-miner proving compute window-post 0'
+  #
+  # type: int
+  #ParallelCheckLimit = 32
+
+  # Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
+  # 
+  # WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+  # test challenge took longer than this timeout
+  # WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this sector are
+  # blocked (e.g. in case of disconnected NFS mount)
+  #
+  # type: Duration
+  #SingleCheckTimeout = "10m0s"
+
+  # Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
+  # the partition which didn't get checked on time will be skipped
+  # 
+  # WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+  # test challenge took longer than this timeout
+  # WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this partition are
+  # blocked or slow
+  #
+  # type: Duration
+  #PartitionCheckTimeout = "20m0s"
+
+  # Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
+  # 
+  # WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
+  # to be recovered. Before enabling this option, make sure your PoSt workers work correctly.
+  # 
+  # After changing this option, confirm that the new value works in your setup by invoking
+  # 'lotus-miner proving compute window-post 0'
+  #
+  # type: bool
+  #DisableBuiltinWindowPoSt = false
+
+  # Disable Winning PoSt computation on the lotus-miner process even if no winning PoSt workers are present.
+  # 
+  # WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulting in lost block rewards.
+  # Before enabling this option, make sure your PoSt workers work correctly.
+  #
+  # type: bool
+  #DisableBuiltinWinningPoSt = false
+
+  # Disable WindowPoSt provable sector readability checks.
+  # 
+  # In normal operation, when preparing to compute WindowPoSt, lotus-miner will perform a round of reading challenges
+  # from all sectors to confirm that those sectors can be proven. Challenges read in this process are discarded, as
+  # we're only interested in checking that sector data can be read.
+  # 
+  # When using builtin proof computation (no PoSt workers, and DisableBuiltinWindowPoSt is set to false), this process
+  # can save a lot of time and compute resources in the case that some sectors are not readable - this is caused by
+  # the builtin logic not skipping snark computation when some sectors need to be skipped.
+  # 
+  # When using PoSt workers, this process is mostly redundant, with PoSt workers challenges will be read once, and
+  # if challenges for some sectors aren't readable, those sectors will just get skipped.
+  # 
+  # Disabling sector pre-checks will slightly reduce IO load when proving sectors, possibly resulting in shorter
+  # time to produce window PoSt. In setups with good IO capabilities the effect of this option on proving time should
+  # be negligible.
+  # 
+  # NOTE: It likely is a bad idea to disable sector pre-checks in setups with no PoSt workers.
+  # 
+  # NOTE: Even when this option is enabled, recovering sectors will be checked before recovery declaration message is
+  # sent to the chain
+  # 
+  # After changing this option, confirm that the new value works in your setup by invoking
+  # 'lotus-miner proving compute window-post 0'
+  #
+  # type: bool
+  #DisableWDPoStPreChecks = false
+
+  # Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
+  # 
+  # A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
+  # //
+  # Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+  # to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
+  # 
+  # Setting this value above the network limit has no effect
+  #
+  # type: int
+  #MaxPartitionsPerPoStMessage = 0
+
+  # In some cases when submitting DeclareFaultsRecovered messages,
+  # there may be too many recoveries to fit in a BlockGasLimit.
+  # In those cases it may be necessary to set this value to something low (eg 1);
+  # Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
+  # resulting in more total gas use (but each message will have lower gas limit)
+  #
+  # type: int
+  #MaxPartitionsPerRecoveryMessage = 0
+
+  # Enable single partition per PoSt Message for partitions containing recovery sectors
+  # 
+  # In cases when submitting PoSt messages which contain recovering sectors, the default network limit may still be
+  # too high to fit in the block gas limit. In those cases, it becomes useful to only house the single partition
+  # with recovering sectors in the post message
+  # 
+  # Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+  # to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
+  #
+  # type: bool
+  #SingleRecoveringPartitionPerPostMessage = false
+
+
+[Journal]
+  # Events of the form: "system1:event1,system1:event2[,...]"
+  #
+  # type: string
+  #DisabledEvents = ""
+
+
+[Apis]
+  # RPC Secret for the storage subsystem.
+  # If integrating with lotus-miner this must match the value from
+  # cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey
+  #
+  # type: string
+  #StorageRPCSecret = ""
+

@@ -100,10 +100,10 @@ func (t *testStorage) Stat(path string) (fsutil.FsStat, error) {
 
 var _ paths.LocalStorage = &testStorage{}
 
-func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Manager, *paths.Local, *paths.Remote, *paths.Index, func()) {
+func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Manager, *paths.Local, *paths.Remote, *paths.MemIndex, func()) {
 	st := newTestStorage(t)
 
-	si := paths.NewIndex(nil)
+	si := paths.NewMemIndex(nil)
 
 	lstor, err := paths.NewLocal(ctx, st, si, nil)
 	require.NoError(t, err)

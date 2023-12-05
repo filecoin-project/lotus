@@ -109,6 +109,7 @@ COPY --from=lotus-builder /opt/filecoin/lotus-wallet   /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-gateway  /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-miner    /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-worker   /usr/local/bin/
+COPY --from=lotus-builder /opt/filecoin/lotus-provider    /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-stats    /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-fountain /usr/local/bin/
 
@@ -117,11 +118,13 @@ RUN mkdir /var/lib/lotus
 RUN mkdir /var/lib/lotus-miner
 RUN mkdir /var/lib/lotus-worker
 RUN mkdir /var/lib/lotus-wallet
+RUN mkdir /var/lib/lotus-provider
 RUN chown fc: /var/tmp/filecoin-proof-parameters
 RUN chown fc: /var/lib/lotus
 RUN chown fc: /var/lib/lotus-miner
 RUN chown fc: /var/lib/lotus-worker
 RUN chown fc: /var/lib/lotus-wallet
+RUN chown fc: /var/lib/lotus-provider
 
 
 VOLUME /var/tmp/filecoin-proof-parameters
@@ -129,6 +132,7 @@ VOLUME /var/lib/lotus
 VOLUME /var/lib/lotus-miner
 VOLUME /var/lib/lotus-worker
 VOLUME /var/lib/lotus-wallet
+VOLUME /var/lib/lotus-provider
 
 EXPOSE 1234
 EXPOSE 2345

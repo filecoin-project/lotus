@@ -649,6 +649,10 @@ func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.Registere
 }
 
 func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness) (storiface.WindowPoStResult, error) {
+	return l.GenerateWindowPoStAdv(ctx, ppt, mid, sectors, partitionIdx, randomness, false)
+}
+
+func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness, allowSkip bool) (storiface.WindowPoStResult, error) {
 	sb, err := l.executor(l)
 	if err != nil {
 		return storiface.WindowPoStResult{}, err
@@ -660,7 +664,7 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 	var wg sync.WaitGroup
 	wg.Add(len(sectors))
 
-	vproofs := make([][]byte, len(sectors))
+	vproofs := make([][]byte, 0, len(sectors))
 
 	for i, s := range sectors {
 		if l.challengeThrottle != nil {
@@ -698,12 +702,13 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 				return
 			}
 
-			vproofs[i] = vanilla
+			//vproofs[i] = vanilla // todo substitutes??
+			vproofs = append(vproofs, vanilla)
 		}(i, s)
 	}
 	wg.Wait()
 
-	if len(skipped) > 0 {
+	if len(skipped) > 0 && !allowSkip {
 		// This should happen rarely because before entering GenerateWindowPoSt we check all sectors by reading challenges.
 		// When it does happen, window post runner logic will just re-check sectors, and retry with newly-discovered-bad sectors skipped
 		log.Errorf("couldn't read some challenges (skipped %d)", len(skipped))
@@ -802,6 +807,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	if err != nil {
 		log.Errorf("getting gpu devices failed: %+v", err)
 	}
+	log.Infow("Detected GPU devices.", "count", len(gpus))
 
 	memPhysical, memUsed, memSwap, memSwapUsed, err := l.memInfo()
 	if err != nil {

@@ -59,7 +59,7 @@ func createTestStorage(t *testing.T, p string, seal bool, att ...*paths.Local) s
 func TestMoveShared(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
-	index := paths.NewIndex(nil)
+	index := paths.NewMemIndex(nil)
 
 	ctx := context.Background()
 

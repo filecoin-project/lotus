@@ -3,10 +3,10 @@ package mock
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"math/rand"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -478,7 +478,7 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof
 	}
 
 	buf := make([]byte, usize)
-	_, _ = rand.Read(buf) // nolint:gosec
+	_, _ = rand.Reader.Read(buf)
 
 	id := storiface.SectorRef{
 		ID: abi.SectorID{

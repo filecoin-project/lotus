@@ -49,11 +49,13 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
@@ -359,6 +361,8 @@ func (n *Ensemble) Start() *Ensemble {
 		n.mn = mocknet.New()
 	}
 
+	sharedITestID := harmonydb.ITestNewID()
+
 	// ---------------------
 	//  FULL NODES
 	// ---------------------
@@ -603,6 +607,7 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
+		cfg.Subsystems.EnableSectorIndexDB = m.options.subsystems.Has(SHarmony)
 		cfg.Dealmaking.MaxStagingDealsBytes = m.options.maxStagingDealsBytes
 
 		if m.options.mainMiner != nil {
@@ -724,6 +729,17 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// upgrades
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
+
+			node.Override(new(harmonydb.ITestID), sharedITestID),
+			node.Override(new(config.HarmonyDB), func() config.HarmonyDB {
+				return config.HarmonyDB{
+					Hosts:    []string{envElse("LOTUS_HARMONYDB_HOSTS", "127.0.0.1")},
+					Database: "yugabyte",
+					Username: "yugabyte",
+					Password: "yugabyte",
+					Port:     "5433",
+				}
+			}),
 		}
 
 		if m.options.subsystems.Has(SMarkets) {
@@ -770,6 +786,12 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
+		mCopy := m
+		n.t.Cleanup(func() {
+			if mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB != nil {
+				mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
+			}
+		})
 
 		m.BaseAPI = m.StorageMiner
 
@@ -826,6 +848,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		auth := http.Header(nil)
 
+		// FUTURE: Use m.MinerNode.(BaseAPI).(impl.StorageMinerAPI).HarmonyDB to setup.
+
 		remote := paths.NewRemote(localStore, m.MinerNode, auth, 20, &paths.DefaultPartialFileHandler{})
 		store := m.options.workerStorageOpt(remote)
 
@@ -855,6 +879,7 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.active.workers = append(n.active.workers, m)
+
 	}
 
 	// If we are here, we have processed all inactive workers and moved them
@@ -1066,4 +1091,11 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
 	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
+}
+
+func envElse(env, els string) string {
+	if v := os.Getenv(env); v != "" {
+		return v
+	}
+	return els
 }
