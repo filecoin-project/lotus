@@ -82,6 +82,11 @@ func StorageAuth(apiKey string) (sealer.StorageAuth, error) {
 	return sealer.StorageAuth(headers), nil
 }
 
+func GetDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
+	var deps *Deps
+	return deps, deps.PopulateRemainingDeps(ctx, cctx, true)
+}
+
 type Deps struct {
 	Cfg        *config.LotusProviderConfig
 	DB         *harmonydb.DB
