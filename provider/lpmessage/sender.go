@@ -379,9 +379,9 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		}
 
 		if !*sendSuccess {
-			sendErr = xerrors.Errorf("send error: %s", sendError)
+			sendErr = xerrors.Errorf("send error: %s", *sendError)
 		} else {
-			sigCid, err = cid.Parse(sigCidStr)
+			sigCid, err = cid.Parse(*sigCidStr)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("parsing signed cid: %w", err)
 			}
