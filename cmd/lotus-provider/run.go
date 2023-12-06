@@ -176,7 +176,7 @@ var runCmd = &cli.Command{
 			}
 		}
 		log.Infow("This lotus_provider instance handles",
-			"miner_addresses", maddrs,
+			"miner_addresses", minerAddressesToStrings(maddrs),
 			"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
 
 		taskEngine, err := harmonytask.New(db, activeTasks, deps.listenAddr)
@@ -456,4 +456,12 @@ func (p *ProviderAPI) Version(context.Context) (api.Version, error) {
 func (p *ProviderAPI) Shutdown(context.Context) error {
 	close(p.ShutdownChan)
 	return nil
+}
+
+func minerAddressesToStrings(maddrs []dtypes.MinerAddress) []string {
+	strs := make([]string, len(maddrs))
+	for i, addr := range maddrs {
+		strs[i] = address.Address(addr).String()
+	}
+	return strs
 }
