@@ -146,6 +146,11 @@ func New(
 			TaskTypeDetails: c.TypeDetails(),
 			TaskEngine:      e,
 		}
+
+		if len(h.Name) > 16 {
+			return nil, fmt.Errorf("task name too long: %s, max 16 characters", h.Name)
+		}
+
 		e.handlers = append(e.handlers, &h)
 		e.taskMap[h.TaskTypeDetails.Name] = &h
 	}

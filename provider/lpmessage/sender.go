@@ -324,6 +324,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		return cid.Undef, xerrors.Errorf("marshaling message: %w", err)
 	}
 
+	var sendTaskID *harmonytask.TaskID
 	taskAdder(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 		_, err := tx.Exec(`insert into message_sends (from_key, to_addr, send_reason, unsigned_data, unsigned_cid, send_task_id) values ($1, $2, $3, $4, $5, $6)`,
 			msg.From.String(), msg.To.String(), reason, unsBytes.Bytes(), msg.Cid().String(), id)
@@ -331,8 +332,14 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			return false, xerrors.Errorf("inserting message into db: %w", err)
 		}
 
+		sendTaskID = &id
+
 		return true, nil
 	})
+
+	if sendTaskID == nil {
+		return cid.Undef, xerrors.Errorf("failed to add task")
+	}
 
 	// wait for exec
 	var (
@@ -347,10 +354,10 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 
 	for {
 		var err error
-		var sigCidStr, sendError string
+		var sigCidStr, sendError *string
 		var sendSuccess *bool
 
-		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, taskAdder).Scan(&sigCidStr, &sendSuccess, &sendError)
+		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, &sendTaskID).Scan(&sigCidStr, &sendSuccess, &sendError)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("getting cid for task: %w", err)
 		}
@@ -366,10 +373,15 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			continue
 		}
 
+		if sigCidStr == nil || sendError == nil {
+			// should never happen because sendSuccess is already not null here
+			return cid.Undef, xerrors.Errorf("got null values for sigCidStr or sendError, this should never happen")
+		}
+
 		if !*sendSuccess {
-			sendErr = xerrors.Errorf("send error: %s", sendError)
+			sendErr = xerrors.Errorf("send error: %s", *sendError)
 		} else {
-			sigCid, err = cid.Parse(sigCidStr)
+			sigCid, err = cid.Parse(*sigCidStr)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("parsing signed cid: %w", err)
 			}
