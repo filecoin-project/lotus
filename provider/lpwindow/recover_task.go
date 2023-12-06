@@ -217,7 +217,7 @@ func (w *WdPostRecoverDeclareTask) CanAccept(ids []harmonytask.TaskID, engine *h
 func (w *WdPostRecoverDeclareTask) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
 		Max:  128,
-		Name: "WdPostRecoverDeclare",
+		Name: "WdPostRecover",
 		Cost: resources.Resources{
 			Cpu: 1,
 			Gpu: 0,

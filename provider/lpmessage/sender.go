@@ -354,7 +354,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 
 	for {
 		var err error
-		var sigCidStr, sendError string
+		var sigCidStr, sendError *string
 		var sendSuccess *bool
 
 		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, &sendTaskID).Scan(&sigCidStr, &sendSuccess, &sendError)
@@ -371,6 +371,11 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			}
 
 			continue
+		}
+
+		if sigCidStr == nil || sendError == nil {
+			// should never happen because sendSuccess is already not null here
+			return cid.Undef, xerrors.Errorf("got null values for sigCidStr or sendError, this should never happen")
 		}
 
 		if !*sendSuccess {
