@@ -281,7 +281,7 @@ func NewSender(api SenderAPI, signer SignerAPI, db *harmonydb.DB) (*Sender, *Sen
 // API nodes
 //
 // Send is also currently more strict about required parameters than MpoolPushMessage
-func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageSendSpec, reason string) (cid.Cid, error) {
+func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageSendSpec, reason string, taskID harmonytask.TaskID) (cid.Cid, error) {
 	if mss == nil {
 		return cid.Undef, xerrors.Errorf("MessageSendSpec cannot be nil")
 	}
@@ -350,7 +350,10 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		var sigCidStr, sendError string
 		var sendSuccess *bool
 
-		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, taskAdder).Scan(&sigCidStr, &sendSuccess, &sendError)
+		err = s.db.QueryRow(ctx, `
+		 SELECT signed_cid, send_success, send_error 
+		 FROM message_sends 
+		 WHERE send_task_id = $1`, taskID).Scan(&sigCidStr, &sendSuccess, &sendError)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("getting cid for task: %w", err)
 		}

@@ -191,7 +191,7 @@ func (w *WdPostRecoverDeclareTask) Do(taskID harmonytask.TaskID, stillOwned func
 		return false, xerrors.Errorf("sending declare recoveries message: %w", err)
 	}
 
-	mc, err := w.sender.Send(ctx, msg, mss, "declare-recoveries")
+	mc, err := w.sender.Send(ctx, msg, mss, "declare-recoveries", taskID)
 	if err != nil {
 		return false, xerrors.Errorf("sending declare recoveries message: %w", err)
 	}

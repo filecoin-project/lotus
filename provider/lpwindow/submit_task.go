@@ -3,6 +3,7 @@ package lpwindow
 import (
 	"bytes"
 	"context"
+	"strings"
 
 	"golang.org/x/xerrors"
 
@@ -146,11 +147,15 @@ func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 
 	msg, mss, err := preparePoStMessage(w.api, w.as, maddr, msg, abi.TokenAmount(w.maxWindowPoStGasFee))
 	if err != nil {
+		if strings.Contains(err.Error(), "partition already proven") {
+			log.Warnw("partition already proven", "spID", spID, "deadline", deadline, "partition", partition)
+			return true, nil
+		}
 		return false, xerrors.Errorf("preparing proof message: %w", err)
 	}
 
 	ctx := context.Background()
-	smsg, err := w.sender.Send(ctx, msg, mss, "wdpost")
+	smsg, err := w.sender.Send(ctx, msg, mss, "wdpost", taskID)
 	if err != nil {
 		return false, xerrors.Errorf("sending proof message: %w", err)
 	}
@@ -265,7 +270,6 @@ func preparePoStMessage(w MsgPrepAPI, as *ctladdr.AddressSelector, maddr address
 	// block inclusion within the next 20 tipsets.
 	gm, err := w.GasEstimateMessageGas(context.Background(), msg, mss, types.EmptyTSK)
 	if err != nil {
-		log.Errorw("estimating gas", "error", err)
 		return nil, nil, xerrors.Errorf("estimating gas: %w", err)
 	}
 	*msg = *gm
