@@ -324,6 +324,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		return cid.Undef, xerrors.Errorf("marshaling message: %w", err)
 	}
 
+	var sendTaskID *harmonytask.TaskID
 	taskAdder(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 		_, err := tx.Exec(`insert into message_sends (from_key, to_addr, send_reason, unsigned_data, unsigned_cid, send_task_id) values ($1, $2, $3, $4, $5, $6)`,
 			msg.From.String(), msg.To.String(), reason, unsBytes.Bytes(), msg.Cid().String(), id)
@@ -331,8 +332,14 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			return false, xerrors.Errorf("inserting message into db: %w", err)
 		}
 
+		sendTaskID = &id
+
 		return true, nil
 	})
+
+	if sendTaskID == nil {
+		return cid.Undef, xerrors.Errorf("failed to add task")
+	}
 
 	// wait for exec
 	var (
@@ -350,7 +357,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		var sigCidStr, sendError string
 		var sendSuccess *bool
 
-		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, taskAdder).Scan(&sigCidStr, &sendSuccess, &sendError)
+		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, &sendTaskID).Scan(&sigCidStr, &sendSuccess, &sendError)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("getting cid for task: %w", err)
 		}
