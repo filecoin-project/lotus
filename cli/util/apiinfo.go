@@ -25,7 +25,7 @@ type APIInfo struct {
 func ParseApiInfo(s string) APIInfo {
 	var tok []byte
 
-	if infoWithToken.Match([]byte(s)) {
+	if infoWithToken.MatchString(s) {
 		sp := strings.SplitN(s, ":", 2)
 		tok = []byte(sp[0])
 		s = sp[1]
