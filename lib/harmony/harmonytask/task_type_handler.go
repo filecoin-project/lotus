@@ -49,6 +49,11 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 	}
 }
 
+const (
+	workSourcePoller  = "poller"
+	workSourceRecover = "recovered"
+)
+
 // considerWork is called to attempt to start work on a task-id of this task type.
 // It presumes single-threaded calling, so there should not be a multi-threaded re-entry.
 // The only caller should be the one work poller thread. This does spin off other threads,
@@ -87,22 +92,25 @@ top:
 		return false
 	}
 
-	// 4. Can we claim the work for our hostname?
-	ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
-	if err != nil {
-		log.Error(err)
-		return false
-	}
-	if ct == 0 {
-		log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
-		var tryAgain = make([]TaskID, 0, len(ids)-1)
-		for _, id := range ids {
-			if id != *tID {
-				tryAgain = append(tryAgain, id)
-			}
+	// if recovering we don't need to try to claim anything because those tasks are already claimed by us
+	if from != workSourceRecover {
+		// 4. Can we claim the work for our hostname?
+		ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
+		if err != nil {
+			log.Error(err)
+			return false
 		}
-		ids = tryAgain
-		goto top
+		if ct == 0 {
+			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
+			var tryAgain = make([]TaskID, 0, len(ids)-1)
+			for _, id := range ids {
+				if id != *tID {
+					tryAgain = append(tryAgain, id)
+				}
+			}
+			ids = tryAgain
+			goto top
+		}
 	}
 
 	h.Count.Add(1)
