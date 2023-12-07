@@ -56,9 +56,17 @@ type PubsubScore struct {
 	Score *pubsub.PeerScoreSnapshot
 }
 
+// MessageSendSpec contains optional fields which modify message sending behavior
 type MessageSendSpec struct {
-	MaxFee  abi.TokenAmount
+	// MaxFee specifies a cap on network fees related to this message
+	MaxFee abi.TokenAmount
+
+	// MsgUuid specifies a unique message identifier which can be used on node (or node cluster)
+	// level to prevent double-sends of messages even when nonce generation is not handled by sender
 	MsgUuid uuid.UUID
+
+	// MaximizeFeeCap makes message FeeCap be based entirely on MaxFee
+	MaximizeFeeCap bool
 }
 
 type MpoolMessageWhole struct {
@@ -312,6 +320,7 @@ type NetworkParams struct {
 	SupportedProofTypes     []abi.RegisteredSealProof
 	PreCommitChallengeDelay abi.ChainEpoch
 	ForkUpgradeParams       ForkUpgradeParams
+	Eip155ChainID           int
 }
 
 type ForkUpgradeParams struct {
@@ -340,6 +349,7 @@ type ForkUpgradeParams struct {
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
 	UpgradeWatermelonHeight  abi.ChainEpoch
+	UpgradePineappleHeight   abi.ChainEpoch
 }
 
 type NonceMapType map[address.Address]uint64

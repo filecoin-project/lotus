@@ -119,7 +119,7 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 		}
 	}
 
-	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t.Type())
+	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v. Try setting environment variable: %s", t.Type(), primaryEnv)
 }
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
@@ -150,6 +150,28 @@ func GetRawAPIMulti(ctx *cli.Context, t repo.RepoType, version string) ([]HttpHe
 	}
 
 	for _, ainfo := range ainfos {
+		addr, err := ainfo.DialArgs(version)
+		if err != nil {
+			return httpHeads, xerrors.Errorf("could not get DialArgs: %w", err)
+		}
+		httpHeads = append(httpHeads, HttpHead{addr: addr, header: ainfo.AuthHeader()})
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, httpHeads[0].addr)
+	}
+
+	return httpHeads, nil
+}
+
+func GetRawAPIMultiV2(ctx *cli.Context, ainfoCfg []string, version string) ([]HttpHead, error) {
+	var httpHeads []HttpHead
+
+	if len(ainfoCfg) == 0 {
+		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './lotus-provider config get base >/tmp/base.toml' \nthen adding   \n[APIs] \n ChainApiInfo = [\" result_from lotus auth api-info --perm=admin \"]\n  and updating it with './lotus-provider config set /tmp/base.toml'")
+	}
+	for _, i := range ainfoCfg {
+		ainfo := ParseApiInfo(i)
 		addr, err := ainfo.DialArgs(version)
 		if err != nil {
 			return httpHeads, xerrors.Errorf("could not get DialArgs: %w", err)
@@ -362,6 +384,68 @@ func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNo
 		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
 		if err != nil {
 			log.Warnf("Not able to establish connection to node with addr: ", head.addr)
+			continue
+		}
+		fullNodes = append(fullNodes, v1api)
+		closers = append(closers, closer)
+	}
+
+	// When running in cluster mode and trying to establish connections to multiple nodes, fail
+	// if less than 2 lotus nodes are actually running
+	if len(heads) > 1 && len(fullNodes) < 2 {
+		return nil, nil, xerrors.Errorf("Not able to establish connection to more than a single node")
+	}
+
+	finalCloser := func() {
+		for _, c := range closers {
+			c()
+		}
+	}
+
+	var v1API api.FullNodeStruct
+	FullNodeProxy(fullNodes, &v1API)
+
+	v, err := v1API.Version(ctx.Context)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
+		return nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
+	}
+	return &v1API, finalCloser, nil
+}
+
+func GetFullNodeAPIV1LotusProvider(ctx *cli.Context, ainfoCfg []string, opts ...GetFullNodeOption) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(v1api.FullNode), func() {}, nil
+	}
+
+	var options GetFullNodeOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var rpcOpts []jsonrpc.Option
+	if options.ethSubHandler != nil {
+		rpcOpts = append(rpcOpts, jsonrpc.WithClientHandler("Filecoin", options.ethSubHandler), jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"))
+	}
+
+	heads, err := GetRawAPIMultiV2(ctx, ainfoCfg, "v1")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v1 endpoint:", heads[0].addr)
+	}
+
+	var fullNodes []api.FullNode
+	var closers []jsonrpc.ClientCloser
+
+	for _, head := range heads {
+		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
+		if err != nil {
+			log.Warnf("Not able to establish connection to node with addr: %s", head.addr)
 			continue
 		}
 		fullNodes = append(fullNodes, v1api)

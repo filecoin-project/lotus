@@ -42,6 +42,13 @@ func init() {
 	if err := loadManifests(NetworkBundle); err != nil {
 		panic(err)
 	}
+
+	// The following code cid existed temporarily on the calibnet testnet, as a "buggy" storage miner actor implementation.
+	// We include them in our builtin bundle, but intentionally omit from metadata.
+	if NetworkBundle == "calibrationnet" {
+		actors.AddActorMeta("storageminer", cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"), actorstypes.Version12)
+		actors.AddActorMeta("storageminer", cid.MustParse("bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie"), actorstypes.Version12)
+	}
 }
 
 // UseNetworkBundle switches to a different network bundle, by name.
@@ -183,6 +190,13 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 		if err != nil {
 			return nil, xerrors.Errorf("error loading builtin actors bundle: %w", err)
 		}
+
+		// The following manifest cids existed temporarily on the calibnet testnet
+		// We include them in our builtin bundle, but intentionally omit from metadata
+		if root == cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs") ||
+			root == cid.MustParse("bafy2bzacebl4w5ptfvuw6746w7ev562idkbf5ppq72e6zub22435ws2rukzru") {
+			continue
+		}
 		bundles = append(bundles, &BuiltinActorsMetadata{
 			Network:     name,
 			Version:     actorstypes.Version(version),
@@ -232,7 +246,7 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 }
 
 // GetEmbeddedBuiltinActorsBundle returns the builtin-actors bundle for the given actors version.
-func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version) ([]byte, bool) {
+func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version, networkBundleName string) ([]byte, bool) {
 	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("actors/v%d.tar.zst", version))
 	if err != nil {
 		return nil, false
@@ -243,7 +257,7 @@ func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version) ([]byte, bool) 
 	defer uncompressed.Close() //nolint
 
 	tarReader := tar.NewReader(uncompressed)
-	targetFileName := fmt.Sprintf("builtin-actors-%s.car", NetworkBundle)
+	targetFileName := fmt.Sprintf("builtin-actors-%s.car", networkBundleName)
 	for {
 		header, err := tarReader.Next()
 		switch err {

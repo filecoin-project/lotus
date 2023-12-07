@@ -587,13 +587,18 @@ func init() {
 		ResourceTable[sealtasks.TTDataCid][proof] = ResourceTable[sealtasks.TTAddPiece][abi.RegisteredSealProof_StackedDrg32GiBV1]
 	}
 
-	// V1_1 is the same as V1
+	// V1_1 and SynthethicpoRep is the same as V1
 	for _, m := range ResourceTable {
 		m[abi.RegisteredSealProof_StackedDrg2KiBV1_1] = m[abi.RegisteredSealProof_StackedDrg2KiBV1]
+		m[abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep] = m[abi.RegisteredSealProof_StackedDrg2KiBV1]
 		m[abi.RegisteredSealProof_StackedDrg8MiBV1_1] = m[abi.RegisteredSealProof_StackedDrg8MiBV1]
+		m[abi.RegisteredSealProof_StackedDrg8MiBV1_1_Feat_SyntheticPoRep] = m[abi.RegisteredSealProof_StackedDrg8MiBV1]
 		m[abi.RegisteredSealProof_StackedDrg512MiBV1_1] = m[abi.RegisteredSealProof_StackedDrg512MiBV1]
+		m[abi.RegisteredSealProof_StackedDrg512MiBV1_1_Feat_SyntheticPoRep] = m[abi.RegisteredSealProof_StackedDrg512MiBV1]
 		m[abi.RegisteredSealProof_StackedDrg32GiBV1_1] = m[abi.RegisteredSealProof_StackedDrg32GiBV1]
+		m[abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep] = m[abi.RegisteredSealProof_StackedDrg32GiBV1]
 		m[abi.RegisteredSealProof_StackedDrg64GiBV1_1] = m[abi.RegisteredSealProof_StackedDrg64GiBV1]
+		m[abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep] = m[abi.RegisteredSealProof_StackedDrg64GiBV1]
 	}
 }
 

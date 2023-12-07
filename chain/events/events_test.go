@@ -673,7 +673,7 @@ func TestCalled(t *testing.T) {
 	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)
@@ -991,7 +991,7 @@ func TestCalledNull(t *testing.T) {
 	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)
@@ -1050,7 +1050,7 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)
@@ -1155,7 +1155,7 @@ func TestStateChanged(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)

@@ -18,6 +18,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
@@ -798,6 +799,45 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 	return ethAddr, nil
 }
 
+// EthEstimateGasParams handles raw jsonrpc params for eth_estimateGas
+type EthEstimateGasParams struct {
+	Tx       EthCall
+	BlkParam *EthBlockNumberOrHash
+}
+
+func (e *EthEstimateGasParams) UnmarshalJSON(b []byte) error {
+	var params []json.RawMessage
+	err := json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+
+	switch len(params) {
+	case 2:
+		err = json.Unmarshal(params[1], &e.BlkParam)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 1:
+		err = json.Unmarshal(params[0], &e.Tx)
+		if err != nil {
+			return err
+		}
+	default:
+		return xerrors.Errorf("expected 1 or 2 params, got %d", len(params))
+	}
+
+	return nil
+}
+
+func (e EthEstimateGasParams) MarshalJSON() ([]byte, error) {
+	if e.BlkParam != nil {
+		return json.Marshal([]interface{}{e.Tx, e.BlkParam})
+	}
+	return json.Marshal([]interface{}{e.Tx})
+}
+
 // EthFeeHistoryParams handles raw jsonrpc params for eth_feeHistory
 type EthFeeHistoryParams struct {
 	BlkCount          EthUint64
@@ -928,4 +968,58 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 	}
 
 	return errors.New("invalid block param")
+}
+
+type EthTrace struct {
+	Action       EthTraceAction `json:"action"`
+	Result       EthTraceResult `json:"result"`
+	Subtraces    int            `json:"subtraces"`
+	TraceAddress []int          `json:"traceAddress"`
+	Type         string         `json:"Type"`
+
+	Parent *EthTrace `json:"-"`
+
+	// if a subtrace makes a call to GetBytecode, we store a pointer to that subtrace here
+	// which we then lookup when checking for delegatecall (InvokeContractDelegate)
+	LastByteCode *EthTrace `json:"-"`
+}
+
+func (t *EthTrace) SetCallType(callType string) {
+	t.Action.CallType = callType
+	t.Type = callType
+}
+
+type EthTraceBlock struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
+}
+
+type EthTraceReplayBlockTransaction struct {
+	Output          EthBytes    `json:"output"`
+	StateDiff       *string     `json:"stateDiff"`
+	Trace           []*EthTrace `json:"trace"`
+	TransactionHash EthHash     `json:"transactionHash"`
+	VmTrace         *string     `json:"vmTrace"`
+}
+
+type EthTraceAction struct {
+	CallType string     `json:"callType"`
+	From     EthAddress `json:"from"`
+	To       EthAddress `json:"to"`
+	Gas      EthUint64  `json:"gas"`
+	Input    EthBytes   `json:"input"`
+	Value    EthBigInt  `json:"value"`
+
+	FilecoinMethod  abi.MethodNum   `json:"-"`
+	FilecoinCodeCid cid.Cid         `json:"-"`
+	FilecoinFrom    address.Address `json:"-"`
+	FilecoinTo      address.Address `json:"-"`
+}
+
+type EthTraceResult struct {
+	GasUsed EthUint64 `json:"gasUsed"`
+	Output  EthBytes  `json:"output"`
 }

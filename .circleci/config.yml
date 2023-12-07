@@ -1,18 +1,18 @@
 version: 2.1
 orbs:
-  aws-cli: circleci/aws-cli@1.3.2
-  docker: circleci/docker@2.1.4
+  aws-cli: circleci/aws-cli@4.1.1
+  docker: circleci/docker@2.3.0
 
 executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.12
+      - image: cimg/go:1.20.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.12
+      - image: cimg/go:1.20.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -70,8 +70,6 @@ commands:
           name: Restore parameters cache
           keys:
             - 'v26-2k-lotus-params'
-          paths:
-            - /var/tmp/filecoin-proof-parameters/
       - run: ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
@@ -96,6 +94,7 @@ commands:
             git fetch --all
   install-ubuntu-deps:
     steps:
+      - run: sudo apt install curl ca-certificates gnupg
       - run: sudo apt-get update
       - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
   check-go-version:
@@ -143,9 +142,9 @@ jobs:
       Run tests with gotestsum.
     working_directory: ~/lotus
     parameters: &test-params
-      executor:
-        type: executor
-        default: golang
+      resource_class:
+        type: string
+        default: medium+
       go-test-flags:
         type: string
         default: "-timeout 20m"
@@ -164,7 +163,14 @@ jobs:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:1.20
+        environment:
+          LOTUS_HARMONYDB_HOSTS: yugabyte
+      - image: yugabytedb/yugabyte:2.18.0.0-b65
+        command: bin/yugabyted start --daemon=false
+        name: yugabyte
+    resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -182,6 +188,8 @@ jobs:
           command: |
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
+            dockerize -wait tcp://yugabyte:5433 -timeout 3m
+            env
             gotestsum \
               --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
@@ -209,7 +217,9 @@ jobs:
           Branch on github.com/filecoin-project/test-vectors to checkout and
           test with. If empty (the default) the commit defined by the git
           submodule is used.
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:1.20
+    resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -396,15 +406,14 @@ jobs:
       Run golangci-lint.
     working_directory: ~/lotus
     parameters:
-      executor:
-        type: executor
-        default: golang
       args:
         type: string
         default: ''
         description: |
           Arguments to pass to golangci-lint
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:1.20
+    resource_class: medium+
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -575,7 +584,7 @@ workflows:
             - build
           suite: itest-deals_concurrent
           target: "./itests/deals_concurrent_test.go"
-          executor: golang-2xl
+          resource_class: 2xlarge
       - test:
           name: test-itest-deals_invalid_utf8_label
           requires:
@@ -775,6 +784,18 @@ workflows:
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
       - test:
+          name: test-itest-harmonydb
+          requires:
+            - build
+          suite: itest-harmonydb
+          target: "./itests/harmonydb_test.go"
+      - test:
+          name: test-itest-harmonytask
+          requires:
+            - build
+          suite: itest-harmonytask
+          target: "./itests/harmonytask_test.go"
+      - test:
           name: test-itest-lite_migration
           requires:
             - build
@@ -918,6 +939,8 @@ workflows:
             - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
+          get-params: true
+          
       - test:
           name: test-itest-sector_terminate
           requires:
@@ -980,14 +1003,14 @@ workflows:
             - build
           suite: itest-wdpost_worker_config
           target: "./itests/wdpost_worker_config_test.go"
-          executor: golang-2xl
+          resource_class: 2xlarge
       - test:
           name: test-itest-worker
           requires:
             - build
           suite: itest-worker
           target: "./itests/worker_test.go"
-          executor: golang-2xl
+          resource_class: 2xlarge
       - test:
           name: test-itest-worker_upgrade
           requires:
@@ -1000,6 +1023,7 @@ workflows:
             - build
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
+          resource_class: 2xlarge
           get-params: true
       - test:
           name: test-unit-node
@@ -1007,21 +1031,20 @@ workflows:
             - build
           suite: utest-unit-node
           target: "./node/..."
-          
       - test:
           name: test-unit-rest
           requires:
             - build
           suite: utest-unit-rest
-          target: "./api/... ./blockstore/... ./build/... ./chain/... ./cli/... ./cmd/... ./conformance/... ./extern/... ./gateway/... ./journal/... ./lib/... ./markets/... ./node/... ./paychmgr/... ./storage/... ./tools/..."
-          executor: golang-2xl
+          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
+          resource_class: 2xlarge
       - test:
           name: test-unit-storage
           requires:
             - build
           suite: utest-unit-storage
           target: "./storage/... ./extern/..."
-          
+          get-params: true
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
           requires:

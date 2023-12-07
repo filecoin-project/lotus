@@ -6,6 +6,7 @@
 /lotus-chainwatch
 /lotus-shed
 /lotus-sim
+/lotus-provider
 /lotus-townhall
 /lotus-fountain
 /lotus-stats
@@ -41,6 +42,7 @@ build/paramfetch.sh
 bin/ipget
 bin/tmp/*
 .idea
+.vscode
 scratchpad
 
 build/builtin-actors/v*

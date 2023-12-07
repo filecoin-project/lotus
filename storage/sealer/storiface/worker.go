@@ -186,10 +186,18 @@ const (
 	ErrTempAllocateSpace
 )
 
+type WorkError interface {
+	ErrCode() ErrorCode
+}
+
 type CallError struct {
 	Code    ErrorCode
 	Message string
 	sub     error
+}
+
+func (c *CallError) ErrCode() ErrorCode {
+	return c.Code
 }
 
 func (c *CallError) Error() string {
@@ -203,6 +211,8 @@ func (c *CallError) Unwrap() error {
 
 	return errors.New(c.Message)
 }
+
+var _ WorkError = &CallError{}
 
 func Err(code ErrorCode, sub error) *CallError {
 	return &CallError{

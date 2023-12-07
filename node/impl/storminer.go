@@ -45,6 +45,7 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
@@ -123,6 +124,8 @@ type StorageMinerAPI struct {
 	GetSealingConfigFunc                        dtypes.GetSealingConfigFunc                        `optional:"true"`
 	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc                 `optional:"true"`
 	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc                 `optional:"true"`
+
+	HarmonyDB *harmonydb.DB `optional:"true"`
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
@@ -279,7 +282,16 @@ func (sm *StorageMinerAPI) SectorUnseal(ctx context.Context, sectorNum abi.Secto
 		ProofType: status.SealProof,
 	}
 
-	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
+	bgCtx := context.Background()
+
+	go func() {
+		err := sm.StorageMgr.SectorsUnsealPiece(bgCtx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
+		if err != nil {
+			log.Errorf("unseal for sector %d failed: %+v", sectorNum, err)
+		}
+	}()
+
+	return nil
 }
 
 // List all staged sectors
@@ -328,19 +340,9 @@ func (sm *StorageMinerAPI) SectorsListInStates(ctx context.Context, states []api
 	return sns, nil
 }
 
+// Use SectorsSummary from stats (prometheus) for faster result
 func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorState]int, error) {
-	sectors, err := sm.Miner.ListSectors()
-	if err != nil {
-		return nil, err
-	}
-
-	out := make(map[api.SectorState]int)
-	for i := range sectors {
-		state := api.SectorState(sectors[i].State)
-		out[state]++
-	}
-
-	return out, nil
+	return sm.Miner.SectorsSummary(ctx), nil
 }
 
 func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {

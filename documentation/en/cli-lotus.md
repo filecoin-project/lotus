@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.23.3
+   1.25.2-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -65,6 +65,7 @@ OPTIONS:
    --bootstrap               (default: true)
    --import-chain value      on first run, load chain from given file or url and validate
    --import-snapshot value   import chain state from a given chain export file or url
+   --remove-existing-chain   remove existing chain and splitstore data on a snapshot-import (default: false)
    --halt-after-import       halt the process after importing chain from file (default: false)
    --lite                    start lotus in lite mode (default: false)
    --pprof value             specify name of file for writing cpu profile to

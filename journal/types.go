@@ -26,6 +26,9 @@ func ParseDisabledEvents(s string) (DisabledEvents, error) {
 	s = strings.TrimSpace(s) // sanitize
 	evts := strings.Split(s, ",")
 	ret := make(DisabledEvents, 0, len(evts))
+	if len(s) == 0 {
+		return ret, nil
+	}
 	for _, evt := range evts {
 		evt = strings.TrimSpace(evt) // sanitize
 		s := strings.Split(evt, ":")

@@ -197,7 +197,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		return nil, xerrors.Errorf("failed to get network version: %w", err)
 	}
 
-	st, err := miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
+	st, err := miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType, false)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get seal proof type: %w", err)
 	}
@@ -527,7 +527,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
 		}
 		if len(hd.Roots) != 1 {
-			return nil, xerrors.New("car file can have one and only one header")
+			return nil, xerrors.New("car file can have one and only one root")
 		}
 		if hd.Version != 1 && hd.Version != 2 {
 			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)

@@ -13,7 +13,7 @@ import (
 func SerializeParams(i cbg.CBORMarshaler) ([]byte, aerrors.ActorError) {
 	buf := new(bytes.Buffer)
 	if err := i.MarshalCBOR(buf); err != nil {
-		// TODO: shouldnt this be a fatal error?
+		// TODO: shouldn't this be a fatal error?
 		return nil, aerrors.Absorb(err, exitcode.ErrSerialization, "failed to encode parameter")
 	}
 	return buf.Bytes(), nil

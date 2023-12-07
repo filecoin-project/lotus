@@ -104,6 +104,8 @@
   * [EthSendRawTransaction](#EthSendRawTransaction)
   * [EthSubscribe](#EthSubscribe)
   * [EthSyncing](#EthSyncing)
+  * [EthTraceBlock](#EthTraceBlock)
+  * [EthTraceReplayBlockTransactions](#EthTraceReplayBlockTransactions)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [Filecoin](#Filecoin)
@@ -2400,14 +2402,7 @@ Perms: read
 Inputs:
 ```json
 [
-  {
-    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-    "gas": "0x5",
-    "gasPrice": "0x0",
-    "value": "0x0",
-    "data": "0x07"
-  }
+  "Bw=="
 ]
 ```
 
@@ -3083,6 +3078,99 @@ Inputs: `null`
 
 Response: `false`
 
+### EthTraceBlock
+TraceAPI related methods
+
+Returns traces created at given block
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "action": {
+      "callType": "string value",
+      "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "gas": "0x5",
+      "input": "0x07",
+      "value": "0x0"
+    },
+    "result": {
+      "gasUsed": "0x5",
+      "output": "0x07"
+    },
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "Type": "string value",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": 9,
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionPosition": 123
+  }
+]
+```
+
+### EthTraceReplayBlockTransactions
+Replays all transactions in a block returning the requested traces for each transaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value",
+  [
+    "string value"
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "output": "0x07",
+    "stateDiff": "string value",
+    "trace": [
+      {
+        "action": {
+          "callType": "string value",
+          "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+          "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+          "gas": "0x5",
+          "input": "0x07",
+          "value": "0x0"
+        },
+        "result": {
+          "gasUsed": "0x5",
+          "output": "0x07"
+        },
+        "subtraces": 123,
+        "traceAddress": [
+          123
+        ],
+        "Type": "string value"
+      }
+    ],
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "vmTrace": "string value"
+  }
+]
+```
+
 ### EthUninstallFilter
 Uninstalls a filter with given id.
 
@@ -3262,7 +3350,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "07070707-0707-0707-0707-070707070707",
+    "MaximizeFeeCap": true
   },
   [
     {
@@ -3739,7 +3828,8 @@ Inputs:
   ],
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "07070707-0707-0707-0707-070707070707",
+    "MaximizeFeeCap": true
   }
 ]
 ```
@@ -4131,7 +4221,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "07070707-0707-0707-0707-070707070707",
+    "MaximizeFeeCap": true
   }
 ]
 ```
@@ -6168,7 +6259,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  22
 ]
 ```
 
@@ -6183,7 +6274,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  22
 ]
 ```
 
@@ -6312,7 +6403,12 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "ParamsCodec": 42,
+      "GasLimit": 42,
+      "ReadOnly": true,
+      "CodeCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -6336,7 +6432,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true,
+          "CodeCid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,
@@ -6542,7 +6643,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true,
+          "CodeCid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,
@@ -6566,7 +6672,12 @@ Response:
               "Value": "0",
               "Method": 1,
               "Params": "Ynl0ZSBhcnJheQ==",
-              "ParamsCodec": 42
+              "ParamsCodec": 42,
+              "GasLimit": 42,
+              "ReadOnly": true,
+              "CodeCid": {
+                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+              }
             },
             "MsgRct": {
               "ExitCode": 0,
@@ -6960,8 +7071,10 @@ Response:
     "UpgradeHyggeHeight": 10101,
     "UpgradeLightningHeight": 10101,
     "UpgradeThunderHeight": 10101,
-    "UpgradeWatermelonHeight": 10101
-  }
+    "UpgradeWatermelonHeight": 10101,
+    "UpgradePineappleHeight": 10101
+  },
+  "Eip155ChainID": 123
 }
 ```
 
@@ -7937,7 +8050,7 @@ Inputs:
 ]
 ```
 
-Response: `21`
+Response: `22`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -8058,7 +8171,12 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "ParamsCodec": 42,
+      "GasLimit": 42,
+      "ReadOnly": true,
+      "CodeCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
@@ -8082,7 +8200,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true,
+          "CodeCid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,

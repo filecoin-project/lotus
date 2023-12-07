@@ -39,23 +39,6 @@ func (ps *Store) save(ctx context.Context, state *FundedAddressState) error {
 	return ps.ds.Put(ctx, k, b)
 }
 
-// get the state for the given address
-func (ps *Store) get(ctx context.Context, addr address.Address) (*FundedAddressState, error) {
-	k := dskeyForAddr(addr)
-
-	data, err := ps.ds.Get(ctx, k)
-	if err != nil {
-		return nil, err
-	}
-
-	var state FundedAddressState
-	err = cborrpc.ReadCborRPC(bytes.NewReader(data), &state)
-	if err != nil {
-		return nil, err
-	}
-	return &state, nil
-}
-
 // forEach calls iter with each address in the datastore
 func (ps *Store) forEach(ctx context.Context, iter func(*FundedAddressState)) error {
 	res, err := ps.ds.Query(ctx, dsq.Query{Prefix: dsKeyAddr})

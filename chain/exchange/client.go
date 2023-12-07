@@ -242,7 +242,7 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 			// If we didn't request the headers they should have been provided
 			// by the caller.
 			if len(tipsets) < len(res.Chain) {
-				return nil, xerrors.Errorf("not enought tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
+				return nil, xerrors.Errorf("not enough tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
 			}
 			chain := make([]*BSTipSet, 0, resLength)
 			for i, resChain := range res.Chain {
@@ -381,7 +381,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("peer", peer.Pretty()),
+			trace.StringAttribute("peer", peer.String()),
 		)
 	}
 	defer func() {

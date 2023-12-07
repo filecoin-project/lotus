@@ -35,7 +35,7 @@ type ethAPIRaw struct {
 	EthBlockNumber                         func(context.Context) (json.RawMessage, error)
 	EthCall                                func(context.Context, ethtypes.EthCall, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthChainId                             func(context.Context) (json.RawMessage, error)
-	EthEstimateGas                         func(context.Context, ethtypes.EthCall) (json.RawMessage, error)
+	EthEstimateGas                         func(context.Context, jsonrpc.RawParams) (json.RawMessage, error)
 	EthFeeHistory                          func(context.Context, ethtypes.EthUint64, string, []float64) (json.RawMessage, error)
 	EthGasPrice                            func(context.Context) (json.RawMessage, error)
 	EthGetBalance                          func(context.Context, ethtypes.EthAddress, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
@@ -182,10 +182,13 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_estimateGas",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
+				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 					From: &senderEthAddr,
 					Data: contractBin,
-				})
+				}})
+				require.NoError(t, err)
+
+				return ethapi.EthEstimateGas(ctx, gasParams)
 			},
 		},
 
@@ -448,10 +451,13 @@ func TestEthOpenRPCConformance(t *testing.T) {
 }
 
 func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFullNode, senderEthAddr ethtypes.EthAddress, receiverEthAddr ethtypes.EthAddress, senderKey *key.Key, contractBin []byte) []byte {
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &senderEthAddr,
 		Data: contractBin,
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)

@@ -9,7 +9,6 @@ package build
 
 import (
 	"math/big"
-	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -34,6 +33,7 @@ var (
 	MinimumBaseFee        = int64(100)
 	BlockDelaySecs        = uint64(builtin2.EpochDurationSeconds)
 	PropagationDelaySecs  = uint64(6)
+	EquivocationDelaySecs = uint64(2)
 	SupportedProofTypes   = []abi.RegisteredSealProof{
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
@@ -87,29 +87,32 @@ var (
 	UpgradeBreezeHeight      abi.ChainEpoch = -1
 	BreezeGasTampingDuration abi.ChainEpoch = 0
 
-	UpgradeSmokeHeight      abi.ChainEpoch = -1
-	UpgradeIgnitionHeight   abi.ChainEpoch = -2
-	UpgradeRefuelHeight     abi.ChainEpoch = -3
-	UpgradeTapeHeight       abi.ChainEpoch = -4
-	UpgradeAssemblyHeight   abi.ChainEpoch = 10
-	UpgradeLiftoffHeight    abi.ChainEpoch = -5
-	UpgradeKumquatHeight    abi.ChainEpoch = -6
-	UpgradeCalicoHeight     abi.ChainEpoch = -8
-	UpgradePersianHeight    abi.ChainEpoch = -9
-	UpgradeOrangeHeight     abi.ChainEpoch = -10
-	UpgradeClausHeight      abi.ChainEpoch = -11
-	UpgradeTrustHeight      abi.ChainEpoch = -12
-	UpgradeNorwegianHeight  abi.ChainEpoch = -13
-	UpgradeTurboHeight      abi.ChainEpoch = -14
-	UpgradeHyperdriveHeight abi.ChainEpoch = -15
-	UpgradeChocolateHeight  abi.ChainEpoch = -16
-	UpgradeOhSnapHeight     abi.ChainEpoch = -17
-	UpgradeSkyrHeight       abi.ChainEpoch = -18
-	UpgradeSharkHeight      abi.ChainEpoch = -19
-	UpgradeHyggeHeight      abi.ChainEpoch = -20
-	UpgradeLightningHeight  abi.ChainEpoch = -21
-	UpgradeThunderHeight    abi.ChainEpoch = -22
-	UpgradeWatermelonHeight abi.ChainEpoch = -23
+	UpgradeSmokeHeight          abi.ChainEpoch = -1
+	UpgradeIgnitionHeight       abi.ChainEpoch = -2
+	UpgradeRefuelHeight         abi.ChainEpoch = -3
+	UpgradeTapeHeight           abi.ChainEpoch = -4
+	UpgradeAssemblyHeight       abi.ChainEpoch = 10
+	UpgradeLiftoffHeight        abi.ChainEpoch = -5
+	UpgradeKumquatHeight        abi.ChainEpoch = -6
+	UpgradeCalicoHeight         abi.ChainEpoch = -8
+	UpgradePersianHeight        abi.ChainEpoch = -9
+	UpgradeOrangeHeight         abi.ChainEpoch = -10
+	UpgradeClausHeight          abi.ChainEpoch = -11
+	UpgradeTrustHeight          abi.ChainEpoch = -12
+	UpgradeNorwegianHeight      abi.ChainEpoch = -13
+	UpgradeTurboHeight          abi.ChainEpoch = -14
+	UpgradeHyperdriveHeight     abi.ChainEpoch = -15
+	UpgradeChocolateHeight      abi.ChainEpoch = -16
+	UpgradeOhSnapHeight         abi.ChainEpoch = -17
+	UpgradeSkyrHeight           abi.ChainEpoch = -18
+	UpgradeSharkHeight          abi.ChainEpoch = -19
+	UpgradeHyggeHeight          abi.ChainEpoch = -20
+	UpgradeLightningHeight      abi.ChainEpoch = -21
+	UpgradeThunderHeight        abi.ChainEpoch = -22
+	UpgradeWatermelonHeight     abi.ChainEpoch = -23
+	UpgradeWatermelonFixHeight  abi.ChainEpoch = -24
+	UpgradeWatermelonFix2Height abi.ChainEpoch = -25
+	UpgradePineappleHeight      abi.ChainEpoch = -26
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
@@ -139,7 +142,3 @@ const BootstrapPeerThreshold = 1
 // ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 // As per https://github.com/ethereum-lists/chains
 const Eip155ChainId = 31415926
-
-// Reducing the delivery delay for equivocation of
-// consistent broadcast to just half a second.
-var CBDeliveryDelay = 500 * time.Millisecond

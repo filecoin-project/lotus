@@ -92,6 +92,15 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 		log.Info("invalid consensus fault: submitted blocks are the same")
 		return ret, totalGas
 	}
+
+	// workaround chain halt
+	if build.IsNearUpgrade(blockA.Height, build.UpgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+	if build.IsNearUpgrade(blockB.Height, build.UpgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
@@ -459,7 +468,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	}
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
-		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		applyRet.Events, err = decodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
@@ -515,7 +524,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 	}
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
-		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		applyRet.Events, err = decodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}

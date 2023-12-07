@@ -441,7 +441,7 @@ func TestChangeHandlerStartProvingNextDeadline(t *testing.T) {
 	// Trigger head change that advances the chain to the Challenge epoch for
 	// the next deadline
 	go func() {
-		di = nextDeadline(di)
+		di = NextDeadline(di)
 		currentEpoch = di.Challenge + ChallengeConfidence
 		triggerHeadAdvance(t, s, currentEpoch)
 	}()
@@ -474,7 +474,7 @@ func TestChangeHandlerProvingRounds(t *testing.T) {
 		<-s.ch.proveHdlr.processedHeadChanges
 
 		completeProofEpoch := di.Open + completeProofIndex
-		next := nextDeadline(di)
+		next := NextDeadline(di)
 		//fmt.Println("epoch", currentEpoch, s.mock.getPostStatus(di), "next", s.mock.getPostStatus(next))
 		if currentEpoch >= next.Challenge {
 			require.Equal(t, postStatusComplete, s.mock.getPostStatus(di))
@@ -962,7 +962,7 @@ func TestChangeHandlerSubmitRevertTwoEpochs(t *testing.T) {
 	require.Equal(t, postStatusComplete, s.mock.getPostStatus(diE1))
 
 	// Move to the challenge epoch for the next deadline
-	diE2 := nextDeadline(diE1)
+	diE2 := NextDeadline(diE1)
 	currentEpoch = diE2.Challenge + ChallengeConfidence
 	go triggerHeadAdvance(t, s, currentEpoch)
 
@@ -1067,7 +1067,7 @@ func TestChangeHandlerSubmitRevertAdvanceLess(t *testing.T) {
 	require.Equal(t, postStatusComplete, s.mock.getPostStatus(diE1))
 
 	// Move to the challenge epoch for the next deadline
-	diE2 := nextDeadline(diE1)
+	diE2 := NextDeadline(diE1)
 	currentEpoch = diE2.Challenge + ChallengeConfidence
 	go triggerHeadAdvance(t, s, currentEpoch)
 

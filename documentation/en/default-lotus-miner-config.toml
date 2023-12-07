@@ -145,6 +145,14 @@
   # env var: LOTUS_SUBSYSTEMS_ENABLEMARKETS
   #EnableMarkets = false
 
+  # When enabled, the sector index will reside in an external database
+  # as opposed to the local KV store in the miner process
+  # This is useful to allow workers to bypass the lotus miner to access sector information
+  #
+  # type: bool
+  # env var: LOTUS_SUBSYSTEMS_ENABLESECTORINDEXDB
+  #EnableSectorIndexDB = false
+
   # type: string
   # env var: LOTUS_SUBSYSTEMS_SEALERAPIINFO
   #SealerApiInfo = ""
@@ -152,6 +160,31 @@
   # type: string
   # env var: LOTUS_SUBSYSTEMS_SECTORINDEXAPIINFO
   #SectorIndexApiInfo = ""
+
+  # When window post is enabled, the miner will automatically submit window post proofs
+  # for all sectors that are eligible for window post
+  # IF WINDOW POST IS DISABLED, THE MINER WILL NOT SUBMIT WINDOW POST PROOFS
+  # THIS WILL RESULT IN FAULTS AND PENALTIES IF NO OTHER MECHANISM IS RUNNING
+  # TO SUBMIT WINDOW POST PROOFS.
+  # Note: This option is entirely disabling the window post scheduler,
+  # not just the builtin PoSt computation like Proving.DisableBuiltinWindowPoSt.
+  # This option will stop lotus-miner from performing any actions related
+  # to window post, including scheduling, submitting proofs, and recovering
+  # sectors.
+  #
+  # type: bool
+  # env var: LOTUS_SUBSYSTEMS_DISABLEWINDOWPOST
+  #DisableWindowPoSt = false
+
+  # When winning post is disabled, the miner process will NOT attempt to mine
+  # blocks. This should only be set when there's an external process mining
+  # blocks on behalf of the miner.
+  # When disabled and no external block producers are configured, all potential
+  # block rewards will be missed!
+  #
+  # type: bool
+  # env var: LOTUS_SUBSYSTEMS_DISABLEWINNINGPOST
+  #DisableWinningPoSt = false
 
 
 [Dealmaking]
@@ -427,13 +460,10 @@
   # env var: LOTUS_PROVING_DISABLEWDPOSTPRECHECKS
   #DisableWDPoStPreChecks = false
 
-  # Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+  # Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
   # 
   # A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
-  # 
-  # The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-  # means that a single message can prove at most 10 partitions
-  # 
+  # //
   # Note that setting this value lower may result in less efficient gas use - more messages will be sent,
   # to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
   # 
@@ -523,7 +553,7 @@
 
   # CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
   # live before it must be extended or converted into sector containing deals before it is
-  # terminated. Value must be between 180-540 days inclusive
+  # terminated. Value must be between 180-1278 days (1278 in nv21, 540 before nv21).
   #
   # type: Duration
   # env var: LOTUS_SEALING_COMMITTEDCAPACITYSECTORLIFETIME
@@ -666,6 +696,12 @@
   # env var: LOTUS_SEALING_TERMINATEBATCHWAIT
   #TerminateBatchWait = "5m0s"
 
+  # UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_USESYNTHETICPOREP
+  #UseSyntheticPoRep = false
+
 
 [Storage]
   # type: int
@@ -774,6 +810,10 @@
   # type: types.FIL
   # env var: LOTUS_FEES_MAXMARKETBALANCEADDFEE
   #MaxMarketBalanceAddFee = "0.007 FIL"
+
+  # type: bool
+  # env var: LOTUS_FEES_MAXIMIZEWINDOWPOSTFEECAP
+  #MaximizeWindowPoStFeeCap = true
 
   [Fees.MaxPreCommitBatchGasFee]
     # type: types.FIL
@@ -887,5 +927,38 @@
   # type: Duration
   # env var: LOTUS_DAGSTORE_GCINTERVAL
   #GCInterval = "1m0s"
+
+
+[HarmonyDB]
+  # HOSTS is a list of hostnames to nodes running YugabyteDB
+  # in a cluster. Only 1 is required
+  #
+  # type: []string
+  # env var: LOTUS_HARMONYDB_HOSTS
+  #Hosts = ["127.0.0.1"]
+
+  # The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_USERNAME
+  #Username = "yugabyte"
+
+  # The password for the related username. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_PASSWORD
+  #Password = "yugabyte"
+
+  # The database (logical partition) within Yugabyte. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_DATABASE
+  #Database = "yugabyte"
+
+  # The port to find Yugabyte. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_PORT
+  #Port = "5433"
 
 

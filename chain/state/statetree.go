@@ -156,7 +156,7 @@ func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
 	case network.Version13, network.Version14, network.Version15, network.Version16, network.Version17:
 		return types.StateTreeVersion4, nil
 
-	case network.Version18, network.Version19, network.Version20, network.Version21:
+	case network.Version18, network.Version19, network.Version20, network.Version21, network.Version22:
 		return types.StateTreeVersion5, nil
 
 	default:
@@ -438,7 +438,8 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("tried to flush state tree with snapshots on the stack")
 	}
 
-	for addr, sto := range st.snaps.layers[0].actors {
+	for addr, stoTmp := range st.snaps.layers[0].actors {
+		sto := stoTmp
 		if sto.Delete {
 			if err := st.root.Delete(abi.AddrKey(addr)); err != nil {
 				return cid.Undef, err
@@ -570,7 +571,7 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 			}
 
 			// no need to record anything here, there are no duplicates in the actors HAMT
-			// iself.
+			// itself.
 			if _, ok := seen[addr]; ok {
 				return nil
 			}
@@ -588,7 +589,7 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 		}
 
 		// no need to record anything here, there are no duplicates in the actors HAMT
-		// iself.
+		// itself.
 		if _, ok := seen[addr]; ok {
 			return nil
 		}

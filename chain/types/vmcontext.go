@@ -27,24 +27,3 @@ type StateTree interface {
 
 	Version() StateTreeVersion
 }
-
-type storageWrapper struct {
-	s Storage
-}
-
-func (sw *storageWrapper) Put(i cbg.CBORMarshaler) (cid.Cid, error) {
-	c, err := sw.s.Put(i)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return c, nil
-}
-
-func (sw *storageWrapper) Get(c cid.Cid, out cbg.CBORUnmarshaler) error {
-	if err := sw.s.Get(c, out); err != nil {
-		return err
-	}
-
-	return nil
-}

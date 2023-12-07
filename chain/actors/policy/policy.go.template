@@ -223,8 +223,20 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 	return ChainFinality
 }
 
-func GetMaxSectorExpirationExtension() abi.ChainEpoch {
-	return miner{{.latestVersion}}.MaxSectorExpirationExtension
+func GetMaxSectorExpirationExtension(nv network.Version) (abi.ChainEpoch, error) {
+	v, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to get actors version: %w", err)
+	}
+	switch v {
+		{{range .versions}}
+			case actorstypes.Version{{.}}:
+				return miner{{.}}.MaxSectorExpirationExtension, nil
+		{{end}}
+	default:
+		return 0, xerrors.Errorf("unsupported network version")
+	}
+
 }
 
 func GetMinSectorExpiration() abi.ChainEpoch {
@@ -240,7 +252,8 @@ func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, e
 	if err != nil {
 		return 0, err
 	}
-	return int(uint64(maxSectors) / sectorsPerPart), nil
+
+	return min(miner{{.latestVersion}}.PoStedPartitionsMax, int(uint64(maxSectors) / sectorsPerPart)), nil
 }
 
 func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
@@ -328,4 +341,28 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
+}
+
+var PoStToSealMap map[abi.RegisteredPoStProof]abi.RegisteredSealProof
+func init() {
+	PoStToSealMap = make(map[abi.RegisteredPoStProof]abi.RegisteredSealProof)
+	for sealProof, info := range abi.SealProofInfos {
+		PoStToSealMap[info.WinningPoStProof] = sealProof
+		PoStToSealMap[info.WindowPoStProof] = sealProof
+	}
+}
+
+func GetSealProofFromPoStProof(postProof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
+	sealProof, exists := PoStToSealMap[postProof]
+	if !exists {
+		return 0, xerrors.New("no corresponding RegisteredSealProof for the given RegisteredPoStProof")
+	}
+	return sealProof, nil
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
 }

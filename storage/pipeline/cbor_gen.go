@@ -30,7 +30,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{184, 38}); err != nil {
+	if _, err := cw.Write([]byte{184, 39}); err != nil {
 		return err
 	}
 
@@ -42,7 +42,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Log"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Log")); err != nil {
+	if _, err := cw.WriteString(string("Log")); err != nil {
 		return err
 	}
 
@@ -67,7 +67,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CommD"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("CommD")); err != nil {
+	if _, err := cw.WriteString(string("CommD")); err != nil {
 		return err
 	}
 
@@ -89,7 +89,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CommR"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("CommR")); err != nil {
+	if _, err := cw.WriteString(string("CommR")); err != nil {
 		return err
 	}
 
@@ -111,7 +111,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Proof"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Proof")); err != nil {
+	if _, err := cw.WriteString(string("Proof")); err != nil {
 		return err
 	}
 
@@ -135,7 +135,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("State"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("State")); err != nil {
+	if _, err := cw.WriteString(string("State")); err != nil {
 		return err
 	}
 
@@ -146,7 +146,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.State))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.State)); err != nil {
+	if _, err := cw.WriteString(string(t.State)); err != nil {
 		return err
 	}
 
@@ -158,7 +158,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Pieces"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Pieces")); err != nil {
+	if _, err := cw.WriteString(string("Pieces")); err != nil {
 		return err
 	}
 
@@ -183,7 +183,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Return"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Return")); err != nil {
+	if _, err := cw.WriteString(string("Return")); err != nil {
 		return err
 	}
 
@@ -194,7 +194,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Return))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Return)); err != nil {
+	if _, err := cw.WriteString(string(t.Return)); err != nil {
 		return err
 	}
 
@@ -206,7 +206,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("LastErr"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("LastErr")); err != nil {
+	if _, err := cw.WriteString(string("LastErr")); err != nil {
 		return err
 	}
 
@@ -217,7 +217,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.LastErr))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.LastErr)); err != nil {
+	if _, err := cw.WriteString(string(t.LastErr)); err != nil {
 		return err
 	}
 
@@ -229,7 +229,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CCPieces"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("CCPieces")); err != nil {
+	if _, err := cw.WriteString(string("CCPieces")); err != nil {
 		return err
 	}
 
@@ -254,7 +254,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CCUpdate"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("CCUpdate")); err != nil {
+	if _, err := cw.WriteString(string("CCUpdate")); err != nil {
 		return err
 	}
 
@@ -270,7 +270,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("SeedEpoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("SeedEpoch")); err != nil {
+	if _, err := cw.WriteString(string("SeedEpoch")); err != nil {
 		return err
 	}
 
@@ -292,7 +292,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("SeedValue"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("SeedValue")); err != nil {
+	if _, err := cw.WriteString(string("SeedValue")); err != nil {
 		return err
 	}
 
@@ -316,7 +316,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("SectorType"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("SectorType")); err != nil {
+	if _, err := cw.WriteString(string("SectorType")); err != nil {
 		return err
 	}
 
@@ -338,7 +338,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("TicketEpoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("TicketEpoch")); err != nil {
+	if _, err := cw.WriteString(string("TicketEpoch")); err != nil {
 		return err
 	}
 
@@ -360,7 +360,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("TicketValue"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("TicketValue")); err != nil {
+	if _, err := cw.WriteString(string("TicketValue")); err != nil {
 		return err
 	}
 
@@ -384,7 +384,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CreationTime"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("CreationTime")); err != nil {
+	if _, err := cw.WriteString(string("CreationTime")); err != nil {
 		return err
 	}
 
@@ -406,7 +406,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("SectorNumber"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("SectorNumber")); err != nil {
+	if _, err := cw.WriteString(string("SectorNumber")); err != nil {
 		return err
 	}
 
@@ -422,7 +422,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("TerminatedAt"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("TerminatedAt")); err != nil {
+	if _, err := cw.WriteString(string("TerminatedAt")); err != nil {
 		return err
 	}
 
@@ -444,7 +444,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("UpdateSealed"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("UpdateSealed")); err != nil {
+	if _, err := cw.WriteString(string("UpdateSealed")); err != nil {
 		return err
 	}
 
@@ -466,7 +466,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CommitMessage"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("CommitMessage")); err != nil {
+	if _, err := cw.WriteString(string("CommitMessage")); err != nil {
 		return err
 	}
 
@@ -488,7 +488,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("InvalidProofs"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("InvalidProofs")); err != nil {
+	if _, err := cw.WriteString(string("InvalidProofs")); err != nil {
 		return err
 	}
 
@@ -504,7 +504,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommit1Out"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PreCommit1Out")); err != nil {
+	if _, err := cw.WriteString(string("PreCommit1Out")); err != nil {
 		return err
 	}
 
@@ -528,7 +528,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("FaultReportMsg"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("FaultReportMsg")); err != nil {
+	if _, err := cw.WriteString(string("FaultReportMsg")); err != nil {
 		return err
 	}
 
@@ -550,7 +550,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("UpdateUnsealed"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("UpdateUnsealed")); err != nil {
+	if _, err := cw.WriteString(string("UpdateUnsealed")); err != nil {
 		return err
 	}
 
@@ -564,6 +564,22 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
+	// t.PreCommit1Fails (uint64) (uint64)
+	if len("PreCommit1Fails") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommit1Fails\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommit1Fails"))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string("PreCommit1Fails")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.PreCommit1Fails)); err != nil {
+		return err
+	}
+
 	// t.PreCommit2Fails (uint64) (uint64)
 	if len("PreCommit2Fails") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"PreCommit2Fails\" was too long")
@@ -572,7 +588,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommit2Fails"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PreCommit2Fails")); err != nil {
+	if _, err := cw.WriteString(string("PreCommit2Fails")); err != nil {
 		return err
 	}
 
@@ -588,7 +604,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommitTipSet"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PreCommitTipSet")); err != nil {
+	if _, err := cw.WriteString(string("PreCommitTipSet")); err != nil {
 		return err
 	}
 
@@ -604,7 +620,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataCache"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("RemoteDataCache")); err != nil {
+	if _, err := cw.WriteString(string("RemoteDataCache")); err != nil {
 		return err
 	}
 
@@ -620,7 +636,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommitDeposit"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PreCommitDeposit")); err != nil {
+	if _, err := cw.WriteString(string("PreCommitDeposit")); err != nil {
 		return err
 	}
 
@@ -636,7 +652,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PreCommitMessage"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PreCommitMessage")); err != nil {
+	if _, err := cw.WriteString(string("PreCommitMessage")); err != nil {
 		return err
 	}
 
@@ -658,7 +674,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataSealed"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("RemoteDataSealed")); err != nil {
+	if _, err := cw.WriteString(string("RemoteDataSealed")); err != nil {
 		return err
 	}
 
@@ -674,7 +690,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("TerminateMessage"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("TerminateMessage")); err != nil {
+	if _, err := cw.WriteString(string("TerminateMessage")); err != nil {
 		return err
 	}
 
@@ -696,7 +712,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataUnsealed"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("RemoteDataUnsealed")); err != nil {
+	if _, err := cw.WriteString(string("RemoteDataUnsealed")); err != nil {
 		return err
 	}
 
@@ -712,7 +728,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ReplicaUpdateProof"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("ReplicaUpdateProof")); err != nil {
+	if _, err := cw.WriteString(string("ReplicaUpdateProof")); err != nil {
 		return err
 	}
 
@@ -736,7 +752,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataFinalized"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("RemoteDataFinalized")); err != nil {
+	if _, err := cw.WriteString(string("RemoteDataFinalized")); err != nil {
 		return err
 	}
 
@@ -752,7 +768,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ReplicaUpdateMessage"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("ReplicaUpdateMessage")); err != nil {
+	if _, err := cw.WriteString(string("ReplicaUpdateMessage")); err != nil {
 		return err
 	}
 
@@ -774,7 +790,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteCommit1Endpoint"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("RemoteCommit1Endpoint")); err != nil {
+	if _, err := cw.WriteString(string("RemoteCommit1Endpoint")); err != nil {
 		return err
 	}
 
@@ -785,7 +801,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.RemoteCommit1Endpoint))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.RemoteCommit1Endpoint)); err != nil {
+	if _, err := cw.WriteString(string(t.RemoteCommit1Endpoint)); err != nil {
 		return err
 	}
 
@@ -797,7 +813,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteCommit2Endpoint"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("RemoteCommit2Endpoint")); err != nil {
+	if _, err := cw.WriteString(string("RemoteCommit2Endpoint")); err != nil {
 		return err
 	}
 
@@ -808,7 +824,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.RemoteCommit2Endpoint))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.RemoteCommit2Endpoint)); err != nil {
+	if _, err := cw.WriteString(string(t.RemoteCommit2Endpoint)); err != nil {
 		return err
 	}
 
@@ -820,7 +836,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteSealingDoneEndpoint"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("RemoteSealingDoneEndpoint")); err != nil {
+	if _, err := cw.WriteString(string("RemoteSealingDoneEndpoint")); err != nil {
 		return err
 	}
 
@@ -831,7 +847,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.RemoteSealingDoneEndpoint))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.RemoteSealingDoneEndpoint)); err != nil {
+	if _, err := cw.WriteString(string(t.RemoteSealingDoneEndpoint)); err != nil {
 		return err
 	}
 	return nil
@@ -896,13 +912,22 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				var v Log
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
+					{
+
+						if err := t.Log[i].UnmarshalCBOR(cr); err != nil {
+							return xerrors.Errorf("unmarshaling t.Log[i]: %w", err)
+						}
+
+					}
 				}
-
-				t.Log[i] = v
 			}
 
 			// t.CommD (cid.Cid) (struct)
@@ -1005,13 +1030,23 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
+
+					{
 
 				var v SafeSectorPiece
 				if err := v.UnmarshalCBOR(cr); err != nil {
 					return err
 				}
 
-				t.Pieces[i] = v
+					}
+				}
 			}
 
 			// t.Return (sealing.ReturnState) (string)
@@ -1057,13 +1092,23 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
+
+					{
 
 				var v SafeSectorPiece
 				if err := v.UnmarshalCBOR(cr); err != nil {
 					return err
 				}
 
-				t.CCPieces[i] = v
+					}
+				}
 			}
 
 			// t.CCUpdate (bool) (bool)
@@ -1402,6 +1447,21 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+			// t.PreCommit1Fails (uint64) (uint64)
+		case "PreCommit1Fails":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.PreCommit1Fails = uint64(extra)
+
+			}
 			// t.PreCommit2Fails (uint64) (uint64)
 		case "PreCommit2Fails":
 
@@ -1668,7 +1728,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Kind"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Kind")); err != nil {
+	if _, err := cw.WriteString(string("Kind")); err != nil {
 		return err
 	}
 
@@ -1679,7 +1739,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Kind))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Kind)); err != nil {
+	if _, err := cw.WriteString(string(t.Kind)); err != nil {
 		return err
 	}
 
@@ -1691,7 +1751,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Trace"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Trace")); err != nil {
+	if _, err := cw.WriteString(string("Trace")); err != nil {
 		return err
 	}
 
@@ -1702,7 +1762,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Trace))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Trace)); err != nil {
+	if _, err := cw.WriteString(string(t.Trace)); err != nil {
 		return err
 	}
 
@@ -1714,7 +1774,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Message"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Message")); err != nil {
+	if _, err := cw.WriteString(string("Message")); err != nil {
 		return err
 	}
 
@@ -1725,7 +1785,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Message)); err != nil {
+	if _, err := cw.WriteString(string(t.Message)); err != nil {
 		return err
 	}
 
@@ -1737,7 +1797,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Timestamp"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Timestamp")); err != nil {
+	if _, err := cw.WriteString(string("Timestamp")); err != nil {
 		return err
 	}
 

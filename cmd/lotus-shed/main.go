@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -23,6 +24,7 @@ func main() {
 	local := []*cli.Command{
 		addressCmd,
 		statActorCmd,
+		statSnapshotCmd,
 		statObjCmd,
 		base64Cmd,
 		base32Cmd,
@@ -88,6 +90,7 @@ func main() {
 		indexesCmd,
 		FevmAnalyticsCmd,
 		mismatchesCmd,
+		blockCmd,
 	}
 
 	app := &cli.App{
@@ -113,9 +116,30 @@ func main() {
 				Name:  "log-level",
 				Value: "info",
 			},
+			&cli.StringFlag{
+				Name:  "pprof",
+				Usage: "specify name of file for writing cpu profile to",
+			},
 		},
 		Before: func(cctx *cli.Context) error {
+			if prof := cctx.String("pprof"); prof != "" {
+				profile, err := os.Create(prof)
+				if err != nil {
+					return err
+				}
+
+				if err := pprof.StartCPUProfile(profile); err != nil {
+					return err
+				}
+			}
+
 			return logging.SetLogLevel("lotus-shed", cctx.String("log-level"))
+		},
+		After: func(cctx *cli.Context) error {
+			if prof := cctx.String("pprof"); prof != "" {
+				pprof.StopCPUProfile()
+			}
+			return nil
 		},
 	}
 

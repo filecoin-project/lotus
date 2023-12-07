@@ -19,7 +19,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
-const GenesisNetworkVersion = network.Version18
+const GenesisNetworkVersion = network.Version20
 
 var NetworkBundle = "butterflynet"
 var BundleOverrides map[actorstypes.Version]string
@@ -52,13 +52,18 @@ const UpgradeOhSnapHeight = -18
 const UpgradeSkyrHeight = -19
 const UpgradeSharkHeight = -20
 const UpgradeHyggeHeight = -21
+const UpgradeLightningHeight = -22
+const UpgradeThunderHeight = -23
+const UpgradeWatermelonHeight = -24
 
-const UpgradeLightningHeight = 50
+// ??????
+const UpgradePineappleHeight = 999999999999999
 
-const UpgradeThunderHeight = UpgradeLightningHeight + 360
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFixHeight = -100
 
-// ??????????
-const UpgradeWatermelonHeight = 999999999999999
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFix2Height = -101
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
@@ -85,6 +90,8 @@ func init() {
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
+
+var EquivocationDelaySecs = uint64(2)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2

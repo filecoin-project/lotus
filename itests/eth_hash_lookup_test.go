@@ -3,6 +3,7 @@ package itests
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -47,10 +48,13 @@ func TestTransactionHashLookup(t *testing.T) {
 	// send some funds to the f410 address
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -120,7 +124,6 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -146,9 +149,13 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	hash, err := ethtypes.EthHashFromCid(sm.Message.Cid())
 	require.NoError(t, err)
 
-	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
-	require.NoError(t, err)
-	require.Equal(t, hash, mpoolTx.Hash)
+	// Assert that BLS messages cannot be retrieved from the message pool until it lands
+	// on-chain via the eth API.
+	_, err = client.EthGetTransactionByHash(ctx, &hash)
+	require.Error(t, err)
+
+	// Now start mining.
+	ens.InterconnectAll().BeginMining(blocktime)
 
 	// Wait for message to land on chain
 	var receipt *api.EthTxReceipt
@@ -177,6 +184,25 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	require.NotEmpty(t, *chainTx.BlockHash)
 	require.NotNil(t, chainTx.TransactionIndex)
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
+
+	// verify that we correctly reported the to address.
+	toId, err := client.StateLookupID(ctx, addr, types.EmptyTSK)
+	require.NoError(t, err)
+	toEth, err := client.FilecoinAddressToEthAddress(ctx, toId)
+	require.NoError(t, err)
+	require.Equal(t, &toEth, chainTx.To)
+
+	const expectedHex = "868e10c4" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000060" +
+		"0000000000000000000000000000000000000000000000000000000000000000"
+
+	// verify that the params are correctly encoded.
+	expected, err := hex.DecodeString(expectedHex)
+	require.NoError(t, err)
+
+	require.Equal(t, ethtypes.EthBytes(expected), chainTx.Input)
 }
 
 // TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
@@ -228,10 +254,6 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	hash, err := ethtypes.EthHashFromCid(secpSmsg.Cid())
 	require.NoError(t, err)
 
-	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
-	require.NoError(t, err)
-	require.Equal(t, hash, mpoolTx.Hash)
-
 	_, err = client.StateWaitMsg(ctx, secpSmsg.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 
@@ -253,6 +275,25 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	require.NotEmpty(t, *chainTx.BlockHash)
 	require.NotNil(t, chainTx.TransactionIndex)
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
+
+	// verify that we correctly reported the to address.
+	toId, err := client.StateLookupID(ctx, client.DefaultKey.Address, types.EmptyTSK)
+	require.NoError(t, err)
+	toEth, err := client.FilecoinAddressToEthAddress(ctx, toId)
+	require.NoError(t, err)
+	require.Equal(t, &toEth, chainTx.To)
+
+	const expectedHex = "868e10c4" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000000" +
+		"0000000000000000000000000000000000000000000000000000000000000060" +
+		"0000000000000000000000000000000000000000000000000000000000000000"
+
+	// verify that the params are correctly encoded.
+	expected, err := hex.DecodeString(expectedHex)
+	require.NoError(t, err)
+
+	require.Equal(t, ethtypes.EthBytes(expected), chainTx.Input)
 }
 
 // TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
@@ -313,10 +354,13 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 	// send some funds to the f410 address
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)

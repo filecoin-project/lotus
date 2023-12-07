@@ -87,6 +87,15 @@ func NewDealHarness(t *testing.T, client *TestFullNode, main *TestMiner, market 
 //
 // TODO: convert input parameters to struct, and add size as an input param.
 func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
+	deal, res, path = dh.StartRandomDeal(ctx, params)
+
+	fmt.Printf("WAIT DEAL SEALEDS START\n")
+	dh.WaitDealSealed(ctx, deal, false, false, nil)
+	fmt.Printf("WAIT DEAL SEALEDS END\n")
+	return deal, res, path
+}
+
+func (dh *DealHarness) StartRandomDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
 	if params.UseCARFileForStorageDeal {
 		res, _, path = dh.client.ClientImportCARFile(ctx, params.Rseed, 200)
 	} else {
@@ -107,11 +116,6 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 	dp.FastRetrieval = params.FastRet
 	deal = dh.StartDeal(ctx, dp)
 
-	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-	time.Sleep(time.Second)
-	fmt.Printf("WAIT DEAL SEALEDS START\n")
-	dh.WaitDealSealed(ctx, deal, false, false, nil)
-	fmt.Printf("WAIT DEAL SEALEDS END\n")
 	return deal, res, path
 }
 

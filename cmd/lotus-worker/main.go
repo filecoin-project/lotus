@@ -7,13 +7,16 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats/view"
@@ -36,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -281,7 +285,36 @@ var runCmd = &cli.Command{
 			Value:       true,
 			DefaultText: "inherits --addpiece",
 		},
+		&cli.StringFlag{
+			Name:  "external-pc2",
+			Usage: "command for computing PC2 externally",
+		},
 	},
+	Description: `Run lotus-worker.
+
+--external-pc2 can be used to compute the PreCommit2 inputs externally.
+The flag behaves similarly to the related lotus-worker flag, using it in
+lotus-bench may be useful for testing if the external PreCommit2 command is
+invoked correctly.
+
+The command will be called with a number of environment variables set:
+* EXTSEAL_PC2_SECTOR_NUM: the sector number
+* EXTSEAL_PC2_SECTOR_MINER: the miner id
+* EXTSEAL_PC2_PROOF_TYPE: the proof type
+* EXTSEAL_PC2_SECTOR_SIZE: the sector size in bytes
+* EXTSEAL_PC2_CACHE: the path to the cache directory
+* EXTSEAL_PC2_SEALED: the path to the sealed sector file (initialized with unsealed data by the caller)
+* EXTSEAL_PC2_PC1OUT: output from rust-fil-proofs precommit1 phase (base64 encoded json)
+
+The command is expected to:
+* Create cache sc-02-data-tree-r* files
+* Create cache sc-02-data-tree-c* files
+* Create cache p_aux / t_aux files
+* Transform the sealed file in place
+
+Example invocation of lotus-bench as external executor:
+'./lotus-bench simple precommit2 --sector-size $EXTSEAL_PC2_SECTOR_SIZE $EXTSEAL_PC2_SEALED $EXTSEAL_PC2_CACHE $EXTSEAL_PC2_PC1OUT'
+`,
 	Before: func(cctx *cli.Context) error {
 		if cctx.IsSet("address") {
 			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
@@ -320,8 +353,43 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		// Check DC-environment variable
+		sectorSizes := []string{"2KiB", "8MiB", "512MiB", "32GiB", "64GiB"}
+		resourcesType := reflect.TypeOf(storiface.Resources{})
+
+		for _, sectorSize := range sectorSizes {
+			for i := 0; i < resourcesType.NumField(); i++ {
+				field := resourcesType.Field(i)
+				envName := field.Tag.Get("envname")
+				if envName != "" {
+					// Check if DC_[SectorSize]_[ResourceRestriction] is set
+					envVar, ok := os.LookupEnv("DC_" + sectorSize + "_" + envName)
+					if ok {
+						// If it is set, convert it to DC_[ResourceRestriction]
+						err := os.Setenv("DC_"+envName, envVar)
+						if err != nil {
+							log.Fatalf("Error setting environment variable: %v", err)
+						}
+						log.Warnf("Converted DC_%s_%s to DC_%s, because DC is a sector-size independent job", sectorSize, envName, envName)
+					}
+				}
+			}
+		}
+
 		// Connect to storage-miner
 		ctx := lcli.ReqContext(cctx)
+
+		// Create a new context with cancel function
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		// Listen for interrupt signals
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
+			cancel()
+		}()
 
 		var nodeApi api.StorageMiner
 		var closer func()
@@ -334,14 +402,13 @@ var runCmd = &cli.Command{
 				}
 			}
 			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
-			time.Sleep(time.Second)
-			continue
+			select {
+			case <-ctx.Done():
+				return xerrors.New("Interrupted by user")
+			case <-time.After(time.Second):
+			}
 		}
-
 		defer closer()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
 		// Register all metric views
 		if err := view.Register(
 			metrics.DefaultViews...,
@@ -530,9 +597,14 @@ var runCmd = &cli.Command{
 
 		log.Info("Opening local storage; connecting to master")
 		const unspecifiedAddress = "0.0.0.0"
+
 		address := cctx.String("listen")
-		addressSlice := strings.Split(address, ":")
-		if ip := net.ParseIP(addressSlice[0]); ip != nil {
+		host, port, err := net.SplitHostPort(address)
+		if err != nil {
+			return err
+		}
+
+		if ip := net.ParseIP(host); ip != nil {
 			if ip.String() == unspecifiedAddress {
 				timeout, err := time.ParseDuration(cctx.String("timeout"))
 				if err != nil {
@@ -542,11 +614,21 @@ var runCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				address = rip + ":" + addressSlice[1]
+				host = rip
 			}
 		}
 
-		localStore, err := paths.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
+		var newAddress string
+
+		// Check if the IP address is IPv6
+		ip := net.ParseIP(host)
+		if ip.To4() == nil && ip.To16() != nil {
+			newAddress = "[" + host + "]:" + port
+		} else {
+			newAddress = host + ":" + port
+		}
+
+		localStore, err := paths.NewLocal(ctx, lr, nodeApi, []string{"http://" + newAddress + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -571,23 +653,37 @@ var runCmd = &cli.Command{
 			fh.ServeHTTP(w, r)
 		}
 
+		// Parse ffi executor flags
+
+		var ffiOpts []ffiwrapper.FFIWrapperOpt
+
+		if cctx.IsSet("external-pc2") {
+			extSeal := ffiwrapper.ExternalSealer{
+				PreCommit2: ffiwrapper.MakeExternPrecommit2(cctx.String("external-pc2")),
+			}
+
+			ffiOpts = append(ffiOpts, ffiwrapper.WithExternalSealCalls(extSeal))
+		}
+
 		// Create / expose the worker
 
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
 
 		workerApi := &sealworker.Worker{
-			LocalWorker: sealer.NewLocalWorker(sealer.WorkerConfig{
-				TaskTypes:                 taskTypes,
-				NoSwap:                    cctx.Bool("no-swap"),
-				MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
-				ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
-				Name:                      cctx.String("name"),
-			}, remote, localStore, nodeApi, nodeApi, wsts),
+			LocalWorker: sealer.NewLocalWorkerWithExecutor(
+				sealer.FFIExec(ffiOpts...),
+				sealer.WorkerConfig{
+					TaskTypes:                 taskTypes,
+					NoSwap:                    cctx.Bool("no-swap"),
+					MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
+					ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
+					Name:                      cctx.String("name"),
+				}, os.LookupEnv, remote, localStore, nodeApi, nodeApi, wsts),
 			LocalStore: localStore,
 			Storage:    lr,
 		}
 
-		log.Info("Setting up control endpoint at " + address)
+		log.Info("Setting up control endpoint at " + newAddress)
 
 		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
 		if err != nil {
@@ -612,13 +708,13 @@ var runCmd = &cli.Command{
 			log.Warn("Graceful shutdown successful")
 		}()
 
-		nl, err := net.Listen("tcp", address)
+		nl, err := net.Listen("tcp", newAddress)
 		if err != nil {
 			return err
 		}
 
 		{
-			a, err := net.ResolveTCPAddr("tcp", address)
+			a, err := net.ResolveTCPAddr("tcp", newAddress)
 			if err != nil {
 				return xerrors.Errorf("parsing address: %w", err)
 			}
@@ -699,7 +795,7 @@ var runCmd = &cli.Command{
 
 					select {
 					case <-readyCh:
-						if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
+						if err := nodeApi.WorkerConnect(ctx, "http://"+newAddress+"/rpc/v0"); err != nil {
 							log.Errorf("Registering worker failed: %+v", err)
 							cancel()
 							return
@@ -740,21 +836,46 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	deprecatedMinerMultiAddrKey := "STORAGE_API_INFO"
 	env, ok := os.LookupEnv(minerMultiAddrKey)
 	if !ok {
-		// TODO remove after deprecation period
 		_, ok = os.LookupEnv(deprecatedMinerMultiAddrKey)
 		if ok {
 			log.Warnf("Using a deprecated env(%s) value, please use env(%s) instead.", deprecatedMinerMultiAddrKey, minerMultiAddrKey)
 		}
 		return "", xerrors.New("MINER_API_INFO environment variable required to extract IP")
 	}
-	minerAddr := strings.Split(env, "/")
-	conn, err := net.DialTimeout("tcp", minerAddr[2]+":"+minerAddr[4], timeout)
+
+	// Splitting the env to separate the JWT from the multiaddress
+	splitEnv := strings.SplitN(env, ":", 2)
+	if len(splitEnv) < 2 {
+		return "", xerrors.Errorf("invalid MINER_API_INFO format")
+	}
+	// Only take the multiaddress part
+	maddrStr := splitEnv[1]
+
+	maddr, err := multiaddr.NewMultiaddr(maddrStr)
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close() //nolint:errcheck
+
+	minerIP, _ := maddr.ValueForProtocol(multiaddr.P_IP6)
+	if minerIP == "" {
+		minerIP, _ = maddr.ValueForProtocol(multiaddr.P_IP4)
+	}
+	minerPort, _ := maddr.ValueForProtocol(multiaddr.P_TCP)
+
+	// Format the address appropriately
+	addressToDial := net.JoinHostPort(minerIP, minerPort)
+
+	conn, err := net.DialTimeout("tcp", addressToDial, timeout)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			log.Errorf("Error closing connection: %v", cerr)
+		}
+	}()
 
 	localAddr := conn.LocalAddr().(*net.TCPAddr)
-
-	return strings.Split(localAddr.IP.String(), ":")[0], nil
+	return localAddr.IP.String(), nil
 }

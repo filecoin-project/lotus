@@ -249,7 +249,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 				continue
 			}
 
-			if err := move(tempDest, dest); err != nil {
+			if err := Move(tempDest, dest); err != nil {
 				return "", xerrors.Errorf("fetch move error (storage %s) %s -> %s: %w", info.ID, tempDest, dest, err)
 			}
 

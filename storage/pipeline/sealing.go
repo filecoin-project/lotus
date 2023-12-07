@@ -311,6 +311,20 @@ func (m *Sealing) TerminateSector(ctx context.Context, sid abi.SectorNumber) err
 	return m.sectors.Send(uint64(sid), SectorTerminate{})
 }
 
+func (m *Sealing) SectorsSummary(ctx context.Context) map[api.SectorState]int {
+	m.stats.lk.Lock()
+	defer m.stats.lk.Unlock()
+
+	out := make(map[api.SectorState]int)
+
+	for st, count := range m.stats.byState {
+		state := api.SectorState(st)
+		out[state] = int(count)
+	}
+
+	return out
+}
+
 func (m *Sealing) TerminateFlush(ctx context.Context) (*cid.Cid, error) {
 	return m.terminator.Flush(ctx)
 }
@@ -346,7 +360,12 @@ func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof
 		return 0, err
 	}
 
-	return lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
+	c, err := m.getConfig()
+	if err != nil {
+		return 0, err
+	}
+
+	return lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType, c.UseSyntheticPoRep)
 }
 
 func (m *Sealing) minerSector(spt abi.RegisteredSealProof, num abi.SectorNumber) storiface.SectorRef {

@@ -124,6 +124,7 @@ func ValidateSplitstoreSet(cfgRaw string) error {
 type cfgUpdateOpts struct {
 	comment         bool
 	keepUncommented func(string) bool
+	noEnv           bool
 }
 
 // UpdateCfgOpt is a functional option for updating the config
@@ -147,6 +148,13 @@ func Commented(commented bool) UpdateCfgOpt {
 
 func DefaultKeepUncommented() UpdateCfgOpt {
 	return KeepUncommented(MatchEnableSplitstoreField)
+}
+
+func NoEnv() UpdateCfgOpt {
+	return func(opts *cfgUpdateOpts) error {
+		opts.noEnv = true
+		return nil
+	}
 }
 
 // ConfigUpdate takes in a config and a default config and optionally comments out default values
@@ -236,7 +244,9 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 						outLines = append(outLines, pad+"# type: "+doc.Type)
 					}
 
-					outLines = append(outLines, pad+"# env var: LOTUS_"+strings.ToUpper(strings.ReplaceAll(section, ".", "_"))+"_"+strings.ToUpper(lf[0]))
+					if !updateOpts.noEnv {
+						outLines = append(outLines, pad+"# env var: LOTUS_"+strings.ToUpper(strings.ReplaceAll(section, ".", "_"))+"_"+strings.ToUpper(lf[0]))
+					}
 				}
 			}
 

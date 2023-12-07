@@ -165,7 +165,7 @@ func (stage *PreCommitStage) packMiner(
 
 	// Generate pre-commits.
 	sealType, err := miner.PreferredSealProofTypeFromWindowPoStType(
-		nv, minerInfo.WindowPoStProofType,
+		nv, minerInfo.WindowPoStProofType, false,
 	)
 	if err != nil {
 		return 0, false, err
@@ -176,7 +176,12 @@ func (stage *PreCommitStage) packMiner(
 		return 0, false, err
 	}
 
-	expiration := epoch + policy.GetMaxSectorExpirationExtension()
+	maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
+	if err != nil {
+		return 0, false, xerrors.Errorf("failed to get max extension: %w", err)
+	}
+
+	expiration := epoch + maxExtension
 	infos := make([]minertypes.PreCommitSectorParams, len(sectorNos))
 	for i, sno := range sectorNos {
 		infos[i] = minertypes.PreCommitSectorParams{

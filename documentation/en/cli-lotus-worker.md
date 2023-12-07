@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.23.3
+   1.25.2-dev
 
 COMMANDS:
    run        Start lotus worker
@@ -34,6 +34,33 @@ NAME:
 USAGE:
    lotus-worker run [command options] [arguments...]
 
+DESCRIPTION:
+   Run lotus-worker.
+
+   --external-pc2 can be used to compute the PreCommit2 inputs externally.
+   The flag behaves similarly to the related lotus-worker flag, using it in
+   lotus-bench may be useful for testing if the external PreCommit2 command is
+   invoked correctly.
+
+   The command will be called with a number of environment variables set:
+   * EXTSEAL_PC2_SECTOR_NUM: the sector number
+   * EXTSEAL_PC2_SECTOR_MINER: the miner id
+   * EXTSEAL_PC2_PROOF_TYPE: the proof type
+   * EXTSEAL_PC2_SECTOR_SIZE: the sector size in bytes
+   * EXTSEAL_PC2_CACHE: the path to the cache directory
+   * EXTSEAL_PC2_SEALED: the path to the sealed sector file (initialized with unsealed data by the caller)
+   * EXTSEAL_PC2_PC1OUT: output from rust-fil-proofs precommit1 phase (base64 encoded json)
+
+   The command is expected to:
+   * Create cache sc-02-data-tree-r* files
+   * Create cache sc-02-data-tree-c* files
+   * Create cache p_aux / t_aux files
+   * Transform the sealed file in place
+
+   Example invocation of lotus-bench as external executor:
+   './lotus-bench simple precommit2 --sector-size $EXTSEAL_PC2_SECTOR_SIZE $EXTSEAL_PC2_SEALED $EXTSEAL_PC2_CACHE $EXTSEAL_PC2_PC1OUT'
+
+
 OPTIONS:
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456") [$LOTUS_WORKER_LISTEN]
    --no-local-storage            don't use storageminer repo for sector storage (default: false) [$LOTUS_WORKER_NO_LOCAL_STORAGE]
@@ -57,6 +84,7 @@ OPTIONS:
    --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m") [$LOTUS_WORKER_TIMEOUT]
    --http-server-timeout value   (default: "30s")
    --data-cid                    Run the data-cid task. true|false (default: inherits --addpiece)
+   --external-pc2 value          command for computing PC2 externally
    --help, -h                    show help
 ```
 

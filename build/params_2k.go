@@ -23,7 +23,7 @@ var NetworkBundle = "devnet"
 var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = true
 
-const GenesisNetworkVersion = network.Version20
+const GenesisNetworkVersion = network.Version21
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -65,7 +65,15 @@ var UpgradeLightningHeight = abi.ChainEpoch(-22)
 
 var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
-var UpgradeWatermelonHeight = abi.ChainEpoch(200)
+var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
+
+var UpgradePineappleHeight = abi.ChainEpoch(200)
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFixHeight = -100
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeWatermelonFix2Height = -101
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -123,6 +131,7 @@ func init() {
 	UpgradeLightningHeight = getUpgradeHeight("LOTUS_LIGHTNING_HEIGHT", UpgradeLightningHeight)
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
+	UpgradePineappleHeight = getUpgradeHeight("LOTUS_PINEAPPLE_HEIGHT", UpgradePineappleHeight)
 
 	BuildType |= Build2k
 
@@ -131,6 +140,8 @@ func init() {
 const BlockDelaySecs = uint64(4)
 
 const PropagationDelaySecs = uint64(1)
+
+var EquivocationDelaySecs = uint64(0)
 
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed

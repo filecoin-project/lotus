@@ -80,7 +80,7 @@ func TestLocalStorage(t *testing.T) {
 		root: root,
 	}
 
-	index := NewIndex(nil)
+	index := NewMemIndex(nil)
 
 	st, err := NewLocal(ctx, tstor, index, nil)
 	require.NoError(t, err)

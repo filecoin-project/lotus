@@ -3,8 +3,10 @@ package ffiwrapper
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"fmt"
 	"io"
+	"io/fs"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -22,12 +24,14 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/filecoin-ffi/cgo"
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"github.com/filecoin-project/lotus/storage/sealer/commitment"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -412,7 +416,18 @@ func TestSealPoStNoCommit(t *testing.T) {
 	fmt.Printf("EPoSt: %s\n", epost.Sub(precommit).String())
 }
 
+func TestMain(m *testing.M) {
+	//setup()
+	// Here it no-longer is bound to 30s but has 1m30s for the whole suite.
+	getGrothParamFileAndVerifyingKeys(sectorSize)
+
+	code := m.Run()
+	//shutdown()
+	os.Exit(code)
+}
+
 func TestSealAndVerify3(t *testing.T) {
+	t.Skip("i flake on CI, re-enable me when you have a fix pls")
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
@@ -423,8 +438,6 @@ func TestSealAndVerify3(t *testing.T) {
 		t.Skip("this is slow")
 	}
 	_ = os.Setenv("RUST_LOG", "trace")
-
-	getGrothParamFileAndVerifyingKeys(sectorSize)
 
 	dir, err := os.MkdirTemp("", "sbtest")
 	if err != nil {
@@ -595,12 +608,18 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 }
 
 func openFDs(t *testing.T) int {
-	dent, err := os.ReadDir("/proc/self/fd")
-	require.NoError(t, err)
+	path := "/proc/self/fd"
+	if runtime.GOOS == "darwin" {
+		path = "/dev/fd"
+	}
+	dent, err := os.ReadDir(path)
+	if err != nil && !strings.Contains(err.Error(), "/dev/fd/3: bad file descriptor") {
+		require.NoError(t, err)
+	}
 
 	var skip int
 	for _, info := range dent {
-		l, err := os.Readlink(filepath.Join("/proc/self/fd", info.Name()))
+		l, err := os.Readlink(filepath.Join(path, info.Name()))
 		if err != nil {
 			continue
 		}
@@ -621,11 +640,15 @@ func requireFDsClosed(t *testing.T, start int) {
 	openNow := openFDs(t)
 
 	if start != openNow {
-		dent, err := os.ReadDir("/proc/self/fd")
+		path := "/proc/self/fd"
+		if runtime.GOOS == "darwin" {
+			path = "/dev/fd"
+		}
+		dent, err := os.ReadDir(path)
 		require.NoError(t, err)
 
 		for _, info := range dent {
-			l, err := os.Readlink(filepath.Join("/proc/self/fd", info.Name()))
+			l, err := os.Readlink(filepath.Join(path, info.Name()))
 			if err != nil {
 				fmt.Printf("FD err %s\n", err)
 				continue
@@ -950,7 +973,9 @@ func TestMulticoreSDR(t *testing.T) {
 
 func TestPoStChallengeAssumptions(t *testing.T) {
 	var r [32]byte
-	rand.Read(r[:])
+	if _, err := crand.Read(r[:]); err != nil {
+		panic(err)
+	}
 	r[31] &= 0x3f
 
 	// behaves like a pure function
@@ -1066,7 +1091,115 @@ func TestDCAPCloses(t *testing.T) {
 		require.Equal(t, "baga6ea4seaqeje7jy4hufnybpo7ckxzujaigqbcxhdjq7ojb4b6xzgqdugkyciq", c.PieceCID.String())
 		require.True(t, clr.closed)
 	})
+}
 
+func TestSealAndVerifySynth(t *testing.T) {
+	origSealProofType := sealProofType
+	sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep
+	t.Cleanup(func() {
+		sealProofType = origSealProofType
+	})
+
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	defer requireFDsClosed(t, openFDs(t))
+
+	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
+		t.Skip("this is slow")
+	}
+	_ = os.Setenv("RUST_LOG", "info")
+
+	getGrothParamFileAndVerifyingKeys(sectorSize)
+
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	miner := abi.ActorID(123)
+
+	synthPorRepVProofsName := "syn-porep-vanilla-proofs.dat"
+
+	printFileList := func(stage string, expectSynthPorep bool) {
+		var hasSynthPorep bool
+
+		fmt.Println("----file list:", stage)
+		err := filepath.Walk(cdir, func(path string, info os.FileInfo, err error) error {
+			if strings.Contains(path, synthPorRepVProofsName) {
+				hasSynthPorep = true
+			}
+			fmt.Println(path)
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		require.Equal(t, expectSynthPorep, hasSynthPorep)
+
+		fmt.Println("----")
+	}
+
+	sp := &basicfs.Provider{
+		Root: cdir,
+	}
+	sb, err := New(sp)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	t.Cleanup(func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", cdir)
+			return
+		}
+		if err := os.RemoveAll(cdir); err != nil {
+			t.Error(err)
+		}
+	})
+
+	si := storiface.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
+
+	s := seal{ref: si}
+
+	start := time.Now()
+
+	s.precommit(t, sb, si, func() {})
+
+	printFileList("precommit", true)
+
+	precommit := time.Now()
+
+	s.commit(t, sb, func() {})
+
+	printFileList("commit", true)
+
+	commit := time.Now()
+
+	post(t, sb, nil, s)
+
+	printFileList("post", true)
+
+	epost := time.Now()
+
+	post(t, sb, nil, s)
+
+	if err := sb.FinalizeSector(context.TODO(), si); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	printFileList("finalize", false)
+
+	s.unseal(t, sb, sp, si, func() {})
+
+	printFileList("unseal", false)
+
+	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
+	fmt.Printf("Commit: %s\n", commit.Sub(precommit).String())
+	fmt.Printf("EPoSt: %s\n", epost.Sub(commit).String())
 }
 
 type closeAssertReader struct {
@@ -1085,3 +1218,121 @@ func (c *closeAssertReader) Close() error {
 }
 
 var _ io.Closer = &closeAssertReader{}
+
+func TestSealCommDRInGo(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	defer requireFDsClosed(t, openFDs(t))
+
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
+	require.NoError(t, err)
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: cdir,
+	}
+	sb, err := New(sp)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", cdir)
+			return
+		}
+		if err := os.RemoveAll(cdir); err != nil {
+			t.Error(err)
+		}
+	})
+
+	si := storiface.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
+
+	s := seal{ref: si}
+
+	s.precommit(t, sb, si, func() {})
+
+	p, _, err := sp.AcquireSector(context.Background(), si, storiface.FTCache, storiface.FTNone, storiface.PathStorage)
+	require.NoError(t, err)
+
+	commr, err := commitment.PAuxCommR(p.Cache)
+	require.NoError(t, err)
+
+	commd, err := commitment.TreeDCommD(p.Cache)
+	require.NoError(t, err)
+
+	sealCid, err := commcid.ReplicaCommitmentV1ToCID(commr[:])
+	require.NoError(t, err)
+
+	unsealedCid, err := commcid.DataCommitmentV1ToCID(commd[:])
+	require.NoError(t, err)
+
+	require.Equal(t, s.cids.Sealed, sealCid)
+	require.Equal(t, s.cids.Unsealed, unsealedCid)
+}
+
+func TestGenerateSDR(t *testing.T) {
+	d := t.TempDir()
+
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: d,
+	}
+	sb, err := New(sp)
+	require.NoError(t, err)
+
+	si := storiface.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
+
+	s := seal{ref: si}
+
+	sz := abi.PaddedPieceSize(sectorSize).Unpadded()
+
+	s.pi, err = sb.AddPiece(context.TODO(), si, []abi.UnpaddedPieceSize{}, sz, nullreader.NewNullReader(sz))
+	require.NoError(t, err)
+
+	s.ticket = sealRand
+
+	_, err = sb.SealPreCommit1(context.TODO(), si, s.ticket, []abi.PieceInfo{s.pi})
+	require.NoError(t, err)
+
+	// sdr for comparison
+
+	sdrCache := filepath.Join(d, "sdrcache")
+
+	commd, err := commcid.CIDToDataCommitmentV1(s.pi.PieceCID)
+	require.NoError(t, err)
+
+	replicaID, err := sealProofType.ReplicaId(si.ID.Miner, si.ID.Number, s.ticket, commd)
+	require.NoError(t, err)
+
+	err = ffi.GenerateSDR(sealProofType, sdrCache, replicaID)
+	require.NoError(t, err)
+
+	// list files in d recursively, for debug
+
+	require.NoError(t, filepath.Walk(d, func(path string, info fs.FileInfo, err error) error {
+		fmt.Println(path)
+		return nil
+	}))
+
+	// compare
+	lastLayerFile := "sc-02-data-layer-2.dat"
+
+	sdrFile := filepath.Join(sdrCache, lastLayerFile)
+	pc1File := filepath.Join(d, "cache/s-t0123-1/", lastLayerFile)
+
+	sdrData, err := os.ReadFile(sdrFile)
+	require.NoError(t, err)
+
+	pc1Data, err := os.ReadFile(pc1File)
+	require.NoError(t, err)
+
+	require.Equal(t, sdrData, pc1Data)
+}

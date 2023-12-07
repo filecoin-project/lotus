@@ -70,11 +70,6 @@ type syscallShim struct {
 }
 
 func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	var sum abi.PaddedPieceSize
-	for _, p := range pieces {
-		sum += p.Size
-	}
-
 	commd, err := ffiwrapper.GenerateUnsealedCID(st, pieces)
 	if err != nil {
 		log.Errorf("generate data commitment failed: %s", err)

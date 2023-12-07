@@ -304,7 +304,7 @@ var importBenchCmd = &cli.Command{
 				return fmt.Errorf("no CAR file provided for import")
 			}
 
-			head, err = cs.Import(cctx.Context, carFile)
+			head, _, err = cs.Import(cctx.Context, carFile)
 			if err != nil {
 				return err
 			}
@@ -496,21 +496,6 @@ type Invocation struct {
 }
 
 const GasPerNs = 10
-
-func countGasCosts(et *types.ExecutionTrace) int64 {
-	var cgas int64
-
-	for _, gc := range et.GasCharges {
-		cgas += gc.ComputeGas
-	}
-
-	for _, sub := range et.Subcalls {
-		c := countGasCosts(&sub) //nolint
-		cgas += c
-	}
-
-	return cgas
-}
 
 type stats struct {
 	timeTaken meanVar

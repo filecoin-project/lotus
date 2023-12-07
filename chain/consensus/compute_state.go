@@ -53,6 +53,7 @@ func NewActorRegistry() *vm.ActorRegistry {
 	inv.Register(actorstypes.Version10, vm.ActorsVersionPredicate(actorstypes.Version10), builtin.MakeRegistry(actorstypes.Version10))
 	inv.Register(actorstypes.Version11, vm.ActorsVersionPredicate(actorstypes.Version11), builtin.MakeRegistry(actorstypes.Version11))
 	inv.Register(actorstypes.Version12, vm.ActorsVersionPredicate(actorstypes.Version12), builtin.MakeRegistry(actorstypes.Version12))
+	inv.Register(actorstypes.Version13, vm.ActorsVersionPredicate(actorstypes.Version13), builtin.MakeRegistry(actorstypes.Version13))
 
 	return inv
 }
@@ -146,9 +147,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			if err := em.MessageApplied(ctx, ts, cronMsg.Cid(), cronMsg, ret, true); err != nil {
 				return xerrors.Errorf("callback failed on cron message: %w", err)
 			}
-		}
-		if ret.ExitCode != 0 {
-			return xerrors.Errorf("cron exit was non-zero: %d", ret.ExitCode)
 		}
 
 		return nil

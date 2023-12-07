@@ -24,7 +24,7 @@ func TestNextDeadline(t *testing.T) {
 
 	for i := 1; i < 1+int(minertypes.WPoStPeriodDeadlines)*2; i++ {
 		//stm: @WDPOST_NEXT_DEADLINE_001
-		di = nextDeadline(di)
+		di = NextDeadline(di)
 		deadlineIdx = i % int(minertypes.WPoStPeriodDeadlines)
 		expPeriodStart := int(minertypes.WPoStProvingPeriod) * (i / int(minertypes.WPoStPeriodDeadlines))
 		expOpen := expPeriodStart + deadlineIdx*int(minertypes.WPoStChallengeWindow)
