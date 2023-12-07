@@ -25,6 +25,7 @@ type taskTypeHandler struct {
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
 	var tID TaskID
+retryAddTask:
 	_, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
 		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
@@ -43,6 +44,9 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 		if harmonydb.IsErrUniqueContraint(err) {
 			log.Debugf("addtask(%s) saw unique constraint, so it's added already.", h.Name)
 			return
+		}
+		if harmonydb.IsErrSerialization(err) {
+			goto retryAddTask
 		}
 		log.Error("Could not add task. AddTasFunc failed: %v", err)
 		return
@@ -161,7 +165,7 @@ top:
 
 func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done bool, doErr error) {
 	workEnd := time.Now()
-
+retryRecordCompletion:
 	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
@@ -214,6 +218,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, tID, h.Name, postedTime, workStart, wo
 		return true, nil
 	})
 	if err != nil {
+		if harmonydb.IsErrSerialization(err) {
+			goto retryRecordCompletion
+		}
 		log.Error("Could not record transaction: ", err)
 		return
 	}
