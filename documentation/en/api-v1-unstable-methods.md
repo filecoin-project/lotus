@@ -2377,7 +2377,8 @@ Inputs:
     "gas": "0x5",
     "gasPrice": "0x0",
     "value": "0x0",
-    "data": "0x07"
+    "data": "0x000102030506",
+    "input": "0x000102030506"
   },
   "string value"
 ]

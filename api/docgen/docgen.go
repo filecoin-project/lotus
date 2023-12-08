@@ -387,6 +387,9 @@ func init() {
 	ethFeeHistoryReward := [][]ethtypes.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
 
+	ethBytes := ethtypes.EthBytes{0x00, 0x01, 0x02, 0x03, 0x05, 0x06}
+	addExample(&ethBytes)
+
 	addExample(&uuid.UUID{})
 
 	filterid := ethtypes.EthFilterID(ethhash)
