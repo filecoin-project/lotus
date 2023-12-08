@@ -10,10 +10,24 @@ import (
 	"text/template"
 )
 
+var GoVersion = "" // from init below. Ex: 1.19.7
+
 //go:generate go run ./gen.go ..
 
 //go:embed template.yml
 var templateFile embed.FS
+
+func init() {
+	b, err := os.ReadFile("../go.mod")
+	if err != nil {
+		panic("cannot find go.mod in parent folder")
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "go ") {
+			GoVersion = line[3:]
+		}
+	}
+}
 
 type (
 	dirs  = []string
@@ -111,6 +125,7 @@ func main() {
 		Networks   []string
 		ItestFiles []string
 		UnitSuites map[string]string
+		GoVersion  string
 	}
 	in := data{
 		Networks:   []string{"mainnet", "butterflynet", "calibnet", "debug"},
@@ -125,6 +140,7 @@ func main() {
 			}
 			return ret
 		}(),
+		GoVersion: GoVersion,
 	}
 
 	out, err := os.Create("./config.yml")

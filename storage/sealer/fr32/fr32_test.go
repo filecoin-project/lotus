@@ -2,8 +2,8 @@ package fr32_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"io"
-	"math/rand"
 	"os"
 	"testing"
 
@@ -70,10 +70,13 @@ func TestPadChunkFFI(t *testing.T) {
 }
 
 func TestPadChunkRandEqFFI(t *testing.T) {
+
 	for i := 0; i < 200; i++ {
 		var input [127]byte
-		rand.Read(input[:])
-
+		_, err := rand.Read(input[:])
+		if err != nil {
+			panic(err)
+		}
 		var buf [128]byte
 
 		fr32.Pad(input[:], buf[:])
@@ -109,8 +112,10 @@ func TestRoundtrip(t *testing.T) {
 func TestRoundtripChunkRand(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		var input [127]byte
-		rand.Read(input[:])
-
+		_, err := rand.Read(input[:])
+		if err != nil {
+			panic(err)
+		}
 		var buf [128]byte
 		copy(buf[:], input[:])
 
@@ -127,8 +132,10 @@ func TestRoundtrip16MRand(t *testing.T) {
 	up := abi.PaddedPieceSize(16 << 20).Unpadded()
 
 	input := make([]byte, up)
-	rand.Read(input[:])
-
+	_, err := rand.Read(input[:])
+	if err != nil {
+		panic(err)
+	}
 	buf := make([]byte, 16<<20)
 
 	fr32.Pad(input, buf)

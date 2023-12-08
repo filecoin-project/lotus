@@ -61,7 +61,7 @@ type storageEntry struct {
 	heartbeatErr  error
 }
 
-type Index struct {
+type MemIndex struct {
 	*indexLocks
 	lk sync.RWMutex
 
@@ -73,8 +73,8 @@ type Index struct {
 	stores  map[storiface.ID]*storageEntry
 }
 
-func NewIndex(al *alerting.Alerting) *Index {
-	return &Index{
+func NewMemIndex(al *alerting.Alerting) *MemIndex {
+	return &MemIndex{
 		indexLocks: &indexLocks{
 			locks: map[abi.SectorID]*sectorLock{},
 		},
@@ -87,7 +87,7 @@ func NewIndex(al *alerting.Alerting) *Index {
 	}
 }
 
-func (i *Index) StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error) {
+func (i *MemIndex) StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -116,7 +116,7 @@ func (i *Index) StorageList(ctx context.Context) (map[storiface.ID][]storiface.D
 	return out, nil
 }
 
-func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
+func (i *MemIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
 	var allow, deny = make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
 
 	if _, hasAlert := i.pathAlerts[si.ID]; i.alerting != nil && !hasAlert {
@@ -215,10 +215,11 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 
 		lastHeartbeat: time.Now(),
 	}
+
 	return nil
 }
 
-func (i *Index) StorageDetach(ctx context.Context, id storiface.ID, url string) error {
+func (i *MemIndex) StorageDetach(ctx context.Context, id storiface.ID, url string) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -306,7 +307,7 @@ func (i *Index) StorageDetach(ctx context.Context, id storiface.ID, url string) 
 	return nil
 }
 
-func (i *Index) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
+func (i *MemIndex) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -349,7 +350,7 @@ func (i *Index) StorageReportHealth(ctx context.Context, id storiface.ID, report
 	return nil
 }
 
-func (i *Index) StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
+func (i *MemIndex) StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -381,7 +382,7 @@ loop:
 	return nil
 }
 
-func (i *Index) StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error {
+func (i *MemIndex) StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -415,7 +416,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID storiface.ID, s
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error) {
+func (i *MemIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -563,7 +564,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 	return out, nil
 }
 
-func (i *Index) StorageInfo(ctx context.Context, id storiface.ID) (storiface.StorageInfo, error) {
+func (i *MemIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface.StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -575,7 +576,7 @@ func (i *Index) StorageInfo(ctx context.Context, id storiface.ID) (storiface.Sto
 	return *si.info, nil
 }
 
-func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) {
+func (i *MemIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -640,7 +641,7 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorF
 	return out, nil
 }
 
-func (i *Index) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]storiface.ID, error) {
+func (i *MemIndex) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]storiface.ID, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -659,4 +660,4 @@ func (i *Index) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]sto
 	return out, nil
 }
 
-var _ SectorIndex = &Index{}
+var _ SectorIndex = &MemIndex{}

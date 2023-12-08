@@ -269,6 +269,26 @@ var DaemonCmd = &cli.Command{
 			}
 		}
 
+		if cctx.Bool("remove-existing-chain") {
+			lr, err := repo.NewFS(cctx.String("repo"))
+			if err != nil {
+				return xerrors.Errorf("error opening fs repo: %w", err)
+			}
+
+			exists, err := lr.Exists()
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return xerrors.Errorf("lotus repo doesn't exist")
+			}
+
+			err = removeExistingChain(cctx, lr)
+			if err != nil {
+				return err
+			}
+		}
+
 		chainfile := cctx.String("import-chain")
 		snapshot := cctx.String("import-snapshot")
 		willImportChain := false

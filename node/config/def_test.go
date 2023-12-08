@@ -71,6 +71,12 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 
 	fmt.Println(s)
 
+	// Differs between test envs
+	c.HarmonyDB = HarmonyDB{}
+	c2.(*StorageMiner).HarmonyDB = HarmonyDB{}
+
+	fmt.Println(c)
+	fmt.Println(c2)
 	require.True(t, reflect.DeepEqual(c, c2))
 }
 

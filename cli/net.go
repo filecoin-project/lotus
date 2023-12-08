@@ -847,7 +847,8 @@ var NetStatCmd = &cli.Command{
 			})
 
 			for _, stat := range stats {
-				printScope(&stat.stat, name+stat.name)
+				tmp := stat.stat
+				printScope(&tmp, name+stat.name)
 			}
 
 		}

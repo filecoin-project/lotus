@@ -28,13 +28,13 @@ func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(v1api.FullNo
 		}
 
 		m := &Miner{
-			api:               api,
-			waitFunc:          chanWaiter(nextCh),
-			epp:               epp,
-			minedBlockHeights: arc,
-			address:           addr,
-			sf:                slashfilter.New(ds.NewMapDatastore()),
-			journal:           journal.NilJournal(),
+			api:                 api,
+			propagationWaitFunc: chanWaiter(nextCh),
+			epp:                 epp,
+			minedBlockHeights:   arc,
+			address:             addr,
+			sf:                  slashfilter.New(ds.NewMapDatastore()),
+			journal:             journal.NilJournal(),
 		}
 
 		if err := m.Start(context.TODO()); err != nil {

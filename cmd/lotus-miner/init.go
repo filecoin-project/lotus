@@ -463,7 +463,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			si := paths.NewIndex(nil)
+			si := paths.NewMemIndex(nil)
 
 			lstor, err := paths.NewLocal(ctx, lr, si, nil)
 			if err != nil {
