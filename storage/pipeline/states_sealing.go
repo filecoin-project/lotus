@@ -33,7 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-const MinDDONetworkVersion = network.Version21
+const MinDDONetworkVersion = network.Version22
 
 var DealSectorPriority = 1024
 var MaxTicketAge = policy.MaxPreCommitRandomnessLookback

@@ -78,8 +78,8 @@ func (ds *PieceDealInfo) Valid(nv network.Version) error {
 	}
 
 	if hasPieceActivationManifest {
-		if nv < network.Version21 {
-			return xerrors.Errorf("direct-data-onboarding pieces aren't accepted before network version 21")
+		if nv < network.Version22 {
+			return xerrors.Errorf("direct-data-onboarding pieces aren't accepted before network version 22")
 		}
 
 		// todo any more checks seem reasonable to put here?

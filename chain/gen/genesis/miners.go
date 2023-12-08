@@ -376,7 +376,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			for pi, preseal := range m.Sectors {
 				var paramEnc []byte
 				var preCommitMethodNum abi.MethodNum
-				if nv >= network.Version21 {
+				if nv >= network.Version22 {
 					paramEnc = mustEnc(&miner.PreCommitSectorBatchParams2{
 						Sectors: []miner.SectorPreCommitInfo{
 							{
