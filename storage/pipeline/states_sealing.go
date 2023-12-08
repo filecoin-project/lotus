@@ -17,7 +17,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	miner2 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
+	miner2 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"

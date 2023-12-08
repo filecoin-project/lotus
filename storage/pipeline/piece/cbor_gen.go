@@ -13,7 +13,7 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
-	miner "github.com/filecoin-project/go-state-types/builtin/v12/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	market "github.com/filecoin-project/go-state-types/builtin/v9/market"
 )
 
@@ -42,7 +42,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealID")); err != nil {
+	if _, err := cw.WriteString(string("DealID")); err != nil {
 		return err
 	}
 
@@ -58,7 +58,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PublishCid"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PublishCid")); err != nil {
+	if _, err := cw.WriteString(string("PublishCid")); err != nil {
 		return err
 	}
 
@@ -80,7 +80,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealProposal"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealProposal")); err != nil {
+	if _, err := cw.WriteString(string("DealProposal")); err != nil {
 		return err
 	}
 
@@ -96,7 +96,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealSchedule"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealSchedule")); err != nil {
+	if _, err := cw.WriteString(string("DealSchedule")); err != nil {
 		return err
 	}
 
@@ -112,7 +112,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("KeepUnsealed"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("KeepUnsealed")); err != nil {
+	if _, err := cw.WriteString(string("KeepUnsealed")); err != nil {
 		return err
 	}
 
@@ -128,7 +128,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PieceActivationManifest"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("PieceActivationManifest")); err != nil {
+	if _, err := cw.WriteString(string("PieceActivationManifest")); err != nil {
 		return err
 	}
 
@@ -311,7 +311,7 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("EndEpoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("EndEpoch")); err != nil {
+	if _, err := cw.WriteString(string("EndEpoch")); err != nil {
 		return err
 	}
 
@@ -333,7 +333,7 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("StartEpoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("StartEpoch")); err != nil {
+	if _, err := cw.WriteString(string("StartEpoch")); err != nil {
 		return err
 	}
 

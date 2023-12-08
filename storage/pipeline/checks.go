@@ -149,7 +149,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 	}
 
 	if si.hasData() {
-		commD, err := computeUnsealedCIDFromPieces(ctx, maddr, si.SectorType, si.dealIDs(), tsk)
+		commD, err := computeUnsealedCIDFromPieces(si)
 		if err != nil {
 			return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
 		}

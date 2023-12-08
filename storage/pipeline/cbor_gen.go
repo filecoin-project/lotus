@@ -1040,10 +1040,9 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 					{
 
-				var v SafeSectorPiece
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
-				}
+						if err := t.Pieces[i].UnmarshalCBOR(cr); err != nil {
+							return xerrors.Errorf("unmarshaling t.Pieces[i]: %w", err)
+						}
 
 					}
 				}
@@ -1102,10 +1101,9 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 					{
 
-				var v SafeSectorPiece
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
-				}
+						if err := t.CCPieces[i].UnmarshalCBOR(cr); err != nil {
+							return xerrors.Errorf("unmarshaling t.CCPieces[i]: %w", err)
+						}
 
 					}
 				}

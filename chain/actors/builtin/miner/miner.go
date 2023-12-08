@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes12 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -317,11 +317,11 @@ type ExpirationExtension2 = minertypes.ExpirationExtension2
 type CompactPartitionsParams = minertypes.CompactPartitionsParams
 type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
 
-type PieceActivationManifest = minertypes12.PieceActivationManifest
-type ProveCommitSectors2Params = minertypes12.ProveCommitSectors2Params
-type SectorActivationManifest = minertypes12.SectorActivationManifest
-type ProveReplicaUpdates3Params = minertypes12.ProveReplicaUpdates3Params
-type SectorUpdateManifest = minertypes12.SectorUpdateManifest
+type PieceActivationManifest = minertypes13.PieceActivationManifest
+type ProveCommitSectors2Params = minertypes13.ProveCommitSectors2Params
+type SectorActivationManifest = minertypes13.SectorActivationManifest
+type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
+type SectorUpdateManifest = minertypes13.SectorUpdateManifest
 
 var QAPowerMax = minertypes.QAPowerMax
 
