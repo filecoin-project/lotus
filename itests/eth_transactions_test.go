@@ -250,7 +250,7 @@ func TestContractInvocation(t *testing.T) {
 	require.NoError(t, err)
 
 	// same using the 'input' field
-	gasParams, err = json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+	_, err = json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From:  &ethAddr,
 		To:    &contractAddr,
 		Input: (*ethtypes.EthBytes)(&params),
@@ -258,7 +258,7 @@ func TestContractInvocation(t *testing.T) {
 	require.NoError(t, err)
 
 	// using both results in 'input' being preferred
-	gasParams, err = json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+	_, err = json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From:  &ethAddr,
 		To:    &contractAddr,
 		Input: (*ethtypes.EthBytes)(&params),
