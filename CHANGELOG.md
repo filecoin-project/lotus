@@ -4,9 +4,11 @@
 
 ## Improvements
 
-# v1.25.1-rc1 / 2023-12-05 
+# v1.25.2-rc1 / 2023-12-09 
 
-This is the first release candidate of the upcoming optional release of Lotus v1.25.1. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the first release candidate of the upcoming optional release of Lotus v1.25.2, which was bumped from the previous v1.25.1-rc1 with the hot fix (see v1.24.1 & v1.25.1 for more details).. 
+
+This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -174,6 +176,17 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 | Aloxaf | 1 | +1/-1 | 1 |
 | Alejandro | 1 | +1/-1 | 1 |
 | lazavikmaria | 1 | +1/-0 | 1 |
+
+# v1.25.1 / 2023-12-09
+
+This is a **highly recommended PATCH RELEASE.**  The patch release fixes the issue were node operators trying to catch up sync were unable to sync large message blocks/epochs due to an increased number of messages on the network.
+
+This patch release allows for up to 10k messages per block. Additionally, it introduces a limit on the amount of data that can be read at once, ensuring the system can handle worst-case scenarios.
+
+## Improvements
+- fix: exchange: allow up to 10k messages per block ([filecoin-project/lotus#11506](https://github.com/filecoin-project/lotus/pull/11506))
+
+>>>>>>> releases
 
 # v 1.25.0 / 2023-11-22
 

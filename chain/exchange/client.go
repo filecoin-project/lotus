@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"time"
 
@@ -22,6 +23,10 @@ import (
 	incrt "github.com/filecoin-project/lotus/lib/increadtimeout"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 )
+
+// Set the max exchange message size to 120MiB. Purely based on gas numbers, we can include ~8MiB of
+// messages per block, so I've set this to 120MiB to be _very_ safe.
+const maxExchangeMessageSize = (15 * 8) << 20
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
 // as the fetching mechanism.
@@ -434,10 +439,11 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 		log.Warnw("CloseWrite err", "error", err)
 	}
 
-	// Read response.
+	// Read response, limiting the size of the response to maxExchangeMessageSize as we allow a
+	// lot of messages (10k+) but they'll mostly be quite small.
 	var res Response
 	err = cborutil.ReadCborRPC(
-		bufio.NewReader(incrt.New(stream, ReadResMinSpeed, ReadResDeadline)),
+		bufio.NewReader(io.LimitReader(incrt.New(stream, ReadResMinSpeed, ReadResDeadline), maxExchangeMessageSize)),
 		&res)
 	if err != nil {
 		c.peerTracker.logFailure(peer, build.Clock.Since(connectionStart), req.Length)
