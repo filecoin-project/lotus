@@ -79,7 +79,7 @@ func (t *messageIndices) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra > build.BlockMessageLimit {
+	if extra > uint64(build.BlockMessageLimit) {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
