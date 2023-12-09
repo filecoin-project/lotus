@@ -92,7 +92,7 @@ func main() {
 	err = gen.WriteTupleEncodersToFile("./chain/exchange/cbor_gen.go", "exchange",
 		exchange.Request{},
 		exchange.Response{},
-		exchange.CompactedMessages{},
+		exchange.CompactedMessagesCBOR{},
 		exchange.BSTipSet{},
 	)
 	if err != nil {
