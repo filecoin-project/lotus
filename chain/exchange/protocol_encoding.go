@@ -79,7 +79,7 @@ func (t *messageIndices) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra > uint64(build.BlockMessageLimit) {
+	if extra > build.BlockMessageLimit {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -95,7 +95,7 @@ func (t *messageIndices) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.v[i] = extra
+		t.v[i] = uint64(extra)
 
 	}
 	return nil
@@ -117,7 +117,7 @@ func (t *messageIndices) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.v {
-		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, v); err != nil {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(v)); err != nil {
 			return err
 		}
 	}
