@@ -154,6 +154,8 @@ type BSTipSet struct {
 // FIXME: The logic to decompress this structure should belong
 //
 //	to itself, not to the consumer.
+//
+// NOTE: Max messages is: BlockMessageLimit (10k) * MaxTipsetSize (15) = 150k
 type CompactedMessages struct {
 	Bls         []*types.Message
 	BlsIncludes [][]uint64
