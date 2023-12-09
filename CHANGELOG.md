@@ -1,5 +1,13 @@
 # Lotus changelog
 
+# 1.24.1 / 2023-12-09
+
+This is a PATCH RELEASE for node operators who were unable to sync past large blocks due to an increased number of messages on the network. This patch release allows for up to 10k messages per block. Additionally, it introduces a limit on the amount of data that can be read at once, ensuring the system can handle worst-case scenarios.
+
+## Improvements
+
+- fix: exchange: allow up to 10k messages per block ([filecoin-project/lotus#11506](https://github.com/filecoin-project/lotus/pull/11506))
+
 # 1.24.0 / 2023-11-22
 
 This is the stable release for the upcoming **MANDATORY**  Filecoin network upgrade v21, codenamed Watermelon 🍉, at **epoch 3469380 - 2023-12-12T13:30:00Z**.
