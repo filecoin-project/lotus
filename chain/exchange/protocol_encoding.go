@@ -95,7 +95,7 @@ func (t *messageIndices) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.v[i] = uint64(extra)
+		t.v[i] = extra
 
 	}
 	return nil
@@ -117,7 +117,7 @@ func (t *messageIndices) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.v {
-		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(v)); err != nil {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, v); err != nil {
 			return err
 		}
 	}
