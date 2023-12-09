@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo"
 )
 
-var inTxErr = errors.New("Cannot use a non-transaction func in a transaction")
+var errTx = errors.New("Cannot use a non-transaction func in a transaction")
 
 // rawStringOnly is _intentionally_private_ to force only basic strings in SQL queries.
 // In any package, raw strings will satisfy compilation.  Ex:
@@ -27,7 +27,7 @@ type rawStringOnly string
 // them in the ./sql/ files (next number).
 func (db *DB) Exec(ctx context.Context, sql rawStringOnly, arguments ...any) (count int, err error) {
 	if db.usedInTransaction() {
-		return 0, inTxErr
+		return 0, errTx
 	}
 	res, err := db.pgx.Exec(ctx, string(sql), arguments...)
 	return int(res.RowsAffected()), err
@@ -63,7 +63,7 @@ type Query struct {
 //	}
 func (db *DB) Query(ctx context.Context, sql rawStringOnly, arguments ...any) (*Query, error) {
 	if db.usedInTransaction() {
-		return &Query{}, inTxErr
+		return &Query{}, errTx
 	}
 	q, err := db.pgx.Query(ctx, string(sql), arguments...)
 	return &Query{q}, err
@@ -78,7 +78,7 @@ type Row interface {
 
 type rowErr struct{}
 
-func (rowErr) Scan(_ ...any) error { return inTxErr }
+func (rowErr) Scan(_ ...any) error { return errTx }
 
 // QueryRow gets 1 row using column order matching.
 // This is a timesaver for the special case of wanting the first row returned only.
@@ -110,7 +110,7 @@ Ex:
 */
 func (db *DB) Select(ctx context.Context, sliceOfStructPtr any, sql rawStringOnly, arguments ...any) error {
 	if db.usedInTransaction() {
-		return inTxErr
+		return errTx
 	}
 	return pgxscan.Select(ctx, db.pgx, sliceOfStructPtr, string(sql), arguments...)
 }
@@ -124,9 +124,9 @@ type Tx struct {
 // & non-transaction calls in transactions. It only checks 20 frames.
 // Fast: This memory should all be in CPU Caches.
 func (db *DB) usedInTransaction() bool {
-	var framePtrs = (&[20]uintptr{})[:]
-	runtime.Callers(3, framePtrs)
-	return lo.Contains(framePtrs, db.BTFP)
+	var framePtrs = (&[20]uintptr{})[:]    // 20 can be stack-local (no alloc)
+	runtime.Callers(3, framePtrs)          // skip past our caller.
+	return lo.Contains(framePtrs, db.BTFP) // Unsafe read @ beginTx overlap, but 'return false' is correct there.
 }
 
 // BeginTransaction is how you can access transactions using this library.
@@ -144,7 +144,7 @@ func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, er
 		db.BTFP = fp[0]
 	})
 	if db.usedInTransaction() {
-		return false, inTxErr
+		return false, errTx
 	}
 	tx, err := db.pgx.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
