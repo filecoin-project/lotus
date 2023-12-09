@@ -4,9 +4,11 @@
 
 ## Improvements
 
-# v1.25.1-rc1 / 2023-12-05 
+# v1.25.2-rc1 / 2023-12-09 
 
-This is the first release candidate of the upcoming optional release of Lotus v1.25.1. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the first release candidate of the upcoming optional release of Lotus v1.25.2, which was bumped from the previous v1.25.1-rc1 with the hot fix (see v1.24.1 & v1.25.1 for more details).. 
+
+This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
 
