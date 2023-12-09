@@ -1,6 +1,6 @@
 # Lotus changelog
 
-#v1.25.1 / 2023-12-09
+# v1.25.1 / 2023-12-09
 
 This is a **highly recommended PATCH RELEASE.**  The patch release fixes the issue were node operators trying to catch up sync were unable to sync large message blocks/epochs due to an increased number of messages on the network.
 
