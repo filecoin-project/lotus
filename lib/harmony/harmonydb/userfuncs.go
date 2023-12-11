@@ -124,9 +124,9 @@ type Tx struct {
 // & non-transaction calls in transactions. It only checks 20 frames.
 // Fast: This memory should all be in CPU Caches.
 func (db *DB) usedInTransaction() bool {
-	var framePtrs = (&[20]uintptr{})[:]    // 20 can be stack-local (no alloc)
-	runtime.Callers(3, framePtrs)          // skip past our caller.
-	return lo.Contains(framePtrs, db.BTFP) // Unsafe read @ beginTx overlap, but 'return false' is correct there.
+	var framePtrs = (&[20]uintptr{})[:]                   // 20 can be stack-local (no alloc)
+	framePtrs = framePtrs[:runtime.Callers(3, framePtrs)] // skip past our caller.
+	return lo.Contains(framePtrs, db.BTFP)                // Unsafe read @ beginTx overlap, but 'return false' is correct there.
 }
 
 // BeginTransaction is how you can access transactions using this library.
