@@ -126,6 +126,7 @@ func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr ad
 		}
 
 		if len(ssi) == 0 {
+			log.Errorw("not enough sectors to prove", "miner", maddr, "deadline", di, "height", ts.Height(), "good", good, "all", partition.AllSectors, "live", partition.LiveSectors, "skipped", skipped, "faulty", partition.FaultySectors, "recovering", partition.RecoveringSectors, "toProve", toProve, "ts", ts.Key())
 			return nil, xerrors.Errorf("no sectors to prove")
 		}
 

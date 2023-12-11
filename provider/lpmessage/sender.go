@@ -3,6 +3,7 @@ package lpmessage
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,6 +33,7 @@ type SenderAPI interface {
 	WalletBalance(ctx context.Context, addr address.Address) (big.Int, error)
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
+	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 }
 
 type SignerAPI interface {
@@ -390,7 +392,18 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		break
 	}
 
-	log.Infow("sent message", "cid", sigCid, "task_id", taskAdder, "send_error", sendErr, "poll_loops", pollLoops)
+	log.Infow("sent message", "cid", sigCid, "task_id", sendTaskID, "send_error", sendErr, "poll_loops", pollLoops, "reason", reason)
+
+	go func() {
+		// wait for the message to land and log the result
+		receipt, err := s.api.StateWaitMsg(ctx, sigCid, 3, api.LookbackNoLimit, true)
+		if err != nil {
+			log.Errorw("waiting for message", "cid", sigCid, "error", err, "reason", reason)
+			return
+		}
+
+		log.Infow("message landed", "cid", sigCid, "receipt", receipt, "reason", reason)
+	}()
 
 	return sigCid, sendErr
 }
