@@ -112,7 +112,7 @@ func EnsembleProvider(t *testing.T, opts ...interface{}) (*TestFullNode, *TestPr
 		full     TestFullNode
 		provider TestProviderNode
 	)
-	ens := NewEnsemble(t, eopts...).FullNode(&full, nopts...).Provider(&provider, &full, nopts...).Start()
+	ens := NewEnsemble(t, eopts...).FullNode(&full, nopts...).Provider(&provider, nopts...).Start()
 	return &full, &provider, ens
 }
 
