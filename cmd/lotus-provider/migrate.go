@@ -231,12 +231,17 @@ func fromMiner(cctx *cli.Context) (err error) {
 		dbSettings += ` --db-name="` + smCfg.HarmonyDB.Database + `"`
 	}
 
+	var layerMaybe string
+	if name != "base" {
+		layerMaybe = "--layer=" + name
+	}
+
 	msg += `
 To work with the config:
 ` + cliCommandColor(`lotus-provider `+dbSettings+` config help `)
 	msg += `
 To run Lotus Provider: in its own machine or cgroup without other files, use the command: 
-` + cliCommandColor(`lotus-provider `+dbSettings+` run --layers="`+name+`"`)
+` + cliCommandColor(`lotus-provider `+dbSettings+` run `+layerMaybe)
 	fmt.Println(msg)
 	return nil
 }
