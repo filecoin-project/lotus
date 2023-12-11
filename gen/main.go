@@ -41,6 +41,11 @@ func main() {
 		types.MessageTrace{},
 		types.ReturnTrace{},
 		types.ExecutionTrace{},
+		types.PowerTableEntryDelta{},
+		types.PowerTableEntry{},
+		types.PowerTable{},
+		types.GraniteDecision{},
+		types.FinalityCertificate{},
 	)
 	if err != nil {
 		fmt.Println(err)

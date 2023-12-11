@@ -224,6 +224,7 @@
   * [SyncMarkBad](#SyncMarkBad)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
+  * [SyncSubmitFinalityCertificate](#SyncSubmitFinalityCertificate)
   * [SyncUnmarkAllBad](#SyncUnmarkAllBad)
   * [SyncUnmarkBad](#SyncUnmarkBad)
   * [SyncValidateTipset](#SyncValidateTipset)
@@ -7297,6 +7298,48 @@ Inputs:
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
     ]
+  }
+]
+```
+
+Response: `{}`
+
+### SyncSubmitFinalityCertificate
+TODO(jie): Add comments as godoc
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "GraniteDecision": {
+      "InstanceNumber": 9,
+      "FinalizedTipSetKey": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Epoch": 9,
+      "PowerTableDelta": [
+        {
+          "MinerAddress": "f01234",
+          "PowerDelta": 9
+        }
+      ]
+    },
+    "Voters": [
+      5,
+      1
+    ],
+    "BlsSignature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
   }
 ]
 ```

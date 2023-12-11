@@ -3141,7 +3141,7 @@ func (m *MockFullNode) SyncSubmitFinalityCertificate(arg0 context.Context, arg1 
 // SyncSubmitFinalityCertificate indicates an expected call of SyncSubmitFinalityCertificate.
 func (mr *MockFullNodeMockRecorder) SyncSubmitFinalityCertificate(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncSubmitBlock", reflect.TypeOf((*MockFullNode)(nil).SyncSubmitFinalityCertificate), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncSubmitFinalityCertificate", reflect.TypeOf((*MockFullNode)(nil).SyncSubmitFinalityCertificate), arg0, arg1)
 }
 
 // SyncUnmarkAllBad mocks base method.

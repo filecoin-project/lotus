@@ -7,16 +7,17 @@ import (
 	"io"
 	"math"
 	"sort"
+	time "time"
+
+	cid "github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	xerrors "golang.org/x/xerrors"
 
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
 	proof "github.com/filecoin-project/go-state-types/proof"
-	cid "github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	xerrors "golang.org/x/xerrors"
-	time "time"
 )
 
 var _ = xerrors.Errorf
@@ -2927,5 +2928,547 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 	}
 
+	return nil
+}
+
+var lengthBufPowerTableEntryDelta = []byte{130}
+
+func (t *PowerTableEntryDelta) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufPowerTableEntryDelta); err != nil {
+		return err
+	}
+
+	// t.MinerAddress (address.Address) (struct)
+	if err := t.MinerAddress.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.PowerDelta (int64) (int64)
+	if t.PowerDelta >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.PowerDelta)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.PowerDelta-1)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *PowerTableEntryDelta) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = PowerTableEntryDelta{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.MinerAddress (address.Address) (struct)
+
+	{
+
+		if err := t.MinerAddress.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.MinerAddress: %w", err)
+		}
+
+	}
+	// t.PowerDelta (int64) (int64)
+	{
+		maj, extra, err := cr.ReadHeader()
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative overflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.PowerDelta = int64(extraI)
+	}
+	return nil
+}
+
+var lengthBufPowerTableEntry = []byte{130}
+
+func (t *PowerTableEntry) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufPowerTableEntry); err != nil {
+		return err
+	}
+
+	// t.Miner (address.Address) (struct)
+	if err := t.Miner.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.Power (int64) (int64)
+	if t.Power >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Power)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.Power-1)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *PowerTableEntry) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = PowerTableEntry{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Miner (address.Address) (struct)
+
+	{
+
+		if err := t.Miner.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.Miner: %w", err)
+		}
+
+	}
+	// t.Power (int64) (int64)
+	{
+		maj, extra, err := cr.ReadHeader()
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative overflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.Power = int64(extraI)
+	}
+	return nil
+}
+
+var lengthBufPowerTable = []byte{129}
+
+func (t *PowerTable) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufPowerTable); err != nil {
+		return err
+	}
+
+	// t.PowerTable ([]types.PowerTableEntry) (slice)
+	if len(t.PowerTable) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.PowerTable was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.PowerTable))); err != nil {
+		return err
+	}
+	for _, v := range t.PowerTable {
+		if err := v.MarshalCBOR(cw); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *PowerTable) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = PowerTable{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 1 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.PowerTable ([]types.PowerTableEntry) (slice)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("t.PowerTable: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.PowerTable = make([]PowerTableEntry, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
+
+			{
+
+				if err := t.PowerTable[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.PowerTable[i]: %w", err)
+				}
+
+			}
+		}
+	}
+
+	return nil
+}
+
+var lengthBufGraniteDecision = []byte{132}
+
+func (t *GraniteDecision) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufGraniteDecision); err != nil {
+		return err
+	}
+
+	// t.InstanceNumber (int64) (int64)
+	if t.InstanceNumber >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.InstanceNumber)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.InstanceNumber-1)); err != nil {
+			return err
+		}
+	}
+
+	// t.FinalizedTipSetKey (types.TipSetKey) (struct)
+	if err := t.FinalizedTipSetKey.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.Epoch (int64) (int64)
+	if t.Epoch >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Epoch)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.Epoch-1)); err != nil {
+			return err
+		}
+	}
+
+	// t.PowerTableDelta ([]types.PowerTableEntryDelta) (slice)
+	if len(t.PowerTableDelta) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.PowerTableDelta was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.PowerTableDelta))); err != nil {
+		return err
+	}
+	for _, v := range t.PowerTableDelta {
+		if err := v.MarshalCBOR(cw); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *GraniteDecision) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = GraniteDecision{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 4 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.InstanceNumber (int64) (int64)
+	{
+		maj, extra, err := cr.ReadHeader()
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative overflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.InstanceNumber = int64(extraI)
+	}
+	// t.FinalizedTipSetKey (types.TipSetKey) (struct)
+
+	{
+
+		if err := t.FinalizedTipSetKey.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.FinalizedTipSetKey: %w", err)
+		}
+
+	}
+	// t.Epoch (int64) (int64)
+	{
+		maj, extra, err := cr.ReadHeader()
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative overflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.Epoch = int64(extraI)
+	}
+	// t.PowerTableDelta ([]types.PowerTableEntryDelta) (slice)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("t.PowerTableDelta: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.PowerTableDelta = make([]PowerTableEntryDelta, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
+
+			{
+
+				if err := t.PowerTableDelta[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.PowerTableDelta[i]: %w", err)
+				}
+
+			}
+		}
+	}
+
+	return nil
+}
+
+var lengthBufFinalityCertificate = []byte{131}
+
+func (t *FinalityCertificate) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufFinalityCertificate); err != nil {
+		return err
+	}
+
+	// t.GraniteDecision (types.GraniteDecision) (struct)
+	if err := t.GraniteDecision.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.Voters (bitfield.BitField) (struct)
+	if err := t.Voters.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.BlsSignature (crypto.Signature) (struct)
+	if err := t.BlsSignature.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *FinalityCertificate) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = FinalityCertificate{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 3 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.GraniteDecision (types.GraniteDecision) (struct)
+
+	{
+
+		if err := t.GraniteDecision.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.GraniteDecision: %w", err)
+		}
+
+	}
+	// t.Voters (bitfield.BitField) (struct)
+
+	{
+
+		if err := t.Voters.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.Voters: %w", err)
+		}
+
+	}
+	// t.BlsSignature (crypto.Signature) (struct)
+
+	{
+
+		if err := t.BlsSignature.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.BlsSignature: %w", err)
+		}
+
+	}
 	return nil
 }

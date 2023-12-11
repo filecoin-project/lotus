@@ -5,7 +5,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -4002,7 +4001,6 @@ func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg)
 	if s.Internal.SyncSubmitBlock == nil {
 		return ErrNotSupported
 	}
-	fmt.Println("jiejie1: about to call s.Internal.SyncSubmitBlock")
 	return s.Internal.SyncSubmitBlock(p0, p1)
 }
 
@@ -4014,7 +4012,6 @@ func (s *FullNodeStruct) SyncSubmitFinalityCertificate(p0 context.Context, p1 *t
 	if s.Internal.SyncSubmitFinalityCertificate == nil {
 		return ErrNotSupported
 	}
-	fmt.Println("jiejie: About to call s.Internal.SyncSubmitFinalityCertificate()")
 	return s.Internal.SyncSubmitFinalityCertificate(p0, p1)
 }
 

@@ -2,8 +2,10 @@ package consensus
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
+
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type FinalityState struct {
