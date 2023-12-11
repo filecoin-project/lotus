@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -33,6 +35,8 @@ type DB struct {
 	cfg       *pgxpool.Config
 	schema    string
 	hostnames []string
+	BTFPOnce  sync.Once
+	BTFP      atomic.Uintptr
 }
 
 var logger = logging.Logger("harmonydb")

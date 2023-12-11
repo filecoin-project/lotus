@@ -76,7 +76,11 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 		SignedData []byte  `db:"signed_data"`
 	}
 
-	err = s.db.QueryRow(ctx, `select from_key, nonce, to_addr, unsigned_data, unsigned_cid from message_sends where id = $1`, taskID).Scan(&dbMsg)
+	err = s.db.QueryRow(ctx, `
+		SELECT from_key, nonce, to_addr, unsigned_data, unsigned_cid 
+		FROM message_sends 
+		WHERE send_task_id = $1`, taskID).Scan(
+		&dbMsg.FromKey, &dbMsg.Nonce, &dbMsg.ToAddr, &dbMsg.UnsignedData, &dbMsg.UnsignedCid)
 	if err != nil {
 		return false, xerrors.Errorf("getting message from db: %w", err)
 	}
@@ -96,8 +100,11 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 		}
 
 		// try to acquire lock
-		cn, err := s.db.Exec(ctx, `INSERT INTO message_send_locks (from_key, task_id, claimed_at) VALUES ($1, $2, CURRENT_TIMESTAMP) 
-			ON CONFLICT (from_key) DO UPDATE SET task_id = EXCLUDED.task_id, claimed_at = CURRENT_TIMESTAMP WHERE message_send_locks.task_id = $2;`, dbMsg.FromKey, taskID)
+		cn, err := s.db.Exec(ctx, `
+			INSERT INTO message_send_locks (from_key, task_id, claimed_at) 
+			VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (from_key) DO UPDATE 
+			SET task_id = EXCLUDED.task_id, claimed_at = CURRENT_TIMESTAMP 
+			WHERE message_send_locks.task_id = $2;`, dbMsg.FromKey, taskID)
 		if err != nil {
 			return false, xerrors.Errorf("acquiring send lock: %w", err)
 		}
@@ -114,7 +121,8 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 
 	// defer release db send lock
 	defer func() {
-		_, err2 := s.db.Exec(ctx, `delete from message_send_locks where from_key = $1 and task_id = $2`, dbMsg.FromKey, taskID)
+		_, err2 := s.db.Exec(ctx, `
+			DELETE from message_send_locks WHERE from_key = $1 AND task_id = $2`, dbMsg.FromKey, taskID)
 		if err2 != nil {
 			log.Errorw("releasing send lock", "task_id", taskID, "from", dbMsg.FromKey, "error", err2)
 
@@ -135,7 +143,8 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 
 		// get nonce from db
 		var dbNonce *uint64
-		r := s.db.QueryRow(ctx, `select max(nonce) from message_sends where from_key = $1 and send_success = true`, msg.From.String())
+		r := s.db.QueryRow(ctx, `
+			SELECT MAX(nonce) FROM message_sends WHERE from_key = $1 AND send_success = true`, msg.From.String())
 		if err := r.Scan(&dbNonce); err != nil {
 			return false, xerrors.Errorf("getting nonce from db: %w", err)
 		}
@@ -164,7 +173,9 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 
 		// write to db
 
-		n, err := s.db.Exec(ctx, `update message_sends set nonce = $1, signed_data = $2, signed_json = $3, signed_cid = $4 where send_task_id = $5`,
+		n, err := s.db.Exec(ctx, `
+			UPDATE message_sends SET nonce = $1, signed_data = $2, signed_json = $3, signed_cid = $4 
+			WHERE send_task_id = $5`,
 			msg.Nonce, data, string(jsonBytes), sigMsg.Cid().String(), taskID)
 		if err != nil {
 			return false, xerrors.Errorf("updating db record: %w", err)
@@ -198,7 +209,9 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 		sendError = err.Error()
 	}
 
-	_, err = s.db.Exec(ctx, `update message_sends set send_success = $1, send_error = $2, send_time = CURRENT_TIMESTAMP where send_task_id = $3`, sendSuccess, sendError, taskID)
+	_, err = s.db.Exec(ctx, `
+		UPDATE message_sends SET send_success = $1, send_error = $2, send_time = CURRENT_TIMESTAMP 
+		WHERE send_task_id = $3`, sendSuccess, sendError, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("updating db record: %w", err)
 	}
@@ -311,6 +324,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		return cid.Undef, xerrors.Errorf("marshaling message: %w", err)
 	}
 
+	var sendTaskID *harmonytask.TaskID
 	taskAdder(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 		_, err := tx.Exec(`insert into message_sends (from_key, to_addr, send_reason, unsigned_data, unsigned_cid, send_task_id) values ($1, $2, $3, $4, $5, $6)`,
 			msg.From.String(), msg.To.String(), reason, unsBytes.Bytes(), msg.Cid().String(), id)
@@ -318,8 +332,14 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			return false, xerrors.Errorf("inserting message into db: %w", err)
 		}
 
+		sendTaskID = &id
+
 		return true, nil
 	})
+
+	if sendTaskID == nil {
+		return cid.Undef, xerrors.Errorf("failed to add task")
+	}
 
 	// wait for exec
 	var (
@@ -334,10 +354,10 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 
 	for {
 		var err error
-		var sigCidStr, sendError string
+		var sigCidStr, sendError *string
 		var sendSuccess *bool
 
-		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, taskAdder).Scan(&sigCidStr, &sendSuccess, &sendError)
+		err = s.db.QueryRow(ctx, `select signed_cid, send_success, send_error from message_sends where send_task_id = $1`, &sendTaskID).Scan(&sigCidStr, &sendSuccess, &sendError)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("getting cid for task: %w", err)
 		}
@@ -353,10 +373,15 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 			continue
 		}
 
+		if sigCidStr == nil || sendError == nil {
+			// should never happen because sendSuccess is already not null here
+			return cid.Undef, xerrors.Errorf("got null values for sigCidStr or sendError, this should never happen")
+		}
+
 		if !*sendSuccess {
-			sendErr = xerrors.Errorf("send error: %s", sendError)
+			sendErr = xerrors.Errorf("send error: %s", *sendError)
 		} else {
-			sigCid, err = cid.Parse(sigCidStr)
+			sigCid, err = cid.Parse(*sigCidStr)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("parsing signed cid: %w", err)
 			}

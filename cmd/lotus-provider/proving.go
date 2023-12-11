@@ -83,7 +83,10 @@ var wdPostTaskCmd = &cli.Command{
 			return xerrors.Errorf("cannot get miner id %w", err)
 		}
 		var id int64
-		_, err = deps.DB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+
+		retryDelay := time.Millisecond * 10
+	retryAddTask:
+		_, err = deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			err = tx.QueryRow(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123) RETURNING id`).Scan(&id)
 			if err != nil {
 				log.Error("inserting harmony_task: ", err)
@@ -103,6 +106,11 @@ var wdPostTaskCmd = &cli.Command{
 			return true, nil
 		})
 		if err != nil {
+			if harmonydb.IsErrSerialization(err) {
+				time.Sleep(retryDelay)
+				retryDelay *= 2
+				goto retryAddTask
+			}
 			return xerrors.Errorf("writing SQL transaction: %w", err)
 		}
 		fmt.Printf("Inserted task %v. Waiting for success ", id)
@@ -118,7 +126,7 @@ var wdPostTaskCmd = &cli.Command{
 			}
 			fmt.Print(".")
 		}
-		log.Infof("Result:", result.String)
+		log.Infof("Result: %s", result.String)
 		return nil
 	},
 }

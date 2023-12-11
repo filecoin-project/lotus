@@ -432,6 +432,10 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			i = &api.GatewayStruct{}
 			t = reflect.TypeOf(new(struct{ api.Gateway })).Elem()
 			permStruct = append(permStruct, reflect.TypeOf(api.GatewayStruct{}.Internal))
+		case "Provider":
+			i = &api.LotusProviderStruct{}
+			t = reflect.TypeOf(new(struct{ api.LotusProvider })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(api.LotusProviderStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

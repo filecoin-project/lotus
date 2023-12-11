@@ -25,6 +25,8 @@ type taskTypeHandler struct {
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
 	var tID TaskID
+	retryWait := time.Millisecond * 100
+retryAddTask:
 	_, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
 		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
@@ -44,10 +46,20 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 			log.Debugf("addtask(%s) saw unique constraint, so it's added already.", h.Name)
 			return
 		}
+		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
+			goto retryAddTask
+		}
 		log.Error("Could not add task. AddTasFunc failed: %v", err)
 		return
 	}
 }
+
+const (
+	workSourcePoller  = "poller"
+	workSourceRecover = "recovered"
+)
 
 // considerWork is called to attempt to start work on a task-id of this task type.
 // It presumes single-threaded calling, so there should not be a multi-threaded re-entry.
@@ -87,22 +99,25 @@ top:
 		return false
 	}
 
-	// 4. Can we claim the work for our hostname?
-	ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
-	if err != nil {
-		log.Error(err)
-		return false
-	}
-	if ct == 0 {
-		log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
-		var tryAgain = make([]TaskID, 0, len(ids)-1)
-		for _, id := range ids {
-			if id != *tID {
-				tryAgain = append(tryAgain, id)
-			}
+	// if recovering we don't need to try to claim anything because those tasks are already claimed by us
+	if from != workSourceRecover {
+		// 4. Can we claim the work for our hostname?
+		ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
+		if err != nil {
+			log.Error(err)
+			return false
 		}
-		ids = tryAgain
-		goto top
+		if ct == 0 {
+			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
+			var tryAgain = make([]TaskID, 0, len(ids)-1)
+			for _, id := range ids {
+				if id != *tID {
+					tryAgain = append(tryAgain, id)
+				}
+			}
+			ids = tryAgain
+			goto top
+		}
 	}
 
 	h.Count.Add(1)
@@ -153,7 +168,8 @@ top:
 
 func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done bool, doErr error) {
 	workEnd := time.Now()
-
+	retryWait := time.Millisecond * 100
+retryRecordCompletion:
 	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
@@ -206,6 +222,11 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, tID, h.Name, postedTime, workStart, wo
 		return true, nil
 	})
 	if err != nil {
+		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
+			goto retryRecordCompletion
+		}
 		log.Error("Could not record transaction: ", err)
 		return
 	}
