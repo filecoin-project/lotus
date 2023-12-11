@@ -126,7 +126,7 @@ type Tx struct {
 func (db *DB) usedInTransaction() bool {
 	var framePtrs = (&[20]uintptr{})[:]                   // 20 can be stack-local (no alloc)
 	framePtrs = framePtrs[:runtime.Callers(3, framePtrs)] // skip past our caller.
-	return lo.Contains(framePtrs, db.BTFP)                // Unsafe read @ beginTx overlap, but 'return false' is correct there.
+	return lo.Contains(framePtrs, db.BTFP.Load())         // Unsafe read @ beginTx overlap, but 'return false' is correct there.
 }
 
 // BeginTransaction is how you can access transactions using this library.
@@ -141,7 +141,7 @@ func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, er
 	db.BTFPOnce.Do(func() {
 		fp := make([]uintptr, 20)
 		runtime.Callers(1, fp)
-		db.BTFP = fp[0]
+		db.BTFP.Store(fp[0])
 	})
 	if db.usedInTransaction() {
 		return false, errTx
