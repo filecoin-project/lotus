@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-bitfield"
 	"os"
 	"sync"
 	"time"
@@ -370,13 +371,23 @@ minerLoop:
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
-			// jiejie: 这里除了提交block，还可以提交FinalityCertificate
-			// 暂时节奏和提交block节奏一致不影响你现在开发
-			// 这里的FinalityCertificate object应该从你的state store里面读是最好的
-			// 最终SubmitFinalityCertificate显然还是应该从GossiPBFT的实现里面call
 
+			// TODO(jie): Do not use dummy value.
+			fc := types.FinalityCertificate{
+				GraniteDecision: types.GraniteDecision{
+					InstanceNumber:     int64(123),
+					FinalizedTipSetKey: types.TipSetKey{},
+					Epoch:              456,
+					PowerTableDelta:    []types.PowerTableEntryDelta{},
+				},
+				Voters: bitfield.BitField{},
+				BlsSignature: crypto.Signature{
+					Type: crypto.SigTypeBLS,
+					Data: []byte{},
+				},
+			}
 			log.Info("jiejie: About to call SyncSubmitFinalityCertificate")
-			if err := m.api.SyncSubmitFinalityCertificate(ctx, &types.FinalityCertificate{}); err != nil {
+			if err := m.api.SyncSubmitFinalityCertificate(ctx, &fc); err != nil {
 				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
 

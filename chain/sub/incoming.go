@@ -139,8 +139,15 @@ func HandleIncomingFinalityCertificate(ctx context.Context, bsub *pubsub.Subscri
 		}
 
 		log.Info("jiejie: ready to receive data from FC topic (in the loop already)")
-		received := string(msg.Message.GetData())
-		fmt.Printf("jiejie: Received FinalityCertificate from pubsub: %s\n", received)
+
+		fc := types.FinalityCertificate{}
+		if err := fc.UnmarshalCBOR(bytes.NewReader(msg.Message.GetData())); err != nil {
+			log.Warnf("Unable to parse received finality certificate", err)
+			return
+		}
+		//received := string(msg.Message.GetData())
+		//fmt.Printf("jiejie: Received FinalityCertificate from pubsub: %s\n", received)
+		fmt.Printf("jiejie: Received FinalityCertificate from pubsub: instance: %d, epoch: %d\n", fc.GraniteDecision.InstanceNumber, fc.GraniteDecision.Epoch)
 
 		// TODO(jie): msg应该变成FinalityCertificate类型
 		//blk, ok := msg.ValidatorData.(*types.BlockMsg)
