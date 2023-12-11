@@ -1,6 +1,8 @@
+{{define "index"}}
 <html>
 <head>
     <title>Lotus Provider Cluster Overview</title>
+    <script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
     <style>
         html, body {
             background: #0f0f0f;
@@ -45,6 +47,16 @@
 
         a:hover {
             color: #af7;
+        }
+
+        .success {
+            color: green;
+        }
+        .warning {
+            color: yellow;
+        }
+        .error {
+            color: red;
         }
 
         .dash-tile {
@@ -112,14 +124,8 @@
                 <th>Version</th>
             </tr>
             </thead>
-            <tbody>
-            <tr>
-                <td>/ip4/10.1.2.3/tcp/1234</td>
-                <td>mig0</td>
-                <td>ok</td>
-                <td>good (epoch 1244124)</td>
-                <td>lotus 1.25.1-dev+mainnet+git.4d8e0742c</td>
-            </tr>
+            <tbody hx-get="/index/chainrpc" hx-trigger="every 5s" hx-target="this">
+            {{template "chain_rpcs" .RPCInfos}}
             </tbody>
         </table>
     </div>
@@ -201,3 +207,4 @@
 </div>
 </body>
 </html>
+{{end}}
