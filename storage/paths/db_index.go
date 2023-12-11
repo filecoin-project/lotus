@@ -180,6 +180,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		}
 	}
 
+	retryWait := time.Millisecond * 100
 retryAttachStorage:
 	// Single transaction to attach storage which is not present in the DB
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
@@ -246,6 +247,8 @@ retryAttachStorage:
 	})
 	if err != nil {
 		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
 			goto retryAttachStorage
 		}
 		return err
@@ -287,6 +290,7 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 
 		log.Warnw("Dropping sector path endpoint", "path", id, "url", url)
 	} else {
+		retryWait := time.Millisecond * 100
 	retryDropPath:
 		// Single transaction to drop storage path and sector decls which have this as a storage path
 		_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
@@ -305,6 +309,8 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 		})
 		if err != nil {
 			if harmonydb.IsErrSerialization(err) {
+				time.Sleep(retryWait)
+				retryWait *= 2
 				goto retryDropPath
 			}
 			return err
@@ -380,6 +386,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 		return xerrors.Errorf("invalid filetype")
 	}
 
+	retryWait := time.Millisecond * 100
 retryStorageDeclareSector:
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 		var currPrimary sql.NullBool
@@ -416,6 +423,8 @@ retryStorageDeclareSector:
 	})
 	if err != nil {
 		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
 			goto retryStorageDeclareSector
 		}
 		return err
