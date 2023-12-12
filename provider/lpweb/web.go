@@ -81,6 +81,13 @@ func (a *app) chainRpc(w http.ResponseWriter, r *http.Request) {
 	a.executeTemplate(w, "chain_rpcs", a.rpcInfos)
 }
 
+func (a *app) actorSummary(w http.ResponseWriter, r *http.Request) {
+	a.actorInfoLk.Lock()
+	defer a.actorInfoLk.Unlock()
+
+	a.executeTemplate(w, "actor_summary", a.actorInfos)
+}
+
 func (a *app) executeTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if err := a.t.ExecuteTemplate(w, name, data); err != nil {
 		log.Errorf("execute template %s: %v", name, err)
@@ -107,6 +114,7 @@ func ServeWeb(listen string, db *harmonydb.DB) error {
 
 	m.HandleFunc("/", a.index)
 	m.HandleFunc("/index/chainrpc", a.chainRpc)
+	m.HandleFunc("/index/actorsummary", a.actorSummary)
 
 	http.Handle("/", m)
 

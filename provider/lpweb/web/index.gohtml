@@ -124,7 +124,7 @@
                 <th>Version</th>
             </tr>
             </thead>
-            <tbody hx-get="/index/chainrpc" hx-trigger="every 5s" hx-target="this">
+            <tbody hx-get="/index/chainrpc" hx-trigger="every 5s">
             {{template "chain_rpcs" .RPCInfos}}
             </tbody>
         </table>
@@ -141,7 +141,7 @@
                 <th>Deadlines</th>
             </tr>
             </thead>
-            <tbody>
+            <tbody hx-get="/index/actorsummary" hx-trigger="every 5s">
             {{template "actor_summary" .ActorInfos}}
             </tbody>
         </table>
