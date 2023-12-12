@@ -48,11 +48,8 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	// this point.
 	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
 
-	log.Info("jiejie: Start HandleIncomingBlocks() in another goroutine")
-
 	for {
 		msg, err := bsub.Next(ctx)
-		log.Info("jiejie: Received a incoming block data from topic")
 		if err != nil {
 			if ctx.Err() != nil {
 				log.Warn("quitting HandleIncomingBlocks loop")
@@ -134,8 +131,6 @@ func HandleIncomingFinalityCertificate(ctx context.Context, bsub *pubsub.Subscri
 			return
 		}
 
-		// jiejie: TODO
-		// fmt.Printf("Received FinalityCertificate from pubsub: instance: %d, epoch: %d\n", fc.GraniteDecision.InstanceNumber, fc.GraniteDecision.Epoch)
 		log.Infof("Received FinalityCertificate from pubsub: instance: %d, epoch: %d\n", fc.GraniteDecision.InstanceNumber, fc.GraniteDecision.Epoch)
 
 		// TODO(jie): Use a separate goroutine for processing this finality certificate.
