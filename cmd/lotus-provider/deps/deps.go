@@ -106,10 +106,6 @@ const (
 )
 
 func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, makeRepo bool) error {
-
-	if deps == nil {
-		*deps = Deps{}
-	}
 	var err error
 	if makeRepo {
 		// Open repo
@@ -242,6 +238,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 			deps.Maddrs = append(deps.Maddrs, dtypes.MinerAddress(addr))
 		}
 	}
+	fmt.Println("last line of populate")
 	return nil
 }
 

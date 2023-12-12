@@ -113,14 +113,18 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		var deps deps.Deps
-		err = deps.PopulateRemainingDeps(ctx, cctx, true)
+		fmt.Println("before populateRemainingDeps")
+		dependencies := &deps.Deps{}
+		err = dependencies.PopulateRemainingDeps(ctx, cctx, true)
+		fmt.Println("after popdeps")
 		if err != nil {
+			fmt.Println("err", err)
 			return err
 		}
-		dependencies := &deps
+		fmt.Println("ef")
 
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
+		fmt.Println("gh")
 
 		if err != nil {
 			return nil

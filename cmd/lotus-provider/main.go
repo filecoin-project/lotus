@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime/debug"
+	"runtime/pprof"
 	"syscall"
 
 	"github.com/fatih/color"
@@ -29,8 +29,8 @@ func SetupCloseHandler() {
 	go func() {
 		<-c
 		fmt.Println("\r- Ctrl+C pressed in Terminal")
-		debug.PrintStack()
-		os.Exit(1)
+		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		panic(1)
 	}()
 }
 
