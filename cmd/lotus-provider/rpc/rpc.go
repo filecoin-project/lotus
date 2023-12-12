@@ -134,5 +134,5 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 		log.Warn("Graceful shutdown successful")
 	}()
 
-	return nil
+	return srv.ListenAndServe()
 }
