@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'https://cdn.jsdelivr.net/npm/lit-html@3.1.0/lit-html.min.js';
+import { LitElement, html, css } from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-all.min.js';
 window.customElements.define('chain-connectivity', class MyElement extends LitElement {
     constructor() {
         super();
