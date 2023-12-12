@@ -240,7 +240,7 @@ func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc,
 	height := ts.Height()
 	parent := ts.ParentState()
 
-	if disabled := os.Getenv(EnvDisablePreMigrations); strings.TrimSpace(disabled) == "1" {
+	if val, isSet := os.LookupEnv(EnvDisablePreMigrations); !isSet || strings.TrimSpace(val) != "0" {
 		log.Warnw("SKIPPING pre-migration", "height", height)
 		return
 	}

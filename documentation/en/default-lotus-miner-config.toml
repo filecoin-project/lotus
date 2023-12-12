@@ -62,7 +62,7 @@
   #
   # type: bool
   # env var: LOTUS_LIBP2P_DISABLENATPORTMAP
-  #DisableNatPortMap = false
+  #DisableNatPortMap = true
 
   # ConnMgrLow is the number of connections that the basic connection manager
   # will trim down to.
