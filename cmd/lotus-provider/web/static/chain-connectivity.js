@@ -8,7 +8,9 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
     loadData() {
         const eventSource = new EventSource('/api/debug/chain-state-sse');
         eventSource.onmessage = (event) => {
-            this.data.push(JSON.parse(event.data));
+            console.log('Message:', event.data);
+            this.data = JSON.parse(event.data);
+            super.requestUpdate();
         };
         eventSource.onerror = (error) => {
             console.error('Error:', error);
@@ -58,16 +60,12 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
     <tbody>
         ${this.data.map(item => html`
         <tr>
-            <td>{{.Address}}</td>
             <td>${item.Address}</td>
             <td>${item.Reachable ? html`<span class="success">ok</span>` : html`<span class="error">FAIL</span>`}</td>
             <td>${item.SyncState === "ok" ? html`<span class="success">ok</span>` : html`<span class="warning">${item.SyncState}</span>`}</td>
             <td>${item.Version}</td>
         </tr>
         `)}
-        <tr>
-            <td colspan="4">Data incoming...</td>
-        </tr>
     </tbody>
   </table>`
 });

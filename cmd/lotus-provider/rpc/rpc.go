@@ -130,7 +130,7 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 
 	log.Infof("Setting up RPC server at %s", dependencies.ListenAddr)
 
-	web, err := web.GetSrv(ctx, dependencies)
+	web, err := web.GetSrv(ctx, dependencies.DB, dependencies.Cfg.Subsystems.GuiAddress)
 	if err != nil {
 		return err
 	}

@@ -2,11 +2,11 @@
 package api
 
 import (
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/web/api/debug"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/gorilla/mux"
 )
 
-func Routes(r *mux.Router, deps *deps.Deps) {
-	debug.Routes(r.PathPrefix("/debug").Subrouter(), deps)
+func Routes(r *mux.Router, db *harmonydb.DB) {
+	debug.Routes(r, db)
 }
