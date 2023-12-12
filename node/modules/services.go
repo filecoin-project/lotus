@@ -143,7 +143,6 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx,
 	h host.Host,
 	nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
-	log.Info("jiejie: In modules.HandleIncomingBlocks()")
 
 	v := sub.NewBlockValidator(
 		h.ID(), chain, cns,
@@ -158,14 +157,11 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx,
 
 	log.Infof("subscribing to pubsub topic %s", build.BlocksTopic(nn))
 
-	// jiejie: 从 /fil/blocks pubsub topic开始收GossipSub发来的blocks
 	blocksub, err := ps.Subscribe(build.BlocksTopic(nn)) //nolint
 	if err != nil {
 		panic(err)
 	}
 
-	// jiejie: 单开一个goroutine去处理。我觉得这里不单开goroutine好像也OK，因为这个函数本来后面也不干别的了
-	// 也不耽误后面本来啥事
 	go sub.HandleIncomingBlocks(ctx, blocksub, s, bserv, h.ConnManager())
 }
 
@@ -179,11 +175,9 @@ func HandleIncomingFinalityCertificate(mctx helpers.MetricsCtx,
 	h host.Host,
 	nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
-	log.Info("jiejie: In modules.HandleIncomingFinalityCertificate()")
 
 	log.Infof("subscribing to pubsub topic %s", build.FinalityCertificateTopic(nn))
 
-	// jiejie: 从 /fil/blocks pubsub topic开始收GossipSub发来的blocks
 	fcsub, err := ps.Subscribe(build.FinalityCertificateTopic(nn)) //nolint
 	if err != nil {
 		panic(err)

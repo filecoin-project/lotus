@@ -6,10 +6,11 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-bitfield"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
@@ -367,12 +368,11 @@ minerLoop:
 			m.minedBlockHeights.Add(b.Header.Height, true)
 
 			// Submit the newly mined block.
-			log.Info("jiejie: About to call SyncSubmitBlock")
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
 
-			// TODO(jie): Do not use dummy value.
+			// TODO(jie): Do not use dummy value. It's only for test.
 			fc := types.FinalityCertificate{
 				GraniteDecision: types.GraniteDecision{
 					InstanceNumber:     int64(123),
@@ -386,9 +386,8 @@ minerLoop:
 					Data: []byte{},
 				},
 			}
-			log.Info("jiejie: About to call SyncSubmitFinalityCertificate")
 			if err := m.api.SyncSubmitFinalityCertificate(ctx, &fc); err != nil {
-				log.Errorf("failed to submit newly mined block: %+v", err)
+				log.Errorf("failed to submit finality certificate", err)
 			}
 
 		} else {

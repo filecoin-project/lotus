@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"sync/atomic"
+
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-	"os"
-	"sync/atomic"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -53,7 +54,6 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	fmt.Println("jiejie: Inside SyncSubmitBlock()")
 	parent, err := a.Syncer.ChainStore().GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %w", err)
@@ -107,17 +107,13 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
 	}
 
-	// jiejie: 向 /file/blocks 这个GossipSub pubsub topic发送block
 	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
 }
 
 func (a *SyncAPI) SyncSubmitFinalityCertificate(ctx context.Context, fc *types.FinalityCertificate) error {
-	// TODO(jie): Serialize the actual FinalityCertificate object instead of using dummy []byte
-
-	//data := []byte("侯杰.蒋雨薇.没有后来的后来 @ " + strconv.FormatInt(time.Now().UTC().UnixMilli(), 10))
 	buf := new(bytes.Buffer)
 	if err := fc.MarshalCBOR(buf); err != nil {
-		fmt.Println("failed to marshall finality certificate", err)
+		fmt.Println("failed to marshal finality certificate", err)
 		return err
 	}
 	data := buf.Bytes()
