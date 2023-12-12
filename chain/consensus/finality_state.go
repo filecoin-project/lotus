@@ -1,8 +1,6 @@
 package consensus
 
 import (
-	"fmt"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -16,14 +14,13 @@ type FinalityState struct {
 
 func (fs *FinalityState) ValidateFinalityCertificate(fc *types.FinalityCertificate) error {
 	if fc == nil {
-		// TODO(jie): 换成log.Info()?
-		fmt.Println("Empty FinalityCertificate. Skip.")
+		log.Infoln("Empty FinalityCertificate. Skip.")
 		return nil
 	}
 
 	// TODO(jie): Validate voter's identity and total power
 
-	// TODO(jie): Validate blssignature
+	// TODO(jie): Validate BlsSignature
 
 	if fs.lastFinalizedEpoch >= fc.GraniteDecision.Epoch {
 		return xerrors.Errorf("last finalized epoch %d >= proposed finalized epoch %d", fs.lastFinalizedEpoch, fc.GraniteDecision.Epoch)
@@ -32,10 +29,13 @@ func (fs *FinalityState) ValidateFinalityCertificate(fc *types.FinalityCertifica
 		return xerrors.Errorf("last granite instance %d >= proposed granite instance %d", fs.lastGraniteInstanceNumber, fc.GraniteDecision.InstanceNumber)
 	}
 
-	fmt.Println("Successfully validated finality certificate")
+	log.Infoln("Successfully validated finality certificate")
 
 	fs.lastFinalizedEpoch = fc.GraniteDecision.Epoch
 	fs.lastGraniteInstanceNumber = fc.GraniteDecision.InstanceNumber
+
+	log.Infof("lastFinalizedEpoch update to: %d", fs.lastFinalizedEpoch)
+	log.Infof("lastGraniteInstanceNumber update to: %d", fs.lastGraniteInstanceNumber)
 
 	// TODO(jie): Update other fields in finality state.
 

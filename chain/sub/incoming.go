@@ -134,7 +134,7 @@ func HandleIncomingFinalityCertificate(ctx context.Context, bsub *pubsub.Subscri
 		log.Infof("Received FinalityCertificate from pubsub: instance: %d, epoch: %d\n", fc.GraniteDecision.InstanceNumber, fc.GraniteDecision.Epoch)
 
 		// TODO(jie): Use a separate goroutine for processing this finality certificate.
-		if err := s.ProcessFinalityCertificate(nil); err != nil {
+		if err := s.ProcessFinalityCertificate(&fc); err != nil {
 			log.Errorf("failed to process finality certificate")
 			return
 		}

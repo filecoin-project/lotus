@@ -232,7 +232,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 			InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 		},
 		build.FinalityCertificateTopic(in.Nn): {
-			// TODO(jie): 现在是照抄上面的，这个之后要单独设置
+			// TODO(jie): Need to reconfigure. Do not just copy from above.
 			// expected > 1 tx/second
 			TopicWeight: 0.1, // max cap is 5, single invalid message is -100
 

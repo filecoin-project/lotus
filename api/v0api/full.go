@@ -195,7 +195,7 @@ type FullNode interface {
 	// network through this node
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error //perm:write
 
-	// TODO(jie): Add comments as godoc
+	// SyncSubmitFinalityCertificate submits a finality certificate into gossip pubsub.
 	SyncSubmitFinalityCertificate(ctx context.Context, fc *types.FinalityCertificate) error //perm:write
 
 	// SyncIncomingBlocks returns a channel streaming incoming, potentially not

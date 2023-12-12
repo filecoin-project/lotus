@@ -7305,7 +7305,7 @@ Inputs:
 Response: `{}`
 
 ### SyncSubmitFinalityCertificate
-TODO(jie): Add comments as godoc
+SyncSubmitFinalityCertificate submits a finality certificate into gossip pubsub.
 
 
 Perms: write

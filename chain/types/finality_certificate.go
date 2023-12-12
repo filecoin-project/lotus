@@ -23,6 +23,3 @@ type PowerTableEntryDelta struct {
 	MinerAddress address.Address
 	PowerDelta   int64
 }
-
-// TODO(jie): Write Serialize() and Deserialize() methods for FinalityCertificate
-//   serialized data should of type: []byte
