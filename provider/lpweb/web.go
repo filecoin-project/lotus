@@ -2,6 +2,7 @@ package lpweb
 
 import (
 	"embed"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -21,8 +22,12 @@ type app struct {
 	db *harmonydb.DB
 	t  *template.Template
 
-	rpcInfoLk sync.Mutex
-	rpcInfos  []rpcInfo
+	rpcInfoLk  sync.Mutex
+	rpcInfos   []rpcInfo
+	workingApi v1api.FullNode
+
+	actorInfoLk sync.Mutex
+	actorInfos  []actorInfo
 }
 
 type rpcInfo struct {
@@ -33,15 +38,38 @@ type rpcInfo struct {
 	Version   string
 }
 
+type actorInfo struct {
+	Address string
+	CLayers []string
+
+	QualityAdjustedPower string
+	RawBytePower         string
+
+	Deadlines []actorDeadline
+}
+
+type actorDeadline struct {
+	Empty      bool
+	Current    bool
+	Proven     bool
+	PartFaulty bool
+	Faulty     bool
+}
+
 func (a *app) index(w http.ResponseWriter, r *http.Request) {
 	var indexData struct {
-		RPCInfos []rpcInfo
+		RPCInfos   []rpcInfo
+		ActorInfos []actorInfo
 	}
 
 	a.rpcInfoLk.Lock()
 	defer a.rpcInfoLk.Unlock()
 
+	a.actorInfoLk.Lock()
+	defer a.actorInfoLk.Unlock()
+
 	indexData.RPCInfos = a.rpcInfos
+	indexData.ActorInfos = a.actorInfos
 
 	a.executeTemplate(w, "index", indexData)
 }
@@ -73,6 +101,7 @@ func ServeWeb(listen string, db *harmonydb.DB) error {
 	}
 
 	go a.watchRpc()
+	go a.watchActor()
 
 	m := mux.NewRouter()
 

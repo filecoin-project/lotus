@@ -32,7 +32,7 @@ func (a *app) loadConfigs(ctx context.Context) (map[string]string, error) {
 	return configs, nil
 }
 
-var watchInterval = 5 * time.Second
+var watchInterval = 5 * time.Second // todo change to ~15s
 
 func (a *app) watchRpc() {
 	ticker := time.NewTicker(watchInterval)
@@ -54,22 +54,12 @@ type minimalApiInfo struct {
 }
 
 func (a *app) updateRpc(ctx context.Context) error {
-	confs, err := a.loadConfigs(context.Background())
-	if err != nil {
-		return err
-	}
-
 	rpcInfos := map[string]minimalApiInfo{} // config name -> api info
 	confNameToAddr := map[string]string{}   // config name -> api address
 
-	for name, tomlStr := range confs {
-		var info minimalApiInfo
-		if err := toml.Unmarshal([]byte(tomlStr), &info); err != nil {
-			return xerrors.Errorf("unmarshaling %s config: %w", name, err)
-		}
-
+	err := forEachConfig[minimalApiInfo](a, func(name string, info minimalApiInfo) error {
 		if len(info.Apis.ChainApiInfo) == 0 {
-			continue
+			return nil
 		}
 
 		rpcInfos[name] = info
@@ -78,6 +68,11 @@ func (a *app) updateRpc(ctx context.Context) error {
 			ai := cliutil.ParseApiInfo(addr)
 			confNameToAddr[name] = ai.Addr
 		}
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	apiInfos := map[string][]byte{} // api address -> token
@@ -99,6 +94,13 @@ func (a *app) updateRpc(ctx context.Context) error {
 			Token: token,
 		}
 
+		var clayers []string
+		for layer, a := range confNameToAddr {
+			if a == addr {
+				clayers = append(clayers, layer)
+			}
+		}
+
 		da, err := ai.DialArgs("v1")
 		if err != nil {
 			log.Warnw("DialArgs", "error", err)
@@ -107,6 +109,7 @@ func (a *app) updateRpc(ctx context.Context) error {
 			infos[addr] = rpcInfo{
 				Address:   ai.Addr,
 				Reachable: false,
+				CLayers:   clayers,
 			}
 			infosLk.Unlock()
 
@@ -124,6 +127,7 @@ func (a *app) updateRpc(ctx context.Context) error {
 			infos[addr] = rpcInfo{
 				Address:   ai.Addr,
 				Reachable: false,
+				CLayers:   clayers,
 			}
 			infosLk.Unlock()
 
@@ -139,13 +143,6 @@ func (a *app) updateRpc(ctx context.Context) error {
 			if err != nil {
 				log.Warnw("Version", "error", err)
 				return
-			}
-
-			var clayers []string
-			for layer, addr := range confNameToAddr {
-				if addr == info {
-					clayers = append(clayers, layer)
-				}
 			}
 
 			head, err := v1api.ChainHead(ctx)
@@ -184,7 +181,53 @@ func (a *app) updateRpc(ctx context.Context) error {
 	for _, info := range infos {
 		a.rpcInfos = append(a.rpcInfos, info)
 	}
+
+	// todo improve this shared rpc logic
+	if a.workingApi == nil {
+		for addr, token := range apiInfos {
+			ai := cliutil.APIInfo{
+				Addr:  addr,
+				Token: token,
+			}
+
+			da, err := ai.DialArgs("v1")
+			if err != nil {
+				continue
+			}
+
+			ah := ai.AuthHeader()
+
+			v1api, closer, err := client.NewFullNodeRPCV1(ctx, da, ah)
+			if err != nil {
+				continue
+			}
+			_ = closer // todo
+
+			a.workingApi = v1api
+		}
+	}
+
 	a.rpcInfoLk.Unlock()
+
+	return nil
+}
+
+func forEachConfig[T any](a *app, cb func(name string, v T) error) error {
+	confs, err := a.loadConfigs(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for name, tomlStr := range confs { // todo for-each-config
+		var info T
+		if err := toml.Unmarshal([]byte(tomlStr), &info); err != nil {
+			return xerrors.Errorf("unmarshaling %s config: %w", name, err)
+		}
+
+		if err := cb(name, info); err != nil {
+			return xerrors.Errorf("cb: %w", err)
+		}
+	}
 
 	return nil
 }
