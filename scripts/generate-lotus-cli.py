@@ -32,8 +32,8 @@ def generate_lotus_cli(prog):
                     cmd_flag = False
                 if cmd_flag is True and line[-1] != ':' and 'help, h' not in line:
                     gap_pos = None
-                    sub_cmd = line
-                    if ' ' in line:
+                    sub_cmd = line.split(',')[0].strip()  # only take the first sub-command before the comma
+                    if ' ' in sub_cmd:
                         gap_pos = sub_cmd.index('  ')
                     sub_cmd = cur_cmd + ' ' + sub_cmd[:gap_pos]
                     get_cmd_recursively(sub_cmd)
@@ -55,3 +55,4 @@ if __name__ == "__main__":
     generate_lotus_cli('lotus')
     generate_lotus_cli('lotus-miner')
     generate_lotus_cli('lotus-worker')
+    generate_lotus_cli('lotus-provider')
