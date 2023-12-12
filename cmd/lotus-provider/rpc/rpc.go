@@ -135,5 +135,6 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 		log.Warn("Graceful shutdown successful")
 	}()
 
+	log.Infof("Setting up RPC server at %s", dependencies.ListenAddr)
 	return srv.ListenAndServe()
 }

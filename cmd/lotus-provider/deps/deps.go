@@ -83,8 +83,8 @@ func StorageAuth(apiKey string) (sealer.StorageAuth, error) {
 }
 
 func GetDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
-	var deps *Deps
-	return deps, deps.PopulateRemainingDeps(ctx, cctx, true)
+	var deps Deps
+	return &deps, deps.PopulateRemainingDeps(ctx, cctx, true)
 }
 
 type Deps struct {
@@ -107,6 +107,9 @@ const (
 
 func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, makeRepo bool) error {
 
+	if deps == nil {
+		*deps = Deps{}
+	}
 	var err error
 	if makeRepo {
 		// Open repo

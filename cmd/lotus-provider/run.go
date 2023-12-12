@@ -113,11 +113,12 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		var dependencies *deps.Deps
-		err = dependencies.PopulateRemainingDeps(ctx, cctx, true)
+		var deps deps.Deps
+		err = deps.PopulateRemainingDeps(ctx, cctx, true)
 		if err != nil {
 			return err
 		}
+		dependencies := &deps
 
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
 
