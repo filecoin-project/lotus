@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/tag"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/web"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
@@ -126,15 +128,27 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 		Addr: dependencies.ListenAddr,
 	}
 
+	log.Infof("Setting up RPC server at %s", dependencies.ListenAddr)
+
+	web, err := web.GetSrv(ctx, dependencies)
+	if err != nil {
+		return err
+	}
+
 	go func() {
 		<-ctx.Done()
 		log.Warn("Shutting down...")
 		if err := srv.Shutdown(context.TODO()); err != nil {
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
+		if err := web.Shutdown(context.Background()); err != nil {
+			log.Errorf("shutting down web server failed: %s", err)
+		}
 		log.Warn("Graceful shutdown successful")
 	}()
 
-	log.Infof("Setting up RPC server at %s", dependencies.ListenAddr)
-	return srv.ListenAndServe()
+	eg := errgroup.Group{}
+	eg.Go(srv.ListenAndServe)
+	eg.Go(web.ListenAndServe)
+	return eg.Wait()
 }

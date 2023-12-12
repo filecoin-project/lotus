@@ -1,0 +1,181 @@
+<html>
+
+<head>
+    <title>Lotus Provider Cluster Overview</title>
+    <script module src="chain-connectivity.js"></script>
+    <style>
+        html,
+        body {
+            background: #0f0f0f;
+            color: #ffffff;
+            padding: 0;
+            margin: 0;
+            font-family: monospace;
+        }
+
+        .app-head {
+            width: 100%;
+        }
+
+        .head-left {
+            display: inline-block;
+        }
+
+        .head-right {
+            display: inline-block;
+            float: right;
+        }
+
+
+        a:link {
+            color: #cfc;
+        }
+
+        a:visited {
+            color: #dfa;
+        }
+
+        a:hover {
+            color: #af7;
+        }
+
+        .dash-tile {
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem;
+            background: #3f3f3f;
+
+            & b {
+                padding-bottom: 0.5rem;
+                color: deeppink;
+            }
+        }
+
+        .deadline-box {
+            display: grid;
+            grid-template-columns: repeat(16, auto);
+            grid-template-rows: repeat(3, auto);
+            grid-gap: 1px;
+        }
+
+        .deadline-entry {
+            width: 10px;
+            height: 10px;
+            background-color: grey;
+            margin: 1px;
+        }
+
+        .deadline-entry-cur {
+            border-bottom: 3px solid deepskyblue;
+            height: 7px;
+        }
+
+        .deadline-proven {
+            background-color: green;
+        }
+
+        .deadline-partially-faulty {
+            background-color: yellow;
+        }
+
+        .deadline-faulty {
+            background-color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-head">
+        <div class="head-left">
+            <h1>Lotus Provider Cluster</h1>
+        </div>
+        <div class="head-right">
+            version [todo]
+        </div>
+    </div>
+    <hr />
+    <div class="page">
+        <div class="info-block">
+            <h2>Chain Connectivity</h2>
+            <chain-connectivity></chain-connectivity>
+        </div>
+    </div>
+    <hr>
+    <div class="info-block">
+        <h2>Actor Summary</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Address</th>
+                    <th>Config Layers</th>
+                    <th>QaP</th>
+                    <th>Deadlines</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>f01234</td>
+                    <td>mig0</td>
+                    <td>23TiB</td>
+                    <td>
+                        <div class="deadline-box">
+                            <div class="deadline-entry deadline-proven"></div>
+                            <div class="deadline-entry deadline-partially-faulty"></div>
+                            <div class="deadline-entry deadline-faulty"></div>
+                            <div class="deadline-entry deadline-proven"></div>
+                            <div class="deadline-entry deadline-proven"></div>
+                            <div class="deadline-entry deadline-entry-cur"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                            <div class="deadline-entry"></div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    </div>
+</body>
+
+</html>

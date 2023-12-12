@@ -96,6 +96,9 @@ type ProviderSubsystemsConfig struct {
 	WindowPostMaxTasks  int
 	EnableWinningPost   bool
 	WinningPostMaxTasks int
+
+	// The address that should listen for Web GUI requests.
+	GuiAddress string
 }
 
 type DAGStoreConfig struct {
