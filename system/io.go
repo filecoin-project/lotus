@@ -8,6 +8,9 @@ import (
 var BadgerFsyncDisable bool
 
 func init() {
+	// Do not fsync badgers, it does not add value at this stage
+	BadgerFsyncDisable = true
+
 	//
 	// Tri-state environment variable LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC
 	// - unset == the default (currently fsync enabled)
