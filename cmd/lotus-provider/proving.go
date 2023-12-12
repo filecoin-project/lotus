@@ -86,7 +86,7 @@ var wdPostTaskCmd = &cli.Command{
 
 		retryDelay := time.Millisecond * 10
 	retryAddTask:
-		_, err = deps.db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+		_, err = deps.DB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			err = tx.QueryRow(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123) RETURNING id`).Scan(&id)
 			if err != nil {
 				log.Error("inserting harmony_task: ", err)

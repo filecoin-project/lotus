@@ -123,6 +123,7 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
 			return ctx
 		},
+		Addr: dependencies.ListenAddr,
 	}
 
 	go func() {
