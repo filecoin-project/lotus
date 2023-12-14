@@ -58,8 +58,33 @@ type actorDeadline struct {
 
 func (a *app) index(w http.ResponseWriter, r *http.Request) {
 	var indexData struct {
-		RPCInfos   []rpcInfo
-		ActorInfos []actorInfo
+		RPCInfos        []rpcInfo
+		ActorInfos      []actorInfo
+		ClusterMachines []machineSummary
+		ClusterTasks    []taskSummary
+		ClusterHistory  []taskHistorySummary
+	}
+
+	var err error
+	indexData.ClusterMachines, err = a.clusterMachineSummary(r.Context())
+	if err != nil {
+		log.Errorf("cluster machine summary: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	indexData.ClusterTasks, err = a.clusterTaskSummary(r.Context())
+	if err != nil {
+		log.Errorf("cluster task summary: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	indexData.ClusterHistory, err = a.clusterTaskHistorySummary(r.Context())
+	if err != nil {
+		log.Errorf("cluster history summary: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	a.rpcInfoLk.Lock()
@@ -86,6 +111,39 @@ func (a *app) actorSummary(w http.ResponseWriter, r *http.Request) {
 	defer a.actorInfoLk.Unlock()
 
 	a.executeTemplate(w, "actor_summary", a.actorInfos)
+}
+
+func (a *app) indexMachines(w http.ResponseWriter, r *http.Request) {
+	s, err := a.clusterMachineSummary(r.Context())
+	if err != nil {
+		log.Errorf("cluster machine summary: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	a.executeTemplate(w, "cluster_machines", s)
+}
+
+func (a *app) indexTasks(w http.ResponseWriter, r *http.Request) {
+	s, err := a.clusterTaskSummary(r.Context())
+	if err != nil {
+		log.Errorf("cluster task summary: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	a.executeTemplate(w, "cluster_tasks", s)
+}
+
+func (a *app) indexTasksHistory(w http.ResponseWriter, r *http.Request) {
+	s, err := a.clusterTaskHistorySummary(r.Context())
+	if err != nil {
+		log.Errorf("cluster task history summary: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	a.executeTemplate(w, "cluster_task_history", s)
 }
 
 func (a *app) executeTemplate(w http.ResponseWriter, name string, data interface{}) {
@@ -115,6 +173,9 @@ func ServeWeb(listen string, db *harmonydb.DB) error {
 	m.HandleFunc("/", a.index)
 	m.HandleFunc("/index/chainrpc", a.chainRpc)
 	m.HandleFunc("/index/actorsummary", a.actorSummary)
+	m.HandleFunc("/index/machines", a.indexMachines)
+	m.HandleFunc("/index/tasks", a.indexTasks)
+	m.HandleFunc("/index/taskhistory", a.indexTasksHistory)
 
 	http.Handle("/", m)
 

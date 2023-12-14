@@ -13,6 +13,10 @@
             font-family: monospace;
         }
 
+        table td, table th {
+            font-size: 13px;
+        }
+
         .app-head {
             width: 100%;
         }
@@ -143,6 +147,61 @@
             </thead>
             <tbody hx-get="/index/actorsummary" hx-trigger="every 5s">
             {{template "actor_summary" .ActorInfos}}
+            </tbody>
+        </table>
+    </div>
+    <hr>
+    <div class="info-block">
+        <h2>Cluster Machines</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Host</th>
+                <th>ID</th>
+                <th>Config Layers</th>
+                <th>Last Contact</th>
+            </tr>
+            </thead>
+            <tbody hx-get="/index/machines" hx-trigger="every 5s">
+            {{template "cluster_machines" .ClusterMachines}}
+            </tbody>
+        </table>
+    </div>
+    <hr>
+    <div class="info-block">
+        <h2>Recently Finished Tasks</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>ID</th>
+                <th>Executor</th>
+                <th>Posted</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Outcome</th>
+                <th>Message</th>
+            </tr>
+            </thead>
+            <tbody hx-get="/index/taskhistory" hx-trigger="every 5s">
+            {{template "cluster_task_history" .ClusterHistory}}
+            </tbody>
+        </table>
+    </div>
+    <hr>
+    <div class="info-block">
+        <h2>Cluster Tasks</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Task</th>
+                <th>ID</th>
+                <th>Posted</th>
+                <th>Owner</th>
+            </tr>
+            </thead>
+            <tbody hx-get="/index/tasks" hx-trigger="every 5s">
+            {{template "cluster_tasks" .ClusterTasks}}
             </tbody>
         </table>
     </div>

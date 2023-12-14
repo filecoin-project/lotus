@@ -1,0 +1,10 @@
+{{define "cluster_tasks"}}
+    {{range .}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td>{{.ID}}</td>
+            <td>{{.SincePosted}}</td>
+            <td>{{.Owner}}</td>
+        </tr>
+    {{end}}
+{{end}}

@@ -157,10 +157,11 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	}
 
 	persistNoWin := func() error {
-		_, err := t.db.Exec(ctx, `UPDATE mining_base_block SET no_win = true WHERE task_id = $1`, taskID)
+		n, err := t.db.Exec(ctx, `UPDATE mining_base_block SET no_win = true WHERE task_id = $1`, taskID)
 		if err != nil {
 			return xerrors.Errorf("marking base as not-won: %w", err)
 		}
+		log.Debugw("persisted no-win", "rows", n)
 
 		return nil
 	}
