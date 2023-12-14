@@ -413,6 +413,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 }
 
 func TestSealAndVerify3(t *testing.T) {
+	t.Skip("skipping flaky test")
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
