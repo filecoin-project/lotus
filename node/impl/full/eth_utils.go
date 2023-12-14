@@ -548,7 +548,9 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		AccessList:           []ethtypes.EthHash{},
 	}
 
-	// Then we try to see if it's "special".
+	// Then we try to see if it's "special". If we fail, we ignore the error and keep treating
+	// it as a native message. Unfortunately, the user is free to send garbage that may not
+	// properly decode.
 	if msg.Method == builtintypes.MethodsEVM.InvokeContract {
 		// try to decode it as a contract invocation first.
 		if inp, err := decodePayload(msg.Params, codec); err == nil {
