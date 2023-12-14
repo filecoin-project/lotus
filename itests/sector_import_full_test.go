@@ -70,7 +70,7 @@ func TestSectorImport(t *testing.T) {
 			ens.InterconnectAll().BeginMining(blockTime)
 
 			ctx := context.Background()
-			
+
 			////////
 			// Reserve some sector numbers on the miner node; We'll use one of those when creating the sector "remotely"
 			snums, err := miner.SectorNumReserveCount(ctx, "test-reservation-0001", 16)
