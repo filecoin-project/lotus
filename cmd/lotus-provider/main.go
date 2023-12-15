@@ -29,7 +29,7 @@ func SetupCloseHandler() {
 	go func() {
 		<-c
 		fmt.Println("\r- Ctrl+C pressed in Terminal")
-		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 		panic(1)
 	}()
 }

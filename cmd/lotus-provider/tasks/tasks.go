@@ -5,13 +5,13 @@ import (
 	"context"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/samber/lo"
 
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/provider"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"github.com/filecoin-project/lotus/provider/lpwinning"
-	"github.com/samber/lo"
 )
 
 var log = logging.Logger("lotus-provider/deps")
