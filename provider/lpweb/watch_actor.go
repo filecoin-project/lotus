@@ -101,9 +101,9 @@ func (a *app) updateActor(ctx context.Context) error {
 			}
 
 			dl.Empty = live == 0
-			dl.Proven = faulty == 0
+			dl.Proven = live > 0 && faulty == 0
 			dl.PartFaulty = faulty > 0
-			dl.Faulty = faulty == live
+			dl.Faulty = faulty > 0 && faulty == live
 
 			outDls = append(outDls, dl)
 		}
