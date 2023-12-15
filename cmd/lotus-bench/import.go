@@ -19,7 +19,7 @@ import (
 	bdg "github.com/dgraph-io/badger/v4"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger2"
+	badger "github.com/ipfs/go-ds-badger4"
 	measure "github.com/ipfs/go-ds-measure"
 	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
@@ -187,7 +187,6 @@ var importBenchCmd = &cli.Command{
 			bdgOpt.GcInterval = 0
 			bdgOpt.Options = bdg.DefaultOptions("")
 			bdgOpt.Options.SyncWrites = false
-			bdgOpt.Options.Truncate = true
 			bdgOpt.Options.DetectConflicts = false
 
 			ds, err = badger.NewDatastore(tdir, &bdgOpt)

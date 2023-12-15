@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dgraph-io/badger/v2/y"
+	"github.com/dgraph-io/badger/v4/y"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"

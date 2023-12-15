@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	dgbadger "github.com/dgraph-io/badger/v2"
+	dgbadger "github.com/dgraph-io/badger/v4"
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger2"
+	badger "github.com/ipfs/go-ds-badger4"
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
@@ -29,7 +29,7 @@ func badgerDs(path string, readonly bool) (datastore.Batching, error) {
 	opts := badger.DefaultOptions
 	opts.ReadOnly = readonly
 
-	opts.Options = dgbadger.DefaultOptions("").WithTruncate(true).
+	opts.Options = dgbadger.DefaultOptions("").
 		WithValueThreshold(1 << 10)
 	return badger.NewDatastore(path, &opts)
 }
