@@ -156,14 +156,18 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		ComputeTime: details.CompTime,
 	}
 
-	persistNoWin := func() error {
+	persistNoWin := func() (bool, error) {
 		n, err := t.db.Exec(ctx, `UPDATE mining_base_block SET no_win = true WHERE task_id = $1`, taskID)
 		if err != nil {
-			return xerrors.Errorf("marking base as not-won: %w", err)
+			return false, xerrors.Errorf("marking base as not-won: %w", err)
 		}
 		log.Debugw("persisted no-win", "rows", n)
 
-		return nil
+		if n == 0 {
+			return false, xerrors.Errorf("persist no win: no rows updated")
+		}
+
+		return false, nil
 	}
 
 	// ensure we have a beacon entry for the epoch we're mining on
@@ -183,13 +187,13 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	if mbi == nil {
 		// not eligible to mine on this base, we're done here
 		log.Debugw("WinPoSt not eligible to mine on this base", "tipset", types.LogCids(base.TipSet.Cids()))
-		return true, persistNoWin()
+		return persistNoWin()
 	}
 
 	if !mbi.EligibleForMining {
 		// slashed or just have no power yet, we're done here
 		log.Debugw("WinPoSt not eligible for mining", "tipset", types.LogCids(base.TipSet.Cids()))
-		return true, persistNoWin()
+		return persistNoWin()
 	}
 
 	if len(mbi.Sectors) == 0 {
@@ -218,7 +222,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		if eproof == nil {
 			// not a winner, we're done here
 			log.Debugw("WinPoSt not a winner", "tipset", types.LogCids(base.TipSet.Cids()))
-			return true, persistNoWin()
+			return persistNoWin()
 		}
 	}
 
