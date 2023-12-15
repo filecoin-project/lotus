@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/pb"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/ristretto/z"
 	"github.com/dustin/go-humanize"
 	"github.com/ipfs/boxo/blockservice"
 	offline "github.com/ipfs/boxo/exchange/offline"
@@ -260,7 +260,11 @@ var exportRawCmd = &cli.Command{
 				str := db.NewStream()
 				str.NumGo = 16
 				str.LogPrefix = "bstream"
-				str.Send = func(list *pb.KVList) (err error) {
+				str.Send = func(buf *z.Buffer) error {
+					list, err := badger.BufferToKVList(buf)
+					if err != nil {
+						return xerrors.Errorf("buffer to KV list conversion: %w", err)
+					}
 					defer func() {
 						if err != nil {
 							log.Errorw("send error", "err", err)

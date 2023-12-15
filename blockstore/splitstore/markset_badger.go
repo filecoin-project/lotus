@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v4/options"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
@@ -398,17 +398,12 @@ func openBadgerDB(path string, recover bool) (*badger.DB, error) {
 	opts.CompactL0OnClose = false
 	// we store hashes, not much to gain by compression
 	opts.Compression = options.None
-	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
-	//       between the system blockstore and the markset.
-	//       It was observed that using the default memory mapped option resulted in
-	//       significant interference and unacceptably high block validation times once the markset
-	//       exceeded 1GB in size.
-	opts.TableLoadingMode = options.FileIO
-	opts.ValueLogLoadingMode = options.FileIO
+
 	// We increase the number of L0 tables before compaction to make it unlikely to
 	// be necessary.
 	opts.NumLevelZeroTables = 20      // default is 5
 	opts.NumLevelZeroTablesStall = 30 // default is 10
+
 	// increase the number of compactors from default 2 so that if we ever have to
 	// compact, it is fast
 	if runtime.NumCPU()/2 > opts.NumCompactors {

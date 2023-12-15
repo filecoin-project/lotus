@@ -10,9 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
-	"github.com/dgraph-io/badger/v2/pb"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/ristretto/z"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -40,13 +39,7 @@ var (
 
 // aliases to mask badger dependencies.
 const (
-	// FileIO is equivalent to badger/options.FileIO.
-	FileIO = options.FileIO
-	// MemoryMap is equivalent to badger/options.MemoryMap.
-	MemoryMap = options.MemoryMap
-	// LoadToRAM is equivalent to badger/options.LoadToRAM.
-	LoadToRAM          = options.LoadToRAM
-	defaultGCThreshold = 0.125
+	defaultGCThreshold = 0.5 // recommended value is 0.5 https://pkg.go.dev/github.com/dgraph-io/badger/v4#DB.RunValueLogGC
 )
 
 // Options embeds the badger options themselves, and augments them with
@@ -403,7 +396,11 @@ func (b *Blockstore) doCopy(from, to *badger.DB) error {
 	stream := from.NewStream()
 	stream.NumGo = workers
 	stream.LogPrefix = "doCopy"
-	stream.Send = func(list *pb.KVList) error {
+	stream.Send = func(buf *z.Buffer) error {
+		list, err := badger.BufferToKVList(buf)
+		if err != nil {
+			return fmt.Errorf("buffer to KV list conversion: %w", err)
+		}
 		batch := to.NewWriteBatch()
 		defer batch.Cancel()
 

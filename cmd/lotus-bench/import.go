@@ -16,7 +16,7 @@ import (
 	"time"
 
 	ocprom "contrib.go.opencensus.io/exporter/prometheus"
-	bdg "github.com/dgraph-io/badger/v2"
+	bdg "github.com/dgraph-io/badger/v4"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
