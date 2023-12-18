@@ -10,6 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/build"
@@ -144,8 +145,14 @@ func main() {
 		},
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
+				p, err := homedir.Expand(c.String(FlagMinerRepo))
+				if err != nil {
+					log.Errorw("could not expand repo path for panic report", "error", err)
+					panic(r)
+				}
+
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String(deps.FlagRepoPath), c.App.Name)
+				build.GeneratePanicReport(c.String("panic-reports"), p, c.App.Name)
 				panic(r)
 			}
 			return nil
