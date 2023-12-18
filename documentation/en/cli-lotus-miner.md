@@ -231,8 +231,19 @@ OPTIONS:
    --help, -h  show help
 ```
 
-#### lotus-miner actor set-addresses, set-addrs
+### lotus-miner actor set-addresses
 ```
+NAME:
+   lotus-miner actor set-addresses - set addresses that your miner can be publicly dialed on
+
+USAGE:
+   lotus-miner actor set-addresses [command options] <multiaddrs>
+
+OPTIONS:
+   --from value       optionally specify the account to send the message from
+   --gas-limit value  set gas limit (default: 0)
+   --unset            unset address (default: false)
+   --help, -h         show help
 ```
 
 ### lotus-miner actor withdraw
@@ -1161,8 +1172,20 @@ OPTIONS:
    --help, -h  show help
 ```
 
-##### lotus-miner proving compute windowed-post, window-post
+#### lotus-miner proving compute windowed-post
 ```
+NAME:
+   lotus-miner proving compute windowed-post - Compute WindowPoSt for a specific deadline
+
+USAGE:
+   lotus-miner proving compute windowed-post [command options] [deadline index]
+
+DESCRIPTION:
+   Note: This command is intended to be used to verify PoSt compute performance.
+   It will not send any messages to the chain.
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus-miner proving recover-faults
