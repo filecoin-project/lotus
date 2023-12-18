@@ -1807,8 +1807,16 @@ OPTIONS:
    --help, -h   show help
 ```
 
-#### lotus state sector, sector-info
+### lotus state sector
 ```
+NAME:
+   lotus state sector - Get miner sector info
+
+USAGE:
+   lotus state sector [command options] [minerAddress] [sectorNumber]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state get-actor
@@ -1937,12 +1945,29 @@ OPTIONS:
    --help, -h  show help
 ```
 
-#### lotus state wait-msg, wait-message
+### lotus state wait-msg
 ```
+NAME:
+   lotus state wait-msg - Wait for a message to appear on chain
+
+USAGE:
+   lotus state wait-msg [command options] [messageCid]
+
+OPTIONS:
+   --timeout value  (default: "10m")
+   --help, -h       show help
 ```
 
-#### lotus state search-msg, search-message
+### lotus state search-msg
 ```
+NAME:
+   lotus state search-msg - Search to see whether a message has appeared on chain
+
+USAGE:
+   lotus state search-msg [command options] [messageCid]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state miner-info
@@ -2080,8 +2105,17 @@ OPTIONS:
    --help, -h  show help
 ```
 
-#### lotus chain get-block, getblock
+### lotus chain get-block
 ```
+NAME:
+   lotus chain get-block - Get a block and print its details
+
+USAGE:
+   lotus chain get-block [command options] [blockCid]
+
+OPTIONS:
+   --raw       print just the raw block header (default: false)
+   --help, -h  show help
 ```
 
 ### lotus chain read-obj
@@ -2132,16 +2166,46 @@ OPTIONS:
    --help, -h    show help
 ```
 
-##### lotus chain getmessage, get-message, get-msg
+### lotus chain getmessage
 ```
+NAME:
+   lotus chain getmessage - Get and print a message by its cid
+
+USAGE:
+   lotus chain getmessage [command options] [messageCid]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
-#### lotus chain sethead, set-head
+### lotus chain sethead
 ```
+NAME:
+   lotus chain sethead - manually set the local nodes head tipset (Caution: normally only used for recovery)
+
+USAGE:
+   lotus chain sethead [command options] [tipsetkey]
+
+OPTIONS:
+   --genesis      reset head to genesis (default: false)
+   --epoch value  reset head to given epoch (default: 0)
+   --help, -h     show help
 ```
 
-#### lotus chain list, love
+### lotus chain list
 ```
+NAME:
+   lotus chain list - View a segment of the chain
+
+USAGE:
+   lotus chain list [command options] [arguments...]
+
+OPTIONS:
+   --height value  (default: current head)
+   --count value   (default: 30)
+   --format value  specify the format to print out tipsets (default: "<height>: (<time>) <blocks>")
+   --gas-stats     view gas statistics for the chain (default: false)
+   --help, -h      show help
 ```
 
 ### lotus chain get
@@ -2768,8 +2832,16 @@ OPTIONS:
    --help, -h  show help
 ```
 
-#### lotus net find-peer, findpeer
+### lotus net find-peer
 ```
+NAME:
+   lotus net find-peer - Find the addresses of a given peerID
+
+USAGE:
+   lotus net find-peer [command options] [peerId]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net scores
