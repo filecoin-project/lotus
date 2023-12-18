@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -11,7 +10,6 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/provider/lpseal"
-	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -64,6 +62,9 @@ var pipelineStartCmd = &cli.Command{
 		if !cctx.IsSet("actor") {
 			return cli.ShowCommandHelp(cctx, "start")
 		}
+		if !cctx.Bool("cc") {
+			return xerrors.Errorf("only CC sectors supported for now")
+		}
 
 		act, err := address.NewFromString(cctx.String("actor"))
 		if err != nil {
@@ -110,21 +111,9 @@ var pipelineStartCmd = &cli.Command{
 			return xerrors.Errorf("getting seal proof type: %w", err)
 		}
 
-		ssize, err := spt.SectorSize()
-		if err != nil {
-			return xerrors.Errorf("getting sector size: %w", err)
-		}
-
-		var commd cid.Cid
-		if cctx.Bool("cc") {
-			commd = zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
-		} else {
-			return xerrors.Errorf("only CC sectors supported for now")
-		}
-
 		num, err := lpseal.AllocateSectorNumbers(ctx, dep.Full, dep.DB, act, cctx.Int("count"), func(tx *harmonydb.Tx, numbers []abi.SectorNumber) (bool, error) {
 			for _, n := range numbers {
-				_, err := tx.Exec("insert into sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof, comm_d_cid) values ($1, $2, $3, $4)", mid, n, spt, commd.String())
+				_, err := tx.Exec("insert into sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) values ($1, $2, $3)", mid, n, spt)
 				if err != nil {
 					return false, xerrors.Errorf("inserting into sectors_sdr_pipeline: %w", err)
 				}

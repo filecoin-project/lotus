@@ -8,7 +8,6 @@ create table sectors_sdr_pipeline (
     -- at request time
     create_time timestamp not null default current_timestamp,
     reg_seal_proof int not null,
-    comm_d_cid text not null,
 
     -- sdr
     ticket_epoch bigint,
@@ -82,6 +81,9 @@ create table sectors_sdr_initial_pieces (
     piece_index bigint not null,
     piece_cid text not null,
     piece_size bigint not null,
+
+    -- foreign key
+    foreign key (sp_id, sector_number) references sectors_sdr_pipeline (sp_id, sector_number) on delete cascade,
 
     primary key (sp_id, sector_number, piece_index)
 );
