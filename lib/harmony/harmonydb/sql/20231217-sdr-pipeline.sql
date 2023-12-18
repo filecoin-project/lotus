@@ -6,8 +6,9 @@ create table sectors_sdr_pipeline (
     sector_number bigint not null,
 
     -- at request time
-    create_time timestamp not null,
+    create_time timestamp not null default current_timestamp,
     reg_seal_proof int not null,
+    comm_d_cid text not null,
 
     -- sdr
     ticket_epoch bigint,
@@ -17,7 +18,7 @@ create table sectors_sdr_pipeline (
     after_sdr bool not null default false,
 
     -- tree D
-    tree_d_cid text, -- commd from treeD compute
+    tree_d_cid text, -- commd from treeD compute, should match comm_d_cid
 
     task_id_tree_d bigint,
     after_tree_d bool not null default false,
@@ -83,4 +84,9 @@ create table sectors_sdr_initial_pieces (
     piece_size bigint not null,
 
     primary key (sp_id, sector_number, piece_index)
+);
+
+create table sectors_allocated_numbers (
+    sp_id bigint not null primary key,
+    allocated jsonb not null
 );

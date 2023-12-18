@@ -292,3 +292,32 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 	// validate the config. Because of layering, we must validate @ startup.
 	return lp, nil
 }
+
+func GetDepsCLI(ctx context.Context, cctx *cli.Context) (*Deps, error) {
+	db, err := MakeDB(cctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := GetConfig(cctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		select {
+		case <-ctx.Done():
+			fullCloser()
+		}
+	}()
+
+	return &Deps{
+		Cfg:  cfg,
+		DB:   db,
+		Full: full,
+	}, nil
+}

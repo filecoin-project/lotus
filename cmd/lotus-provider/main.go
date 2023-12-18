@@ -47,6 +47,7 @@ func main() {
 		configCmd,
 		testCmd,
 		webCmd,
+		pipelineCmd,
 		//backupCmd,
 		//lcli.WithCategory("chain", actorCmd),
 		//lcli.WithCategory("storage", sectorsCmd),
