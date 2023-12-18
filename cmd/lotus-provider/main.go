@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime/debug"
+	"runtime/pprof"
 	"syscall"
 
 	"github.com/fatih/color"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -28,8 +30,8 @@ func SetupCloseHandler() {
 	go func() {
 		<-c
 		fmt.Println("\r- Ctrl+C pressed in Terminal")
-		debug.PrintStack()
-		os.Exit(1)
+		_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		panic(1)
 	}()
 }
 
@@ -131,7 +133,7 @@ func main() {
 				Value:   "base",
 			},
 			&cli.StringFlag{
-				Name:    FlagRepoPath,
+				Name:    deps.FlagRepoPath,
 				EnvVars: []string{"LOTUS_REPO_PATH"},
 				Value:   "~/.lotusprovider",
 			},
@@ -143,8 +145,14 @@ func main() {
 		},
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
+				p, err := homedir.Expand(c.String(FlagMinerRepo))
+				if err != nil {
+					log.Errorw("could not expand repo path for panic report", "error", err)
+					panic(r)
+				}
+
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagRepoPath), c.App.Name)
+				build.GeneratePanicReport(c.String("panic-reports"), p, c.App.Name)
 				panic(r)
 			}
 			return nil
@@ -154,7 +162,3 @@ func main() {
 	app.Metadata["repoType"] = repo.Provider
 	lcli.RunApp(app)
 }
-
-const (
-	FlagRepoPath = "repo-path"
-)
