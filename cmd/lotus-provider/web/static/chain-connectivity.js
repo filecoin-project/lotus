@@ -8,7 +8,8 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
     loadData() {
         const eventSource = new EventSource('/api/debug/chain-state-sse');
         eventSource.onmessage = (event) => {
-            this.data.push(JSON.parse(event.data));
+            this.data = JSON.parse(event.data);
+            super.requestUpdate();
         };
         eventSource.onerror = (error) => {
             console.error('Error:', error);

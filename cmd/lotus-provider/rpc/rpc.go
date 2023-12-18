@@ -129,26 +129,28 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 	}
 
 	log.Infof("Setting up RPC server at %s", dependencies.ListenAddr)
-
-	web, err := web.GetSrv(ctx, dependencies)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		<-ctx.Done()
-		log.Warn("Shutting down...")
-		if err := srv.Shutdown(context.TODO()); err != nil {
-			log.Errorf("shutting down RPC server failed: %s", err)
-		}
-		if err := web.Shutdown(context.Background()); err != nil {
-			log.Errorf("shutting down web server failed: %s", err)
-		}
-		log.Warn("Graceful shutdown successful")
-	}()
-
 	eg := errgroup.Group{}
 	eg.Go(srv.ListenAndServe)
-	eg.Go(web.ListenAndServe)
+
+	if dependencies.Cfg.Subsystems.EnableWebGui {
+		web, err := web.GetSrv(ctx, dependencies)
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			<-ctx.Done()
+			log.Warn("Shutting down...")
+			if err := srv.Shutdown(context.TODO()); err != nil {
+				log.Errorf("shutting down RPC server failed: %s", err)
+			}
+			if err := web.Shutdown(context.Background()); err != nil {
+				log.Errorf("shutting down web server failed: %s", err)
+			}
+			log.Warn("Graceful shutdown successful")
+		}()
+		log.Infof("Setting up web server at %s", dependencies.Cfg.Subsystems.GuiAddress)
+		eg.Go(web.ListenAndServe)
+	}
 	return eg.Wait()
 }

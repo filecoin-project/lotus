@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
@@ -19,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 type stackTracer interface {
@@ -140,5 +143,38 @@ var runCmd = &cli.Command{
 
 		<-finishCh
 		return nil
+	},
+}
+
+var webCmd = &cli.Command{
+	Name:  "web",
+	Usage: "Start lotus provider web interface",
+	Description: `Start an instance of lotus provider web interface. 
+	This creates the 'web' layer if it does not exist, then calls run with that layer.`,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "listen",
+			Usage: "Address to listen on",
+			Value: "127.0.0.1:4701",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		db, err := deps.MakeDB(cctx)
+		if err != nil {
+			return err
+		}
+
+		webtxt, err := getConfig(db, "web")
+		if err != nil || webtxt == "" {
+			cfg := config.DefaultLotusProvider()
+			cfg.Subsystems.EnableWebGui = true
+			var b bytes.Buffer
+			toml.NewEncoder(&b).Encode(cfg)
+			if err = setConfig(db, "web", b.String()); err != nil {
+				return err
+			}
+		}
+		cctx.Set("layers", "web")
+		return runCmd.Action(cctx)
 	},
 }

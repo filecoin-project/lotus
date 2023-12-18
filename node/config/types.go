@@ -97,6 +97,7 @@ type ProviderSubsystemsConfig struct {
 	EnableWinningPost   bool
 	WinningPostMaxTasks int
 
+	EnableWebGui bool
 	// The address that should listen for Web GUI requests.
 	GuiAddress string
 }
