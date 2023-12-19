@@ -107,13 +107,13 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	// First query to fetch from mining_tasks
 	err = t.db.QueryRow(ctx, `SELECT sp_id, epoch, base_compute_time FROM mining_tasks WHERE task_id = $1`, taskID).Scan(&details.SpID, &details.Epoch, &details.CompTime)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("query mining base info fail: %w", err)
 	}
 
 	// Second query to fetch from mining_base_block
 	rows, err := t.db.Query(ctx, `SELECT block_cid FROM mining_base_block WHERE task_id = $1`, taskID)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("query mining base blocks fail: %w", err)
 	}
 	defer rows.Close()
 
@@ -126,7 +126,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	}
 
 	if err := rows.Err(); err != nil {
-		return false, err
+		return false, xerrors.Errorf("query mining base blocks fail (rows.Err): %w", err)
 	}
 
 	// construct base

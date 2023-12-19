@@ -42,7 +42,7 @@ func (s *SealPoller) RunPoller(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := s.poll(ctx); err != nil {
-				log.Errorf("polling sdr sector pipeline: %w", err)
+				log.Errorw("polling failed", "error", err)
 			}
 		}
 	}
@@ -84,7 +84,19 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		FailedReason string `db:"failed_reason"`
 	}
 
-	err := s.db.Select(ctx, &tasks, `SELECT * FROM sectors_sdr_pipeline WHERE after_commit_msg_success != true`)
+	err := s.db.Select(ctx, &tasks, `SELECT 
+       sp_id, sector_number,
+       task_id_sdr, after_sdr,
+       task_id_tree_d, after_tree_d,
+       task_id_tree_c, after_tree_c,
+       task_id_tree_r, after_tree_r,
+       task_id_precommit_msg, after_precommit_msg,
+       task_id_precommit_msg_wait, after_precommit_msg_success,
+       task_id_porep, porep_proof,
+       task_id_commit_msg, after_commit_msg,
+       task_id_commit_msg_wait, after_commit_msg_success,
+       failed, failed_reason
+    FROM sectors_sdr_pipeline WHERE after_commit_msg_success != true`)
 	if err != nil {
 		return err
 	}

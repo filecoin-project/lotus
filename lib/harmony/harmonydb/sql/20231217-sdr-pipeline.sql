@@ -67,8 +67,8 @@ create table sectors_sdr_pipeline (
     -- Failure handling
     failed bool not null default false,
     failed_at timestamp,
-    failed_reason varchar(20),
-    failed_reason_msg text,
+    failed_reason varchar(20) not null default '',
+    failed_reason_msg text not null default '',
 
     -- constraints
     primary key (sp_id, sector_number)
