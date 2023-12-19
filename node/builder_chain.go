@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -155,6 +156,7 @@ var ChainNode = Options(
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
 		Override(new(full.EthEventAPI), From(new(api.Gateway))),
+		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
 	),
 
 	// Full node API / service startup
@@ -265,6 +267,8 @@ func ConfigFullNode(c interface{}) Option {
 		// Actor event filtering support
 		Override(new(events.EventAPI), From(new(modules.EventAPI))),
 
+		Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Fevm)),
+
 		// in lite-mode Eth api is provided by gateway
 		ApplyIf(isFullNode,
 			If(cfg.Fevm.EnableEthRPC,
@@ -274,6 +278,15 @@ func ConfigFullNode(c interface{}) Option {
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+			),
+		),
+
+		ApplyIf(isFullNode,
+			If(cfg.Fevm.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), modules.ActorEventAPI(cfg.Fevm)),
+			),
+			If(!cfg.Fevm.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), &full.ActorEventDummy{}),
 			),
 		),
 

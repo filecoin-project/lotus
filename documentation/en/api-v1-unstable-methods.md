@@ -115,6 +115,8 @@
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
   * [GasEstimateGasPremium](#GasEstimateGasPremium)
   * [GasEstimateMessageGas](#GasEstimateMessageGas)
+* [Get](#Get)
+  * [GetActorEvents](#GetActorEvents)
 * [I](#I)
   * [ID](#ID)
 * [Log](#Log)
@@ -280,6 +282,8 @@
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
+* [Subscribe](#Subscribe)
+  * [SubscribeActorEvents](#SubscribeActorEvents)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -3382,6 +3386,61 @@ Response:
     "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   }
 }
+```
+
+## Get
+
+
+### GetActorEvents
+Actor events
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "address": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGF0YQ=="
+        }
+      ]
+    },
+    "minEpoch": 2301220,
+    "maxEpoch": 2301220
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "EmitterAddr": "f01234",
+    "Reverted": true,
+    "Height": 10101,
+    "TipSetKey": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "MsgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
 ```
 
 ## I
@@ -8713,6 +8772,61 @@ Response:
     }
   ],
   "Height": 10101
+}
+```
+
+## Subscribe
+
+
+### SubscribeActorEvents
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "filter": {
+      "address": [
+        "f01234"
+      ],
+      "fields": {
+        "abc": [
+          {
+            "codec": 81,
+            "value": "ZGF0YQ=="
+          }
+        ]
+      },
+      "minEpoch": 2301220,
+      "maxEpoch": 2301220
+    },
+    "prefill": true
+  }
+]
+```
+
+Response:
+```json
+{
+  "Entries": [
+    {
+      "Flags": 7,
+      "Key": "string value",
+      "Codec": 42,
+      "Value": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "EmitterAddr": "f01234",
+  "Reverted": true,
+  "Height": 10101,
+  "TipSetKey": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 

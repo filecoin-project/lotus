@@ -148,11 +148,11 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -162,13 +162,13 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -178,12 +178,12 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -193,11 +193,11 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"method": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -207,14 +207,14 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -224,14 +224,14 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"approver": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -241,14 +241,14 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr2"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -258,11 +258,11 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"amount": {
 						[]byte("2988181"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -495,11 +495,11 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: twoCollectedEvent,
@@ -509,13 +509,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: twoCollectedEvent,
@@ -525,12 +525,12 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -540,11 +540,11 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"method": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -554,14 +554,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -571,14 +571,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr2"),
 					},
-				},
+				}),
 			},
 			te:   revertedEvents14000,
 			want: oneCollectedRevertedEvent,
@@ -588,14 +588,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"approver": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -605,14 +605,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr3"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -622,11 +622,11 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"amount": {
 						[]byte("2988181"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -636,11 +636,11 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"amount": {
 						[]byte("2988182"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -735,11 +735,11 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -749,13 +749,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -765,12 +765,12 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -780,11 +780,11 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"method": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -794,14 +794,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -811,14 +811,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"approver": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -828,14 +828,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr2"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -845,14 +845,14 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr3"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -862,11 +862,11 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"amount": {
 						[]byte("2988181"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
