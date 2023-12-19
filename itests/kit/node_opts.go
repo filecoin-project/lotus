@@ -63,6 +63,7 @@ var DefaultNodeOpts = nodeOpts{
 			// test defaults
 
 			cfg.Fevm.EnableEthRPC = true
+			cfg.Fevm.EnableActorEventsAPI = true
 			return nil
 		},
 	},

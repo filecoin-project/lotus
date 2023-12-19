@@ -330,6 +330,10 @@
   # env var: LOTUS_FEVM_ENABLEETHRPC
   #EnableEthRPC = false
 
+  # type: bool
+  # env var: LOTUS_FEVM_ENABLEACTOREVENTSAPI
+  #EnableActorEventsAPI = false
+
   # EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
   # Set to 0 to keep all mappings
   #

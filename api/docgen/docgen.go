@@ -414,6 +414,42 @@ func init() {
 		VerifiedAllocationKey: nil,
 		Notify:                nil,
 	})
+
+	addExample(&types.ActorEventBlock{
+		Codec: 0x51,
+		Value: []byte("data"),
+	})
+
+	addExample(&types.ActorEventFilter{
+		Addresses: []address.Address{addr},
+		Fields: map[string][]types.ActorEventBlock{
+			"abc": {
+				{
+					Codec: 0x51,
+					Value: []byte("data"),
+				},
+			},
+		},
+		MinEpoch: 2301220,
+		MaxEpoch: 2301220,
+	})
+
+	addExample(&types.SubActorEventFilter{
+		Filter: types.ActorEventFilter{
+			Addresses: []address.Address{addr},
+			Fields: map[string][]types.ActorEventBlock{
+				"abc": {
+					{
+						Codec: 0x51,
+						Value: []byte("data"),
+					},
+				},
+			},
+			MinEpoch: 2301220,
+			MaxEpoch: 2301220,
+		},
+		Prefill: true,
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

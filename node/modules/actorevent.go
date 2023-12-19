@@ -33,8 +33,8 @@ type EventAPI struct {
 
 var _ events.EventAPI = &EventAPI{}
 
-func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEvent, error) {
-	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.EthEvent, error) {
+func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEvent, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.EthEvent, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		ee := &full.EthEvent{
@@ -64,6 +64,41 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 			},
 		})
 
+		ee.TipSetFilterManager = &filter.TipSetFilterManager{
+			MaxFilterResults: cfg.Events.MaxFilterResults,
+		}
+		ee.MemPoolFilterManager = &filter.MemPoolFilterManager{
+			MaxFilterResults: cfg.Events.MaxFilterResults,
+		}
+		ee.EventFilterManager = fm
+
+		lc.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				ev, err := events.NewEvents(ctx, &evapi)
+				if err != nil {
+					return err
+				}
+				// ignore returned tipsets
+				_ = ev.Observe(ee.TipSetFilterManager)
+
+				ch, err := mp.Updates(ctx)
+				if err != nil {
+					return err
+				}
+				go ee.MemPoolFilterManager.WaitForMpoolUpdates(ctx, ch)
+
+				return nil
+			},
+		})
+
+		return ee, nil
+	}
+}
+
+func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, full.ChainAPI) (*filter.EventFilterManager, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, chainapi full.ChainAPI) (*filter.EventFilterManager, error) {
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
 		// Enable indexing of actor events
 		var eventIndex *filter.EventIndex
 		if !cfg.Events.DisableHistoricFilterAPI {
@@ -91,7 +126,7 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 			})
 		}
 
-		ee.EventFilterManager = &filter.EventFilterManager{
+		fm := &filter.EventFilterManager{
 			ChainStore: cs,
 			EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
 			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
@@ -111,18 +146,13 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 					return address.Undef, false
 				}
 				// we have an f4 address, make sure it's assigned by the EAM
+				// What happens when we introduce events for built-in Actor events here ?
 				if namespace, _, err := varint.FromUvarint(actor.Address.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
 					return address.Undef, false
 				}
 				return *actor.Address, true
 			},
 
-			MaxFilterResults: cfg.Events.MaxFilterResults,
-		}
-		ee.TipSetFilterManager = &filter.TipSetFilterManager{
-			MaxFilterResults: cfg.Events.MaxFilterResults,
-		}
-		ee.MemPoolFilterManager = &filter.MemPoolFilterManager{
 			MaxFilterResults: cfg.Events.MaxFilterResults,
 		}
 
@@ -132,19 +162,27 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 				if err != nil {
 					return err
 				}
-				// ignore returned tipsets
-				_ = ev.Observe(ee.EventFilterManager)
-				_ = ev.Observe(ee.TipSetFilterManager)
-
-				ch, err := mp.Updates(ctx)
-				if err != nil {
-					return err
-				}
-				go ee.MemPoolFilterManager.WaitForMpoolUpdates(ctx, ch)
-
+				_ = ev.Observe(fm)
 				return nil
 			},
 		})
+
+		return fm, nil
+	}
+}
+
+func ActorEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.ActorEvent, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.ActorEvent, error) {
+		ee := &full.ActorEvent{
+			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
+		}
+
+		if !cfg.EnableActorEventsAPI {
+			// all Actor events functionality is disabled
+			return ee, nil
+		}
+
+		ee.EventFilterManager = fm
 
 		return ee, nil
 	}
