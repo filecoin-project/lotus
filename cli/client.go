@@ -588,7 +588,7 @@ uiLoop:
 
 		switch state {
 		case "import":
-			afmt.Print("Data CID (from " + color.YellowString("lotus client import") + "): ")
+			afmt.Print("Value CID (from " + color.YellowString("lotus client import") + "): ")
 
 			_cidStr, _, err := rl.ReadLine()
 			cidStr := string(_cidStr)
@@ -2458,7 +2458,7 @@ func renderDeal(di *lapi.DealInfo) {
 
 		if stg.Name == "StorageDealStartDataTransfer" {
 			for _, dtStg := range di.DataTransfer.Stages.Stages {
-				fmt.Printf("        %s %s %s\n", color.YellowString(dtStg.CreatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), color.BlueString("Data transfer stage:"), color.BlueString(dtStg.Name))
+				fmt.Printf("        %s %s %s\n", color.YellowString(dtStg.CreatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), color.BlueString("Value transfer stage:"), color.BlueString(dtStg.Name))
 				for _, l := range dtStg.Logs {
 					fmt.Printf("              %s %s\n", color.YellowString(l.UpdatedTime.Time().UTC().Round(time.Second).Format(time.Stamp)), l.Log)
 				}

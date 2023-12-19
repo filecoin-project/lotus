@@ -263,7 +263,7 @@ Default value: 1 minute.`,
 			Name: "PieceCidBlocklist",
 			Type: "[]cid.Cid",
 
-			Comment: `A list of Data CIDs to reject when making deals`,
+			Comment: `A list of Value CIDs to reject when making deals`,
 		},
 		{
 			Name: "ExpectedSealDuration",

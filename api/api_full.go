@@ -882,6 +882,9 @@ type FullNode interface {
 
 	RaftState(ctx context.Context) (*RaftStateData, error) //perm:read
 	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
+
+	// Actor events
+	GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) //perm:read
 }
 
 // reverse interface to the client, called after EthSubscribe

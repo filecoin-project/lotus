@@ -406,6 +406,25 @@ func init() {
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
+
+	addExample(&types.ActorEventBlock{
+		Codec: 0x51,
+		Value: []byte("data"),
+	})
+
+	addExample(&types.ActorEventFilter{
+		Addresses: []address.Address{addr},
+		Fields: map[string][]types.ActorEventBlock{
+			"abc": {
+				{
+					Codec: 0x51,
+					Value: []byte("data"),
+				},
+			},
+		},
+		FromBlock: pstring("2301220"),
+		ToBlock:   pstring("2301220"),
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

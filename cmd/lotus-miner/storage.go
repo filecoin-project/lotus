@@ -70,7 +70,7 @@ Weight
 A high weight value means data will be more likely to be stored in this path
 
 Seal
-Data for the sealing process will be stored here
+Value for the sealing process will be stored here
 
 Store
 Finalized sectors that will be moved here for long term storage and be proven

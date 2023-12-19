@@ -59,9 +59,9 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 
 	}
 
-	// t.Data ([][]uint8) (slice)
+	// t.Value ([][]uint8) (slice)
 	if len(t.Data) > cbg.MaxLength {
-		return xerrors.Errorf("Slice value in field t.Data was too long")
+		return xerrors.Errorf("Slice value in field t.Value was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Data))); err != nil {
@@ -174,7 +174,7 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 	}
 
-	// t.Data ([][]uint8) (slice)
+	// t.Value ([][]uint8) (slice)
 
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
@@ -182,7 +182,7 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	if extra > cbg.MaxLength {
-		return fmt.Errorf("t.Data: array too large (%d)", extra)
+		return fmt.Errorf("t.Value: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajArray {
@@ -208,7 +208,7 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.Data[i]: byte array too large (%d)", extra)
+				return fmt.Errorf("t.Value[i]: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
@@ -252,9 +252,9 @@ func (t *NetRpcResp) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Data ([]uint8) (slice)
+	// t.Value ([]uint8) (slice)
 	if len(t.Data) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.Data was too long")
+		return xerrors.Errorf("Byte array in field t.Value was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.Data))); err != nil {
@@ -317,7 +317,7 @@ func (t *NetRpcResp) UnmarshalCBOR(r io.Reader) (err error) {
 		t.ID = uint64(extra)
 
 	}
-	// t.Data ([]uint8) (slice)
+	// t.Value ([]uint8) (slice)
 
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
@@ -325,7 +325,7 @@ func (t *NetRpcResp) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.Data: byte array too large (%d)", extra)
+		return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")

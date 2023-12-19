@@ -184,7 +184,7 @@ type DealmakingConfig struct {
 	ConsiderVerifiedStorageDeals bool
 	// When enabled, the miner can accept unverified deals
 	ConsiderUnverifiedStorageDeals bool
-	// A list of Data CIDs to reject when making deals
+	// A list of Value CIDs to reject when making deals
 	PieceCidBlocklist []cid.Cid
 	// Maximum expected amount of time getting the deal into a sealed sector will take
 	// This includes the time the deal will need to get transferred and published
@@ -776,6 +776,8 @@ type FevmConfig struct {
 	// EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
 	EnableEthRPC bool
+
+	EnableActorEventsAPI bool
 
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings

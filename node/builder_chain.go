@@ -277,6 +277,15 @@ func ConfigFullNode(c interface{}) Option {
 			),
 		),
 
+		ApplyIf(isFullNode,
+			If(cfg.Fevm.EnableEthRPC,
+				Override(new(full.ActorEventAPI), modules.ActorEventAPI(cfg.Fevm)),
+			),
+			If(!cfg.Fevm.EnableEthRPC,
+				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+			),
+		),
+
 		// enable message index for full node when configured by the user, otherwise use dummy.
 		If(cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.MsgIndex)),
 		If(!cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.DummyMsgIndex)),

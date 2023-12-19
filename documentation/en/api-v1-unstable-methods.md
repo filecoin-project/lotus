@@ -4,6 +4,7 @@
   * [Discover](#Discover)
   * [Session](#Session)
   * [Shutdown](#Shutdown)
+  * [Subscribe](#Subscribe)
   * [Version](#Version)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
@@ -115,6 +116,8 @@
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
   * [GasEstimateGasPremium](#GasEstimateGasPremium)
   * [GasEstimateMessageGas](#GasEstimateMessageGas)
+* [Get](#Get)
+  * [GetActorEvents](#GetActorEvents)
 * [I](#I)
   * [ID](#ID)
 * [Log](#Log)
@@ -353,6 +356,38 @@ Perms: admin
 Inputs: `null`
 
 Response: `{}`
+
+### Subscribe
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  {
+    "Entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "EmitterAddr": "f01234",
+    "Reverted": true,
+    "Height": 10101,
+    "TipSetKey": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "MsgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
+```
 
 ### Version
 
@@ -3381,6 +3416,61 @@ Response:
     "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   }
 }
+```
+
+## Get
+
+
+### GetActorEvents
+Actor events
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "Addresses": [
+      "f01234"
+    ],
+    "Fields": {
+      "abc": [
+        {
+          "Codec": 81,
+          "Data": "ZGF0YQ=="
+        }
+      ]
+    },
+    "fromBlock": "2301220",
+    "toBlock": "2301220"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "EmitterAddr": "f01234",
+    "Reverted": true,
+    "Height": 10101,
+    "TipSetKey": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "MsgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
 ```
 
 ## I

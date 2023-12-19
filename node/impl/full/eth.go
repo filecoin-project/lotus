@@ -1352,7 +1352,20 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		return nil, err
 	}
 
-	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
+	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keysToKeysWithCodec(keys), true)
+}
+
+func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
+	keysWithCodec := make(map[string][]types.ActorEventBlock)
+	for k, v := range keys {
+		for _, vv := range v {
+			keysWithCodec[k] = append(keysWithCodec[k], types.ActorEventBlock{
+				Codec: cid.Raw,
+				Value: vv,
+			})
+		}
+	}
+	return keysWithCodec
 }
 
 func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
@@ -1526,7 +1539,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethty
 			}
 		}
 
-		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keys)
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keysToKeysWithCodec(keys), true)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
