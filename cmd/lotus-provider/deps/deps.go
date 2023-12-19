@@ -11,14 +11,18 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/BurntSushi/toml"
+	"github.com/gbrlsnchs/jwt/v3"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
-	"github.com/BurntSushi/toml"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-statestore"
+
 	"github.com/filecoin-project/lotus/api"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal"
@@ -34,9 +38,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/gbrlsnchs/jwt/v3"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("lotus-provider/deps")
