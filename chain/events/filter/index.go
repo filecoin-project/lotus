@@ -514,9 +514,9 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter, exclude
 		clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 	}
 
-	if len(f.keys) > 0 {
+	if len(f.keysWithCodec) > 0 {
 		join := 0
-		for key, vals := range f.keys {
+		for key, vals := range f.keysWithCodec {
 			if len(vals) > 0 {
 				join++
 				joinAlias := fmt.Sprintf("ee%d", join)
@@ -525,8 +525,8 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter, exclude
 				values = append(values, key)
 				subclauses := []string{}
 				for _, val := range vals {
-					subclauses = append(subclauses, fmt.Sprintf("%s.value=?", joinAlias))
-					values = append(values, val)
+					subclauses = append(subclauses, fmt.Sprintf("(%s.value=? AND %[1]s.codec=?)", joinAlias))
+					values = append(values, val.Value, val.Codec)
 				}
 				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 			}

@@ -22,6 +22,19 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
+	keysWithCodec := make(map[string][]types.ActorEventBlock)
+	for k, v := range keys {
+		for _, vv := range v {
+			keysWithCodec[k] = append(keysWithCodec[k], types.ActorEventBlock{
+				Codec: cid.Raw,
+				Value: vv,
+			})
+		}
+	}
+	return keysWithCodec
+}
+
 func TestEventFilterCollectEvents(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(299792458))
 	a1 := randomF4Addr(t, rng)
@@ -139,11 +152,11 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -153,13 +166,13 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -169,12 +182,12 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -184,11 +197,11 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"method": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -198,14 +211,14 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -215,14 +228,14 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"approver": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -232,14 +245,14 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr2"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -249,11 +262,11 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			filter: &EventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"amount": {
 						[]byte("2988181"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,

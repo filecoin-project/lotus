@@ -456,6 +456,12 @@ rewards. This address should have adequate funds to cover gas fees.`,
 This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
 		},
 		{
+			Name: "EnableActorEventsAPI",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
 			Name: "EthTxHashMappingLifetimeDays",
 			Type: "int",
 

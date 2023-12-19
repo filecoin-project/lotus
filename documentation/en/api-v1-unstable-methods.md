@@ -115,6 +115,8 @@
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
   * [GasEstimateGasPremium](#GasEstimateGasPremium)
   * [GasEstimateMessageGas](#GasEstimateMessageGas)
+* [Get](#Get)
+  * [GetActorEvents](#GetActorEvents)
 * [I](#I)
   * [ID](#ID)
 * [Log](#Log)
@@ -282,6 +284,8 @@
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
+* [Subscribe](#Subscribe)
+  * [SubscribeActorEvents](#SubscribeActorEvents)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -3380,6 +3384,62 @@ Response:
     "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   }
 }
+```
+
+## Get
+
+
+### GetActorEvents
+GetActorEvents returns all FVM and built-in Actor events that match the given filter.
+This is a request/response API.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "address": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGF0YQ=="
+        }
+      ]
+    },
+    "minEpoch": 2301220,
+    "maxEpoch": 2301220
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "EmitterAddr": "f01234",
+    "Reverted": true,
+    "Height": 10101,
+    "TipSetKey": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "MsgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
 ```
 
 ## I
@@ -8755,6 +8815,67 @@ Response:
     }
   ],
   "Height": 10101
+}
+```
+
+## Subscribe
+
+
+### SubscribeActorEvents
+SubscribeActorEvents returns a long-lived stream of all FVM and built-in Actor events that match the given filter.
+Events that match the given filter are written to the stream in real-time as they are emitted from the FVM.
+The response stream is closed when the client disconnects or if there is an error while writing an event to the stream.
+This API also allows clients to read all historical events matching the given filter before
+any real-time events are written to the response stream.
+NOTE: THIS API IS ONLY SUPPORTED OVER WEBSOCKETS FOR NOW
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "filter": {
+      "address": [
+        "f01234"
+      ],
+      "fields": {
+        "abc": [
+          {
+            "codec": 81,
+            "value": "ZGF0YQ=="
+          }
+        ]
+      },
+      "minEpoch": 2301220,
+      "maxEpoch": 2301220
+    },
+    "prefill": true
+  }
+]
+```
+
+Response:
+```json
+{
+  "Entries": [
+    {
+      "Flags": 7,
+      "Key": "string value",
+      "Codec": 42,
+      "Value": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "EmitterAddr": "f01234",
+  "Reverted": true,
+  "Height": 10101,
+  "TipSetKey": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 

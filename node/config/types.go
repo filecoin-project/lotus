@@ -786,6 +786,8 @@ type FevmConfig struct {
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
 	EnableEthRPC bool
 
+	EnableActorEventsAPI bool
+
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int

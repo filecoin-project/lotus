@@ -28,13 +28,14 @@ func isIndexedValue(b uint8) bool {
 }
 
 type EventFilter struct {
-	id         types.FilterID
-	minHeight  abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
-	maxHeight  abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
-	tipsetCid  cid.Cid
-	addresses  []address.Address   // list of f4 actor addresses that are extpected to emit the event
-	keys       map[string][][]byte // map of key names to a list of alternate values that may match
-	maxResults int                 // maximum number of results to collect, 0 is unlimited
+	id        types.FilterID
+	minHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
+	maxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
+	tipsetCid cid.Cid
+	addresses []address.Address // list of f4 actor addresses that are extpected to emit the event
+
+	keysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
+	maxResults    int                                // maximum number of results to collect, 0 is unlimited
 
 	mu        sync.Mutex
 	collected []*CollectedEvent
@@ -194,7 +195,7 @@ func (f *EventFilter) matchAddress(o address.Address) bool {
 }
 
 func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
-	if len(f.keys) == 0 {
+	if len(f.keysWithCodec) == 0 {
 		return true
 	}
 	// TODO: optimize this naive algorithm
@@ -216,19 +217,19 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 			continue
 		}
 
-		wantlist, ok := f.keys[keyname]
+		wantlist, ok := f.keysWithCodec[keyname]
 		if !ok || len(wantlist) == 0 {
 			continue
 		}
 
 		for _, w := range wantlist {
-			if bytes.Equal(w, ee.Value) {
+			if bytes.Equal(w.Value, ee.Value) && w.Codec == ee.Codec {
 				matched[keyname] = true
 				break
 			}
 		}
 
-		if len(matched) == len(f.keys) {
+		if len(matched) == len(f.keysWithCodec) {
 			// all keys have been matched
 			return true
 		}
@@ -362,7 +363,8 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	return nil
 }
 
-func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address, keys map[string][][]byte) (*EventFilter, error) {
+func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
+	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (*EventFilter, error) {
 	m.mu.Lock()
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
@@ -377,18 +379,18 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	}
 
 	f := &EventFilter{
-		id:         id,
-		minHeight:  minHeight,
-		maxHeight:  maxHeight,
-		tipsetCid:  tipsetCid,
-		addresses:  addresses,
-		keys:       keys,
-		maxResults: m.MaxFilterResults,
+		id:            id,
+		minHeight:     minHeight,
+		maxHeight:     maxHeight,
+		tipsetCid:     tipsetCid,
+		addresses:     addresses,
+		keysWithCodec: keysWithCodec,
+		maxResults:    m.MaxFilterResults,
 	}
 
 	if m.EventIndex != nil && minHeight != -1 && minHeight < currentHeight {
 		// Filter needs historic events
-		if err := m.EventIndex.PrefillFilter(ctx, f, true); err != nil {
+		if err := m.EventIndex.PrefillFilter(ctx, f, excludeReverted); err != nil {
 			return nil, err
 		}
 	}
