@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events/filter"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -26,18 +25,14 @@ var (
 )
 
 type ActorEvent struct {
-	Chain                *store.ChainStore
 	EventFilterManager   *filter.EventFilterManager
-	FilterStore          filter.FilterStore
 	MaxFilterHeightRange abi.ChainEpoch
-	SubscribtionCtx      context.Context
 }
 
 var _ ActorEventAPI = (*ActorEvent)(nil)
 
 type ActorEventsAPI struct {
 	fx.In
-	Chain *store.ChainStore
 	ActorEventAPI
 }
 

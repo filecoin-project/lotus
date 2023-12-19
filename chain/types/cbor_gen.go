@@ -1720,9 +1720,9 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Value ([]uint8) (slice)
+	// t.Data ([]uint8) (slice)
 	if len(t.Data) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.Value was too long")
+		return xerrors.Errorf("Byte array in field t.Data was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.Data))); err != nil {
@@ -1772,7 +1772,7 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Round = uint64(extra)
 
 	}
-	// t.Value ([]uint8) (slice)
+	// t.Data ([]uint8) (slice)
 
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
@@ -1780,7 +1780,7 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.Value: byte array too large (%d)", extra)
+		return fmt.Errorf("t.Data: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")

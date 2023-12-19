@@ -184,7 +184,7 @@ type DealmakingConfig struct {
 	ConsiderVerifiedStorageDeals bool
 	// When enabled, the miner can accept unverified deals
 	ConsiderUnverifiedStorageDeals bool
-	// A list of Value CIDs to reject when making deals
+	// A list of Data CIDs to reject when making deals
 	PieceCidBlocklist []cid.Cid
 	// Maximum expected amount of time getting the deal into a sealed sector will take
 	// This includes the time the deal will need to get transferred and published

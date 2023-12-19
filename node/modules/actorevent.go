@@ -155,16 +155,13 @@ func ActorEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRe
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		ee := &full.ActorEvent{
-			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
-			SubscribtionCtx:      ctx,
 		}
 
 		if !cfg.EnableActorEventsAPI {
 			// all event functionality is disabled
 			return ee, nil
 		}
-		ee.FilterStore = filter.NewMemFilterStore(cfg.Events.MaxFilters)
 
 		// Enable indexing of actor events
 		var eventIndex *filter.EventIndex

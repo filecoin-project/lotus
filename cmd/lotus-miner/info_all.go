@@ -150,7 +150,7 @@ var infoAllCmd = &cli.Command{
 			}
 		}
 
-		fmt.Println("\n#: Value Transfers")
+		fmt.Println("\n#: Data Transfers")
 		{
 			fs := &flag.FlagSet{}
 			for _, f := range transfersListCmd.Flags {
