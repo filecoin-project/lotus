@@ -3,6 +3,8 @@ package tasks
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/provider/lpffi"
+	"github.com/filecoin-project/lotus/provider/lpseal"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
@@ -25,6 +27,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	as := dependencies.As
 	maddrs := dependencies.Maddrs
 	stor := dependencies.Stor
+	lstor := dependencies.LocalStore
 	si := dependencies.Si
 	var activeTasks []harmonytask.TaskInterface
 
@@ -35,6 +38,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	///// Task Selection
 	///////////////////////////////////////////////////////////////////////
 	{
+		// PoSt
 
 		if cfg.Subsystems.EnableWindowPost {
 			wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, verif, lw, sender,
@@ -48,6 +52,25 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		if cfg.Subsystems.EnableWinningPost {
 			winPoStTask := lpwinning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
 			activeTasks = append(activeTasks, winPoStTask)
+		}
+	}
+
+	{
+		// Sealing
+		hasAnySealingTask := cfg.Subsystems.EnableSealSDR
+
+		var sp *lpseal.SealPoller
+		var slr *lpffi.SealCalls
+		if hasAnySealingTask {
+			sp = lpseal.NewPoller(db)
+			go sp.RunPoller(ctx)
+
+			slr = lpffi.NewSealCalls(stor, lstor, si)
+		}
+
+		if cfg.Subsystems.EnableSealSDR {
+			sdrTask := lpseal.NewSDRTask(full, db, sp, slr, cfg.Subsystems.SealSDRMaxTasks)
+			activeTasks = append(activeTasks, sdrTask)
 		}
 	}
 	log.Infow("This lotus_provider instance handles",

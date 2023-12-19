@@ -26,16 +26,24 @@ type SealPoller struct {
 	pollers [numPollers]promise.Promise[harmonytask.AddTaskFunc]
 }
 
-func (s *SealPoller) RunPoller(ctx context.Context) error {
+func NewPoller(db *harmonydb.DB) *SealPoller {
+	return &SealPoller{
+		db: db,
+	}
+}
+
+func (s *SealPoller) RunPoller(ctx context.Context) {
 	ticker := time.NewTicker(sealPollerInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
-			s.poll(ctx)
+			if err := s.poll(ctx); err != nil {
+				log.Errorf("polling sdr sector pipeline: %w", err)
+			}
 		}
 	}
 }
@@ -86,7 +94,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 			continue
 		}
 
-		if task.TaskSDR == nil {
+		if task.TaskSDR == nil && s.pollers[pollerSDR].IsSet() {
 			s.pollers[pollerSDR].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 				n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_sdr = $1 WHERE sp_id = $2 AND sector_number = $3`, id, task.SpID, task.SectorNumber)
 				if err != nil {

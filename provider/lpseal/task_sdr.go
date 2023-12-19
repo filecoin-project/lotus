@@ -32,6 +32,16 @@ type SDRTask struct {
 	maxSDR int
 }
 
+func NewSDRTask(api SDRAPI, db *harmonydb.DB, sp *SealPoller, sc *lpffi.SealCalls, maxSDR int) *SDRTask {
+	return &SDRTask{
+		api:    api,
+		db:     db,
+		sp:     sp,
+		sc:     sc,
+		maxSDR: maxSDR,
+	}
+}
+
 func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
