@@ -4,11 +4,11 @@ import (
 	"embed"
 	"html/template"
 
+	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
-	"github.com/gorilla/mux"
-	"golang.org/x/xerrors"
 )
 
 //go:embed web/*

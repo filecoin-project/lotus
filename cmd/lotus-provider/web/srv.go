@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/mux"
+	"go.opencensus.io/tag"
+
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/web/api"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/web/hapi"
 	"github.com/filecoin-project/lotus/metrics"
-	"github.com/gorilla/mux"
-	"go.opencensus.io/tag"
 )
 
 // go:embed static
