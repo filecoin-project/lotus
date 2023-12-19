@@ -116,10 +116,8 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		fmt.Println("before populateRemainingDeps")
 		dependencies := &deps.Deps{}
 		err = dependencies.PopulateRemainingDeps(ctx, cctx, true)
-		fmt.Println("after popdeps")
 		if err != nil {
 			fmt.Println("err", err)
 			return err

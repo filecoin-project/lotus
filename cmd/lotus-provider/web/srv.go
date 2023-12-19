@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/web/api"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/web/hapi"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/gorilla/mux"
 	"go.opencensus.io/tag"
@@ -21,6 +22,10 @@ var static embed.FS
 func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 	mux := mux.NewRouter()
 	api.Routes(mux.PathPrefix("/api").Subrouter(), deps)
+	err := hapi.Routes(mux.PathPrefix("/hapi").Subrouter(), deps)
+	if err != nil {
+		return nil, err
+	}
 	mux.NotFoundHandler = http.FileServer(http.FS(static))
 
 	return &http.Server{

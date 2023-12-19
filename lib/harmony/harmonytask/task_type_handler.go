@@ -184,6 +184,9 @@ retryRecordCompletion:
 				return false, fmt.Errorf("could not log completion: %w", err)
 			}
 			result = ""
+			if doErr != nil {
+				result = "non-failing error: " + doErr.Error()
+			}
 		} else {
 			if doErr != nil {
 				result = "error: " + doErr.Error()

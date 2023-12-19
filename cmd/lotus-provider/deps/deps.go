@@ -164,7 +164,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		if err != nil {
 			return err
 		}
-		defer func() {
+		go func() {
 			<-ctx.Done()
 			_ = j.Close()
 		}()
