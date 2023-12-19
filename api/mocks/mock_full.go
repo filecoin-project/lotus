@@ -3938,21 +3938,6 @@ func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
 }
 
-// Subscribe mocks base method.
-func (m *MockFullNode) Subscribe(arg0 *types.ActorEventFilter) (<-chan []*types.ActorEvent, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Subscribe", arg0)
-	ret0, _ := ret[0].(<-chan []*types.ActorEvent)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Subscribe indicates an expected call of Subscribe.
-func (mr *MockFullNodeMockRecorder) Subscribe(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockFullNode)(nil).Subscribe), arg0)
-}
-
 // SyncCheckBad mocks base method.
 func (m *MockFullNode) SyncCheckBad(arg0 context.Context, arg1 cid.Cid) (string, error) {
 	m.ctrl.T.Helper()

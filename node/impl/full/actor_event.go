@@ -3,8 +3,8 @@ package full
 import (
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
 
+	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-state-types/abi"

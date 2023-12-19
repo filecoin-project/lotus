@@ -583,8 +583,6 @@ type FullNodeMethods struct {
 
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) `perm:"read"`
 
-	Subscribe func(p0 *types.ActorEventFilter) (<-chan []*types.ActorEvent, error) `perm:"read"`
-
 	SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
 	SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
@@ -826,8 +824,6 @@ type GatewayMethods struct {
 	StateVerifierStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
-
-	Subscribe func(p0 *types.ActorEventFilter) (<-chan []*types.ActorEvent, error) ``
 
 	Version func(p0 context.Context) (APIVersion, error) ``
 
@@ -3959,17 +3955,6 @@ func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) Subscribe(p0 *types.ActorEventFilter) (<-chan []*types.ActorEvent, error) {
-	if s.Internal.Subscribe == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.Subscribe(p0)
-}
-
-func (s *FullNodeStub) Subscribe(p0 *types.ActorEventFilter) (<-chan []*types.ActorEvent, error) {
-	return nil, ErrNotSupported
-}
-
 func (s *FullNodeStruct) SyncCheckBad(p0 context.Context, p1 cid.Cid) (string, error) {
 	if s.Internal.SyncCheckBad == nil {
 		return "", ErrNotSupported
@@ -5232,17 +5217,6 @@ func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, 
 }
 
 func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *GatewayStruct) Subscribe(p0 *types.ActorEventFilter) (<-chan []*types.ActorEvent, error) {
-	if s.Internal.Subscribe == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.Subscribe(p0)
-}
-
-func (s *GatewayStub) Subscribe(p0 *types.ActorEventFilter) (<-chan []*types.ActorEvent, error) {
 	return nil, ErrNotSupported
 }
 

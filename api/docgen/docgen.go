@@ -422,8 +422,8 @@ func init() {
 				},
 			},
 		},
-		FromBlock: pstring("2301220"),
-		ToBlock:   pstring("2301220"),
+		FromBlock: 2301220,
+		ToBlock:   2301220,
 	})
 }
 

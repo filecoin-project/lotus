@@ -263,7 +263,7 @@ Default value: 1 minute.`,
 			Name: "PieceCidBlocklist",
 			Type: "[]cid.Cid",
 
-			Comment: `A list of Value CIDs to reject when making deals`,
+			Comment: `A list of Data CIDs to reject when making deals`,
 		},
 		{
 			Name: "ExpectedSealDuration",
@@ -454,6 +454,12 @@ rewards. This address should have adequate funds to cover gas fees.`,
 
 			Comment: `EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
 This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
+		},
+		{
+			Name: "EnableActorEventsAPI",
+			Type: "bool",
+
+			Comment: ``,
 		},
 		{
 			Name: "EthTxHashMappingLifetimeDays",

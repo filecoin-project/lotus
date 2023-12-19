@@ -4,7 +4,6 @@
   * [Discover](#Discover)
   * [Session](#Session)
   * [Shutdown](#Shutdown)
-  * [Subscribe](#Subscribe)
   * [Version](#Version)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
@@ -356,38 +355,6 @@ Perms: admin
 Inputs: `null`
 
 Response: `{}`
-
-### Subscribe
-
-
-Perms: read
-
-Inputs: `null`
-
-Response:
-```json
-[
-  {
-    "Entries": [
-      {
-        "Flags": 7,
-        "Key": "string value",
-        "Codec": 42,
-        "Value": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
-    "EmitterAddr": "f01234",
-    "Reverted": true,
-    "Height": 10101,
-    "TipSetKey": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "MsgCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
-  }
-]
-```
 
 ### Version
 
@@ -3438,12 +3405,12 @@ Inputs:
       "abc": [
         {
           "Codec": 81,
-          "Data": "ZGF0YQ=="
+          "Value": "ZGF0YQ=="
         }
       ]
     },
-    "fromBlock": "2301220",
-    "toBlock": "2301220"
+    "fromBlock": 2301220,
+    "toBlock": 2301220
   }
 ]
 ```

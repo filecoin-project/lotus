@@ -282,6 +282,9 @@ func ConfigFullNode(c interface{}) Option {
 			If(cfg.Fevm.EnableActorEventsAPI,
 				Override(new(full.ActorEventAPI), modules.ActorEventAPI(cfg.Fevm)),
 			),
+			If(!cfg.Fevm.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), &full.ActorEventDummy{}),
+			),
 		),
 
 		// enable message index for full node when configured by the user, otherwise use dummy.
