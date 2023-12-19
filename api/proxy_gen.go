@@ -583,6 +583,8 @@ type FullNodeMethods struct {
 
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) `perm:"read"`
 
+	SubscribeActorEvents func(p0 context.Context, p1 *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
+
 	SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
 	SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
@@ -824,6 +826,8 @@ type GatewayMethods struct {
 	StateVerifierStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
+
+	SubscribeActorEvents func(p0 context.Context, p1 *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) ``
 
 	Version func(p0 context.Context) (APIVersion, error) ``
 
@@ -3955,6 +3959,17 @@ func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) SubscribeActorEvents(p0 context.Context, p1 *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+	if s.Internal.SubscribeActorEvents == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.SubscribeActorEvents(p0, p1)
+}
+
+func (s *FullNodeStub) SubscribeActorEvents(p0 context.Context, p1 *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) SyncCheckBad(p0 context.Context, p1 cid.Cid) (string, error) {
 	if s.Internal.SyncCheckBad == nil {
 		return "", ErrNotSupported
@@ -5217,6 +5232,17 @@ func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, 
 }
 
 func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) SubscribeActorEvents(p0 context.Context, p1 *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+	if s.Internal.SubscribeActorEvents == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.SubscribeActorEvents(p0, p1)
+}
+
+func (s *GatewayStub) SubscribeActorEvents(p0 context.Context, p1 *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
 	return nil, ErrNotSupported
 }
 

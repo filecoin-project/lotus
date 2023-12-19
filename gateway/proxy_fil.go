@@ -444,6 +444,13 @@ func (gw *Node) GetActorEvents(ctx context.Context, filter *types.ActorEventFilt
 	return gw.target.GetActorEvents(ctx, filter)
 }
 
+func (gw *Node) SubscribeActorEvents(ctx context.Context, filter *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.SubscribeActorEvents(ctx, filter)
+}
+
 func (gw *Node) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err

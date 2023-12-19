@@ -16,7 +16,7 @@ import (
 
 type ActorEventAPI interface {
 	GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)
-	// TODO: Add a subscription API here
+	SubscribeActorEvents(ctx context.Context, filter *types.SubActorEventFilter) (<-chan *types.ActorEvent, error)
 }
 
 var (
@@ -46,9 +46,105 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 	if err != nil {
 		return nil, err
 	}
-	ces := f.TakeCollectedEvents(ctx)
 
+	evs, err := getCollected(ctx, f)
 	_ = a.EventFilterManager.Remove(ctx, f.ID())
+	return evs, err
+}
+
+func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+	if a.EventFilterManager == nil {
+		return nil, api.ErrNotSupported
+	}
+	fm, err := a.EventFilterManager.Install(ctx, f.FromBlock, f.ToBlock, cid.Undef, f.Addresses, f.Fields, false)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(chan *types.ActorEvent, 25)
+
+	go func() {
+		defer func() {
+			// Tell the caller we're done
+			close(out)
+
+			// Unsubscribe.
+			fm.ClearSubChannel()
+			a.EventFilterManager.Remove(ctx, fm.ID())
+		}()
+
+		if f.WriteExisting {
+			evs, err := getCollected(ctx, fm)
+			if err != nil {
+				log.Errorf("failed to get collected events: %w", err)
+				return
+			}
+
+			for _, ev := range evs {
+				ev := ev
+				select {
+				case out <- ev:
+				case <-ctx.Done():
+					return
+				default:
+					log.Errorf("closing event subscription due to slow reader")
+					return
+				}
+			}
+		}
+
+		in := make(chan interface{}, 256)
+		fm.SetSubChannel(in)
+
+		for {
+			select {
+			case val, ok := <-in:
+				if !ok {
+					// Shutting down.
+					return
+				}
+
+				ce, ok := val.(*filter.CollectedEvent)
+				if !ok {
+					log.Errorf("got unexpected value from event filter: %T", val)
+					return
+				}
+				c, err := ce.TipSetKey.Cid()
+				if err != nil {
+					log.Errorf("failed to get tipset cid: %w", err)
+					return
+				}
+
+				ev := &types.ActorEvent{
+					Entries:     ce.Entries,
+					EmitterAddr: ce.EmitterAddr,
+					Reverted:    ce.Reverted,
+					Height:      ce.Height,
+					TipSetKey:   c,
+					MsgCid:      ce.MsgCid,
+				}
+
+				select {
+				case out <- ev:
+				default:
+					log.Errorf("closing event subscription due to slow reader")
+					return
+				}
+				if len(out) > 5 {
+					log.Warnf("event subscription is slow, has %d buffered entries", len(out))
+				}
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return out, nil
+}
+
+func getCollected(ctx context.Context, f *filter.EventFilter) ([]*types.ActorEvent, error) {
+	ces := f.TakeCollectedEvents(ctx)
 
 	var out []*types.ActorEvent
 

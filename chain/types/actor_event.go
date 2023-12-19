@@ -14,6 +14,11 @@ type ActorEventBlock struct {
 	Value []byte
 }
 
+type SubActorEventFilter struct {
+	ActorEventFilter
+	WriteExisting bool
+}
+
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
 	Addresses []address.Address

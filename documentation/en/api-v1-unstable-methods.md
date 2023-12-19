@@ -281,6 +281,8 @@
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
+* [Subscribe](#Subscribe)
+  * [SubscribeActorEvents](#SubscribeActorEvents)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -8680,6 +8682,59 @@ Response:
     }
   ],
   "Height": 10101
+}
+```
+
+## Subscribe
+
+
+### SubscribeActorEvents
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "Addresses": [
+      "f01234"
+    ],
+    "Fields": {
+      "abc": [
+        {
+          "Codec": 81,
+          "Value": "ZGF0YQ=="
+        }
+      ]
+    },
+    "fromBlock": 2301220,
+    "toBlock": 2301220,
+    "WriteExisting": true
+  }
+]
+```
+
+Response:
+```json
+{
+  "Entries": [
+    {
+      "Flags": 7,
+      "Key": "string value",
+      "Codec": 42,
+      "Value": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "EmitterAddr": "f01234",
+  "Reverted": true,
+  "Height": 10101,
+  "TipSetKey": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 

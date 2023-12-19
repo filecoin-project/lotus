@@ -425,6 +425,23 @@ func init() {
 		FromBlock: 2301220,
 		ToBlock:   2301220,
 	})
+
+	addExample(&types.SubActorEventFilter{
+		ActorEventFilter: types.ActorEventFilter{
+			Addresses: []address.Address{addr},
+			Fields: map[string][]types.ActorEventBlock{
+				"abc": {
+					{
+						Codec: 0x51,
+						Value: []byte("data"),
+					},
+				},
+			},
+			FromBlock: 2301220,
+			ToBlock:   2301220,
+		},
+		WriteExisting: true,
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
