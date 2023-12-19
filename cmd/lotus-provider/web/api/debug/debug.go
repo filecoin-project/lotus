@@ -92,54 +92,43 @@ func (d *debug) chainStateSSE(w http.ResponseWriter, r *http.Request) {
 		var wg sync.WaitGroup
 		wg.Add(len(rpcInfos))
 		for addr, token := range apiInfos {
+			addr := addr
 			ai := cliutil.APIInfo{
 				Addr:  addr,
 				Token: token,
 			}
-
-			var clayers []string
-			for layer, a := range confNameToAddr {
-				if a == addr {
-					clayers = append(clayers, layer)
-				}
-			}
-
-			da, err := ai.DialArgs("v1")
-			if err != nil {
-				log.Warnw("DialArgs", "error", err)
-
-				infosLk.Lock()
-				infos[addr] = rpcInfo{
-					Address:   ai.Addr,
-					Reachable: false,
-					CLayers:   clayers,
-				}
-				infosLk.Unlock()
-
-				wg.Done()
-				continue
-			}
-
-			ah := ai.AuthHeader()
-
-			v1api, closer, err := client.NewFullNodeRPCV1(ctx, da, ah)
-			if err != nil {
-				log.Warnf("Not able to establish connection to node with addr: %s", addr)
-
-				infosLk.Lock()
-				infos[addr] = rpcInfo{
-					Address:   ai.Addr,
-					Reachable: false,
-					CLayers:   clayers,
-				}
-				infosLk.Unlock()
-
-				wg.Done()
-				continue
-			}
-
 			go func(info string) {
 				defer wg.Done()
+				var clayers []string
+				for layer, a := range confNameToAddr {
+					if a == addr {
+						clayers = append(clayers, layer)
+					}
+				}
+
+				myinfo := rpcInfo{
+					Address:   ai.Addr,
+					Reachable: false,
+					CLayers:   clayers,
+				}
+				defer func() {
+					infosLk.Lock()
+					infos[ai.Addr] = myinfo
+					infosLk.Unlock()
+				}()
+				da, err := ai.DialArgs("v1")
+				if err != nil {
+					log.Warnw("DialArgs", "error", err)
+					return
+				}
+
+				ah := ai.AuthHeader()
+
+				v1api, closer, err := client.NewFullNodeRPCV1(ctx, da, ah)
+				if err != nil {
+					log.Warnf("Not able to establish connection to node with addr: %s", addr)
+					return
+				}
 				defer closer()
 
 				ver, err := v1api.Version(ctx)
@@ -164,26 +153,21 @@ func (d *debug) chainStateSSE(w http.ResponseWriter, r *http.Request) {
 					syncState = fmt.Sprintf("behind (%s behind)", time.Since(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
 				}
 
-				var out rpcInfo
-				out.Address = ai.Addr
-				out.CLayers = clayers
-				out.Reachable = true
-				out.Version = ver.Version
-				out.SyncState = syncState
-
-				infosLk.Lock()
-				infos[info] = out
-				infosLk.Unlock()
-
+				myinfo = rpcInfo{
+					Address:   ai.Addr,
+					CLayers:   clayers,
+					Reachable: true,
+					Version:   ver.Version,
+					SyncState: syncState,
+				}
 			}(addr)
 		}
 		wg.Wait()
 
-		infoList := make([]rpcInfo, 0, len(infos))
-		for _, info := range infos {
-			infoList = append(infoList, info)
+		var infoList []rpcInfo
+		for _, i := range infos {
+			infoList = append(infoList, i)
 		}
-
 		sort.Slice(infoList, func(i, j int) bool {
 			return infoList[i].Address < infoList[j].Address
 		})
@@ -200,6 +184,12 @@ func (d *debug) chainStateSSE(w http.ResponseWriter, r *http.Request) {
 		}
 
 		time.Sleep(time.Duration(build.BlockDelaySecs) * time.Second)
+
+		select { // stop running if there is reader.
+		case <-ctx.Done():
+			return
+		default:
+		}
 	}
 }
 
