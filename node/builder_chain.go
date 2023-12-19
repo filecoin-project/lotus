@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/filecoin-project/lotus/chain/events/filter"
 	"os"
 
 	gorpc "github.com/libp2p/go-libp2p-gorpc"
@@ -265,6 +266,8 @@ func ConfigFullNode(c interface{}) Option {
 
 		// Actor event filtering support
 		Override(new(events.EventAPI), From(new(modules.EventAPI))),
+
+		Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Fevm)),
 
 		// in lite-mode Eth api is provided by gateway
 		ApplyIf(isFullNode,
