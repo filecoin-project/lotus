@@ -896,7 +896,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 
 	if commonParent {
 		// known contains at least one of incoming's Parents => the common ancestor is known's Parents (incoming's Grandparents)
-		// in this case, we need to return {incoming, incoming.Parents()}
+		// in this case, we need to return {incoming.Parents()}
 		incomingParents, err := syncer.store.LoadTipSet(ctx, incomingParentsTsk)
 		if err != nil {
 			// fallback onto the network
@@ -912,7 +912,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 			incomingParents = tips[0]
 		}
 
-		return []*types.TipSet{incoming, incomingParents}, nil
+		return []*types.TipSet{incomingParents}, nil
 	}
 
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2? Yes.
