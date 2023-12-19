@@ -43,7 +43,8 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 
 	err = s.db.Select(ctx, &sectorParams, `
 		SELECT sp_id, sector_number, reg_seal_proof
-		FROM sectors_sdr_pipeline`)
+		FROM sectors_sdr_pipeline
+		WHERE task_id_sdr = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting sector params: %w", err)
 	}
