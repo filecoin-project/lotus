@@ -70,7 +70,7 @@ func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActor
 
 			// Unsubscribe.
 			fm.ClearSubChannel()
-			a.EventFilterManager.Remove(ctx, fm.ID())
+			_ = a.EventFilterManager.Remove(ctx, fm.ID())
 		}()
 
 		if f.WriteExisting {
