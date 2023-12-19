@@ -74,7 +74,7 @@ func (l *storageProvider) AcquireSector(ctx context.Context, sector storiface.Se
 }
 
 func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, commKcid cid.Cid) error {
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}

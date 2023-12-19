@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -16,6 +17,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"golang.org/x/xerrors"
 )
+
+var isDevnet = build.BlockDelaySecs < 30
 
 type SDRAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
@@ -45,19 +48,24 @@ func NewSDRTask(api SDRAPI, db *harmonydb.DB, sp *SealPoller, sc *lpffi.SealCall
 func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
-	var sectorParams struct {
+	var sectorParamsArr []struct {
 		SpID         int64                   `db:"sp_id"`
 		SectorNumber int64                   `db:"sector_number"`
 		RegSealProof abi.RegisteredSealProof `db:"reg_seal_proof"`
 	}
 
-	err = s.db.Select(ctx, &sectorParams, `
+	err = s.db.Select(ctx, &sectorParamsArr, `
 		SELECT sp_id, sector_number, reg_seal_proof
 		FROM sectors_sdr_pipeline
 		WHERE task_id_sdr = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting sector params: %w", err)
 	}
+
+	if len(sectorParamsArr) != 1 {
+		return false, xerrors.Errorf("expected 1 sector params, got %d", len(sectorParamsArr))
+	}
+	sectorParams := sectorParamsArr[0]
 
 	var pieces []struct {
 		PieceIndex int64  `db:"piece_index"`
@@ -151,7 +159,7 @@ func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEn
 }
 
 func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
-	return harmonytask.TaskTypeDetails{
+	res := harmonytask.TaskTypeDetails{
 		Max:  s.maxSDR,
 		Name: "SDR",
 		Cost: resources.Resources{ // todo offset for prefetch?
@@ -162,6 +170,12 @@ func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
 		MaxFailures: 0,
 		Follows:     nil,
 	}
+
+	if isDevnet {
+		res.Cost.Ram = 1 << 30
+	}
+
+	return res
 }
 
 func (s *SDRTask) Adder(taskFunc harmonytask.AddTaskFunc) {
