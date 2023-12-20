@@ -103,9 +103,17 @@ type ProviderSubsystemsConfig struct {
 	GuiAddress string
 
 	// EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
-	// creating layers. In lotus-miner this was run as part of PreCommit1.
+	// creating layers.
+	// In lotus-miner this was run as part of PreCommit1.
 	EnableSealSDR   bool
 	SealSDRMaxTasks int
+
+	// EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
+	// This task handles encoding of unsealed data into last sdr layer and building
+	// of TreeR, TreeC and TreeD.
+	// In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
+	EnableSealSDRTrees   bool
+	SealSDRTreesMaxTasks int
 }
 
 type DAGStoreConfig struct {

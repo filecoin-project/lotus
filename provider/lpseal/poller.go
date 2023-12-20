@@ -109,7 +109,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 
 		if task.TaskSDR == nil && s.pollers[pollerSDR].IsSet() {
 			s.pollers[pollerSDR].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-				n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_sdr = $1 WHERE sp_id = $2 AND sector_number = $3`, id, task.SpID, task.SectorNumber)
+				n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_sdr = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_sdr is null`, id, task.SpID, task.SectorNumber)
 				if err != nil {
 					return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 				}
@@ -120,16 +120,19 @@ func (s *SealPoller) poll(ctx context.Context) error {
 				return true, nil
 			})
 		}
-		if task.TaskTreeD == nil {
-			// todo start tree d task
-		}
+		if task.TaskTreeD == nil && task.TaskTreeC == nil && task.TaskTreeR == nil && s.pollers[pollerTrees].IsSet() && task.AfterSDR {
+			s.pollers[pollerTrees].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+				n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_tree_d = $1, task_id_tree_c = $1, task_id_tree_r = $1
+                            WHERE sp_id = $2 AND sector_number = $3 and task_id_tree_d is null and task_id_tree_c is null and task_id_tree_r is null`, id, task.SpID, task.SectorNumber)
+				if err != nil {
+					return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
+				}
+				if n != 1 {
+					return false, xerrors.Errorf("expected to update 1 row, updated %d", n)
+				}
 
-		// todo those two are really one pc2
-		if task.TaskTreeC == nil && task.AfterSDR {
-			// todo start tree c task
-		}
-		if task.TaskTreeR == nil && task.AfterTreeC {
-			// todo start tree r task
+				return true, nil
+			})
 		}
 
 		if task.TaskPrecommitMsg == nil && task.AfterTreeR && task.AfterTreeD {

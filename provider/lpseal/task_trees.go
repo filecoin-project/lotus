@@ -20,6 +20,16 @@ type TreesTask struct {
 	max int
 }
 
+func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *lpffi.SealCalls, maxTrees int) *TreesTask {
+	return &TreesTask{
+		sp: sp,
+		db: db,
+		sc: sc,
+
+		max: maxTrees,
+	}
+}
+
 func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
@@ -76,7 +86,25 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		ProofType: sectorParams.RegSealProof,
 	}
 
-	t.sc.
+	sealed, unsealed, err := t.sc.TreeRC(ctx, sref, commd)
+	if err != nil {
+		return false, xerrors.Errorf("computing tree r and c: %w", err)
+	}
+
+	// todo tree d!! (?)
+
+	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
+		SET after_tree_r = true, after_tree_c = true, after_tree_d = true, tree_r_cid = $1, tree_d_cid = $3
+		WHERE sp_id = $1 AND sector_number = $2`,
+		sectorParams.SpID, sectorParams.SectorNumber, sealed, unsealed)
+	if err != nil {
+		return false, xerrors.Errorf("store sdr-trees success: updating pipeline: %w", err)
+	}
+	if n != 1 {
+		return false, xerrors.Errorf("store sdr-trees success: updated %d rows", n)
+	}
+
+	return true, nil
 }
 
 func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
@@ -93,7 +121,7 @@ func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {
 		Cost: resources.Resources{
 			Cpu: 1,
 			Gpu: 1,
-			Ram: 8000, // todo
+			Ram: 8000 << 20, // todo
 		},
 		MaxFailures: 3,
 		Follows:     nil,

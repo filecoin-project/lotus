@@ -72,6 +72,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			sdrTask := lpseal.NewSDRTask(full, db, sp, slr, cfg.Subsystems.SealSDRMaxTasks)
 			activeTasks = append(activeTasks, sdrTask)
 		}
+		if cfg.Subsystems.EnableSealSDRTrees {
+			treesTask := lpseal.NewTreesTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			activeTasks = append(activeTasks, treesTask)
+		}
 	}
 	log.Infow("This lotus_provider instance handles",
 		"miner_addresses", maddrs,

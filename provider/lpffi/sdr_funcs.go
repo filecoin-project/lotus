@@ -2,14 +2,19 @@ package lpffi
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
+	"io"
+	"os"
 )
 
 var log = logging.Logger("lpffi")
@@ -104,6 +109,92 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef
 	return nil
 }
 
-func (sb *SealCalls) TreeRC() {
-	ffi.SealPreCommitPhase2()
+func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid) (cid.Cid, cid.Cid, error) {
+	p1o, err := sb.makePhase1Out(unsealed, sector.ProofType)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
+	}
+
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
+	}
+	defer releaseSector()
+
+	{
+		// create sector-sized file at paths.Sealed; PC2 transforms it into a sealed sector in-place
+		ssize, err := sector.ProofType.SectorSize()
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("getting sector size: %w", err)
+		}
+
+		// paths.Sealed is a string filepath
+		f, err := os.Create(paths.Sealed)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("creating sealed sector file: %w", err)
+		}
+		if err := f.Truncate(int64(ssize)); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("truncating sealed sector file: %w", err)
+		}
+
+		if os.Getenv("SEAL_WRITE_UNSEALED") == "1" {
+			// expliticly write zeros to unsealed sector
+			_, err := io.CopyN(f, nullreader.NewNullReader(abi.UnpaddedPieceSize(ssize)), int64(ssize))
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("writing zeros to sealed sector file: %w", err)
+			}
+		}
+	}
+
+	return ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
+}
+
+func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) ([]byte, error) {
+	commd, err := commcid.CIDToDataCommitmentV1(unsCid)
+	if err != nil {
+		return nil, xerrors.Errorf("make uns cid: %w", err)
+	}
+
+	type Config struct {
+		ID            string `json:"id"`
+		Path          string `json:"path"`
+		RowsToDiscard int    `json:"rows_to_discard"`
+		Size          int    `json:"size"`
+	}
+
+	type Labels struct {
+		Labels []Config `json:"labels"`
+	}
+
+	var phase1Output struct {
+		CommD           [32]byte           `json:"comm_d"`
+		Config          Config             `json:"config"` // TreeD
+		Labels          map[string]*Labels `json:"labels"`
+		RegisteredProof string             `json:"registered_proof"`
+	}
+
+	copy(phase1Output.CommD[:], commd)
+
+	phase1Output.Config.ID = "tree-d"
+	phase1Output.Config.Path = "/placeholder"
+	phase1Output.Labels = map[string]*Labels{}
+
+	switch spt {
+	case abi.RegisteredSealProof_StackedDrg2KiBV1_1, abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep:
+		phase1Output.Config.RowsToDiscard = 0
+		phase1Output.Config.Size = 127
+		phase1Output.Labels["StackedDrg2KiBV1"].Labels = make([]Config, 2)
+		phase1Output.RegisteredProof = "StackedDrg2KiBV1_1"
+
+		for i, l := range phase1Output.Labels["StackedDrg2KiBV1"].Labels {
+			l.ID = fmt.Sprintf("layer-%d", i+1)
+			l.Path = "/placeholder"
+			l.RowsToDiscard = 0
+			l.Size = 64
+		}
+	default:
+		panic("todo")
+	}
+
+	return json.Marshal(phase1Output)
 }
