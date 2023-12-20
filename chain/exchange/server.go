@@ -137,7 +137,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 
 	chain, err := collectChainSegment(ctx, s.cs, req)
 	if err != nil {
-		log.Debug("block sync request: collectChainSegment failed: ", err)
+		log.Info("block sync request: collectChainSegment failed: ", err)
 		return &Response{
 			Status:       InternalError,
 			ErrorMessage: err.Error(),
@@ -173,7 +173,6 @@ func collectChainSegment(ctx context.Context, cs *store.ChainStore, req *validat
 		if req.options.IncludeMessages {
 			bst.Messages, err = gatherMessages(ctx, cs, ts)
 			if err != nil {
-				log.Warn("collectChainSegment failed: ", err)
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
 
