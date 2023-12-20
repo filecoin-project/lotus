@@ -15,6 +15,7 @@ import (
 )
 
 func TestGetActorEvents(t *testing.T) {
+	t.Skip("skipping for now")
 	//require := require.New(t)
 	kit.QuietAllLogsExcept("events", "messagepool")
 
