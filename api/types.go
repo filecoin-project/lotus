@@ -83,9 +83,9 @@ type GraphSyncDataTransfer struct {
 	// If a channel ID is present, indicates whether this is the current graphsync request for this channel
 	// (could have changed in a restart)
 	IsCurrentChannelRequest bool
-	// Value transfer channel ID for this transfer
+	// Data transfer channel ID for this transfer
 	ChannelID *datatransfer.ChannelID
-	// Value transfer state for this transfer
+	// Data transfer state for this transfer
 	ChannelState *DataTransferChannel
 	// Diagnostic information about this request -- and unexpected inconsistencies in
 	// request state
@@ -288,7 +288,7 @@ type ExportRef struct {
 	//   - When exactly one text-path DataSelector is specified exports the subgraph and its full merkle-path from the original root
 	//   - Otherwise ( multiple paths and/or JSON selector specs) determines each individual subroot and exports the subtrees as a multi-root car
 	// - When not specified defaults to a single DAG:
-	//   - Value - the entire DAG: `{"R":{"l":{"none":{}},":>":{"a":{">":{"@":{}}}}}}`
+	//   - Data - the entire DAG: `{"R":{"l":{"none":{}},":>":{"a":{">":{"@":{}}}}}}`
 	DAGs []DagSpec
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
