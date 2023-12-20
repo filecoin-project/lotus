@@ -543,12 +543,6 @@ workflows:
           requires:
             - build
       - test:
-          name: test-itest-actor_events_filter
-          requires:
-            - build
-          suite: itest-actor_events_filter
-          target: "./itests/actor_events_filter_test.go"
-      - test:
           name: test-itest-api
           requires:
             - build
