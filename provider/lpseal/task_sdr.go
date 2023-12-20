@@ -107,7 +107,7 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 		return false, xerrors.Errorf("getting miner address: %w", err)
 	}
 
-	ticket, err := s.getTicket(ctx, maddr)
+	ticket, ticketEpoch, err := s.getTicket(ctx, maddr)
 	if err != nil {
 		return false, xerrors.Errorf("getting ticket: %w", err)
 	}
@@ -120,7 +120,10 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 	}
 
 	// store success!
-	n, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET after_sdr = true WHERE sp_id = $1 AND sector_number = $2`, sectorParams.SpID, sectorParams.SectorNumber)
+	n, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
+		SET after_sdr = true, ticket_epoch = $3, ticket_value = $4
+		WHERE sp_id = $1 AND sector_number = $2`,
+		sectorParams.SpID, sectorParams.SectorNumber, ticketEpoch, ticket)
 	if err != nil {
 		return false, xerrors.Errorf("store sdr success: updating pipeline: %w", err)
 	}
@@ -131,24 +134,24 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 	return true, nil
 }
 
-func (s *SDRTask) getTicket(ctx context.Context, maddr address.Address) (abi.SealRandomness, error) {
+func (s *SDRTask) getTicket(ctx context.Context, maddr address.Address) (abi.SealRandomness, abi.ChainEpoch, error) {
 	ts, err := s.api.ChainHead(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("getting chain head: %w", err)
+		return nil, 0, xerrors.Errorf("getting chain head: %w", err)
 	}
 
 	ticketEpoch := ts.Height() - policy.SealRandomnessLookback
 	buf := new(bytes.Buffer)
 	if err := maddr.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("marshaling miner address: %w", err)
+		return nil, 0, xerrors.Errorf("marshaling miner address: %w", err)
 	}
 
 	rand, err := s.api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes(), ts.Key())
 	if err != nil {
-		return nil, xerrors.Errorf("getting randomness from tickets: %w", err)
+		return nil, 0, xerrors.Errorf("getting randomness from tickets: %w", err)
 	}
 
-	return abi.SealRandomness(rand), nil
+	return abi.SealRandomness(rand), ticketEpoch, nil
 }
 
 func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
