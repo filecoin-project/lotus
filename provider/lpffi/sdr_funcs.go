@@ -115,6 +115,8 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
 	}
 
+	log.Errorw("phase1 output", "p1o", p1o)
+
 	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
@@ -163,6 +165,7 @@ func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) 
 	}
 
 	type Labels struct {
+		H      *string  `json:"_h"` // proofs want this..
 		Labels []Config `json:"labels"`
 	}
 
@@ -183,14 +186,16 @@ func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) 
 	case abi.RegisteredSealProof_StackedDrg2KiBV1_1, abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep:
 		phase1Output.Config.RowsToDiscard = 0
 		phase1Output.Config.Size = 127
-		phase1Output.Labels["StackedDrg2KiBV1"].Labels = make([]Config, 2)
+		phase1Output.Labels["StackedDrg2KiBV1"] = &Labels{}
 		phase1Output.RegisteredProof = "StackedDrg2KiBV1_1"
 
-		for i, l := range phase1Output.Labels["StackedDrg2KiBV1"].Labels {
-			l.ID = fmt.Sprintf("layer-%d", i+1)
-			l.Path = "/placeholder"
-			l.RowsToDiscard = 0
-			l.Size = 64
+		for i := 0; i < 2; i++ {
+			phase1Output.Labels["StackedDrg2KiBV1"].Labels = append(phase1Output.Labels["StackedDrg2KiBV1"].Labels, Config{
+				ID:            fmt.Sprintf("layer-%d", i+1),
+				Path:          "/placeholder",
+				RowsToDiscard: 0,
+				Size:          64,
+			})
 		}
 	default:
 		panic("todo")
