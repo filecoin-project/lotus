@@ -14,6 +14,7 @@ var log = logging.Logger("lpseal")
 
 const (
 	pollerSDR = iota
+	pollerTrees
 
 	numPollers
 )

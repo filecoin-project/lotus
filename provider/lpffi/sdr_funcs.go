@@ -103,3 +103,7 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef
 
 	return nil
 }
+
+func (sb *SealCalls) TreeRC() {
+	ffi.SealPreCommitPhase2()
+}

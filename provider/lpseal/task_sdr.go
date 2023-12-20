@@ -32,16 +32,16 @@ type SDRTask struct {
 
 	sc *lpffi.SealCalls
 
-	maxSDR int
+	max int
 }
 
 func NewSDRTask(api SDRAPI, db *harmonydb.DB, sp *SealPoller, sc *lpffi.SealCalls, maxSDR int) *SDRTask {
 	return &SDRTask{
-		api:    api,
-		db:     db,
-		sp:     sp,
-		sc:     sc,
-		maxSDR: maxSDR,
+		api: api,
+		db:  db,
+		sp:  sp,
+		sc:  sc,
+		max: maxSDR,
 	}
 }
 
@@ -163,14 +163,14 @@ func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEn
 
 func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
 	res := harmonytask.TaskTypeDetails{
-		Max:  s.maxSDR,
+		Max:  s.max,
 		Name: "SDR",
 		Cost: resources.Resources{ // todo offset for prefetch?
 			Cpu: 4, // todo multicore sdr
 			Gpu: 0,
 			Ram: 54 << 30, // todo measure; lower on 2k devnetn
 		},
-		MaxFailures: 0,
+		MaxFailures: 2,
 		Follows:     nil,
 	}
 
