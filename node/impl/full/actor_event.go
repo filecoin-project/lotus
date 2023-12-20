@@ -3,7 +3,6 @@ package full
 import (
 	"context"
 	"fmt"
-
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 
@@ -42,7 +41,7 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 	}
 
 	// Create a temporary filter
-	f, err := a.EventFilterManager.Install(ctx, filter.FromBlock, filter.ToBlock, cid.Undef, filter.Addresses, filter.Fields, false)
+	f, err := a.EventFilterManager.Install(ctx, filter.MinEpoch, filter.MaxEpoch, cid.Undef, filter.Addresses, filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +55,7 @@ func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActor
 	if a.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
-	fm, err := a.EventFilterManager.Install(ctx, f.FromBlock, f.ToBlock, cid.Undef, f.Addresses, f.Fields, false)
+	fm, err := a.EventFilterManager.Install(ctx, f.MinEpoch, f.MaxEpoch, cid.Undef, f.Addresses, f.Fields, false)
 	if err != nil {
 		return nil, err
 	}

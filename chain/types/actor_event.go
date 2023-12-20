@@ -21,13 +21,19 @@ type SubActorEventFilter struct {
 
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
+
 	Addresses []address.Address
+
 	// Matches events with the specified key/values, or all events if empty.
 	// If the `Blocks` slice is empty, matches on the key only.
 	Fields map[string][]ActorEventBlock
+
 	// Epoch based filtering ?
-	FromBlock abi.ChainEpoch `json:"fromBlock,omitempty"`
-	ToBlock   abi.ChainEpoch `json:"toBlock,omitempty"`
+	// Start epoch for the filter; -1 means no minimum
+	MinEpoch abi.ChainEpoch `json:"fromBlock,omitempty"`
+
+	// End epoch for the filter; -1 means no maximum
+	MaxEpoch abi.ChainEpoch `json:"toBlock,omitempty"`
 }
 
 type ActorEvent struct {

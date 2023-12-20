@@ -146,6 +146,7 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 					return address.Undef, false
 				}
 				// we have an f4 address, make sure it's assigned by the EAM
+				// What happens when we introduce events for built-in Actor events here ?
 				if namespace, _, err := varint.FromUvarint(actor.Address.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
 					return address.Undef, false
 				}

@@ -422,8 +422,8 @@ func init() {
 				},
 			},
 		},
-		FromBlock: 2301220,
-		ToBlock:   2301220,
+		MinEpoch: 2301220,
+		MaxEpoch: 2301220,
 	})
 
 	addExample(&types.SubActorEventFilter{
@@ -437,8 +437,8 @@ func init() {
 					},
 				},
 			},
-			FromBlock: 2301220,
-			ToBlock:   2301220,
+			MinEpoch: 2301220,
+			MaxEpoch: 2301220,
 		},
 		WriteExisting: true,
 	})
