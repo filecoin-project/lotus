@@ -337,7 +337,7 @@ func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, re
 		report.Stat.FSAvailable,
 		report.Stat.Reserved,
 		report.Stat.Used,
-		time.Now())
+		time.Now().UTC())
 	if err != nil {
 		return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
 	}
