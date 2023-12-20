@@ -6,7 +6,9 @@ import (
 	"embed"
 	"net"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"go.opencensus.io/tag"
@@ -20,6 +22,10 @@ import (
 // go:embed static
 var static embed.FS
 
+// An dev mode hack for no-restart changes to static and templates.
+// You still need to recomplie the binary for changes to go code.
+var webDev = os.Getenv("LOTUS_WEB_DEV") == "1"
+
 func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 	mux := mux.NewRouter()
 	api.Routes(mux.PathPrefix("/api").Subrouter(), deps)
@@ -28,6 +34,9 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 		return nil, err
 	}
 	mux.NotFoundHandler = http.FileServer(http.FS(static))
+	if webDev {
+		mux.NotFoundHandler = http.FileServer(http.Dir("cmd/lotus-provider/web/static"))
+	}
 
 	return &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +50,8 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-provider"))
 			return ctx
 		},
-		Addr: deps.Cfg.Subsystems.GuiAddress,
+		Addr:              deps.Cfg.Subsystems.GuiAddress,
+		ReadTimeout:       time.Minute * 3,
+		ReadHeaderTimeout: time.Minute * 3, // lint
 	}, nil
 }

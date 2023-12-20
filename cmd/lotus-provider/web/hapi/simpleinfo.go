@@ -77,7 +77,7 @@ func (a *app) indexTasksHistory(w http.ResponseWriter, r *http.Request) {
 	a.executeTemplate(w, "cluster_task_history", s)
 }
 
-var templateDev = os.Getenv("LOTUS_HAPI_TEMPLATE_DEV") == "1"
+var templateDev = os.Getenv("LOTUS_WEB_DEV") == "1"
 
 func (a *app) executeTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if templateDev {

@@ -167,12 +167,16 @@ var webCmd = &cli.Command{
 			cfg := config.DefaultLotusProvider()
 			cfg.Subsystems.EnableWebGui = true
 			var b bytes.Buffer
-			toml.NewEncoder(&b).Encode(cfg)
+			if err = toml.NewEncoder(&b).Encode(cfg); err != nil {
+				return err
+			}
 			if err = setConfig(db, "web", b.String()); err != nil {
 				return err
 			}
 		}
-		cctx.Set("layers", "web")
+		if err = cctx.Set("layers", "web"); err != nil {
+			return err
+		}
 		return runCmd.Action(cctx)
 	},
 }
