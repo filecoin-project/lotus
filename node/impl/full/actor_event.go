@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 	"fmt"
+
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 
@@ -55,7 +56,7 @@ func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActor
 	if a.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
-	fm, err := a.EventFilterManager.Install(ctx, f.MinEpoch, f.MaxEpoch, cid.Undef, f.Addresses, f.Fields, false)
+	fm, err := a.EventFilterManager.Install(ctx, f.Filter.MinEpoch, f.Filter.MaxEpoch, cid.Undef, f.Filter.Addresses, f.Filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActor
 			_ = a.EventFilterManager.Remove(ctx, fm.ID())
 		}()
 
-		if f.WriteExisting {
+		if f.Prefill {
 			evs, err := getCollected(ctx, fm)
 			if err != nil {
 				log.Errorf("failed to get collected events: %w", err)

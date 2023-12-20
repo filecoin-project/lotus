@@ -9,31 +9,32 @@ import (
 
 type ActorEventBlock struct {
 	// what value codec does client want to match on ?
-	Codec uint64
+	Codec uint64 `json:"codec"`
 	// data associated with the "event key"
-	Value []byte
+	Value []byte `json:"value"`
 }
 
 type SubActorEventFilter struct {
-	ActorEventFilter
-	WriteExisting bool
+	Filter  ActorEventFilter `json:"filter"`
+	Prefill bool             `json:"prefill"`
 }
 
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
-
-	Addresses []address.Address
+	// TODO: Should we also allow Eth addresses here?
+	// For now, this MUST be a Filecoin address.
+	Addresses []address.Address `json:"address"`
 
 	// Matches events with the specified key/values, or all events if empty.
 	// If the `Blocks` slice is empty, matches on the key only.
-	Fields map[string][]ActorEventBlock
+	Fields map[string][]ActorEventBlock `json:"fields"`
 
 	// Epoch based filtering ?
 	// Start epoch for the filter; -1 means no minimum
-	MinEpoch abi.ChainEpoch `json:"fromBlock,omitempty"`
+	MinEpoch abi.ChainEpoch `json:"minEpoch,omitempty"`
 
 	// End epoch for the filter; -1 means no maximum
-	MaxEpoch abi.ChainEpoch `json:"toBlock,omitempty"`
+	MaxEpoch abi.ChainEpoch `json:"maxEpoch,omitempty"`
 }
 
 type ActorEvent struct {

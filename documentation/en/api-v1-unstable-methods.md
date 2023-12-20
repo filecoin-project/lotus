@@ -3400,19 +3400,19 @@ Inputs:
 ```json
 [
   {
-    "Addresses": [
+    "address": [
       "f01234"
     ],
-    "Fields": {
+    "fields": {
       "abc": [
         {
-          "Codec": 81,
-          "Value": "ZGF0YQ=="
+          "codec": 81,
+          "value": "ZGF0YQ=="
         }
       ]
     },
-    "fromBlock": 2301220,
-    "toBlock": 2301220
+    "minEpoch": 2301220,
+    "maxEpoch": 2301220
   }
 ]
 ```
@@ -8697,20 +8697,22 @@ Inputs:
 ```json
 [
   {
-    "Addresses": [
-      "f01234"
-    ],
-    "Fields": {
-      "abc": [
-        {
-          "Codec": 81,
-          "Value": "ZGF0YQ=="
-        }
-      ]
+    "filter": {
+      "address": [
+        "f01234"
+      ],
+      "fields": {
+        "abc": [
+          {
+            "codec": 81,
+            "value": "ZGF0YQ=="
+          }
+        ]
+      },
+      "minEpoch": 2301220,
+      "maxEpoch": 2301220
     },
-    "fromBlock": 2301220,
-    "toBlock": 2301220,
-    "WriteExisting": true
+    "prefill": true
   }
 ]
 ```

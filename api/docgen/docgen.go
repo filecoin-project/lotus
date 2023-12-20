@@ -427,7 +427,7 @@ func init() {
 	})
 
 	addExample(&types.SubActorEventFilter{
-		ActorEventFilter: types.ActorEventFilter{
+		Filter: types.ActorEventFilter{
 			Addresses: []address.Address{addr},
 			Fields: map[string][]types.ActorEventBlock{
 				"abc": {
@@ -440,7 +440,7 @@ func init() {
 			MinEpoch: 2301220,
 			MaxEpoch: 2301220,
 		},
-		WriteExisting: true,
+		Prefill: true,
 	})
 }
 
