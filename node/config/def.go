@@ -109,6 +109,7 @@ func DefaultFullNode() *FullNode {
 		Cluster: *DefaultUserRaftConfig(),
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
+			EnableActorEventsAPI:         false,
 			EthTxHashMappingLifetimeDays: 0,
 			Events: Events{
 				DisableRealTimeFilterAPI: false,

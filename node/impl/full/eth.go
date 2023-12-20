@@ -10,12 +10,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -24,7 +23,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	"github.com/filecoin-project/go-state-types/exitcode"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -1360,7 +1358,7 @@ func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEvent
 	for k, v := range keys {
 		for _, vv := range v {
 			keysWithCodec[k] = append(keysWithCodec[k], types.ActorEventBlock{
-				Codec: cid.Raw,
+				Codec: uint64(multicodec.Raw),
 				Value: vv,
 			})
 		}
