@@ -1192,6 +1192,7 @@ COMMANDS:
    list-claims                    List claims made by provider
    remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
+   extend-claims-terms            extend claims terms
    help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1322,6 +1323,22 @@ USAGE:
 OPTIONS:
    --from value  optionally specify the account to send the message from
    --help, -h    show help
+```
+
+### lotus filplus extend-claims-terms
+```
+NAME:
+   lotus filplus extend-claims-terms - extend claims terms
+
+USAGE:
+   lotus filplus extend-claims-terms [command options] providerAddress Optional[...claimId]
+
+OPTIONS:
+   --from value            specify the account to send the message from, it's client address
+   --extension value       try to extend selected sectors by this number of epochs, defaults to 180 days (default: 518400)
+   --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
+   --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
+   --help, -h              show help
 ```
 
 ## lotus paych

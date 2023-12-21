@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
@@ -27,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -46,6 +48,7 @@ var filplusCmd = &cli.Command{
 		filplusListClaimsCmd,
 		filplusRemoveExpiredAllocationsCmd,
 		filplusRemoveExpiredClaimsCmd,
+		filplusExtendClaimTermsCmd,
 	},
 }
 
@@ -795,6 +798,187 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		sigBytes := append([]byte{byte(sig.Type)}, sig.Data...)
 
 		fmt.Println(hex.EncodeToString(sigBytes))
+
+		return nil
+	},
+}
+
+var filplusExtendClaimTermsCmd = &cli.Command{
+	Name:      "extend-claims-terms",
+	Usage:     "extend claims terms",
+	ArgsUsage: "providerAddress Optional[...claimId]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "from",
+			Usage:    "specify the account to send the message from, it's client address",
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:  "extension",
+			Usage: "try to extend selected sectors by this number of epochs, defaults to 180 days",
+			Value: 518400,
+		},
+		&cli.Int64Flag{
+			Name:  "new-expiration",
+			Usage: "try to extend selected sectors to this epoch, ignoring extension",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag to really extend sectors, otherwise will only print out json representation of parameters",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("pass --really-do-it to confirm this action")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		args := cctx.Args().Slice()
+
+		providerAddr, err := address.NewFromString(args[0])
+		if err != nil {
+			return err
+		}
+
+		providerIdAddr, err := api.StateLookupID(ctx, providerAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		se, err := policy.GetMaxSectorExpirationExtension(nv)
+		if err != nil {
+			return err
+		}
+
+		from := cctx.String("from")
+		fromAddr, err := address.NewFromString(from)
+		if err != nil {
+			return err
+		}
+		fromIdAddr, err := api.StateLookupID(ctx, fromAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+		fromId, err := address.IDFromAddress(fromIdAddr)
+		if err != nil {
+			return err
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		verifregState, err := verifreg.Load(store, verifregActor)
+		if err != nil {
+			return err
+		}
+
+		claimIDsMap := make(map[verifreg.ClaimId]struct{}, len(args)-1)
+		for _, claimStr := range args[1:] {
+			id, err := strconv.ParseUint(claimStr, 10, 64)
+			if err != nil {
+				return err
+			}
+			claimIDsMap[verifreg.ClaimId(id)] = struct{}{}
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+		currEpoch := ts.Height()
+
+		claimsMap, err := verifregState.GetClaims(providerIdAddr)
+		if err != nil {
+			return err
+		}
+
+		validClaims := make([]verifregtypes9.ClaimTerm, 0)
+		for claimId, claim := range claimsMap {
+			if currEpoch < (claim.TermStart+claim.TermMax) && (uint64(claim.Client)) == fromId {
+				if len(claimIDsMap) > 0 {
+					if _, ok := claimIDsMap[claimId]; !ok {
+						continue
+					}
+				}
+				claimTerm := verifregtypes9.ClaimTerm{
+					Provider: claim.Provider,
+					ClaimId:  claimId,
+				}
+
+				extension := abi.ChainEpoch(cctx.Int64("extension"))
+				termMax := claim.TermMax + extension
+
+				if cctx.IsSet("new-expiration") {
+					termMax = abi.ChainEpoch(cctx.Int64("new-expiration") - int64(claim.TermStart))
+				}
+
+				maxExtendNow := currEpoch + se
+				newExp := claim.TermStart + termMax
+				if newExp > maxExtendNow {
+					newExp = maxExtendNow
+					termMax = maxExtendNow - claim.TermStart
+				}
+
+				if newExp <= currEpoch+builtin.EpochsInDay {
+					continue
+				}
+				claimTerm.TermMax = termMax
+				validClaims = append(validClaims, claimTerm)
+			}
+		}
+
+		if len(validClaims) == 0 {
+			return xerrors.New("no valid claims")
+		}
+
+		params, err := actors.SerializeParams(&verifregtypes9.ExtendClaimTermsParams{
+			Terms: validClaims,
+		})
+		if err != nil {
+			return err
+		}
+
+		msg := &types.Message{
+			To:     verifreg.Address,
+			From:   fromAddr,
+			Method: verifreg.Methods.ExtendClaimTerms,
+			Params: params,
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
+
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if mwait.Receipt.ExitCode.IsError() {
+			return fmt.Errorf("failed to extend ClaimTerms: %d", mwait.Receipt.ExitCode)
+		}
 
 		return nil
 	},
