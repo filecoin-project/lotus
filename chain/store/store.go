@@ -1248,6 +1248,9 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
+		if ts == nil {
+			return nil, xerrors.Errorf("can't get heaviest tipset")
+		}
 	}
 
 	if h > ts.Height() {
