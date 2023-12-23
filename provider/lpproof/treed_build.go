@@ -90,17 +90,18 @@ func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.C
 	}
 
 	// prepare apex buffer
-	apexBottomSize := uint64(size) / uint64(len(workerBuffers[0][0]))
 	var apexBuf [][]byte
-	threadLayers := 1
+	{
+		apexBottomSize := uint64(size) / uint64(len(workerBuffers[0][0]))
+		if apexBottomSize == 0 {
+			apexBottomSize = 1
+		}
 
-	if apexBottomSize > 1 {
 		apexBuf = make([][]byte, 1)
-		apexBuf[0] = make([]byte, apexBottomSize)
+		apexBuf[0] = make([]byte, apexBottomSize*nodeSize)
 		for len(apexBuf[len(apexBuf)-1]) > 32 {
 			newLevel := make([]byte, len(apexBuf[len(apexBuf)-1])/2)
 			apexBuf = append(apexBuf, newLevel)
-			threadLayers++
 		}
 	}
 
@@ -148,10 +149,10 @@ func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.C
 		go func(startOffset uint64) {
 			hashChunk(workBuffer)
 
-			// persist apex if needed
-			if len(apexBuf) > 0 {
+			// persist apex
+			{
 				apexHash := workBuffer[len(workBuffer)-1]
-				hashPos := startOffset >> threadLayers
+				hashPos := startOffset / uint64(len(workBuffer[0])) * nodeSize
 
 				copy(apexBuf[0][hashPos:hashPos+nodeSize], apexHash)
 			}
@@ -191,13 +192,18 @@ func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.C
 		return cid.Undef, oerr
 	}
 
+	threadLayers := bits.Len(uint(len(workerBuffers[0][0])) / nodeSize)
+
 	if len(apexBuf) > 0 {
 		// hash the apex
 		hashChunk(apexBuf)
 
 		// write apex
 		for apexLayer, layerData := range apexBuf {
-			layer := apexLayer + threadLayers
+			if apexLayer == 0 {
+				continue
+			}
+			layer := apexLayer + threadLayers - 1
 
 			layerOff := layerOffset(uint64(size), layer)
 			_, werr := out.WriteAt(layerData, int64(layerOff))
@@ -208,11 +214,7 @@ func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.C
 	}
 
 	var commp [32]byte
-	if len(workerBuffers) == 1 {
-		copy(commp[:], workerBuffers[0][0])
-	} else {
-		copy(commp[:], apexBuf[0])
-	}
+	copy(commp[:], apexBuf[len(apexBuf)-1])
 
 	commCid, err := commcid.DataCommitmentV1ToCID(commp[:])
 	if err != nil {
