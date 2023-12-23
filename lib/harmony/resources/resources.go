@@ -3,6 +3,7 @@ package resources
 import (
 	"bytes"
 	"context"
+	"github.com/elastic/go-sysinfo"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/pbnjay/memory"
 	"golang.org/x/sys/unix"
 	"golang.org/x/xerrors"
 
@@ -122,9 +122,19 @@ func getResources() (res Resources, err error) {
 		}
 	}
 
+	h, err := sysinfo.Host()
+	if err != nil {
+		return Resources{}, err
+	}
+
+	mem, err := h.Memory()
+	if err != nil {
+		return Resources{}, err
+	}
+
 	res = Resources{
 		Cpu: runtime.NumCPU(),
-		Ram: memory.FreeMemory(),
+		Ram: mem.Available,
 		Gpu: getGPUDevices(),
 	}
 
