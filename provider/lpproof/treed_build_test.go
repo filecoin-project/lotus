@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/require"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -260,5 +261,39 @@ func BenchmarkHashChunk(b *testing.B) {
 		hashChunk(data)
 		// Use the result in some way to avoid compiler optimization
 		_ = data[1]
+	}
+}
+
+func BenchmarkBuildTreeD512M(b *testing.B) {
+	const dataSize = 512 * 1024 * 1024 // 512 MiB
+
+	// Generate 512 MiB of random data
+	data := make([]byte, dataSize)
+	if _, err := rand.Read(data); err != nil {
+		b.Fatalf("Failed to generate random data: %v", err)
+	}
+
+	b.SetBytes(int64(dataSize)) // Set the number of bytes for the benchmark
+
+	for i := 0; i < b.N; i++ {
+		// Create a temporary file for each iteration
+		tempFile, err := ioutil.TempFile("", "tree.dat")
+		if err != nil {
+			b.Fatalf("Failed to create temporary file: %v", err)
+		}
+		tempFilePath := tempFile.Name()
+		tempFile.Close()
+
+		b.StartTimer() // Start the timer for the BuildTreeD operation
+
+		_, err = BuildTreeD(bytes.NewReader(data), tempFilePath, dataSize)
+		if err != nil {
+			b.Fatalf("BuildTreeD failed: %v", err)
+		}
+
+		b.StopTimer() // Stop the timer after BuildTreeD completes
+
+		// Clean up the temporary file
+		os.Remove(tempFilePath)
 	}
 }
