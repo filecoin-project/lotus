@@ -116,7 +116,7 @@ func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size
 	maybeUns := storiface.FTNone
 	// todo sectors with data
 
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, maybeUns, storiface.FTCache, storiface.PathSealing)
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, maybeUns, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}

@@ -88,7 +88,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	// D
-	treeUnsealed, err := t.sc.TreeD(ctx, sref, abi.PaddedPieceSize(ssize), nullreader.NewNullReader(abi.PaddedPieceSize(ssize).Unpadded()))
+	treeUnsealed, err := t.sc.TreeD(ctx, sref, abi.PaddedPieceSize(ssize), nullreader.NewNullReader(abi.UnpaddedPieceSize(ssize)))
 	if err != nil {
 		return false, xerrors.Errorf("computing tree d: %w", err)
 	}
@@ -104,7 +104,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_tree_r = true, after_tree_c = true, after_tree_d = true, tree_r_cid = $1, tree_d_cid = $3
+		SET after_tree_r = true, after_tree_c = true, after_tree_d = true, tree_r_cid = $3, tree_d_cid = $4
 		WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, sealed, unsealed)
 	if err != nil {
