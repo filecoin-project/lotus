@@ -7,14 +7,17 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/provider/lpproof"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 var log = logging.Logger("lpffi")
@@ -107,6 +110,21 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef
 	}
 
 	return nil
+}
+
+func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size abi.PaddedPieceSize, data io.Reader) (cid.Cid, error) {
+	maybeUns := storiface.FTNone
+	// todo sectors with data
+
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, maybeUns, storiface.FTCache, storiface.PathSealing)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
+	}
+	defer releaseSector()
+
+	log.Errorw("oest.idos.hbisor.bpisro.pisro.bpisro.bxsrobpyxsrbpoyxsrgbopyx treed", "paths", paths.Cache)
+
+	return lpproof.BuildTreeD(data, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
 }
 
 func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid) (cid.Cid, cid.Cid, error) {

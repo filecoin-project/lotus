@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpffi"
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"golang.org/x/xerrors"
 )
@@ -86,12 +87,21 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		ProofType: sectorParams.RegSealProof,
 	}
 
+	// D
+	treeUnsealed, err := t.sc.TreeD(ctx, sref, abi.PaddedPieceSize(ssize), nullreader.NewNullReader(abi.PaddedPieceSize(ssize).Unpadded()))
+	if err != nil {
+		return false, xerrors.Errorf("computing tree d: %w", err)
+	}
+
+	// R / C
 	sealed, unsealed, err := t.sc.TreeRC(ctx, sref, commd)
 	if err != nil {
 		return false, xerrors.Errorf("computing tree r and c: %w", err)
 	}
 
-	// todo tree d!! (?)
+	if unsealed != treeUnsealed {
+		return false, xerrors.Errorf("tree-d and tree-r/c unsealed CIDs disagree")
+	}
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
 		SET after_tree_r = true, after_tree_c = true, after_tree_d = true, tree_r_cid = $1, tree_d_cid = $3
