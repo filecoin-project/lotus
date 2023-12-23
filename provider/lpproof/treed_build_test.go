@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
+	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -271,6 +273,26 @@ func BenchmarkBuildTreeD512M(b *testing.B) {
 	data := make([]byte, dataSize)
 	if _, err := rand.Read(data); err != nil {
 		b.Fatalf("Failed to generate random data: %v", err)
+	}
+
+	// preallocate NumCPU+1 1MiB/512k/256k/...
+	// with Pool.Get / Pool.Put, so that they are in the pool
+	{
+		nc := runtime.NumCPU()
+		bufs := [][]byte{}
+		for i := 0; i < nc+1; i++ {
+			for sz := 1 << 20; sz > 32; sz >>= 1 {
+				b := pool.Get(sz)
+				bufs = append(bufs, b)
+			}
+		}
+		for _, b := range bufs {
+			pool.Put(b)
+		}
+	}
+
+	if b.N == 1 {
+		b.N = 10
 	}
 
 	b.SetBytes(int64(dataSize)) // Set the number of bytes for the benchmark
