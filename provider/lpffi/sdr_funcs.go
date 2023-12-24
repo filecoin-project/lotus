@@ -122,8 +122,6 @@ func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size
 	}
 	defer releaseSector()
 
-	log.Errorw("oest.idos.hbisor.bpisro.pisro.bpisro.bxsrobpyxsrbpoyxsrgbopyx treed", "paths", paths.Cache)
-
 	return lpproof.BuildTreeD(data, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
 }
 
