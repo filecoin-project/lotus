@@ -15,6 +15,7 @@ var log = logging.Logger("lpseal")
 const (
 	pollerSDR = iota
 	pollerTrees
+	pollerPrecommitMsg
 
 	numPollers
 )
@@ -123,7 +124,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		if task.TaskTreeD == nil && task.TaskTreeC == nil && task.TaskTreeR == nil && s.pollers[pollerTrees].IsSet() && task.AfterSDR {
 			s.pollers[pollerTrees].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 				n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_tree_d = $1, task_id_tree_c = $1, task_id_tree_r = $1
-                            WHERE sp_id = $2 AND sector_number = $3 and task_id_tree_d is null and task_id_tree_c is null and task_id_tree_r is null`, id, task.SpID, task.SectorNumber)
+                            WHERE sp_id = $2 AND sector_number = $3 and after_sdr = true and task_id_tree_d is null and task_id_tree_c is null and task_id_tree_r is null`, id, task.SpID, task.SectorNumber)
 				if err != nil {
 					return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 				}
@@ -136,7 +137,17 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		}
 
 		if task.TaskPrecommitMsg == nil && task.AfterTreeR && task.AfterTreeD {
-			// todo start precommit msg task
+			s.pollers[pollerPrecommitMsg].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+				n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_precommit_msg = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_precommit_msg is null and after_tree_r = true and after_tree_d = true`, id, task.SpID, task.SectorNumber)
+				if err != nil {
+					return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
+				}
+				if n != 1 {
+					return false, xerrors.Errorf("expected to update 1 row, updated %d", n)
+				}
+
+				return true, nil
+			})
 		}
 
 		if task.TaskPrecommitMsgWait == nil && task.AfterPrecommitMsg {
