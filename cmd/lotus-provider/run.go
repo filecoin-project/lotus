@@ -117,13 +117,10 @@ var runCmd = &cli.Command{
 		dependencies := &deps.Deps{}
 		err = dependencies.PopulateRemainingDeps(ctx, cctx, true)
 		if err != nil {
-			fmt.Println("err", err)
 			return err
 		}
-		fmt.Println("ef")
 
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
-		fmt.Println("gh")
 
 		if err != nil {
 			return nil
