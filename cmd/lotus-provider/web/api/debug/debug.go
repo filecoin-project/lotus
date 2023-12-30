@@ -29,7 +29,7 @@ type debug struct {
 
 func Routes(r *mux.Router, deps *deps.Deps) {
 	d := debug{deps}
-	r.Methods("GET").Path("chain-state-sse").HandlerFunc(d.chainStateSSE)
+	r.HandleFunc("/chain-state-sse", d.chainStateSSE)
 }
 
 type rpcInfo struct {
@@ -79,29 +79,24 @@ func (d *debug) chainStateSSE(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		apiInfos := map[string][]byte{} // api address -> token
-		// for dedup by address
-		for _, info := range rpcInfos {
-			ai := cliutil.ParseApiInfo(info.Apis.ChainApiInfo[0])
-			apiInfos[ai.Addr] = ai.Token
-		}
+		dedup := map[string]bool{} // for dedup by address
 
 		infos := map[string]rpcInfo{} // api address -> rpc info
 		var infosLk sync.Mutex
 
 		var wg sync.WaitGroup
-		wg.Add(len(rpcInfos))
-		for addr, token := range apiInfos {
-			addr := addr
-			ai := cliutil.APIInfo{
-				Addr:  addr,
-				Token: token,
+		for _, info := range rpcInfos {
+			ai := cliutil.ParseApiInfo(info.Apis.ChainApiInfo[0])
+			if dedup[ai.Addr] {
+				continue
 			}
-			go func(info string) {
+			dedup[ai.Addr] = true
+			wg.Add(1)
+			go func() {
 				defer wg.Done()
 				var clayers []string
 				for layer, a := range confNameToAddr {
-					if a == addr {
+					if a == ai.Addr {
 						clayers = append(clayers, layer)
 					}
 				}
@@ -113,8 +108,8 @@ func (d *debug) chainStateSSE(w http.ResponseWriter, r *http.Request) {
 				}
 				defer func() {
 					infosLk.Lock()
+					defer infosLk.Unlock()
 					infos[ai.Addr] = myinfo
-					infosLk.Unlock()
 				}()
 				da, err := ai.DialArgs("v1")
 				if err != nil {
@@ -126,7 +121,7 @@ func (d *debug) chainStateSSE(w http.ResponseWriter, r *http.Request) {
 
 				v1api, closer, err := client.NewFullNodeRPCV1(ctx, da, ah)
 				if err != nil {
-					log.Warnf("Not able to establish connection to node with addr: %s", addr)
+					log.Warnf("Not able to establish connection to node with addr: %s", ai.Addr)
 					return
 				}
 				defer closer()
@@ -160,7 +155,7 @@ func (d *debug) chainStateSSE(w http.ResponseWriter, r *http.Request) {
 					Version:   ver.Version,
 					SyncState: syncState,
 				}
-			}(addr)
+			}()
 		}
 		wg.Wait()
 

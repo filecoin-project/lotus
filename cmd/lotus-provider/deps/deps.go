@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -176,7 +177,11 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 
 	if deps.Full == nil {
 		var fullCloser func()
-		deps.Full, fullCloser, err = cliutil.GetFullNodeAPIV1LotusProvider(cctx, deps.Cfg.Apis.ChainApiInfo)
+		cfgApiInfo := deps.Cfg.Apis.ChainApiInfo
+		if v := os.Getenv("FULLNODE_API_INFO"); v != "" {
+			cfgApiInfo = []string{v}
+		}
+		deps.Full, fullCloser, err = cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfgApiInfo)
 		if err != nil {
 			return err
 		}
@@ -267,6 +272,7 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 		for _, k := range meta.Keys() {
 			have = append(have, strings.Join(k, " "))
 		}
+		log.Infow("Using layer", "layer", layer, "config", lp)
 	}
 	_ = have // FUTURE: verify that required fields are here.
 	// If config includes 3rd-party config, consider JSONSchema as a way that

@@ -4,9 +4,12 @@ package web
 import (
 	"context"
 	"embed"
+	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -19,33 +22,57 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
-// go:embed static
+//go:embed static
 var static embed.FS
+
+var basePath = "/static/"
 
 // An dev mode hack for no-restart changes to static and templates.
 // You still need to recomplie the binary for changes to go code.
 var webDev = os.Getenv("LOTUS_WEB_DEV") == "1"
 
 func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
-	mux := mux.NewRouter()
-	api.Routes(mux.PathPrefix("/api").Subrouter(), deps)
-	err := hapi.Routes(mux.PathPrefix("/hapi").Subrouter(), deps)
+	mx := mux.NewRouter()
+	err := hapi.Routes(mx.PathPrefix("/hapi").Subrouter(), deps)
 	if err != nil {
 		return nil, err
 	}
-	mux.NotFoundHandler = http.FileServer(http.FS(static))
+	api.Routes(mx.PathPrefix("/api").Subrouter(), deps)
+
+	basePath := basePath
+
+	var static fs.FS = static
 	if webDev {
-		mux.NotFoundHandler = http.FileServer(http.Dir("cmd/lotus-provider/web/static"))
+		basePath = "cmd/lotus-provider/web/static"
+		static = os.DirFS(basePath)
 	}
 
+	mx.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If the request is for a directory, redirect to the index file.
+		if strings.HasSuffix(r.URL.Path, "/") {
+			r.URL.Path += "index.html"
+		}
+
+		file, err := static.Open(path.Join(basePath, r.URL.Path)[1:])
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 Not Found"))
+			return
+		}
+		defer file.Close()
+
+		fileInfo, err := file.Stat()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 Internal Server Error"))
+			return
+		}
+
+		http.ServeContent(w, r, fileInfo.Name(), fileInfo.ModTime(), file.(io.ReadSeeker))
+	})
+
 	return &http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasSuffix(r.URL.Path, "/") {
-				r.URL.Path = r.URL.Path + "index.html"
-				return
-			}
-			mux.ServeHTTP(w, r)
-		}),
+		Handler: http.HandlerFunc(mx.ServeHTTP),
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-provider"))
 			return ctx

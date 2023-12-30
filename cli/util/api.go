@@ -445,7 +445,7 @@ func GetFullNodeAPIV1LotusProvider(ctx *cli.Context, ainfoCfg []string, opts ...
 	for _, head := range heads {
 		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
 		if err != nil {
-			log.Warnf("Not able to establish connection to node with addr: %s", head.addr)
+			log.Warnf("Not able to establish connection to node with addr: %s, Reason: %s", head.addr, err.Error())
 			continue
 		}
 		fullNodes = append(fullNodes, v1api)

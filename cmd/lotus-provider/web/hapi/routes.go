@@ -15,9 +15,7 @@ import (
 var templateFS embed.FS
 
 func Routes(r *mux.Router, deps *deps.Deps) error {
-
-	t := new(template.Template)
-	t, err := t.ParseFS(templateFS, "web/*")
+	t, err := template.ParseFS(templateFS, "web/*")
 	if err != nil {
 		return xerrors.Errorf("parse templates: %w", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -155,6 +156,15 @@ var webCmd = &cli.Command{
 			Usage: "Address to listen on",
 			Value: "127.0.0.1:4701",
 		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base. Web will be added",
+			Value: cli.NewStringSlice("base"),
+		},
+		&cli.BoolFlag{
+			Name:  "nosync",
+			Usage: "don't check full-node sync status",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		db, err := deps.MakeDB(cctx)
@@ -174,7 +184,9 @@ var webCmd = &cli.Command{
 				return err
 			}
 		}
-		if err = cctx.Set("layers", "web"); err != nil {
+		layers := append([]string{"web"}, cctx.StringSlice("layers")...)
+		err = cctx.Set("layers", strings.Join(layers, ","))
+		if err != nil {
 			return err
 		}
 		return runCmd.Action(cctx)
