@@ -56,15 +56,15 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 		file, err := static.Open(path.Join(basePath, r.URL.Path)[1:])
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("404 Not Found"))
+			_, _ = w.Write([]byte("404 Not Found"))
 			return
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		fileInfo, err := file.Stat()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 Internal Server Error"))
+			_, _ = w.Write([]byte("500 Internal Server Error"))
 			return
 		}
 
