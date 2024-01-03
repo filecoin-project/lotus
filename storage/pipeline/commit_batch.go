@@ -331,7 +331,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		FailedSectors: map[abi.SectorNumber]string{},
 	}
 
-	params := miner.ProveCommitSectors2Params{}
+	params := miner.ProveCommitSectors3Params{}
 
 	infos := make([]proof.AggregateSealVerifyInfo, 0, total)
 	collateral := big.Zero()
@@ -438,7 +438,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectors2Params: %w", err)
 	}
 
-	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors2, needFunds, maxFee, enc.Bytes())
+	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
 		log.Errorf("simulating CommitBatch message failed: %s", err)
@@ -458,7 +458,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		return append(ret0, ret1...), nil
 	}
 
-	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors2, needFunds, maxFee, enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed (params size: %d, sectors: %d, agg: %t): %w", len(enc.Bytes()), len(sectors), aggregate, err)
 	}

@@ -252,7 +252,7 @@ type CompactPartitionsParams = minertypes.CompactPartitionsParams
 type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
 
 type PieceActivationManifest = minertypes13.PieceActivationManifest
-type ProveCommitSectors2Params = minertypes13.ProveCommitSectors2Params
+type ProveCommitSectors3Params = minertypes13.ProveCommitSectors3Params
 type SectorActivationManifest = minertypes13.SectorActivationManifest
 type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
 type SectorUpdateManifest = minertypes13.SectorUpdateManifest
