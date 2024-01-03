@@ -59,7 +59,6 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
     <tbody>
         ${this.data.map(item => html`
         <tr>
-            <td>{{.Address}}</td>
             <td>${item.Address}</td>
             <td>${item.Reachable ? html`<span class="success">ok</span>` : html`<span class="error">FAIL</span>`}</td>
             <td>${item.SyncState === "ok" ? html`<span class="success">ok</span>` : html`<span class="warning">${item.SyncState}</span>`}</td>
