@@ -10,12 +10,35 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
 	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
+
+func TestActors13Migration(t *testing.T) {
+
+	var (
+		blocktime = 2 * time.Millisecond
+		ctx       = context.Background()
+	)
+	client, _, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.UpgradeSchedule(stmgr.Upgrade{
+		Network: network.Version21,
+		Height:  -1,
+	}, stmgr.Upgrade{
+		Network:   network.Version22,
+		Height:    10,
+		Migration: filcns.UpgradeActorsV13,
+	}))
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
+
+	// mine until 15
+	client.WaitTillChain(ctx, kit.HeightAtLeast(15))
+}
 
 func TestOnboardRawPiece(t *testing.T) {
 	kit.QuietMiningLogs()
