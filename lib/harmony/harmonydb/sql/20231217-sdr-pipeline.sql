@@ -41,8 +41,6 @@ create table sectors_sdr_pipeline (
     -- precommit message wait
     seed_epoch bigint,
     precommit_msg_tsk bytea,
-
-    task_id_precommit_msg_wait bigint,
     after_precommit_msg_success bool not null default false,
 
     -- seed

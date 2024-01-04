@@ -120,6 +120,11 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		return false, xerrors.Errorf("updating precommit_msg_cid: %w", err)
 	}
 
+	_, err = s.db.Exec(ctx, `INSERT INTO message_waits (signed_message_cid) VALUES ($1)`, mcid)
+	if err != nil {
+		return false, xerrors.Errorf("inserting into message_waits: %w", err)
+	}
+
 	return true, nil
 }
 
