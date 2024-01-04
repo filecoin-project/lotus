@@ -261,8 +261,10 @@ DESCRIPTION:
      This creates the 'web' layer if it does not exist, then calls run with that layer.
 
 OPTIONS:
-   --listen value  Address to listen on (default: "127.0.0.1:4701")
-   --help, -h      show help
+   --listen value                     Address to listen on (default: "127.0.0.1:4701")
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base. Web will be added (default: "base")
+   --nosync                           don't check full-node sync status (default: false)
+   --help, -h                         show help
 ```
 
 ## lotus-provider version
