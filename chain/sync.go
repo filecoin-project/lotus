@@ -886,6 +886,35 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		}
 	}
 
+	incomingParentsTsk := incoming.Parents()
+	commonParent := false
+	for _, incomingParent := range incomingParentsTsk.Cids() {
+		if known.Contains(incomingParent) {
+			commonParent = true
+		}
+	}
+
+	if commonParent {
+		// known contains at least one of incoming's Parents => the common ancestor is known's Parents (incoming's Grandparents)
+		// in this case, we need to return {incoming.Parents()}
+		incomingParents, err := syncer.store.LoadTipSet(ctx, incomingParentsTsk)
+		if err != nil {
+			// fallback onto the network
+			tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), 1)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to fetch incomingParents from the network: %w", err)
+			}
+
+			if len(tips) == 0 {
+				return nil, xerrors.Errorf("network didn't return any tipsets")
+			}
+
+			incomingParents = tips[0]
+		}
+
+		return []*types.TipSet{incomingParents}, nil
+	}
+
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2? Yes.
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
 	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
