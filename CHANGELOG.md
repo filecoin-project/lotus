@@ -4,22 +4,18 @@
 
 ## Improvements
 
-# v1.25.2-rc1 / 2023-12-09 
+# v1.25.2 / 2024-01-04 
 
-This is the first release candidate of the upcoming optional release of Lotus v1.25.2, which was bumped from the previous v1.25.1-rc1 with the hot fix (see v1.24.1 & v1.25.1 for more details).. 
-
-This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is an optional feature release of Lotus. It introduces Lotus-Provider in its alpha testing phase, and includes fixes for synchronization issues that users experienced during the network upgrade.
 
 ## ☢️ Upgrade Warnings ☢️
 
-There are no upgrade warnings as of this first release candidate.
+There are no upgrade warnings for this feature release.
 
 ## ⭐️ Highlights ⭐️
 
 ### Lotus-Provider
 The feature release ships the alpha release of the new Lotus-Provider binary, together with its initial features - High Availability of WindowPoSt and WinningPoSt.
-
-Over the next couple of days, we will build up a catalogue of documentation for how you can test out `Lotus-Provider`. Once out, they will be linked in this section here, and sent as an update in the relevant Slack channels. If you are interested in testing out Lotus-Provider in your setup on the Calibration network feel free to reach out to us in the `#fil-lotus-dev` channel.
 
 So what is so exciting about Lotus-Provider:
 
@@ -34,15 +30,15 @@ So what is so exciting about Lotus-Provider:
 **Durability**
 - `Lotus-Provider` is designed with robustness in mind. Updates to the system are handled seamlessly, ensuring that performance and stability are maintained when taking down machines in your cluster for updates.
 
+Read more about [`Lotus-Provider` in the documentation here](https://lotus.filecoin.io/storage-providers/lotus-provider/overview/). And check out the how you can migrate from [Lotus-Miner to Lotus-Provider here](https://lotus.filecoin.io/storage-providers/lotus-provider/setup/). **(Only recommended in testnets while its in Alpha)**
+
 ### External PC2-binaries 
 
-In this release candidate, storage providers have the ability to call external PC2-binaries during the sealing process. This allows storage providers to leverage the SupraSeal PC2 binary, which has been shown to improve sealing speed in the PC2-phase. For instance, our current benchmarks show that an NVIDIA RTX A5000 card was able to complete PC2 in approximately 2.5 minutes.
+In this feature release, storage providers can call external PC2-binaries during the sealing process. This allows storage providers to leverage the SupraSeal PC2 binary, which has been shown to improve sealing speed in the PC2-phase. For instance, our current benchmarks show that an NVIDIA RTX A5000 card was able to complete PC2 in approximately 2.5 minutes.
 
-We have verified that SupraSeal PC2 functions properly with Committed Capacity (CC) sectors that are non-Synthetic, and with SyntheticPoReps that is introduced in the upcoming nv21-version.
+We have verified that SupraSeal PC2 functions properly with Committed Capacity (CC) sectors, both SyntheticPoReps and non-Synthetic PoReps. However calling SupraSeal PC2 with deal sectors is not supported in this feature release.
 
-However, we have encountered errors when using SupraSeal PC2 with deal sectors. As a result, we advise against using SupraSeal PC2 through the `lotus-worker` with deal sectors in the sealing pipeline, except in testing environments. We plan to update this guideline in future release candidates, once we have a fix for deal sectors.
-
-For more information on how to use SupraSeal PC2 with your `lotus-worker`, as well as how to perform benchmarks using this feature, please [refer to the documentation](https://lotus.filecoin.io/tutorials/lotus-miner/supra-seal-pc2/).
+For more information on how to use SupraSeal PC2 with your `lotus-worker`, as well as how to use feature, please [refer to the documentation](https://lotus.filecoin.io/tutorials/lotus-miner/supra-seal-pc2/).
 
 ## New features
 - feat: sturdypost work branch ([filecoin-project/lotus#11405](https://github.com/filecoin-project/lotus/pull/11405))
@@ -102,11 +98,21 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 - fix: api: exclude reverted events in `eth_getLogs` results (#11318) ([filecoin-project/lotus#11318](https://github.com/filecoin-project/lotus/pull/11318))
 - api: Add block param to eth_estimateGas ([filecoin-project/lotus#11462](https://github.com/filecoin-project/lotus/pull/11462))
 - opt: fix duplicate check exitcode ([filecoin-project/lotus#11171](https://github.com/filecoin-project/lotus/pull/11171))
+- fix: lotus-provider: show addresses in log ([filecoin-project/lotus#11490](https://github.com/filecoin-project/lotus/pull/11490))
+- fix: lotus-provider: Wait for the correct taskID ([filecoin-project/lotus#11493](https://github.com/filecoin-project/lotus/pull/11493))
+- harmony: Fix task reclaim on restart ([filecoin-project/lotus#11498](https://github.com/filecoin-project/lotus/pull/11498))
+- fix: lotus-provider: Fix log output format in wdPostTaskCmd ([filecoin-project/lotus#11504](https://github.com/filecoin-project/lotus/pull/11504))
+- fix: lp docsgen ([filecoin-project/lotus#11488](https://github.com/filecoin-project/lotus/pull/11488))
+- fix: lotus-provider do not suggest default layer ([filecoin-project/lotus#11486](https://github.com/filecoin-project/lotus/pull/11486))
+- feat: syncer: optimize syncFork for one-epoch forks ([filecoin-project/lotus#11533](https://github.com/filecoin-project/lotus/pull/11533))
+- fix: sync: do not include incoming in return of syncFork ([filecoin-project/lotus#11541](https://github.com/filecoin-project/lotus/pull/11541))
+- fix: wdpost: fix vanilla proof indexes ([filecoin-project/lotus#11550](https://github.com/filecoin-project/lotus/pull/11550))
 
 ## Dependencies
 - update go-libp2p to v0.31.0 ([filecoin-project/lotus#11225](https://github.com/filecoin-project/lotus/pull/11225))
 - deps: gostatetype (#11437) ([filecoin-project/lotus#11437](https://github.com/filecoin-project/lotus/pull/11437))
 - fix: deps: stop using go-libp2p deprecated peer.ID.Pretty ([filecoin-project/lotus#11263](https://github.com/filecoin-project/lotus/pull/11263))
+- chore:libp2p:update libp2p deps in release-v1.25.2 to v0.31.1 ([filecoin-project/lotus#11524](https://github.com/filecoin-project/lotus/pull/11524))
 
 ## Others
 - chore: update FFI (#11431) ([filecoin-project/lotus#11431](https://github.com/filecoin-project/lotus/pull/11431))
