@@ -15,12 +15,16 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
 type SubmitPrecommitTaskApi interface {
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	ctladdr.NodeApi
 }
 
 type SubmitPrecommitTask struct {
@@ -28,16 +32,18 @@ type SubmitPrecommitTask struct {
 	db     *harmonydb.DB
 	api    SubmitPrecommitTaskApi
 	sender *lpmessage.Sender
+	as     sealing.AddressSelector
 
 	maxFee types.FIL
 }
 
-func NewSubmitPrecommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitPrecommitTaskApi, sender *lpmessage.Sender, maxFee types.FIL) *SubmitPrecommitTask {
+func NewSubmitPrecommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitPrecommitTaskApi, sender *lpmessage.Sender, as sealing.AddressSelector, maxFee types.FIL) *SubmitPrecommitTask {
 	return &SubmitPrecommitTask{
 		sp:     sp,
 		db:     db,
 		api:    api,
 		sender: sender,
+		as:     as,
 
 		maxFee: maxFee,
 	}
@@ -51,8 +57,8 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		SectorNumber int64                   `db:"sector_number"`
 		RegSealProof abi.RegisteredSealProof `db:"reg_seal_proof"`
 		TicketEpoch  abi.ChainEpoch          `db:"ticket_epoch"`
-		SealedCID    string                  `db:"sealed_cid"`
-		UnsealedCID  string                  `db:"unsealed_cid"`
+		SealedCID    string                  `db:"tree_r_cid"`
+		UnsealedCID  string                  `db:"tree_d_cid"`
 	}
 
 	err = s.db.Select(ctx, &sectorParamsArr, `
@@ -107,8 +113,19 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		return false, xerrors.Errorf("getting precommit deposit: %w", err)
 	}
 
+	mi, err := s.api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return false, xerrors.Errorf("getting miner info: %w", err)
+	}
+
+	a, _, err := s.as.AddressFor(ctx, s.api, mi, api.PreCommitAddr, collateral, big.Zero())
+	if err != nil {
+		return false, xerrors.Errorf("getting address for precommit: %w", err)
+	}
+
 	msg := &types.Message{
 		To:     maddr,
+		From:   a,
 		Method: builtin.MethodsMiner.PreCommitSectorBatch2,
 		Params: pbuf.Bytes(),
 		Value:  collateral, // todo config for pulling from miner balance!!

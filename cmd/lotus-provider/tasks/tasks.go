@@ -80,7 +80,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, treesTask)
 		}
 		if cfg.Subsystems.EnableSendPrecommitMsg {
-			precommitTask := lpseal.NewSubmitPrecommitTask(sp, db, full, sender, cfg.Fees.MaxPreCommitGasFee)
+			precommitTask := lpseal.NewSubmitPrecommitTask(sp, db, full, sender, as, cfg.Fees.MaxPreCommitGasFee)
 			activeTasks = append(activeTasks, precommitTask)
 		}
 	}
