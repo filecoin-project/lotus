@@ -44,7 +44,7 @@ func NewMessageWatcher(db *harmonydb.DB, ht *harmonytask.TaskEngine, pcs *chains
 		stopped:  make(chan struct{}),
 		updateCh: make(chan struct{}),
 	}
-	mw.run()
+	go mw.run()
 	if err := pcs.AddHandler(mw.processHeadChange); err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (mw *MessageWatcher) update() {
 	}
 
 	// really large limit in case of things getting stuck and backlogging severely
-	err = mw.db.Select(ctx, &msgs, `SELECT signed_message_cid, from_key, nonce FROM message_wait
+	err = mw.db.Select(ctx, &msgs, `SELECT signed_message_cid, from_key, nonce FROM message_waits
                           JOIN message_sends ON signed_message_cid = signed_cid
                           WHERE waiter_machine_id = $1 LIMIT 10000`, machineID)
 	if err != nil {
