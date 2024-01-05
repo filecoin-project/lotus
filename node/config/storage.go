@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"github.com/mitchellh/go-homedir"
 	"io"
 	"io/fs"
 	"os"
@@ -14,6 +15,11 @@ import (
 )
 
 func StorageFromFile(path string, def *storiface.StorageConfig) (*storiface.StorageConfig, error) {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return nil, xerrors.Errorf("expanding storage config path: %w", err)
+	}
+
 	file, err := os.Open(path)
 	switch {
 	case os.IsNotExist(err):
@@ -40,6 +46,11 @@ func StorageFromReader(reader io.Reader) (*storiface.StorageConfig, error) {
 }
 
 func WriteStorageFile(filePath string, config storiface.StorageConfig) error {
+	filePath, err := homedir.Expand(filePath)
+	if err != nil {
+		return xerrors.Errorf("expanding storage config path: %w", err)
+	}
+
 	b, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return xerrors.Errorf("marshaling storage config: %w", err)
