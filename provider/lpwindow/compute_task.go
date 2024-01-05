@@ -102,8 +102,10 @@ func NewWdPostTask(db *harmonydb.DB,
 		max:    max,
 	}
 
-	if err := pcs.AddHandler(t.processHeadChange); err != nil {
-		return nil, err
+	if pcs != nil {
+		if err := pcs.AddHandler(t.processHeadChange); err != nil {
+			return nil, err
+		}
 	}
 
 	return t, nil

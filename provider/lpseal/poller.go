@@ -70,8 +70,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		TaskPrecommitMsg  *int64 `db:"task_id_precommit_msg"`
 		AfterPrecommitMsg bool   `db:"after_precommit_msg"`
 
-		TaskPrecommitMsgWait     *int64 `db:"task_id_precommit_msg_wait"`
-		AfterPrecommitMsgSuccess bool   `db:"after_precommit_msg_success"`
+		AfterPrecommitMsgSuccess bool `db:"after_precommit_msg_success"`
 
 		TaskPoRep  *int64 `db:"task_id_porep"`
 		PoRepProof []byte `db:"porep_proof"`
@@ -93,7 +92,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
        task_id_tree_c, after_tree_c,
        task_id_tree_r, after_tree_r,
        task_id_precommit_msg, after_precommit_msg,
-       task_id_precommit_msg_wait, after_precommit_msg_success,
+       after_precommit_msg_success,
        task_id_porep, porep_proof,
        task_id_commit_msg, after_commit_msg,
        task_id_commit_msg_wait, after_commit_msg_success,
@@ -150,7 +149,11 @@ func (s *SealPoller) poll(ctx context.Context) error {
 			})
 		}
 
-		if task.TaskPrecommitMsgWait == nil && task.AfterPrecommitMsg {
+		if task.TaskPrecommitMsg != nil && !task.AfterPrecommitMsg {
+
+		}
+
+		if task.AfterPrecommitMsg {
 			// todo start precommit msg wait task
 		}
 

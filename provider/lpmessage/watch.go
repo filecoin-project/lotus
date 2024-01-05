@@ -24,7 +24,7 @@ type MessageWaiterApi interface {
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 }
 
-type MessageWaiter struct {
+type MessageWatcher struct {
 	db  *harmonydb.DB
 	ht  *harmonytask.TaskEngine
 	api MessageWaiterApi
@@ -35,8 +35,8 @@ type MessageWaiter struct {
 	bestTs   atomic.Pointer[types.TipSetKey]
 }
 
-func NewMessageWaiter(db *harmonydb.DB, ht *harmonytask.TaskEngine, pcs *chainsched.ProviderChainSched, api MessageWaiterApi) (*MessageWaiter, error) {
-	mw := &MessageWaiter{
+func NewMessageWatcher(db *harmonydb.DB, ht *harmonytask.TaskEngine, pcs *chainsched.ProviderChainSched, api MessageWaiterApi) (*MessageWatcher, error) {
+	mw := &MessageWatcher{
 		db:       db,
 		ht:       ht,
 		api:      api,
@@ -51,7 +51,7 @@ func NewMessageWaiter(db *harmonydb.DB, ht *harmonytask.TaskEngine, pcs *chainsc
 	return mw, nil
 }
 
-func (mw *MessageWaiter) run() {
+func (mw *MessageWatcher) run() {
 	defer close(mw.stopped)
 
 	for {
@@ -65,7 +65,7 @@ func (mw *MessageWaiter) run() {
 	}
 }
 
-func (mw *MessageWaiter) update() {
+func (mw *MessageWatcher) update() {
 	ctx := context.Background()
 
 	tsk := *mw.bestTs.Load()
@@ -189,7 +189,7 @@ func (mw *MessageWaiter) update() {
 	}
 }
 
-func (mw *MessageWaiter) Stop(ctx context.Context) error {
+func (mw *MessageWatcher) Stop(ctx context.Context) error {
 	close(mw.stopping)
 	select {
 	case <-mw.stopped:
@@ -200,7 +200,7 @@ func (mw *MessageWaiter) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (mw *MessageWaiter) processHeadChange(ctx context.Context, revert *types.TipSet, apply *types.TipSet) error {
+func (mw *MessageWatcher) processHeadChange(ctx context.Context, revert *types.TipSet, apply *types.TipSet) error {
 	best := apply.Key()
 	mw.bestTs.Store(&best)
 	select {

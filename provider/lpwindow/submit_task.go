@@ -62,8 +62,10 @@ func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sen
 		as:                  as,
 	}
 
-	if err := pcs.AddHandler(res.processHeadChange); err != nil {
-		return nil, err
+	if pcs != nil {
+		if err := pcs.AddHandler(res.processHeadChange); err != nil {
+			return nil, err
+		}
 	}
 
 	return res, nil

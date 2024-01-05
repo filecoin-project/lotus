@@ -32,6 +32,17 @@ type SubmitPrecommitTask struct {
 	maxFee types.FIL
 }
 
+func NewSubmitPrecommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitPrecommitTaskApi, sender *lpmessage.Sender, maxFee types.FIL) *SubmitPrecommitTask {
+	return &SubmitPrecommitTask{
+		sp:     sp,
+		db:     db,
+		api:    api,
+		sender: sender,
+
+		maxFee: maxFee,
+	}
+}
+
 func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 

@@ -3,6 +3,7 @@ package tasks
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/provider/lpseal"
 
@@ -34,6 +35,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	sender, sendTask := lpmessage.NewSender(full, full, db)
 	activeTasks = append(activeTasks, sendTask)
 
+	chainSched := chainsched.New(full)
+
 	///////////////////////////////////////////////////////////////////////
 	///// Task Selection
 	///////////////////////////////////////////////////////////////////////
@@ -42,7 +45,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 
 		if cfg.Subsystems.EnableWindowPost {
 			wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := provider.WindowPostScheduler(ctx, cfg.Fees, cfg.Proving, full, verif, lw, sender,
-				as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
+				chainSched, as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
 			if err != nil {
 				return nil, err
 			}
@@ -55,9 +58,9 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
+	hasAnySealingTask := cfg.Subsystems.EnableSealSDR
 	{
 		// Sealing
-		hasAnySealingTask := cfg.Subsystems.EnableSealSDR
 
 		var sp *lpseal.SealPoller
 		var slr *lpffi.SealCalls
@@ -76,10 +79,31 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			treesTask := lpseal.NewTreesTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
 			activeTasks = append(activeTasks, treesTask)
 		}
+		if cfg.Subsystems.EnableSendPrecommitMsg {
+			precommitTask := lpseal.NewSubmitPrecommitTask(sp, db, full, sender, cfg.Fees.MaxPreCommitGasFee)
+			activeTasks = append(activeTasks, precommitTask)
+		}
 	}
 	log.Infow("This lotus_provider instance handles",
 		"miner_addresses", maddrs,
 		"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
 
-	return harmonytask.New(db, activeTasks, dependencies.ListenAddr)
+	ht, err := harmonytask.New(db, activeTasks, dependencies.ListenAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if hasAnySealingTask {
+		watcher, err := lpmessage.NewMessageWatcher(db, ht, chainSched, full)
+		if err != nil {
+			return nil, err
+		}
+		_ = watcher
+	}
+
+	if cfg.Subsystems.EnableWindowPost || hasAnySealingTask {
+		go chainSched.Run(ctx)
+	}
+
+	return ht, nil
 }

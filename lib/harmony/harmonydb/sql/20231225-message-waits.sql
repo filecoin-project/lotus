@@ -1,5 +1,5 @@
 create table message_waits (
-    signed_message_cid text primary key references message_sends (signed_cid),
+    signed_message_cid text primary key,
     waiter_machine_id int references harmony_machines (id) on delete set null,
 
     executed_tsk_cid text,
