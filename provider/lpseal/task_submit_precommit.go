@@ -142,7 +142,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 
 	// set precommit_msg_cid
 	_, err = s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET precommit_msg_cid = $1
+		SET precommit_msg_cid = $1, after_precommit_msg = true
 		WHERE task_id_precommit_msg = $2`, mcid, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("updating precommit_msg_cid: %w", err)

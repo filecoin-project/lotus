@@ -65,7 +65,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		var sp *lpseal.SealPoller
 		var slr *lpffi.SealCalls
 		if hasAnySealingTask {
-			sp = lpseal.NewPoller(db)
+			sp = lpseal.NewPoller(db, full)
 			go sp.RunPoller(ctx)
 
 			slr = lpffi.NewSealCalls(stor, lstor, si)
