@@ -229,13 +229,25 @@ type EthCall struct {
 }
 
 func (c *EthCall) UnmarshalJSON(b []byte) error {
-	type TempEthCall EthCall
-	var params TempEthCall
+	type EthCallRaw EthCall // Avoid a recursive call.
+	type EthCallDecode struct {
+		// The field should be "input" by spec, but many clients use "data" so we support
+		// both, but prefer "input".
+		Input *EthBytes `json:"input"`
+		EthCallRaw
+	}
 
+	var params EthCallDecode
 	if err := json.Unmarshal(b, &params); err != nil {
 		return err
 	}
-	*c = EthCall(params)
+
+	// If input is specified, prefer it.
+	if params.Input != nil {
+		params.Data = *params.Input
+	}
+
+	*c = EthCall(params.EthCallRaw)
 	return nil
 }
 
