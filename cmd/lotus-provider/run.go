@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
@@ -19,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 type stackTracer interface {
@@ -113,10 +117,8 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		fmt.Println("before populateRemainingDeps")
 		dependencies := &deps.Deps{}
 		err = dependencies.PopulateRemainingDeps(ctx, cctx, true)
-		fmt.Println("after popdeps")
 		if err != nil {
 			fmt.Println("err", err)
 			return err
@@ -140,5 +142,53 @@ var runCmd = &cli.Command{
 
 		<-finishCh
 		return nil
+	},
+}
+
+var webCmd = &cli.Command{
+	Name:  "web",
+	Usage: "Start lotus provider web interface",
+	Description: `Start an instance of lotus provider web interface. 
+	This creates the 'web' layer if it does not exist, then calls run with that layer.`,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "listen",
+			Usage: "Address to listen on",
+			Value: "127.0.0.1:4701",
+		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base. Web will be added",
+			Value: cli.NewStringSlice("base"),
+		},
+		&cli.BoolFlag{
+			Name:  "nosync",
+			Usage: "don't check full-node sync status",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		db, err := deps.MakeDB(cctx)
+		if err != nil {
+			return err
+		}
+
+		webtxt, err := getConfig(db, "web")
+		if err != nil || webtxt == "" {
+			cfg := config.DefaultLotusProvider()
+			cfg.Subsystems.EnableWebGui = true
+			var b bytes.Buffer
+			if err = toml.NewEncoder(&b).Encode(cfg); err != nil {
+				return err
+			}
+			if err = setConfig(db, "web", b.String()); err != nil {
+				return err
+			}
+		}
+		layers := append([]string{"web"}, cctx.StringSlice("layers")...)
+		err = cctx.Set("layers", strings.Join(layers, ","))
+		if err != nil {
+			return err
+		}
+		return runCmd.Action(cctx)
 	},
 }

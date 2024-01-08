@@ -11,6 +11,14 @@
   # type: int
   #WinningPostMaxTasks = 0
 
+  # type: bool
+  #EnableWebGui = false
+
+  # The address that should listen for Web GUI requests.
+  #
+  # type: string
+  #GuiAddress = ":4701"
+
 
 [Fees]
   # type: types.FIL

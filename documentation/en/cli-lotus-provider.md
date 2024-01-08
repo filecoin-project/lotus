@@ -14,6 +14,7 @@ COMMANDS:
    stop     Stop a running lotus provider
    config   Manage node config by layers. The layer 'base' will always be applied. 
    test     Utility functions for testing
+   web      Start lotus provider web interface
    version  Print version
    help, h  Shows a list of commands or help for one command
    DEVELOPER:
@@ -244,6 +245,25 @@ USAGE:
 OPTIONS:
    --deadline value                   deadline to compute WindowPoSt for  (default: 0)
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
+   --help, -h                         show help
+```
+
+## lotus-provider web
+```
+NAME:
+   lotus-provider web - Start lotus provider web interface
+
+USAGE:
+   lotus-provider web [command options] [arguments...]
+
+DESCRIPTION:
+   Start an instance of lotus provider web interface. 
+     This creates the 'web' layer if it does not exist, then calls run with that layer.
+
+OPTIONS:
+   --listen value                     Address to listen on (default: "127.0.0.1:4701")
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base. Web will be added (default: "base")
+   --nosync                           don't check full-node sync status (default: false)
    --help, -h                         show help
 ```
 

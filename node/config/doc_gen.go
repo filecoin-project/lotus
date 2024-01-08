@@ -1013,6 +1013,18 @@ block rewards will be missed!`,
 
 			Comment: ``,
 		},
+		{
+			Name: "EnableWebGui",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "GuiAddress",
+			Type: "string",
+
+			Comment: `The address that should listen for Web GUI requests.`,
+		},
 	},
 	"ProvingConfig": {
 		{

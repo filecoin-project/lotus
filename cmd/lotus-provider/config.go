@@ -14,6 +14,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -108,9 +109,8 @@ var configSetCmd = &cli.Command{
 		}
 		_ = lp
 
-		_, err = db.Exec(context.Background(),
-			`INSERT INTO harmony_config (title, config) VALUES ($1, $2) 
-			ON CONFLICT (title) DO UPDATE SET config = excluded.config`, name, string(bytes))
+		err = setConfig(db, name, string(bytes))
+
 		if err != nil {
 			return fmt.Errorf("unable to save config layer: %w", err)
 		}
@@ -118,6 +118,13 @@ var configSetCmd = &cli.Command{
 		fmt.Println("Layer " + name + " created/updated")
 		return nil
 	},
+}
+
+func setConfig(db *harmonydb.DB, name, config string) error {
+	_, err := db.Exec(context.Background(),
+		`INSERT INTO harmony_config (title, config) VALUES ($1, $2) 
+			ON CONFLICT (title) DO UPDATE SET config = excluded.config`, name, config)
+	return err
 }
 
 var configGetCmd = &cli.Command{
@@ -135,8 +142,7 @@ var configGetCmd = &cli.Command{
 			return err
 		}
 
-		var cfg string
-		err = db.QueryRow(context.Background(), `SELECT config FROM harmony_config WHERE title=$1`, args.First()).Scan(&cfg)
+		cfg, err := getConfig(db, args.First())
 		if err != nil {
 			return err
 		}
@@ -144,6 +150,15 @@ var configGetCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func getConfig(db *harmonydb.DB, layer string) (string, error) {
+	var cfg string
+	err := db.QueryRow(context.Background(), `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&cfg)
+	if err != nil {
+		return "", err
+	}
+	return cfg, nil
 }
 
 var configListCmd = &cli.Command{

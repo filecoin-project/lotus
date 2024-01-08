@@ -351,7 +351,9 @@ func DefaultUserRaftConfig() *UserRaftConfig {
 
 func DefaultLotusProvider() *LotusProviderConfig {
 	return &LotusProviderConfig{
-		Subsystems: ProviderSubsystemsConfig{},
+		Subsystems: ProviderSubsystemsConfig{
+			GuiAddress: ":4701",
+		},
 		Fees: LotusProviderFees{
 			DefaultMaxFee:      DefaultDefaultMaxFee,
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
