@@ -167,7 +167,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 			return false, xerrors.Errorf("persist no win: no rows updated")
 		}
 
-		return false, nil
+		return true, nil
 	}
 
 	// ensure we have a beacon entry for the epoch we're mining on
