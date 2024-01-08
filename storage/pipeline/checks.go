@@ -101,7 +101,7 @@ func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber
 			DDOHandler: func(pi UniversalPieceInfo) error {
 				dealCount++
 
-				// try to get alloation to see if that still works
+				// try to get allocation to see if that still works
 				all, err := pi.GetAllocation(ctx, api, ts.Key())
 				if err != nil {
 					return xerrors.Errorf("getting deal %d allocation: %w", p.Impl().DealID, err)

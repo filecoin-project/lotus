@@ -25,6 +25,7 @@ type PieceDealInfo struct {
 	DealProposal *market.DealProposal
 
 	// Common deal info, required for all pieces
+	// TODO: https://github.com/filecoin-project/lotus/issues/11237
 	DealSchedule DealSchedule
 
 	// Direct Data Onboarding
