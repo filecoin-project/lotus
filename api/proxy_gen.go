@@ -35,6 +35,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -487,6 +488,8 @@ type FullNodeMethods struct {
 	StateGetAllocation func(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
 
 	StateGetAllocationForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
+
+	StateGetAllocationIdForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (verifreg.AllocationId, error) `perm:"read"`
 
 	StateGetAllocations func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) `perm:"read"`
 
@@ -3422,6 +3425,17 @@ func (s *FullNodeStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1
 
 func (s *FullNodeStub) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetAllocationIdForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (verifreg.AllocationId, error) {
+	if s.Internal.StateGetAllocationIdForPendingDeal == nil {
+		return *new(verifreg.AllocationId), ErrNotSupported
+	}
+	return s.Internal.StateGetAllocationIdForPendingDeal(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateGetAllocationIdForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (verifreg.AllocationId, error) {
+	return *new(verifreg.AllocationId), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {

@@ -3218,6 +3218,21 @@ func (mr *MockFullNodeMockRecorder) StateGetAllocationForPendingDeal(arg0, arg1,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationForPendingDeal", reflect.TypeOf((*MockFullNode)(nil).StateGetAllocationForPendingDeal), arg0, arg1, arg2)
 }
 
+// StateGetAllocationIdForPendingDeal mocks base method.
+func (m *MockFullNode) StateGetAllocationIdForPendingDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (verifreg.AllocationId, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocationIdForPendingDeal", arg0, arg1, arg2)
+	ret0, _ := ret[0].(verifreg.AllocationId)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocationIdForPendingDeal indicates an expected call of StateGetAllocationIdForPendingDeal.
+func (mr *MockFullNodeMockRecorder) StateGetAllocationIdForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationIdForPendingDeal", reflect.TypeOf((*MockFullNode)(nil).StateGetAllocationIdForPendingDeal), arg0, arg1, arg2)
+}
+
 // StateGetAllocations mocks base method.
 func (m *MockFullNode) StateGetAllocations(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
 	m.ctrl.T.Helper()

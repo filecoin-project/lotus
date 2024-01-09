@@ -170,7 +170,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 
 	// figure out message type
 
-	pams, deals, err := m.processPieces(sector)
+	pams, deals, err := m.processPieces(ctx.Context(), sector)
 	if err != nil {
 		log.Errorf("failed to process pieces: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})

@@ -214,6 +214,21 @@ func (mr *MockSealingAPIMockRecorder) StateGetAllocationForPendingDeal(arg0, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationForPendingDeal", reflect.TypeOf((*MockSealingAPI)(nil).StateGetAllocationForPendingDeal), arg0, arg1, arg2)
 }
 
+// StateGetAllocationIdForPendingDeal mocks base method.
+func (m *MockSealingAPI) StateGetAllocationIdForPendingDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (verifreg.AllocationId, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocationIdForPendingDeal", arg0, arg1, arg2)
+	ret0, _ := ret[0].(verifreg.AllocationId)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocationIdForPendingDeal indicates an expected call of StateGetAllocationIdForPendingDeal.
+func (mr *MockSealingAPIMockRecorder) StateGetAllocationIdForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationIdForPendingDeal", reflect.TypeOf((*MockSealingAPI)(nil).StateGetAllocationIdForPendingDeal), arg0, arg1, arg2)
+}
+
 // StateGetRandomnessFromBeacon mocks base method.
 func (m *MockSealingAPI) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
 	m.ctrl.T.Helper()

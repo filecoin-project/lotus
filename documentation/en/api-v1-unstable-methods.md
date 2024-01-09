@@ -232,6 +232,7 @@
   * [StateGetActor](#StateGetActor)
   * [StateGetAllocation](#StateGetAllocation)
   * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
+  * [StateGetAllocationIdForPendingDeal](#StateGetAllocationIdForPendingDeal)
   * [StateGetAllocations](#StateGetAllocations)
   * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetClaim](#StateGetClaim)
@@ -6920,6 +6921,29 @@ Response:
   "Expiration": 10101
 }
 ```
+
+### StateGetAllocationIdForPendingDeal
+StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `0`
 
 ### StateGetAllocations
 StateGetAllocations returns the all the allocations for a given client.
