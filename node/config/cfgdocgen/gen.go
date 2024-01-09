@@ -104,7 +104,7 @@ var Doc = map[string][]DocField{
 	for _, typeName := range outt {
 		typ := out[typeName]
 
-		fmt.Printf("\t\"%s\": []DocField{\n", typeName)
+		fmt.Printf("\t\"%s\": {\n", typeName)
 
 		for _, f := range typ {
 			fmt.Println("\t\t{")

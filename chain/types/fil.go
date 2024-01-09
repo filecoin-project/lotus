@@ -12,6 +12,9 @@ import (
 type FIL BigInt
 
 func (f FIL) String() string {
+	if f.Int == nil {
+		return "0 FIL"
+	}
 	return f.Unitless() + " FIL"
 }
 

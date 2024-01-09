@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -45,15 +46,20 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/rpc"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/tasks"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
@@ -118,15 +124,17 @@ type Ensemble struct {
 	options      *ensembleOpts
 
 	inactive struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
+		fullnodes     []*TestFullNode
+		providernodes []*TestProviderNode
+		miners        []*TestMiner
+		workers       []*TestWorker
 	}
 	active struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
-		bms       map[*TestMiner]*BlockMiner
+		fullnodes     []*TestFullNode
+		providernodes []*TestProviderNode
+		miners        []*TestMiner
+		workers       []*TestWorker
+		bms           map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
 		version  network.Version
@@ -216,6 +224,20 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	*full = TestFullNode{t: n.t, options: options, DefaultKey: key, EthSubRouter: gateway.NewEthSubHandler()}
 
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
+	return n
+}
+
+// FullNode enrolls a new Provider node.
+func (n *Ensemble) Provider(lp *TestProviderNode, opts ...NodeOpt) *Ensemble {
+	options := DefaultNodeOpts
+	for _, o := range opts {
+		err := o(&options)
+		require.NoError(n.t, err)
+	}
+
+	*lp = TestProviderNode{t: n.t, options: options, Deps: &deps.Deps{}}
+
+	n.inactive.providernodes = append(n.inactive.providernodes, lp)
 	return n
 }
 
@@ -358,6 +380,8 @@ func (n *Ensemble) Start() *Ensemble {
 		gtempl = n.generateGenesis()
 		n.mn = mocknet.New()
 	}
+
+	sharedITestID := harmonydb.ITestNewID()
 
 	// ---------------------
 	//  FULL NODES
@@ -603,6 +627,7 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
+		cfg.Subsystems.EnableSectorIndexDB = m.options.subsystems.Has(SHarmony)
 		cfg.Dealmaking.MaxStagingDealsBytes = m.options.maxStagingDealsBytes
 
 		if m.options.mainMiner != nil {
@@ -720,6 +745,17 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// upgrades
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
+
+			node.Override(new(harmonydb.ITestID), sharedITestID),
+			node.Override(new(config.HarmonyDB), func() config.HarmonyDB {
+				return config.HarmonyDB{
+					Hosts:    []string{envElse("LOTUS_HARMONYDB_HOSTS", "127.0.0.1")},
+					Database: "yugabyte",
+					Username: "yugabyte",
+					Password: "yugabyte",
+					Port:     "5433",
+				}
+			}),
 		}
 
 		if m.options.subsystems.Has(SMarkets) {
@@ -766,6 +802,12 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
+		mCopy := m
+		n.t.Cleanup(func() {
+			if mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB != nil {
+				mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
+			}
+		})
 
 		m.BaseAPI = m.StorageMiner
 
@@ -822,6 +864,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		auth := http.Header(nil)
 
+		// FUTURE: Use m.MinerNode.(BaseAPI).(impl.StorageMinerAPI).HarmonyDB to setup.
+
 		remote := paths.NewRemote(localStore, m.MinerNode, auth, 20, &paths.DefaultPartialFileHandler{})
 		store := m.options.workerStorageOpt(remote)
 
@@ -851,12 +895,35 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.active.workers = append(n.active.workers, m)
+
 	}
 
 	// If we are here, we have processed all inactive workers and moved them
 	// to active, so clear the slice.
 	n.inactive.workers = n.inactive.workers[:0]
 
+	for _, p := range n.inactive.providernodes {
+
+		// TODO setup config with options
+		err := p.Deps.PopulateRemainingDeps(context.Background(), &cli.Context{}, false)
+		require.NoError(n.t, err)
+
+		shutdownChan := make(chan struct{})
+		taskEngine, err := tasks.StartTasks(ctx, p.Deps)
+		if err != nil {
+			return nil
+		}
+		defer taskEngine.GracefullyTerminate(time.Hour)
+
+		err = rpc.ListenAndServe(ctx, p.Deps, shutdownChan) // Monitor for shutdown.
+		require.NoError(n.t, err)
+		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
+
+		<-finishCh
+
+		n.active.providernodes = append(n.active.providernodes, p)
+	}
 	// ---------------------
 	//  MISC
 	// ---------------------
@@ -1062,4 +1129,11 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
 	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
+}
+
+func envElse(env, els string) string {
+	if v := os.Getenv(env); v != "" {
+		return v
+	}
+	return els
 }

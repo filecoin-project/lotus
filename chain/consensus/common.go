@@ -362,7 +362,8 @@ func CreateBlockHeader(ctx context.Context, sm *stmgr.StateManager, pts *types.T
 	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []crypto.Signature
 	nv := sm.GetNetworkVersion(ctx, bt.Epoch)
-	for _, msg := range bt.Messages {
+	for _, msgTmp := range bt.Messages {
+		msg := msgTmp
 		if msg.Signature.Type == crypto.SigTypeBLS {
 			blsSigs = append(blsSigs, msg.Signature)
 			blsMessages = append(blsMessages, &msg.Message)

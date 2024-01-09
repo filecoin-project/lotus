@@ -553,7 +553,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		fmt.Printf("submitting bad PoST for %d paritions\n", len(partitionIndices))
+		fmt.Printf("submitting bad PoST for %d partitions\n", len(partitionIndices))
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   minfo.Worker,
 			To:     maddr,

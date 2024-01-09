@@ -61,6 +61,44 @@ type StorageMiner struct {
 	Fees          MinerFeeConfig
 	Addresses     MinerAddressConfig
 	DAGStore      DAGStoreConfig
+
+	HarmonyDB HarmonyDB
+}
+
+type LotusProviderConfig struct {
+	Subsystems ProviderSubsystemsConfig
+
+	Fees      LotusProviderFees
+	Addresses LotusProviderAddresses
+	Proving   ProvingConfig
+	Journal   JournalConfig
+	Apis      ApisConfig
+}
+
+type ApisConfig struct {
+	// ChainApiInfo is the API endpoint for the Lotus daemon.
+	ChainApiInfo []string
+
+	// RPC Secret for the storage subsystem.
+	// If integrating with lotus-miner this must match the value from
+	// cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey
+	StorageRPCSecret string
+}
+
+type JournalConfig struct {
+	//Events of the form: "system1:event1,system1:event2[,...]"
+	DisabledEvents string
+}
+
+type ProviderSubsystemsConfig struct {
+	EnableWindowPost    bool
+	WindowPostMaxTasks  int
+	EnableWinningPost   bool
+	WinningPostMaxTasks int
+
+	EnableWebGui bool
+	// The address that should listen for Web GUI requests.
+	GuiAddress string
 }
 
 type DAGStoreConfig struct {
@@ -108,8 +146,32 @@ type MinerSubsystemConfig struct {
 	EnableSectorStorage bool
 	EnableMarkets       bool
 
+	// When enabled, the sector index will reside in an external database
+	// as opposed to the local KV store in the miner process
+	// This is useful to allow workers to bypass the lotus miner to access sector information
+	EnableSectorIndexDB bool
+
 	SealerApiInfo      string // if EnableSealing == false
 	SectorIndexApiInfo string // if EnableSectorStorage == false
+
+	// When window post is enabled, the miner will automatically submit window post proofs
+	// for all sectors that are eligible for window post
+	// IF WINDOW POST IS DISABLED, THE MINER WILL NOT SUBMIT WINDOW POST PROOFS
+	// THIS WILL RESULT IN FAULTS AND PENALTIES IF NO OTHER MECHANISM IS RUNNING
+	// TO SUBMIT WINDOW POST PROOFS.
+	// Note: This option is entirely disabling the window post scheduler,
+	//   not just the builtin PoSt computation like Proving.DisableBuiltinWindowPoSt.
+	//   This option will stop lotus-miner from performing any actions related
+	//   to window post, including scheduling, submitting proofs, and recovering
+	//   sectors.
+	DisableWindowPoSt bool
+
+	// When winning post is disabled, the miner process will NOT attempt to mine
+	// blocks. This should only be set when there's an external process mining
+	// blocks on behalf of the miner.
+	// When disabled and no external block producers are configured, all potential
+	// block rewards will be missed!
+	DisableWinningPoSt bool
 }
 
 type DealmakingConfig struct {
@@ -493,6 +555,20 @@ type MinerFeeConfig struct {
 	MaximizeWindowPoStFeeCap bool
 }
 
+type LotusProviderFees struct {
+	DefaultMaxFee      types.FIL
+	MaxPreCommitGasFee types.FIL
+	MaxCommitGasFee    types.FIL
+
+	// maxBatchFee = maxBase + maxPerSector * nSectors
+	MaxPreCommitBatchGasFee BatchFeeConfig
+	MaxCommitBatchGasFee    BatchFeeConfig
+
+	MaxTerminateGasFee types.FIL
+	// WindowPoSt is a high-value operation, so the default fee should be high.
+	MaxWindowPoStGasFee types.FIL
+	MaxPublishDealsFee  types.FIL
+}
 type MinerAddressConfig struct {
 	// Addresses to send PreCommit messages from
 	PreCommitControl []string
@@ -509,6 +585,26 @@ type MinerAddressConfig struct {
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
+}
+
+type LotusProviderAddresses struct {
+	// Addresses to send PreCommit messages from
+	PreCommitControl []string
+	// Addresses to send Commit messages from
+	CommitControl    []string
+	TerminateControl []string
+
+	// DisableOwnerFallback disables usage of the owner address for messages
+	// sent automatically
+	DisableOwnerFallback bool
+	// DisableWorkerFallback disables usage of the worker address for messages
+	// sent automatically, if control addresses are configured.
+	// A control address that doesn't have enough funds will still be chosen
+	// over the worker address if this flag is set.
+	DisableWorkerFallback bool
+
+	// MinerAddresses are the addresses of the miner actors to use for sending messages
+	MinerAddresses []string
 }
 
 // API contains configs for API endpoint
@@ -707,6 +803,23 @@ type IndexConfig struct {
 	EnableMsgIndex bool
 }
 
+type HarmonyDB struct {
+	// HOSTS is a list of hostnames to nodes running YugabyteDB
+	// in a cluster. Only 1 is required
+	Hosts []string
+
+	// The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.
+	Username string
+
+	// The password for the related username. Blank for default.
+	Password string
+
+	// The database (logical partition) within Yugabyte. Blank for default.
+	Database string
+
+	// The port to find Yugabyte. Blank for default.
+	Port string
+}
 type FaultReporterConfig struct {
 	// EnableConsensusFaultReporter controls whether the node will monitor and
 	// report consensus faults. When enabled, the node will watch for malicious

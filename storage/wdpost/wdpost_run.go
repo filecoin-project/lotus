@@ -313,6 +313,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 	// allowed in a single message
 	partitionBatches, err := s.BatchPartitions(partitions, nv)
 	if err != nil {
+		log.Errorf("batch partitions failed: %+v", err)
 		return nil, err
 	}
 

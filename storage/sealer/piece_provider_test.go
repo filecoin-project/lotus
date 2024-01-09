@@ -3,8 +3,8 @@ package sealer
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -180,7 +180,7 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 
 type pieceProviderTestHarness struct {
 	ctx         context.Context
-	index       *paths.Index
+	index       *paths.MemIndex
 	pp          PieceProvider
 	sector      storiface.SectorRef
 	mgr         *Manager
@@ -195,7 +195,10 @@ type pieceProviderTestHarness struct {
 
 func generatePieceData(size uint64) []byte {
 	bz := make([]byte, size)
-	rand.Read(bz)
+	_, err := rand.Read(bz)
+	if err != nil {
+		panic(err)
+	}
 	return bz
 }
 
@@ -207,7 +210,7 @@ func newPieceProviderTestHarness(t *testing.T, mgrConfig config.SealerConfig, se
 	require.NoError(t, err)
 
 	// create index, storage, local store & remote store.
-	index := paths.NewIndex(nil)
+	index := paths.NewMemIndex(nil)
 	storage := newTestStorage(t)
 	localStore, err := paths.NewLocal(ctx, storage, index, []string{"http://" + nl.Addr().String() + "/remote"})
 	require.NoError(t, err)
@@ -286,7 +289,7 @@ func (p *pieceProviderTestHarness) addRemoteWorker(t *testing.T, tasks []sealtas
 	dstore := ds_sync.MutexWrap(datastore.NewMapDatastore())
 	csts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/stmgr/calls")))
 
-	worker := newLocalWorker(nil, WorkerConfig{
+	worker := NewLocalWorkerWithExecutor(nil, WorkerConfig{
 		TaskTypes: tasks,
 	}, os.LookupEnv, remote, localStore, p.index, p.mgr, csts)
 

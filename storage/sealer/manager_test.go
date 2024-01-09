@@ -100,10 +100,10 @@ func (t *testStorage) Stat(path string) (fsutil.FsStat, error) {
 
 var _ paths.LocalStorage = &testStorage{}
 
-func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Manager, *paths.Local, *paths.Remote, *paths.Index, func()) {
+func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Manager, *paths.Local, *paths.Remote, *paths.MemIndex, func()) {
 	st := newTestStorage(t)
 
-	si := paths.NewIndex(nil)
+	si := paths.NewMemIndex(nil)
 
 	lstor, err := paths.NewLocal(ctx, st, si, nil)
 	require.NoError(t, err)
@@ -648,7 +648,7 @@ func TestRestartWorker(t *testing.T) {
 	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := NewLocalWorkerWithExecutor(func(_ *LocalWorker) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -685,7 +685,7 @@ func TestRestartWorker(t *testing.T) {
 	}
 
 	// restart the worker
-	w = newLocalWorker(func() (storiface.Storage, error) {
+	w = NewLocalWorkerWithExecutor(func(_ *LocalWorker) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -721,7 +721,7 @@ func TestReenableWorker(t *testing.T) {
 	wds := datastore.NewMapDatastore()
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := NewLocalWorkerWithExecutor(func(_ *LocalWorker) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -794,7 +794,7 @@ func TestResUse(t *testing.T) {
 	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := NewLocalWorkerWithExecutor(func(_ *LocalWorker) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -852,7 +852,7 @@ func TestResOverride(t *testing.T) {
 	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := NewLocalWorkerWithExecutor(func(_ *LocalWorker) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,

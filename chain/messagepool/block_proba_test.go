@@ -5,7 +5,6 @@ import (
 	"math"
 	"math/rand"
 	"testing"
-	"time"
 )
 
 func TestBlockProbability(t *testing.T) {
@@ -23,7 +22,6 @@ func TestBlockProbability(t *testing.T) {
 
 func TestWinnerProba(t *testing.T) {
 	//stm: @OTHER_IMPLEMENTATION_BLOCK_PROB_002
-	rand.Seed(time.Now().UnixNano())
 	const N = 1000000
 	winnerProba := noWinnersProb()
 	sum := 0

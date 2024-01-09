@@ -37,6 +37,8 @@ const (
 	SSealing
 	SSectorStorage
 
+	SHarmony
+
 	MinerSubsystems = iota
 )
 
