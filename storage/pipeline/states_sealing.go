@@ -853,8 +853,9 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 		if err != nil {
 			return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
 		}
-
-		err = piece.handleDealInfo(handleDealInfoParams{
+	}
+	for _, piece := range sector.Pieces {
+		err := piece.handleDealInfo(handleDealInfoParams{
 			FillerHandler: func(info UniversalPieceInfo) error {
 				// Fillers are implicit (todo review: Are they??)
 				return nil
@@ -907,8 +908,6 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 				return nil
 			},
 			DDOHandler: func(info UniversalPieceInfo) error {
-				dealIDs = nil
-
 				pams = append(pams, *piece.Impl().PieceActivationManifest)
 				return nil
 			},
