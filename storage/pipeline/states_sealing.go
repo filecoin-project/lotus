@@ -855,6 +855,8 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 		}
 	}
 	for _, piece := range sector.Pieces {
+		piece := piece
+
 		err := piece.handleDealInfo(handleDealInfoParams{
 			FillerHandler: func(info UniversalPieceInfo) error {
 				// Fillers are implicit (todo review: Are they??)

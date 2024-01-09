@@ -191,6 +191,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 		require.NoError(t, err)
 
 		res, err := market.DecodePublishStorageDealsReturn(r.Receipt.Return, nv)
+		require.NoError(t, err)
 		dealID := must.One(res.DealIDs())[0]
 
 		mcid := smsg.Cid()
