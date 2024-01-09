@@ -100,6 +100,8 @@ BINS+=lotus-miner
 lotus-provider: $(BUILD_DEPS)
 	rm -f lotus-provider
 	$(GOCC) build $(GOFLAGS) -o lotus-provider ./cmd/lotus-provider
+.PHONY: lotus-provider
+BINS+=lotus-provider
 
 lp2k: GOFLAGS+=-tags=2k
 lp2k: lotus-provider
