@@ -211,9 +211,6 @@
   * [PaychVoucherCreate](#PaychVoucherCreate)
   * [PaychVoucherList](#PaychVoucherList)
   * [PaychVoucherSubmit](#PaychVoucherSubmit)
-* [Raft](#Raft)
-  * [RaftLeader](#RaftLeader)
-  * [RaftState](#RaftState)
 * [Start](#Start)
   * [StartTime](#StartTime)
 * [State](#State)
@@ -6179,33 +6176,6 @@ Response:
 ```json
 {
   "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-}
-```
-
-## Raft
-
-
-### RaftLeader
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
-
-### RaftState
-
-
-Perms: read
-
-Inputs: `null`
-
-Response:
-```json
-{
-  "NonceMap": {},
-  "MsgUuids": {}
 }
 ```
 

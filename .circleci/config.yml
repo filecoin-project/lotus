@@ -880,12 +880,6 @@ workflows:
           suite: itest-pending_deal_allocation
           target: "./itests/pending_deal_allocation_test.go"
       - test:
-          name: test-itest-raft_messagesigner
-          requires:
-            - build
-          suite: itest-raft_messagesigner
-          target: "./itests/raft_messagesigner_test.go"
-      - test:
           name: test-itest-remove_verifreg_datacap
           requires:
             - build
