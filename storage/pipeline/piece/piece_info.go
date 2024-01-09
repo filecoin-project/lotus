@@ -114,7 +114,7 @@ func (ds *PieceDealInfo) GetAllocation(ctx context.Context, aapi AllocationAPI, 
 		}
 
 		if all == nil {
-			return nil, xerrors.Errorf("allocation not found")
+			return nil, nil
 		}
 
 		if all.Client != ds.PieceActivationManifest.VerifiedAllocationKey.Client {

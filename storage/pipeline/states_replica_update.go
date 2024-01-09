@@ -123,58 +123,24 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 
 	onChainInfo, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
 	if err != nil {
-		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
-		return nil
+		log.Errorf("failed to get sector info: %+v", err)
+		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 	if onChainInfo == nil {
-		return xerrors.Errorf("sector not found %d", sector.SectorNumber)
+		log.Errorw("on chain info was nil", "sector", sector.SectorNumber)
+		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
-	sp, err := m.currentSealProof(ctx.Context())
+	weightUpdate, err := m.sectorWeight(ctx.Context(), sector, onChainInfo.Expiration)
 	if err != nil {
-		log.Errorf("sealer failed to return current seal proof not proceeding: %+v", err)
-		return nil
-	}
-	virtualPCI := miner.SectorPreCommitInfo{
-		SealProof:    sp,
-		SectorNumber: sector.SectorNumber,
-		SealedCID:    *sector.UpdateSealed,
-		Expiration:   onChainInfo.Expiration,
+		log.Errorf("failed to get sector weight: %+v", err)
+		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
-	for _, piece := range sector.Pieces {
-		err := piece.handleDealInfo(handleDealInfoParams{
-			FillerHandler: func(info UniversalPieceInfo) error {
-				return nil // ignore
-			},
-			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
-				// todo do dealIDs actually matter for calculating pledge?
-				//  if not, we could drop this whole loop
-				virtualPCI.DealIDs = append(virtualPCI.DealIDs, info.Impl().DealID)
-				return nil
-			},
-			DDOHandler: func(info UniversalPieceInfo) error {
-				// don't set dealIDs
-				// if we have built-in market deals, transform those pieces into piece manifests later in commit
-
-				// todo does ddo matter for initial pledge? Yes because fil+?
-
-				// TODO DDO
-				//return xerrors.Errorf("DDO deals not supported")
-
-				log.Errorf("DDO deals may have incorrect pledge")
-				return nil
-			},
-		})
-
-		if err != nil {
-			return xerrors.Errorf("inserting deal info into ProveReplicaUpdatesParams: %w", err)
-		}
-	}
-
-	collateral, err := m.Api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, virtualPCI, ts.Key())
+	collateral, err := m.pledgeForPower(ctx.Context(), weightUpdate)
 	if err != nil {
-		return xerrors.Errorf("getting initial pledge collateral: %w", err)
+		log.Errorf("failed to get pledge for power: %+v", err)
+		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
 	collateral = big.Sub(collateral, onChainInfo.InitialPledge)
