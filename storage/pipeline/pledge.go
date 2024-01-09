@@ -89,7 +89,7 @@ func (m *Sealing) sectorWeight(ctx context.Context, sector SectorInfo, expiratio
 	}
 
 	// get verified deal infos
-	var w, vw abi.DealWeight
+	var w, vw = big.Zero(), big.Zero()
 
 	for _, piece := range sector.Pieces {
 		if !piece.HasDealInfo() {
