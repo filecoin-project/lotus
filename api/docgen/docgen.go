@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -145,6 +146,7 @@ func init() {
 	allocationId := verifreg.AllocationId(0)
 	addExample(allocationId)
 	addExample(&allocationId)
+	addExample(miner.SectorOnChainInfoFlags(0))
 	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
 	claimId := verifreg.ClaimId(0)
 	addExample(claimId)

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -212,7 +213,7 @@ type Partition interface {
 	UnprovenSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = minertypes.SectorOnChainInfo
+type SectorOnChainInfo = miner12.SectorOnChainInfo
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof, configWantSynthetic bool) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
