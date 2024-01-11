@@ -4,9 +4,9 @@
 
 ## Improvements
 
-# v1.25.2 / 2024-01-04 
+# v1.25.2 / 2024-01-11 
 
-This is an optional feature release of Lotus. It introduces Lotus-Provider in its alpha testing phase, and includes fixes for synchronization issues that users experienced during the network upgrade.
+This is an optional but **highly recommended feature release** of Lotus, as it includes fixes for synchronizations issues that users have experienced. The feature release also introduces `Lotus-Provider` in its alpha testing phase, as well as the ability to call external PC2-binaries during the sealing process.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -107,12 +107,15 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 - feat: syncer: optimize syncFork for one-epoch forks ([filecoin-project/lotus#11533](https://github.com/filecoin-project/lotus/pull/11533))
 - fix: sync: do not include incoming in return of syncFork ([filecoin-project/lotus#11541](https://github.com/filecoin-project/lotus/pull/11541))
 - fix: wdpost: fix vanilla proof indexes ([filecoin-project/lotus#11550](https://github.com/filecoin-project/lotus/pull/11550))
+- feat: exchange: change GetBlocks to always fetch the requested number of tipsets ([filecoin-project/lotus#11565](https://github.com/filecoin-project/lotus/pull/11565))
 
 ## Dependencies
 - update go-libp2p to v0.31.0 ([filecoin-project/lotus#11225](https://github.com/filecoin-project/lotus/pull/11225))
 - deps: gostatetype (#11437) ([filecoin-project/lotus#11437](https://github.com/filecoin-project/lotus/pull/11437))
 - fix: deps: stop using go-libp2p deprecated peer.ID.Pretty ([filecoin-project/lotus#11263](https://github.com/filecoin-project/lotus/pull/11263))
 - chore:libp2p:update libp2p deps in release-v1.25.2 to v0.31.1 ([filecoin-project/lotus#11524](https://github.com/filecoin-project/lotus/pull/11524))
+- deps: update go-multiaddr to v0.12.0 ([filecoin-project/lotus#11524](https://github.com/filecoin-project/lotus/pull/11558))
+- dep: go-multi-address to v0.12.1 ([filecoin-project/lotus#11564](https://github.com/filecoin-project/lotus/pull/11564))
 
 ## Others
 - chore: update FFI (#11431) ([filecoin-project/lotus#11431](https://github.com/filecoin-project/lotus/pull/11431))
@@ -146,6 +149,7 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 - eth_filter flake debug ([filecoin-project/lotus#11261](https://github.com/filecoin-project/lotus/pull/11261))
 - fix: sealing: typo in FinalizeReplicaUpdate ([filecoin-project/lotus#11255](https://github.com/filecoin-project/lotus/pull/11255))
 - chore: slice loop replace (#11349) ([filecoin-project/lotus#11349](https://github.com/filecoin-project/lotus/pull/11349))
+- backport: docker build fix for v1.25.2 ([filecoin-project/lotus#11560](https://github.com/filecoin-project/lotus/pull/11560))
 
 ## Contributors
 
