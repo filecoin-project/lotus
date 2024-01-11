@@ -49,6 +49,7 @@ create table sectors_sdr_pipeline (
     -- Commit (PoRep snark)
     task_id_porep bigint,
     porep_proof bytea,
+    after_porep bool not null default false,
 
     -- Commit message sending
     commit_msg_cid text,
@@ -58,8 +59,6 @@ create table sectors_sdr_pipeline (
 
     -- Commit message wait
     commit_msg_tsk bytea,
-
-    task_id_commit_msg_wait bigint,
     after_commit_msg_success bool not null default false,
 
     -- Failure handling
