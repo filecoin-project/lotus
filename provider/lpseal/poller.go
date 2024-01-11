@@ -21,6 +21,7 @@ const (
 	pollerSDR = iota
 	pollerTrees
 	pollerPrecommitMsg
+	pollerPoRep
 
 	numPollers
 )
@@ -207,7 +208,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		}
 
 		todoWaitSeed := false
-		if task.TaskPoRep == nil && todoWaitSeed {
+		if task.TaskPoRep != nil && todoWaitSeed {
 			// todo start porep task
 		}
 	}

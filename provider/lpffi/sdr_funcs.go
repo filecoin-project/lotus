@@ -167,6 +167,15 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 	return ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
 }
 
+func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
+	vproof, err := sb.sectors.storage.GenetartePoRepVanillaProof(ctx, sn, sealed, unsealed, ticket, seed)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to generate vanilla proof: %w", err)
+	}
+
+	return ffi.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
+}
+
 func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) ([]byte, error) {
 	commd, err := commcid.CIDToDataCommitmentV1(unsCid)
 	if err != nil {

@@ -83,6 +83,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			precommitTask := lpseal.NewSubmitPrecommitTask(sp, db, full, sender, as, cfg.Fees.MaxPreCommitGasFee)
 			activeTasks = append(activeTasks, precommitTask)
 		}
+		if cfg.Subsystems.EnablePoRepProof {
+			porepTask := lpseal.NewPoRepTask(db, full, sp, slr, cfg.Subsystems.PoRepProofMaxTasks)
+			activeTasks = append(activeTasks, porepTask)
+		}
 	}
 	log.Infow("This lotus_provider instance handles",
 		"miner_addresses", maddrs,

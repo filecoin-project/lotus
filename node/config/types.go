@@ -118,6 +118,11 @@ type ProviderSubsystemsConfig struct {
 	// EnableSendPrecommitMsg enables the sending of precommit messages to the chain
 	// from this lotus-provider instance.
 	EnableSendPrecommitMsg bool
+
+	// EnableSendCommitMsg enables the computation of the porep proof
+	// In lotus-miner this was Commit1 / Commit2
+	EnablePoRepProof   bool
+	PoRepProofMaxTasks int
 }
 
 type DAGStoreConfig struct {

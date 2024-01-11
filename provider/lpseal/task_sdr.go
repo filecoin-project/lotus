@@ -168,7 +168,7 @@ func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
 		Cost: resources.Resources{ // todo offset for prefetch?
 			Cpu: 4, // todo multicore sdr
 			Gpu: 0,
-			Ram: 54 << 30, // todo measure; lower on 2k devnetn
+			Ram: 54 << 30,
 		},
 		MaxFailures: 2,
 		Follows:     nil,
