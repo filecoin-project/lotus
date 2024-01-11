@@ -107,6 +107,7 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 - feat: syncer: optimize syncFork for one-epoch forks ([filecoin-project/lotus#11533](https://github.com/filecoin-project/lotus/pull/11533))
 - fix: sync: do not include incoming in return of syncFork ([filecoin-project/lotus#11541](https://github.com/filecoin-project/lotus/pull/11541))
 - fix: wdpost: fix vanilla proof indexes ([filecoin-project/lotus#11550](https://github.com/filecoin-project/lotus/pull/11550))
+- feat: exchange: change GetBlocks to always fetch the requested number of tipsets ([filecoin-project/lotus#11565](https://github.com/filecoin-project/lotus/pull/11565))
 
 ## Dependencies
 - update go-libp2p to v0.31.0 ([filecoin-project/lotus#11225](https://github.com/filecoin-project/lotus/pull/11225))
