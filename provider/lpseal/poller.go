@@ -229,7 +229,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 			})
 		}
 
-		if task.AfterPoRep && len(task.PoRepProof) > 0 && task.TaskPrecommitMsg == nil {
+		if task.AfterPoRep && len(task.PoRepProof) > 0 && task.TaskCommitMsg == nil && s.pollers[pollerCommitMsg].IsSet() {
 			s.pollers[pollerCommitMsg].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 				n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_commit_msg = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_commit_msg is null`, id, task.SpID, task.SectorNumber)
 				if err != nil {
@@ -243,7 +243,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 			})
 		}
 
-		if task.AfterCommitMsg && !task.AfterCommitMsgSuccess {
+		if task.AfterCommitMsg && !task.AfterCommitMsgSuccess && s.pollers[pollerCommitMsg].IsSet() {
 			var execResult []struct {
 				ExecutedTskCID   string `db:"executed_tsk_cid"`
 				ExecutedTskEpoch int64  `db:"executed_tsk_epoch"`
@@ -272,14 +272,15 @@ func (s *SealPoller) poll(ctx context.Context) error {
 					return xerrors.Errorf("get sector info: %w", err)
 				}
 
-				if si != nil {
+				if si == nil {
+					log.Errorw("todo handle missing sector info (not found after cron)", "sp", task.SpID, "sector", task.SectorNumber, "exec_epoch", execResult[0].ExecutedTskEpoch, "exec_tskcid", execResult[0].ExecutedTskCID, "msg_cid", execResult[0].ExecutedMsgCID)
 					// todo handdle missing sector info (not found after cron)
 				} else {
 					// yay!
 
 					_, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET
 						after_commit_msg_success = true, commit_msg_tsk = $1
-						WHERE sp_id = $2 AND sector_number = $3 and after_commit_msg_success is NULL`,
+						WHERE sp_id = $2 AND sector_number = $3 and after_commit_msg_success = false`,
 						execResult[0].ExecutedTskCID, task.SpID, task.SectorNumber)
 					if err != nil {
 						return xerrors.Errorf("update sectors_sdr_pipeline: %w", err)

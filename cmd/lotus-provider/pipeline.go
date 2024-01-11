@@ -47,7 +47,7 @@ var pipelineStartCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "synthetic",
 			Usage: "Use synthetic PoRep",
-			Value: true,
+			Value: false, // todo implement synthetic
 		},
 		&cli.StringSliceFlag{ // todo consider moving layers top level
 			Name:  "layers",

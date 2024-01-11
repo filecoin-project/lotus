@@ -167,6 +167,10 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 	return ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
 }
 
+func (sb *SealCalls) GenerateSynthPoRep() {
+	panic("todo")
+}
+
 func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
 	vproof, err := sb.sectors.storage.GenetartePoRepVanillaProof(ctx, sn, sealed, unsealed, ticket, seed)
 	if err != nil {
