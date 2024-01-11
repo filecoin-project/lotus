@@ -22,6 +22,7 @@ const (
 	pollerTrees
 	pollerPrecommitMsg
 	pollerPoRep
+	pollerCommitMsg
 
 	numPollers
 )

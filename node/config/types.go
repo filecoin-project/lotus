@@ -123,6 +123,10 @@ type ProviderSubsystemsConfig struct {
 	// In lotus-miner this was Commit1 / Commit2
 	EnablePoRepProof   bool
 	PoRepProofMaxTasks int
+
+	// EnableSendCommitMsg enables the sending of commit messages to the chain
+	// from this lotus-provider instance.
+	EnableSendCommitMsg bool
 }
 
 type DAGStoreConfig struct {
