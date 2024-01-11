@@ -4,9 +4,9 @@
 
 ## Improvements
 
-# v1.25.2 / 2024-01-10 
+# v1.25.2 / 2024-01-11 
 
-This is an optional but highly recommended feature release of Lotus, as it includes fixes for synchronizations issues that users have experienced. The feature release also introduces Lotus-Provider in its alpha testing phase, as well as the ability to call external PC2-binaries during the sealing process.
+This is an optional but **highly recommended feature release** of Lotus, as it includes fixes for synchronizations issues that users have experienced. The feature release also introduces `Lotus-Provider` in its alpha testing phase, as well as the ability to call external PC2-binaries during the sealing process.
 
 ## ☢️ Upgrade Warnings ☢️
 
