@@ -3,6 +3,7 @@ package paths
 import (
 	"context"
 	"encoding/json"
+	"github.com/ipfs/go-cid"
 	"math/bits"
 	"math/rand"
 	"os"
@@ -807,6 +808,29 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		// this will leave the GenerateSingleVanillaProof goroutine hanging, but that's still less bad than failing PoSt
 		return nil, xerrors.Errorf("failed to generate vanilla proof before context cancellation: %w", ctx.Err())
 	}
+}
+
+func (st *Local) GenetartePoRepVanillaProof(ctx context.Context, sr storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
+	src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	if err != nil {
+		return nil, xerrors.Errorf("acquire sector: %w", err)
+	}
+
+	if src.Sealed == "" || src.Cache == "" {
+		return nil, errPathNotFound
+	}
+
+	ssize, err := sr.ProofType.SectorSize()
+	if err != nil {
+		return nil, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	secPiece := []abi.PieceInfo{{
+		Size:     abi.PaddedPieceSize(ssize),
+		PieceCID: unsealed,
+	}}
+
+	return ffi.SealCommitPhase1(sr.ProofType, sealed, unsealed, src.Cache, src.Sealed, sr.ID.Number, sr.ID.Miner, ticket, seed, secPiece)
 }
 
 var _ Store = &Local{}

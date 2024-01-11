@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"io"
 	"math/bits"
 	"net/http"
@@ -827,6 +828,8 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 				return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
 			}
 
+			_ = resp.Body.Close()
+
 			return body, nil
 		}
 	}
@@ -834,7 +837,83 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 	return nil, xerrors.Errorf("sector not found")
 }
 
-var _ Store = &Remote{}
+func (r *Remote) GenetartePoRepVanillaProof(ctx context.Context, sr storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
+	p, err := r.local.GenetartePoRepVanillaProof(ctx, sr, sealed, unsealed, ticket, seed)
+	if err != errPathNotFound {
+		return p, err
+	}
+
+	ft := storiface.FTSealed | storiface.FTCache
+	si, err := r.index.StorageFindSector(ctx, sr.ID, ft, 0, false)
+	if err != nil {
+		return nil, xerrors.Errorf("finding sector %d failed: %w", sr.ID, err)
+	}
+
+	requestParams := PoRepVanillaParams{
+		Sector:   sr,
+		Sealed:   sealed,
+		Unsealed: unsealed,
+		Ticket:   ticket,
+		Seed:     seed,
+	}
+	jreq, err := json.Marshal(requestParams)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, info := range si {
+		for _, u := range info.BaseURLs {
+			url := fmt.Sprintf("%s/vanilla/porep", u)
+
+			req, err := http.NewRequest("POST", url, strings.NewReader(string(jreq)))
+			if err != nil {
+				return nil, xerrors.Errorf("request: %w", err)
+			}
+
+			if r.auth != nil {
+				req.Header = r.auth.Clone()
+			}
+			req = req.WithContext(ctx)
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, xerrors.Errorf("do request: %w", err)
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				if resp.StatusCode == http.StatusNotFound {
+					log.Debugw("reading vanilla proof from remote not-found response", "url", url, "store", info.ID)
+					continue
+				}
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+				}
+
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body)))
+			}
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+			}
+
+			_ = resp.Body.Close()
+
+			return body, nil
+		}
+	}
+
+	return nil, xerrors.Errorf("sector not found")
+}
 
 type funcCloser func() error
 
