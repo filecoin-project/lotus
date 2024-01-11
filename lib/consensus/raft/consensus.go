@@ -342,7 +342,7 @@ func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interf
 			return false, nil
 		}
 
-		logger.Debugf("redirecting %s to leader: %s", method, leader.Pretty())
+		logger.Debugf("redirecting %s to leader: %s", method, leader)
 		finalErr = cc.RpcClient.CallContext(
 			ctx,
 			leader,
@@ -394,7 +394,7 @@ func (cc *Consensus) Commit(ctx context.Context, op *ConsensusOp) error {
 func (cc *Consensus) AddPeer(ctx context.Context, pid peer.ID) error {
 	var finalErr error
 	for i := 0; i <= cc.config.CommitRetries; i++ {
-		logger.Debugf("attempt #%d: AddPeer %s", i, pid.Pretty())
+		logger.Debugf("attempt #%d: AddPeer %s", i, pid)
 		if finalErr != nil {
 			logger.Errorf("retrying to add peer. Attempt #%d failed: %s", i, finalErr)
 		}
@@ -408,7 +408,7 @@ func (cc *Consensus) AddPeer(ctx context.Context, pid peer.ID) error {
 			time.Sleep(cc.config.CommitRetryDelay)
 			continue
 		}
-		logger.Infof("peer added to Raft: %s", pid.Pretty())
+		logger.Infof("peer added to Raft: %s", pid)
 		break
 	}
 	return finalErr
@@ -419,7 +419,7 @@ func (cc *Consensus) AddPeer(ctx context.Context, pid peer.ID) error {
 func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 	var finalErr error
 	for i := 0; i <= cc.config.CommitRetries; i++ {
-		logger.Debugf("attempt #%d: RmPeer %s", i, pid.Pretty())
+		logger.Debugf("attempt #%d: RmPeer %s", i, pid)
 		if finalErr != nil {
 			logger.Errorf("retrying to remove peer. Attempt #%d failed: %s", i, finalErr)
 		}
@@ -433,7 +433,7 @@ func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 			time.Sleep(cc.config.CommitRetryDelay)
 			continue
 		}
-		logger.Infof("peer removed from Raft: %s", pid.Pretty())
+		logger.Infof("peer removed from Raft: %s", pid)
 		break
 	}
 	return finalErr

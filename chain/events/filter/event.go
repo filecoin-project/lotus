@@ -388,7 +388,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 
 	if m.EventIndex != nil && minHeight != -1 && minHeight < currentHeight {
 		// Filter needs historic events
-		if err := m.EventIndex.PrefillFilter(ctx, f); err != nil {
+		if err := m.EventIndex.PrefillFilter(ctx, f, true); err != nil {
 			return nil, err
 		}
 	}

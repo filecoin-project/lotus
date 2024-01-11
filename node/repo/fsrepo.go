@@ -185,6 +185,30 @@ func (worker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated [
 	return "WORKER_API_INFO", nil, nil
 }
 
+type provider struct{}
+
+var Provider provider
+
+func (provider) Type() string {
+	return "Provider"
+}
+
+func (provider) Config() interface{} {
+	return &struct{}{}
+}
+
+func (provider) APIFlags() []string {
+	return []string{"provider-api-url"}
+}
+
+func (provider) RepoFlags() []string {
+	return []string{"provider-repo"}
+}
+
+func (provider) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "PROVIDER_API_INFO", nil, nil
+}
+
 var Wallet wallet
 
 type wallet struct {
@@ -322,7 +346,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 
 	f, err := os.Open(p)
 	if os.IsNotExist(err) {
-		return nil, ErrNoAPIEndpoint
+		return nil, xerrors.Errorf("No file (%s): %w", p, ErrNoAPIEndpoint)
 	} else if err != nil {
 		return nil, err
 	}

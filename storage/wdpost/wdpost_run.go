@@ -32,6 +32,8 @@ import (
 )
 
 // recordPoStFailure records a failure in the journal.
+//
+//nolint:unused
 func (s *WindowPoStScheduler) recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info) {
 	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 		c := evtCommon{Error: err}
@@ -311,6 +313,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 	// allowed in a single message
 	partitionBatches, err := s.BatchPartitions(partitions, nv)
 	if err != nil {
+		log.Errorf("batch partitions failed: %+v", err)
 		return nil, err
 	}
 
@@ -648,7 +651,7 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 		Params: enc,
 		Value:  types.NewInt(0),
 	}
-	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee), MaximizeFeeCap: s.feeCfg.MaximizeWindowPoStFeeCap}
 	if err := s.prepareMessage(ctx, msg, spec); err != nil {
 		return nil, err
 	}

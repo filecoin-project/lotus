@@ -266,7 +266,10 @@ var simplePreCommit1 = &cli.Command{
 			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
 		}
 
-		var ticket [32]byte // all zero
+		ticket := [32]byte{}
+		for i := range ticket {
+			ticket[i] = 1
+		}
 
 		pieces, err := ParsePieceInfos(cctx, 3)
 		if err != nil {
@@ -305,7 +308,36 @@ var simplePreCommit2 = &cli.Command{
 			Name:  "synthetic",
 			Usage: "generate synthetic PoRep proofs",
 		},
+		&cli.StringFlag{
+			Name:  "external-pc2",
+			Usage: "command for computing PC2 externally",
+		},
 	},
+	Description: `Compute PreCommit2 inputs and seal a sector.
+
+--external-pc2 can be used to compute the PreCommit2 inputs externally.
+The flag behaves similarly to the related lotus-worker flag, using it in
+lotus-bench may be useful for testing if the external PreCommit2 command is
+invoked correctly.
+
+The command will be called with a number of environment variables set:
+* EXTSEAL_PC2_SECTOR_NUM: the sector number
+* EXTSEAL_PC2_SECTOR_MINER: the miner id
+* EXTSEAL_PC2_PROOF_TYPE: the proof type
+* EXTSEAL_PC2_SECTOR_SIZE: the sector size in bytes
+* EXTSEAL_PC2_CACHE: the path to the cache directory
+* EXTSEAL_PC2_SEALED: the path to the sealed sector file (initialized with unsealed data by the caller)
+* EXTSEAL_PC2_PC1OUT: output from rust-fil-proofs precommit1 phase (base64 encoded json)
+
+The command is expected to:
+* Create cache sc-02-data-tree-r* files
+* Create cache sc-02-data-tree-c* files
+* Create cache p_aux / t_aux files
+* Transform the sealed file in place
+
+Example invocation of lotus-bench as external executor:
+'./lotus-bench simple precommit2 --sector-size $EXTSEAL_PC2_SECTOR_SIZE $EXTSEAL_PC2_SEALED $EXTSEAL_PC2_CACHE $EXTSEAL_PC2_PC1OUT'
+`,
 	ArgsUsage: "[sealed] [cache] [pc1 out]",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -330,7 +362,18 @@ var simplePreCommit2 = &cli.Command{
 			storiface.FTSealed: cctx.Args().Get(0),
 			storiface.FTCache:  cctx.Args().Get(1),
 		}
-		sealer, err := ffiwrapper.New(pp)
+
+		var opts []ffiwrapper.FFIWrapperOpt
+
+		if cctx.IsSet("external-pc2") {
+			extSeal := ffiwrapper.ExternalSealer{
+				PreCommit2: ffiwrapper.MakeExternPrecommit2(cctx.String("external-pc2")),
+			}
+
+			opts = append(opts, ffiwrapper.WithExternalSealCalls(extSeal))
+		}
+
+		sealer, err := ffiwrapper.New(pp, opts...)
 		if err != nil {
 			return err
 		}
@@ -420,7 +463,12 @@ var simpleCommit1 = &cli.Command{
 
 		start := time.Now()
 
-		var ticket, seed [32]byte // all zero
+		ticket := [32]byte{}
+		seed := [32]byte{}
+		for i := range ticket {
+			ticket[i] = 1
+			seed[i] = 1
+		}
 
 		commd, err := cid.Parse(cctx.Args().Get(2))
 		if err != nil {
@@ -650,6 +698,10 @@ var simpleWinningPost = &cli.Command{
 			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
 			Value: "t01000",
 		},
+		&cli.BoolFlag{
+			Name:  "show-inputs",
+			Usage: "output inputs for winning post generation",
+		},
 	},
 	ArgsUsage: "[sealed] [cache] [comm R] [sector num]",
 	Action: func(cctx *cli.Context) error {
@@ -720,6 +772,17 @@ var simpleWinningPost = &cli.Command{
 		fmt.Printf("Vanilla %s (%s)\n", challenge.Sub(start), bps(sectorSize, 1, challenge.Sub(start)))
 		fmt.Printf("Proof %s (%s)\n", end.Sub(challenge), bps(sectorSize, 1, end.Sub(challenge)))
 		fmt.Println(base64.StdEncoding.EncodeToString(proof[0].ProofBytes))
+
+		if cctx.Bool("show-inputs") {
+			fmt.Println("GenerateWinningPoStWithVanilla info:")
+
+			fmt.Printf(" wpt: %d\n", wpt)
+			fmt.Printf(" mid: %d\n", mid)
+			fmt.Printf(" rand: %x\n", rand)
+			fmt.Printf(" vp: %x\n", vp)
+			fmt.Printf(" proof: %x\n", proof)
+		}
+
 		return nil
 	},
 }

@@ -106,6 +106,7 @@ var (
 	MpoolAddTsDuration                  = stats.Float64("mpool/addts_ms", "Duration of addTs in mpool", stats.UnitMilliseconds)
 	MpoolAddDuration                    = stats.Float64("mpool/add_ms", "Duration of Add in mpool", stats.UnitMilliseconds)
 	MpoolPushDuration                   = stats.Float64("mpool/push_ms", "Duration of Push in mpool", stats.UnitMilliseconds)
+	MpoolMessageCount                   = stats.Int64("mpool/message_count", "Number of messages in the mpool", stats.UnitDimensionless)
 	BlockPublished                      = stats.Int64("block/published", "Counter for total locally published blocks", stats.UnitDimensionless)
 	BlockReceived                       = stats.Int64("block/received", "Counter for total received blocks", stats.UnitDimensionless)
 	BlockValidationFailure              = stats.Int64("block/failure", "Counter for block validation failures", stats.UnitDimensionless)
@@ -306,6 +307,10 @@ var (
 	MpoolPushDurationView = &view.View{
 		Measure:     MpoolPushDuration,
 		Aggregation: defaultMillisecondsDistribution,
+	}
+	MpoolMessageCountView = &view.View{
+		Measure:     MpoolMessageCount,
+		Aggregation: view.LastValue(),
 	}
 	PeerCountView = &view.View{
 		Measure:     PeerCount,
@@ -700,45 +705,54 @@ var (
 	}
 )
 
+var views = []*view.View{
+	InfoView,
+	PeerCountView,
+	APIRequestDurationView,
+
+	GraphsyncReceivingPeersCountView,
+	GraphsyncReceivingActiveCountView,
+	GraphsyncReceivingCountCountView,
+	GraphsyncReceivingTotalMemoryAllocatedView,
+	GraphsyncReceivingTotalPendingAllocationsView,
+	GraphsyncReceivingPeersPendingView,
+	GraphsyncSendingPeersCountView,
+	GraphsyncSendingActiveCountView,
+	GraphsyncSendingCountCountView,
+	GraphsyncSendingTotalMemoryAllocatedView,
+	GraphsyncSendingTotalPendingAllocationsView,
+	GraphsyncSendingPeersPendingView,
+
+	RcmgrAllowConnView,
+	RcmgrBlockConnView,
+	RcmgrAllowStreamView,
+	RcmgrBlockStreamView,
+	RcmgrAllowPeerView,
+	RcmgrBlockPeerView,
+	RcmgrAllowProtoView,
+	RcmgrBlockProtoView,
+	RcmgrBlockProtoPeerView,
+	RcmgrAllowSvcView,
+	RcmgrBlockSvcView,
+	RcmgrBlockSvcPeerView,
+	RcmgrAllowMemView,
+	RcmgrBlockMemView,
+}
+
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
 var DefaultViews = func() []*view.View {
-	views := []*view.View{
-		InfoView,
-		PeerCountView,
-		APIRequestDurationView,
-
-		GraphsyncReceivingPeersCountView,
-		GraphsyncReceivingActiveCountView,
-		GraphsyncReceivingCountCountView,
-		GraphsyncReceivingTotalMemoryAllocatedView,
-		GraphsyncReceivingTotalPendingAllocationsView,
-		GraphsyncReceivingPeersPendingView,
-		GraphsyncSendingPeersCountView,
-		GraphsyncSendingActiveCountView,
-		GraphsyncSendingCountCountView,
-		GraphsyncSendingTotalMemoryAllocatedView,
-		GraphsyncSendingTotalPendingAllocationsView,
-		GraphsyncSendingPeersPendingView,
-
-		RcmgrAllowConnView,
-		RcmgrBlockConnView,
-		RcmgrAllowStreamView,
-		RcmgrBlockStreamView,
-		RcmgrAllowPeerView,
-		RcmgrBlockPeerView,
-		RcmgrAllowProtoView,
-		RcmgrBlockProtoView,
-		RcmgrBlockProtoPeerView,
-		RcmgrAllowSvcView,
-		RcmgrBlockSvcView,
-		RcmgrBlockSvcPeerView,
-		RcmgrAllowMemView,
-		RcmgrBlockMemView,
-	}
-	views = append(views, blockstore.DefaultViews...)
-	views = append(views, rpcmetrics.DefaultViews...)
 	return views
 }()
+
+// RegisterViews adds views to the default list without modifying this file.
+func RegisterViews(v ...*view.View) {
+	views = append(views, v...)
+}
+
+func init() {
+	RegisterViews(blockstore.DefaultViews...)
+	RegisterViews(rpcmetrics.DefaultViews...)
+}
 
 var ChainNodeViews = append([]*view.View{
 	ChainNodeHeightView,
@@ -761,6 +775,7 @@ var ChainNodeViews = append([]*view.View{
 	MpoolAddTsDurationView,
 	MpoolAddDurationView,
 	MpoolPushDurationView,
+	MpoolMessageCountView,
 	PubsubPublishMessageView,
 	PubsubDeliverMessageView,
 	PubsubRejectMessageView,
@@ -833,7 +848,7 @@ var GatewayNodeViews = append([]*view.View{
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
 func SinceInMilliseconds(startTime time.Time) float64 {
-	return float64(time.Since(startTime).Nanoseconds()) / 1e6
+	return float64(time.Since(startTime).Milliseconds())
 }
 
 // Timer is a function stopwatch, calling it starts the timer,

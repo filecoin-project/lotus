@@ -9,7 +9,7 @@ type DocField struct {
 }
 
 var Doc = map[string][]DocField{
-	"API": []DocField{
+	"API": {
 		{
 			Name: "ListenAddress",
 			Type: "string",
@@ -29,7 +29,23 @@ var Doc = map[string][]DocField{
 			Comment: ``,
 		},
 	},
-	"Backup": []DocField{
+	"ApisConfig": {
+		{
+			Name: "ChainApiInfo",
+			Type: "[]string",
+
+			Comment: `ChainApiInfo is the API endpoint for the Lotus daemon.`,
+		},
+		{
+			Name: "StorageRPCSecret",
+			Type: "string",
+
+			Comment: `RPC Secret for the storage subsystem.
+If integrating with lotus-miner this must match the value from
+cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey`,
+		},
+	},
+	"Backup": {
 		{
 			Name: "DisableMetadataLog",
 			Type: "bool",
@@ -41,7 +57,7 @@ Note that in case of metadata corruption it might be much harder to recover
 your node if metadata log is disabled`,
 		},
 	},
-	"BatchFeeConfig": []DocField{
+	"BatchFeeConfig": {
 		{
 			Name: "Base",
 			Type: "types.FIL",
@@ -55,7 +71,7 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Chainstore": []DocField{
+	"Chainstore": {
 		{
 			Name: "EnableSplitstore",
 			Type: "bool",
@@ -69,7 +85,7 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Client": []DocField{
+	"Client": {
 		{
 			Name: "UseIpfs",
 			Type: "bool",
@@ -117,7 +133,7 @@ without existing payment channels with available funds will fail instead
 of automatically performing on-chain operations.`,
 		},
 	},
-	"Common": []DocField{
+	"Common": {
 		{
 			Name: "API",
 			Type: "API",
@@ -149,7 +165,7 @@ of automatically performing on-chain operations.`,
 			Comment: ``,
 		},
 	},
-	"DAGStoreConfig": []DocField{
+	"DAGStoreConfig": {
 		{
 			Name: "RootDir",
 			Type: "string",
@@ -206,7 +222,7 @@ representation, e.g. 1m, 5m, 1h.
 Default value: 1 minute.`,
 		},
 	},
-	"DealmakingConfig": []DocField{
+	"DealmakingConfig": {
 		{
 			Name: "ConsiderOnlineStorageDeals",
 			Type: "bool",
@@ -341,7 +357,7 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
-	"Events": []DocField{
+	"Events": {
 		{
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
@@ -394,7 +410,7 @@ the database must already exist and be writeable. If a relative path is provided
 relative to the CWD (current working directory).`,
 		},
 	},
-	"FaultReporterConfig": []DocField{
+	"FaultReporterConfig": {
 		{
 			Name: "EnableConsensusFaultReporter",
 			Type: "bool",
@@ -423,7 +439,7 @@ ReportConsensusFault messages. It will pay for gas fees, and receive any
 rewards. This address should have adequate funds to cover gas fees.`,
 		},
 	},
-	"FeeConfig": []DocField{
+	"FeeConfig": {
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
@@ -431,7 +447,7 @@ rewards. This address should have adequate funds to cover gas fees.`,
 			Comment: ``,
 		},
 	},
-	"FevmConfig": []DocField{
+	"FevmConfig": {
 		{
 			Name: "EnableEthRPC",
 			Type: "bool",
@@ -453,7 +469,7 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 	},
-	"FullNode": []DocField{
+	"FullNode": {
 		{
 			Name: "Client",
 			Type: "Client",
@@ -503,7 +519,40 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 	},
-	"IndexConfig": []DocField{
+	"HarmonyDB": {
+		{
+			Name: "Hosts",
+			Type: "[]string",
+
+			Comment: `HOSTS is a list of hostnames to nodes running YugabyteDB
+in a cluster. Only 1 is required`,
+		},
+		{
+			Name: "Username",
+			Type: "string",
+
+			Comment: `The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.`,
+		},
+		{
+			Name: "Password",
+			Type: "string",
+
+			Comment: `The password for the related username. Blank for default.`,
+		},
+		{
+			Name: "Database",
+			Type: "string",
+
+			Comment: `The database (logical partition) within Yugabyte. Blank for default.`,
+		},
+		{
+			Name: "Port",
+			Type: "string",
+
+			Comment: `The port to find Yugabyte. Blank for default.`,
+		},
+	},
+	"IndexConfig": {
 		{
 			Name: "EnableMsgIndex",
 			Type: "bool",
@@ -512,7 +561,7 @@ Set to 0 to keep all mappings`,
 EnableMsgIndex enables indexing of messages on chain.`,
 		},
 	},
-	"IndexProviderConfig": []DocField{
+	"IndexProviderConfig": {
 		{
 			Name: "Enable",
 			Type: "bool",
@@ -557,7 +606,15 @@ starts. By default, the cache is rehydrated from previously cached entries store
 datastore if any is present.`,
 		},
 	},
-	"Libp2p": []DocField{
+	"JournalConfig": {
+		{
+			Name: "DisabledEvents",
+			Type: "string",
+
+			Comment: `Events of the form: "system1:event1,system1:event2[,...]"`,
+		},
+	},
+	"Libp2p": {
 		{
 			Name: "ListenAddresses",
 			Type: "[]string",
@@ -624,7 +681,7 @@ count towards this limit.`,
 closed by the connection manager.`,
 		},
 	},
-	"Logging": []DocField{
+	"Logging": {
 		{
 			Name: "SubsystemLevels",
 			Type: "map[string]string",
@@ -632,7 +689,137 @@ closed by the connection manager.`,
 			Comment: `SubsystemLevels specify per-subsystem log levels`,
 		},
 	},
-	"MinerAddressConfig": []DocField{
+	"LotusProviderAddresses": {
+		{
+			Name: "PreCommitControl",
+			Type: "[]string",
+
+			Comment: `Addresses to send PreCommit messages from`,
+		},
+		{
+			Name: "CommitControl",
+			Type: "[]string",
+
+			Comment: `Addresses to send Commit messages from`,
+		},
+		{
+			Name: "TerminateControl",
+			Type: "[]string",
+
+			Comment: ``,
+		},
+		{
+			Name: "DisableOwnerFallback",
+			Type: "bool",
+
+			Comment: `DisableOwnerFallback disables usage of the owner address for messages
+sent automatically`,
+		},
+		{
+			Name: "DisableWorkerFallback",
+			Type: "bool",
+
+			Comment: `DisableWorkerFallback disables usage of the worker address for messages
+sent automatically, if control addresses are configured.
+A control address that doesn't have enough funds will still be chosen
+over the worker address if this flag is set.`,
+		},
+		{
+			Name: "MinerAddresses",
+			Type: "[]string",
+
+			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
+		},
+	},
+	"LotusProviderConfig": {
+		{
+			Name: "Subsystems",
+			Type: "ProviderSubsystemsConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Fees",
+			Type: "LotusProviderFees",
+
+			Comment: ``,
+		},
+		{
+			Name: "Addresses",
+			Type: "LotusProviderAddresses",
+
+			Comment: ``,
+		},
+		{
+			Name: "Proving",
+			Type: "ProvingConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Journal",
+			Type: "JournalConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Apis",
+			Type: "ApisConfig",
+
+			Comment: ``,
+		},
+	},
+	"LotusProviderFees": {
+		{
+			Name: "DefaultMaxFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxPreCommitGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxCommitGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxPreCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
+			Comment: `maxBatchFee = maxBase + maxPerSector * nSectors`,
+		},
+		{
+			Name: "MaxCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxTerminateGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxWindowPoStGasFee",
+			Type: "types.FIL",
+
+			Comment: `WindowPoSt is a high-value operation, so the default fee should be high.`,
+		},
+		{
+			Name: "MaxPublishDealsFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+	},
+	"MinerAddressConfig": {
 		{
 			Name: "PreCommitControl",
 			Type: "[]string",
@@ -674,7 +861,7 @@ A control address that doesn't have enough funds will still be chosen
 over the worker address if this flag is set.`,
 		},
 	},
-	"MinerFeeConfig": []DocField{
+	"MinerFeeConfig": {
 		{
 			Name: "MaxPreCommitGasFee",
 			Type: "types.FIL",
@@ -723,8 +910,14 @@ over the worker address if this flag is set.`,
 
 			Comment: ``,
 		},
+		{
+			Name: "MaximizeWindowPoStFeeCap",
+			Type: "bool",
+
+			Comment: ``,
+		},
 	},
-	"MinerSubsystemConfig": []DocField{
+	"MinerSubsystemConfig": {
 		{
 			Name: "EnableMining",
 			Type: "bool",
@@ -750,6 +943,14 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 		{
+			Name: "EnableSectorIndexDB",
+			Type: "bool",
+
+			Comment: `When enabled, the sector index will reside in an external database
+as opposed to the local KV store in the miner process
+This is useful to allow workers to bypass the lotus miner to access sector information`,
+		},
+		{
 			Name: "SealerApiInfo",
 			Type: "string",
 
@@ -761,8 +962,59 @@ over the worker address if this flag is set.`,
 
 			Comment: ``,
 		},
+		{
+			Name: "DisableWindowPoSt",
+			Type: "bool",
+
+			Comment: `When window post is enabled, the miner will automatically submit window post proofs
+for all sectors that are eligible for window post
+IF WINDOW POST IS DISABLED, THE MINER WILL NOT SUBMIT WINDOW POST PROOFS
+THIS WILL RESULT IN FAULTS AND PENALTIES IF NO OTHER MECHANISM IS RUNNING
+TO SUBMIT WINDOW POST PROOFS.
+Note: This option is entirely disabling the window post scheduler,
+not just the builtin PoSt computation like Proving.DisableBuiltinWindowPoSt.
+This option will stop lotus-miner from performing any actions related
+to window post, including scheduling, submitting proofs, and recovering
+sectors.`,
+		},
+		{
+			Name: "DisableWinningPoSt",
+			Type: "bool",
+
+			Comment: `When winning post is disabled, the miner process will NOT attempt to mine
+blocks. This should only be set when there's an external process mining
+blocks on behalf of the miner.
+When disabled and no external block producers are configured, all potential
+block rewards will be missed!`,
+		},
 	},
-	"ProvingConfig": []DocField{
+	"ProviderSubsystemsConfig": {
+		{
+			Name: "EnableWindowPost",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "WindowPostMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableWinningPost",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "WinningPostMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+	},
+	"ProvingConfig": {
 		{
 			Name: "ParallelCheckLimit",
 			Type: "int",
@@ -886,7 +1138,7 @@ Note that setting this value lower may result in less efficient gas use - more m
 to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)`,
 		},
 	},
-	"Pubsub": []DocField{
+	"Pubsub": {
 		{
 			Name: "Bootstrapper",
 			Type: "bool",
@@ -946,7 +1198,7 @@ This property is used only if ElasticSearchTracer propery is set.`,
 			Comment: `Auth token that will be passed with logs to elasticsearch - used for weighted peers score.`,
 		},
 	},
-	"RetrievalPricing": []DocField{
+	"RetrievalPricing": {
 		{
 			Name: "Strategy",
 			Type: "string",
@@ -966,7 +1218,7 @@ This property is used only if ElasticSearchTracer propery is set.`,
 			Comment: ``,
 		},
 	},
-	"RetrievalPricingDefault": []DocField{
+	"RetrievalPricingDefault": {
 		{
 			Name: "VerifiedDealsFreeTransfer",
 			Type: "bool",
@@ -977,7 +1229,7 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 default value is true`,
 		},
 	},
-	"RetrievalPricingExternal": []DocField{
+	"RetrievalPricingExternal": {
 		{
 			Name: "Path",
 			Type: "string",
@@ -986,7 +1238,7 @@ default value is true`,
 This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".`,
 		},
 	},
-	"SealerConfig": []DocField{
+	"SealerConfig": {
 		{
 			Name: "ParallelFetchLimit",
 			Type: "int",
@@ -1087,7 +1339,7 @@ to use when evaluating tasks against this worker. An empty value defaults
 to "hardware".`,
 		},
 	},
-	"SealingConfig": []DocField{
+	"SealingConfig": {
 		{
 			Name: "MaxWaitDealsSectors",
 			Type: "uint64",
@@ -1299,13 +1551,13 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 			Comment: `UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.`,
 		},
 	},
-	"Splitstore": []DocField{
+	"Splitstore": {
 		{
 			Name: "ColdStoreType",
 			Type: "string",
 
 			Comment: `ColdStoreType specifies the type of the coldstore.
-It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.`,
+It can be "discard" (default) for discarding cold blocks, "messages" to store only messages or "universal" to store all chain state..`,
 		},
 		{
 			Name: "HotStoreType",
@@ -1366,7 +1618,7 @@ is set.  Moving GC will not occur when total moving size exceeds
 HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 		},
 	},
-	"StorageMiner": []DocField{
+	"StorageMiner": {
 		{
 			Name: "Subsystems",
 			Type: "MinerSubsystemConfig",
@@ -1421,8 +1673,14 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 
 			Comment: ``,
 		},
+		{
+			Name: "HarmonyDB",
+			Type: "HarmonyDB",
+
+			Comment: ``,
+		},
 	},
-	"UserRaftConfig": []DocField{
+	"UserRaftConfig": {
 		{
 			Name: "ClusterModeEnabled",
 			Type: "bool",
@@ -1484,7 +1742,7 @@ copies that we keep as backups (renaming) after cleanup.`,
 			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
 		},
 	},
-	"Wallet": []DocField{
+	"Wallet": {
 		{
 			Name: "RemoteBackend",
 			Type: "string",

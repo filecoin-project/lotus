@@ -157,7 +157,8 @@ var terminationsCmd = &cli.Command{
 				}
 
 				for _, t := range termParams.Terminations {
-					sectors, err := minerSt.LoadSectors(&t.Sectors)
+					tmp := t.Sectors
+					sectors, err := minerSt.LoadSectors(&tmp)
 					if err != nil {
 						return err
 					}

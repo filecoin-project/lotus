@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -33,6 +34,7 @@ var log = logging.Logger("wdpost")
 type NodeAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -86,6 +88,11 @@ type WindowPoStScheduler struct {
 	// failLk sync.Mutex
 }
 
+type ActorInfo struct {
+	address.Address
+	api.MinerInfo
+}
+
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
 func NewWindowedPoStScheduler(api NodeAPI,
 	cfg config.MinerFeeConfig,
@@ -95,12 +102,18 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
-	actor address.Address) (*WindowPoStScheduler, error) {
-	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
-	if err != nil {
-		return nil, xerrors.Errorf("getting sector size: %w", err)
+	actors []dtypes.MinerAddress) (*WindowPoStScheduler, error) {
+	var actorInfos []ActorInfo
+
+	for _, actor := range actors {
+		mi, err := api.StateMinerInfo(context.TODO(), address.Address(actor), types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("getting sector size: %w", err)
+		}
+		actorInfos = append(actorInfos, ActorInfo{address.Address(actor), mi})
 	}
 
+	// TODO I punted here knowing that actorInfos will be consumed differently later.
 	return &WindowPoStScheduler{
 		api:                                     api,
 		feeCfg:                                  cfg,
@@ -108,13 +121,13 @@ func NewWindowedPoStScheduler(api NodeAPI,
 		prover:                                  sp,
 		verifier:                                verif,
 		faultTracker:                            ft,
-		proofType:                               mi.WindowPoStProofType,
-		partitionSectors:                        mi.WindowPoStPartitionSectors,
+		proofType:                               actorInfos[0].WindowPoStProofType,
+		partitionSectors:                        actorInfos[0].WindowPoStPartitionSectors,
+		actor:                                   address.Address(actors[0]),
 		disablePreChecks:                        pcfg.DisableWDPoStPreChecks,
 		maxPartitionsPerPostMessage:             pcfg.MaxPartitionsPerPoStMessage,
 		maxPartitionsPerRecoveryMessage:         pcfg.MaxPartitionsPerRecoveryMessage,
 		singleRecoveringPartitionPerPostMessage: pcfg.SingleRecoveringPartitionPerPostMessage,
-		actor:                                   actor,
 		evtTypes: [...]journal.EventType{
 			evtTypeWdPoStScheduler:  j.RegisterEventType("wdpost", "scheduler"),
 			evtTypeWdPoStProofs:     j.RegisterEventType("wdpost", "proofs_processed"),
@@ -126,8 +139,6 @@ func NewWindowedPoStScheduler(api NodeAPI,
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
-	// Initialize change handler.
-
 	// callbacks is a union of the fullNodeFilteredAPI and ourselves.
 	callbacks := struct {
 		NodeAPI
@@ -224,6 +235,8 @@ func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.T
 }
 
 // onAbort is called when generating proofs or submitting proofs is aborted
+//
+//nolint:unused
 func (s *WindowPoStScheduler) onAbort(ts *types.TipSet, deadline *dline.Info) {
 	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 		c := evtCommon{}

@@ -1,6 +1,7 @@
 package full
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -161,4 +162,18 @@ func TestRewardPercentiles(t *testing.T) {
 		require.Equal(t, len(ans), len(tc.percentiles))
 		require.Equal(t, ans, rewards)
 	}
+}
+
+func TestABIEncoding(t *testing.T) {
+	// Generated from https://abi.hashex.org/
+	const expected = "000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000510000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000001b1111111111111111111020200301000000044444444444444444010000000000"
+	const data = "111111111111111111102020030100000004444444444444444401"
+
+	expectedBytes, err := hex.DecodeString(expected)
+	require.NoError(t, err)
+
+	dataBytes, err := hex.DecodeString(data)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedBytes, encodeAsABIHelper(22, 81, dataBytes))
 }

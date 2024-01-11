@@ -131,7 +131,7 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		// TODO [nice to have]: automaticaly delete corrupt databases
+		// TODO [nice to have]: automatically delete corrupt databases
 		//      but for now we can just error and let the operator delete.
 		return nil, xerrors.Errorf("error opening msgindex database: %w", err)
 	}

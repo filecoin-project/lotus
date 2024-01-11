@@ -93,7 +93,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 	return data, topics, true
 }
 
-func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
+func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
 	res := &ethtypes.EthFilterResult{}
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
@@ -117,7 +117,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethTxHashFromMessageCid(context.TODO(), ev.MsgCid, sa)
+		log.TransactionHash, err = ethTxHashFromMessageCid(ctx, ev.MsgCid, sa)
 		if err != nil {
 			return nil, err
 		}
@@ -155,11 +155,11 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*ethtypes.EthFilterResu
 	return res, nil
 }
 
-func ethFilterResultFromMessages(cs []*types.SignedMessage, sa StateAPI) (*ethtypes.EthFilterResult, error) {
+func ethFilterResultFromMessages(cs []*types.SignedMessage) (*ethtypes.EthFilterResult, error) {
 	res := &ethtypes.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := ethTxHashFromSignedMessage(context.TODO(), c, sa)
+		hash, err := ethTxHashFromSignedMessage(c)
 		if err != nil {
 			return nil, err
 		}
@@ -321,14 +321,14 @@ func (e *ethSubscription) send(ctx context.Context, v interface{}) {
 }
 
 func (e *ethSubscription) start(ctx context.Context) {
-	for {
+	for ctx.Err() == nil {
 		select {
 		case <-ctx.Done():
 			return
 		case v := <-e.in:
 			switch vt := v.(type) {
 			case *filter.CollectedEvent:
-				evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
+				evs, err := ethFilterResultFromEvents(ctx, []*filter.CollectedEvent{vt}, e.StateAPI)
 				if err != nil {
 					continue
 				}
@@ -344,7 +344,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 
 				e.send(ctx, ev)
 			case *types.SignedMessage: // mpool txid
-				evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt}, e.StateAPI)
+				evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt})
 				if err != nil {
 					continue
 				}

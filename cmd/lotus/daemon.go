@@ -291,10 +291,55 @@ var DaemonCmd = &cli.Command{
 
 		chainfile := cctx.String("import-chain")
 		snapshot := cctx.String("import-snapshot")
+		willImportChain := false
 		if chainfile != "" || snapshot != "" {
 			if chainfile != "" && snapshot != "" {
 				return fmt.Errorf("cannot specify both 'import-snapshot' and 'import-chain'")
 			}
+			willImportChain = true
+		}
+
+		willRemoveChain := cctx.Bool("remove-existing-chain")
+		if willImportChain && !willRemoveChain {
+			// Confirm with the user about the intention to remove chain data.
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Importing chain or snapshot will by default delete existing local chain data. Do you want to proceed and delete? (yes/no): ")
+			userInput, err := reader.ReadString('\n')
+			if err != nil {
+				return xerrors.Errorf("reading user input: %w", err)
+			}
+			userInput = strings.ToLower(strings.TrimSpace(userInput))
+
+			if userInput == "yes" {
+				willRemoveChain = true
+			} else if userInput == "no" {
+				willRemoveChain = false
+			} else {
+				return fmt.Errorf("invalid input. please answer with 'yes' or 'no'")
+			}
+		}
+
+		if willRemoveChain {
+			lr, err := repo.NewFS(cctx.String("repo"))
+			if err != nil {
+				return xerrors.Errorf("error opening fs repo: %w", err)
+			}
+
+			exists, err := lr.Exists()
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return xerrors.Errorf("lotus repo doesn't exist")
+			}
+
+			err = removeExistingChain(cctx, lr)
+			if err != nil {
+				return err
+			}
+		}
+
+		if willImportChain {
 			var issnapshot bool
 			if chainfile == "" {
 				chainfile = snapshot
@@ -540,7 +585,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	bar.Start()
-	ts, err := cst.Import(ctx, ir)
+	ts, gen, err := cst.Import(ctx, ir)
 	bar.Finish()
 
 	if err != nil {
@@ -551,18 +596,14 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
-	gb, err := cst.GetTipsetByHeight(ctx, 0, ts, true)
-	if err != nil {
-		return err
-	}
-
-	err = cst.SetGenesis(ctx, gb.Blocks()[0])
+	log.Infof("setting genesis")
+	err = cst.SetGenesis(ctx, gen)
 	if err != nil {
 		return err
 	}
 
 	if !snapshot {
-		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gb.MinTimestamp(), nil)
+		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gen.Timestamp, nil)
 		if err != nil {
 			return xerrors.Errorf("failed to construct beacon schedule: %w", err)
 		}

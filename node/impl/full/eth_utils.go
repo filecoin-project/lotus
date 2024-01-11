@@ -3,10 +3,12 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -15,15 +17,29 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
+
+// The address used in messages to actors that have since been deleted.
+//
+// 0xff0000000000000000000000ffffffffffffffff
+var revertedEthAddress ethtypes.EthAddress
+
+func init() {
+	revertedEthAddress[0] = 0xff
+	for i := 20 - 8; i < 20; i++ {
+		revertedEthAddress[i] = 0xff
+	}
+}
 
 func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
@@ -188,7 +204,8 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 
 	bn := ethtypes.EthUint64(ts.Height())
 
-	blkCid, err := ts.Key().Cid()
+	tsk := ts.Key()
+	blkCid, err := tsk.Cid()
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
@@ -197,9 +214,14 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, err
 	}
 
-	msgs, rcpts, err := messagesAndReceipts(ctx, ts, cs, sa)
+	stRoot, msgs, rcpts, err := executeTipset(ctx, ts, cs, sa)
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to retrieve messages and receipts: %w", err)
+	}
+
+	st, err := sa.StateManager.StateTree(stRoot)
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load state-tree root %q: %w", stRoot, err)
 	}
 
 	block := ethtypes.NewEthBlock(len(msgs) > 0)
@@ -223,7 +245,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		default:
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to get signed msg %s: %w", msg.Cid(), err)
 		}
-		tx, err := newEthTxFromSignedMessage(ctx, smsg, sa)
+		tx, err := newEthTxFromSignedMessage(smsg, st)
 		if err != nil {
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
 		}
@@ -249,27 +271,27 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	return block, nil
 }
 
-func messagesAndReceipts(ctx context.Context, ts *types.TipSet, cs *store.ChainStore, sa StateAPI) ([]types.ChainMsg, []types.MessageReceipt, error) {
+func executeTipset(ctx context.Context, ts *types.TipSet, cs *store.ChainStore, sa StateAPI) (cid.Cid, []types.ChainMsg, []types.MessageReceipt, error) {
 	msgs, err := cs.MessagesForTipset(ctx, ts)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
+		return cid.Undef, nil, nil, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	_, rcptRoot, err := sa.StateManager.TipSetState(ctx, ts)
+	stRoot, rcptRoot, err := sa.StateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to compute state: %w", err)
+		return cid.Undef, nil, nil, xerrors.Errorf("failed to compute state: %w", err)
 	}
 
 	rcpts, err := cs.ReadReceipts(ctx, rcptRoot)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("error loading receipts for tipset: %v: %w", ts, err)
+		return cid.Undef, nil, nil, xerrors.Errorf("error loading receipts for tipset: %v: %w", ts, err)
 	}
 
 	if len(msgs) != len(rcpts) {
-		return nil, nil, xerrors.Errorf("receipts and message array lengths didn't match for tipset: %v: %w", ts, err)
+		return cid.Undef, nil, nil, xerrors.Errorf("receipts and message array lengths didn't match for tipset: %v: %w", ts, err)
 	}
 
-	return msgs, rcpts, nil
+	return stRoot, msgs, rcpts, nil
 }
 
 const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
@@ -359,7 +381,7 @@ func parseEthRevert(ret []byte) string {
 //  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
-func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (ethtypes.EthAddress, error) {
+func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAddress, error) {
 	// BLOCK A: We are trying to get an actual Ethereum address from an f410 address.
 	// Attempt to convert directly, if it's an f4 address.
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
@@ -368,7 +390,7 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 	}
 
 	// Lookup on the target actor and try to get an f410 address.
-	if actor, err := sa.StateGetActor(ctx, addr, types.EmptyTSK); err != nil {
+	if actor, err := st.GetActor(addr); err != nil {
 		return ethtypes.EthAddress{}, err
 	} else if actor.Address != nil {
 		if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
@@ -383,7 +405,7 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 	}
 
 	// Otherwise, resolve the ID addr.
-	idAddr, err := sa.StateLookupID(ctx, addr, types.EmptyTSK)
+	idAddr, err := st.LookupID(addr)
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
@@ -410,7 +432,7 @@ func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, sa StateAPI) (ethty
 	smsg, err := sa.Chain.GetSignedMessage(ctx, c)
 	if err == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool
-		return ethTxHashFromSignedMessage(ctx, smsg, sa)
+		return ethTxHashFromSignedMessage(smsg)
 	}
 
 	_, err = sa.Chain.GetMessage(ctx, c)
@@ -422,13 +444,14 @@ func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, sa StateAPI) (ethty
 	return ethtypes.EmptyEthHash, nil
 }
 
-func ethTxHashFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthHash, error) {
+func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, error) {
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		ethTx, err := newEthTxFromSignedMessage(ctx, smsg, sa)
+		tx, err := ethtypes.EthTxFromSignedEthMessage(smsg)
 		if err != nil {
-			return ethtypes.EmptyEthHash, err
+			return ethtypes.EthHash{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
-		return ethTx.Hash, nil
+
+		return tx.TxHash()
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
 		return ethtypes.EthHashFromCid(smsg.Cid())
 	} else { // BLS message
@@ -436,7 +459,7 @@ func ethTxHashFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, 
 	}
 }
 
-func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
+func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (ethtypes.EthTx, error) {
 	var tx ethtypes.EthTx
 	var err error
 
@@ -451,42 +474,92 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 		if err != nil {
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to calculate hash for ethTx: %w", err)
 		}
-
-		fromAddr, err := lookupEthAddress(ctx, smsg.Message.From, sa)
-		if err != nil {
-			return ethtypes.EthTx{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
-		}
-
-		tx.From = fromAddr
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
-		tx = ethTxFromNativeMessage(ctx, smsg.VMMessage(), sa)
+		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
+		if err != nil {
+			return ethtypes.EthTx{}, err
+		}
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
 		if err != nil {
-			return tx, err
+			return ethtypes.EthTx{}, err
 		}
 	} else { // BLS Filecoin message
-		tx = ethTxFromNativeMessage(ctx, smsg.VMMessage(), sa)
+		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
+		if err != nil {
+			return ethtypes.EthTx{}, err
+		}
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
 		if err != nil {
-			return tx, err
+			return ethtypes.EthTx{}, err
 		}
 	}
 
 	return tx, nil
 }
 
+// Convert a native message to an eth transaction.
+//
+//   - The state-tree must be from after the message was applied (ideally the following tipset).
+//   - In some cases, the "to" address may be `0xff0000000000000000000000ffffffffffffffff`. This
+//     means that the "to" address has not been assigned in the passed state-tree and can only
+//     happen if the transaction reverted.
+//
 // ethTxFromNativeMessage does NOT populate:
 // - BlockHash
 // - BlockNumber
 // - TransactionIndex
 // - Hash
-func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, sa StateAPI) ethtypes.EthTx {
-	// We don't care if we error here, conversion is best effort for non-eth transactions
-	from, _ := lookupEthAddress(ctx, msg.From, sa)
-	to, _ := lookupEthAddress(ctx, msg.To, sa)
+func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.EthTx, error) {
+	// Lookup the from address. This must succeed.
+	from, err := lookupEthAddress(msg.From, st)
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup sender address %s when converting a native message to an eth txn: %w", msg.From, err)
+	}
+	// Lookup the to address. If the recipient doesn't exist, we replace the address with a
+	// known sentinel address.
+	to, err := lookupEthAddress(msg.To, st)
+	if err != nil {
+		if !errors.Is(err, types.ErrActorNotFound) {
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup receiver address %s when converting a native message to an eth txn: %w", msg.To, err)
+		}
+		to = revertedEthAddress
+	}
+	toPtr := &to
+
+	// Finally, convert the input parameters to "solidity ABI".
+
+	// For empty, we use "0" as the codec. Otherwise, we use CBOR for message
+	// parameters.
+	var codec uint64
+	if len(msg.Params) > 0 {
+		codec = uint64(multicodec.Cbor)
+	}
+
+	// We try to decode the input as an EVM method invocation and/or a contract creation. If
+	// that fails, we encode the "native" parameters as Solidity ABI.
+	var input []byte
+	switch msg.Method {
+	case builtintypes.MethodsEVM.InvokeContract, builtintypes.MethodsEAM.CreateExternal:
+		inp, err := decodePayload(msg.Params, codec)
+		if err == nil {
+			// If this is a valid "create external", unset the "to" address.
+			if msg.Method == builtintypes.MethodsEAM.CreateExternal {
+				toPtr = nil
+			}
+			input = []byte(inp)
+			break
+		}
+		// Yeah, we're going to ignore errors here because the user can send whatever they
+		// want and may send garbage.
+		fallthrough
+	default:
+		input = encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params)
+	}
+
 	return ethtypes.EthTx{
-		To:                   &to,
+		To:                   toPtr,
 		From:                 from,
+		Input:                input,
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),
@@ -495,7 +568,7 @@ func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, sa StateAPI
 		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
 		AccessList:           []ethtypes.EthHash{},
-	}
+	}, nil
 }
 
 func getSignedMessage(ctx context.Context, cs *store.ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {
@@ -564,7 +637,12 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 		return ethtypes.EthTx{}, xerrors.Errorf("failed to get signed msg: %w", err)
 	}
 
-	tx, err := newEthTxFromSignedMessage(ctx, smsg, sa)
+	st, err := sa.StateManager.StateTree(ts.ParentState())
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to load message state tree: %w", err)
+	}
+
+	tx, err := newEthTxFromSignedMessage(smsg, st)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
@@ -574,7 +652,6 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 		ti = ethtypes.EthUint64(txIdx)
 	)
 
-	tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
 	tx.BlockHash = &blkHash
 	tx.BlockNumber = &bn
 	tx.TransactionIndex = &ti
@@ -627,6 +704,11 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
 	}
 
+	st, err := sa.StateManager.StateTree(ts.ParentState())
+	if err != nil {
+		return api.EthTxReceipt{}, xerrors.Errorf("failed to load the state %s when constructing the eth txn receipt: %w", ts.ParentState(), err)
+	}
+
 	// The tx is located in the parent tipset
 	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
@@ -671,6 +753,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 				continue
 			}
 			for _, topic := range topics {
+				log.Debug("LogsBloom set for ", topic)
 				ethtypes.EthBloomSet(receipt.LogsBloom, topic[:])
 			}
 			l.Data = data
@@ -681,7 +764,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 				return api.EthTxReceipt{}, xerrors.Errorf("failed to create ID address: %w", err)
 			}
 
-			l.Address, err = lookupEthAddress(ctx, addr, sa)
+			l.Address, err = lookupEthAddress(addr, st)
 			if err != nil {
 				return api.EthTxReceipt{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
 			}
@@ -692,4 +775,46 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	return receipt, nil
+}
+
+func encodeFilecoinParamsAsABI(method abi.MethodNum, codec uint64, params []byte) []byte {
+	buf := []byte{0x86, 0x8e, 0x10, 0xc4} // Native method selector.
+	return append(buf, encodeAsABIHelper(uint64(method), codec, params)...)
+}
+
+func encodeFilecoinReturnAsABI(exitCode exitcode.ExitCode, codec uint64, data []byte) []byte {
+	return encodeAsABIHelper(uint64(exitCode), codec, data)
+}
+
+// Format 2 numbers followed by an arbitrary byte array as solidity ABI. Both our native
+// inputs/outputs follow the same pattern, so we can reuse this code.
+func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
+	const EVM_WORD_SIZE = 32
+
+	// The first two params are "static" numbers. Then, we record the offset of the "data" arg,
+	// then, at that offset, we record the length of the data.
+	//
+	// In practice, this means we have 4 256-bit words back to back where the third arg (the
+	// offset) is _always_ '32*3'.
+	staticArgs := []uint64{param1, param2, EVM_WORD_SIZE * 3, uint64(len(data))}
+	// We always pad out to the next EVM "word" (32 bytes).
+	totalWords := len(staticArgs) + (len(data) / EVM_WORD_SIZE)
+	if len(data)%EVM_WORD_SIZE != 0 {
+		totalWords++
+	}
+	len := totalWords * EVM_WORD_SIZE
+	buf := make([]byte, len)
+	offset := 0
+	// Below, we use copy instead of "appending" to preserve all the zero padding.
+	for _, arg := range staticArgs {
+		// Write each "arg" into the last 8 bytes of each 32 byte word.
+		offset += EVM_WORD_SIZE
+		start := offset - 8
+		binary.BigEndian.PutUint64(buf[start:offset], arg)
+	}
+
+	// Finally, we copy in the data.
+	copy(buf[offset:], data)
+
+	return buf
 }

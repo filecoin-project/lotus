@@ -561,33 +561,3 @@ func find(s []string, elem string) bool {
 	}
 	return false
 }
-
-func (rw *raftWrapper) observePeers() {
-	obsCh := make(chan hraft.Observation, 1)
-	defer close(obsCh)
-
-	observer := hraft.NewObserver(obsCh, true, func(o *hraft.Observation) bool {
-		po, ok := o.Data.(hraft.PeerObservation)
-		return ok && po.Removed
-	})
-
-	rw.raft.RegisterObserver(observer)
-	defer rw.raft.DeregisterObserver(observer)
-
-	for {
-		select {
-		case obs := <-obsCh:
-			pObs := obs.Data.(hraft.PeerObservation)
-			logger.Info("raft peer departed. Removing from peerstore: ", pObs.Peer.ID)
-			pID, err := peer.Decode(string(pObs.Peer.ID))
-			if err != nil {
-				logger.Error(err)
-				continue
-			}
-			rw.host.Peerstore().ClearAddrs(pID)
-		case <-rw.ctx.Done():
-			logger.Debug("stopped observing raft peers")
-			return
-		}
-	}
-}

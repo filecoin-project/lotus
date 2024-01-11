@@ -17,7 +17,7 @@ import (
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	server := build.DrandConfigs[build.DrandDevnet].Servers[0]
+	server := build.DrandConfigs[build.DrandTestnet].Servers[0]
 	c, err := hclient.New(server, nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {
@@ -31,7 +31,7 @@ func TestPrintGroupInfo(t *testing.T) {
 
 func TestMaxBeaconRoundForEpoch(t *testing.T) {
 	todayTs := uint64(1652222222)
-	db, err := NewDrandBeacon(todayTs, build.BlockDelaySecs, nil, build.DrandConfigs[build.DrandDevnet])
+	db, err := NewDrandBeacon(todayTs, build.BlockDelaySecs, nil, build.DrandConfigs[build.DrandTestnet])
 	assert.NoError(t, err)
 	mbr15 := db.MaxBeaconRoundForEpoch(network.Version15, 100)
 	mbr16 := db.MaxBeaconRoundForEpoch(network.Version16, 100)

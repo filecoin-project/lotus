@@ -223,3 +223,29 @@ func TestPledgeSynth(t *testing.T) {
 		runTest(t, 3)
 	})
 }
+
+func TestSectorsSummary(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	blockTime := 50 * time.Millisecond
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nPreseal := 2
+
+	_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.PresealSectors(nPreseal))
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	miner.PledgeSectors(ctx, 1, 0, nil)
+
+	ms, err := miner.SectorsSummary(ctx)
+	require.NoError(t, err)
+
+	require.Len(t, ms, 1) // all proving
+
+	for st, n := range ms {
+		require.Equal(t, api.SectorState(sealing.Proving), st)
+		require.Equal(t, 1+nPreseal, n)
+	}
+}

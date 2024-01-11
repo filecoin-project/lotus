@@ -247,7 +247,7 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 			// If we didn't request the headers they should have been provided
 			// by the caller.
 			if len(tipsets) < len(res.Chain) {
-				return nil, xerrors.Errorf("not enought tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
+				return nil, xerrors.Errorf("not enough tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
 			}
 			chain := make([]*BSTipSet, 0, resLength)
 			for i, resChain := range res.Chain {
@@ -284,16 +284,18 @@ func (c *client) validateCompressedIndices(chain []*BSTipSet) error {
 				len(msgs.SecpkIncludes), blocksNum)
 		}
 
+		blsLen := uint64(len(msgs.Bls))
+		secpLen := uint64(len(msgs.Secpk))
 		for blockIdx := 0; blockIdx < blocksNum; blockIdx++ {
 			for _, mi := range msgs.BlsIncludes[blockIdx] {
-				if int(mi) >= len(msgs.Bls) {
+				if mi >= blsLen {
 					return xerrors.Errorf("index in BlsIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Bls))
 				}
 			}
 
 			for _, mi := range msgs.SecpkIncludes[blockIdx] {
-				if int(mi) >= len(msgs.Secpk) {
+				if mi >= secpLen {
 					return xerrors.Errorf("index in SecpkIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Secpk))
 				}
@@ -315,18 +317,36 @@ func (c *client) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) 
 		)
 	}
 
-	req := &Request{
-		Head:    tsk.Cids(),
-		Length:  uint64(count),
-		Options: Headers,
+	var ret []*types.TipSet
+	start := tsk.Cids()
+	for len(ret) < count {
+		req := &Request{
+			Head:    start,
+			Length:  uint64(count - len(ret)),
+			Options: Headers,
+		}
+
+		validRes, err := c.doRequest(ctx, req, nil, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to doRequest: %w", err)
+		}
+
+		if len(validRes.tipsets) == 0 {
+			return nil, xerrors.Errorf("doRequest fetched zero tipsets: %w", err)
+		}
+
+		ret = append(ret, validRes.tipsets...)
+
+		last := validRes.tipsets[len(validRes.tipsets)-1]
+		if last.Height() <= 1 {
+			// we've walked all the way up to genesis, return
+			break
+		}
+
+		start = last.Parents().Cids()
 	}
 
-	validRes, err := c.doRequest(ctx, req, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return validRes.tipsets, nil
+	return ret, nil
 }
 
 // GetFullTipSet implements Client.GetFullTipSet(). Refer to the godocs there.
@@ -341,12 +361,16 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk types.TipS
 
 	validRes, err := c.doRequest(ctx, req, &peer, nil)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to doRequest: %w", err)
 	}
 
-	return validRes.toFullTipSets()[0], nil
-	// If `doRequest` didn't fail we are guaranteed to have at least
-	//  *one* tipset here, so it's safe to index directly.
+	fullTipsets := validRes.toFullTipSets()
+
+	if len(fullTipsets) == 0 {
+		return nil, xerrors.New("unexpectedly got no tipsets in exchange")
+	}
+
+	return fullTipsets[0], nil
 }
 
 // GetChainMessages implements Client.GetChainMessages(). Refer to the godocs there.
@@ -386,7 +410,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("peer", peer.Pretty()),
+			trace.StringAttribute("peer", peer.String()),
 		)
 	}
 	defer func() {

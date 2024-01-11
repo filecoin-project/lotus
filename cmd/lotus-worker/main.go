@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -38,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -283,7 +285,36 @@ var runCmd = &cli.Command{
 			Value:       true,
 			DefaultText: "inherits --addpiece",
 		},
+		&cli.StringFlag{
+			Name:  "external-pc2",
+			Usage: "command for computing PC2 externally",
+		},
 	},
+	Description: `Run lotus-worker.
+
+--external-pc2 can be used to compute the PreCommit2 inputs externally.
+The flag behaves similarly to the related lotus-worker flag, using it in
+lotus-bench may be useful for testing if the external PreCommit2 command is
+invoked correctly.
+
+The command will be called with a number of environment variables set:
+* EXTSEAL_PC2_SECTOR_NUM: the sector number
+* EXTSEAL_PC2_SECTOR_MINER: the miner id
+* EXTSEAL_PC2_PROOF_TYPE: the proof type
+* EXTSEAL_PC2_SECTOR_SIZE: the sector size in bytes
+* EXTSEAL_PC2_CACHE: the path to the cache directory
+* EXTSEAL_PC2_SEALED: the path to the sealed sector file (initialized with unsealed data by the caller)
+* EXTSEAL_PC2_PC1OUT: output from rust-fil-proofs precommit1 phase (base64 encoded json)
+
+The command is expected to:
+* Create cache sc-02-data-tree-r* files
+* Create cache sc-02-data-tree-c* files
+* Create cache p_aux / t_aux files
+* Transform the sealed file in place
+
+Example invocation of lotus-bench as external executor:
+'./lotus-bench simple precommit2 --sector-size $EXTSEAL_PC2_SECTOR_SIZE $EXTSEAL_PC2_SEALED $EXTSEAL_PC2_CACHE $EXTSEAL_PC2_PC1OUT'
+`,
 	Before: func(cctx *cli.Context) error {
 		if cctx.IsSet("address") {
 			log.Warnf("The '--address' flag is deprecated, it has been replaced by '--listen'")
@@ -348,6 +379,18 @@ var runCmd = &cli.Command{
 		// Connect to storage-miner
 		ctx := lcli.ReqContext(cctx)
 
+		// Create a new context with cancel function
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		// Listen for interrupt signals
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
+			cancel()
+		}()
+
 		var nodeApi api.StorageMiner
 		var closer func()
 		for {
@@ -359,14 +402,13 @@ var runCmd = &cli.Command{
 				}
 			}
 			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
-			time.Sleep(time.Second)
-			continue
+			select {
+			case <-ctx.Done():
+				return xerrors.New("Interrupted by user")
+			case <-time.After(time.Second):
+			}
 		}
-
 		defer closer()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
 		// Register all metric views
 		if err := view.Register(
 			metrics.DefaultViews...,
@@ -611,18 +653,32 @@ var runCmd = &cli.Command{
 			fh.ServeHTTP(w, r)
 		}
 
+		// Parse ffi executor flags
+
+		var ffiOpts []ffiwrapper.FFIWrapperOpt
+
+		if cctx.IsSet("external-pc2") {
+			extSeal := ffiwrapper.ExternalSealer{
+				PreCommit2: ffiwrapper.MakeExternPrecommit2(cctx.String("external-pc2")),
+			}
+
+			ffiOpts = append(ffiOpts, ffiwrapper.WithExternalSealCalls(extSeal))
+		}
+
 		// Create / expose the worker
 
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
 
 		workerApi := &sealworker.Worker{
-			LocalWorker: sealer.NewLocalWorker(sealer.WorkerConfig{
-				TaskTypes:                 taskTypes,
-				NoSwap:                    cctx.Bool("no-swap"),
-				MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
-				ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
-				Name:                      cctx.String("name"),
-			}, remote, localStore, nodeApi, nodeApi, wsts),
+			LocalWorker: sealer.NewLocalWorkerWithExecutor(
+				sealer.FFIExec(ffiOpts...),
+				sealer.WorkerConfig{
+					TaskTypes:                 taskTypes,
+					NoSwap:                    cctx.Bool("no-swap"),
+					MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
+					ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
+					Name:                      cctx.String("name"),
+				}, os.LookupEnv, remote, localStore, nodeApi, nodeApi, wsts),
 			LocalStore: localStore,
 			Storage:    lr,
 		}

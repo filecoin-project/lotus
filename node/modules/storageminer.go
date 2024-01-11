@@ -311,12 +311,11 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 			verif  = params.Verifier
 			j      = params.Journal
 			as     = params.AddrSel
-			maddr  = address.Address(params.Maddr)
 		)
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr)
+		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, []dtypes.MinerAddress{params.Maddr})
 
 		if err != nil {
 			return nil, err

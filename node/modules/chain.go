@@ -82,12 +82,12 @@ func ChainStore(lc fx.Lifecycle,
 	basebs dtypes.BaseBlockstore,
 	weight store.WeightFunc,
 	us stmgr.UpgradeSchedule,
-	j journal.Journal) *store.ChainStore {
+	j journal.Journal) (*store.ChainStore, error) {
 
 	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
 
 	if err := chain.Load(helpers.LifecycleCtx(mctx, lc)); err != nil {
-		log.Warnf("loading chain state from disk: %s", err)
+		return nil, xerrors.Errorf("loading chain state from disk: %w", err)
 	}
 
 	var startHook func(context.Context) error
@@ -108,7 +108,7 @@ func ChainStore(lc fx.Lifecycle,
 		},
 	})
 
-	return chain
+	return chain, nil
 }
 
 func NetworkName(mctx helpers.MetricsCtx,

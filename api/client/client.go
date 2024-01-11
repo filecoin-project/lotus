@@ -15,6 +15,16 @@ import (
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 )
 
+// NewProviderRpc creates a new http jsonrpc client.
+func NewProviderRpc(ctx context.Context, addr string, requestHeader http.Header) (api.LotusProvider, jsonrpc.ClientCloser, error) {
+	var res v1api.LotusProviderStruct
+
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
+		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))
+
+	return &res, closer, err
+}
+
 // NewCommonRPCV0 creates a new http jsonrpc client.
 func NewCommonRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.CommonNet, jsonrpc.ClientCloser, error) {
 	var res v0api.CommonNetStruct

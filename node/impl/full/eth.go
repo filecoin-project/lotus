@@ -66,7 +66,7 @@ type EthModuleAPI interface {
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
-	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error)
+	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error)
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
@@ -285,9 +285,20 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 
 	for _, p := range pending {
 		if p.Cid() == c {
-			tx, err := newEthTxFromSignedMessage(ctx, p, a.StateAPI)
+			// We only return pending eth-account messages because we can't guarantee
+			// that the from/to addresses of other messages are conversable to 0x-style
+			// addresses. So we just ignore them.
+			//
+			// This should be "fine" as anyone using an "Ethereum-centric" block
+			// explorer shouldn't care about seeing pending messages from native
+			// accounts.
+			tx, err := ethtypes.EthTxFromSignedEthMessage(p)
 			if err != nil {
-				return nil, fmt.Errorf("could not convert Filecoin message into tx: %s", err)
+				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
+			}
+			tx.Hash, err = tx.TxHash()
+			if err != nil {
+				return nil, fmt.Errorf("could not compute tx hash for eth txn: %w", err)
 			}
 			return &tx, nil
 		}
@@ -397,26 +408,31 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	}
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	if err != nil || msgLookup == nil {
+	if err != nil {
+		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
+	}
+	if msgLookup == nil {
+		// This is the best we can do. In theory, we could have just not indexed this
+		// transaction, but there's no way to check that here.
 		return nil, nil
 	}
 
 	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 	if err != nil {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
 	var events []types.Event
 	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
 		events, err = a.ChainAPI.ChainGetEvents(ctx, *rct.EventsRoot)
 		if err != nil {
-			return nil, nil
+			return nil, xerrors.Errorf("failed get events for %s", txHash)
 		}
 	}
 
 	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.Chain, a.StateAPI)
 	if err != nil {
-		return nil, nil
+		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
 	}
 
 	return &receipt, nil
@@ -713,7 +729,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	)
 
 	for blocksIncluded < int(params.BlkCount) && ts.Height() > 0 {
-		msgs, rcpts, err := messagesAndReceipts(ctx, ts, a.Chain, a.StateAPI)
+		_, msgs, rcpts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
 		if err != nil {
 			return ethtypes.EthFeeHistory{}, xerrors.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)
 		}
@@ -832,19 +848,14 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
-	_, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
+	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
 
-	tsParent, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, ts.Height()+1, a.Chain.GetHeaviestTipSet().Key())
+	st, err := a.StateManager.StateTree(stRoot)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot get tipset at height: %v", ts.Height()+1)
-	}
-
-	msgs, err := a.ChainGetParentMessages(ctx, tsParent.Blocks()[0].Cid())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get parent messages: %w", err)
+		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
 	}
 
 	cid, err := ts.Key().Cid()
@@ -865,11 +876,6 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 			continue
 		}
 
-		// as we include TransactionPosition in the results, lets do sanity checking that the
-		// traces are indeed in the message execution order
-		if ir.Msg.Cid() != msgs[msgIdx].Message.Cid() {
-			return nil, xerrors.Errorf("traces are not in message execution order")
-		}
 		msgIdx++
 
 		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
@@ -882,7 +888,7 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 		}
 
 		traces := []*ethtypes.EthTrace{}
-		err = buildTraces(ctx, &traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), a.StateAPI)
+		err = buildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), st)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces: %w", err)
 		}
@@ -914,9 +920,14 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
-	_, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
+	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
+	}
+
+	st, err := a.StateManager.StateTree(stRoot)
+	if err != nil {
+		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
 	}
 
 	allTraces := make([]*ethtypes.EthTraceReplayBlockTransaction, 0, len(trace))
@@ -943,10 +954,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 				return nil, xerrors.Errorf("failed to decode payload: %w", err)
 			}
 		} else {
-			output, err = handleFilecoinMethodOutput(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
-			if err != nil {
-				return nil, xerrors.Errorf("could not convert output: %w", err)
-			}
+			output = encodeFilecoinReturnAsABI(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
 		}
 
 		t := ethtypes.EthTraceReplayBlockTransaction{
@@ -956,7 +964,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 			VmTrace:         nil,
 		}
 
-		err = buildTraces(ctx, &t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), a.StateAPI)
+		err = buildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), st)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces: %w", err)
 		}
@@ -999,8 +1007,13 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 	return res, nil
 }
 
-func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error) {
-	msg, err := ethCallToFilecoinMessage(ctx, tx)
+func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.EthEstimateGasParams](p)
+	if err != nil {
+		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
+	}
+
+	msg, err := ethCallToFilecoinMessage(ctx, params.Tx)
 	if err != nil {
 		return ethtypes.EthUint64(0), err
 	}
@@ -1009,7 +1022,16 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (et
 	// gas estimation actually run.
 	msg.GasLimit = 0
 
-	ts := a.Chain.GetHeaviestTipSet()
+	var ts *types.TipSet
+	if params.BlkParam == nil {
+		ts = a.Chain.GetHeaviestTipSet()
+	} else {
+		ts, err = getTipsetByEthBlockNumberOrHash(ctx, a.Chain, *params.BlkParam)
+		if err != nil {
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", params.BlkParam, err)
+		}
+	}
+
 	gassedMsg, err := a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {
 		// On failure, GasEstimateMessageGas doesn't actually return the invocation result,
@@ -1197,7 +1219,7 @@ func (e *EthEvent) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilte
 
 	_ = e.uninstallFilter(ctx, f)
 
-	return ethFilterResultFromEvents(ces, e.SubManager.StateAPI)
+	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
 }
 
 func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
@@ -1212,11 +1234,11 @@ func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilte
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.SubManager.StateAPI)
+		return ethFilterResultFromEvents(ctx, fc.TakeCollectedEvents(ctx), e.SubManager.StateAPI)
 	case filterTipSetCollector:
 		return ethFilterResultFromTipSets(fc.TakeCollectedTipSets(ctx))
 	case filterMessageCollector:
-		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx), e.SubManager.StateAPI)
+		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx))
 	}
 
 	return nil, xerrors.Errorf("unknown filter type")
@@ -1234,7 +1256,7 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.SubManager.StateAPI)
+		return ethFilterResultFromEvents(ctx, fc.TakeCollectedEvents(ctx), e.SubManager.StateAPI)
 	}
 
 	return nil, xerrors.Errorf("wrong filter type")

@@ -86,7 +86,7 @@ func (ts *apiSuite) testID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Regexp(t, "^12", id.Pretty())
+	require.Regexp(t, "^12", id.String())
 }
 
 func (ts *apiSuite) testConnectTwo(t *testing.T) {

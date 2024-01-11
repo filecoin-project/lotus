@@ -7,9 +7,6 @@ import (
 )
 
 func TestDecodeBlockMsg(t *testing.T) {
-	type args struct {
-		b []byte
-	}
 	tests := []struct {
 		name    string
 		data    []byte

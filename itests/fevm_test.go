@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -657,11 +658,15 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			t.Logf("running with %d recursive calls", r)
 
 			params := makeParams(r)
-			gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+
+			gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 				From: &ethAddr,
 				To:   &contractAddr,
 				Data: params,
-			})
+			}})
+			require.NoError(t, err)
+
+			gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 			require.NoError(t, err)
 			require.LessOrEqual(t, int64(gaslimit), build.BlockGasLimit)
 
@@ -816,11 +821,14 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	contractEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
 	require.NoError(t, err)
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From:  &accntEth,
 		To:    &contractEth,
 		Value: ethtypes.EthBigInt(big.NewInt(100)),
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -1034,10 +1042,13 @@ func TestFEVMErrorParsing(t *testing.T) {
 				require.ErrorContains(t, err, expected)
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
-				_, err := e.EthEstimateGas(ctx, ethtypes.EthCall{
+				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 					To:   &contractAddrEth,
 					Data: entryPoint,
-				})
+				}})
+				require.NoError(t, err)
+
+				_, err = e.EthEstimateGas(ctx, gasParams)
 				require.ErrorContains(t, err, expected)
 			})
 		})

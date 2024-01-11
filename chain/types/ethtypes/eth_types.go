@@ -799,6 +799,45 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 	return ethAddr, nil
 }
 
+// EthEstimateGasParams handles raw jsonrpc params for eth_estimateGas
+type EthEstimateGasParams struct {
+	Tx       EthCall
+	BlkParam *EthBlockNumberOrHash
+}
+
+func (e *EthEstimateGasParams) UnmarshalJSON(b []byte) error {
+	var params []json.RawMessage
+	err := json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+
+	switch len(params) {
+	case 2:
+		err = json.Unmarshal(params[1], &e.BlkParam)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 1:
+		err = json.Unmarshal(params[0], &e.Tx)
+		if err != nil {
+			return err
+		}
+	default:
+		return xerrors.Errorf("expected 1 or 2 params, got %d", len(params))
+	}
+
+	return nil
+}
+
+func (e EthEstimateGasParams) MarshalJSON() ([]byte, error) {
+	if e.BlkParam != nil {
+		return json.Marshal([]interface{}{e.Tx, e.BlkParam})
+	}
+	return json.Marshal([]interface{}{e.Tx})
+}
+
 // EthFeeHistoryParams handles raw jsonrpc params for eth_feeHistory
 type EthFeeHistoryParams struct {
 	BlkCount          EthUint64

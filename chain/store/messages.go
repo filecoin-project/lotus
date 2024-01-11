@@ -212,13 +212,8 @@ func (cs *ChainStore) MessagesForTipset(ctx context.Context, ts *types.TipSet) (
 
 	var out []types.ChainMsg
 	for _, bm := range bmsgs {
-		for _, blsm := range bm.BlsMessages {
-			out = append(out, blsm)
-		}
-
-		for _, secm := range bm.SecpkMessages {
-			out = append(out, secm)
-		}
+		out = append(out, bm.BlsMessages...)
+		out = append(out, bm.SecpkMessages...)
 	}
 
 	return out, nil
