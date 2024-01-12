@@ -36,7 +36,7 @@ retryAddTask:
 		}
 		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
 		if err != nil {
-			return false, fmt.Errorf("Could not select ID: %v", err)
+			return false, fmt.Errorf("Could not select ID: %w", err)
 		}
 		return extra(tID, tx)
 	})
@@ -51,7 +51,7 @@ retryAddTask:
 			retryWait *= 2
 			goto retryAddTask
 		}
-		log.Error("Could not add task. AddTasFunc failed: %v", err)
+		log.Errorw("Could not add task. AddTasFunc failed", "error", err, "type", h.Name)
 		return
 	}
 }
