@@ -173,6 +173,7 @@ retryRecordCompletion:
 	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
+
 		if err != nil {
 			return false, fmt.Errorf("could not log completion: %w ", err)
 		}

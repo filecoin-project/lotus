@@ -3,6 +3,7 @@ package hapi
 import (
 	"context"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"golang.org/x/xerrors"
 	"html/template"
 	"net/http"
 	"os"
@@ -81,6 +82,17 @@ func (a *app) indexTasksHistory(w http.ResponseWriter, r *http.Request) {
 	a.executeTemplate(w, "cluster_task_history", s)
 }
 
+func (a *app) indexPipelinePorep(w http.ResponseWriter, r *http.Request) {
+	s, err := a.porepPipelineSummary(r.Context())
+	if err != nil {
+		log.Errorf("porep pipeline summary: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	a.executeTemplate(w, "pipeline_porep", s)
+}
+
 var templateDev = os.Getenv("LOTUS_WEB_DEV") == "1"
 
 func (a *app) executeTemplate(w http.ResponseWriter, name string, data interface{}) {
@@ -111,7 +123,7 @@ type taskHistorySummary struct {
 	Name   string
 	TaskID int64
 
-	Posted, Start, End string
+	Posted, Start, Queued, Took string
 
 	Result bool
 	Err    string
@@ -181,11 +193,67 @@ func (a *app) clusterTaskHistorySummary(ctx context.Context) ([]taskHistorySumma
 			return nil, err // Handle error
 		}
 
-		t.Posted = posted.Round(time.Second).Format("02 Jan 06 15:04")
-		t.Start = start.Round(time.Second).Format("02 Jan 06 15:04")
-		t.End = end.Round(time.Second).Format("02 Jan 06 15:04")
+		t.Posted = posted.Local().Round(time.Second).Format("02 Jan 06 15:04")
+		t.Start = start.Local().Round(time.Second).Format("02 Jan 06 15:04")
+		//t.End = end.Local().Round(time.Second).Format("02 Jan 06 15:04")
+
+		t.Queued = start.Sub(posted).Round(time.Second).String()
+		if t.Queued == "0s" {
+			t.Queued = start.Sub(posted).Round(time.Millisecond).String()
+		}
+
+		t.Took = end.Sub(start).Round(time.Second).String()
+		if t.Took == "0s" {
+			t.Took = end.Sub(start).Round(time.Millisecond).String()
+		}
 
 		summaries = append(summaries, t)
+	}
+	return summaries, nil
+}
+
+type porepPipelineSummary struct {
+	Actor string
+
+	CountSDR          int
+	CountTrees        int
+	CountPrecommitMsg int
+	CountWaitSeed     int
+	CountPoRep        int
+	CountCommitMsg    int
+	CountDone         int
+	CountFailed       int
+}
+
+func (a *app) porepPipelineSummary(ctx context.Context) ([]porepPipelineSummary, error) {
+	rows, err := a.db.Query(ctx, `
+	SELECT 
+		sp_id,
+		COUNT(*) FILTER (WHERE after_sdr = true AND after_tree_d = false) as CountSDR,
+		COUNT(*) FILTER (WHERE (after_tree_d = true OR after_tree_c = true OR after_tree_r = true) AND after_precommit_msg = false) as CountTrees,
+		COUNT(*) FILTER (WHERE after_precommit_msg = true AND after_precommit_msg_success = false) as CountPrecommitMsg,
+		COUNT(*) FILTER (WHERE after_precommit_msg_success = true AND after_porep = false) as CountWaitSeed,
+		COUNT(*) FILTER (WHERE after_porep = true AND after_commit_msg = false) as CountPoRep,
+		COUNT(*) FILTER (WHERE after_commit_msg = true AND after_commit_msg_success = false) as CountCommitMsg,
+		COUNT(*) FILTER (WHERE after_commit_msg_success = true) as CountDone,
+		COUNT(*) FILTER (WHERE failed = true) as CountFailed
+	FROM 
+		sectors_sdr_pipeline
+	GROUP BY sp_id`)
+	if err != nil {
+		return nil, xerrors.Errorf("query: %w", err)
+	}
+	defer rows.Close()
+
+	var summaries []porepPipelineSummary
+	for rows.Next() {
+		var summary porepPipelineSummary
+		if err := rows.Scan(&summary.Actor, &summary.CountSDR, &summary.CountTrees, &summary.CountPrecommitMsg, &summary.CountWaitSeed, &summary.CountPoRep, &summary.CountCommitMsg, &summary.CountDone, &summary.CountFailed); err != nil {
+			return nil, xerrors.Errorf("scan: %w", err)
+		}
+		summary.Actor = "f0" + summary.Actor
+
+		summaries = append(summaries, summary)
 	}
 	return summaries, nil
 }

@@ -3,6 +3,7 @@
     <title>Lotus Provider Cluster Overview</title>
     <script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
     <script type="module" src="chain-connectivity.js"></script>
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
     <style>
         html, body {
             background: #0f0f0f;
@@ -10,7 +11,7 @@
             padding: 0;
             margin: 0;
 
-            font-family: monospace;
+            font-family: 'Hack', monospace;
         }
 
         table td, table th {
@@ -54,7 +55,7 @@
         }
 
         .success {
-            color: green;
+            color: greenyellow;
         }
         .warning {
             color: yellow;
@@ -122,22 +123,6 @@
     </div>
     <hr>
     <div class="info-block">
-        <h2>Actor Summary</h2>
-        <table>
-            <thead>
-            <tr>
-                <th>Address</th>
-                <th>Config Layers</th>
-                <th>QaP</th>
-                <th>Deadlines</th>
-            </tr>
-            </thead>
-            <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
-            </tbody>
-        </table>
-    </div>
-    <hr>
-    <div class="info-block">
         <h2>Cluster Machines</h2>
         <table>
             <thead>
@@ -154,6 +139,43 @@
     </div>
     <hr>
     <div class="info-block">
+        <h2>PoRep Pipeline</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Address</th>
+                <th>SDR</th>
+                <th>Trees</th>
+                <th>Precommit Msg</th>
+                <th>Wait Seed</th>
+                <th>PoRep</th>
+                <th>Commit Msg</th>
+                <th>Done</th>
+                <th>Failed</th>
+            </tr>
+            </thead>
+            <tbody hx-get="/hapi/simpleinfo/pipeline-porep" hx-trigger="load,every 5s">
+            </tbody>
+        </table>
+    </div>
+    <hr>
+    <div class="info-block">
+        <h2>Actor Summary</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Address</th>
+                <th>Config Layers</th>
+                <th>QaP</th>
+                <th>Deadlines</th>
+            </tr>
+            </thead>
+            <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
+            </tbody>
+        </table>
+    </div>
+    <hr>
+    <div class="info-block">
         <h2>Recently Finished Tasks</h2>
         <table>
             <thead>
@@ -163,7 +185,8 @@
                 <th>Executor</th>
                 <th>Posted</th>
                 <th>Start</th>
-                <th>End</th>
+                <th>Queued</th>
+                <th>Took</th>
                 <th>Outcome</th>
                 <th>Message</th>
             </tr>
