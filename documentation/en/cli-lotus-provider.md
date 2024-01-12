@@ -10,13 +10,14 @@ VERSION:
    1.25.3-dev
 
 COMMANDS:
-   run      Start a lotus provider process
-   stop     Stop a running lotus provider
-   config   Manage node config by layers. The layer 'base' will always be applied. 
-   test     Utility functions for testing
-   web      Start lotus provider web interface
-   version  Print version
-   help, h  Shows a list of commands or help for one command
+   run       Start a lotus provider process
+   stop      Stop a running lotus provider
+   config    Manage node config by layers. The layer 'base' will always be applied. 
+   test      Utility functions for testing
+   web       Start lotus provider web interface
+   pipeline  Manage the sealing pipeline
+   version   Print version
+   help, h   Shows a list of commands or help for one command
    DEVELOPER:
      auth          Manage RPC permissions
      log           Manage logging
@@ -264,6 +265,40 @@ OPTIONS:
    --listen value                     Address to listen on (default: "127.0.0.1:4701")
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base. Web will be added (default: "base")
    --nosync                           don't check full-node sync status (default: false)
+   --help, -h                         show help
+```
+
+## lotus-provider pipeline
+```
+NAME:
+   lotus-provider pipeline - Manage the sealing pipeline
+
+USAGE:
+   lotus-provider pipeline command [command options] [arguments...]
+
+COMMANDS:
+   start    Start new sealing operations manually
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### lotus-provider pipeline start
+```
+NAME:
+   lotus-provider pipeline start - Start new sealing operations manually
+
+USAGE:
+   lotus-provider pipeline start [command options] [arguments...]
+
+OPTIONS:
+   --actor value                      Specify actor address to start sealing sectors for
+   --now                              Start sealing sectors for all actors now (not on schedule) (default: false)
+   --cc                               Start sealing new CC sectors (default: false)
+   --count value                      Number of sectors to start (default: 1)
+   --synthetic                        Use synthetic PoRep (default: false)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
    --help, -h                         show help
 ```
 

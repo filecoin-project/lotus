@@ -2,17 +2,20 @@ package lpseal
 
 import (
 	"context"
+	"time"
+
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/promise"
-	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
-	"time"
 )
 
 var log = logging.Logger("lpseal")

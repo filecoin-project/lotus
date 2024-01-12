@@ -3,9 +3,6 @@ package tasks
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/provider/chainsched"
-	"github.com/filecoin-project/lotus/provider/lpffi"
-	"github.com/filecoin-project/lotus/provider/lpseal"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
@@ -13,7 +10,10 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/provider"
+	"github.com/filecoin-project/lotus/provider/chainsched"
+	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
+	"github.com/filecoin-project/lotus/provider/lpseal"
 	"github.com/filecoin-project/lotus/provider/lpwinning"
 )
 

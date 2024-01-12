@@ -4,20 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/provider/lpproof"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
-	"io"
-	"os"
-	"path/filepath"
 )
 
 var log = logging.Logger("lpffi")

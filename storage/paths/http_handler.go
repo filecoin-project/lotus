@@ -3,7 +3,6 @@ package paths
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/ipfs/go-cid"
 	"io"
 	"net/http"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 

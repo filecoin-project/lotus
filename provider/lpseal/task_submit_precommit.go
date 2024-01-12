@@ -3,11 +3,16 @@ package lpseal
 import (
 	"bytes"
 	"context"
+
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -17,8 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type SubmitPrecommitTaskApi interface {

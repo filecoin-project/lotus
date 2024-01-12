@@ -11,6 +11,48 @@
   # type: int
   #WinningPostMaxTasks = 0
 
+  # EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
+  # creating layers.
+  # In lotus-miner this was run as part of PreCommit1.
+  #
+  # type: bool
+  #EnableSealSDR = false
+
+  # type: int
+  #SealSDRMaxTasks = 0
+
+  # EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
+  # This task handles encoding of unsealed data into last sdr layer and building
+  # of TreeR, TreeC and TreeD.
+  # In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
+  #
+  # type: bool
+  #EnableSealSDRTrees = false
+
+  # type: int
+  #SealSDRTreesMaxTasks = 0
+
+  # EnableSendPrecommitMsg enables the sending of precommit messages to the chain
+  # from this lotus-provider instance.
+  #
+  # type: bool
+  #EnableSendPrecommitMsg = false
+
+  # EnableSendCommitMsg enables the computation of the porep proof
+  # In lotus-miner this was Commit1 / Commit2
+  #
+  # type: bool
+  #EnablePoRepProof = false
+
+  # type: int
+  #PoRepProofMaxTasks = 0
+
+  # EnableSendCommitMsg enables the sending of commit messages to the chain
+  # from this lotus-provider instance.
+  #
+  # type: bool
+  #EnableSendCommitMsg = false
+
   # type: bool
   #EnableWebGui = false
 

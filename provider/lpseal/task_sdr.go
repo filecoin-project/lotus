@@ -3,10 +3,14 @@ package lpseal
 import (
 	"bytes"
 	"context"
+
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -15,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"golang.org/x/xerrors"
 )
 
 var isDevnet = build.BlockDelaySecs < 30

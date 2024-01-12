@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/abi"
-	pool "github.com/libp2p/go-buffer-pool"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 func TestTreeSize(t *testing.T) {

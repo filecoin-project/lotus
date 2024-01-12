@@ -3,15 +3,18 @@ package lpmessage
 import (
 	"context"
 	"encoding/json"
+	"sync/atomic"
+
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/provider/chainsched"
-	"github.com/ipfs/go-cid"
-	"sync/atomic"
 )
 
 const MinConfidence = 6

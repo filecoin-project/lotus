@@ -3,17 +3,20 @@ package lpseal
 import (
 	"bytes"
 	"context"
+
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type PoRepAPI interface {

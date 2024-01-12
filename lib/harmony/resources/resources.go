@@ -3,13 +3,13 @@ package resources
 import (
 	"bytes"
 	"context"
-	"github.com/elastic/go-sysinfo"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/go-sysinfo"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/sys/unix"
 	"golang.org/x/xerrors"

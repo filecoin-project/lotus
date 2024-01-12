@@ -1008,6 +1008,62 @@ block rewards will be missed!`,
 			Comment: ``,
 		},
 		{
+			Name: "EnableSealSDR",
+			Type: "bool",
+
+			Comment: `EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
+creating layers.
+In lotus-miner this was run as part of PreCommit1.`,
+		},
+		{
+			Name: "SealSDRMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableSealSDRTrees",
+			Type: "bool",
+
+			Comment: `EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
+This task handles encoding of unsealed data into last sdr layer and building
+of TreeR, TreeC and TreeD.
+In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).`,
+		},
+		{
+			Name: "SealSDRTreesMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableSendPrecommitMsg",
+			Type: "bool",
+
+			Comment: `EnableSendPrecommitMsg enables the sending of precommit messages to the chain
+from this lotus-provider instance.`,
+		},
+		{
+			Name: "EnablePoRepProof",
+			Type: "bool",
+
+			Comment: `EnableSendCommitMsg enables the computation of the porep proof
+In lotus-miner this was Commit1 / Commit2`,
+		},
+		{
+			Name: "PoRepProofMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableSendCommitMsg",
+			Type: "bool",
+
+			Comment: `EnableSendCommitMsg enables the sending of commit messages to the chain
+from this lotus-provider instance.`,
+		},
+		{
 			Name: "EnableWebGui",
 			Type: "bool",
 

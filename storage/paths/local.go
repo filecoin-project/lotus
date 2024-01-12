@@ -3,7 +3,6 @@ package paths
 import (
 	"context"
 	"encoding/json"
-	"github.com/ipfs/go-cid"
 	"math/bits"
 	"math/rand"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"

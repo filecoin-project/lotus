@@ -3,12 +3,12 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"github.com/mitchellh/go-homedir"
 	"io"
 	"io/fs"
 	"os"
 	"path"
 
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"

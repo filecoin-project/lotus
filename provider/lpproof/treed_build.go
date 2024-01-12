@@ -1,19 +1,21 @@
 package lpproof
 
 import (
-	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-cid"
-	pool "github.com/libp2p/go-buffer-pool"
-	"github.com/minio/sha256-simd"
-	"golang.org/x/xerrors"
 	"io"
 	"math/bits"
 	"os"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-cid"
+	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/minio/sha256-simd"
+	"golang.org/x/xerrors"
+
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 const nodeSize = 32

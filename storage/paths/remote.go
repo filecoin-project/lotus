@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"io"
 	"math/bits"
 	"net/http"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
