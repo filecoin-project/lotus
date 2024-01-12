@@ -155,7 +155,7 @@ func (a *app) clusterMachineSummary(ctx context.Context) ([]machineSummary, erro
 }
 
 func (a *app) clusterTaskSummary(ctx context.Context) ([]taskSummary, error) {
-	rows, err := a.db.Query(ctx, "SELECT id, name, update_time, owner_id FROM harmony_task")
+	rows, err := a.db.Query(ctx, "SELECT id, name, update_time, owner_id FROM harmony_task order by update_time asc, owner_id")
 	if err != nil {
 		return nil, err // Handle error
 	}
@@ -229,12 +229,12 @@ func (a *app) porepPipelineSummary(ctx context.Context) ([]porepPipelineSummary,
 	rows, err := a.db.Query(ctx, `
 	SELECT 
 		sp_id,
-		COUNT(*) FILTER (WHERE after_sdr = true AND after_tree_d = false) as CountSDR,
-		COUNT(*) FILTER (WHERE (after_tree_d = true OR after_tree_c = true OR after_tree_r = true) AND after_precommit_msg = false) as CountTrees,
-		COUNT(*) FILTER (WHERE after_precommit_msg = true AND after_precommit_msg_success = false) as CountPrecommitMsg,
-		COUNT(*) FILTER (WHERE after_precommit_msg_success = true AND after_porep = false) as CountWaitSeed,
-		COUNT(*) FILTER (WHERE after_porep = true AND after_commit_msg = false) as CountPoRep,
-		COUNT(*) FILTER (WHERE after_commit_msg = true AND after_commit_msg_success = false) as CountCommitMsg,
+		COUNT(*) FILTER (WHERE after_sdr = false) as CountSDR,
+		COUNT(*) FILTER (WHERE (after_tree_d = false OR after_tree_c = false OR after_tree_r = false) AND after_sdr = true) as CountTrees,
+		COUNT(*) FILTER (WHERE after_tree_r = true and after_precommit_msg = false) as CountPrecommitMsg,
+		COUNT(*) FILTER (WHERE after_precommit_msg_success = false AND after_precommit_msg = true) as CountWaitSeed,
+		COUNT(*) FILTER (WHERE after_porep = false AND after_precommit_msg_success = true) as CountPoRep,
+		COUNT(*) FILTER (WHERE after_commit_msg_success = false AND after_porep = true) as CountCommitMsg,
 		COUNT(*) FILTER (WHERE after_commit_msg_success = true) as CountDone,
 		COUNT(*) FILTER (WHERE failed = true) as CountFailed
 	FROM 
