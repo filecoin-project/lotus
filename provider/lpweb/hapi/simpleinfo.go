@@ -2,6 +2,7 @@ package hapi
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"html/template"
 	"net/http"
 	"os"
@@ -14,6 +15,9 @@ import (
 type app struct {
 	db *harmonydb.DB
 	t  *template.Template
+
+	rpcInfoLk  sync.Mutex
+	workingApi v1api.FullNode
 
 	actorInfoLk sync.Mutex
 	actorInfos  []actorInfo

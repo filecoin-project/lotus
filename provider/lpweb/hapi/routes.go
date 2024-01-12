@@ -25,6 +25,9 @@ func Routes(r *mux.Router, deps *deps.Deps) error {
 		t:  t,
 	}
 
+	go a.watchRpc()
+	go a.watchActor()
+
 	r.HandleFunc("/simpleinfo/actorsummary", a.actorSummary)
 	r.HandleFunc("/simpleinfo/machines", a.indexMachines)
 	r.HandleFunc("/simpleinfo/tasks", a.indexTasks)
