@@ -39,12 +39,9 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 	}
 	api.Routes(mx.PathPrefix("/api").Subrouter(), deps)
 
-	basePath := basePath
-
 	var static fs.FS = static
 	if webDev {
-		basePath = "cmd/lotus-provider/web/static"
-		static = os.DirFS(basePath)
+		static = os.DirFS("./cmd/lotus-provider/web")
 	}
 
 	mx.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

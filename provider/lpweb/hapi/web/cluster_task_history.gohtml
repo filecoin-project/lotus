@@ -8,7 +8,11 @@
             <td>{{.Start}}</td>
             <td>{{.End}}</td>
             <td>{{if .Result}}<span class="success">success</span>{{else}}<span class="error">error</span>{{end}}</td>
-            <td>{{.Err}}</td>
+            <td style="max-width: 25vh">
+                <div style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis" title="{{.Err}}">
+                    {{.Err}}
+                </div>
+            </td>
         </tr>
     {{end}}
 {{end}}
