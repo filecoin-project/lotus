@@ -233,7 +233,7 @@ func (e *TaskEngine) followWorkInDB() {
 	for fromName, srcs := range e.follows {
 		var cList []int // Which work is done (that we follow) since we last checked?
 		err := e.db.Select(e.ctx, &cList, `SELECT h.task_id FROM harmony_task_history 
-   		WHERE h.work_end>$1 AND h.name=$2`, lastFollowTime, fromName)
+   		WHERE h.work_end>$1 AND h.name=$2`, lastFollowTime.UTC(), fromName)
 		if err != nil {
 			log.Error("Could not query DB: ", err)
 			return
