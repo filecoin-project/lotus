@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
@@ -22,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 type stackTracer interface {
@@ -174,13 +171,11 @@ var webCmd = &cli.Command{
 
 		webtxt, err := getConfig(db, "web")
 		if err != nil || webtxt == "" {
-			cfg := config.DefaultLotusProvider()
-			cfg.Subsystems.EnableWebGui = true
-			var b bytes.Buffer
-			if err = toml.NewEncoder(&b).Encode(cfg); err != nil {
-				return err
-			}
-			if err = setConfig(db, "web", b.String()); err != nil {
+
+			s := `[Susbystems]
+			EnableWebGui = true
+			`
+			if err = setConfig(db, "web", s); err != nil {
 				return err
 			}
 		}
