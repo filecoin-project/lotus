@@ -996,7 +996,7 @@ var sectorsExtendCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "extension",
-			Usage: "try to extend selected sectors by this number of epochs, defaults to 540 days",
+			Usage: "try to extend selected sectors by this number of epochs, defaults to 1278 days",
 			Value: 3680640,
 		},
 		&cli.Int64Flag{
