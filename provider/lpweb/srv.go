@@ -41,7 +41,7 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 
 	var static fs.FS = static
 	if webDev {
-		static = os.DirFS("./cmd/lotus-provider/web")
+		static = os.DirFS("./provider/lpweb")
 	}
 
 	mx.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

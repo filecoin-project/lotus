@@ -98,7 +98,7 @@ var templateDev = os.Getenv("LOTUS_WEB_DEV") == "1"
 
 func (a *app) executeTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if templateDev {
-		fs := os.DirFS("./cmd/lotus-provider/web/hapi/web")
+		fs := os.DirFS("./provider/lpweb/hapi/web")
 		a.t = template.Must(template.ParseFS(fs, "*"))
 	}
 	if err := a.t.ExecuteTemplate(w, name, data); err != nil {
