@@ -21,10 +21,10 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/web"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
+	"github.com/filecoin-project/lotus/provider/lpweb"
 	"github.com/filecoin-project/lotus/storage/paths"
 )
 
@@ -79,7 +79,6 @@ func (p *ProviderAPI) Shutdown(context.Context) error {
 }
 
 func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan chan struct{}) error {
-
 	fh := &paths.FetchHandler{Local: dependencies.LocalStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 	remoteHandler := func(w http.ResponseWriter, r *http.Request) {
 		if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
@@ -133,7 +132,7 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 	eg.Go(srv.ListenAndServe)
 
 	if dependencies.Cfg.Subsystems.EnableWebGui {
-		web, err := web.GetSrv(ctx, dependencies)
+		web, err := lpweb.GetSrv(ctx, dependencies)
 		if err != nil {
 			return err
 		}
