@@ -2,14 +2,15 @@ package hapi
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api/v1api"
-	"golang.org/x/xerrors"
 	"html/template"
 	"net/http"
 	"os"
 	"sync"
 	"time"
 
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
 

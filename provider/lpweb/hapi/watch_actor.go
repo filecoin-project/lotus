@@ -2,12 +2,15 @@ package hapi
 
 import (
 	"context"
-	"github.com/BurntSushi/toml"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/xerrors"
 	"sort"
 	"time"
+
+	"github.com/BurntSushi/toml"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 const watchInterval = time.Second * 10

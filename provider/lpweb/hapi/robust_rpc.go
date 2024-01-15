@@ -2,9 +2,10 @@ package hapi
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/lotus/api/client"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"time"
 )
 
 func (a *app) watchRpc() {
