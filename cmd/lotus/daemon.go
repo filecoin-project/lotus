@@ -178,6 +178,8 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("enabling runtime metrics: %w", err)
 		}
 
+		interactive := cctx.Bool("interactive")
+
 		if cctx.Bool("manage-fdlimit") {
 			if _, _, err := ulimit.ManageFdLimit(); err != nil {
 				log.Errorf("setting file descriptor limit: %s", err)
@@ -299,8 +301,8 @@ var DaemonCmd = &cli.Command{
 			willImportChain = true
 		}
 
-		willRemoveChain := cctx.Bool("remove-existing-chain")
-		if willImportChain && !willRemoveChain {
+		var willRemoveChain bool
+		if interactive && willImportChain && !cctx.IsSet("remove-existing-chain") {
 			// Confirm with the user about the intention to remove chain data.
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print("Importing chain or snapshot will by default delete existing local chain data. Do you want to proceed and delete? (yes/no): ")
@@ -309,14 +311,16 @@ var DaemonCmd = &cli.Command{
 				return xerrors.Errorf("reading user input: %w", err)
 			}
 			userInput = strings.ToLower(strings.TrimSpace(userInput))
-
-			if userInput == "yes" {
+			switch userInput {
+			case "yes":
 				willRemoveChain = true
-			} else if userInput == "no" {
+			case "no":
 				willRemoveChain = false
-			} else {
+			default:
 				return fmt.Errorf("invalid input. please answer with 'yes' or 'no'")
 			}
+		} else {
+			willRemoveChain = cctx.Bool("remove-existing-chain")
 		}
 
 		if willRemoveChain {
