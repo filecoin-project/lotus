@@ -123,6 +123,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 	}
 
 	for _, task := range tasks {
+		task := task
 		if task.Failed {
 			continue
 		}

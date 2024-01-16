@@ -63,6 +63,9 @@ func AllocateSectorNumbers(ctx context.Context, a AllocAPI, db *harmonydb.DB, ma
 				Len: abi.MaxSectorNumber,
 			},
 		}})
+		if err != nil {
+			return false, xerrors.Errorf("creating assignable sector numbers: %w", err)
+		}
 
 		inverted, err := bitfield.SubtractBitField(allAssignable, merged)
 		if err != nil {

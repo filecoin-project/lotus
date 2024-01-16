@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -293,20 +292,23 @@ func BenchmarkBuildTreeD512M(b *testing.B) {
 		}
 	}
 
-	if b.N == 1 {
+	/*if b.N == 1 {
 		b.N = 10
-	}
+	}*/
 
 	b.SetBytes(int64(dataSize)) // Set the number of bytes for the benchmark
 
 	for i := 0; i < b.N; i++ {
 		// Create a temporary file for each iteration
-		tempFile, err := ioutil.TempFile("", "tree.dat")
+		tempFile, err := os.CreateTemp("", "tree.dat")
 		if err != nil {
 			b.Fatalf("Failed to create temporary file: %v", err)
 		}
 		tempFilePath := tempFile.Name()
-		tempFile.Close()
+		err = tempFile.Close()
+		if err != nil {
+			b.Fatalf("Failed to close temporary file: %v", err)
+		}
 
 		b.StartTimer() // Start the timer for the BuildTreeD operation
 
@@ -318,6 +320,9 @@ func BenchmarkBuildTreeD512M(b *testing.B) {
 		b.StopTimer() // Stop the timer after BuildTreeD completes
 
 		// Clean up the temporary file
-		os.Remove(tempFilePath)
+		err = os.Remove(tempFilePath)
+		if err != nil {
+			b.Fatalf("Failed to remove temporary file: %v", err)
+		}
 	}
 }
