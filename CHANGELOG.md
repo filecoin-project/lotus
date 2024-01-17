@@ -196,8 +196,6 @@ This patch release allows for up to 10k messages per block. Additionally, it int
 ## Improvements
 - fix: exchange: allow up to 10k messages per block ([filecoin-project/lotus#11506](https://github.com/filecoin-project/lotus/pull/11506))
 
->>>>>>> releases
-
 # v 1.25.0 / 2023-11-22
 
 This is a highly recommended feature release of Lotus. This optional release supports the Filecoin network version 21 upgrade, codenamed Watermelon 🍉, in addition to the numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
