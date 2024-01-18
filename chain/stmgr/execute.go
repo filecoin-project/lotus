@@ -13,6 +13,16 @@ import (
 )
 
 func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st cid.Cid, rec cid.Cid, err error) {
+	return sm.tipSetState(ctx, ts, false)
+}
+
+// Recompute the tipset state without trying to lookup a pre-computed result in the chainstore.
+// Useful if we know that our local chain-state isn't complete (e.g., we've discarded the events).
+func (sm *StateManager) RecomputeTipSetState(ctx context.Context, ts *types.TipSet) (st cid.Cid, rec cid.Cid, err error) {
+	return sm.tipSetState(ctx, ts, true)
+}
+
+func (sm *StateManager) tipSetState(ctx context.Context, ts *types.TipSet, recompute bool) (st cid.Cid, rec cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "tipSetState")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -65,8 +75,10 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 
 	// First, try to find the tipset in the current chain. If found, we can avoid re-executing
 	// it.
-	if st, rec, found := tryLookupTipsetState(ctx, sm.cs, ts); found {
-		return st, rec, nil
+	if !recompute {
+		if st, rec, found := tryLookupTipsetState(ctx, sm.cs, ts); found {
+			return st, rec, nil
+		}
 	}
 
 	st, rec, err = sm.tsExec.ExecuteTipSet(ctx, sm, ts, sm.tsExecMonitor, false)

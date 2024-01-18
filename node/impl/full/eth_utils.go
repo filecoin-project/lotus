@@ -654,7 +654,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, events []types.Event, cs *store.ChainStore, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -695,7 +695,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
 	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
-	ts, err := cs.GetTipSetFromKey(ctx, lookup.TipSet)
+	ts, err := ca.Chain.GetTipSetFromKey(ctx, lookup.TipSet)
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
 	}
@@ -706,7 +706,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	// The tx is located in the parent tipset
-	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
+	parentTs, err := ca.Chain.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
 	}
@@ -729,6 +729,24 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
 		receipt.ContractAddress = &addr
+	}
+
+	var events []types.Event
+	if rct := lookup.Receipt; rct.EventsRoot != nil {
+		events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+		if err != nil {
+			// Fore-recompute, we must have enabled the Event APIs after computing this
+			// tipset.
+			if _, _, err := sa.StateManager.RecomputeTipSetState(ctx, ts); err != nil {
+
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+			// Try again
+			events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+		}
 	}
 
 	if len(events) > 0 {
