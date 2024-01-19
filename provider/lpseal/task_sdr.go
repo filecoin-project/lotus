@@ -110,12 +110,22 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 		return false, xerrors.Errorf("getting miner address: %w", err)
 	}
 
+	// FAIL: api may be down
+	// FAIL-RESP: rely on harmony retry
 	ticket, ticketEpoch, err := s.getTicket(ctx, maddr)
 	if err != nil {
 		return false, xerrors.Errorf("getting ticket: %w", err)
 	}
 
 	// do the SDR!!
+
+	// FAIL: storage may not have enough space
+	// FAIL-RESP: rely on harmony retry
+
+	// LATEFAIL: compute error in sdr
+	// LATEFAIL-RESP: Check in Trees task should catch this; Will retry computing
+	//                Trees; After one retry, it should return the sector to the
+	// 			      SDR stage; max number of retries should be configurable
 
 	err = s.sc.GenerateSDR(ctx, sref, ticket, commd)
 	if err != nil {

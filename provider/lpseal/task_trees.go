@@ -96,6 +96,9 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		return false, xerrors.Errorf("computing tree d: %w", err)
 	}
 
+	// todo: Sooo tree-d contains exactly the unsealed data in the prefix
+	//  when we finalize we can totally just truncate that file and move it to unsealed !!
+
 	// R / C
 	sealed, unsealed, err := t.sc.TreeRC(ctx, sref, commd)
 	if err != nil {
@@ -105,6 +108,10 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	if unsealed != treeUnsealed {
 		return false, xerrors.Errorf("tree-d and tree-r/c unsealed CIDs disagree")
 	}
+
+	// todo synth porep
+
+	// todo porep challenge check
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
 		SET after_tree_r = true, after_tree_c = true, after_tree_d = true, tree_r_cid = $3, tree_d_cid = $4
