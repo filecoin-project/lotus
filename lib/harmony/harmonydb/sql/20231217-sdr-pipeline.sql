@@ -79,6 +79,19 @@ create table sectors_sdr_initial_pieces (
     piece_cid text not null,
     piece_size bigint not null,
 
+    -- data source
+    data_url text not null,
+    data_headers jsonb not null default '{}',
+    data_raw_size bigint not null,
+    data_delete_on_finalize bool not null,
+
+    -- deal info
+    f05_publish_cid text,
+    f05_deal_id bigint,
+    f05_deal_proposal jsonb,
+    f05_deal_start_epoch bigint,
+    f05_deal_end_epoch bigint,
+
     -- foreign key
     foreign key (sp_id, sector_number) references sectors_sdr_pipeline (sp_id, sector_number) on delete cascade,
 

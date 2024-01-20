@@ -5,6 +5,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -832,6 +834,8 @@ type LotusProviderStruct struct {
 }
 
 type LotusProviderMethods struct {
+	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
+
 	Shutdown func(p0 context.Context) error `perm:"admin"`
 
 	Version func(p0 context.Context) (Version, error) `perm:"admin"`
@@ -5199,6 +5203,17 @@ func (s *GatewayStruct) Web3ClientVersion(p0 context.Context) (string, error) {
 
 func (s *GatewayStub) Web3ClientVersion(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
+}
+
+func (s *LotusProviderStruct) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+	if s.Internal.AllocatePieceToSector == nil {
+		return *new(SectorOffset), ErrNotSupported
+	}
+	return s.Internal.AllocatePieceToSector(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *LotusProviderStub) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+	return *new(SectorOffset), ErrNotSupported
 }
 
 func (s *LotusProviderStruct) Shutdown(p0 context.Context) error {

@@ -2,12 +2,15 @@ package fakelm
 
 import (
 	"context"
+	"io"
+
+	"github.com/google/uuid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/google/uuid"
-	"io"
 )
 
 // MinimalLMApi is a subset of the LotusMiner API that is exposed by lotus-provider

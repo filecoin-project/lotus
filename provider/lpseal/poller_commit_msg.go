@@ -2,13 +2,16 @@ package lpseal
 
 import (
 	"context"
+
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"golang.org/x/xerrors"
 )
 
 func (s *SealPoller) pollStartCommitMsg(ctx context.Context, task pollTask) {

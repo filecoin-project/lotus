@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
+	"github.com/filecoin-project/lotus/provider/lpmarket"
 	"github.com/filecoin-project/lotus/provider/lpweb"
 	"github.com/filecoin-project/lotus/storage/paths"
 )
@@ -72,6 +75,12 @@ func (p *ProviderAPI) Version(context.Context) (api.Version, error) {
 	return api.ProviderAPIVersion0, nil
 }
 
+func (p *ProviderAPI) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece api.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
+	di := lpmarket.NewPieceIngester(p.Deps.DB, p.Deps.Full)
+
+	return di.AllocatePieceToSector(ctx, maddr, piece, rawSize, source, header)
+}
+
 // Trigger shutdown
 func (p *ProviderAPI) Shutdown(context.Context) error {
 	close(p.ShutdownChan)
@@ -88,13 +97,6 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 		}
 
 		fh.ServeHTTP(w, r)
-	}
-	// local APIs
-	{
-		// debugging
-		mux := mux.NewRouter()
-		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
-		mux.PathPrefix("/remote").HandlerFunc(remoteHandler)
 	}
 
 	var authVerify func(context.Context, string) ([]auth.Permission, error)

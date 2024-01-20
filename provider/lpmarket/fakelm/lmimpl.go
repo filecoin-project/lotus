@@ -2,15 +2,21 @@ package fakelm
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/url"
+
+	"github.com/google/uuid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/provider/lpmarket"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/google/uuid"
-	"golang.org/x/xerrors"
-	"io"
 )
 
 type LMRPCProvider struct {
@@ -20,6 +26,8 @@ type LMRPCProvider struct {
 	minerID abi.ActorID
 
 	ssize abi.SectorSize
+
+	pi lpmarket.Ingester
 }
 
 func (l *LMRPCProvider) ActorAddress(ctx context.Context) (address.Address, error) {
@@ -259,6 +267,11 @@ func (l *LMRPCProvider) SectorAddPieceToAny(ctx context.Context, size abi.Unpadd
 		return api.SectorOffset{}, xerrors.Errorf("only full-sector pieces are supported")
 	}
 
+	return api.SectorOffset{}, xerrors.Errorf("not supported, use AllocatePieceToSector")
+}
+
+func (l *LMRPCProvider) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece api.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
+	return l.pi.AllocatePieceToSector(ctx, maddr, piece, rawSize, source, header)
 }
 
 var _ MinimalLMApi = &LMRPCProvider{}
