@@ -34,7 +34,7 @@ type WdPostRecoverDeclareTask struct {
 	faultTracker sealer.FaultTracker
 
 	maxDeclareRecoveriesGasFee types.FIL
-	as                         *ctladdr.AddressSelector
+	as                         *ctladdr.MultiAddressSelector
 	actors                     []dtypes.MinerAddress
 
 	startCheckTF promise.Promise[harmonytask.AddTaskFunc]
@@ -61,7 +61,7 @@ func NewWdPostRecoverDeclareTask(sender *lpmessage.Sender,
 	db *harmonydb.DB,
 	api WdPostRecoverDeclareTaskApi,
 	faultTracker sealer.FaultTracker,
-	as *ctladdr.AddressSelector,
+	as *ctladdr.MultiAddressSelector,
 	pcs *chainsched.ProviderChainSched,
 
 	maxDeclareRecoveriesGasFee types.FIL,

@@ -148,7 +148,9 @@ func fromMiner(cctx *cli.Context) (err error) {
 		return xerrors.Errorf("parsing miner actor address: %w", err)
 	}
 
-	lpCfg.Addresses.MinerAddresses = []string{addr.String()}
+	lpCfg.Addresses = []config.LotusProviderAddresses{{
+		MinerAddresses: []string{addr.String()},
+	}}
 
 	ks, err := lr.KeyStore()
 	if err != nil {

@@ -74,7 +74,8 @@ var wdPostTaskCmd = &cli.Command{
 		}
 		ht := ts.Height()
 
-		addr, err := address.NewFromString(deps.Cfg.Addresses.MinerAddresses[0])
+		// It's not important to be super-accurate as it's only for basic testing.
+		addr, err := address.NewFromString(deps.Cfg.Addresses[0].MinerAddresses[0])
 		if err != nil {
 			return xerrors.Errorf("cannot get miner address %w", err)
 		}

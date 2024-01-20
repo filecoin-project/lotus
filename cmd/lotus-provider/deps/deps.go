@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -95,7 +96,7 @@ type Deps struct {
 	Full       api.FullNode
 	Verif      storiface.Verifier
 	LW         *sealer.LocalWorker
-	As         *ctladdr.AddressSelector
+	As         *ctladdr.MultiAddressSelector
 	Maddrs     []dtypes.MinerAddress
 	Stor       *paths.Remote
 	Si         *paths.DBIndex
@@ -151,7 +152,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 	}
 
 	if deps.As == nil {
-		deps.As, err = provider.AddressSelector(&deps.Cfg.Addresses)()
+		deps.As, err = provider.AddressSelector(deps.Cfg.Addresses)()
 		if err != nil {
 			return err
 		}
@@ -236,17 +237,21 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
 	}
 	if len(deps.Maddrs) == 0 {
-		for _, s := range deps.Cfg.Addresses.MinerAddresses {
-			addr, err := address.NewFromString(s)
-			if err != nil {
-				return err
+		for _, s := range deps.Cfg.Addresses {
+			for _, s := range s.MinerAddresses {
+				addr, err := address.NewFromString(s)
+				if err != nil {
+					return err
+				}
+				deps.Maddrs = append(deps.Maddrs, dtypes.MinerAddress(addr))
 			}
-			deps.Maddrs = append(deps.Maddrs, dtypes.MinerAddress(addr))
 		}
 	}
 	fmt.Println("last line of populate")
 	return nil
 }
+
+var oldAddresses = regexp.MustCompile("(?i)^[addresses]$")
 
 func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
 	lp := config.DefaultLotusProvider()
@@ -265,7 +270,10 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 			}
 			return nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
 		}
-		meta, err := toml.Decode(text, &lp)
+
+		// allow migration from old config format that was limited to 1 wallet setup.
+		newText := oldAddresses.ReplaceAllString(text, "[[addresses]]")
+		meta, err := toml.Decode(newText, &lp)
 		if err != nil {
 			return nil, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
 		}

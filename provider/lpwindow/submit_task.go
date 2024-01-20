@@ -47,12 +47,12 @@ type WdPostSubmitTask struct {
 	api    WdPoStSubmitTaskApi
 
 	maxWindowPoStGasFee types.FIL
-	as                  *ctladdr.AddressSelector
+	as                  *ctladdr.MultiAddressSelector
 
 	submitPoStTF promise.Promise[harmonytask.AddTaskFunc]
 }
 
-func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sender, db *harmonydb.DB, api WdPoStSubmitTaskApi, maxWindowPoStGasFee types.FIL, as *ctladdr.AddressSelector) (*WdPostSubmitTask, error) {
+func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sender, db *harmonydb.DB, api WdPoStSubmitTaskApi, maxWindowPoStGasFee types.FIL, as *ctladdr.MultiAddressSelector) (*WdPostSubmitTask, error) {
 	res := &WdPostSubmitTask{
 		sender: send,
 		db:     db,
@@ -248,7 +248,7 @@ type MsgPrepAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
-func preparePoStMessage(w MsgPrepAPI, as *ctladdr.AddressSelector, maddr address.Address, msg *types.Message, maxFee abi.TokenAmount) (*types.Message, *api.MessageSendSpec, error) {
+func preparePoStMessage(w MsgPrepAPI, as *ctladdr.MultiAddressSelector, maddr address.Address, msg *types.Message, maxFee abi.TokenAmount) (*types.Message, *api.MessageSendSpec, error) {
 	mi, err := w.StateMinerInfo(context.Background(), maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("error getting miner info: %w", err)

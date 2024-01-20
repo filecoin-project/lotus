@@ -169,6 +169,7 @@ func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address,
 	}
 
 	ret := api.MinerInfo{
+		MinerID:                    actor,
 		Owner:                      info.Owner,
 		Worker:                     info.Worker,
 		ControlAddresses:           info.ControlAddresses,

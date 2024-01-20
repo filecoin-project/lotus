@@ -21,7 +21,7 @@ import (
 
 func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
 	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker, sender *lpmessage.Sender,
-	as *ctladdr.AddressSelector, addresses []dtypes.MinerAddress, db *harmonydb.DB,
+	as *ctladdr.MultiAddressSelector, addresses []dtypes.MinerAddress, db *harmonydb.DB,
 	stor paths.Store, idx paths.SectorIndex, max int) (*lpwindow.WdPostTask, *lpwindow.WdPostSubmitTask, *lpwindow.WdPostRecoverDeclareTask, error) {
 
 	chainSched := chainsched.New(api)
