@@ -67,13 +67,18 @@ func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address
 		return api.SectorOffset{}, xerrors.Errorf("getting seal proof type: %w", err)
 	}
 
+	mid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting miner ID: %w", err)
+	}
+
 	num, err := lpseal.AllocateSectorNumbers(ctx, p.api, p.db, maddr, 1, func(tx *harmonydb.Tx, numbers []abi.SectorNumber) (bool, error) {
 		if len(numbers) != 1 {
 			return false, xerrors.Errorf("expected one sector number")
 		}
 		n := numbers[0]
 
-		_, err := tx.Exec("insert into sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) values ($1, $2, $3)", maddr, n, spt)
+		_, err := tx.Exec("insert into sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) values ($1, $2, $3)", mid, n, spt)
 		if err != nil {
 			return false, xerrors.Errorf("inserting into sectors_sdr_pipeline: %w", err)
 		}
@@ -105,7 +110,7 @@ func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address
                                         f05_deal_proposal,
                                         f05_deal_start_epoch,
                                         f05_deal_end_epoch) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-			maddr, n, 0,
+			mid, n, 0,
 			piece.DealProposal.PieceCID, piece.DealProposal.PieceSize,
 			source.String(), dataHdrJson, rawSize, true,
 			piece.PublishCid, piece.DealID, dealProposalJson, piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch)

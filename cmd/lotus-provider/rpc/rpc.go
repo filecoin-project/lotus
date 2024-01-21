@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
@@ -32,6 +33,8 @@ import (
 )
 
 var log = logging.Logger("lp/rpc")
+
+var permissioned = os.Getenv("LOTUS_DISABLE_AUTH_PERMISSIONED") != "1"
 
 func LotusProviderHandler(
 	authv func(ctx context.Context, token string) ([]auth.Permission, error),
@@ -120,7 +123,7 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 			authVerify,
 			remoteHandler,
 			&ProviderAPI{dependencies, shutdownChan},
-			true),
+			permissioned),
 		ReadHeaderTimeout: time.Minute * 3,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
