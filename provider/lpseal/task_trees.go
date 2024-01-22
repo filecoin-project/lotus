@@ -2,6 +2,12 @@ package lpseal
 
 import (
 	"context"
+	"github.com/filecoin-project/go-commp-utils/nonffi"
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"github.com/ipfs/go-cid"
+	"io"
+	"net/http"
 
 	"golang.org/x/xerrors"
 
@@ -12,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpffi"
-	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -60,19 +65,18 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		PieceIndex int64  `db:"piece_index"`
 		PieceCID   string `db:"piece_cid"`
 		PieceSize  int64  `db:"piece_size"`
+
+		DataUrl     *string `db:"data_url"`
+		DataHeaders *[]byte `db:"data_headers"`
+		DataRawSize *int64  `db:"data_raw_size"`
 	}
 
 	err = t.db.Select(ctx, &pieces, `
-		SELECT piece_index, piece_cid, piece_size
+		SELECT piece_index, piece_cid, piece_size, data_url, data_headers, data_raw_size
 		FROM sectors_sdr_initial_pieces
 		WHERE sp_id = $1 AND sector_number = $2`, sectorParams.SpID, sectorParams.SectorNumber)
 	if err != nil {
 		return false, xerrors.Errorf("getting pieces: %w", err)
-	}
-
-	if len(pieces) > 0 {
-		// todo sectors with data
-		return false, xerrors.Errorf("todo sectors with data")
 	}
 
 	ssize, err := sectorParams.RegSealProof.SectorSize()
@@ -80,7 +84,49 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		return false, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	commd := zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
+	var commd cid.Cid
+	var dataReader io.Reader
+	var unpaddedData bool
+
+	if len(pieces) > 0 {
+		pieceInfos := make([]abi.PieceInfo, len(pieces))
+		pieceReaders := make([]io.Reader, len(pieces))
+
+		for i, p := range pieces {
+			// make pieceInfo
+			c, err := cid.Parse(p.PieceCID)
+			if err != nil {
+				return false, xerrors.Errorf("parsing piece cid: %w", err)
+			}
+
+			pieceInfos[i] = abi.PieceInfo{
+				Size:     abi.PaddedPieceSize(p.PieceSize),
+				PieceCID: c,
+			}
+
+			// make pieceReader
+			if p.DataUrl != nil {
+				pieceReaders[i], _ = padreader.New(&UrlPieceReader{
+					Url:     *p.DataUrl,
+					RawSize: *p.DataRawSize,
+				}, uint64(*p.DataRawSize))
+			} else { // padding piece (w/o fr32 padding, added in TreeD)
+				pieceReaders[i] = nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded())
+			}
+		}
+
+		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)
+		if err != nil {
+			return false, xerrors.Errorf("computing CommD: %w", err)
+		}
+
+		dataReader = io.MultiReader(pieceReaders...)
+		unpaddedData = true
+	} else {
+		commd = zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
+		dataReader = nullreader.NewNullReader(abi.UnpaddedPieceSize(ssize))
+		unpaddedData = false // nullreader includes fr32 zero bits
+	}
 
 	sref := storiface.SectorRef{
 		ID: abi.SectorID{
@@ -91,7 +137,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	// D
-	treeUnsealed, err := t.sc.TreeD(ctx, sref, abi.PaddedPieceSize(ssize), nullreader.NewNullReader(abi.UnpaddedPieceSize(ssize)))
+	treeUnsealed, err := t.sc.TreeD(ctx, sref, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
 	if err != nil {
 		return false, xerrors.Errorf("computing tree d: %w", err)
 	}
@@ -150,6 +196,63 @@ func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {
 
 func (t *TreesTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	t.sp.pollers[pollerTrees].Set(taskFunc)
+}
+
+type UrlPieceReader struct {
+	Url     string
+	RawSize int64 // the exact number of bytes read, if we read more or less that's an error
+
+	readSoFar int64
+	active    io.ReadCloser // auto-closed on EOF
+}
+
+func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
+	// Check if we have already read the required amount of data
+	if u.readSoFar >= u.RawSize {
+		return 0, io.EOF
+	}
+
+	// If 'active' is nil, initiate the HTTP request
+	if u.active == nil {
+		resp, err := http.Get(u.Url)
+		if err != nil {
+			return 0, err
+		}
+
+		// Set 'active' to the response body
+		u.active = resp.Body
+	}
+
+	// Calculate the maximum number of bytes we can read without exceeding RawSize
+	toRead := u.RawSize - u.readSoFar
+	if int64(len(p)) > toRead {
+		p = p[:toRead]
+	}
+
+	n, err = u.active.Read(p)
+
+	// Update the number of bytes read so far
+	u.readSoFar += int64(n)
+
+	// If the number of bytes read exceeds RawSize, return an error
+	if u.readSoFar > u.RawSize {
+		return n, xerrors.New("read beyond the specified RawSize")
+	}
+
+	// If EOF is reached, close the reader
+	if err == io.EOF {
+		cerr := u.active.Close()
+		if cerr != nil {
+			log.Errorf("error closing http piece reader: %s", cerr)
+		}
+
+		// if we're below the RawSize, return an unexpected EOF error
+		if u.readSoFar < u.RawSize {
+			return n, io.ErrUnexpectedEOF
+		}
+	}
+
+	return n, err
 }
 
 var _ harmonytask.TaskInterface = &TreesTask{}

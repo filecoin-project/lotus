@@ -99,7 +99,7 @@ func Test2K(t *testing.T) {
 
 	tempFile := filepath.Join(t.TempDir(), "tree.dat")
 
-	commd, err := BuildTreeD(bytes.NewReader(data), tempFile, 2048)
+	commd, err := BuildTreeD(bytes.NewReader(data), false, tempFile, 2048)
 	require.NoError(t, err)
 	fmt.Println(commd)
 
@@ -123,23 +123,7 @@ func Test2K(t *testing.T) {
 
 }
 
-func Test8MiB(t *testing.T) {
-	data := make([]byte, 8<<20)
-	data[0] = 0x01
-
-	tempFile := filepath.Join(t.TempDir(), "tree.dat")
-
-	commd, err := BuildTreeD(bytes.NewReader(data), tempFile, 8<<20)
-	require.NoError(t, err)
-	fmt.Println(commd)
-
-	// dump tree.dat
-	dat, err := os.ReadFile(tempFile)
-	require.NoError(t, err)
-
-	actualD := hexPrint32LDedup(dat)
-
-	expectD := `00000000: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+const expectD8M = `00000000: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 00000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 *
 00800000: 16 ab ab 34 1f b7 f3 70 e2 7e 4d ad cf 81 76 6d d0 df d0 ae 64 46 94 77 bb 2c f6 61 49 38 b2 2f 
@@ -195,10 +179,45 @@ func Test8MiB(t *testing.T) {
 00ffffc0: 23 40 4a 88 80 f9 cb c7 20 39 cb 86 14 35 9c 28 34 84 55 70 fe 95 19 0b bd 4d 93 41 42 e8 25 2c 
 `
 
+func Test8MiB(t *testing.T) {
+	data := make([]byte, 8<<20)
+	data[0] = 0x01
+
+	tempFile := filepath.Join(t.TempDir(), "tree.dat")
+
+	commd, err := BuildTreeD(bytes.NewReader(data), false, tempFile, 8<<20)
+	require.NoError(t, err)
+	fmt.Println(commd)
+
+	// dump tree.dat
+	dat, err := os.ReadFile(tempFile)
+	require.NoError(t, err)
+
+	actualD := hexPrint32LDedup(dat)
 	fmt.Println(actualD)
 
-	require.EqualValues(t, expectD, actualD)
+	require.EqualValues(t, expectD8M, actualD)
+	require.Equal(t, "baga6ea4seaqcgqckrcapts6hea44xbqugwocqneekvyp5fizbo6u3e2biluckla", commd.String())
+}
 
+func Test8MiBUnpad(t *testing.T) {
+	data := make([]byte, abi.PaddedPieceSize(8<<20).Unpadded())
+	data[0] = 0x01
+
+	tempFile := filepath.Join(t.TempDir(), "tree.dat")
+
+	commd, err := BuildTreeD(bytes.NewReader(data), true, tempFile, 8<<20)
+	require.NoError(t, err)
+	fmt.Println(commd)
+
+	// dump tree.dat
+	dat, err := os.ReadFile(tempFile)
+	require.NoError(t, err)
+
+	actualD := hexPrint32LDedup(dat)
+	fmt.Println(actualD)
+
+	require.EqualValues(t, expectD8M, actualD)
 	require.Equal(t, "baga6ea4seaqcgqckrcapts6hea44xbqugwocqneekvyp5fizbo6u3e2biluckla", commd.String())
 }
 
@@ -312,7 +331,7 @@ func BenchmarkBuildTreeD512M(b *testing.B) {
 
 		b.StartTimer() // Start the timer for the BuildTreeD operation
 
-		_, err = BuildTreeD(bytes.NewReader(data), tempFilePath, dataSize)
+		_, err = BuildTreeD(bytes.NewReader(data), false, tempFilePath, dataSize)
 		if err != nil {
 			b.Fatalf("BuildTreeD failed: %v", err)
 		}

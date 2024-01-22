@@ -168,6 +168,7 @@ require (
 
 require (
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
+	github.com/KarpelesLab/reflink v1.0.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect

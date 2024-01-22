@@ -1,6 +1,7 @@
 package lpproof
 
 import (
+	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"io"
 	"math/bits"
 	"os"
@@ -50,7 +51,7 @@ func hashChunk(data [][]byte) {
 	}
 }
 
-func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.Cid, error) {
+func BuildTreeD(data io.Reader, unpaddedData bool, outPath string, size abi.PaddedPieceSize) (cid.Cid, error) {
 	out, err := os.Create(outPath)
 	if err != nil {
 		return cid.Undef, err
@@ -156,6 +157,11 @@ func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.C
 		// size, and if it's smaller than a single buffer, we only have one
 		// smaller buffer
 
+		processedSize := uint64(len(workBuffer[0]))
+		if unpaddedData {
+			workBuffer[0] = workBuffer[0][:abi.PaddedPieceSize(len(workBuffer[0])).Unpadded()]
+		}
+
 		_, err := io.ReadFull(data, workBuffer[0])
 		if err != nil && err != io.EOF {
 			return cid.Undef, err
@@ -164,6 +170,12 @@ func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.C
 		// start processing
 		workWg.Add(1)
 		go func(startOffset uint64) {
+			if unpaddedData {
+				paddedBuf := pool.Get(int(abi.UnpaddedPieceSize(len(workBuffer[0])).Padded()))
+				fr32.PadSingle(workBuffer[0], paddedBuf)
+				pool.Put(workBuffer[0])
+				workBuffer[0] = paddedBuf
+			}
 			hashChunk(workBuffer)
 
 			// persist apex
@@ -200,7 +212,7 @@ func BuildTreeD(data io.Reader, outPath string, size abi.PaddedPieceSize) (cid.C
 			workWg.Done()
 		}(processed)
 
-		processed += uint64(len(workBuffer[0]))
+		processed += processedSize
 	}
 
 	workWg.Wait()

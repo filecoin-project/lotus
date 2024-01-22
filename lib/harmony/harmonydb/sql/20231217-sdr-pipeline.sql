@@ -77,7 +77,7 @@ create table sectors_sdr_initial_pieces (
 
     piece_index bigint not null,
     piece_cid text not null,
-    piece_size bigint not null,
+    piece_size bigint not null, -- padded size
 
     -- data source
     data_url text not null,
@@ -97,6 +97,8 @@ create table sectors_sdr_initial_pieces (
 
     primary key (sp_id, sector_number, piece_index)
 );
+
+comment on column sectors_sdr_initial_pieces.piece_size is 'padded size of the piece';
 
 create table sectors_allocated_numbers (
     sp_id bigint not null primary key,

@@ -102,9 +102,8 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		SectorNumber:  abi.SectorNumber(sectorParams.SectorNumber),
 		SealedCID:     sealedCID,
 		SealRandEpoch: sectorParams.TicketEpoch,
-		DealIDs:       nil, // todo
+		DealIDs:       nil,
 		Expiration:    expiration,
-		//UnsealedCid:   unsealedCID, // todo with deals
 	})
 	var pbuf bytes.Buffer
 	if err := params.MarshalCBOR(&pbuf); err != nil {

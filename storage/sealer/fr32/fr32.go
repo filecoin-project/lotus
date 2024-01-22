@@ -69,6 +69,10 @@ func Pad(in, out []byte) {
 	pad(in, out)
 }
 
+func PadSingle(in, out []byte) {
+	pad(in, out)
+}
+
 func pad(in, out []byte) {
 	chunks := len(out) / 128
 	for chunk := 0; chunk < chunks; chunk++ {

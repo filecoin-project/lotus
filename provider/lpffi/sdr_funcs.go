@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/KarpelesLab/reflink"
+	proof2 "github.com/filecoin-project/go-state-types/proof"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/lotus/provider/lpproof"
 	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -115,7 +116,7 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef
 	return nil
 }
 
-func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size abi.PaddedPieceSize, data io.Reader) (cid.Cid, error) {
+func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, error) {
 	maybeUns := storiface.FTNone
 	// todo sectors with data
 
@@ -125,7 +126,7 @@ func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size
 	}
 	defer releaseSector()
 
-	return lpproof.BuildTreeD(data, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
+	return lpproof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
 }
 
 func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid) (cid.Cid, cid.Cid, error) {
@@ -133,8 +134,6 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
 	}
-
-	log.Errorw("phase1 output", "p1o", p1o)
 
 	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
@@ -149,20 +148,38 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting sector size: %w", err)
 		}
 
-		// paths.Sealed is a string filepath
-		f, err := os.Create(paths.Sealed)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("creating sealed sector file: %w", err)
-		}
-		if err := f.Truncate(int64(ssize)); err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("truncating sealed sector file: %w", err)
-		}
+		{
+			// copy TreeD prefix to sealed sector, SealPreCommitPhase2 will mutate it in place into the sealed sector
 
-		if os.Getenv("SEAL_WRITE_UNSEALED") == "1" {
-			// expliticly write zeros to unsealed sector
-			_, err := io.CopyN(f, nullreader.NewNullReader(abi.UnpaddedPieceSize(ssize)), int64(ssize))
-			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("writing zeros to sealed sector file: %w", err)
+			// first try reflink + truncate, that should be way faster
+			err := reflink.Always(filepath.Join(paths.Cache, proofpaths.TreeDName), paths.Sealed)
+			if err == nil {
+				err = os.Truncate(paths.Sealed, int64(ssize))
+				if err != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("truncating reflinked sealed file: %w", err)
+				}
+			} else {
+				log.Errorw("reflink treed -> sealed failed, falling back to slow copy, use single scratch btrfs or xfs filesystem", "error", err, "sector", sector, "cache", paths.Cache, "sealed", paths.Sealed)
+
+				// fallback to slow copy, copy ssize bytes from treed to sealed
+				dst, err := os.OpenFile(paths.Sealed, os.O_WRONLY|os.O_CREATE, 0644)
+				if err != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("opening sealed sector file: %w", err)
+				}
+				src, err := os.Open(filepath.Join(paths.Cache, proofpaths.TreeDName))
+				if err != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("opening treed sector file: %w", err)
+				}
+
+				_, err = io.CopyN(dst, src, int64(ssize))
+				derr := dst.Close()
+				_ = src.Close()
+				if err != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("copying treed -> sealed: %w", err)
+				}
+				if derr != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("closing sealed file: %w", derr)
+				}
 			}
 		}
 	}
@@ -180,7 +197,29 @@ func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sea
 		return nil, xerrors.Errorf("failed to generate vanilla proof: %w", err)
 	}
 
-	return ffi.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
+	proof, err := ffi.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
+	if err != nil {
+		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
+	}
+
+	ok, err := ffi.VerifySeal(proof2.SealVerifyInfo{
+		SealProof:             sn.ProofType,
+		SectorID:              sn.ID,
+		DealIDs:               nil,
+		Randomness:            ticket,
+		InteractiveRandomness: seed,
+		Proof:                 proof,
+		SealedCID:             sealed,
+		UnsealedCID:           unsealed,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("failed to verify proof: %w", err)
+	}
+	if !ok {
+		return nil, xerrors.Errorf("porep failed to validate")
+	}
+
+	return proof, nil
 }
 
 func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) ([]byte, error) {

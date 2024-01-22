@@ -3,6 +3,8 @@ package lpseal
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-commp-utils/nonffi"
+	"github.com/ipfs/go-cid"
 
 	"golang.org/x/xerrors"
 
@@ -84,17 +86,34 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 		return false, xerrors.Errorf("getting pieces: %w", err)
 	}
 
-	if len(pieces) > 0 {
-		// todo sdr with data
-		return false, xerrors.Errorf("todo sdr with data")
-	}
-
 	ssize, err := sectorParams.RegSealProof.SectorSize()
 	if err != nil {
 		return false, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	commd := zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
+	var commd cid.Cid
+
+	if len(pieces) > 0 {
+		pieceInfos := make([]abi.PieceInfo, len(pieces))
+		for i, p := range pieces {
+			c, err := cid.Parse(p.PieceCID)
+			if err != nil {
+				return false, xerrors.Errorf("parsing piece cid: %w", err)
+			}
+
+			pieceInfos[i] = abi.PieceInfo{
+				Size:     abi.PaddedPieceSize(p.PieceSize),
+				PieceCID: c,
+			}
+		}
+
+		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)
+		if err != nil {
+			return false, xerrors.Errorf("computing CommD: %w", err)
+		}
+	} else {
+		commd = zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
+	}
 
 	sref := storiface.SectorRef{
 		ID: abi.SectorID{
