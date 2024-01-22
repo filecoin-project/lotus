@@ -1,7 +1,6 @@
 package lpproof
 
 import (
-	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"io"
 	"math/bits"
 	"os"
@@ -17,6 +16,8 @@ import (
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 )
 
 const nodeSize = 32

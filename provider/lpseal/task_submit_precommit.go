@@ -102,9 +102,35 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		SectorNumber:  abi.SectorNumber(sectorParams.SectorNumber),
 		SealedCID:     sealedCID,
 		SealRandEpoch: sectorParams.TicketEpoch,
-		DealIDs:       nil,
 		Expiration:    expiration,
 	})
+
+	{
+		var pieces []struct {
+			PieceIndex int64  `db:"piece_index"`
+			PieceCID   string `db:"piece_cid"`
+			PieceSize  int64  `db:"piece_size"`
+
+			F05DealID int64 `db:"f05_deal_id"`
+		}
+
+		err = s.db.Select(ctx, &pieces, `
+		SELECT piece_index, piece_cid, piece_size, f05_deal_id
+		FROM sectors_sdr_initial_pieces
+		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index asc`, sectorParams.SpID, sectorParams.SectorNumber)
+		if err != nil {
+			return false, xerrors.Errorf("getting pieces: %w", err)
+		}
+
+		if len(pieces) > 0 {
+			params.Sectors[0].UnsealedCid = &unsealedCID
+
+			for _, p := range pieces {
+				params.Sectors[0].DealIDs = append(params.Sectors[0].DealIDs, abi.DealID(p.F05DealID))
+			}
+		}
+	}
+
 	var pbuf bytes.Buffer
 	if err := params.MarshalCBOR(&pbuf); err != nil {
 		return false, xerrors.Errorf("serializing params: %w", err)

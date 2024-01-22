@@ -2,22 +2,22 @@ package lpseal
 
 import (
 	"context"
-	"github.com/filecoin-project/go-commp-utils/nonffi"
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
-	"github.com/ipfs/go-cid"
 	"io"
 	"net/http"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-commp-utils/nonffi"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpffi"
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -74,7 +74,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	err = t.db.Select(ctx, &pieces, `
 		SELECT piece_index, piece_cid, piece_size, data_url, data_headers, data_raw_size
 		FROM sectors_sdr_initial_pieces
-		WHERE sp_id = $1 AND sector_number = $2`, sectorParams.SpID, sectorParams.SectorNumber)
+		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index asc`, sectorParams.SpID, sectorParams.SectorNumber)
 	if err != nil {
 		return false, xerrors.Errorf("getting pieces: %w", err)
 	}
