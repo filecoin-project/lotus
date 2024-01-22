@@ -24,11 +24,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/proofs"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/verifier"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 func init() {
@@ -39,7 +39,7 @@ func init() {
 
 type SyscallBuilder func(ctx context.Context, rt *Runtime) runtime7.Syscalls
 
-func Syscalls(verifier verifier.Verifier) SyscallBuilder {
+func Syscalls(verifier proofs.Verifier) SyscallBuilder {
 	return func(ctx context.Context, rt *Runtime) runtime7.Syscalls {
 
 		return &syscallShim{
@@ -66,11 +66,11 @@ type syscallShim struct {
 	actor          address.Address
 	cstate         *state.StateTree
 	cst            cbor.IpldStore
-	verifier       verifier.Verifier
+	verifier       proofs.Verifier
 }
 
 func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	commd, err := ffiwrapper.GenerateUnsealedCID(st, pieces)
+	commd, err := proofsffi.GenerateUnsealedCID(st, pieces)
 	if err != nil {
 		log.Errorf("generate data commitment failed: %s", err)
 		return cid.Undef, err

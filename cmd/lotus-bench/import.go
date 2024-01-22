@@ -36,11 +36,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/proofs"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/verifier"
-	verifierffi "github.com/filecoin-project/lotus/chain/verifier/ffi"
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -207,7 +207,7 @@ var importBenchCmd = &cli.Command{
 			defer c.Close() //nolint:errcheck
 		}
 
-		var verifier verifier.Verifier = verifierffi.ProofVerifier
+		var verifier proofs.Verifier = proofsffi.ProofVerifier
 		if cctx.IsSet("syscall-cache") {
 			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &badger.DefaultOptions)
 			if err != nil {

@@ -15,7 +15,7 @@ import (
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 
-	"github.com/filecoin-project/lotus/chain/verifier"
+	"github.com/filecoin-project/lotus/chain/proofs"
 )
 
 // Ideally, we'd use extern/sealer/mock. Unfortunately, those mocks are a bit _too_ accurate
@@ -32,7 +32,7 @@ var log = logging.Logger("simulation-mock")
 // mockVerifier is a simple mock for verifying "fake" proofs.
 type mockVerifier struct{}
 
-var Verifier verifier.Verifier = mockVerifier{}
+var Verifier proofs.Verifier = mockVerifier{}
 
 func (mockVerifier) VerifySeal(proof prooftypes.SealVerifyInfo) (bool, error) {
 	addr, err := address.NewIDAddress(uint64(proof.Miner))

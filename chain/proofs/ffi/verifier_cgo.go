@@ -1,7 +1,7 @@
 //go:build cgo
 // +build cgo
 
-package verifierffi
+package proofsffi
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/chain/verifier"
+	"github.com/filecoin-project/lotus/chain/proofs"
 )
 
-var _ verifier.Verifier = ProofVerifier
+var _ proofs.Verifier = ProofVerifier
 
 type proofVerifier struct{}
 

@@ -9,10 +9,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/chain/verifier"
+	"github.com/filecoin-project/lotus/chain/proofs"
 )
 
-var _ verifier.Verifier = MockVerifier
+var _ proofs.Verifier = MockVerifier
 
 type mockVerifier struct{}
 

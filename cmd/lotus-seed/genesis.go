@@ -22,8 +22,8 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/types"
-	verifierffi "github.com/filecoin-project/lotus/chain/verifier/ffi"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
@@ -575,7 +575,7 @@ var genesisCarCmd = &cli.Command{
 		ofile := c.String("out")
 		jrnl := journal.NilJournal()
 		bstor := blockstore.WrapIDStore(blockstore.NewMemorySync())
-		sbldr := vm.Syscalls(verifierffi.ProofVerifier)
+		sbldr := vm.Syscalls(proofsffi.ProofVerifier)
 
 		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl)()
 		return err

@@ -23,12 +23,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	verifierffi "github.com/filecoin-project/lotus/chain/verifier/ffi"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance/chaos"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls" // enable bls signatures
@@ -106,7 +106,7 @@ type ExecuteTipsetParams struct {
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params ExecuteTipsetParams) (*ExecuteTipsetResult, error) {
 	var (
 		tipset   = params.Tipset
-		syscalls = vm.Syscalls(verifierffi.ProofVerifier)
+		syscalls = vm.Syscalls(proofsffi.ProofVerifier)
 
 		cs      = store.NewChainStore(bs, bs, ds, filcns.Weight, nil)
 		tse     = consensus.NewTipSetExecutor(filcns.RewardFunc)
@@ -252,7 +252,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		Epoch:     params.Epoch,
 		Timestamp: params.Timestamp,
 		Bstore:    bs,
-		Syscalls:  vm.Syscalls(verifierffi.ProofVerifier),
+		Syscalls:  vm.Syscalls(proofsffi.ProofVerifier),
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
 			return params.CircSupply, nil
 		},

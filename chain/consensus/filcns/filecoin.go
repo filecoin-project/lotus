@@ -29,12 +29,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/chain/proofs"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/verifier"
-	verifierffi "github.com/filecoin-project/lotus/chain/verifier/ffi"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -52,7 +52,7 @@ type FilecoinEC struct {
 	// the state manager handles making state queries
 	sm *stmgr.StateManager
 
-	verifier verifier.Verifier
+	verifier proofs.Verifier
 
 	genesis *types.TipSet
 }
@@ -96,7 +96,7 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 	return nil
 }
 
-func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier verifier.Verifier, genesis chain.Genesis) consensus.Consensus {
+func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier proofs.Verifier, genesis chain.Genesis) consensus.Consensus {
 	if build.InsecurePoStValidation {
 		log.Warn("*********************************************************************************************")
 		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
@@ -369,8 +369,8 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 		}
 	}
 
-	// TODO(rvagg): why is this using verifierffi.ProofVerifier.VerifyWinningPoSt directly and not filec.verifier.VerifyWinningPoSt?
-	ok, err := verifierffi.ProofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
+	// TODO(rvagg): why is this using proofsffi.ProofVerifier.VerifyWinningPoSt directly and not filec.verifier.VerifyWinningPoSt?
+	ok, err := proofsffi.ProofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
 		Randomness:        rand,
 		Proofs:            h.WinPoStProof,
 		ChallengedSectors: sectors,
