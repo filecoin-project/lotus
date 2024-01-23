@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"time"
 
@@ -22,6 +23,10 @@ import (
 	incrt "github.com/filecoin-project/lotus/lib/increadtimeout"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 )
+
+// Set the max exchange message size to 120MiB. Purely based on gas numbers, we can include ~8MiB of
+// messages per block, so I've set this to 120MiB to be _very_ safe.
+const maxExchangeMessageSize = (15 * 8) << 20
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
 // as the fetching mechanism.
@@ -279,16 +284,18 @@ func (c *client) validateCompressedIndices(chain []*BSTipSet) error {
 				len(msgs.SecpkIncludes), blocksNum)
 		}
 
+		blsLen := uint64(len(msgs.Bls))
+		secpLen := uint64(len(msgs.Secpk))
 		for blockIdx := 0; blockIdx < blocksNum; blockIdx++ {
 			for _, mi := range msgs.BlsIncludes[blockIdx] {
-				if int(mi) >= len(msgs.Bls) {
+				if mi >= blsLen {
 					return xerrors.Errorf("index in BlsIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Bls))
 				}
 			}
 
 			for _, mi := range msgs.SecpkIncludes[blockIdx] {
-				if int(mi) >= len(msgs.Secpk) {
+				if mi >= secpLen {
 					return xerrors.Errorf("index in SecpkIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Secpk))
 				}
@@ -310,18 +317,36 @@ func (c *client) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) 
 		)
 	}
 
-	req := &Request{
-		Head:    tsk.Cids(),
-		Length:  uint64(count),
-		Options: Headers,
+	var ret []*types.TipSet
+	start := tsk.Cids()
+	for len(ret) < count {
+		req := &Request{
+			Head:    start,
+			Length:  uint64(count - len(ret)),
+			Options: Headers,
+		}
+
+		validRes, err := c.doRequest(ctx, req, nil, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to doRequest: %w", err)
+		}
+
+		if len(validRes.tipsets) == 0 {
+			return nil, xerrors.Errorf("doRequest fetched zero tipsets: %w", err)
+		}
+
+		ret = append(ret, validRes.tipsets...)
+
+		last := validRes.tipsets[len(validRes.tipsets)-1]
+		if last.Height() <= 1 {
+			// we've walked all the way up to genesis, return
+			break
+		}
+
+		start = last.Parents().Cids()
 	}
 
-	validRes, err := c.doRequest(ctx, req, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return validRes.tipsets, nil
+	return ret, nil
 }
 
 // GetFullTipSet implements Client.GetFullTipSet(). Refer to the godocs there.
@@ -336,12 +361,16 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk types.TipS
 
 	validRes, err := c.doRequest(ctx, req, &peer, nil)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to doRequest: %w", err)
 	}
 
-	return validRes.toFullTipSets()[0], nil
-	// If `doRequest` didn't fail we are guaranteed to have at least
-	//  *one* tipset here, so it's safe to index directly.
+	fullTipsets := validRes.toFullTipSets()
+
+	if len(fullTipsets) == 0 {
+		return nil, xerrors.New("unexpectedly got no tipsets in exchange")
+	}
+
+	return fullTipsets[0], nil
 }
 
 // GetChainMessages implements Client.GetChainMessages(). Refer to the godocs there.
@@ -434,10 +463,11 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 		log.Warnw("CloseWrite err", "error", err)
 	}
 
-	// Read response.
+	// Read response, limiting the size of the response to maxExchangeMessageSize as we allow a
+	// lot of messages (10k+) but they'll mostly be quite small.
 	var res Response
 	err = cborutil.ReadCborRPC(
-		bufio.NewReader(incrt.New(stream, ReadResMinSpeed, ReadResDeadline)),
+		bufio.NewReader(io.LimitReader(incrt.New(stream, ReadResMinSpeed, ReadResDeadline), maxExchangeMessageSize)),
 		&res)
 	if err != nil {
 		c.peerTracker.logFailure(peer, build.Clock.Since(connectionStart), req.Length)

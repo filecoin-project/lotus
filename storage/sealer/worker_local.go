@@ -664,7 +664,7 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 	var wg sync.WaitGroup
 	wg.Add(len(sectors))
 
-	vproofs := make([][]byte, 0, len(sectors))
+	vproofs := make([][]byte, len(sectors))
 
 	for i, s := range sectors {
 		if l.challengeThrottle != nil {
@@ -702,8 +702,7 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 				return
 			}
 
-			//vproofs[i] = vanilla // todo substitutes??
-			vproofs = append(vproofs, vanilla)
+			vproofs[i] = vanilla
 		}(i, s)
 	}
 	wg.Wait()
@@ -717,6 +716,22 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 		return storiface.WindowPoStResult{Skipped: skipped}, nil
 	}
 
+	// compact skipped sectors
+	var skippedSoFar int
+	for i := range vproofs {
+		if len(vproofs[i]) == 0 {
+			skippedSoFar++
+			continue
+		}
+
+		if skippedSoFar > 0 {
+			vproofs[i-skippedSoFar] = vproofs[i]
+		}
+	}
+
+	vproofs = vproofs[:len(vproofs)-skippedSoFar]
+
+	// compute the PoSt!
 	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
 	r := storiface.WindowPoStResult{
 		PoStProofs: res,

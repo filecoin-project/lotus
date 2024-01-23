@@ -146,6 +146,11 @@ func New(
 			TaskTypeDetails: c.TypeDetails(),
 			TaskEngine:      e,
 		}
+
+		if len(h.Name) > 16 {
+			return nil, fmt.Errorf("task name too long: %s, max 16 characters", h.Name)
+		}
+
 		e.handlers = append(e.handlers, &h)
 		e.taskMap[h.TaskTypeDetails.Name] = &h
 	}
@@ -171,7 +176,7 @@ func New(
 					continue // not really fatal, but not great
 				}
 			}
-			if !h.considerWork("recovered", []TaskID{TaskID(w.ID)}) {
+			if !h.considerWork(workSourceRecover, []TaskID{TaskID(w.ID)}) {
 				log.Error("Strange: Unable to accept previously owned task: ", w.ID, w.Name)
 			}
 		}
@@ -280,7 +285,7 @@ func (e *TaskEngine) pollerTryAllWork() {
 			continue
 		}
 		if len(unownedTasks) > 0 {
-			accepted := v.considerWork("poller", unownedTasks)
+			accepted := v.considerWork(workSourcePoller, unownedTasks)
 			if accepted {
 				return // accept new work slowly and in priority order
 			}

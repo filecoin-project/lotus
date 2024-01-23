@@ -117,7 +117,7 @@ var wdPostTaskCmd = &cli.Command{
 			}
 			fmt.Print(".")
 		}
-		log.Infof("Result:", result.String)
+		log.Infof("Result: %s", result.String)
 		return nil
 	},
 }
