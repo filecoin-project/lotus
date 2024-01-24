@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -71,8 +70,6 @@ type EthModuleAPI interface {
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 	Web3ClientVersion(ctx context.Context) (string, error)
-	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
-	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 }
 
 type EthEventAPI interface {
@@ -840,139 +837,6 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 
 func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 	return build.UserVersion(), nil
-}
-
-func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
-	}
-
-	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
-	}
-
-	st, err := a.StateManager.StateTree(stRoot)
-	if err != nil {
-		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
-	}
-
-	cid, err := ts.Key().Cid()
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
-	}
-
-	blkHash, err := ethtypes.EthHashFromCid(cid)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to parse eth hash from cid: %w", err)
-	}
-
-	allTraces := make([]*ethtypes.EthTraceBlock, 0, len(trace))
-	msgIdx := 0
-	for _, ir := range trace {
-		// ignore messages from system actor
-		if ir.Msg.From == builtinactors.SystemActorAddr {
-			continue
-		}
-
-		msgIdx++
-
-		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
-		}
-		if txHash == nil {
-			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
-			continue
-		}
-
-		traces := []*ethtypes.EthTrace{}
-		err = buildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), st)
-		if err != nil {
-			return nil, xerrors.Errorf("failed building traces: %w", err)
-		}
-
-		traceBlocks := make([]*ethtypes.EthTraceBlock, 0, len(traces))
-		for _, trace := range traces {
-			traceBlocks = append(traceBlocks, &ethtypes.EthTraceBlock{
-				EthTrace:            trace,
-				BlockHash:           blkHash,
-				BlockNumber:         int64(ts.Height()),
-				TransactionHash:     *txHash,
-				TransactionPosition: msgIdx,
-			})
-		}
-
-		allTraces = append(allTraces, traceBlocks...)
-	}
-
-	return allTraces, nil
-}
-
-func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
-	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
-		return nil, fmt.Errorf("only 'trace' is supported")
-	}
-
-	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
-	}
-
-	stRoot, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
-	}
-
-	st, err := a.StateManager.StateTree(stRoot)
-	if err != nil {
-		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
-	}
-
-	allTraces := make([]*ethtypes.EthTraceReplayBlockTransaction, 0, len(trace))
-	for _, ir := range trace {
-		// ignore messages from system actor
-		if ir.Msg.From == builtinactors.SystemActorAddr {
-			continue
-		}
-
-		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
-		}
-		if txHash == nil {
-			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
-			continue
-		}
-
-		var output ethtypes.EthBytes
-		invokeCreateOnEAM := ir.Msg.To == builtin.EthereumAddressManagerActorAddr && (ir.Msg.Method == builtin.MethodsEAM.Create || ir.Msg.Method == builtin.MethodsEAM.Create2)
-		if ir.Msg.Method == builtin.MethodsEVM.InvokeContract || invokeCreateOnEAM {
-			output, err = decodePayload(ir.ExecutionTrace.MsgRct.Return, ir.ExecutionTrace.MsgRct.ReturnCodec)
-			if err != nil {
-				return nil, xerrors.Errorf("failed to decode payload: %w", err)
-			}
-		} else {
-			output = encodeFilecoinReturnAsABI(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
-		}
-
-		t := ethtypes.EthTraceReplayBlockTransaction{
-			Output:          output,
-			TransactionHash: *txHash,
-			StateDiff:       nil,
-			VmTrace:         nil,
-		}
-
-		err = buildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), st)
-		if err != nil {
-			return nil, xerrors.Errorf("failed building traces: %w", err)
-		}
-
-		allTraces = append(allTraces, &t)
-	}
-
-	return allTraces, nil
 }
 
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {

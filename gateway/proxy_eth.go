@@ -588,30 +588,6 @@ func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
 	return gw.target.Web3ClientVersion(ctx)
 }
 
-func (gw *Node) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-
-	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
-		return nil, err
-	}
-
-	return gw.target.EthTraceBlock(ctx, blkNum)
-}
-
-func (gw *Node) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return nil, err
-	}
-
-	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
-		return nil, err
-	}
-
-	return gw.target.EthTraceReplayBlockTransactions(ctx, blkNum, traceTypes)
-}
-
 var EthMaxFiltersPerConn = 16 // todo make this configurable
 
 func addUserFilterLimited(ctx context.Context, cb func() (ethtypes.EthFilterID, error)) (ethtypes.EthFilterID, error) {

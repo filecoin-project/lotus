@@ -9,6 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multicodec"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -813,4 +814,26 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	copy(buf[offset:], data)
 
 	return buf
+}
+
+// decodePayload is a utility function which decodes the payload using the given codec
+func decodePayload(payload []byte, codec uint64) (ethtypes.EthBytes, error) {
+	if len(payload) == 0 {
+		return nil, nil
+	}
+
+	switch multicodec.Code(codec) {
+	case multicodec.Identity:
+		return nil, nil
+	case multicodec.DagCbor, multicodec.Cbor:
+		buf, err := cbg.ReadByteArray(bytes.NewReader(payload), uint64(len(payload)))
+		if err != nil {
+			return nil, xerrors.Errorf("decodePayload: failed to decode cbor payload: %w", err)
+		}
+		return buf, nil
+	case multicodec.Raw:
+		return ethtypes.EthBytes(payload), nil
+	}
+
+	return nil, xerrors.Errorf("decodePayload: unsupported codec: %d", codec)
 }

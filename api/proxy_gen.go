@@ -315,10 +315,6 @@ type FullNodeMethods struct {
 
 	EthSyncing func(p0 context.Context) (ethtypes.EthSyncingResult, error) `perm:"read"`
 
-	EthTraceBlock func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) `perm:"read"`
-
-	EthTraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) `perm:"read"`
-
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"read"`
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"read"`
@@ -730,10 +726,6 @@ type GatewayMethods struct {
 	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) ``
 
 	EthSyncing func(p0 context.Context) (ethtypes.EthSyncingResult, error) ``
-
-	EthTraceBlock func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) ``
-
-	EthTraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) ``
 
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) ``
 
@@ -2471,28 +2463,6 @@ func (s *FullNodeStruct) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResu
 
 func (s *FullNodeStub) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {
 	return *new(ethtypes.EthSyncingResult), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {
-	if s.Internal.EthTraceBlock == nil {
-		return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
-	}
-	return s.Internal.EthTraceBlock(p0, p1)
-}
-
-func (s *FullNodeStub) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {
-	return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
-	if s.Internal.EthTraceReplayBlockTransactions == nil {
-		return *new([]*ethtypes.EthTraceReplayBlockTransaction), ErrNotSupported
-	}
-	return s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
-	return *new([]*ethtypes.EthTraceReplayBlockTransaction), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
@@ -4693,28 +4663,6 @@ func (s *GatewayStruct) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResul
 
 func (s *GatewayStub) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {
 	return *new(ethtypes.EthSyncingResult), ErrNotSupported
-}
-
-func (s *GatewayStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {
-	if s.Internal.EthTraceBlock == nil {
-		return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
-	}
-	return s.Internal.EthTraceBlock(p0, p1)
-}
-
-func (s *GatewayStub) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {
-	return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
-}
-
-func (s *GatewayStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
-	if s.Internal.EthTraceReplayBlockTransactions == nil {
-		return *new([]*ethtypes.EthTraceReplayBlockTransaction), ErrNotSupported
-	}
-	return s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)
-}
-
-func (s *GatewayStub) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
-	return *new([]*ethtypes.EthTraceReplayBlockTransaction), ErrNotSupported
 }
 
 func (s *GatewayStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
