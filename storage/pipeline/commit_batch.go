@@ -252,6 +252,9 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 			sectors = append(sectors, sn)
 		}
 		res, err = b.processBatchV2(cfg, sectors, nv, !individual)
+		if err != nil {
+			err = xerrors.Errorf("processBatchV2: %w", err)
+		}
 
 		// Mark sectors as done
 		for _, r := range res {
@@ -373,6 +376,13 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 	needFunds := collateral
 
+	arp, err := b.aggregateProofType(nv)
+	if err != nil {
+		res.Error = err.Error()
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate proof type: %w", err)
+	}
+	params.AggregateProofType = arp
+
 	if aggregate {
 		params.SectorProofs = nil // can't be set when aggregating
 
@@ -380,12 +390,6 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		if err != nil {
 			res.Error = err.Error()
 			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting miner id: %w", err)
-		}
-
-		arp, err := b.aggregateProofType(nv)
-		if err != nil {
-			res.Error = err.Error()
-			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate proof type: %w", err)
 		}
 
 		params.AggregateProof, err = b.prover.AggregateSealProofs(proof.AggregateSealVerifyProofAndInfos{
