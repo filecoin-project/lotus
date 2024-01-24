@@ -46,16 +46,8 @@ func (r Result[T]) Assert(noErrFn func(err error, msgAndArgs ...interface{})) T 
 // this method makes the display in log.Infow nicer
 func (r Result[T]) MarshalJSON() ([]byte, error) {
 	if r.Error != nil {
-		return json.Marshal(struct {
-			Error string `json:"Error"`
-		}{
-			Error: r.Error.Error(),
-		})
+		return json.Marshal(map[string]string{"Error": r.Error.Error()})
 	}
 
-	return json.Marshal(struct {
-		Value T `json:"Value"`
-	}{
-		Value: r.Value,
-	})
+	return json.Marshal(map[string]interface{}{"Value": r.Value})
 }

@@ -255,16 +255,6 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	miner.WaitSectorsProving(ctx, toCheck)
 }
 
-// TODO: Test a sector with Fil+ DDO piece
-
-// TODO: Test a sector with a (fil+) DDO piece + custom market actor??
-
-// TODO: Test the above with a piece filling half of a sector, and CC padding
-
-// TODO: Test the above with two pieces and inter-piece padding (p1-PP-p2-p2)
-
-// TODO: Test the above with snapdeals sector
-
 func TestOnboardRawPieceSnap(t *testing.T) {
 	kit.QuietMiningLogs()
 

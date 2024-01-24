@@ -322,6 +322,9 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 	return res, nil
 }
 
+// processBatchV2 processes a batch of sectors after nv22. It will always send
+// ProveCommitSectors3Params which may contain either individual proofs or an
+// aggregate proof depending on SP condition and network conditions.
 func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.SectorNumber, nv network.Version, aggregate bool) ([]sealiface.CommitBatchRes, error) {
 	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
@@ -474,6 +477,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	return []sealiface.CommitBatchRes{res}, nil
 }
 
+// processBatchV1 processes a batch of sectors before nv22. It always sends out an aggregate message.
 func (b *CommitBatcher) processBatchV1(cfg sealiface.Config, sectors []abi.SectorNumber, nv network.Version) ([]sealiface.CommitBatchRes, error) {
 	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {

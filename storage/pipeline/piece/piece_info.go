@@ -126,7 +126,7 @@ func (ds *PieceDealInfo) GetAllocation(ctx context.Context, aapi AllocationAPI, 
 }
 
 // StartEpoch returns the last epoch in which the sector containing this deal
-// must be sealed in order for the deal to be valid. (todo review: precommitted or committed??)
+// must be sealed (committed) in order for the deal to be valid.
 func (ds *PieceDealInfo) StartEpoch() (abi.ChainEpoch, error) {
 	switch {
 	case ds.isBuiltinMarketDeal():
