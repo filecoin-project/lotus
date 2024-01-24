@@ -79,11 +79,21 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 		return xerrors.Errorf("expected to have beacon entries in this block, but didn't find any")
 	}
 
+	// Verify that the last beacon entry's round corresponds to the round we expect
 	last := h.BeaconEntries[len(h.BeaconEntries)-1]
 	if last.Round != maxRound {
 		return xerrors.Errorf("expected final beacon entry in block to be at round %d, got %d", maxRound, last.Round)
 	}
 
+	// Verify that all other entries' rounds are as expected for the epochs in between parentEpoch and h.Height
+	for i, e := range h.BeaconEntries {
+		correctRound := b.MaxBeaconRoundForEpoch(nv, parentEpoch+abi.ChainEpoch(i)+1)
+		if e.Round != correctRound {
+			return xerrors.Errorf("unexpected beacon round %d, expected %d for epoch %d", e.Round, correctRound, parentEpoch+abi.ChainEpoch(i))
+		}
+	}
+
+	// Verify the beacon entries themselves
 	for i, e := range h.BeaconEntries {
 		if err := b.VerifyEntry(e, prevEntry); err != nil {
 			return xerrors.Errorf("beacon entry %d (%d - %x (%d)) was invalid: %w", i, e.Round, e.Data, len(e.Data), err)
@@ -132,10 +142,10 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.V
 		prev.Round = maxRound - 1
 	}
 
-	cur := maxRound
 	var out []types.BeaconEntry
-	for cur > prev.Round {
-		rch := beacon.Entry(ctx, cur)
+	for currEpoch := epoch; currEpoch > parentEpoch; currEpoch-- {
+		currRound := beacon.MaxBeaconRoundForEpoch(nv, currEpoch)
+		rch := beacon.Entry(ctx, currRound)
 		select {
 		case resp := <-rch:
 			if resp.Err != nil {
@@ -143,7 +153,6 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.V
 			}
 
 			out = append(out, resp.Entry)
-			cur = resp.Entry.Round - 1
 		case <-ctx.Done():
 			return nil, xerrors.Errorf("context timed out waiting on beacon entry to come back for epoch %d: %w", epoch, ctx.Err())
 		}
