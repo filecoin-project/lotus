@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/go-commp-utils/nonffi"
 	"testing"
 	"time"
 
@@ -77,7 +78,7 @@ func TestOnboardRawPiece(t *testing.T) {
 			StartEpoch: head.Height() + 2880*2,
 			EndEpoch:   head.Height() + 2880*400,
 		},
-		KeepUnsealed: false,
+		KeepUnsealed: true,
 		PieceActivationManifest: &minertypes.PieceActivationManifest{
 			CID:                   dc.PieceCID,
 			Size:                  dc.Size,
@@ -95,6 +96,10 @@ func TestOnboardRawPiece(t *testing.T) {
 	}
 
 	miner.WaitSectorsProving(ctx, toCheck)
+
+	si, err := miner.SectorsStatus(ctx, so.Sector, false)
+	require.NoError(t, err)
+	require.Equal(t, dc.PieceCID, *si.CommD)
 }
 
 func makeMarketDealProposal(t *testing.T, client *kit.TestFullNode, miner *kit.TestMiner, data cid.Cid, ps abi.PaddedPieceSize, start, end abi.ChainEpoch) market2.ClientDealProposal {
@@ -151,6 +156,8 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
+	var pieces []abi.PieceInfo
+
 	{
 		// market piece
 		pieceSize := abi.PaddedPieceSize(2048 / 2).Unpadded()
@@ -159,6 +166,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 		dc, err := miner.ComputeDataCid(ctx, pieceSize, bytes.NewReader(pieceData))
 		require.NoError(t, err)
+		pieces = append(pieces, dc)
 
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
@@ -222,6 +230,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 		dc, err := miner.ComputeDataCid(ctx, pieceSize, bytes.NewReader(pieceData))
 		require.NoError(t, err)
+		pieces = append(pieces, dc)
 
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
@@ -253,6 +262,13 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	}
 
 	miner.WaitSectorsProving(ctx, toCheck)
+
+	expectCommD, err := nonffi.GenerateUnsealedCID(abi.RegisteredSealProof_StackedDrg2KiBV1_1, pieces)
+	require.NoError(t, err)
+
+	si, err := miner.SectorsStatus(ctx, 2, false)
+	require.NoError(t, err)
+	require.Equal(t, expectCommD, *si.CommD)
 }
 
 func TestOnboardRawPieceSnap(t *testing.T) {
