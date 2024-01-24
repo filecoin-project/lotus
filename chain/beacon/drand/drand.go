@@ -170,10 +170,6 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		return nil
 	}
 
-	if curr.Round != prev.Round+1 {
-		return xerrors.Errorf("invalid beacon entry: cur (%d) != prev (%d) + 1", curr.Round, prev.Round)
-	}
-
 	if be := db.getCachedValue(curr.Round); be != nil {
 		if !bytes.Equal(curr.Data, be.Data) {
 			return xerrors.New("invalid beacon value, does not match cached good value")
@@ -190,7 +186,8 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 	if err == nil {
 		db.cacheValue(curr)
 	}
-	return err
+
+	return nil
 }
 
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(nv network.Version, filEpoch abi.ChainEpoch) uint64 {

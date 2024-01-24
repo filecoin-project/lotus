@@ -704,25 +704,25 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet
 	}
 
 	{
-		// ensure consistency of beacon entires
+		// ensure consistency of beacon entries
 		targetBE := incoming.Blocks()[0].BeaconEntries
 		sorted := sort.SliceIsSorted(targetBE, func(i, j int) bool {
 			return targetBE[i].Round < targetBE[j].Round
 		})
 		if !sorted {
-			syncer.bad.Add(incoming.Cids()[0], NewBadBlockReason(incoming.Cids(), "wrong order of beacon entires"))
-			return nil, xerrors.Errorf("wrong order of beacon entires")
+			syncer.bad.Add(incoming.Cids()[0], NewBadBlockReason(incoming.Cids(), "wrong order of beacon entries"))
+			return nil, xerrors.Errorf("wrong order of beacon entries")
 		}
 
 		for _, bh := range incoming.Blocks()[1:] {
 			if len(targetBE) != len(bh.BeaconEntries) {
 				// cannot mark bad, I think @Kubuxu
-				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
+				return nil, xerrors.Errorf("tipset contained different number for beacon entries")
 			}
 			for i, be := range bh.BeaconEntries {
 				if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) {
 					// cannot mark bad, I think @Kubuxu
-					return nil, xerrors.Errorf("tipset contained different beacon entires")
+					return nil, xerrors.Errorf("tipset contained different beacon entries")
 				}
 			}
 
