@@ -74,6 +74,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.WaitSentinel (cid.Cid) (struct)
@@ -189,9 +190,9 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
-
 			// t.WaitSentinel (cid.Cid) (struct)
 		case "WaitSentinel":
 
@@ -404,6 +405,7 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -482,6 +484,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
 
@@ -547,9 +550,10 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -636,7 +640,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Value = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Value); err != nil {
 				return err
 			}
 
@@ -702,9 +706,10 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -791,7 +796,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Value = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Value); err != nil {
 				return err
 			}
 

@@ -124,13 +124,11 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) (err error) {
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
 			}
-
 			if extra != 16 {
 				return fmt.Errorf("expected array to have 16 elements")
 			}
 
 			t.ID = [16]uint8{}
-
 			if _, err := io.ReadFull(cr, t.ID[:]); err != nil {
 				return err
 			}
@@ -356,6 +354,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -463,6 +462,7 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
 
