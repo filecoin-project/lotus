@@ -55,7 +55,7 @@ var UpgradeLightningHeight = abi.ChainEpoch(-22)
 var UpgradeThunderHeight = abi.ChainEpoch(-23)
 var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
 
-const UpgradePineappleHeight = 50
+const UpgradeDragonHeight = 50
 
 const UpgradeMangoHeight = UpgradePineappleHeight + 10
 

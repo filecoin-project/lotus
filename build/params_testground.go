@@ -112,7 +112,7 @@ var (
 	UpgradeWatermelonHeight     abi.ChainEpoch = -23
 	UpgradeWatermelonFixHeight  abi.ChainEpoch = -24
 	UpgradeWatermelonFix2Height abi.ChainEpoch = -25
-	UpgradePineappleHeight      abi.ChainEpoch = -26
+	UpgradeDragonHeight         abi.ChainEpoch = -26
 	UpgradeMangoHeight          abi.ChainEpoch = -27
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
