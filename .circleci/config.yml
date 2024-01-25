@@ -664,6 +664,12 @@ workflows:
           suite: itest-decode_params
           target: "./itests/decode_params_test.go"
       - test:
+          name: test-itest-direct_data_onboard
+          requires:
+            - build
+          suite: itest-direct_data_onboard
+          target: "./itests/direct_data_onboard_test.go"
+      - test:
           name: test-itest-dup_mpool_messages
           requires:
             - build

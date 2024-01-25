@@ -53,7 +53,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Proof[:]); err != nil {
+	if _, err := cw.Write(t.Proof); err != nil {
 		return err
 	}
 
@@ -148,9 +148,10 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Proof = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Proof[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Proof); err != nil {
 				return err
 			}
+
 			// t.Voucher (paych.SignedVoucher) (struct)
 		case "Voucher":
 
@@ -329,6 +330,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.ChannelID (string) (string)
@@ -631,9 +633,9 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
-
 			// t.ChannelID (string) (string)
 		case "ChannelID":
 

@@ -21,7 +21,7 @@ func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
 		return xerrors.Errorf("unable to snap-up sectors not in the 'Proving' state")
 	}
 
-	if si.hasDeals() {
+	if si.hasData() {
 		return xerrors.Errorf("not a committed-capacity sector, has deals")
 	}
 

@@ -37,6 +37,7 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
+	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7
 	github.com/filecoin-project/go-fil-commcid v0.1.0
@@ -45,7 +46,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.3.1
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.12.9-0.20231205164216-231a5d9537a1
+	github.com/filecoin-project/go-state-types v0.12.9-0.20240125111137-dbf4b5b126e2
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -91,7 +92,6 @@ require (
 	github.com/ipfs/go-fs-lock v0.0.7
 	github.com/ipfs/go-graphsync v0.14.6
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
-	github.com/ipfs/go-ipfs-exchange-offline v0.3.0
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.5.0
 	github.com/ipfs/go-log/v2 v2.5.1
@@ -145,7 +145,7 @@ require (
 	github.com/triplewz/poseidon v0.0.0-20220525065023-a7cdb0e183e7
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20230923211252-36a87e1ba72f
+	github.com/whyrusleeping/cbor-gen v0.0.0-20240124134906-0efd71a8493b
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
@@ -202,7 +202,6 @@ require (
 	github.com/etclabscore/go-jsonschema-walk v0.0.6 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
-	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837 // indirect
 	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect

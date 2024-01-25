@@ -66,6 +66,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.WinPoStProof ([]proof.PoStProof) (slice)
@@ -80,6 +81,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Parents ([]cid.Cid) (slice)
@@ -266,9 +268,9 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.WinPoStProof ([]proof.PoStProof) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -304,9 +306,9 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Parents ([]cid.Cid) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -345,9 +347,9 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Parents[i] = c
 
 			}
+
 		}
 	}
-
 	// t.ParentWeight (big.Int) (struct)
 
 	{
@@ -519,9 +521,10 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.VRFProof[:]); err != nil {
+	if _, err := cw.Write(t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -566,9 +569,10 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) (err error) {
 		t.VRFProof = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.VRFProof[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -606,9 +610,10 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.VRFProof[:]); err != nil {
+	if _, err := cw.Write(t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -678,9 +683,10 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) (err error) {
 		t.VRFProof = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.VRFProof[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -761,9 +767,10 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Params[:]); err != nil {
+	if _, err := cw.Write(t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -920,9 +927,10 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Params = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Params[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1456,9 +1464,9 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 				t.BlsMessages[i] = c
 
 			}
+
 		}
 	}
-
 	// t.SecpkMessages ([]cid.Cid) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -1497,9 +1505,9 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 				t.SecpkMessages[i] = c
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -1545,6 +1553,7 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Height (abi.ChainEpoch) (int64)
@@ -1621,9 +1630,9 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Cids[i] = c
 
 			}
+
 		}
 	}
-
 	// t.Blocks ([]*types.BlockHeader) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -1669,9 +1678,9 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Height (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
@@ -1729,9 +1738,10 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Data[:]); err != nil {
+	if _, err := cw.Write(t.Data); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1790,9 +1800,10 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Data = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Data[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Data); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1908,6 +1919,7 @@ func (t *StateInfo0) MarshalCBOR(w io.Writer) error {
 	if _, err := cw.Write(lengthBufStateInfo0); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1969,6 +1981,7 @@ func (t *Event) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -2045,9 +2058,9 @@ func (t *Event) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -2097,9 +2110,10 @@ func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -2181,9 +2195,10 @@ func (t *EventEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Value = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -2439,7 +2454,7 @@ func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Params[:]); err != nil {
+	if _, err := cw.Write(t.Params); err != nil {
 		return err
 	}
 
@@ -2551,9 +2566,10 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Params = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Params[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Params); err != nil {
 		return err
 	}
+
 	// t.ParamsCodec (uint64) (uint64)
 
 	{
@@ -2648,7 +2664,7 @@ func (t *ReturnTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Return[:]); err != nil {
+	if _, err := cw.Write(t.Return); err != nil {
 		return err
 	}
 
@@ -2727,9 +2743,10 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Return = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Return[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Return); err != nil {
 		return err
 	}
+
 	// t.ReturnCodec (uint64) (uint64)
 
 	{
@@ -2783,6 +2800,7 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Subcalls ([]types.ExecutionTrace) (slice)
@@ -2797,6 +2815,7 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -2887,9 +2906,9 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Subcalls ([]types.ExecutionTrace) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -2925,8 +2944,8 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	return nil
 }

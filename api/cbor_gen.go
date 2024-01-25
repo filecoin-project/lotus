@@ -14,7 +14,8 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	market "github.com/filecoin-project/go-state-types/builtin/v9/market"
+
+	piece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
 var _ = xerrors.Errorf
@@ -73,6 +74,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.WaitSentinel (cid.Cid) (struct)
@@ -188,9 +190,9 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
-
 			// t.WaitSentinel (cid.Cid) (struct)
 		case "WaitSentinel":
 
@@ -403,6 +405,7 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -481,6 +484,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
 
@@ -546,9 +550,10 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -635,7 +640,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Value = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Value); err != nil {
 				return err
 			}
 
@@ -701,9 +706,10 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -790,241 +796,8 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Value = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Value); err != nil {
 				return err
-			}
-
-		default:
-			// Field doesn't exist on this type, so ignore it
-			cbg.ScanForLinks(r, func(cid.Cid) {})
-		}
-	}
-
-	return nil
-}
-func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-
-	cw := cbg.NewCborWriter(w)
-
-	if _, err := cw.Write([]byte{165}); err != nil {
-		return err
-	}
-
-	// t.DealID (abi.DealID) (uint64)
-	if len("DealID") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"DealID\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealID"))); err != nil {
-		return err
-	}
-	if _, err := cw.WriteString(string("DealID")); err != nil {
-		return err
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.DealID)); err != nil {
-		return err
-	}
-
-	// t.PublishCid (cid.Cid) (struct)
-	if len("PublishCid") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"PublishCid\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PublishCid"))); err != nil {
-		return err
-	}
-	if _, err := cw.WriteString(string("PublishCid")); err != nil {
-		return err
-	}
-
-	if t.PublishCid == nil {
-		if _, err := cw.Write(cbg.CborNull); err != nil {
-			return err
-		}
-	} else {
-		if err := cbg.WriteCid(cw, *t.PublishCid); err != nil {
-			return xerrors.Errorf("failed to write cid field t.PublishCid: %w", err)
-		}
-	}
-
-	// t.DealProposal (market.DealProposal) (struct)
-	if len("DealProposal") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"DealProposal\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealProposal"))); err != nil {
-		return err
-	}
-	if _, err := cw.WriteString(string("DealProposal")); err != nil {
-		return err
-	}
-
-	if err := t.DealProposal.MarshalCBOR(cw); err != nil {
-		return err
-	}
-
-	// t.DealSchedule (api.DealSchedule) (struct)
-	if len("DealSchedule") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"DealSchedule\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealSchedule"))); err != nil {
-		return err
-	}
-	if _, err := cw.WriteString(string("DealSchedule")); err != nil {
-		return err
-	}
-
-	if err := t.DealSchedule.MarshalCBOR(cw); err != nil {
-		return err
-	}
-
-	// t.KeepUnsealed (bool) (bool)
-	if len("KeepUnsealed") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"KeepUnsealed\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("KeepUnsealed"))); err != nil {
-		return err
-	}
-	if _, err := cw.WriteString(string("KeepUnsealed")); err != nil {
-		return err
-	}
-
-	if err := cbg.WriteBool(w, t.KeepUnsealed); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
-	*t = PieceDealInfo{}
-
-	cr := cbg.NewCborReader(r)
-
-	maj, extra, err := cr.ReadHeader()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-	}()
-
-	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
-	}
-
-	if extra > cbg.MaxLength {
-		return fmt.Errorf("PieceDealInfo: map struct too large (%d)", extra)
-	}
-
-	var name string
-	n := extra
-
-	for i := uint64(0); i < n; i++ {
-
-		{
-			sval, err := cbg.ReadString(cr)
-			if err != nil {
-				return err
-			}
-
-			name = string(sval)
-		}
-
-		switch name {
-		// t.DealID (abi.DealID) (uint64)
-		case "DealID":
-
-			{
-
-				maj, extra, err = cr.ReadHeader()
-				if err != nil {
-					return err
-				}
-				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
-				}
-				t.DealID = abi.DealID(extra)
-
-			}
-			// t.PublishCid (cid.Cid) (struct)
-		case "PublishCid":
-
-			{
-
-				b, err := cr.ReadByte()
-				if err != nil {
-					return err
-				}
-				if b != cbg.CborNull[0] {
-					if err := cr.UnreadByte(); err != nil {
-						return err
-					}
-
-					c, err := cbg.ReadCid(cr)
-					if err != nil {
-						return xerrors.Errorf("failed to read cid field t.PublishCid: %w", err)
-					}
-
-					t.PublishCid = &c
-				}
-
-			}
-			// t.DealProposal (market.DealProposal) (struct)
-		case "DealProposal":
-
-			{
-
-				b, err := cr.ReadByte()
-				if err != nil {
-					return err
-				}
-				if b != cbg.CborNull[0] {
-					if err := cr.UnreadByte(); err != nil {
-						return err
-					}
-					t.DealProposal = new(market.DealProposal)
-					if err := t.DealProposal.UnmarshalCBOR(cr); err != nil {
-						return xerrors.Errorf("unmarshaling t.DealProposal pointer: %w", err)
-					}
-				}
-
-			}
-			// t.DealSchedule (api.DealSchedule) (struct)
-		case "DealSchedule":
-
-			{
-
-				if err := t.DealSchedule.UnmarshalCBOR(cr); err != nil {
-					return xerrors.Errorf("unmarshaling t.DealSchedule: %w", err)
-				}
-
-			}
-			// t.KeepUnsealed (bool) (bool)
-		case "KeepUnsealed":
-
-			maj, extra, err = cr.ReadHeader()
-			if err != nil {
-				return err
-			}
-			if maj != cbg.MajOther {
-				return fmt.Errorf("booleans must be major type 7")
-			}
-			switch extra {
-			case 20:
-				t.KeepUnsealed = false
-			case 21:
-				t.KeepUnsealed = true
-			default:
-				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 			}
 
 		default:
@@ -1063,7 +836,7 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.DealInfo (api.PieceDealInfo) (struct)
+	// t.DealInfo (piece.PieceDealInfo) (struct)
 	if len("DealInfo") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"DealInfo\" was too long")
 	}
@@ -1129,7 +902,7 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.DealInfo (api.PieceDealInfo) (struct)
+			// t.DealInfo (piece.PieceDealInfo) (struct)
 		case "DealInfo":
 
 			{
@@ -1142,169 +915,12 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 					if err := cr.UnreadByte(); err != nil {
 						return err
 					}
-					t.DealInfo = new(PieceDealInfo)
+					t.DealInfo = new(piece.PieceDealInfo)
 					if err := t.DealInfo.UnmarshalCBOR(cr); err != nil {
 						return xerrors.Errorf("unmarshaling t.DealInfo pointer: %w", err)
 					}
 				}
 
-			}
-
-		default:
-			// Field doesn't exist on this type, so ignore it
-			cbg.ScanForLinks(r, func(cid.Cid) {})
-		}
-	}
-
-	return nil
-}
-func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-
-	cw := cbg.NewCborWriter(w)
-
-	if _, err := cw.Write([]byte{162}); err != nil {
-		return err
-	}
-
-	// t.EndEpoch (abi.ChainEpoch) (int64)
-	if len("EndEpoch") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"EndEpoch\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("EndEpoch"))); err != nil {
-		return err
-	}
-	if _, err := cw.WriteString(string("EndEpoch")); err != nil {
-		return err
-	}
-
-	if t.EndEpoch >= 0 {
-		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.EndEpoch)); err != nil {
-			return err
-		}
-	} else {
-		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.EndEpoch-1)); err != nil {
-			return err
-		}
-	}
-
-	// t.StartEpoch (abi.ChainEpoch) (int64)
-	if len("StartEpoch") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"StartEpoch\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("StartEpoch"))); err != nil {
-		return err
-	}
-	if _, err := cw.WriteString(string("StartEpoch")); err != nil {
-		return err
-	}
-
-	if t.StartEpoch >= 0 {
-		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.StartEpoch)); err != nil {
-			return err
-		}
-	} else {
-		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.StartEpoch-1)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
-	*t = DealSchedule{}
-
-	cr := cbg.NewCborReader(r)
-
-	maj, extra, err := cr.ReadHeader()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-	}()
-
-	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
-	}
-
-	if extra > cbg.MaxLength {
-		return fmt.Errorf("DealSchedule: map struct too large (%d)", extra)
-	}
-
-	var name string
-	n := extra
-
-	for i := uint64(0); i < n; i++ {
-
-		{
-			sval, err := cbg.ReadString(cr)
-			if err != nil {
-				return err
-			}
-
-			name = string(sval)
-		}
-
-		switch name {
-		// t.EndEpoch (abi.ChainEpoch) (int64)
-		case "EndEpoch":
-			{
-				maj, extra, err := cr.ReadHeader()
-				var extraI int64
-				if err != nil {
-					return err
-				}
-				switch maj {
-				case cbg.MajUnsignedInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 positive overflow")
-					}
-				case cbg.MajNegativeInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 negative overflow")
-					}
-					extraI = -1 - extraI
-				default:
-					return fmt.Errorf("wrong type for int64 field: %d", maj)
-				}
-
-				t.EndEpoch = abi.ChainEpoch(extraI)
-			}
-			// t.StartEpoch (abi.ChainEpoch) (int64)
-		case "StartEpoch":
-			{
-				maj, extra, err := cr.ReadHeader()
-				var extraI int64
-				if err != nil {
-					return err
-				}
-				switch maj {
-				case cbg.MajUnsignedInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 positive overflow")
-					}
-				case cbg.MajNegativeInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 negative overflow")
-					}
-					extraI = -1 - extraI
-				default:
-					return fmt.Errorf("wrong type for int64 field: %d", maj)
-				}
-
-				t.StartEpoch = abi.ChainEpoch(extraI)
 			}
 
 		default:

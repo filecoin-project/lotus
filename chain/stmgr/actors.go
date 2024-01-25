@@ -284,7 +284,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 
 	return &api.MarketDeal{
 		Proposal: *proposal,
-		State:    *st,
+		State:    api.MakeDealState(st),
 	}, nil
 }
 
