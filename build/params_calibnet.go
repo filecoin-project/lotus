@@ -89,8 +89,8 @@ const UpgradeWatermelonFixHeight = 1070494
 // 2023-11-21T13:00:00Z
 const UpgradeWatermelonFix2Height = 1108174
 
-// ??????
-const UpgradePineappleHeight = 999999999999999
+// 2024-02-27T14:00:00Z
+const UpgradeDragonHeight = 1390534
 
 const UpgradeMangoHeight = UpgradePineappleHeight + 10
 

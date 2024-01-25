@@ -100,11 +100,11 @@ const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 const UpgradeWatermelonHeight = 3469380
 
 // ??????
-var UpgradePineappleHeight = abi.ChainEpoch(999999999999999)
+var UpgradeDragonHeight = abi.ChainEpoch(999999999999999)
 
 // This epoch, 10 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
 // ??????
-var UpgradeMangoHeight = UpgradePineappleHeight + 10
+var UpgradeMangoHeight = UpgradeDragonHeight + 10
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
@@ -127,8 +127,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_PINEAPPLE") == "1" {
-		UpgradePineappleHeight = math.MaxInt64 - 1
+	if os.Getenv("LOTUS_DISABLE_DRAGON") == "1" {
+		UpgradeDragonHeight = math.MaxInt64 - 1
 		UpgradeMangoHeight = math.MaxInt64
 	}
 

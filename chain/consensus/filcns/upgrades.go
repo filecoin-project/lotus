@@ -286,7 +286,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Network:   network.Version21,
 		Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID2, calibnetv12CorrectManifestCID1),
 	}, {
-		Height:    build.UpgradePineappleHeight,
+		Height:    build.UpgradeDragonHeight,
 		Network:   network.Version22,
 		Migration: UpgradeActorsV13,
 		PreMigrations: []stmgr.PreMigration{{

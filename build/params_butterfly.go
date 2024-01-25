@@ -20,7 +20,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	UpgradeMangoHeight: DrandQuicknet,
 }
 
-const GenesisNetworkVersion = network.Version20
+const GenesisNetworkVersion = network.Version21
 
 var NetworkBundle = "butterflynet"
 var BundleOverrides map[actorstypes.Version]string
@@ -57,8 +57,7 @@ const UpgradeLightningHeight = -22
 const UpgradeThunderHeight = -23
 const UpgradeWatermelonHeight = -24
 
-// ??????
-const UpgradePineappleHeight = 999999999999999
+const UpgradeDragonHeight = 5760
 
 const UpgradeMangoHeight = UpgradePineappleHeight + 10
 

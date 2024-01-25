@@ -67,9 +67,9 @@ var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
 var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
 
-var UpgradePineappleHeight = abi.ChainEpoch(20)
+var UpgradeDragonHeight = abi.ChainEpoch(20)
 
-var UpgradeMangoHeight = UpgradePineappleHeight + 10
+var UpgradeMangoHeight = UpgradeDragonHeight + 10
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
@@ -134,7 +134,7 @@ func init() {
 	UpgradeLightningHeight = getUpgradeHeight("LOTUS_LIGHTNING_HEIGHT", UpgradeLightningHeight)
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
-	UpgradePineappleHeight = getUpgradeHeight("LOTUS_PINEAPPLE_HEIGHT", UpgradePineappleHeight)
+	UpgradeDragonHeight = getUpgradeHeight("LOTUS_DRAGON_HEIGHT", UpgradeDragonHeight)
 
 	BuildType |= Build2k
 
