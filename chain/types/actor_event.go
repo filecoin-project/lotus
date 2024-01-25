@@ -21,7 +21,6 @@ type SubActorEventFilter struct {
 
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
-	// TODO: Should we also allow Eth addresses here?
 	// For now, this MUST be a Filecoin address.
 	Addresses []address.Address `json:"address"`
 
@@ -39,7 +38,7 @@ type ActorEventFilter struct {
 
 type ActorEvent struct {
 	Entries     []EventEntry
-	EmitterAddr address.Address // f4 address of emitter
+	EmitterAddr address.Address
 	Reverted    bool
 	Height      abi.ChainEpoch
 	TipSetKey   cid.Cid // tipset that contained the message

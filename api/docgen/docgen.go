@@ -418,7 +418,7 @@ func init() {
 			"abc": {
 				{
 					Codec: 0x51,
-					Value: []byte("data"),
+					Value: []byte("ddata"),
 				},
 			},
 		},

@@ -5,13 +5,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/multiformats/go-varint"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -129,8 +126,9 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 		fm := &filter.EventFilterManager{
 			ChainStore: cs,
 			EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
+			// TODO:
+			// We don't need this address resolution anymore once https://github.com/filecoin-project/lotus/issues/11594 lands
 			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-				// we only want to match using f4 addresses
 				idAddr, err := address.NewIDAddress(uint64(emitter))
 				if err != nil {
 					return address.Undef, false
@@ -138,18 +136,9 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 
 				actor, err := sm.LoadActor(ctx, idAddr, ts)
 				if err != nil || actor.Address == nil {
-					return address.Undef, false
+					return idAddr, false
 				}
 
-				// if robust address is not f4 then we won't match against it so bail early
-				if actor.Address.Protocol() != address.Delegated {
-					return address.Undef, false
-				}
-				// we have an f4 address, make sure it's assigned by the EAM
-				// What happens when we introduce events for built-in Actor events here ?
-				if namespace, _, err := varint.FromUvarint(actor.Address.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
-					return address.Undef, false
-				}
 				return *actor.Address, true
 			},
 

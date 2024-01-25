@@ -1361,7 +1361,7 @@ func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEvent
 	for k, v := range keys {
 		for _, vv := range v {
 			keysWithCodec[k] = append(keysWithCodec[k], types.ActorEventBlock{
-				Codec: uint64(multicodec.Raw),
+				Codec: uint64(multicodec.Raw), // FEVM smart contract events are always encoded with the `raw` Codec.
 				Value: vv,
 			})
 		}

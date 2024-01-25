@@ -28,8 +28,8 @@ type Server interface {
 // used by the Syncer.
 type Client interface {
 	// GetBlocks fetches block headers from the network, from the provided
-	// tipset *backwards*, returning as many tipsets as the count parameter,
-	// or less.
+	// tipset *backwards*, returning as many tipsets as the count parameter.
+	// The ONLY case in which we return fewer than `count` tipsets is if we hit genesis.
 	GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error)
 
 	// GetChainMessages fetches messages from the network, starting from the first provided tipset
