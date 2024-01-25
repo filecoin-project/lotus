@@ -12,11 +12,16 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	miner2 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	verifreg13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -25,12 +30,15 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
+
+const MinDDONetworkVersion = network.Version22
 
 var DealSectorPriority = 1024
 var MaxTicketAge = policy.MaxPreCommitRandomnessLookback
@@ -59,7 +67,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	m.cleanupAssignedDeals(sector)
 
 	// if this is a snapdeals sector, but it ended up not having any deals, abort the upgrade
-	if sector.State == SnapDealsPacking && !sector.hasDeals() {
+	if sector.State == SnapDealsPacking && !sector.hasData() {
 		return ctx.Send(SectorAbortUpgrade{xerrors.New("sector had no deals")})
 	}
 
@@ -67,7 +75,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 
 	var allocated abi.UnpaddedPieceSize
 	for _, piece := range sector.Pieces {
-		allocated += piece.Piece.Size.Unpadded()
+		allocated += piece.Piece().Size.Unpadded()
 	}
 
 	ssize, err := sector.SectorType.SectorSize()
@@ -417,11 +425,47 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 
 		SealedCID:     *sector.CommR,
 		SealRandEpoch: sector.TicketEpoch,
-		DealIDs:       sector.dealIDs(),
 	}
 
-	if sector.hasDeals() {
+	if sector.hasData() {
+		// only CC sectors don't have UnsealedCID
 		params.UnsealedCid = sector.CommD
+
+		// true when the sector has non-builtin-marked data
+		sectorIsDDO := false
+
+		for _, piece := range sector.Pieces {
+			err := piece.handleDealInfo(handleDealInfoParams{
+				FillerHandler: func(info UniversalPieceInfo) error {
+					return nil // ignore
+				},
+				BuiltinMarketHandler: func(info UniversalPieceInfo) error {
+					if sectorIsDDO {
+						return nil // will be passed later in the Commit message
+					}
+					params.DealIDs = append(params.DealIDs, info.Impl().DealID)
+					return nil
+				},
+				DDOHandler: func(info UniversalPieceInfo) error {
+					if nv < MinDDONetworkVersion {
+						return xerrors.Errorf("DDO sectors are not supported on network version %d", nv)
+					}
+
+					log.Infow("DDO piece in sector", "sector", sector.SectorNumber, "piece", info.String())
+
+					sectorIsDDO = true
+
+					// DDO sectors don't carry DealIDs, we will pass those
+					// deals in the Commit message later
+					params.DealIDs = nil
+					return nil
+				},
+			})
+
+			if err != nil {
+				return nil, big.Zero(), types.EmptyTSK, xerrors.Errorf("handleDealInfo: %w", err)
+			}
+		}
 	}
 
 	collateral, err := m.Api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, ts.Key())
@@ -572,10 +616,6 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return xerrors.Errorf("getting config: %w", err)
 	}
 
-	log.Info("scheduling seal proof computation...")
-
-	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%s; d:%s", sector.SectorNumber, sector.TicketValue, sector.TicketEpoch, sector.SeedValue, sector.SeedEpoch, sector.pieceInfos(), sector.CommR, sector.CommD)
-
 	if sector.CommD == nil || sector.CommR == nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
@@ -700,6 +740,8 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: Deprecate this path, always go through batcher, just respect the AggregateCommits config in there
+
 	cfg, err := m.getConfig()
 	if err != nil {
 		return xerrors.Errorf("getting config: %w", err)
@@ -783,9 +825,111 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	})
 }
 
+// processPieces returns either:
+// - a list of piece activation manifests
+// - a list of deal IDs, if all non-filler pieces are deal-id pieces
+func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, []abi.DealID, error) {
+	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
+	dealIDs := make([]abi.DealID, 0, len(sector.Pieces))
+	var hasDDO bool
+
+	for _, piece := range sector.Pieces {
+		piece := piece
+
+		// first figure out if this is a ddo sector
+		err := piece.handleDealInfo(handleDealInfoParams{
+			FillerHandler: func(info UniversalPieceInfo) error {
+				// Fillers are implicit (todo review: Are they??)
+				return nil
+			},
+			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
+				return nil
+			},
+			DDOHandler: func(info UniversalPieceInfo) error {
+				hasDDO = true
+				return nil
+			},
+		})
+		if err != nil {
+			return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
+		}
+	}
+	for _, piece := range sector.Pieces {
+		piece := piece
+
+		err := piece.handleDealInfo(handleDealInfoParams{
+			FillerHandler: func(info UniversalPieceInfo) error {
+				// Fillers are implicit (todo review: Are they??)
+				return nil
+			},
+			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
+				if hasDDO {
+					alloc, err := m.Api.StateGetAllocationIdForPendingDeal(ctx, info.Impl().DealID, types.EmptyTSK)
+					if err != nil {
+						return xerrors.Errorf("getting allocation for deal %d: %w", info.Impl().DealID, err)
+					}
+					clid, err := m.Api.StateLookupID(ctx, info.Impl().DealProposal.Client, types.EmptyTSK)
+					if err != nil {
+						return xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+					}
+
+					clientId, err := address.IDFromAddress(clid)
+					if err != nil {
+						return xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+					}
+
+					var vac *miner2.VerifiedAllocationKey
+					if alloc != verifreg.NoAllocationID {
+						vac = &miner2.VerifiedAllocationKey{
+							Client: abi.ActorID(clientId),
+							ID:     verifreg13.AllocationId(alloc),
+						}
+					}
+
+					payload, err := cborutil.Dump(info.Impl().DealID)
+					if err != nil {
+						return xerrors.Errorf("serializing deal id: %w", err)
+					}
+
+					pams = append(pams, miner.PieceActivationManifest{
+						CID:                   piece.Piece().PieceCID,
+						Size:                  piece.Piece().Size,
+						VerifiedAllocationKey: vac,
+						Notify: []miner2.DataActivationNotification{
+							{
+								Address: market.Address,
+								Payload: payload,
+							},
+						},
+					})
+
+					return nil
+				}
+
+				dealIDs = append(dealIDs, info.Impl().DealID)
+				return nil
+			},
+			DDOHandler: func(info UniversalPieceInfo) error {
+				pams = append(pams, *piece.Impl().PieceActivationManifest)
+				return nil
+			},
+		})
+		if err != nil {
+			return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
+		}
+	}
+
+	return pams, dealIDs, nil
+}
+
 func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector SectorInfo) error {
 	if sector.CommD == nil || sector.CommR == nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
+	}
+
+	pams, dealIDs, err := m.processPieces(ctx.Context(), sector)
+	if err != nil {
+		return err
 	}
 
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
@@ -796,8 +940,14 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			SealedCID:             *sector.CommR,
 			UnsealedCID:           *sector.CommD,
 		},
-		Proof: sector.Proof, // todo: this correct??
+		Proof: sector.Proof,
 		Spt:   sector.SectorType,
+
+		ActivationManifest: miner2.SectorActivationManifest{
+			SectorNumber: sector.SectorNumber,
+			Pieces:       pams,
+		},
+		DealIDPrecommit: len(dealIDs) > 0,
 	})
 
 	if err != nil || res.Error != "" {
@@ -875,7 +1025,7 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
-	if cfg.MakeCCSectorsAvailable && !sector.hasDeals() {
+	if cfg.MakeCCSectorsAvailable && !sector.hasData() {
 		return ctx.Send(SectorFinalizedAvailable{})
 	}
 	return ctx.Send(SectorFinalized{})

@@ -1770,7 +1770,7 @@ func dealFromDealInfo(ctx context.Context, full v0api.FullNode, head *types.TipS
 	if v.DealID == 0 {
 		return deal{
 			LocalDeal:        v,
-			OnChainDealState: *market.EmptyDealState(),
+			OnChainDealState: market.EmptyDealState(),
 		}
 	}
 
@@ -1781,7 +1781,7 @@ func dealFromDealInfo(ctx context.Context, full v0api.FullNode, head *types.TipS
 
 	return deal{
 		LocalDeal:        v,
-		OnChainDealState: onChain.State,
+		OnChainDealState: onChain.State.Iface(),
 	}
 }
 
@@ -1807,13 +1807,13 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
-			if d.OnChainDealState.SectorStartEpoch != -1 {
-				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+			if d.OnChainDealState.SectorStartEpoch() != -1 {
+				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch())
 			}
 
 			slashed := "N"
-			if d.OnChainDealState.SlashEpoch != -1 {
-				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+			if d.OnChainDealState.SlashEpoch() != -1 {
+				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch())
 			}
 
 			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
@@ -1869,13 +1869,13 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 		propcid := ellipsis(d.LocalDeal.ProposalCid.String(), 8)
 
 		onChain := "N"
-		if d.OnChainDealState.SectorStartEpoch != -1 {
-			onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+		if d.OnChainDealState.SectorStartEpoch() != -1 {
+			onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch())
 		}
 
 		slashed := "N"
-		if d.OnChainDealState.SlashEpoch != -1 {
-			slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+		if d.OnChainDealState.SlashEpoch() != -1 {
+			slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch())
 		}
 
 		piece := ellipsis(d.LocalDeal.PieceCID.String(), 8)

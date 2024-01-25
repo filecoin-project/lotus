@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -28,8 +27,10 @@ import (
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -552,6 +553,8 @@ type FullNode interface {
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 	// pending allocation is not found.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+	StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
 	// StateGetAllocations returns the all the allocations for a given client.
@@ -1121,9 +1124,47 @@ type MarketBalance struct {
 	Locked big.Int
 }
 
+type MarketDealState struct {
+	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
+	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
+	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
+}
+
+func MakeDealState(mds market.DealState) MarketDealState {
+	return MarketDealState{
+		SectorStartEpoch: mds.SectorStartEpoch(),
+		LastUpdatedEpoch: mds.LastUpdatedEpoch(),
+		SlashEpoch:       mds.SlashEpoch(),
+	}
+}
+
+type mstate struct {
+	s MarketDealState
+}
+
+func (m mstate) SectorStartEpoch() abi.ChainEpoch {
+	return m.s.SectorStartEpoch
+}
+
+func (m mstate) LastUpdatedEpoch() abi.ChainEpoch {
+	return m.s.LastUpdatedEpoch
+}
+
+func (m mstate) SlashEpoch() abi.ChainEpoch {
+	return m.s.SlashEpoch
+}
+
+func (m mstate) Equals(o market.DealState) bool {
+	return market.DealStatesEqual(m, o)
+}
+
+func (m MarketDealState) Iface() market.DealState {
+	return mstate{m}
+}
+
 type MarketDeal struct {
 	Proposal market.DealProposal
-	State    market.DealState
+	State    MarketDealState
 }
 
 type RetrievalOrder struct {

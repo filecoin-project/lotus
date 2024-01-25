@@ -14,7 +14,6 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 
-	api "github.com/filecoin-project/lotus/api"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -58,6 +57,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.CommD (cid.Cid) (struct)
@@ -124,7 +124,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Proof[:]); err != nil {
+	if _, err := cw.Write(t.Proof); err != nil {
 		return err
 	}
 
@@ -151,7 +151,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Pieces ([]api.SectorPiece) (slice)
+	// t.Pieces ([]sealing.SafeSectorPiece) (slice)
 	if len("Pieces") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Pieces\" was too long")
 	}
@@ -174,6 +174,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Return (sealing.ReturnState) (string)
@@ -222,7 +223,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.CCPieces ([]api.SectorPiece) (slice)
+	// t.CCPieces ([]sealing.SafeSectorPiece) (slice)
 	if len("CCPieces") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CCPieces\" was too long")
 	}
@@ -245,6 +246,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.CCUpdate (bool) (bool)
@@ -305,7 +307,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.SeedValue[:]); err != nil {
+	if _, err := cw.Write(t.SeedValue); err != nil {
 		return err
 	}
 
@@ -373,7 +375,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.TicketValue[:]); err != nil {
+	if _, err := cw.Write(t.TicketValue); err != nil {
 		return err
 	}
 
@@ -517,7 +519,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.PreCommit1Out[:]); err != nil {
+	if _, err := cw.Write(t.PreCommit1Out); err != nil {
 		return err
 	}
 
@@ -741,7 +743,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.ReplicaUpdateProof[:]); err != nil {
+	if _, err := cw.Write(t.ReplicaUpdateProof); err != nil {
 		return err
 	}
 
@@ -928,9 +930,9 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
-
 			// t.CommD (cid.Cid) (struct)
 		case "CommD":
 
@@ -996,9 +998,10 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Proof = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Proof[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Proof); err != nil {
 				return err
 			}
+
 			// t.State (sealing.SectorState) (string)
 		case "State":
 
@@ -1010,7 +1013,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.State = SectorState(sval)
 			}
-			// t.Pieces ([]api.SectorPiece) (slice)
+			// t.Pieces ([]sealing.SafeSectorPiece) (slice)
 		case "Pieces":
 
 			maj, extra, err = cr.ReadHeader()
@@ -1027,7 +1030,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
-				t.Pieces = make([]api.SectorPiece, extra)
+				t.Pieces = make([]SafeSectorPiece, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
@@ -1046,9 +1049,9 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
-
 			// t.Return (sealing.ReturnState) (string)
 		case "Return":
 
@@ -1071,7 +1074,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.LastErr = string(sval)
 			}
-			// t.CCPieces ([]api.SectorPiece) (slice)
+			// t.CCPieces ([]sealing.SafeSectorPiece) (slice)
 		case "CCPieces":
 
 			maj, extra, err = cr.ReadHeader()
@@ -1088,7 +1091,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
-				t.CCPieces = make([]api.SectorPiece, extra)
+				t.CCPieces = make([]SafeSectorPiece, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
@@ -1107,9 +1110,9 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
-
 			// t.CCUpdate (bool) (bool)
 		case "CCUpdate":
 
@@ -1173,9 +1176,10 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.SeedValue = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.SeedValue[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.SeedValue); err != nil {
 				return err
 			}
+
 			// t.SectorType (abi.RegisteredSealProof) (int64)
 		case "SectorType":
 			{
@@ -1247,9 +1251,10 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.TicketValue = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.TicketValue[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.TicketValue); err != nil {
 				return err
 			}
+
 			// t.CreationTime (int64) (int64)
 		case "CreationTime":
 			{
@@ -1397,9 +1402,10 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.PreCommit1Out = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.PreCommit1Out[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.PreCommit1Out); err != nil {
 				return err
 			}
+
 			// t.FaultReportMsg (cid.Cid) (struct)
 		case "FaultReportMsg":
 
@@ -1621,9 +1627,10 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.ReplicaUpdateProof = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.ReplicaUpdateProof[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.ReplicaUpdateProof); err != nil {
 				return err
 			}
+
 			// t.RemoteDataFinalized (bool) (bool)
 		case "RemoteDataFinalized":
 
