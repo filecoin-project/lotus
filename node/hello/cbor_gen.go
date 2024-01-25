@@ -136,9 +136,9 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 				t.HeaviestTipSet[i] = c
 
 			}
+
 		}
 	}
-
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()

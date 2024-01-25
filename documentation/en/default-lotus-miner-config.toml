@@ -702,6 +702,30 @@
   # env var: LOTUS_SEALING_USESYNTHETICPOREP
   #UseSyntheticPoRep = false
 
+  # Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_REQUIREACTIVATIONSUCCESS
+  #RequireActivationSuccess = false
+
+  # Whether to abort if any piece activation notification returns a non-zero exit code (newly sealed sectors, only with ProveCommitSectors3).
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_REQUIREACTIVATIONSUCCESSUPDATE
+  #RequireActivationSuccessUpdate = false
+
+  # Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_REQUIRENOTIFICATIONSUCCESS
+  #RequireNotificationSuccess = false
+
+  # Whether to abort if any piece activation notification returns a non-zero exit code (updating sectors, only with ProveReplicaUpdates3).
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_REQUIRENOTIFICATIONSUCCESSUPDATE
+  #RequireNotificationSuccessUpdate = false
+
 
 [Storage]
   # type: int

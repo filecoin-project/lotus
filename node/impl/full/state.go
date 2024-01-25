@@ -762,7 +762,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		}
 		out[strconv.FormatInt(int64(dealID), 10)] = &api.MarketDeal{
 			Proposal: d,
-			State:    *s,
+			State:    api.MakeDealState(s),
 		}
 		return nil
 	}); err != nil {
@@ -779,18 +779,27 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
-func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+func (a *StateAPI) StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return verifreg.NoAllocationID, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	st, err := a.StateManager.GetMarketState(ctx, ts)
 	if err != nil {
-		return nil, err
+		return verifreg.NoAllocationID, err
 	}
 
 	allocationId, err := st.GetAllocationIdForPendingDeal(dealId)
+	if err != nil {
+		return verifreg.NoAllocationID, err
+	}
+
+	return allocationId, nil
+}
+
+func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+	allocationId, err := a.StateGetAllocationIdForPendingDeal(ctx, dealId, tsk)
 	if err != nil {
 		return nil, err
 	}

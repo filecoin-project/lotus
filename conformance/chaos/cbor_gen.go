@@ -60,6 +60,7 @@ func (t *State) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -142,9 +143,9 @@ func (t *State) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -185,6 +186,7 @@ func (t *CallerValidationArgs) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Types ([]cid.Cid) (slice)
@@ -288,9 +290,9 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Types ([]cid.Cid) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -329,9 +331,9 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Types[i] = c
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -570,9 +572,10 @@ func (t *SendArgs) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Params[:]); err != nil {
+	if _, err := cw.Write(t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -649,9 +652,10 @@ func (t *SendArgs) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Params = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Params[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -678,7 +682,7 @@ func (t *SendReturn) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Return[:]); err != nil {
+	if _, err := cw.Write(t.Return); err != nil {
 		return err
 	}
 
@@ -736,9 +740,10 @@ func (t *SendReturn) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Return = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Return[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Return); err != nil {
 		return err
 	}
+
 	// t.Code (exitcode.ExitCode) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()

@@ -1550,6 +1550,30 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 
 			Comment: `UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.`,
 		},
+		{
+			Name: "RequireActivationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireActivationSuccessUpdate",
+			Type: "bool",
+
+			Comment: `Whether to abort if any piece activation notification returns a non-zero exit code (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireNotificationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).`,
+		},
+		{
+			Name: "RequireNotificationSuccessUpdate",
+			Type: "bool",
+
+			Comment: `Whether to abort if any piece activation notification returns a non-zero exit code (updating sectors, only with ProveReplicaUpdates3).`,
+		},
 	},
 	"Splitstore": {
 		{

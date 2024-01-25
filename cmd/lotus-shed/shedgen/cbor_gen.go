@@ -136,6 +136,7 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) (err error) {
 						t.Sub[i] = c
 
 					}
+
 				}
 			}
 

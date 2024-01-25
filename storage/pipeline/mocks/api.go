@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 
 	address "github.com/filecoin-project/go-address"
@@ -64,6 +65,21 @@ func (mr *MockSealingAPIMockRecorder) ChainGetMessage(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetMessage", reflect.TypeOf((*MockSealingAPI)(nil).ChainGetMessage), arg0, arg1)
 }
 
+// ChainHasObj mocks base method.
+func (m *MockSealingAPI) ChainHasObj(arg0 context.Context, arg1 cid.Cid) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainHasObj", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainHasObj indicates an expected call of ChainHasObj.
+func (mr *MockSealingAPIMockRecorder) ChainHasObj(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainHasObj", reflect.TypeOf((*MockSealingAPI)(nil).ChainHasObj), arg0, arg1)
+}
+
 // ChainHead mocks base method.
 func (m *MockSealingAPI) ChainHead(arg0 context.Context) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
@@ -77,6 +93,20 @@ func (m *MockSealingAPI) ChainHead(arg0 context.Context) (*types.TipSet, error) 
 func (mr *MockSealingAPIMockRecorder) ChainHead(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainHead", reflect.TypeOf((*MockSealingAPI)(nil).ChainHead), arg0)
+}
+
+// ChainPutObj mocks base method.
+func (m *MockSealingAPI) ChainPutObj(arg0 context.Context, arg1 blocks.Block) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainPutObj", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChainPutObj indicates an expected call of ChainPutObj.
+func (mr *MockSealingAPIMockRecorder) ChainPutObj(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainPutObj", reflect.TypeOf((*MockSealingAPI)(nil).ChainPutObj), arg0, arg1)
 }
 
 // ChainReadObj mocks base method.
@@ -139,19 +169,34 @@ func (mr *MockSealingAPIMockRecorder) StateAccountKey(arg0, arg1, arg2 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAccountKey", reflect.TypeOf((*MockSealingAPI)(nil).StateAccountKey), arg0, arg1, arg2)
 }
 
-// StateComputeDataCID mocks base method.
-func (m *MockSealingAPI) StateComputeDataCID(arg0 context.Context, arg1 address.Address, arg2 abi.RegisteredSealProof, arg3 []abi.DealID, arg4 types.TipSetKey) (cid.Cid, error) {
+// StateGetActor mocks base method.
+func (m *MockSealingAPI) StateGetActor(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*types.ActorV5, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateComputeDataCID", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret := m.ctrl.Call(m, "StateGetActor", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.ActorV5)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// StateComputeDataCID indicates an expected call of StateComputeDataCID.
-func (mr *MockSealingAPIMockRecorder) StateComputeDataCID(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+// StateGetActor indicates an expected call of StateGetActor.
+func (mr *MockSealingAPIMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateComputeDataCID", reflect.TypeOf((*MockSealingAPI)(nil).StateComputeDataCID), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockSealingAPI)(nil).StateGetActor), arg0, arg1, arg2)
+}
+
+// StateGetAllocation mocks base method.
+func (m *MockSealingAPI) StateGetAllocation(arg0 context.Context, arg1 address.Address, arg2 verifreg.AllocationId, arg3 types.TipSetKey) (*verifreg.Allocation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocation", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*verifreg.Allocation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocation indicates an expected call of StateGetAllocation.
+func (mr *MockSealingAPIMockRecorder) StateGetAllocation(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocation", reflect.TypeOf((*MockSealingAPI)(nil).StateGetAllocation), arg0, arg1, arg2, arg3)
 }
 
 // StateGetAllocationForPendingDeal mocks base method.
@@ -167,6 +212,21 @@ func (m *MockSealingAPI) StateGetAllocationForPendingDeal(arg0 context.Context, 
 func (mr *MockSealingAPIMockRecorder) StateGetAllocationForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationForPendingDeal", reflect.TypeOf((*MockSealingAPI)(nil).StateGetAllocationForPendingDeal), arg0, arg1, arg2)
+}
+
+// StateGetAllocationIdForPendingDeal mocks base method.
+func (m *MockSealingAPI) StateGetAllocationIdForPendingDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (verifreg.AllocationId, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocationIdForPendingDeal", arg0, arg1, arg2)
+	ret0, _ := ret[0].(verifreg.AllocationId)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocationIdForPendingDeal indicates an expected call of StateGetAllocationIdForPendingDeal.
+func (mr *MockSealingAPIMockRecorder) StateGetAllocationIdForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationIdForPendingDeal", reflect.TypeOf((*MockSealingAPI)(nil).StateGetAllocationIdForPendingDeal), arg0, arg1, arg2)
 }
 
 // StateGetRandomnessFromBeacon mocks base method.
@@ -437,6 +497,21 @@ func (m *MockSealingAPI) StateSectorPreCommitInfo(arg0 context.Context, arg1 add
 func (mr *MockSealingAPIMockRecorder) StateSectorPreCommitInfo(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSectorPreCommitInfo", reflect.TypeOf((*MockSealingAPI)(nil).StateSectorPreCommitInfo), arg0, arg1, arg2, arg3)
+}
+
+// StateVMCirculatingSupplyInternal mocks base method.
+func (m *MockSealingAPI) StateVMCirculatingSupplyInternal(arg0 context.Context, arg1 types.TipSetKey) (api.CirculatingSupply, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateVMCirculatingSupplyInternal", arg0, arg1)
+	ret0, _ := ret[0].(api.CirculatingSupply)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateVMCirculatingSupplyInternal indicates an expected call of StateVMCirculatingSupplyInternal.
+func (mr *MockSealingAPIMockRecorder) StateVMCirculatingSupplyInternal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateVMCirculatingSupplyInternal", reflect.TypeOf((*MockSealingAPI)(nil).StateVMCirculatingSupplyInternal), arg0, arg1)
 }
 
 // StateWaitMsg mocks base method.
