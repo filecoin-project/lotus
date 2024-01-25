@@ -459,7 +459,7 @@ This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, bu
 			Name: "EnableActorEventsAPI",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).`,
 		},
 		{
 			Name: "EthTxHashMappingLifetimeDays",
