@@ -16,7 +16,8 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandMainnet,
+	0:                  DrandMainnet,
+	UpgradeMangoHeight: DrandQuicknet,
 }
 
 const GenesisNetworkVersion = network.Version20
@@ -58,6 +59,8 @@ const UpgradeWatermelonHeight = -24
 
 // ??????
 const UpgradePineappleHeight = 999999999999999
+
+const UpgradeMangoHeight = UpgradePineappleHeight + 10
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
