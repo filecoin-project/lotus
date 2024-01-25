@@ -3,16 +3,12 @@ package harmonydb
 import (
 	"context"
 	"errors"
-	"runtime"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/samber/lo"
 )
-
-var errTx = errors.New("Cannot use a non-transaction func in a transaction")
 
 // rawStringOnly is _intentionally_private_ to force only basic strings in SQL queries.
 // In any package, raw strings will satisfy compilation.  Ex:
@@ -26,9 +22,6 @@ type rawStringOnly string
 // Note, for CREATE & DROP please keep these permanent and express
 // them in the ./sql/ files (next number).
 func (db *DB) Exec(ctx context.Context, sql rawStringOnly, arguments ...any) (count int, err error) {
-	if db.usedInTransaction() {
-		return 0, errTx
-	}
 	res, err := db.pgx.Exec(ctx, string(sql), arguments...)
 	return int(res.RowsAffected()), err
 }
@@ -62,9 +55,6 @@ type Query struct {
 //	   fmt.Println(id, name)
 //	}
 func (db *DB) Query(ctx context.Context, sql rawStringOnly, arguments ...any) (*Query, error) {
-	if db.usedInTransaction() {
-		return &Query{}, errTx
-	}
 	q, err := db.pgx.Query(ctx, string(sql), arguments...)
 	return &Query{q}, err
 }
@@ -76,10 +66,6 @@ type Row interface {
 	Scan(...any) error
 }
 
-type rowErr struct{}
-
-func (rowErr) Scan(_ ...any) error { return errTx }
-
 // QueryRow gets 1 row using column order matching.
 // This is a timesaver for the special case of wanting the first row returned only.
 // EX:
@@ -88,9 +74,6 @@ func (rowErr) Scan(_ ...any) error { return errTx }
 //	var ID = 123
 //	err := db.QueryRow(ctx, "SELECT name, pet FROM users WHERE ID=?", ID).Scan(&name, &pet)
 func (db *DB) QueryRow(ctx context.Context, sql rawStringOnly, arguments ...any) Row {
-	if db.usedInTransaction() {
-		return rowErr{}
-	}
 	return db.pgx.QueryRow(ctx, string(sql), arguments...)
 }
 
@@ -109,9 +92,6 @@ Ex:
 	err := db.Select(ctx, &users, "SELECT name, id, tel_no FROM customers WHERE pet=?", pet)
 */
 func (db *DB) Select(ctx context.Context, sliceOfStructPtr any, sql rawStringOnly, arguments ...any) error {
-	if db.usedInTransaction() {
-		return errTx
-	}
 	return pgxscan.Select(ctx, db.pgx, sliceOfStructPtr, string(sql), arguments...)
 }
 
@@ -120,32 +100,10 @@ type Tx struct {
 	ctx context.Context
 }
 
-// usedInTransaction is a helper to prevent nesting transactions
-// & non-transaction calls in transactions. It only checks 20 frames.
-// Fast: This memory should all be in CPU Caches.
-func (db *DB) usedInTransaction() bool {
-	var framePtrs = (&[20]uintptr{})[:]                   // 20 can be stack-local (no alloc)
-	framePtrs = framePtrs[:runtime.Callers(3, framePtrs)] // skip past our caller.
-	return lo.Contains(framePtrs, db.BTFP.Load())         // Unsafe read @ beginTx overlap, but 'return false' is correct there.
-}
-
 // BeginTransaction is how you can access transactions using this library.
 // The entire transaction happens in the function passed in.
 // The return must be true or a rollback will occur.
-// Be sure to test the error for IsErrSerialization() if you want to retry
-//
-//	when there is a DB serialization error.
-//
-//go:noinline
 func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, err error)) (didCommit bool, retErr error) {
-	db.BTFPOnce.Do(func() {
-		fp := make([]uintptr, 20)
-		runtime.Callers(1, fp)
-		db.BTFP.Store(fp[0])
-	})
-	if db.usedInTransaction() {
-		return false, errTx
-	}
 	tx, err := db.pgx.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return false, err
@@ -197,9 +155,4 @@ func (t *Tx) Select(sliceOfStructPtr any, sql rawStringOnly, arguments ...any) e
 func IsErrUniqueContraint(err error) bool {
 	var e2 *pgconn.PgError
 	return errors.As(err, &e2) && e2.Code == pgerrcode.UniqueViolation
-}
-
-func IsErrSerialization(err error) bool {
-	var e2 *pgconn.PgError
-	return errors.As(err, &e2) && e2.Code == pgerrcode.SerializationFailure
 }

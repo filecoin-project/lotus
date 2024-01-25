@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -525,6 +524,9 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		}
 		to = revertedEthAddress
 	}
+	toPtr := &to
+
+	// Finally, convert the input parameters to "solidity ABI".
 
 	// For empty, we use "0" as the codec. Otherwise, we use CBOR for message
 	// parameters.
@@ -533,11 +535,31 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		codec = uint64(multicodec.Cbor)
 	}
 
-	// We decode as a native call first.
-	ethTx := ethtypes.EthTx{
-		To:                   &to,
+	// We try to decode the input as an EVM method invocation and/or a contract creation. If
+	// that fails, we encode the "native" parameters as Solidity ABI.
+	var input []byte
+	switch msg.Method {
+	case builtintypes.MethodsEVM.InvokeContract, builtintypes.MethodsEAM.CreateExternal:
+		inp, err := decodePayload(msg.Params, codec)
+		if err == nil {
+			// If this is a valid "create external", unset the "to" address.
+			if msg.Method == builtintypes.MethodsEAM.CreateExternal {
+				toPtr = nil
+			}
+			input = []byte(inp)
+			break
+		}
+		// Yeah, we're going to ignore errors here because the user can send whatever they
+		// want and may send garbage.
+		fallthrough
+	default:
+		input = encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params)
+	}
+
+	return ethtypes.EthTx{
+		To:                   toPtr,
 		From:                 from,
-		Input:                encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params),
+		Input:                input,
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),
@@ -546,25 +568,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
 		AccessList:           []ethtypes.EthHash{},
-	}
-
-	// Then we try to see if it's "special". If we fail, we ignore the error and keep treating
-	// it as a native message. Unfortunately, the user is free to send garbage that may not
-	// properly decode.
-	if msg.Method == builtintypes.MethodsEVM.InvokeContract {
-		// try to decode it as a contract invocation first.
-		if inp, err := decodePayload(msg.Params, codec); err == nil {
-			ethTx.Input = []byte(inp)
-		}
-	} else if msg.To == builtin.EthereumAddressManagerActorAddr && msg.Method == builtintypes.MethodsEAM.CreateExternal {
-		// Then, try to decode it as a contract deployment from an EOA.
-		if inp, err := decodePayload(msg.Params, codec); err == nil {
-			ethTx.Input = []byte(inp)
-			ethTx.To = nil
-		}
-	}
-
-	return ethTx, nil
+	}, nil
 }
 
 func getSignedMessage(ctx context.Context, cs *store.ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {

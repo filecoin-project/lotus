@@ -180,13 +180,12 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		}
 	}
 
-	retryWait := time.Millisecond * 100
-retryAttachStorage:
 	// Single transaction to attach storage which is not present in the DB
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+
 		var urls sql.NullString
 		var storageId sql.NullString
-		err = tx.QueryRow(
+		err = dbi.harmonyDB.QueryRow(ctx,
 			"Select storage_id, urls FROM storage_path WHERE storage_id = $1", string(si.ID)).Scan(&storageId, &urls)
 		if err != nil && !strings.Contains(err.Error(), "no rows in result set") {
 			return false, xerrors.Errorf("storage attach select fails: %v", err)
@@ -201,7 +200,7 @@ retryAttachStorage:
 			}
 			currUrls = union(currUrls, si.URLs)
 
-			_, err = tx.Exec(
+			_, err = dbi.harmonyDB.Exec(ctx,
 				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9 WHERE storage_id=$10",
 				strings.Join(currUrls, ","),
 				si.Weight,
@@ -221,7 +220,7 @@ retryAttachStorage:
 		}
 
 		// Insert storage id
-		_, err = tx.Exec(
+		_, err = dbi.harmonyDB.Exec(ctx,
 			"INSERT INTO storage_path "+
 				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
 			si.ID,
@@ -246,11 +245,6 @@ retryAttachStorage:
 		return true, nil
 	})
 	if err != nil {
-		if harmonydb.IsErrSerialization(err) {
-			time.Sleep(retryWait)
-			retryWait *= 2
-			goto retryAttachStorage
-		}
 		return err
 	}
 
@@ -290,29 +284,22 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 
 		log.Warnw("Dropping sector path endpoint", "path", id, "url", url)
 	} else {
-		retryWait := time.Millisecond * 100
-	retryDropPath:
 		// Single transaction to drop storage path and sector decls which have this as a storage path
 		_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			// Drop storage path completely
-			_, err = tx.Exec("DELETE FROM storage_path WHERE storage_id=$1", id)
+			_, err = dbi.harmonyDB.Exec(ctx, "DELETE FROM storage_path WHERE storage_id=$1", id)
 			if err != nil {
 				return false, err
 			}
 
 			// Drop all sectors entries which use this storage path
-			_, err = tx.Exec("DELETE FROM sector_location WHERE storage_id=$1", id)
+			_, err = dbi.harmonyDB.Exec(ctx, "DELETE FROM sector_location WHERE storage_id=$1", id)
 			if err != nil {
 				return false, err
 			}
 			return true, nil
 		})
 		if err != nil {
-			if harmonydb.IsErrSerialization(err) {
-				time.Sleep(retryWait)
-				retryWait *= 2
-				goto retryDropPath
-			}
 			return err
 		}
 		log.Warnw("Dropping sector storage", "path", id)
@@ -386,11 +373,9 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 		return xerrors.Errorf("invalid filetype")
 	}
 
-	retryWait := time.Millisecond * 100
-retryStorageDeclareSector:
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 		var currPrimary sql.NullBool
-		err = tx.QueryRow(
+		err = dbi.harmonyDB.QueryRow(ctx,
 			"SELECT is_primary FROM sector_location WHERE miner_id=$1 and sector_num=$2 and sector_filetype=$3 and storage_id=$4",
 			uint64(s.Miner), uint64(s.Number), int(ft), string(storageID)).Scan(&currPrimary)
 		if err != nil && !strings.Contains(err.Error(), "no rows in result set") {
@@ -400,7 +385,7 @@ retryStorageDeclareSector:
 		// If storage id already exists for this sector, update primary if need be
 		if currPrimary.Valid {
 			if !currPrimary.Bool && primary {
-				_, err = tx.Exec(
+				_, err = dbi.harmonyDB.Exec(ctx,
 					"UPDATE sector_location set is_primary = TRUE WHERE miner_id=$1 and sector_num=$2 and sector_filetype=$3 and storage_id=$4",
 					s.Miner, s.Number, ft, storageID)
 				if err != nil {
@@ -410,7 +395,7 @@ retryStorageDeclareSector:
 				log.Warnf("sector %v redeclared in %s", s, storageID)
 			}
 		} else {
-			_, err = tx.Exec(
+			_, err = dbi.harmonyDB.Exec(ctx,
 				"INSERT INTO sector_location "+
 					"values($1, $2, $3, $4, $5)",
 				s.Miner, s.Number, ft, storageID, primary)
@@ -422,11 +407,6 @@ retryStorageDeclareSector:
 		return true, nil
 	})
 	if err != nil {
-		if harmonydb.IsErrSerialization(err) {
-			time.Sleep(retryWait)
-			retryWait *= 2
-			goto retryStorageDeclareSector
-		}
 		return err
 	}
 
@@ -770,7 +750,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 
 		fts := (read | write).AllSet()
-		err = tx.Select(&rows,
+		err = dbi.harmonyDB.Select(ctx, &rows,
 			`SELECT sector_filetype, read_ts, read_refs, write_ts 
 								 FROM sector_location 
 								 WHERE miner_id=$1 
@@ -812,7 +792,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		// Acquire write locks
-		_, err = tx.Exec(
+		_, err = dbi.harmonyDB.Exec(ctx,
 			`UPDATE sector_location
 							 	SET write_ts = NOW(), write_lock_owner = $1
 							 	WHERE miner_id=$2
@@ -827,7 +807,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		// Acquire read locks
-		_, err = tx.Exec(
+		_, err = dbi.harmonyDB.Exec(ctx,
 			`UPDATE sector_location
 							 	SET read_ts = NOW(), read_refs = read_refs + 1
 							 	WHERE miner_id=$1
