@@ -11,6 +11,8 @@ import (
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -46,6 +48,39 @@ func fakeConfigGetter(stub *fakeConfigStub) dtypes.GetSealingConfigFunc {
 
 func (f *fakeChain) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
 	return build.TestNetworkVersion, nil
+}
+
+func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.TipSet {
+	dummyCid, _ := cid.Parse("bafkqaaa")
+
+	var ts, err = types.NewTipSet([]*types.BlockHeader{
+		{
+			Height: h,
+			Miner:  builtin.SystemActorAddr,
+
+			Parents: []cid.Cid{},
+
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
+
+			ParentStateRoot:       dummyCid,
+			Messages:              dummyCid,
+			ParentMessageReceipts: dummyCid,
+
+			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
+
+			ParentBaseFee: basefee,
+		},
+	})
+	if t != nil {
+		require.NoError(t, err)
+	}
+
+	return ts
+}
+
+func makeTs(t *testing.T, h abi.ChainEpoch) *types.TipSet {
+	return makeBFTs(t, big.NewInt(0), h)
 }
 
 func (f *fakeChain) ChainHead(ctx context.Context) (*types.TipSet, error) {
