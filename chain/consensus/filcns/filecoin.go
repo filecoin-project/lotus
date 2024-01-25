@@ -129,6 +129,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
+	// TODO: Optimization: See https://github.com/filecoin-project/lotus/issues/11597
 	prevBeacon, err := filec.store.GetLatestBeaconEntry(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
