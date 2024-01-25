@@ -193,8 +193,8 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 			UpdateProofsType: updateProof,
 			//AggregateProof
 			//AggregateProofType
-			RequireActivationSuccess:   false, // todo??
-			RequireNotificationSuccess: false,
+			RequireActivationSuccess:   cfg.RequireActivationSuccessUpdate,
+			RequireNotificationSuccess: cfg.RequireNotificationSuccessUpdate,
 		}
 
 		enc := new(bytes.Buffer)

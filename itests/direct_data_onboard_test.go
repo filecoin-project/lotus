@@ -147,7 +147,10 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 		ctx       = context.Background()
 	)
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
+	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+		sc.RequireActivationSuccess = true
+		sc.RequireNotificationSuccess = true
+	}))
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)
@@ -157,6 +160,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	require.NoError(t, err)
 
 	var pieces []abi.PieceInfo
+	var dealID abi.DealID
 
 	{
 		// market piece
@@ -200,7 +204,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 		res, err := market.DecodePublishStorageDealsReturn(r.Receipt.Return, nv)
 		require.NoError(t, err)
-		dealID := must.One(res.DealIDs())[0]
+		dealID = must.One(res.DealIDs())[0]
 
 		mcid := smsg.Cid()
 
@@ -269,6 +273,11 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	si, err := miner.SectorsStatus(ctx, 2, false)
 	require.NoError(t, err)
 	require.Equal(t, expectCommD, *si.CommD)
+
+	ds, err := client.StateMarketStorageDeal(ctx, dealID, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.NotEqual(t, -1, ds.State.SectorStartEpoch)
 }
 
 func TestOnboardRawPieceSnap(t *testing.T) {
@@ -285,7 +294,7 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 		sc.MakeCCSectorsAvailable = true
 		sc.AggregateCommits = false
 	}))
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
 	sl, err := miner.SectorsListNonGenesis(ctx)

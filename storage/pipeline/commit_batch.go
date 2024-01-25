@@ -337,7 +337,10 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		FailedSectors: map[abi.SectorNumber]string{},
 	}
 
-	params := miner.ProveCommitSectors3Params{}
+	params := miner.ProveCommitSectors3Params{
+		RequireActivationSuccess:   cfg.RequireActivationSuccess,
+		RequireNotificationSuccess: cfg.RequireNotificationSuccess,
+	}
 
 	infos := make([]proof.AggregateSealVerifyInfo, 0, total)
 	collateral := big.Zero()
