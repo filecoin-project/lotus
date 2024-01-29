@@ -47,7 +47,7 @@ func (mb *mockBeacon) Entry(ctx context.Context, index uint64) <-chan Response {
 	return out
 }
 
-func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) error {
+func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, _prevEntrySig []byte) error {
 	// TODO: cache this, especially for bls
 	oe := mb.entryForIndex(from.Round)
 	if !bytes.Equal(from.Data, oe.Data) {
