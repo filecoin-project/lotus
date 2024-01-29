@@ -43,10 +43,11 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.28.3
+	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0
 	github.com/filecoin-project/go-jsonrpc v0.3.1
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.12.9-0.20240125111137-dbf4b5b126e2
+	github.com/filecoin-project/go-state-types v0.12.9-0.20240127183926-66732dc006c0
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -205,7 +206,6 @@ require (
 	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
-	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

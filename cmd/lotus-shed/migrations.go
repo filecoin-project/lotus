@@ -8,8 +8,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ipfs/boxo/blockservice"
+	"github.com/ipfs/boxo/exchange/offline"
+	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -72,6 +76,9 @@ var migrationsCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "check-invariants",
+		},
+		&cli.StringFlag{
+			Name: "export-bad-migration",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -216,6 +223,25 @@ var migrationsCmd = &cli.Command{
 			cachedMigrationTime := time.Since(startTime)
 
 			if newCid1 != newCid2 {
+				if cctx.IsSet("export-bad-migration") {
+					fi, err := os.Create(cctx.String("export-bad-migration"))
+					if err != nil {
+						return xerrors.Errorf("opening the output file: %w", err)
+					}
+
+					defer fi.Close() //nolint:errcheck
+
+					roots := []cid.Cid{newCid1, newCid2}
+
+					dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+					err = car.WriteCarWithWalker(ctx, dag, roots, fi, carWalkFunc)
+					if err != nil {
+						return err
+					}
+
+					fmt.Println("exported bad migration to ", cctx.String("export-bad-migration"))
+				}
+
 				return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
 					newCid2)
 			}
