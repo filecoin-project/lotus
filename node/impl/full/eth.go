@@ -422,15 +422,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	var events []types.Event
-	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
-		events, err = a.ChainAPI.ChainGetEvents(ctx, *rct.EventsRoot)
-		if err != nil {
-			return nil, xerrors.Errorf("failed get events for %s", txHash)
-		}
-	}
-
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.Chain, a.StateAPI)
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
 	}
