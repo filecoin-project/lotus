@@ -55,6 +55,10 @@ create table sectors_sdr_pipeline (
     task_id_finalize bigint,
     after_finalize bool not null default false,
 
+    -- MoveStorage (move data to storage)
+    task_id_move_storage bigint,
+    after_move_storage bool not null default false,
+
     -- Commit message sending
     commit_msg_cid text,
 

@@ -65,8 +65,6 @@ func (f *FinalizeTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (do
 }
 
 func (f *FinalizeTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	// query:
-
 	var tasks []struct {
 		TaskID       harmonytask.TaskID `db:"task_id_finalize"`
 		SpID         int64              `db:"sp_id"`
@@ -93,7 +91,17 @@ func (f *FinalizeTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.T
 		return nil, xerrors.Errorf("getting local storage: %w", err)
 	}
 
+	acceptables := map[harmonytask.TaskID]bool{}
+
+	for _, t := range ids {
+		acceptables[t] = true
+	}
+
 	for _, t := range tasks {
+		if _, ok := acceptables[t.TaskID]; !ok {
+			continue
+		}
+
 		for _, l := range ls {
 			if string(l.ID) == t.StorageID {
 				return &t.TaskID, nil

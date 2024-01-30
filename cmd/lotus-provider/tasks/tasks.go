@@ -88,6 +88,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			porepTask := lpseal.NewPoRepTask(db, full, sp, slr, cfg.Subsystems.PoRepProofMaxTasks)
 			activeTasks = append(activeTasks, porepTask)
 		}
+		if cfg.Subsystems.EnableMoveStorage {
+			moveStorageTask := lpseal.NewMoveStorageTask(sp, slr, db, cfg.Subsystems.MoveStorageMaxTasks)
+			activeTasks = append(activeTasks, moveStorageTask)
+		}
 		if cfg.Subsystems.EnableSendCommitMsg {
 			commitTask := lpseal.NewSubmitCommitTask(sp, db, full, sender, as, cfg.Fees.MaxCommitGasFee)
 			activeTasks = append(activeTasks, commitTask)

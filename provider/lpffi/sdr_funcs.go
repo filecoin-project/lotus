@@ -288,9 +288,15 @@ func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.Sector
 
 	ssize, err := sector.ProofType.SectorSize()
 
+	// todo treed into unsealed
+
 	if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
 		return xerrors.Errorf("clearing cache: %w", err)
 	}
 
 	return nil
+}
+
+func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef) error {
+	return sb.sectors.storage.MoveStorage(ctx, sector, storiface.FTCache|storiface.FTSealed)
 }

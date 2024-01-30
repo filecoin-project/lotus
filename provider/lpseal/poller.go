@@ -26,6 +26,7 @@ const (
 	pollerPoRep
 	pollerCommitMsg
 	pollerFinalize
+	pollerMoveStorage
 
 	numPollers
 )
@@ -98,6 +99,9 @@ type pollTask struct {
 	TaskFinalize  *int64 `db:"task_id_finalize"`
 	AfterFinalize bool   `db:"after_finalize"`
 
+	TaskMoveStorage  *int64 `db:"task_id_move_storage"`
+	AfterMoveStorage bool   `db:"after_move_storage"`
+
 	TaskCommitMsg  *int64 `db:"task_id_commit_msg"`
 	AfterCommitMsg bool   `db:"after_commit_msg"`
 
@@ -120,6 +124,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
        after_precommit_msg_success, seed_epoch,
        task_id_porep, porep_proof, after_porep,
        task_id_finalize, after_finalize,
+       task_id_move_storage, after_move_storage,
        task_id_commit_msg, after_commit_msg,
        after_commit_msg_success,
        failed, failed_reason
@@ -205,6 +210,22 @@ func (s *SealPoller) pollStartFinalize(ctx context.Context, task pollTask, ts *t
 	if s.pollers[pollerFinalize].IsSet() && task.AfterPoRep && task.TaskFinalize == nil {
 		s.pollers[pollerFinalize].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_finalize = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_finalize is null`, id, task.SpID, task.SectorNumber)
+			if err != nil {
+				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
+			}
+			if n != 1 {
+				return false, xerrors.Errorf("expected to update 1 row, updated %d", n)
+			}
+
+			return true, nil
+		})
+	}
+}
+
+func (s *SealPoller) pollStartMoveStorage(ctx context.Context, task pollTask) {
+	if s.pollers[pollerMoveStorage].IsSet() && task.AfterFinalize && task.TaskMoveStorage == nil {
+		s.pollers[pollerMoveStorage].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_move_storage = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_move_storage is null`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}
