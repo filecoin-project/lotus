@@ -291,7 +291,6 @@ type ExportRef struct {
 }
 
 type MinerInfo struct {
-	MinerID                    address.Address
 	Owner                      address.Address   // Must be an ID-address.
 	Worker                     address.Address   // Must be an ID-address.
 	NewWorker                  address.Address   // Must be an ID-address.

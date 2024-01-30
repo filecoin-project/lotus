@@ -15,14 +15,14 @@ type MultiAddressSelector struct {
 	MinerMap map[address.Address]api.AddressConfig
 }
 
-func (as *MultiAddressSelector) AddressFor(ctx context.Context, a NodeApi, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+func (as *MultiAddressSelector) AddressFor(ctx context.Context, a NodeApi, minerID address.Address, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 	if as == nil {
 		// should only happen in some tests
 		log.Warnw("smart address selection disabled, using worker address")
 		return mi.Worker, big.Zero(), nil
 	}
 
-	tmp := as.MinerMap[mi.MinerID]
+	tmp := as.MinerMap[minerID]
 
 	var addrs []address.Address
 	switch use {

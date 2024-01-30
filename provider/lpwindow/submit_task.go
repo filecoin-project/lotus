@@ -292,7 +292,7 @@ func preparePoStMessage(w MsgPrepAPI, as *ctladdr.MultiAddressSelector, maddr ad
 	goodFunds := big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value)
 	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
 
-	from, _, err := as.AddressFor(context.Background(), w, mi, api.PoStAddr, goodFunds, minFunds)
+	from, _, err := as.AddressFor(context.Background(), w, maddr, mi, api.PoStAddr, goodFunds, minFunds)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("error getting address: %w", err)
 	}

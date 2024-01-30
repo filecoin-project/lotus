@@ -9,7 +9,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -103,7 +102,7 @@ var configSetCmd = &cli.Command{
 		}
 
 		lp := config.DefaultLotusProvider() // ensure it's toml
-		_, err = toml.Decode(string(bytes), lp)
+		_, err = deps.LoadConfigWithUpgrades(string(bytes), lp)
 		if err != nil {
 			return fmt.Errorf("cannot decode file: %w", err)
 		}

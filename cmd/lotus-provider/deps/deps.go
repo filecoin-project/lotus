@@ -253,6 +253,12 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 
 var oldAddresses = regexp.MustCompile("(?i)^[addresses]$")
 
+func LoadConfigWithUpgrades(text string, lp *config.LotusProviderConfig) (toml.MetaData, error) {
+	// allow migration from old config format that was limited to 1 wallet setup.
+	newText := oldAddresses.ReplaceAllString(text, "[[addresses]]")
+	meta, err := toml.Decode(newText, &lp)
+	return meta, err
+}
 func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
 	lp := config.DefaultLotusProvider()
 	have := []string{}
@@ -271,11 +277,9 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 			return nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
 		}
 
-		// allow migration from old config format that was limited to 1 wallet setup.
-		newText := oldAddresses.ReplaceAllString(text, "[[addresses]]")
-		meta, err := toml.Decode(newText, &lp)
+		meta, err := LoadConfigWithUpgrades(text, lp)
 		if err != nil {
-			return nil, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
+			return lp, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
 		}
 		for _, k := range meta.Keys() {
 			have = append(have, strings.Join(k, " "))

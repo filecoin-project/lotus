@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -124,7 +125,7 @@ func fromMiner(cctx *cli.Context) (err error) {
 		return fmt.Errorf("could not read config.toml: %w", err)
 	}
 	var lpCfg config.LotusProviderConfig
-	_, err = toml.Decode(string(buf), &lpCfg)
+	_, err = deps.LoadConfigWithUpgrades(string(buf), &lpCfg)
 	if err != nil {
 		return fmt.Errorf("could not decode toml: %w", err)
 	}
