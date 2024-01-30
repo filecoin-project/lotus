@@ -5995,6 +5995,7 @@ Inputs:
 Response:
 ```json
 {
+  "MinerID": "f01234",
   "Owner": "f01234",
   "Worker": "f01234",
   "NewWorker": "f01234",
