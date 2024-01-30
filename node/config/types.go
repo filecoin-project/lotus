@@ -110,6 +110,7 @@ type ProviderSubsystemsConfig struct {
 	// In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
 	EnableSealSDRTrees   bool
 	SealSDRTreesMaxTasks int
+	FinalizeMaxTasks     int
 
 	// EnableSendPrecommitMsg enables the sending of precommit messages to the chain
 	// from this lotus-provider instance.

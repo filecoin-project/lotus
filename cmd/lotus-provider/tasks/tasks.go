@@ -77,7 +77,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 		if cfg.Subsystems.EnableSealSDRTrees {
 			treesTask := lpseal.NewTreesTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
-			activeTasks = append(activeTasks, treesTask)
+			finalizeTask := lpseal.NewFinalizeTask(cfg.Subsystems.FinalizeMaxTasks, sp, slr, db)
+			activeTasks = append(activeTasks, treesTask, finalizeTask)
 		}
 		if cfg.Subsystems.EnableSendPrecommitMsg {
 			precommitTask := lpseal.NewSubmitPrecommitTask(sp, db, full, sender, as, cfg.Fees.MaxPreCommitGasFee)

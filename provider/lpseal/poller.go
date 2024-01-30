@@ -25,6 +25,7 @@ const (
 	pollerPrecommitMsg
 	pollerPoRep
 	pollerCommitMsg
+	pollerFinalize
 
 	numPollers
 )
@@ -94,6 +95,9 @@ type pollTask struct {
 	PoRepProof []byte `db:"porep_proof"`
 	AfterPoRep bool   `db:"after_porep"`
 
+	TaskFinalize  *int64 `db:"task_id_finalize"`
+	AfterFinalize bool   `db:"after_finalize"`
+
 	TaskCommitMsg  *int64 `db:"task_id_commit_msg"`
 	AfterCommitMsg bool   `db:"after_commit_msg"`
 
@@ -115,10 +119,11 @@ func (s *SealPoller) poll(ctx context.Context) error {
        task_id_precommit_msg, after_precommit_msg,
        after_precommit_msg_success, seed_epoch,
        task_id_porep, porep_proof, after_porep,
+       task_id_finalize, after_finalize,
        task_id_commit_msg, after_commit_msg,
        after_commit_msg_success,
        failed, failed_reason
-    FROM sectors_sdr_pipeline WHERE after_commit_msg_success != true`)
+    FROM sectors_sdr_pipeline WHERE after_commit_msg_success != true or after_finalize != true`)
 	if err != nil {
 		return err
 	}
@@ -139,6 +144,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		s.pollStartPrecommitMsg(ctx, task)
 		s.mustPoll(s.pollPrecommitMsgLanded(ctx, task))
 		s.pollStartPoRep(ctx, task, ts)
+		s.pollStartFinalize(ctx, task, ts)
 		s.pollStartCommitMsg(ctx, task)
 		s.mustPoll(s.pollCommitMsgLanded(ctx, task))
 	}
@@ -183,6 +189,22 @@ func (s *SealPoller) pollStartPoRep(ctx context.Context, task pollTask, ts *type
 	if s.pollers[pollerPoRep].IsSet() && task.AfterPrecommitMsgSuccess && task.SeedEpoch != nil && task.TaskPoRep == nil && ts.Height() >= abi.ChainEpoch(*task.SeedEpoch+seedEpochConfidence) {
 		s.pollers[pollerPoRep].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_porep = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_porep is null`, id, task.SpID, task.SectorNumber)
+			if err != nil {
+				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
+			}
+			if n != 1 {
+				return false, xerrors.Errorf("expected to update 1 row, updated %d", n)
+			}
+
+			return true, nil
+		})
+	}
+}
+
+func (s *SealPoller) pollStartFinalize(ctx context.Context, task pollTask, ts *types.TipSet) {
+	if s.pollers[pollerFinalize].IsSet() && task.AfterPoRep && task.TaskFinalize == nil {
+		s.pollers[pollerFinalize].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_finalize = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_finalize is null`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}

@@ -274,3 +274,23 @@ func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) 
 
 	return json.Marshal(phase1Output)
 }
+
+func (sb *SealCalls) LocalStorage(ctx context.Context) ([]storiface.StoragePath, error) {
+	return sb.sectors.localStore.Local(ctx)
+}
+
+func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
+	if err != nil {
+		return xerrors.Errorf("acquiring sector paths: %w", err)
+	}
+	defer releaseSector()
+
+	ssize, err := sector.ProofType.SectorSize()
+
+	if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
+		return xerrors.Errorf("clearing cache: %w", err)
+	}
+
+	return nil
+}

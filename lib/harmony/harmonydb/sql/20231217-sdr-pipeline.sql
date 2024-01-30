@@ -51,6 +51,10 @@ create table sectors_sdr_pipeline (
     porep_proof bytea,
     after_porep bool not null default false,
 
+    -- Finalize (trim cache)
+    task_id_finalize bigint,
+    after_finalize bool not null default false,
+
     -- Commit message sending
     commit_msg_cid text,
 
