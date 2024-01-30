@@ -4,25 +4,37 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/nonffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
+	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	market2 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/config"
@@ -100,6 +112,212 @@ func TestOnboardRawPiece(t *testing.T) {
 	si, err := miner.SectorsStatus(ctx, so.Sector, false)
 	require.NoError(t, err)
 	require.Equal(t, dc.PieceCID, *si.CommD)
+}
+
+func TestOnboardRawPieceVerified(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	var (
+		blocktime = 2 * time.Millisecond
+		ctx       = context.Background()
+	)
+
+	rootKey, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+
+	verifier1Key, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+
+	verifiedClientKey, err := key.GenerateKey(types.KTBLS)
+	require.NoError(t, err)
+
+	bal, err := types.ParseFIL("100fil")
+	require.NoError(t, err)
+
+	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(),
+		kit.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
+		kit.Account(verifier1Key, abi.NewTokenAmount(bal.Int64())),
+		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
+	)
+
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
+
+	miner.PledgeSectors(ctx, 1, 0, nil)
+	sl, err := miner.SectorsListNonGenesis(ctx)
+	require.NoError(t, err)
+	require.Len(t, sl, 1, "expected 1 sector")
+
+	snum := sl[0]
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	client.WaitForSectorActive(ctx, t, snum, maddr)
+
+	pieceSize := abi.PaddedPieceSize(2048).Unpadded()
+	pieceData := make([]byte, pieceSize)
+	_, _ = rand.Read(pieceData)
+
+	dc, err := miner.ComputeDataCid(ctx, pieceSize, bytes.NewReader(pieceData))
+	require.NoError(t, err)
+
+	// get VRH
+	vrh, err := client.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
+	fmt.Println(vrh.String())
+	require.NoError(t, err)
+
+	// import the root key.
+	rootAddr, err := client.WalletImport(ctx, &rootKey.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verifiers' keys.
+	verifier1Addr, err := client.WalletImport(ctx, &verifier1Key.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verified client's key.
+	verifiedClientAddr, err := client.WalletImport(ctx, &verifiedClientKey.KeyInfo)
+	require.NoError(t, err)
+
+	// make the 2 verifiers
+
+	mkVerifier(ctx, t, client.FullNode.(*api.FullNodeStruct), rootAddr, verifier1Addr)
+
+	// assign datacap to a client
+	initialDatacap := big.NewInt(10000)
+
+	params, err := actors.SerializeParams(&verifregtypes13.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: initialDatacap})
+	require.NoError(t, err)
+
+	msg := &types.Message{
+		From:   verifier1Addr,
+		To:     verifreg.Address,
+		Method: verifreg.Methods.AddVerifiedClient,
+		Params: params,
+		Value:  big.Zero(),
+	}
+
+	sm, err := client.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	minerId, err := address.IDFromAddress(miner.ActorAddr)
+	require.NoError(t, err)
+
+	allocationRequest := verifregtypes13.AllocationRequest{
+		Provider:   abi.ActorID(minerId),
+		Data:       dc.PieceCID,
+		Size:       dc.Size,
+		TermMin:    verifregtypes13.MinimumVerifiedAllocationTerm,
+		TermMax:    verifregtypes13.MaximumVerifiedAllocationTerm,
+		Expiration: verifregtypes13.MaximumVerifiedAllocationExpiration,
+	}
+
+	allocationRequests := verifregtypes13.AllocationRequests{
+		Allocations: []verifregtypes13.AllocationRequest{allocationRequest},
+	}
+
+	receiverParams, err := actors.SerializeParams(&allocationRequests)
+	require.NoError(t, err)
+
+	transferParams, err := actors.SerializeParams(&datacap2.TransferParams{
+		To:           builtin.VerifiedRegistryActorAddr,
+		Amount:       big.Mul(big.NewInt(int64(dc.Size)), builtin.TokenPrecision),
+		OperatorData: receiverParams,
+	})
+	require.NoError(t, err)
+
+	msg = &types.Message{
+		To:     builtin.DatacapActorAddr,
+		From:   verifiedClientAddr,
+		Method: datacap.Methods.TransferExported,
+		Params: transferParams,
+		Value:  big.Zero(),
+	}
+
+	sm, err = client.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err = client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	allocations, err := client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(allocations))
+
+	var allocationId verifregtypes13.AllocationId
+	var clientId abi.ActorID
+	for key, value := range allocations {
+		allocationId = verifregtypes13.AllocationId(key)
+		clientId = value.Client
+		break
+	}
+
+	head, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+
+	so, err := miner.SectorAddPieceToAny(ctx, pieceSize, bytes.NewReader(pieceData), piece.PieceDealInfo{
+		PublishCid:   nil,
+		DealID:       0,
+		DealProposal: nil,
+		DealSchedule: piece.DealSchedule{
+			StartEpoch: head.Height() + 2880*2,
+			EndEpoch:   head.Height() + 2880*400,
+		},
+		KeepUnsealed: true,
+		PieceActivationManifest: &minertypes.PieceActivationManifest{
+			CID:                   dc.PieceCID,
+			Size:                  dc.Size,
+			VerifiedAllocationKey: &minertypes13.VerifiedAllocationKey{Client: clientId, ID: allocationId},
+			Notify:                nil,
+		},
+	})
+	require.NoError(t, err)
+
+	// wait for sector to commit
+	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{
+		so.Sector: {},
+	})
+
+	si, err := miner.SectorsStatus(ctx, so.Sector, true)
+	require.NoError(t, err)
+	require.Equal(t, dc.PieceCID, *si.CommD)
+
+	require.Equal(t, si.DealWeight, big.Zero())
+	require.Equal(t, si.VerifiedDealWeight, big.Mul(big.NewInt(int64(dc.Size)), big.NewInt(int64(si.Expiration-si.Activation))))
+
+	allocations, err = client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Len(t, allocations, 0)
+}
+
+func mkVerifier(ctx context.Context, t *testing.T, api *api.FullNodeStruct, rootAddr address.Address, addr address.Address) {
+	allowance := big.NewInt(100000000000)
+	params, aerr := actors.SerializeParams(&verifregtypes13.AddVerifierParams{Address: addr, Allowance: allowance})
+	require.NoError(t, aerr)
+
+	msg := &types.Message{
+		From:   rootAddr,
+		To:     verifreg.Address,
+		Method: verifreg.Methods.AddVerifier,
+		Params: params,
+		Value:  big.Zero(),
+	}
+
+	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err, "AddVerifier failed")
+
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	verifierAllowance, err := api.StateVerifierStatus(ctx, addr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, allowance, *verifierAllowance)
 }
 
 func makeMarketDealProposal(t *testing.T, client *kit.TestFullNode, miner *kit.TestMiner, data cid.Cid, ps abi.PaddedPieceSize, start, end abi.ChainEpoch) market2.ClientDealProposal {
