@@ -3392,7 +3392,9 @@ Response:
 
 
 ### GetActorEvents
-Actor events
+GetActorEvents returns all FEVM Actor events that match the given filter
+This is a request/response API. Please see the docs for `ActorEventFilter` for a detailed
+description of the filter options.
 
 
 Perms: read
@@ -3412,8 +3414,8 @@ Inputs:
         }
       ]
     },
-    "minEpoch": 2301220,
-    "maxEpoch": 2301220
+    "fromBlock": "2301220",
+    "toBlock": "latest"
   }
 ]
 ```
@@ -3422,7 +3424,7 @@ Response:
 ```json
 [
   {
-    "Entries": [
+    "entries": [
       {
         "Flags": 7,
         "Key": "string value",
@@ -3430,13 +3432,13 @@ Response:
         "Value": "Ynl0ZSBhcnJheQ=="
       }
     ],
-    "EmitterAddr": "f01234",
-    "Reverted": true,
-    "Height": 10101,
-    "TipSetKey": {
+    "emitter": "f01234",
+    "reverted": true,
+    "height": 10101,
+    "tipset_cid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "MsgCid": {
+    "msg_cid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   }
@@ -8712,6 +8714,13 @@ Response:
 
 
 ### SubscribeActorEvents
+SubscribeActorEvents returns a long lived stream of all FEVM Actor events that match the given filter
+Events that match the given filter are written to the stream in real-time as they are emitted from the FEVM
+The response stream is closed when the client disconnects or if there is an error while writing an event to the stream
+This API also allows clients to read all historical events matching the given filter before
+any real-time events are written to the response stream
+Please see the docs for `SubActorEventFilter` for a detailed description of the filter options.
+NOTE: THIS API IS ONLY SUPPORTED OVER WEBSOCKETS FOR NOW
 
 
 Perms: read
@@ -8732,8 +8741,8 @@ Inputs:
           }
         ]
       },
-      "minEpoch": 2301220,
-      "maxEpoch": 2301220
+      "fromBlock": "2301220",
+      "toBlock": "latest"
     },
     "prefill": true
   }
@@ -8743,7 +8752,7 @@ Inputs:
 Response:
 ```json
 {
-  "Entries": [
+  "entries": [
     {
       "Flags": 7,
       "Key": "string value",
@@ -8751,13 +8760,13 @@ Response:
       "Value": "Ynl0ZSBhcnJheQ=="
     }
   ],
-  "EmitterAddr": "f01234",
-  "Reverted": true,
-  "Height": 10101,
-  "TipSetKey": {
+  "emitter": "f01234",
+  "reverted": true,
+  "height": 10101,
+  "tipset_cid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "MsgCid": {
+  "msg_cid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
 }

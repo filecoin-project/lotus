@@ -69,8 +69,6 @@ func TestGetActorEvents(t *testing.T) {
 			}*/
 
 			res2, _ := client.GetActorEvents(ctx, &types.ActorEventFilter{
-				MinEpoch:  0,
-				MaxEpoch:  -1,
 				Addresses: []address.Address{cf2},
 				//EthAddresses: []ethtypes.EthAddress{
 				//	contract1,

@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -27,6 +28,7 @@ var (
 type ActorEvent struct {
 	EventFilterManager   *filter.EventFilterManager
 	MaxFilterHeightRange abi.ChainEpoch
+	Chain                *store.ChainStore
 }
 
 var _ ActorEventAPI = (*ActorEvent)(nil)
@@ -41,8 +43,13 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 		return nil, api.ErrNotSupported
 	}
 
+	params, err := a.parseFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a temporary filter
-	f, err := a.EventFilterManager.Install(ctx, filter.MinEpoch, filter.MaxEpoch, cid.Undef, filter.Addresses, filter.Fields, false)
+	f, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetKey, filter.Addresses, filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +59,47 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 	return evs, err
 }
 
+type filterParams struct {
+	MinHeight abi.ChainEpoch
+	MaxHeight abi.ChainEpoch
+	TipSetKey cid.Cid
+}
+
+func (a *ActorEvent) parseFilter(f *types.ActorEventFilter) (*filterParams, error) {
+	if f.TipSetKey != nil {
+		if f.FromBlock != nil || f.ToBlock != nil {
+			return nil, fmt.Errorf("cannot specify both TipSetKey and FromBlock/ToBlock")
+		}
+
+		return &filterParams{
+			MinHeight: 0,
+			MaxHeight: 0,
+			TipSetKey: *f.TipSetKey,
+		}, nil
+	}
+
+	min, max, err := parseBlockRange(a.Chain, f.FromBlock, f.ToBlock, a.MaxFilterHeightRange)
+	if err != nil {
+		return nil, err
+	}
+	return &filterParams{
+		MinHeight: min,
+		MaxHeight: max,
+		TipSetKey: cid.Undef,
+	}, nil
+}
+
 func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if a.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
-	fm, err := a.EventFilterManager.Install(ctx, f.Filter.MinEpoch, f.Filter.MaxEpoch, cid.Undef, f.Filter.Addresses, f.Filter.Fields, false)
+
+	params, err := a.parseFilter(&f.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	fm, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetKey, f.Filter.Addresses, f.Filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
