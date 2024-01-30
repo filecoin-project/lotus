@@ -1263,10 +1263,9 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID
 	return nil, xerrors.Errorf("wrong filter type")
 }
 
-func parseBlockRange(cs *store.ChainStore, fromBlock, toBlock *string, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
+func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
 	if fromBlock == nil || *fromBlock == "latest" {
-		ts := cs.GetHeaviestTipSet()
-		minHeight = ts.Height()
+		minHeight = heaviest
 	} else if *fromBlock == "earliest" {
 		minHeight = 0
 	} else {
@@ -1299,14 +1298,12 @@ func parseBlockRange(cs *store.ChainStore, fromBlock, toBlock *string, maxRange 
 	// Validate height ranges are within limits set by node operator
 	if minHeight == -1 && maxHeight > 0 {
 		// Here the client is looking for events between the head and some future height
-		ts := cs.GetHeaviestTipSet()
-		if maxHeight-ts.Height() > maxRange {
+		if maxHeight-heaviest > maxRange {
 			return 0, 0, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", maxRange)
 		}
 	} else if minHeight >= 0 && maxHeight == -1 {
 		// Here the client is looking for events between some time in the past and the current head
-		ts := cs.GetHeaviestTipSet()
-		if ts.Height()-minHeight > maxRange {
+		if heaviest-minHeight > maxRange {
 			return 0, 0, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", maxRange)
 		}
 	} else if minHeight >= 0 && maxHeight >= 0 {
@@ -1336,7 +1333,7 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		tipsetCid = filterSpec.BlockHash.ToCid()
 	} else {
 		var err error
-		minHeight, maxHeight, err = parseBlockRange(e.Chain, filterSpec.FromBlock, filterSpec.ToBlock, e.MaxFilterHeightRange)
+		minHeight, maxHeight, err = parseBlockRange(e.Chain.GetHeaviestTipSet().Height(), filterSpec.FromBlock, filterSpec.ToBlock, e.MaxFilterHeightRange)
 		if err != nil {
 			return nil, err
 		}

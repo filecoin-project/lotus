@@ -77,8 +77,7 @@ func (a *ActorEvent) parseFilter(f *types.ActorEventFilter) (*filterParams, erro
 			TipSetKey: *f.TipSetKey,
 		}, nil
 	}
-
-	min, max, err := parseBlockRange(a.Chain, f.FromBlock, f.ToBlock, a.MaxFilterHeightRange)
+	min, max, err := parseBlockRange(a.Chain.GetHeaviestTipSet().Height(), f.FromBlock, f.ToBlock, a.MaxFilterHeightRange)
 	if err != nil {
 		return nil, err
 	}
