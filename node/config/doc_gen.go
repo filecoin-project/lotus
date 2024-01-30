@@ -1028,10 +1028,18 @@ In lotus-miner this was run as part of PreCommit1.`,
 			Comment: `EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
 This task handles encoding of unsealed data into last sdr layer and building
 of TreeR, TreeC and TreeD.
-In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).`,
+In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
+Note that nodes with SDRTrees enabled will also answer to Finalize tasks,
+which just remove unneeded tree data after PoRep is computed.`,
 		},
 		{
 			Name: "SealSDRTreesMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "FinalizeMaxTasks",
 			Type: "int",
 
 			Comment: ``,
@@ -1062,6 +1070,20 @@ In lotus-miner this was Commit1 / Commit2`,
 
 			Comment: `EnableSendCommitMsg enables the sending of commit messages to the chain
 from this lotus-provider instance.`,
+		},
+		{
+			Name: "EnableMoveStorage",
+			Type: "bool",
+
+			Comment: `EnableMoveStorage enables the move-into-long-term-storage task to run
+on this lotus-provider instance. This tasks should only be enabled on
+nodes with long-term storage.`,
+		},
+		{
+			Name: "MoveStorageMaxTasks",
+			Type: "int",
+
+			Comment: ``,
 		},
 		{
 			Name: "EnableWebGui",
