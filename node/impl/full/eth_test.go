@@ -73,14 +73,15 @@ func TestParseBlockRange(t *testing.T) {
 	}
 
 	for name, tc := range tcs {
+		tc2 := tc
 		t.Run(name, func(t *testing.T) {
-			min, max, err := parseBlockRange(tc.heaviest, tc.from, tc.to, tc.maxRange)
-			require.Equal(t, tc.minOut, min)
-			require.Equal(t, tc.maxOut, max)
-			if tc.errStr != "" {
+			min, max, err := parseBlockRange(tc2.heaviest, tc2.from, tc2.to, tc2.maxRange)
+			require.Equal(t, tc2.minOut, min)
+			require.Equal(t, tc2.maxOut, max)
+			if tc2.errStr != "" {
 				fmt.Println(err)
 				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.errStr)
+				require.Contains(t, err.Error(), tc2.errStr)
 			} else {
 				require.NoError(t, err)
 			}

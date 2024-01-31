@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -139,6 +140,8 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 				if err != nil || actor.Address == nil {
 					return idAddr, false
 				}
+
+				fmt.Println("")
 
 				return *actor.Address, true
 			},

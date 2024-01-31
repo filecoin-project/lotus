@@ -3392,7 +3392,7 @@ Response:
 
 
 ### GetActorEvents
-GetActorEvents returns all FEVM Actor events that match the given filter
+GetActorEvents returns all FEVM Actor events that match the given filter.
 This is a request/response API. Please see the docs for `ActorEventFilter` for a detailed
 description of the filter options.
 
@@ -8714,11 +8714,11 @@ Response:
 
 
 ### SubscribeActorEvents
-SubscribeActorEvents returns a long lived stream of all FEVM Actor events that match the given filter
-Events that match the given filter are written to the stream in real-time as they are emitted from the FEVM
-The response stream is closed when the client disconnects or if there is an error while writing an event to the stream
+SubscribeActorEvents returns a long-lived stream of all FEVM Actor events that match the given filter.
+Events that match the given filter are written to the stream in real-time as they are emitted from the FEVM.
+The response stream is closed when the client disconnects or if there is an error while writing an event to the stream.
 This API also allows clients to read all historical events matching the given filter before
-any real-time events are written to the response stream
+any real-time events are written to the response stream.
 Please see the docs for `SubActorEventFilter` for a detailed description of the filter options.
 NOTE: THIS API IS ONLY SUPPORTED OVER WEBSOCKETS FOR NOW
 
