@@ -67,7 +67,7 @@ func buildTraces(traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr [
 			FilecoinFrom:    et.Msg.From,
 			FilecoinTo:      et.Msg.To,
 			FilecoinMethod:  et.Msg.Method,
-			FilecoinCodeCid: et.Msg.CodeCid,
+			FilecoinCodeCid: et.InvokedActor.State.Code,
 		},
 		Result: ethtypes.EthTraceResult{
 			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
@@ -137,7 +137,7 @@ func buildTraces(traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr [
 		if parent.Action.FilecoinTo == builtin.InitActorAddr &&
 			parent.Action.FilecoinMethod == builtin.MethodsInit.Exec &&
 			et.Msg.Method == builtin.MethodConstructor {
-			log.Debugf("COND3 Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+			log.Debugf("COND3 Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.InvokedActor.State.Code.String(), height)
 			parent.SetCallType("create")
 			parent.Action.To = to
 			parent.Action.Input = []byte{0xFE}
@@ -165,7 +165,7 @@ func buildTraces(traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr [
 
 			// TODO: We need to handle failures in contract creations and support resurrections on an existing but dead EVM actor)
 			if calledCreateOnEAM && eamCalledInitOnExec4 && initCreatedActor {
-				log.Debugf("COND4 EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+				log.Debugf("COND4 EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.InvokedActor.State.Code.String(), height)
 
 				if parent.Parent.Action.FilecoinMethod == builtin.MethodsEAM.Create {
 					parent.Parent.SetCallType("create")
