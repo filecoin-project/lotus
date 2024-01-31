@@ -8,19 +8,20 @@ import (
 )
 
 type ActorEventBlock struct {
-	// what value codec does client want to match on ?
+	// The value codec to match when filtering event values.
 	Codec uint64 `json:"codec"`
 
-	// value we want to match on associated with the corresponding "event key"
-	// should be a byte array encoded with the above codec
-	// assumes base64 encoding for marshalling/um-marshalling byte arrays to json
+	// The value to want to match on associated with the corresponding "event key"
+	// when filtering events.
+	// Should be a byte array encoded with the specified codec.
+	// Assumes base64 encoding when converting to/from JSON strings.
 	Value []byte `json:"value"`
 }
 
 type SubActorEventFilter struct {
 	Filter ActorEventFilter `json:"filter"`
 
-	// If true, historical events that match the given filter will be written to the response stream
+	// If true, all available matching historical events will be written to the response stream
 	// before any new real-time events that match the given filter are written.
 	Prefill bool `json:"prefill"`
 }
@@ -31,7 +32,7 @@ type ActorEventFilter struct {
 	Addresses []address.Address `json:"address"`
 
 	// Matches events with the specified key/values, or all events if empty.
-	// If the `Blocks` slice is empty, matches on the key only.
+	// If the value is an empty slice, the filter will match on the key only, accepting any value.
 	Fields map[string][]ActorEventBlock `json:"fields"`
 
 	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
@@ -48,22 +49,22 @@ type ActorEventFilter struct {
 }
 
 type ActorEvent struct {
-	// event logs
+	// Event entries in log form.
 	Entries []EventEntry `json:"entries"`
 
-	// filecoin address of the actor that emitted this event
+	// Filecoin address of the actor that emitted this event.
 	EmitterAddr address.Address `json:"emitter"`
 
-	// reverted is set to true if the message that produced this event was reverted because of a network re-org
-	// in that case, the event should be considered as reverted as well
+	// Reverted is set to true if the message that produced this event was reverted because of a network re-org
+	// in that case, the event should be considered as reverted as well.
 	Reverted bool `json:"reverted"`
 
-	// height of the tipset that contained the message that produced this event
+	// Height of the tipset that contained the message that produced this event.
 	Height abi.ChainEpoch `json:"height"`
 
-	// cid of the tipset that contained the message that produced this event
+	// CID of the tipset that contained the message that produced this event.
 	TipSetKey cid.Cid `json:"tipset_cid"`
 
-	// cid of message that produced this event
+	// CID of message that produced this event.
 	MsgCid cid.Cid `json:"msg_cid"`
 }
