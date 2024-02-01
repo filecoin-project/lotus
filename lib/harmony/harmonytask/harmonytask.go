@@ -39,6 +39,12 @@ type TaskTypeDetails struct {
 	// NOTE: if refatoring tasks, see if your task is
 	// necessary. Ex: Is the sector state correct for your stage to run?
 	Follows map[string]func(TaskID, AddTaskFunc) (bool, error)
+
+	// IAmBored is called (when populated) when there's capacity but no work.
+	// Tasks added will be proposed to CanAccept() on this machine.
+	// CanAccept() can read taskEngine's WorkOrigin string to learn about a task.
+	// Ex: make new CC sectors, clean-up, or retrying pipelines that failed in later states.
+	IAmBored func(AddTaskFunc) error
 }
 
 // TaskInterface must be implemented in order to have a task used by harmonytask.
@@ -97,17 +103,21 @@ type TaskInterface interface {
 type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) (shouldCommit bool, seriousError error))
 
 type TaskEngine struct {
-	ctx            context.Context
-	handlers       []*taskTypeHandler
-	db             *harmonydb.DB
-	reg            *resources.Reg
-	grace          context.CancelFunc
-	taskMap        map[string]*taskTypeHandler
-	ownerID        int
-	follows        map[string][]followStruct
+	// Static After New()
+	ctx         context.Context
+	handlers    []*taskTypeHandler
+	db          *harmonydb.DB
+	reg         *resources.Reg
+	grace       context.CancelFunc
+	taskMap     map[string]*taskTypeHandler
+	ownerID     int
+	follows     map[string][]followStruct
+	hostAndPort string
+
+	// synchronous to the single-threaded poller
 	lastFollowTime time.Time
 	lastCleanup    atomic.Value
-	hostAndPort    string
+	WorkOrigin     string
 }
 type followStruct struct {
 	f    func(TaskID, AddTaskFunc) (bool, error)
@@ -177,7 +187,7 @@ func New(
 					continue // not really fatal, but not great
 				}
 			}
-			if !h.considerWork(workSourceRecover, []TaskID{TaskID(w.ID)}) {
+			if !h.considerWork(WorkSourceRecover, []TaskID{TaskID(w.ID)}) {
 				log.Errorw("Strange: Unable to accept previously owned task", "id", w.ID, "type", w.Name)
 			}
 		}
@@ -326,11 +336,36 @@ func (e *TaskEngine) pollerTryAllWork() bool {
 			continue
 		}
 		if len(unownedTasks) > 0 {
-			accepted := v.considerWork(workSourcePoller, unownedTasks)
+			accepted := v.considerWork(WorkSourcePoller, unownedTasks)
 			if accepted {
 				return true // accept new work slowly and in priority order
 			}
 			log.Warn("Work not accepted for " + strconv.Itoa(len(unownedTasks)) + " " + v.Name + " task(s)")
+		}
+	}
+	// if no work was accepted, are we bored? Then find work in priority order.
+	for _, v := range e.handlers {
+		if v.AssertMachineHasCapacity() != nil {
+			continue
+		}
+		if v.TaskTypeDetails.IAmBored != nil {
+			var added []TaskID
+			err := v.TaskTypeDetails.IAmBored(func(extraInfo func(TaskID, *harmonydb.Tx) (shouldCommit bool, seriousError error)) {
+				v.AddTask(func(tID TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+					b, err := extraInfo(tID, tx)
+					if err == nil {
+						added = append(added, tID)
+					}
+					return b, err
+				})
+			})
+			if err != nil {
+				log.Error("IAmBored failed: ", err)
+				continue
+			}
+			if added != nil { // tiny chance a fail could make these bogus, but considerWork should then fail.
+				v.considerWork(WorkSourceIAmBored, added)
+			}
 		}
 	}
 
