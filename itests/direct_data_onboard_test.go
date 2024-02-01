@@ -5,10 +5,14 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -139,6 +143,23 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 		kit.Account(verifier1Key, abi.NewTokenAmount(bal.Int64())),
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
 	)
+
+	evtChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
+		Filter: types.ActorEventFilter{
+			MinEpoch: -1,
+			MaxEpoch: -1,
+		},
+		Prefill: true,
+	})
+	require.NoError(t, err)
+
+	events := make([]types.ActorEvent, 0)
+	go func() {
+		for e := range evtChan {
+			fmt.Printf("%s Got ActorEvent: %+v", time.Now().Format(time.StampMilli), e)
+			events = append(events, *e)
+		}
+	}()
 
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
@@ -293,6 +314,87 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	allocations, err = client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Len(t, allocations, 0)
+
+	evts, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
+		MinEpoch: -1,
+		MaxEpoch: -1,
+	})
+	require.NoError(t, err)
+
+	for _, evt := range evts {
+		fmt.Printf("Got ActorEvent: %+v", evt)
+	}
+
+	blockOutFile, err := os.Create("block.out")
+	require.NoError(t, err)
+	write := func(s string) {
+		_, err := blockOutFile.WriteString(s)
+		require.NoError(t, err)
+	}
+
+	head, err = miner.FullNode.ChainHead(ctx)
+	require.NoError(t, err)
+	for height := 0; height < int(head.Height()); height++ {
+		// for each tipset
+		ts, err := miner.FullNode.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
+		require.NoError(t, err)
+		for _, b := range ts.Blocks() {
+			if b.Miner == miner.ActorAddr {
+				// for each block
+				// alternative here is to go straight to receipts: miner.FullNode.ChainGetParentReceipts(ctx, b.Cid())
+				messages, err := miner.FullNode.ChainGetParentMessages(ctx, b.Cid())
+				require.NoError(t, err)
+				if len(messages) == 0 {
+					continue
+				}
+				write(fmt.Sprintf("Height=%d Block=%s:", height, b.Cid()))
+				for _, parent := range b.Parents {
+					write(fmt.Sprintf(" %s", parent))
+				}
+				write("\n")
+				for _, m := range messages {
+					// for each message
+					write(fmt.Sprintf("  Message=%s: %s -> %s, %d\n", m.Cid, m.Message.From, m.Message.To, m.Message.Method))
+					receipt, err := miner.FullNode.StateSearchMsg(ctx, ts.Key(), m.Cid, -1, false)
+					require.NoError(t, err)
+					// receipt
+					write(fmt.Sprintf("    Receipt Exit=%d, Gas=%d, Return=0x%x\n", receipt.Receipt.ExitCode, receipt.Receipt.GasUsed, receipt.Receipt.Return))
+					if receipt.Receipt.EventsRoot == nil {
+						write(fmt.Sprintln("    No events"))
+					} else {
+						// receipt
+						events, err := miner.FullNode.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
+						require.NoError(t, err)
+						for ii, evt := range events {
+							// for each event
+							addr, err := address.NewIDAddress(uint64(evt.Emitter))
+							require.NoError(t, err)
+							write(fmt.Sprintf("      Event=%d (%s):\n", ii, addr))
+							for _, e := range evt.Entries {
+								// for each event entry
+								write(fmt.Sprintf("      Entry=0x%x, 0x%x, %s=%s\n", e.Codec, e.Flags, e.Key, toDagJson(t, e.Codec, e.Value)))
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	require.NoError(t, blockOutFile.Close())
+	fmt.Println("Wrote block.out")
+}
+
+func toDagJson(t *testing.T, codec uint64, data []byte) string {
+	switch codec {
+	case 0x51:
+		nd, err := ipld.Decode(data, dagcbor.Decode)
+		require.NoError(t, err)
+		byts, err := ipld.Encode(nd, dagjson.Encode)
+		require.NoError(t, err)
+		return string(byts)
+	default:
+		return fmt.Sprintf("0x%x", data)
+	}
 }
 
 func mkVerifier(ctx context.Context, t *testing.T, api *api.FullNodeStruct, rootAddr address.Address, addr address.Address) {
