@@ -2,8 +2,6 @@ package fakelm
 
 import (
 	"context"
-	"io"
-
 	"github.com/google/uuid"
 
 	"github.com/filecoin-project/go-address"
@@ -28,10 +26,6 @@ type MinimalLMApi interface {
 	SectorsListInStates(context.Context, []api.SectorState) ([]abi.SectorNumber, error)
 
 	StorageRedeclareLocal(context.Context, *storiface.ID, bool) error
-	StorageList(context.Context) (map[storiface.ID][]storiface.Decl, error)
-
-	UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error)
-	IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error)
 
 	ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error)
 	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d api.PieceDealInfo) (api.SectorOffset, error)

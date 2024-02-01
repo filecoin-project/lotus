@@ -2,7 +2,6 @@ package fakelm
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -28,6 +27,16 @@ type LMRPCProvider struct {
 	ssize abi.SectorSize
 
 	pi lpmarket.Ingester
+}
+
+func NewLMRPCProvider(si paths.SectorIndex, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi lpmarket.Ingester) *LMRPCProvider {
+	return &LMRPCProvider{
+		si:      si,
+		maddr:   maddr,
+		minerID: minerID,
+		ssize:   ssize,
+		pi:      pi,
+	}
 }
 
 func (l *LMRPCProvider) ActorAddress(ctx context.Context) (address.Address, error) {
@@ -176,7 +185,7 @@ func (l *LMRPCProvider) SectorsSummary(ctx context.Context) (map[api.SectorState
 }
 
 func (l *LMRPCProvider) SectorsListInStates(ctx context.Context, want []api.SectorState) ([]abi.SectorNumber, error) {
-	decls, err := l.StorageList(ctx)
+	decls, err := l.si.StorageList(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -235,14 +244,6 @@ func (l *LMRPCProvider) StorageRedeclareLocal(ctx context.Context, id *storiface
 	// so this rescans and redeclares sectors on lotus-miner; whyyy is boost even calling this?
 
 	return nil
-}
-
-func (l *LMRPCProvider) StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error) {
-	return l.si.StorageList(ctx)
-}
-
-func (l *LMRPCProvider) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
-	return nil, xerrors.Errorf("not supported")
 }
 
 func (l *LMRPCProvider) IsUnsealed(ctx context.Context, sectorNum abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
