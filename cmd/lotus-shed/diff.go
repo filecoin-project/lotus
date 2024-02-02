@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-address"
 	"io"
 	"os"
 
@@ -287,35 +288,51 @@ var diffHAMTs = &cli.Command{
 			Usage: "bitwidth of the HAMT",
 			Value: 5,
 		},
+		&cli.StringFlag{
+			Name:  "key-type",
+			Usage: "type of the key",
+			Value: "uint",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		bs := blockstore.NewMemorySync()
+		var bs blockstore.Blockstore = blockstore.NewMemorySync()
 
-		f, err := os.Open(cctx.String("car-file"))
-		if err != nil {
-			return err
-		}
-		defer func(f *os.File) {
-			_ = f.Close()
-		}(f)
-
-		cr, err := car.NewCarReader(f)
-		if err != nil {
-			return err
-		}
-
-		for {
-			blk, err := cr.Next()
+		if cctx.IsSet("car-file") {
+			f, err := os.Open(cctx.String("car-file"))
 			if err != nil {
-				if err == io.EOF {
-					break
-				}
+				return err
+			}
+			defer func(f *os.File) {
+				_ = f.Close()
+			}(f)
+
+			cr, err := car.NewCarReader(f)
+			if err != nil {
 				return err
 			}
 
-			if err := bs.Put(cctx.Context, blk); err != nil {
-				return err
+			for {
+				blk, err := cr.Next()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					return err
+				}
+
+				if err := bs.Put(cctx.Context, blk); err != nil {
+					return err
+				}
 			}
+		} else {
+			// use running node
+			api, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("connect to full node: %w", err)
+			}
+			defer closer()
+
+			bs = blockstore.NewAPIBlockstore(api)
 		}
 
 		cidA, err := cid.Parse(cctx.Args().Get(0))
@@ -330,12 +347,24 @@ var diffHAMTs = &cli.Command{
 
 		cst := cbor.NewCborStore(bs)
 
+		var keyParser func(k string) (interface{}, error)
+		switch cctx.String("key-type") {
+		case "uint":
+			keyParser = func(k string) (interface{}, error) {
+				return abi.ParseUIntKey(k)
+			}
+		case "actor":
+			keyParser = func(k string) (interface{}, error) {
+				return address.NewFromBytes([]byte(k))
+			}
+		default:
+			return fmt.Errorf("unknown key type: %s", cctx.String("key-type"))
+		}
+
 		diffs, err := hamt.Diff(cctx.Context, cst, cst, cidA, cidB, hamt.UseTreeBitWidth(cctx.Int("bitwidth")))
 		if err != nil {
 			return err
 		}
-
-		keyParser := abi.ParseUIntKey
 
 		for _, d := range diffs {
 			switch d.Type {
@@ -368,33 +397,44 @@ var diffAMTs = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		bs := blockstore.NewMemorySync()
+		var bs blockstore.Blockstore = blockstore.NewMemorySync()
 
-		f, err := os.Open(cctx.String("car-file"))
-		if err != nil {
-			return err
-		}
-		defer func(f *os.File) {
-			_ = f.Close()
-		}(f)
-
-		cr, err := car.NewCarReader(f)
-		if err != nil {
-			return err
-		}
-
-		for {
-			blk, err := cr.Next()
+		if cctx.IsSet("car-file") {
+			f, err := os.Open(cctx.String("car-file"))
 			if err != nil {
-				if err == io.EOF {
-					break
-				}
+				return err
+			}
+			defer func(f *os.File) {
+				_ = f.Close()
+			}(f)
+
+			cr, err := car.NewCarReader(f)
+			if err != nil {
 				return err
 			}
 
-			if err := bs.Put(cctx.Context, blk); err != nil {
-				return err
+			for {
+				blk, err := cr.Next()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					return err
+				}
+
+				if err := bs.Put(cctx.Context, blk); err != nil {
+					return err
+				}
 			}
+		} else {
+			// use running node
+			api, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("connect to full node: %w", err)
+			}
+			defer closer()
+
+			bs = blockstore.NewAPIBlockstore(api)
 		}
 
 		cidA, err := cid.Parse(cctx.Args().Get(0))
