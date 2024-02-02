@@ -2,17 +2,26 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"github.com/fatih/color"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/provider/lpmarket"
+	"github.com/filecoin-project/lotus/provider/lpmarket/fakelm"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/mitchellh/go-homedir"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
-
-	"github.com/fatih/color"
-	"github.com/mitchellh/go-homedir"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -35,6 +44,7 @@ var lpUtilCmd = &cli.Command{
 	Usage: "lotus provider utility commands",
 	Subcommands: []*cli.Command{
 		lpUtilStartDealCmd,
+		lpBoostProxyCmd,
 	},
 }
 
@@ -280,5 +290,160 @@ var lpUtilStartDealCmd = &cli.Command{
 		fmt.Println("* done")
 
 		return nil
+	},
+}
+
+var lpBoostProxyCmd = &cli.Command{
+	Name:  "boost-proxy",
+	Usage: "Start a legacy lotus-miner rpc proxy",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "actor-address",
+			Usage:    "Address of the miner actor",
+			Required: true,
+		},
+
+		&cli.StringFlag{
+			Name:    "db-host",
+			EnvVars: []string{"LOTUS_DB_HOST"},
+			Usage:   "Command separated list of hostnames for yugabyte cluster",
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-name",
+			EnvVars: []string{"LOTUS_DB_NAME", "LOTUS_HARMONYDB_HOSTS"},
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-user",
+			EnvVars: []string{"LOTUS_DB_USER", "LOTUS_HARMONYDB_USERNAME"},
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-password",
+			EnvVars: []string{"LOTUS_DB_PASSWORD", "LOTUS_HARMONYDB_PASSWORD"},
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-port",
+			EnvVars: []string{"LOTUS_DB_PORT", "LOTUS_HARMONYDB_PORT"},
+			Hidden:  true,
+			Value:   "5433",
+		},
+		&cli.StringFlag{
+			Name:    "layers",
+			EnvVars: []string{"LOTUS_LAYERS", "LOTUS_CONFIG_LAYERS"},
+			Value:   "base",
+		},
+
+		&cli.StringFlag{
+			Name:  "listen",
+			Usage: "Address to listen on",
+			Value: ":32100",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+
+		db, err := deps.MakeDB(cctx)
+		if err != nil {
+			return err
+		}
+
+		maddr, err := address.NewFromString(cctx.String("actor-address"))
+		if err != nil {
+			return xerrors.Errorf("parsing miner address: %w", err)
+		}
+
+		full, closer, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+
+		pin := lpmarket.NewPieceIngester(db, full)
+
+		si := paths.NewDBIndex(nil, db)
+
+		mid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return xerrors.Errorf("getting miner id: %w", err)
+		}
+
+		mi, err := full.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		lp := fakelm.NewLMRPCProvider(si, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, cctx.String("layers"))
+
+		ast := api.StorageMinerStruct{}
+
+		ast.CommonStruct.Internal.Version = func(ctx context.Context) (api.APIVersion, error) {
+			return api.APIVersion{
+				Version:    "lp-proxy-v0",
+				APIVersion: api.MinerAPIVersion0,
+				BlockDelay: build.BlockDelaySecs,
+			}, nil
+		}
+
+		ast.CommonStruct.Internal.AuthNew = lp.AuthNew
+
+		ast.Internal.ActorAddress = lp.ActorAddress
+		ast.Internal.WorkerJobs = lp.WorkerJobs
+		ast.Internal.SectorsStatus = lp.SectorsStatus
+		ast.Internal.SectorsList = lp.SectorsList
+		ast.Internal.SectorsSummary = lp.SectorsSummary
+		ast.Internal.SectorsListInStates = lp.SectorsListInStates
+		ast.Internal.StorageRedeclareLocal = lp.StorageRedeclareLocal
+		ast.Internal.ComputeDataCid = lp.ComputeDataCid
+		ast.Internal.SectorAddPieceToAny = func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data, p3 api.PieceDealInfo) (api.SectorOffset, error) {
+			panic("implement me")
+		}
+
+		ast.Internal.StorageList = si.StorageList
+		ast.Internal.StorageDetach = si.StorageDetach
+		ast.Internal.StorageReportHealth = si.StorageReportHealth
+		ast.Internal.StorageDeclareSector = si.StorageDeclareSector
+		ast.Internal.StorageDropSector = si.StorageDropSector
+		ast.Internal.StorageFindSector = si.StorageFindSector
+		ast.Internal.StorageInfo = si.StorageInfo
+		ast.Internal.StorageBestAlloc = si.StorageBestAlloc
+		ast.Internal.StorageLock = si.StorageLock
+		ast.Internal.StorageTryLock = si.StorageTryLock
+		ast.Internal.StorageGetLocks = si.StorageGetLocks
+
+		mh, err := node.MinerHandler(&ast, false) // todo permissioned
+		if err != nil {
+			return err
+		}
+
+		{
+			tok, err := lp.AuthNew(ctx, api.AllPermissions)
+			if err != nil {
+				return err
+			}
+
+			// parse listen into multiaddr
+			laddr, err := net.ResolveTCPAddr("tcp", cctx.String("listen"))
+			if err != nil {
+				return xerrors.Errorf("net resolve: %w", err)
+			}
+
+			if len(laddr.IP) == 0 {
+				// set localhost
+				laddr.IP = net.IPv4(127, 0, 0, 1)
+			}
+
+			ma, err := manet.FromNetAddr(laddr)
+			if err != nil {
+				return xerrors.Errorf("net from addr (%v): %w", laddr, err)
+			}
+
+			fmt.Printf("Token: %s:%s\n", tok, ma)
+		}
+
+		return http.ListenAndServe(cctx.String("listen"), mh)
 	},
 }
