@@ -30,9 +30,7 @@ type MinerStorageService api.StorageMiner
 
 var _ sectorblocks.SectorBuilder = *new(MinerSealingService)
 
-func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
-	log.Info("Connecting to harmonydb")
-
+func harmonyApiInfoToConf(apiInfo string) (config.HarmonyDB, error) {
 	hc := config.HarmonyDB{}
 
 	// apiInfo - harmony:maddr:user:pass:dbname:host:port
@@ -40,12 +38,7 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 	parts := strings.Split(apiInfo, ":")
 
 	if len(parts) != 7 {
-		return nil, xerrors.Errorf("invalid harmonydb info")
-	}
-
-	maddr, err := address.NewFromString(parts[1])
-	if err != nil {
-		return nil, xerrors.Errorf("parsing miner address: %w", err)
+		return config.HarmonyDB{}, xerrors.Errorf("invalid harmonydb info '%s'", apiInfo)
 	}
 
 	hc.Username = parts[2]
@@ -54,9 +47,26 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 	hc.Hosts = []string{parts[5]}
 	hc.Port = parts[6]
 
+	return hc, nil
+}
+
+func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
+	log.Info("Connecting to harmonydb")
+
+	hc, err := harmonyApiInfoToConf(apiInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	db, err := harmonydb.NewFromConfig(hc)
 	if err != nil {
 		return nil, xerrors.Errorf("connecting to harmonydb: %w", err)
+	}
+
+	parts := strings.Split(apiInfo, ":")
+	maddr, err := address.NewFromString(parts[1])
+	if err != nil {
+		return nil, xerrors.Errorf("parsing miner address: %w", err)
 	}
 
 	pin := lpmarket.NewPieceIngester(db, fapi)

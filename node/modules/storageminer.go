@@ -820,7 +820,13 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, e
 	return sealer.StorageAuth(headers), nil
 }
 
-func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
+func StorageAuthWithURL(apiInfo string) interface{} {
+	if strings.HasPrefix(apiInfo, "harmony:") {
+		return func(ctx helpers.MetricsCtx, ca MinerStorageService) (sealer.StorageAuth, error) {
+			return StorageAuth(ctx, ca)
+		}
+	}
+
 	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
 		s := strings.Split(apiInfo, ":")
 		if len(s) != 2 {
