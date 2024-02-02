@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"strings"
 
 	"go.uber.org/fx"
@@ -30,6 +31,8 @@ type MinerStorageService api.StorageMiner
 var _ sectorblocks.SectorBuilder = *new(MinerSealingService)
 
 func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
+	log.Info("Connecting to harmonydb")
+
 	hc := config.HarmonyDB{}
 
 	// apiInfo - harmony:maddr:user:pass:dbname:host:port
@@ -82,7 +85,9 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 	ast.Internal.SectorsListInStates = lp.SectorsListInStates
 	ast.Internal.StorageRedeclareLocal = lp.StorageRedeclareLocal
 	ast.Internal.ComputeDataCid = lp.ComputeDataCid
-	ast.Internal.SectorAddPieceToAny = lp.SectorAddPieceToAny
+	ast.Internal.SectorAddPieceToAny = func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data, p3 api.PieceDealInfo) (api.SectorOffset, error) {
+		panic("implement me")
+	}
 
 	ast.Internal.StorageList = si.StorageList
 	ast.Internal.StorageDetach = si.StorageDetach
@@ -101,7 +106,7 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 
 func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (api.StorageMiner, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (api.StorageMiner, error) {
-		if strings.HasPrefix("harmony:", apiInfo) {
+		if strings.HasPrefix(apiInfo, "harmony:") {
 			return connectHarmony(apiInfo, fapi, mctx, lc)
 		}
 
