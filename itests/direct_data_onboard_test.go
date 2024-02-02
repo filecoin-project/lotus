@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/ipld/go-ipld-prime/codec/dagjson"
+	"github.com/ipld/go-ipld-prime/node/basicnode"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -25,11 +28,13 @@ import (
 	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	market2 "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -320,68 +325,126 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 		MaxEpoch: -1,
 	})
 	require.NoError(t, err)
-
 	for _, evt := range evts {
 		fmt.Printf("Got ActorEvent: %+v", evt)
 	}
 
-	blockOutFile, err := os.Create("block.out")
-	require.NoError(t, err)
-	write := func(s string) {
-		_, err := blockOutFile.WriteString(s)
-		require.NoError(t, err)
+	eventsFromMessages := buildActorEventsFromMessages(t, ctx, miner.FullNode)
+	writeEventsToFile(t, ctx, miner.FullNode, eventsFromMessages)
+	for _, evt := range evts {
+		fmt.Printf("Got ActorEvent from messages: %+v", evt)
 	}
 
-	head, err = miner.FullNode.ChainHead(ctx)
+	// TODO: compare GetActorEvents & SubscribeActorEvents & eventsFromMessages for equality
+}
+
+func buildActorEventsFromMessages(t *testing.T, ctx context.Context, node v1api.FullNode) []types.ActorEvent {
+	actorEvents := make([]types.ActorEvent, 0)
+
+	head, err := node.ChainHead(ctx)
 	require.NoError(t, err)
 	for height := 0; height < int(head.Height()); height++ {
 		// for each tipset
-		ts, err := miner.FullNode.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
+		ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
 		require.NoError(t, err)
 		for _, b := range ts.Blocks() {
-			if b.Miner == miner.ActorAddr {
-				// for each block
-				// alternative here is to go straight to receipts: miner.FullNode.ChainGetParentReceipts(ctx, b.Cid())
-				messages, err := miner.FullNode.ChainGetParentMessages(ctx, b.Cid())
+			// for each block
+			// alternative here is to go straight to receipts, but we need the message CID for our event
+			// list: node.ChainGetParentReceipts(ctx, b.Cid())
+			messages, err := node.ChainGetParentMessages(ctx, b.Cid())
+			require.NoError(t, err)
+			if len(messages) == 0 {
+				continue
+			}
+			for _, m := range messages {
+				receipt, err := node.StateSearchMsg(ctx, ts.Key(), m.Cid, -1, false)
 				require.NoError(t, err)
-				if len(messages) == 0 {
-					continue
-				}
-				write(fmt.Sprintf("Height=%d Block=%s:", height, b.Cid()))
-				for _, parent := range b.Parents {
-					write(fmt.Sprintf(" %s", parent))
-				}
-				write("\n")
-				for _, m := range messages {
-					// for each message
-					write(fmt.Sprintf("  Message=%s: %s -> %s, %d\n", m.Cid, m.Message.From, m.Message.To, m.Message.Method))
-					receipt, err := miner.FullNode.StateSearchMsg(ctx, ts.Key(), m.Cid, -1, false)
+				// receipt
+				if receipt.Receipt.EventsRoot != nil {
+					events, err := node.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
 					require.NoError(t, err)
-					// receipt
-					write(fmt.Sprintf("    Receipt Exit=%d, Gas=%d, Return=0x%x\n", receipt.Receipt.ExitCode, receipt.Receipt.GasUsed, receipt.Receipt.Return))
-					if receipt.Receipt.EventsRoot == nil {
-						write(fmt.Sprintln("    No events"))
-					} else {
-						// receipt
-						events, err := miner.FullNode.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
+					for _, evt := range events {
+						// for each event
+						addr, err := address.NewIDAddress(uint64(evt.Emitter))
 						require.NoError(t, err)
-						for ii, evt := range events {
-							// for each event
-							addr, err := address.NewIDAddress(uint64(evt.Emitter))
-							require.NoError(t, err)
-							write(fmt.Sprintf("      Event=%d (%s):\n", ii, addr))
-							for _, e := range evt.Entries {
-								// for each event entry
-								write(fmt.Sprintf("      Entry=0x%x, 0x%x, %s=%s\n", e.Codec, e.Flags, e.Key, toDagJson(t, e.Codec, e.Value)))
-							}
-						}
+						tsCid, err := ts.Key().Cid()
+						require.NoError(t, err)
+
+						actorEvents = append(actorEvents, types.ActorEvent{
+							Entries:     evt.Entries,
+							EmitterAddr: addr,
+							Reverted:    false,
+							Height:      abi.ChainEpoch(height),
+							TipSetKey:   tsCid,
+							MsgCid:      m.Cid,
+						})
 					}
 				}
 			}
 		}
 	}
-	require.NoError(t, blockOutFile.Close())
-	fmt.Println("Wrote block.out")
+	return actorEvents
+}
+
+func writeEventsToFile(t *testing.T, ctx context.Context, node v1api.FullNode, events []types.ActorEvent) {
+	file, err := os.Create("block.out")
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, file.Close())
+	}()
+	write := func(s string) {
+		_, err := file.WriteString(s)
+		require.NoError(t, err)
+	}
+	claimKeyCbor, err := ipld.Encode(basicnode.NewString("claim"), dagcbor.Encode)
+	require.NoError(t, err)
+
+	for _, event := range events {
+		entryStrings := []string{
+			fmt.Sprintf("height=%d", event.Height),
+			fmt.Sprintf("msg=%s", event.MsgCid),
+			fmt.Sprintf("emitter=%s", event.EmitterAddr),
+			fmt.Sprintf("reverted=%t", event.Reverted),
+		}
+		claims := make([]*verifregtypes9.Claim, 0)
+		var isClaim bool
+		var claimId int64 = -1
+		var providerId int64 = -1
+
+		for _, e := range event.Entries {
+			// for each event entry
+			entryStrings = append(entryStrings, fmt.Sprintf("%s=%s", e.Key, toDagJson(t, e.Codec, e.Value)))
+			if e.Key == "$type" && bytes.Equal(e.Value, claimKeyCbor) {
+				isClaim = true
+			} else if isClaim && e.Key == "id" {
+				nd, err := ipld.DecodeUsingPrototype([]byte(e.Value), dagcbor.Decode, bindnode.Prototype((*int64)(nil), nil))
+				require.NoError(t, err)
+				claimId = *bindnode.Unwrap(nd).(*int64)
+			} else if isClaim && e.Key == "provider" {
+				nd, err := ipld.DecodeUsingPrototype([]byte(e.Value), dagcbor.Decode, bindnode.Prototype((*int64)(nil), nil))
+				require.NoError(t, err)
+				providerId = *bindnode.Unwrap(nd).(*int64)
+			}
+			if isClaim && claimId != -1 && providerId != -1 {
+				provider, err := address.NewIDAddress(uint64(providerId))
+				require.NoError(t, err)
+				claim, err := node.StateGetClaim(ctx, provider, verifregtypes9.ClaimId(claimId), types.EmptyTSK)
+				require.NoError(t, err)
+				claims = append(claims, claim)
+			}
+		}
+		write(fmt.Sprintf("Event<%s>\n", strings.Join(entryStrings, ", ")))
+		if len(claims) > 0 {
+			for _, claim := range claims {
+				p, err := address.NewIDAddress(uint64(claim.Provider))
+				require.NoError(t, err)
+				c, err := address.NewIDAddress(uint64(claim.Client))
+				require.NoError(t, err)
+				write(fmt.Sprintf("  Claim<provider=%s, client=%s, data=%s, size=%d, termMin=%d, termMax=%d, termStart=%d, sector=%d>\n",
+					p, c, claim.Data, claim.Size, claim.TermMin, claim.TermMax, claim.TermStart, claim.Sector))
+			}
+		}
+	}
 }
 
 func toDagJson(t *testing.T, codec uint64, data []byte) string {
