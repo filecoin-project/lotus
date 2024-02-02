@@ -33,19 +33,19 @@ var _ sectorblocks.SectorBuilder = *new(MinerSealingService)
 func harmonyApiInfoToConf(apiInfo string) (config.HarmonyDB, error) {
 	hc := config.HarmonyDB{}
 
-	// apiInfo - harmony:maddr:user:pass:dbname:host:port
+	// apiInfo - harmony:layer:maddr:user:pass:dbname:host:port
 
 	parts := strings.Split(apiInfo, ":")
 
-	if len(parts) != 7 {
+	if len(parts) != 8 {
 		return config.HarmonyDB{}, xerrors.Errorf("invalid harmonydb info '%s'", apiInfo)
 	}
 
-	hc.Username = parts[2]
-	hc.Password = parts[3]
-	hc.Database = parts[4]
-	hc.Hosts = []string{parts[5]}
-	hc.Port = parts[6]
+	hc.Username = parts[3]
+	hc.Password = parts[4]
+	hc.Database = parts[5]
+	hc.Hosts = []string{parts[6]}
+	hc.Port = parts[7]
 
 	return hc, nil
 }
@@ -64,7 +64,7 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 	}
 
 	parts := strings.Split(apiInfo, ":")
-	maddr, err := address.NewFromString(parts[1])
+	maddr, err := address.NewFromString(parts[2])
 	if err != nil {
 		return nil, xerrors.Errorf("parsing miner address: %w", err)
 	}
@@ -83,9 +83,11 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 		return nil, xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	lp := fakelm.NewLMRPCProvider(si, maddr, abi.ActorID(mid), mi.SectorSize, pin)
+	lp := fakelm.NewLMRPCProvider(si, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, parts[1])
 
 	ast := api.StorageMinerStruct{}
+
+	ast.CommonStruct.Internal.AuthNew = lp.AuthNew
 
 	ast.Internal.ActorAddress = lp.ActorAddress
 	ast.Internal.WorkerJobs = lp.WorkerJobs

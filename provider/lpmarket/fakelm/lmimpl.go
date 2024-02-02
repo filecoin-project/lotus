@@ -2,6 +2,12 @@ package fakelm
 
 import (
 	"context"
+	"encoding/base64"
+	"github.com/BurntSushi/toml"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/node/config"
+	"github.com/gbrlsnchs/jwt/v3"
 	"net/http"
 	"net/url"
 
@@ -26,16 +32,20 @@ type LMRPCProvider struct {
 
 	ssize abi.SectorSize
 
-	pi lpmarket.Ingester
+	pi        lpmarket.Ingester
+	db        *harmonydb.DB
+	confLayer string
 }
 
-func NewLMRPCProvider(si paths.SectorIndex, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi lpmarket.Ingester) *LMRPCProvider {
+func NewLMRPCProvider(si paths.SectorIndex, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi lpmarket.Ingester, db *harmonydb.DB, confLayer string) *LMRPCProvider {
 	return &LMRPCProvider{
-		si:      si,
-		maddr:   maddr,
-		minerID: minerID,
-		ssize:   ssize,
-		pi:      pi,
+		si:        si,
+		maddr:     maddr,
+		minerID:   minerID,
+		ssize:     ssize,
+		pi:        pi,
+		db:        db,
+		confLayer: confLayer,
 	}
 }
 
@@ -273,6 +283,41 @@ func (l *LMRPCProvider) SectorAddPieceToAny(ctx context.Context, size abi.Unpadd
 
 func (l *LMRPCProvider) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece api.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
 	return l.pi.AllocatePieceToSector(ctx, maddr, piece, rawSize, source, header)
+}
+
+func (l *LMRPCProvider) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
+	var cs []struct {
+		Config string
+	}
+
+	err := l.db.Select(ctx, &cs, "select config from harmony_config where title = $1", l.confLayer)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cs) == 0 {
+		return nil, xerrors.Errorf("no harmony config found")
+	}
+
+	lp := config.DefaultLotusProvider()
+	if _, err := toml.Decode(cs[0].Config, lp); err != nil {
+		return nil, xerrors.Errorf("decode harmony config: %w", err)
+	}
+
+	type jwtPayload struct {
+		Allow []auth.Permission
+	}
+
+	p := jwtPayload{
+		Allow: perms,
+	}
+
+	sk, err := base64.StdEncoding.DecodeString(lp.Apis.StorageRPCSecret)
+	if err != nil {
+		return nil, xerrors.Errorf("decode secret: %w", err)
+	}
+
+	return jwt.Sign(&p, jwt.NewHS256(sk))
 }
 
 var _ MinimalLMApi = &LMRPCProvider{}
