@@ -56,6 +56,11 @@ func buildTraces(traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr [
 		return nil
 	}
 
+	// Skip the trace if we never reached the point where we invoked this actor.
+	if et.InvokedActor == nil {
+		return nil
+	}
+
 	trace := &ethtypes.EthTrace{
 		Action: ethtypes.EthTraceAction{
 			From:  from,
