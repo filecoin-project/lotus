@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-hamt-ipld/v3"
+	market13 "github.com/filecoin-project/go-state-types/builtin/v13/market"
 	"github.com/filecoin-project/lotus/lib/must"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"os"
@@ -228,7 +230,9 @@ var migrationsCmd = &cli.Command{
 
 			if newCid1 != newCid2 {
 				{
-					printStateDiff(ctx, newCid2, newCid1, bs)
+					if err := printStateDiff(ctx, nv, newCid2, newCid1, bs); err != nil {
+						fmt.Println("failed to print state diff: ", err)
+					}
 				}
 
 				if cctx.IsSet("export-bad-migration") {
@@ -292,7 +296,7 @@ type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.Migrat
 type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
 type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
 
-func printStateDiff(ctx context.Context, newCid1, newCid2 cid.Cid, bs blockstore.Blockstore) error {
+func printStateDiff(ctx context.Context, nv network.Version, newCid1, newCid2 cid.Cid, bs blockstore.Blockstore) error {
 	// migration diff
 	var sra, srb types.StateRoot
 	cst := cbornode.NewCborStore(bs)
@@ -312,7 +316,7 @@ func printStateDiff(ctx context.Context, newCid1, newCid2 cid.Cid, bs blockstore
 	}
 	if sra.Actors != srb.Actors {
 		fmt.Println("state root actors do not match: ", sra.Actors, srb.Actors)
-		if err := printActorDiff(ctx, cst, sra.Actors, srb.Actors); err != nil {
+		if err := printActorsDiff(ctx, cst, nv, sra.Actors, srb.Actors); err != nil {
 			return err
 		}
 	}
@@ -320,7 +324,7 @@ func printStateDiff(ctx context.Context, newCid1, newCid2 cid.Cid, bs blockstore
 	return nil
 }
 
-func printActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, a, b cid.Cid) error {
+func printActorsDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv network.Version, a, b cid.Cid) error {
 	// actor diff, a b are a hamt
 
 	diffs, err := hamt.Diff(ctx, cst, cst, a, b, hamt.UseTreeBitWidth(builtin.DefaultHamtBitwidth))
@@ -339,8 +343,150 @@ func printActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, a, b cid.
 		case hamt.Remove:
 			color.Red("- Remove %v", must.One(keyParser(d.Key)))
 		case hamt.Modify:
-			color.Yellow("~ Modify %v", must.One(keyParser(d.Key)))
+			addr := must.One(keyParser(d.Key)).(address.Address)
+			color.Yellow("~ Modify %v", addr)
+			var aa, bb types.ActorV5
+
+			if err := aa.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+				return err
+			}
+			if err := bb.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+				return err
+			}
+
+			if err := printActorDiff(ctx, cst, nv, addr, aa, bb); err != nil {
+				return err
+			}
 		}
+	}
+
+	return nil
+}
+
+func printActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv network.Version, addr address.Address, a, b types.ActorV5) error {
+	if a.Code != b.Code {
+		fmt.Println("  Code: ", a.Code, b.Code)
+	}
+	if a.Head != b.Head {
+		fmt.Println("  Head: ", a.Head, b.Head)
+	}
+	if a.Nonce != b.Nonce {
+		fmt.Println("  Nonce: ", a.Nonce, b.Nonce)
+	}
+	if a.Balance != b.Balance {
+		fmt.Println("  Balance: ", a.Balance, b.Balance)
+	}
+
+	switch addr.String() {
+	case "f05":
+		if err := printMarketActorDiff(ctx, cst, nv, a.Head, b.Head); err != nil {
+			return err
+		}
+	default:
+		fmt.Println("no logic to diff actor state for ", addr)
+	}
+
+	return nil
+}
+
+func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv network.Version, a, b cid.Cid) error {
+	if nv != network.Version22 {
+		return xerrors.Errorf("market actor diff not implemented for nv%d", nv)
+	}
+
+	var ma, mb market13.State
+	if err := cst.Get(ctx, a, &ma); err != nil {
+		return err
+	}
+	if err := cst.Get(ctx, b, &mb); err != nil {
+		return err
+	}
+
+	/*
+		type State struct {
+			// Proposals are deals that have been proposed and not yet cleaned up after expiry or termination.
+			Proposals cid.Cid // AMT[DealID]DealProposal
+			// States contains state for deals that have been activated and not yet cleaned up after expiry or termination.
+			// After expiration, the state exists until the proposal is cleaned up too.
+			// Invariant: keys(States) ⊆ keys(Proposals).
+			States cid.Cid // AMT[DealID]DealState
+
+			// PendingProposals tracks dealProposals that have not yet reached their deal start date.
+			// We track them here to ensure that miners can't publish the same deal proposal twice
+			PendingProposals cid.Cid // Set[DealCid]
+
+			// Total amount held in escrow, indexed by actor address (including both locked and unlocked amounts).
+			EscrowTable cid.Cid // BalanceTable
+
+			// Amount locked, indexed by actor address.
+			// Note: the amounts in this table do not affect the overall amount in escrow:
+			// only the _portion_ of the total escrow amount that is locked.
+			LockedTable cid.Cid // BalanceTable
+
+			NextID abi.DealID
+
+			// Metadata cached for efficient iteration over deals.
+			DealOpsByEpoch cid.Cid // SetMultimap, HAMT[epoch]Set
+			LastCron       abi.ChainEpoch
+
+			// Total Client Collateral that is locked -> unlocked when deal is terminated
+			TotalClientLockedCollateral abi.TokenAmount
+			// Total Provider Collateral that is locked -> unlocked when deal is terminated
+			TotalProviderLockedCollateral abi.TokenAmount
+			// Total storage fee that is locked in escrow -> unlocked when payments are made
+			TotalClientStorageFee abi.TokenAmount
+
+			// Verified registry allocation IDs for deals that are not yet activated.
+			PendingDealAllocationIds cid.Cid // HAMT[DealID]AllocationID
+
+			/// Maps providers to their sector IDs to deal IDs.
+			/// This supports finding affected deals when a sector is terminated early
+			/// or has data replaced.
+			/// Grouping by provider limits the cost of operations in the expected use case
+			/// of multiple sectors all belonging to the same provider.
+			/// HAMT[ActorID]HAMT[SectorNumber]SectorDealIDs
+			ProviderSectors cid.Cid
+		}
+	*/
+
+	if ma.Proposals != mb.Proposals {
+		fmt.Println("  Proposals: ", ma.Proposals, mb.Proposals)
+	}
+	if ma.States != mb.States {
+		fmt.Println("  States: ", ma.States, mb.States)
+	}
+	if ma.PendingProposals != mb.PendingProposals {
+		fmt.Println("  PendingProposals: ", ma.PendingProposals, mb.PendingProposals)
+	}
+	if ma.EscrowTable != mb.EscrowTable {
+		fmt.Println("  EscrowTable: ", ma.EscrowTable, mb.EscrowTable)
+	}
+	if ma.LockedTable != mb.LockedTable {
+		fmt.Println("  LockedTable: ", ma.LockedTable, mb.LockedTable)
+	}
+	if ma.NextID != mb.NextID {
+		fmt.Println("  NextID: ", ma.NextID, mb.NextID)
+	}
+	if ma.DealOpsByEpoch != mb.DealOpsByEpoch {
+		fmt.Println("  DealOpsByEpoch: ", ma.DealOpsByEpoch, mb.DealOpsByEpoch)
+	}
+	if ma.LastCron != mb.LastCron {
+		fmt.Println("  LastCron: ", ma.LastCron, mb.LastCron)
+	}
+	if ma.TotalClientLockedCollateral != mb.TotalClientLockedCollateral {
+		fmt.Println("  TotalClientLockedCollateral: ", ma.TotalClientLockedCollateral, mb.TotalClientLockedCollateral)
+	}
+	if ma.TotalProviderLockedCollateral != mb.TotalProviderLockedCollateral {
+		fmt.Println("  TotalProviderLockedCollateral: ", ma.TotalProviderLockedCollateral, mb.TotalProviderLockedCollateral)
+	}
+	if ma.TotalClientStorageFee != mb.TotalClientStorageFee {
+		fmt.Println("  TotalClientStorageFee: ", ma.TotalClientStorageFee, mb.TotalClientStorageFee)
+	}
+	if ma.PendingDealAllocationIds != mb.PendingDealAllocationIds {
+		fmt.Println("  PendingDealAllocationIds: ", ma.PendingDealAllocationIds, mb.PendingDealAllocationIds)
+	}
+	if ma.ProviderSectors != mb.ProviderSectors {
+		fmt.Println("  ProviderSectors: ", ma.ProviderSectors, mb.ProviderSectors)
 	}
 
 	return nil
