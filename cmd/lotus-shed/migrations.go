@@ -543,7 +543,7 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 
 				var ids market13.SectorDealIDs
 				err = inner.ForEach(&ids, func(k string) error {
-					sectorNumber := must.One(abi.ParseUIntKey(d.Key))
+					sectorNumber := must.One(abi.ParseUIntKey(k))
 
 					color.Green("  |-- ProviderSectors + Add %v", sectorNumber)
 					fmt.Printf("  |+: %v\n", ids)
