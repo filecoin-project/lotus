@@ -406,53 +406,6 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 		return err
 	}
 
-	/*
-		type State struct {
-			// Proposals are deals that have been proposed and not yet cleaned up after expiry or termination.
-			Proposals cid.Cid // AMT[DealID]DealProposal
-			// States contains state for deals that have been activated and not yet cleaned up after expiry or termination.
-			// After expiration, the state exists until the proposal is cleaned up too.
-			// Invariant: keys(States) ⊆ keys(Proposals).
-			States cid.Cid // AMT[DealID]DealState
-
-			// PendingProposals tracks dealProposals that have not yet reached their deal start date.
-			// We track them here to ensure that miners can't publish the same deal proposal twice
-			PendingProposals cid.Cid // Set[DealCid]
-
-			// Total amount held in escrow, indexed by actor address (including both locked and unlocked amounts).
-			EscrowTable cid.Cid // BalanceTable
-
-			// Amount locked, indexed by actor address.
-			// Note: the amounts in this table do not affect the overall amount in escrow:
-			// only the _portion_ of the total escrow amount that is locked.
-			LockedTable cid.Cid // BalanceTable
-
-			NextID abi.DealID
-
-			// Metadata cached for efficient iteration over deals.
-			DealOpsByEpoch cid.Cid // SetMultimap, HAMT[epoch]Set
-			LastCron       abi.ChainEpoch
-
-			// Total Client Collateral that is locked -> unlocked when deal is terminated
-			TotalClientLockedCollateral abi.TokenAmount
-			// Total Provider Collateral that is locked -> unlocked when deal is terminated
-			TotalProviderLockedCollateral abi.TokenAmount
-			// Total storage fee that is locked in escrow -> unlocked when payments are made
-			TotalClientStorageFee abi.TokenAmount
-
-			// Verified registry allocation IDs for deals that are not yet activated.
-			PendingDealAllocationIds cid.Cid // HAMT[DealID]AllocationID
-
-			/// Maps providers to their sector IDs to deal IDs.
-			/// This supports finding affected deals when a sector is terminated early
-			/// or has data replaced.
-			/// Grouping by provider limits the cost of operations in the expected use case
-			/// of multiple sectors all belonging to the same provider.
-			/// HAMT[ActorID]HAMT[SectorNumber]SectorDealIDs
-			ProviderSectors cid.Cid
-		}
-	*/
-
 	if ma.Proposals != mb.Proposals {
 		fmt.Println("  Proposals: ", ma.Proposals, mb.Proposals)
 	}
@@ -575,6 +528,31 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 			switch d.Type {
 			case hamt.Add:
 				color.Green("  ProviderSectors + Add f0%v", spIDk)
+
+				var b cbg.CborCid
+				if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+					return err
+				}
+
+				fmt.Println("  |-B: ", cid.Cid(b).String())
+
+				inner, err := adt13.AsMap(adt8.WrapStore(ctx, cst), cid.Cid(b), market13.ProviderSectorsHamtBitwidth)
+				if err != nil {
+					return err
+				}
+
+				var ids market13.SectorDealIDs
+				err = inner.ForEach(&ids, func(k string) error {
+					sectorNumber := must.One(abi.ParseUIntKey(d.Key))
+
+					color.Green("  |-- ProviderSectors + Add %v", sectorNumber)
+					fmt.Printf("  |+: %v\n", ids)
+
+					return nil
+				})
+				if err != nil {
+					return err
+				}
 			case hamt.Remove:
 				color.Red("  ProviderSectors - Remove f0%v", spIDk)
 			case hamt.Modify:
