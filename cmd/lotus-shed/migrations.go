@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-amt-ipld/v4"
@@ -11,7 +12,6 @@ import (
 	market13 "github.com/filecoin-project/go-state-types/builtin/v13/market"
 	"github.com/filecoin-project/lotus/lib/must"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/polydawn/refmt/json"
 	"os"
 	"path/filepath"
 	"strconv"
