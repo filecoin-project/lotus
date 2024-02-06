@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-hamt-ipld/v3"
 	"github.com/filecoin-project/go-state-types/big"
 	market13 "github.com/filecoin-project/go-state-types/builtin/v13/market"
+	adt13 "github.com/filecoin-project/go-state-types/builtin/v13/util/adt"
 	"github.com/filecoin-project/lotus/lib/must"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"os"
@@ -464,6 +465,15 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 			return err
 		}
 
+		proposalsArrA, err := adt13.AsArray(adt8.WrapStore(ctx, cst), ma.Proposals, market13.ProposalsAmtBitwidth)
+		if err != nil {
+			return err
+		}
+		proposalsArrB, err := adt13.AsArray(adt8.WrapStore(ctx, cst), mb.Proposals, market13.ProposalsAmtBitwidth)
+		if err != nil {
+			return err
+		}
+
 		for _, d := range amtDiff {
 			switch d.Type {
 			case amt.Add:
@@ -492,6 +502,31 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 
 				fmt.Println("   A: ", string(ja))
 				fmt.Println("   B: ", string(jb))
+
+				var propA, propB market13.DealProposal
+
+				if _, err := proposalsArrA.Get(d.Key, &propA); err != nil {
+					return err
+				}
+				if _, err := proposalsArrB.Get(d.Key, &propB); err != nil {
+					return err
+				}
+
+				pab, err := json.Marshal(propA)
+				if err != nil {
+					return err
+				}
+				pbb, err := json.Marshal(propB)
+				if err != nil {
+					return err
+				}
+				if string(pab) != string(pbb) {
+					fmt.Println("   PropA: ", string(pab))
+					fmt.Println("   PropB: ", string(pbb))
+				} else {
+					fmt.Println("   Prop: ", string(pab))
+				}
+
 			}
 		}
 	}
@@ -539,11 +574,11 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 
 			switch d.Type {
 			case hamt.Add:
-				color.Green("  ProviderSectors + Add %v", spIDk)
+				color.Green("  ProviderSectors + Add f0%v", spIDk)
 			case hamt.Remove:
-				color.Red("  ProviderSectors - Remove %v", spIDk)
+				color.Red("  ProviderSectors - Remove f0%v", spIDk)
 			case hamt.Modify:
-				color.Yellow("  ProviderSectors ~ Modify %v", spIDk)
+				color.Yellow("  ProviderSectors ~ Modify f0%v", spIDk)
 
 				var a, b cbg.CborCid
 				if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
@@ -553,8 +588,8 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 					return err
 				}
 
-				fmt.Println("   A: ", cid.Cid(b).String())
-				fmt.Println("   B: ", cid.Cid(a).String())
+				fmt.Println("  |-A: ", cid.Cid(b).String())
+				fmt.Println("  |-B: ", cid.Cid(a).String())
 
 				// diff the inner HAMTs
 				innerHamtDiff, err := hamt.Diff(ctx, cst, cst, cid.Cid(a), cid.Cid(b), hamt.UseTreeBitWidth(market13.ProviderSectorsHamtBitwidth))
@@ -574,7 +609,7 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 						}
 
 						color.Green("  |-- ProviderSectors + Add %v", sectorNumber)
-						fmt.Printf("   B: %v\n", b)
+						fmt.Printf("  |B: %v\n", b)
 					case hamt.Remove:
 						var a market13.SectorDealIDs
 
@@ -583,7 +618,7 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 						}
 
 						color.Red("  |-- ProviderSectors - Remove %v", sectorNumber)
-						fmt.Printf("   A: %v\n", a)
+						fmt.Printf("  |A: %v\n", a)
 					case hamt.Modify:
 						var a, b market13.SectorDealIDs
 
@@ -595,8 +630,8 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 						}
 
 						color.Yellow("  |-- ProviderSectors ~ Modify %v", sectorNumber)
-						fmt.Printf("   A: %v\n", a)
-						fmt.Printf("   B: %v\n", b)
+						fmt.Printf("  |A: %v\n", a)
+						fmt.Printf("  |B: %v\n", b)
 					}
 				}
 			}
