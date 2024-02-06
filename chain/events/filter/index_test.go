@@ -50,6 +50,11 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	cid14000, err := events14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
+	tipsetResolver := func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+		require.Equal(t, events14000.msgTs.Key(), tsk)
+		return events14000.msgTs, nil
+	}
+
 	noCollectedEvents := []*CollectedEvent{}
 	oneCollectedEvent := []*CollectedEvent{
 		{
@@ -76,7 +81,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
-	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), events14000, false); err != nil {
 		require.NoError(t, err, "collect events")
 	}
 
@@ -141,7 +146,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 				addresses: []address.Address{a1},
 			},
 			te:   events14000,
-			want: oneCollectedEvent,
+			want: noCollectedEvents, // can't search history for reverted events with addresses
 		},
 		{
 			name: "match one entry",
@@ -272,7 +277,13 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.prefillFilter(context.Background(), tc.filter, false); err != nil {
+			filterActors := make([]abi.ActorID, 0)
+			for _, addr := range tc.filter.addresses {
+				a, err := addrMap.ResolveActor(context.Background(), addr, nil)
+				require.NoError(t, err)
+				filterActors = append(filterActors, a)
+			}
+			if err := ei.prefillFilter(context.Background(), tc.filter, false, filterActors, addrMap.ResolveAddress, tipsetResolver); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 
@@ -290,10 +301,12 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	a1ID := abi.ActorID(1)
 	a2ID := abi.ActorID(2)
+	a3ID := abi.ActorID(3)
 
 	addrMap := addressMap{}
 	addrMap.add(a1ID, a1)
 	addrMap.add(a2ID, a2)
+	addrMap.add(a3ID, a3)
 
 	ev1 := fakeEvent(
 		a1ID,
@@ -336,6 +349,18 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	require.NoError(t, err, "tipset cid")
 	reveredCID14000, err := revertedEvents14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
+
+	tipsetResolver := func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+		switch tsk {
+		case events14000.msgTs.Key():
+			return events14000.msgTs, nil
+		case revertedEvents14000.msgTs.Key():
+			return revertedEvents14000.msgTs, nil
+		default:
+			require.FailNow(t, "unexpected tipset key")
+		}
+		return nil, nil
+	}
 
 	noCollectedEvents := []*CollectedEvent{}
 	oneCollectedEvent := []*CollectedEvent{
@@ -397,13 +422,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
-	if err := ei.CollectEvents(context.Background(), revertedEvents14000, false, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), revertedEvents14000, false); err != nil {
 		require.NoError(t, err, "collect reverted events")
 	}
-	if err := ei.CollectEvents(context.Background(), revertedEvents14000, true, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), revertedEvents14000, true); err != nil {
 		require.NoError(t, err, "revert reverted events")
 	}
-	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), events14000, false); err != nil {
 		require.NoError(t, err, "collect events")
 	}
 
@@ -478,7 +503,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 				addresses: []address.Address{a2},
 			},
 			te:   revertedEvents14000,
-			want: oneCollectedRevertedEvent,
+			want: noCollectedEvents, // can't search history for reverted events with addresses
 		},
 		{
 			name: "match address 1",
@@ -488,7 +513,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 				addresses: []address.Address{a1},
 			},
 			te:   events14000,
-			want: oneCollectedEvent,
+			want: noCollectedEvents, // can't search history for reverted events with addresses
 		},
 		{
 			name: "match one entry",
@@ -728,7 +753,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 				addresses: []address.Address{a1},
 			},
 			te:   events14000,
-			want: oneCollectedEvent,
+			want: noCollectedEvents, // can't search history for reverted events with addresses
 		},
 		{
 			name: "match one entry",
@@ -876,7 +901,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	for _, tc := range inclusiveTestCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.prefillFilter(context.Background(), tc.filter, false); err != nil {
+			filterActors := make([]abi.ActorID, 0)
+			for _, addr := range tc.filter.addresses {
+				a, err := addrMap.ResolveActor(context.Background(), addr, nil)
+				require.NoError(t, err)
+				filterActors = append(filterActors, a)
+			}
+			if err := ei.prefillFilter(context.Background(), tc.filter, false, filterActors, addrMap.ResolveAddress, tipsetResolver); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 
@@ -888,7 +919,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	for _, tc := range exclusiveTestCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.prefillFilter(context.Background(), tc.filter, true); err != nil {
+			filterActors := make([]abi.ActorID, 0)
+			for _, addr := range tc.filter.addresses {
+				a, err := addrMap.ResolveActor(context.Background(), addr, nil)
+				require.NoError(t, err)
+				filterActors = append(filterActors, a)
+			}
+			if err := ei.prefillFilter(context.Background(), tc.filter, true, filterActors, addrMap.ResolveAddress, tipsetResolver); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 

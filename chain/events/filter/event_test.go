@@ -2,6 +2,7 @@ package filter
 
 import (
 	"context"
+	"fmt"
 	pseudo "math/rand"
 	"testing"
 
@@ -276,7 +277,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.filter.CollectEvents(context.Background(), tc.te, false, addrMap.ResolveAddress); err != nil {
+			if err := tc.filter.CollectEvents(context.Background(), tc.te, false, addrMap.ResolveActor, addrMap.ResolveAddress); err != nil {
 				require.NoError(t, err, "collect events")
 			}
 
@@ -443,4 +444,18 @@ func (a addressMap) add(actorID abi.ActorID, addr address.Address) {
 func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 	ra, ok := a[emitter]
 	return ra, ok
+}
+
+func (a addressMap) ResolveActor(ctx context.Context, emitter address.Address, ts *types.TipSet) (abi.ActorID, error) {
+	for id, addr := range a {
+		if addr == emitter {
+			return id, nil
+		}
+	}
+	fmt.Println("Have:")
+	for id, addr := range a {
+		fmt.Printf("%d -> %s\n", id, addr)
+	}
+	fmt.Println("Want:", emitter)
+	return 0, fmt.Errorf("address not found")
 }

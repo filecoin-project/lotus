@@ -126,25 +126,39 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 		}
 
 		fm := &filter.EventFilterManager{
-			ChainStore: cs,
-			EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
-			// TODO:
-			// We don't need this address resolution anymore once https://github.com/filecoin-project/lotus/issues/11594 lands
-			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-				idAddr, err := address.NewIDAddress(uint64(emitter))
+			ChainStore:       cs,
+			EventIndex:       eventIndex, // will be nil unless EnableHistoricFilterAPI is true
+			MaxFilterResults: cfg.Events.MaxFilterResults,
+			ActorResolver: func(ctx context.Context, emitter address.Address, ts *types.TipSet) (abi.ActorID, error) {
+				var addr address.Address
+				if emitter.Protocol() == address.ID {
+					addr = emitter // already an ID address
+				} else {
+					var err error
+					addr, err = sm.LookupRobustAddress(ctx, emitter, ts)
+					if err != nil {
+						return 0, err
+					}
+				}
+				actor, err := address.IDFromAddress(addr)
+				if err != nil {
+					return 0, err
+				}
+				return abi.ActorID(actor), nil
+			},
+			AddressResolver: func(ctx context.Context, actor abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+				idAddr, err := address.NewIDAddress(uint64(actor))
 				if err != nil {
 					return address.Undef, false
 				}
 
-				actor, err := sm.LoadActor(ctx, idAddr, ts)
-				if err != nil || actor.Address == nil {
-					return idAddr, true
+				actorAddr, err := sm.LoadActor(ctx, idAddr, ts)
+				if err != nil || actorAddr.Address == nil {
+					return idAddr, false
 				}
-
-				return *actor.Address, true
+				return *actorAddr.Address, true
 			},
-
-			MaxFilterResults: cfg.Events.MaxFilterResults,
+			TipsetResolver: cs.LoadTipSet,
 		}
 
 		lc.Append(fx.Hook{

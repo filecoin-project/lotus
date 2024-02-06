@@ -38,7 +38,7 @@ var ddls = []string{
 		height INTEGER NOT NULL,
 		tipset_key BLOB NOT NULL,
 		tipset_key_cid BLOB NOT NULL,
-		emitter_addr BLOB NOT NULL,
+		emitter INTEGER NOT NULL,
 		event_index INTEGER NOT NULL,
 		message_cid BLOB NOT NULL,
 		message_index INTEGER NOT NULL,
@@ -72,11 +72,11 @@ var (
 const (
 	schemaVersion = 2
 
-	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter=? AND event_index=? AND message_cid=? AND message_index=?`
+	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
 	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
 	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
-	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter=? AND event_index=? AND message_cid=? AND message_index=?`
 )
 
 type EventIndex struct {
@@ -117,6 +117,21 @@ func (ei *EventIndex) initStatements() (err error) {
 
 	return nil
 }
+
+/*
+func (ei *EventIndex) migrateToVersion3(ctx context.Context, chainStore *store.ChainStore) error {
+	now := time.Now()
+
+	tx, err := ei.db.Begin()
+	if err != nil {
+		return xerrors.Errorf("begin transaction: %w", err)
+	}
+	// rollback the transaction (a no-op if the transaction was already committed)
+	defer tx.Rollback() //nolint:errcheck
+
+	q, err := ei.db.Query("SELECT id, height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted FROM event ORDER BY height, tipset_key_cid ASC, height ASC, event_index ASC, message_index ASC, id DESC")
+}
+*/
 
 func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *store.ChainStore) error {
 	now := time.Now()
@@ -343,7 +358,7 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
-func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
+func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool) error {
 	tx, err := ei.db.Begin()
 	if err != nil {
 		return xerrors.Errorf("begin transaction: %w", err)
@@ -366,9 +381,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return nil
 	}
 
-	// cache of lookups between actor id and f4 address
-	addressLookups := make(map[abi.ActorID]address.Address)
-
 	ems, err := te.messages(ctx)
 	if err != nil {
 		return xerrors.Errorf("load executed messages: %w", err)
@@ -378,17 +390,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// don't exist, otherwise mark them as not reverted
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
-			addr, found := addressLookups[ev.Emitter]
-			if !found {
-				var ok bool
-				addr, ok = resolver(ctx, ev.Emitter, te.rctTs)
-				if !ok {
-					// not an address we will be able to match against
-					continue
-				}
-				addressLookups[ev.Emitter] = addr
-			}
-
 			tsKeyCid, err := te.msgTs.Key().Cid()
 			if err != nil {
 				return xerrors.Errorf("tipset key cid: %w", err)
@@ -400,7 +401,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				te.msgTs.Height(),          // height
 				te.msgTs.Key().Bytes(),     // tipset_key
 				tsKeyCid.Bytes(),           // tipset_key_cid
-				addr.Bytes(),               // emitter_addr
+				ev.Emitter,                 // emitter
 				evIdx,                      // event_index
 				em.Message().Cid().Bytes(), // message_cid
 				msgIdx,                     // message_index
@@ -415,7 +416,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Height(),          // height
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
-					addr.Bytes(),               // emitter_addr
+					ev.Emitter,                 // emitter
 					evIdx,                      // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
@@ -450,7 +451,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Height(),          // height
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
-					addr.Bytes(),               // emitter_addr
+					ev.Emitter,                 // emitter
 					evIdx,                      // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
@@ -481,7 +482,15 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 }
 
 // PrefillFilter fills a filter's collection of events from the historic index
-func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
+func (ei *EventIndex) prefillFilter(
+	ctx context.Context,
+	f *eventFilter,
+	excludeReverted bool,
+	filterActors []abi.ActorID,
+	addressResolver AddressResolver,
+	tipsetResolver TipsetResolver,
+) error {
+
 	clauses := []string{}
 	values := []any{}
 	joins := []string{}
@@ -505,11 +514,11 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		values = append(values, false)
 	}
 
-	if len(f.addresses) > 0 {
+	if len(filterActors) > 0 {
 		subclauses := []string{}
-		for _, addr := range f.addresses {
-			subclauses = append(subclauses, "emitter_addr=?")
-			values = append(values, addr.Bytes())
+		for actor := range filterActors {
+			subclauses = append(subclauses, "emitter=?")
+			values = append(values, actor)
 		}
 		clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 	}
@@ -538,7 +547,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			event.height,
 			event.tipset_key,
 			event.tipset_key_cid,
-			event.emitter_addr,
+			event.emitter,
 			event.event_index,
 			event.message_cid,
 			event.message_index,
@@ -588,7 +597,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			height       uint64
 			tipsetKey    []byte
 			tipsetKeyCid []byte
-			emitterAddr  []byte
+			emitter      uint64
 			eventIndex   int
 			messageCid   []byte
 			messageIndex int
@@ -604,7 +613,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			&row.height,
 			&row.tipsetKey,
 			&row.tipsetKeyCid,
-			&row.emitterAddr,
+			&row.emitter,
 			&row.eventIndex,
 			&row.messageCid,
 			&row.messageIndex,
@@ -628,8 +637,8 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 					break
 				}
 			}
-
 			currentID = row.id
+
 			ce = &CollectedEvent{
 				EventIdx: row.eventIndex,
 				Reverted: row.reverted,
@@ -637,9 +646,9 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 				MsgIdx:   row.messageIndex,
 			}
 
-			ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
+			ce.MsgCid, err = cid.Cast(row.messageCid)
 			if err != nil {
-				return xerrors.Errorf("parse emitter addr: %w", err)
+				return xerrors.Errorf("parse message cid: %w", err)
 			}
 
 			ce.TipSetKey, err = types.TipSetKeyFromBytes(row.tipsetKey)
@@ -647,9 +656,14 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 				return xerrors.Errorf("parse tipsetkey: %w", err)
 			}
 
-			ce.MsgCid, err = cid.Cast(row.messageCid)
+			ts, err := tipsetResolver(ctx, ce.TipSetKey) // chainstore lookup has a cache so this should be ok for repeat calls
 			if err != nil {
-				return xerrors.Errorf("parse message cid: %w", err)
+				return xerrors.Errorf("resolve tipset: %w", err)
+			}
+			if addr, _ := addressResolver(ctx, abi.ActorID(row.emitter), ts); addr != address.Undef {
+				ce.EmitterAddr = addr
+			} else {
+				log.Warnf("could not resolve address of actor %d at height %d", row.emitter, row.height)
 			}
 		}
 
