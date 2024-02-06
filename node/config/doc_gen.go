@@ -362,9 +362,8 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
 
-			Comment: `EnableEthRPC enables APIs that
-DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+			Comment: `DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
 		},
 		{
 			Name: "DisableHistoricFilterAPI",
@@ -372,7 +371,7 @@ The API is enabled when EnableEthRPC is true, but can be disabled selectively wi
 
 			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
 		},
 		{
 			Name: "FilterTTL",
@@ -459,7 +458,8 @@ This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, bu
 			Name: "EnableActorEventsAPI",
 			Type: "bool",
 
-			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).`,
+			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
 		},
 		{
 			Name: "EthTxHashMappingLifetimeDays",

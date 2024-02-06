@@ -787,6 +787,7 @@ type FevmConfig struct {
 	EnableEthRPC bool
 
 	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
 	EnableActorEventsAPI bool
 
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
@@ -797,14 +798,13 @@ type FevmConfig struct {
 }
 
 type Events struct {
-	// EnableEthRPC enables APIs that
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool
 
 	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableHistoricFilterAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than

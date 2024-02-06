@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -140,6 +141,8 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 					return idAddr, true
 				}
 
+				fmt.Println("")
+
 				return *actor.Address, true
 			},
 
@@ -165,9 +168,10 @@ func ActorEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRe
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.ActorEvent, error) {
 		ee := &full.ActorEvent{
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
+			Chain:                cs,
 		}
 
-		if !cfg.EnableActorEventsAPI {
+		if !cfg.EnableActorEventsAPI || cfg.Events.DisableRealTimeFilterAPI {
 			// all Actor events functionality is disabled
 			return ee, nil
 		}
