@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/fatih/color"
+	"github.com/filecoin-project/go-hamt-ipld/v3"
+	"github.com/filecoin-project/lotus/lib/must"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -223,6 +227,10 @@ var migrationsCmd = &cli.Command{
 			cachedMigrationTime := time.Since(startTime)
 
 			if newCid1 != newCid2 {
+				{
+					printStateDiff(ctx, newCid2, newCid1, bs)
+				}
+
 				if cctx.IsSet("export-bad-migration") {
 					fi, err := os.Create(cctx.String("export-bad-migration"))
 					if err != nil {
@@ -283,6 +291,60 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, stmgr.ExecMonitor, cid.Cid, abi.ChainEpoch, *types.TipSet) (cid.Cid, error)
 type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
 type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
+
+func printStateDiff(ctx context.Context, newCid1, newCid2 cid.Cid, bs blockstore.Blockstore) error {
+	// migration diff
+	var sra, srb types.StateRoot
+	cst := cbornode.NewCborStore(bs)
+
+	if err := cst.Get(ctx, newCid1, &sra); err != nil {
+		return err
+	}
+	if err := cst.Get(ctx, newCid2, &srb); err != nil {
+		return err
+	}
+
+	if sra.Version != srb.Version {
+		fmt.Println("state root versions do not match: ", sra.Version, srb.Version)
+	}
+	if sra.Info != srb.Info {
+		fmt.Println("state root infos do not match: ", sra.Info, srb.Info)
+	}
+	if sra.Actors != srb.Actors {
+		fmt.Println("state root actors do not match: ", sra.Actors, srb.Actors)
+		if err := printActorDiff(ctx, cst, sra.Actors, srb.Actors); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func printActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, a, b cid.Cid) error {
+	// actor diff, a b are a hamt
+
+	diffs, err := hamt.Diff(ctx, cst, cst, a, b, hamt.UseTreeBitWidth(builtin.DefaultHamtBitwidth))
+	if err != nil {
+		return err
+	}
+
+	keyParser := func(k string) (interface{}, error) {
+		return address.NewFromBytes([]byte(k))
+	}
+
+	for _, d := range diffs {
+		switch d.Type {
+		case hamt.Add:
+			color.Green("+ Add %v", must.One(keyParser(d.Key)))
+		case hamt.Remove:
+			color.Red("- Remove %v", must.One(keyParser(d.Key)))
+		case hamt.Modify:
+			color.Yellow("~ Modify %v", must.One(keyParser(d.Key)))
+		}
+	}
+
+	return nil
+}
 
 func checkNv22Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 
