@@ -5,10 +5,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-hamt-ipld/v3"
+	"github.com/filecoin-project/go-state-types/big"
 	market13 "github.com/filecoin-project/go-state-types/builtin/v13/market"
 	"github.com/filecoin-project/lotus/lib/must"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/polydawn/refmt/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -373,7 +376,7 @@ func printActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv networ
 	if a.Nonce != b.Nonce {
 		fmt.Println("  Nonce: ", a.Nonce, b.Nonce)
 	}
-	if a.Balance != b.Balance {
+	if big.Cmp(a.Balance, b.Balance) == 0 {
 		fmt.Println("  Balance: ", a.Balance, b.Balance)
 	}
 
@@ -454,6 +457,43 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 	}
 	if ma.States != mb.States {
 		fmt.Println("  States: ", ma.States, mb.States)
+
+		// diff the AMTs
+		amtDiff, err := amt.Diff(ctx, cst, cst, ma.States, mb.States, amt.UseTreeBitWidth(market13.StatesAmtBitwidth))
+		if err != nil {
+			return err
+		}
+
+		for _, d := range amtDiff {
+			switch d.Type {
+			case amt.Add:
+				color.Green("  state + Add %v", d.Key)
+			case amt.Remove:
+				color.Red("  state - Remove %v", d.Key)
+			case amt.Modify:
+				color.Yellow("  state ~ Modify %v", d.Key)
+
+				var a, b market13.DealState
+				if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+					return err
+				}
+				if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+					return err
+				}
+
+				ja, err := json.Marshal(a)
+				if err != nil {
+					return err
+				}
+				jb, err := json.Marshal(b)
+				if err != nil {
+					return err
+				}
+
+				fmt.Println("   A: ", string(ja))
+				fmt.Println("   B: ", string(jb))
+			}
+		}
 	}
 	if ma.PendingProposals != mb.PendingProposals {
 		fmt.Println("  PendingProposals: ", ma.PendingProposals, mb.PendingProposals)
@@ -487,6 +527,34 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 	}
 	if ma.ProviderSectors != mb.ProviderSectors {
 		fmt.Println("  ProviderSectors: ", ma.ProviderSectors, mb.ProviderSectors)
+
+		// diff the HAMTs
+		hamtDiff, err := hamt.Diff(ctx, cst, cst, ma.ProviderSectors, mb.ProviderSectors, hamt.UseTreeBitWidth(market13.ProviderSectorsHamtBitwidth))
+		if err != nil {
+			return err
+		}
+
+		for _, d := range hamtDiff {
+			switch d.Type {
+			case hamt.Add:
+				color.Green("  ProviderSectors + Add %v", d.Key)
+			case hamt.Remove:
+				color.Red("  ProviderSectors - Remove %v", d.Key)
+			case hamt.Modify:
+				color.Yellow("  ProviderSectors ~ Modify %v", d.Key)
+
+				var a, b cbg.CborCid
+				if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+					return err
+				}
+				if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+					return err
+				}
+
+				fmt.Println("   A: ", b)
+				fmt.Println("   B: ", a)
+			}
+		}
 	}
 
 	return nil
