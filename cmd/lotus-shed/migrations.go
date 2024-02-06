@@ -230,7 +230,7 @@ var migrationsCmd = &cli.Command{
 
 			if newCid1 != newCid2 {
 				{
-					if err := printStateDiff(ctx, nv, newCid2, newCid1, bs); err != nil {
+					if err := printStateDiff(ctx, network.Version(nv), newCid2, newCid1, bs); err != nil {
 						fmt.Println("failed to print state diff: ", err)
 					}
 				}
