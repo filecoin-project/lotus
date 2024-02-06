@@ -535,13 +535,15 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 		}
 
 		for _, d := range hamtDiff {
+			spIDk := must.One(abi.ParseUIntKey(d.Key))
+
 			switch d.Type {
 			case hamt.Add:
-				color.Green("  ProviderSectors + Add %v", d.Key)
+				color.Green("  ProviderSectors + Add %v", spIDk)
 			case hamt.Remove:
-				color.Red("  ProviderSectors - Remove %v", d.Key)
+				color.Red("  ProviderSectors - Remove %v", spIDk)
 			case hamt.Modify:
-				color.Yellow("  ProviderSectors ~ Modify %v", d.Key)
+				color.Yellow("  ProviderSectors ~ Modify %v", spIDk)
 
 				var a, b cbg.CborCid
 				if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
@@ -551,8 +553,52 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 					return err
 				}
 
-				fmt.Println("   A: ", b)
-				fmt.Println("   B: ", a)
+				fmt.Println("   A: ", cid.Cid(b).String())
+				fmt.Println("   B: ", cid.Cid(a).String())
+
+				// diff the inner HAMTs
+				innerHamtDiff, err := hamt.Diff(ctx, cst, cst, cid.Cid(a), cid.Cid(b), hamt.UseTreeBitWidth(market13.ProviderSectorsHamtBitwidth))
+				if err != nil {
+					return err
+				}
+
+				for _, d := range innerHamtDiff {
+					sectorNumber := must.One(abi.ParseUIntKey(d.Key))
+
+					switch d.Type {
+					case hamt.Add:
+						var b market13.SectorDealIDs
+
+						if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+							return err
+						}
+
+						color.Green("  |-- ProviderSectors + Add %v", sectorNumber)
+						fmt.Printf("   B: %v\n", b)
+					case hamt.Remove:
+						var a market13.SectorDealIDs
+
+						if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+							return err
+						}
+
+						color.Red("  |-- ProviderSectors - Remove %v", sectorNumber)
+						fmt.Printf("   A: %v\n", a)
+					case hamt.Modify:
+						var a, b market13.SectorDealIDs
+
+						if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+							return err
+						}
+						if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+							return err
+						}
+
+						color.Yellow("  |-- ProviderSectors ~ Modify %v", sectorNumber)
+						fmt.Printf("   A: %v\n", a)
+						fmt.Printf("   B: %v\n", b)
+					}
+				}
 			}
 		}
 	}
