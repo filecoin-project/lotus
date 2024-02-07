@@ -2,15 +2,14 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 
-	"github.com/multiformats/go-varint"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
@@ -129,8 +128,9 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 		fm := &filter.EventFilterManager{
 			ChainStore: cs,
 			EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
+			// TODO:
+			// We don't need this address resolution anymore once https://github.com/filecoin-project/lotus/issues/11594 lands
 			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-				// we only want to match using f4 addresses
 				idAddr, err := address.NewIDAddress(uint64(emitter))
 				if err != nil {
 					return address.Undef, false
@@ -138,18 +138,11 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 
 				actor, err := sm.LoadActor(ctx, idAddr, ts)
 				if err != nil || actor.Address == nil {
-					return address.Undef, false
+					return idAddr, true
 				}
 
-				// if robust address is not f4 then we won't match against it so bail early
-				if actor.Address.Protocol() != address.Delegated {
-					return address.Undef, false
-				}
-				// we have an f4 address, make sure it's assigned by the EAM
-				// What happens when we introduce events for built-in Actor events here ?
-				if namespace, _, err := varint.FromUvarint(actor.Address.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
-					return address.Undef, false
-				}
+				fmt.Println("")
+
 				return *actor.Address, true
 			},
 
@@ -175,9 +168,10 @@ func ActorEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRe
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.ActorEvent, error) {
 		ee := &full.ActorEvent{
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
+			Chain:                cs,
 		}
 
-		if !cfg.EnableActorEventsAPI {
+		if !cfg.EnableActorEventsAPI || cfg.Events.DisableRealTimeFilterAPI {
 			// all Actor events functionality is disabled
 			return ee, nil
 		}

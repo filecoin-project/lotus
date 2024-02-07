@@ -1264,6 +1264,59 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID
 	return nil, xerrors.Errorf("wrong filter type")
 }
 
+func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
+	if fromBlock == nil || *fromBlock == "latest" || len(*fromBlock) == 0 {
+		minHeight = heaviest
+	} else if *fromBlock == "earliest" {
+		minHeight = 0
+	} else {
+		if !strings.HasPrefix(*fromBlock, "0x") {
+			return 0, 0, xerrors.Errorf("FromBlock is not a hex")
+		}
+		epoch, err := ethtypes.EthUint64FromHex(*fromBlock)
+		if err != nil {
+			return 0, 0, xerrors.Errorf("invalid epoch")
+		}
+		minHeight = abi.ChainEpoch(epoch)
+	}
+
+	if toBlock == nil || *toBlock == "latest" || len(*toBlock) == 0 {
+		// here latest means the latest at the time
+		maxHeight = -1
+	} else if *toBlock == "earliest" {
+		maxHeight = 0
+	} else {
+		if !strings.HasPrefix(*toBlock, "0x") {
+			return 0, 0, xerrors.Errorf("ToBlock is not a hex")
+		}
+		epoch, err := ethtypes.EthUint64FromHex(*toBlock)
+		if err != nil {
+			return 0, 0, xerrors.Errorf("invalid epoch")
+		}
+		maxHeight = abi.ChainEpoch(epoch)
+	}
+
+	// Validate height ranges are within limits set by node operator
+	if minHeight == -1 && maxHeight > 0 {
+		// Here the client is looking for events between the head and some future height
+		if maxHeight-heaviest > maxRange {
+			return 0, 0, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", maxRange)
+		}
+	} else if minHeight >= 0 && maxHeight == -1 {
+		// Here the client is looking for events between some time in the past and the current head
+		if heaviest-minHeight > maxRange {
+			return 0, 0, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", maxRange)
+		}
+	} else if minHeight >= 0 && maxHeight >= 0 {
+		if minHeight > maxHeight {
+			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+		} else if maxHeight-minHeight > maxRange {
+			return 0, 0, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", maxRange)
+		}
+	}
+	return minHeight, maxHeight, nil
+}
+
 func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*filter.EventFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
@@ -1280,64 +1333,11 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 
 		tipsetCid = filterSpec.BlockHash.ToCid()
 	} else {
-		if filterSpec.FromBlock == nil || *filterSpec.FromBlock == "latest" {
-			ts := e.Chain.GetHeaviestTipSet()
-			minHeight = ts.Height()
-		} else if *filterSpec.FromBlock == "earliest" {
-			minHeight = 0
-		} else if *filterSpec.FromBlock == "pending" {
-			return nil, api.ErrNotSupported
-		} else {
-			if !strings.HasPrefix(*filterSpec.FromBlock, "0x") {
-				return nil, xerrors.Errorf("FromBlock is not a hex")
-			}
-			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.FromBlock)
-			if err != nil {
-				return nil, xerrors.Errorf("invalid epoch")
-			}
-			minHeight = abi.ChainEpoch(epoch)
+		var err error
+		minHeight, maxHeight, err = parseBlockRange(e.Chain.GetHeaviestTipSet().Height(), filterSpec.FromBlock, filterSpec.ToBlock, e.MaxFilterHeightRange)
+		if err != nil {
+			return nil, err
 		}
-
-		if filterSpec.ToBlock == nil || *filterSpec.ToBlock == "latest" {
-			// here latest means the latest at the time
-			maxHeight = -1
-		} else if *filterSpec.ToBlock == "earliest" {
-			maxHeight = 0
-		} else if *filterSpec.ToBlock == "pending" {
-			return nil, api.ErrNotSupported
-		} else {
-			if !strings.HasPrefix(*filterSpec.ToBlock, "0x") {
-				return nil, xerrors.Errorf("ToBlock is not a hex")
-			}
-			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.ToBlock)
-			if err != nil {
-				return nil, xerrors.Errorf("invalid epoch")
-			}
-			maxHeight = abi.ChainEpoch(epoch)
-		}
-
-		// Validate height ranges are within limits set by node operator
-		if minHeight == -1 && maxHeight > 0 {
-			// Here the client is looking for events between the head and some future height
-			ts := e.Chain.GetHeaviestTipSet()
-			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", e.MaxFilterHeightRange)
-			}
-		} else if minHeight >= 0 && maxHeight == -1 {
-			// Here the client is looking for events between some time in the past and the current head
-			ts := e.Chain.GetHeaviestTipSet()
-			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", e.MaxFilterHeightRange)
-			}
-
-		} else if minHeight >= 0 && maxHeight >= 0 {
-			if minHeight > maxHeight {
-				return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
-			} else if maxHeight-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", e.MaxFilterHeightRange)
-			}
-		}
-
 	}
 
 	// Convert all addresses to filecoin f4 addresses
@@ -1362,7 +1362,7 @@ func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEvent
 	for k, v := range keys {
 		for _, vv := range v {
 			keysWithCodec[k] = append(keysWithCodec[k], types.ActorEventBlock{
-				Codec: uint64(multicodec.Raw),
+				Codec: uint64(multicodec.Raw), // FEVM smart contract events are always encoded with the `raw` Codec.
 				Value: vv,
 			})
 		}
