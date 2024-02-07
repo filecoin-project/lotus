@@ -327,8 +327,8 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	allocations, err = client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Len(t, allocations, 0)
-	eventsFromMessages := buildActorEventsFromMessages(t, ctx, miner.FullNode)
-	writeEventsToFile(t, ctx, miner.FullNode, eventsFromMessages)
+	eventsFromMessages := buildActorEventsFromMessages(ctx, t, miner.FullNode)
+	writeEventsToFile(ctx, t, miner.FullNode, eventsFromMessages)
 
 	/* --- Tests for the Actor events API --- */
 	pstring := func(s string) *string { return &s }
@@ -430,7 +430,7 @@ func matchEvents(t *testing.T, exp []types.ActorEvent, actual []types.ActorEvent
 	require.True(t, bytes.Equal(bz1, bz2))
 }
 
-func buildActorEventsFromMessages(t *testing.T, ctx context.Context, node v1api.FullNode) []types.ActorEvent {
+func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.FullNode) []types.ActorEvent {
 	actorEvents := make([]types.ActorEvent, 0)
 
 	head, err := node.ChainHead(ctx)
@@ -478,7 +478,7 @@ func buildActorEventsFromMessages(t *testing.T, ctx context.Context, node v1api.
 	return actorEvents
 }
 
-func writeEventsToFile(t *testing.T, ctx context.Context, node v1api.FullNode, events []types.ActorEvent) {
+func writeEventsToFile(ctx context.Context, t *testing.T, node v1api.FullNode, events []types.ActorEvent) {
 	file, err := os.Create("block.out")
 	require.NoError(t, err)
 	defer func() {
@@ -509,11 +509,11 @@ func writeEventsToFile(t *testing.T, ctx context.Context, node v1api.FullNode, e
 			if e.Key == "$type" && bytes.Equal(e.Value, claimKeyCbor) {
 				isClaim = true
 			} else if isClaim && e.Key == "id" {
-				nd, err := ipld.DecodeUsingPrototype([]byte(e.Value), dagcbor.Decode, bindnode.Prototype((*int64)(nil), nil))
+				nd, err := ipld.DecodeUsingPrototype(e.Value, dagcbor.Decode, bindnode.Prototype((*int64)(nil), nil))
 				require.NoError(t, err)
 				claimId = *bindnode.Unwrap(nd).(*int64)
 			} else if isClaim && e.Key == "provider" {
-				nd, err := ipld.DecodeUsingPrototype([]byte(e.Value), dagcbor.Decode, bindnode.Prototype((*int64)(nil), nil))
+				nd, err := ipld.DecodeUsingPrototype(e.Value, dagcbor.Decode, bindnode.Prototype((*int64)(nil), nil))
 				require.NoError(t, err)
 				providerId = *bindnode.Unwrap(nd).(*int64)
 			}
