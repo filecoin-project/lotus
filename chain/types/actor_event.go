@@ -29,7 +29,7 @@ type SubActorEventFilter struct {
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
 	// For now, this MUST be a Filecoin address.
-	Addresses []address.Address `json:"address"`
+	Addresses []address.Address `json:"addresses"`
 
 	// Matches events with the specified key/values, or all events if empty.
 	// If the value is an empty slice, the filter will match on the key only, accepting any value.
@@ -37,15 +37,15 @@ type ActorEventFilter struct {
 
 	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// Optional, default: "latest".
-	FromBlock *string `json:"fromBlock,omitempty"`
+	FromBlock string `json:"fromBlock,omitempty"`
 
 	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// Optional, default: "latest".
-	ToBlock *string `json:"toBlock,omitempty"`
+	ToBlock string `json:"toBlock,omitempty"`
 
 	// Restricts events returned to those emitted from messages contained in this tipset.
 	// If `TipSetKey` is present in the filter criteria, then neither `FromBlock` nor `ToBlock` are allowed.
-	TipSetKey *cid.Cid `json:"tipset_cid,omitempty"`
+	TipSetCid *cid.Cid `json:"tipsetCid,omitempty"`
 }
 
 type ActorEvent struct {
