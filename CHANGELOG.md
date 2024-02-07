@@ -4,6 +4,52 @@
 
 ## Improvements
 
+### Tracing API
+
+Replace the `CodeCid` field in the message trace (added in 1.23.4) with an `InvokedActor` field.
+
+**Before:**
+
+```javascript
+{
+    "Msg": {
+        "From": ...,
+        "To": ...,
+        ...
+        "CodeCid": ... // The actor's code CID.
+    }
+    "MsgRct": ...,
+    "GasCharges": [],
+    "Subcalls": [],
+}
+```
+
+**After:**
+
+```javascript
+{
+    "Msg": {
+        "From": ...,
+        "To": ...
+    }
+    "InvokedActor": {         // The invoked actor (ommitted if the actor wasn't invoked).
+        "Id": 1234,           // The ID of the actor.
+        "State": {            // The actor's state object (may change between network versions).
+           "Code": ...,       // The actor's code CID.
+           "Head": ...,       // The actor's state-root (when invoked).
+           "CallSeqNum": ..., // The actor's nonce.
+           "Balance": ...,    // The actor's balance (when invoked).
+           "Address": ...,    // Delegated address (FEVM only).
+        }
+    }
+    "MsgRct": ...,
+    "GasCharges": [],
+    "Subcalls": [],
+}
+```
+
+This means the trace now contains an accurate "snapshot" of the actor at the time of the call, information that may not be present in the final state-tree (e.g., due to reverts). This will hopefully improve the performance and accuracy of indexing services.
+
 # v1.25.2 / 2024-01-11 
 
 This is an optional but **highly recommended feature release** of Lotus, as it includes fixes for synchronizations issues that users have experienced. The feature release also introduces `Lotus-Provider` in its alpha testing phase, as well as the ability to call external PC2-binaries during the sealing process.
