@@ -44,7 +44,7 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid ([]cid.Cid) (slice)
-	if len(t.Cid) > cbg.MaxLength {
+	if len(t.Cid) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Cid was too long")
 	}
 
@@ -60,7 +60,7 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Data ([][]uint8) (slice)
-	if len(t.Data) > cbg.MaxLength {
+	if len(t.Data) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Data was too long")
 	}
 
@@ -68,7 +68,7 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Data {
-		if len(v) > cbg.ByteArrayMaxLen {
+		if len(v) > 2097152 {
 			return xerrors.Errorf("Byte array in field v was too long")
 		}
 
@@ -141,7 +141,7 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Cid: array too large (%d)", extra)
 	}
 
@@ -182,7 +182,7 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Data: array too large (%d)", extra)
 	}
 
@@ -208,7 +208,7 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.ByteArrayMaxLen {
+			if extra > 2097152 {
 				return fmt.Errorf("t.Data[i]: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
@@ -254,7 +254,7 @@ func (t *NetRpcResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Data ([]uint8) (slice)
-	if len(t.Data) > cbg.ByteArrayMaxLen {
+	if len(t.Data) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Data was too long")
 	}
 
@@ -326,7 +326,7 @@ func (t *NetRpcResp) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Data: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -364,7 +364,7 @@ func (t *NetRpcErr) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Msg (string) (string)
-	if len(t.Msg) > cbg.MaxLength {
+	if len(t.Msg) > 8192 {
 		return xerrors.Errorf("Value in field t.Msg was too long")
 	}
 
@@ -429,7 +429,7 @@ func (t *NetRpcErr) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Msg (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
