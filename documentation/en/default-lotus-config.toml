@@ -330,6 +330,9 @@
   # env var: LOTUS_FEVM_ENABLEETHRPC
   #EnableEthRPC = false
 
+  # EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).
+  # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
+  #
   # type: bool
   # env var: LOTUS_FEVM_ENABLEACTOREVENTSAPI
   #EnableActorEventsAPI = false
@@ -342,9 +345,8 @@
   #EthTxHashMappingLifetimeDays = 0
 
   [Fevm.Events]
-    # EnableEthRPC enables APIs that
     # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-    # The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+    # The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
     #
     # type: bool
     # env var: LOTUS_FEVM_EVENTS_DISABLEREALTIMEFILTERAPI
@@ -352,7 +354,7 @@
 
     # DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
     # that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-    # The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+    # The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
     #
     # type: bool
     # env var: LOTUS_FEVM_EVENTS_DISABLEHISTORICFILTERAPI
