@@ -598,7 +598,7 @@ type EthFilterSpec struct {
 	Topics EthTopicSpec `json:"topics"`
 
 	// Restricts event logs returned to those emitted from messages contained in this tipset.
-	// If BlockHash is present in in the filter criteria, then neither FromBlock nor ToBlock are allowed.
+	// If BlockHash is present in the filter criteria, then neither FromBlock nor ToBlock are allowed.
 	// Added in EIP-234
 	BlockHash *EthHash `json:"blockHash,omitempty"`
 }

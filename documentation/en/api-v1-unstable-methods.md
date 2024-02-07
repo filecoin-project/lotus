@@ -3400,19 +3400,19 @@ Inputs:
 ```json
 [
   {
-    "address": [
+    "addresses": [
       "f01234"
     ],
     "fields": {
       "abc": [
         {
           "codec": 81,
-          "value": "ZGF0YQ=="
+          "value": "ZGRhdGE="
         }
       ]
     },
-    "minEpoch": 2301220,
-    "maxEpoch": 2301220
+    "fromEpoch": "earliest",
+    "toEpoch": "latest"
   }
 ]
 ```
@@ -8837,19 +8837,19 @@ Inputs:
 [
   {
     "filter": {
-      "address": [
+      "addresses": [
         "f01234"
       ],
       "fields": {
         "abc": [
           {
             "codec": 81,
-            "value": "ZGF0YQ=="
+            "value": "ZGRhdGE="
           }
         ]
       },
-      "minEpoch": 2301220,
-      "maxEpoch": 2301220
+      "fromEpoch": "earliest",
+      "toEpoch": "latest"
     },
     "prefill": true
   }

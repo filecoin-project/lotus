@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -27,6 +29,7 @@ var (
 type ActorEvent struct {
 	EventFilterManager   *filter.EventFilterManager
 	MaxFilterHeightRange abi.ChainEpoch
+	Chain                *store.ChainStore
 }
 
 var _ ActorEventAPI = (*ActorEvent)(nil)
@@ -41,8 +44,13 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 		return nil, api.ErrNotSupported
 	}
 
+	params, err := a.parseFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a temporary filter
-	f, err := a.EventFilterManager.Install(ctx, filter.MinEpoch, filter.MaxEpoch, cid.Undef, filter.Addresses, filter.Fields, false)
+	f, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetCid, filter.Addresses, filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +60,58 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 	return evs, err
 }
 
+type filterParams struct {
+	MinHeight abi.ChainEpoch
+	MaxHeight abi.ChainEpoch
+	TipSetCid cid.Cid
+}
+
+func (a *ActorEvent) parseFilter(f *types.ActorEventFilter) (*filterParams, error) {
+	if f.TipSetCid != nil {
+		if len(f.FromEpoch) != 0 || len(f.ToEpoch) != 0 {
+			return nil, fmt.Errorf("cannot specify both TipSetCid and FromEpoch/ToEpoch")
+		}
+
+		return &filterParams{
+			MinHeight: 0,
+			MaxHeight: 0,
+			TipSetCid: *f.TipSetCid,
+		}, nil
+	}
+
+	from := f.FromEpoch
+	if len(from) != 0 && from != "latest" && from != "earliest" && !strings.HasPrefix(from, "0x") {
+		from = "0x" + from
+	}
+
+	to := f.ToEpoch
+	if len(to) != 0 && to != "latest" && to != "earliest" && !strings.HasPrefix(to, "0x") {
+		to = "0x" + to
+	}
+
+	min, max, err := parseBlockRange(a.Chain.GetHeaviestTipSet().Height(), &from, &to, a.MaxFilterHeightRange)
+	if err != nil {
+		return nil, err
+	}
+
+	return &filterParams{
+		MinHeight: min,
+		MaxHeight: max,
+		TipSetCid: cid.Undef,
+	}, nil
+}
+
 func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if a.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
-	fm, err := a.EventFilterManager.Install(ctx, f.Filter.MinEpoch, f.Filter.MaxEpoch, cid.Undef, f.Filter.Addresses, f.Filter.Fields, false)
+
+	params, err := a.parseFilter(&f.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	fm, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetCid, f.Filter.Addresses, f.Filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
