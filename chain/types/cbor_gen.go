@@ -2410,7 +2410,83 @@ func (t *GasTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufMessageTrace = []byte{137}
+var lengthBufActorTrace = []byte{130}
+
+func (t *ActorTrace) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufActorTrace); err != nil {
+		return err
+	}
+
+	// t.Id (abi.ActorID) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Id)); err != nil {
+		return err
+	}
+
+	// t.State (types.ActorV5) (struct)
+	if err := t.State.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *ActorTrace) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ActorTrace{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Id (abi.ActorID) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Id = abi.ActorID(extra)
+
+	}
+	// t.State (types.ActorV5) (struct)
+
+	{
+
+		if err := t.State.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.State: %w", err)
+		}
+
+	}
+	return nil
+}
+
+var lengthBufMessageTrace = []byte{136}
 
 func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -2474,13 +2550,6 @@ func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteBool(w, t.ReadOnly); err != nil {
 		return err
 	}
-
-	// t.CodeCid (cid.Cid) (struct)
-
-	if err := cbg.WriteCid(cw, t.CodeCid); err != nil {
-		return xerrors.Errorf("failed to write cid field t.CodeCid: %w", err)
-	}
-
 	return nil
 }
 
@@ -2503,7 +2572,7 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 9 {
+	if extra != 8 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2614,18 +2683,6 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		t.ReadOnly = true
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
-	}
-	// t.CodeCid (cid.Cid) (struct)
-
-	{
-
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.CodeCid: %w", err)
-		}
-
-		t.CodeCid = c
-
 	}
 	return nil
 }
@@ -2764,7 +2821,7 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufExecutionTrace = []byte{132}
+var lengthBufExecutionTrace = []byte{133}
 
 func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -2785,6 +2842,11 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 
 	// t.MsgRct (types.ReturnTrace) (struct)
 	if err := t.MsgRct.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.InvokedActor (types.ActorTrace) (struct)
+	if err := t.InvokedActor.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
@@ -2839,7 +2901,7 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2858,6 +2920,25 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 
 		if err := t.MsgRct.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.MsgRct: %w", err)
+		}
+
+	}
+	// t.InvokedActor (types.ActorTrace) (struct)
+
+	{
+
+		b, err := cr.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
+			t.InvokedActor = new(ActorTrace)
+			if err := t.InvokedActor.UnmarshalCBOR(cr); err != nil {
+				return xerrors.Errorf("unmarshaling t.InvokedActor pointer: %w", err)
+			}
 		}
 
 	}
