@@ -36,7 +36,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Channel (address.Address) (struct)
-	if len("Channel") > cbg.MaxLength {
+	if len("Channel") > 8192 {
 		return xerrors.Errorf("Value in field \"Channel\" was too long")
 	}
 
@@ -52,7 +52,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Vouchers ([]*paych.SignedVoucher) (slice)
-	if len("Vouchers") > cbg.MaxLength {
+	if len("Vouchers") > 8192 {
 		return xerrors.Errorf("Value in field \"Vouchers\" was too long")
 	}
 
@@ -63,7 +63,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Vouchers) > cbg.MaxLength {
+	if len(t.Vouchers) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Vouchers was too long")
 	}
 
@@ -78,7 +78,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.WaitSentinel (cid.Cid) (struct)
-	if len("WaitSentinel") > cbg.MaxLength {
+	if len("WaitSentinel") > 8192 {
 		return xerrors.Errorf("Value in field \"WaitSentinel\" was too long")
 	}
 
@@ -125,7 +125,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -152,7 +152,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > 8192 {
 				return fmt.Errorf("t.Vouchers: array too large (%d)", extra)
 			}
 
@@ -228,7 +228,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Size (abi.UnpaddedPieceSize) (uint64)
-	if len("Size") > cbg.MaxLength {
+	if len("Size") > 8192 {
 		return xerrors.Errorf("Value in field \"Size\" was too long")
 	}
 
@@ -244,7 +244,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Offset (abi.PaddedPieceSize) (uint64)
-	if len("Offset") > cbg.MaxLength {
+	if len("Offset") > 8192 {
 		return xerrors.Errorf("Value in field \"Offset\" was too long")
 	}
 
@@ -260,7 +260,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SectorID (abi.SectorNumber) (uint64)
-	if len("SectorID") > cbg.MaxLength {
+	if len("SectorID") > 8192 {
 		return xerrors.Errorf("Value in field \"SectorID\" was too long")
 	}
 
@@ -307,7 +307,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -383,7 +383,7 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Refs ([]api.SealedRef) (slice)
-	if len("Refs") > cbg.MaxLength {
+	if len("Refs") > 8192 {
 		return xerrors.Errorf("Value in field \"Refs\" was too long")
 	}
 
@@ -394,7 +394,7 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Refs) > cbg.MaxLength {
+	if len(t.Refs) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Refs was too long")
 	}
 
@@ -439,7 +439,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -456,7 +456,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > 8192 {
 				return fmt.Errorf("t.Refs: array too large (%d)", extra)
 			}
 
@@ -509,7 +509,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Epoch (abi.ChainEpoch) (int64)
-	if len("Epoch") > cbg.MaxLength {
+	if len("Epoch") > 8192 {
 		return xerrors.Errorf("Value in field \"Epoch\" was too long")
 	}
 
@@ -531,7 +531,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Value (abi.SealRandomness) (slice)
-	if len("Value") > cbg.MaxLength {
+	if len("Value") > 8192 {
 		return xerrors.Errorf("Value in field \"Value\" was too long")
 	}
 
@@ -542,7 +542,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Value) > cbg.ByteArrayMaxLen {
+	if len(t.Value) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Value was too long")
 	}
 
@@ -586,7 +586,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -599,10 +599,10 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Epoch":
 			{
 				maj, extra, err := cr.ReadHeader()
-				var extraI int64
 				if err != nil {
 					return err
 				}
+				var extraI int64
 				switch maj {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
@@ -629,7 +629,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.ByteArrayMaxLen {
+			if extra > 2097152 {
 				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
@@ -665,7 +665,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Epoch (abi.ChainEpoch) (int64)
-	if len("Epoch") > cbg.MaxLength {
+	if len("Epoch") > 8192 {
 		return xerrors.Errorf("Value in field \"Epoch\" was too long")
 	}
 
@@ -687,7 +687,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Value (abi.InteractiveSealRandomness) (slice)
-	if len("Value") > cbg.MaxLength {
+	if len("Value") > 8192 {
 		return xerrors.Errorf("Value in field \"Value\" was too long")
 	}
 
@@ -698,7 +698,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Value) > cbg.ByteArrayMaxLen {
+	if len(t.Value) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Value was too long")
 	}
 
@@ -742,7 +742,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -755,10 +755,10 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Epoch":
 			{
 				maj, extra, err := cr.ReadHeader()
-				var extraI int64
 				if err != nil {
 					return err
 				}
+				var extraI int64
 				switch maj {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
@@ -785,7 +785,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.ByteArrayMaxLen {
+			if extra > 2097152 {
 				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
@@ -821,7 +821,7 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Piece (abi.PieceInfo) (struct)
-	if len("Piece") > cbg.MaxLength {
+	if len("Piece") > 8192 {
 		return xerrors.Errorf("Value in field \"Piece\" was too long")
 	}
 
@@ -837,7 +837,7 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DealInfo (piece.PieceDealInfo) (struct)
-	if len("DealInfo") > cbg.MaxLength {
+	if len("DealInfo") > 8192 {
 		return xerrors.Errorf("Value in field \"DealInfo\" was too long")
 	}
 
@@ -883,7 +883,7 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
