@@ -38,6 +38,7 @@ func main() {
 		types.EventEntry{},
 		// Tracing
 		types.GasTrace{},
+		types.ActorTrace{},
 		types.MessageTrace{},
 		types.ReturnTrace{},
 		types.ExecutionTrace{},
