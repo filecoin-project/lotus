@@ -138,7 +138,7 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 
 				actor, err := sm.LoadActor(ctx, idAddr, ts)
 				if err != nil || actor.Address == nil {
-					return idAddr, false
+					return idAddr, true
 				}
 
 				fmt.Println("")
