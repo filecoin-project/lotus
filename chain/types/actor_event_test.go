@@ -99,16 +99,16 @@ func TestSubActorEventFilterJson(t *testing.T) {
 				},
 			},
 		},
-		FromBlock: &from,
-		ToBlock:   &to,
-		TipSetKey: &c,
+		FromEpoch: from,
+		ToEpoch:   to,
+		TipSetCid: &c,
 	}
 
 	bz, err := json.Marshal(f)
 	require.NoError(t, err)
 	require.NotEmpty(t, bz)
 
-	s := `{"address":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"dmFsdWUx"}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromBlock":"earliest","toBlock":"latest","tipset_cid":{"/":"bafkqacqbst64f6rp7taeduy"}}`
+	s := `{"addresses":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"dmFsdWUx"}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromEpoch":"earliest","toEpoch":"latest","tipsetCid":{"/":"bafkqacqbst64f6rp7taeduy"}}`
 	var out ActorEventFilter
 	err = json.Unmarshal([]byte(s), &out)
 	require.NoError(t, err)

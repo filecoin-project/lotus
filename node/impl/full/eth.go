@@ -1264,7 +1264,7 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID
 }
 
 func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
-	if fromBlock == nil || *fromBlock == "latest" {
+	if fromBlock == nil || *fromBlock == "latest" || len(*fromBlock) == 0 {
 		minHeight = heaviest
 	} else if *fromBlock == "earliest" {
 		minHeight = 0
@@ -1279,7 +1279,7 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 		minHeight = abi.ChainEpoch(epoch)
 	}
 
-	if toBlock == nil || *toBlock == "latest" {
+	if toBlock == nil || *toBlock == "latest" || len(*toBlock) == 0 {
 		// here latest means the latest at the time
 		maxHeight = -1
 	} else if *toBlock == "earliest" {

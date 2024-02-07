@@ -430,8 +430,8 @@ func init() {
 				},
 			},
 		},
-		FromBlock: pstring("2301220"),
-		ToBlock:   pstring("latest"),
+		FromEpoch: "earliest",
+		ToEpoch:   "latest",
 	})
 
 	addExample(&types.SubActorEventFilter{
@@ -445,8 +445,8 @@ func init() {
 					},
 				},
 			},
-			FromBlock: pstring("2301220"),
-			ToBlock:   pstring("latest"),
+			FromEpoch: "earliest",
+			ToEpoch:   "latest",
 		},
 		Prefill: true,
 	})

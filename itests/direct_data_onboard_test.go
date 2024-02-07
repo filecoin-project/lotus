@@ -328,14 +328,14 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, allocations, 0)
 	eventsFromMessages := buildActorEventsFromMessages(ctx, t, miner.FullNode)
+	fmt.Println("eventsFromMessages", eventsFromMessages)
 	writeEventsToFile(ctx, t, miner.FullNode, eventsFromMessages)
 
 	/* --- Tests for the Actor events API --- */
-	pstring := func(s string) *string { return &s }
 	// Match events from Get API and receipts
 	allEvtsFromGetAPI, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
-		FromBlock: pstring("earliest"),
-		ToBlock:   pstring("latest"),
+		FromEpoch: "earliest",
+		ToEpoch:   "latest",
 	})
 	require.NoError(t, err)
 	matchEvents(t, eventsFromMessages, getEventsArray(allEvtsFromGetAPI))
@@ -379,8 +379,8 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	// Match pre-filled events from subscription channel and events obtained from receipts
 	allEvtsCh, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
 		Filter: types.ActorEventFilter{
-			FromBlock: pstring("earliest"),
-			ToBlock:   pstring("latest"),
+			FromEpoch: "earliest",
+			ToEpoch:   "latest",
 		},
 		Prefill: true,
 	})
@@ -427,6 +427,8 @@ func matchEvents(t *testing.T, exp []types.ActorEvent, actual []types.ActorEvent
 	sort.Slice(bz2, func(i, j int) bool {
 		return bz2[i] <= bz2[j]
 	})
+	fmt.Println("bz1", string(bz1))
+	fmt.Println("bz2", string(bz2))
 	require.True(t, bytes.Equal(bz1, bz2))
 }
 

@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -49,7 +50,7 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 	}
 
 	// Create a temporary filter
-	f, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetKey, filter.Addresses, filter.Fields, false)
+	f, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetCid, filter.Addresses, filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
@@ -62,29 +63,41 @@ func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEven
 type filterParams struct {
 	MinHeight abi.ChainEpoch
 	MaxHeight abi.ChainEpoch
-	TipSetKey cid.Cid
+	TipSetCid cid.Cid
 }
 
 func (a *ActorEvent) parseFilter(f *types.ActorEventFilter) (*filterParams, error) {
-	if f.TipSetKey != nil {
-		if f.FromBlock != nil || f.ToBlock != nil {
-			return nil, fmt.Errorf("cannot specify both TipSetKey and FromBlock/ToBlock")
+	if f.TipSetCid != nil {
+		if len(f.FromEpoch) != 0 || len(f.ToEpoch) != 0 {
+			return nil, fmt.Errorf("cannot specify both TipSetCid and FromEpoch/ToEpoch")
 		}
 
 		return &filterParams{
 			MinHeight: 0,
 			MaxHeight: 0,
-			TipSetKey: *f.TipSetKey,
+			TipSetCid: *f.TipSetCid,
 		}, nil
 	}
-	min, max, err := parseBlockRange(a.Chain.GetHeaviestTipSet().Height(), f.FromBlock, f.ToBlock, a.MaxFilterHeightRange)
+
+	from := f.FromEpoch
+	if len(from) != 0 && from != "latest" && from != "earliest" && !strings.HasPrefix(from, "0x") {
+		from = "0x" + from
+	}
+
+	to := f.ToEpoch
+	if len(to) != 0 && to != "latest" && to != "earliest" && !strings.HasPrefix(to, "0x") {
+		to = "0x" + to
+	}
+
+	min, max, err := parseBlockRange(a.Chain.GetHeaviestTipSet().Height(), &from, &to, a.MaxFilterHeightRange)
 	if err != nil {
 		return nil, err
 	}
+
 	return &filterParams{
 		MinHeight: min,
 		MaxHeight: max,
-		TipSetKey: cid.Undef,
+		TipSetCid: cid.Undef,
 	}, nil
 }
 
@@ -98,7 +111,7 @@ func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActor
 		return nil, err
 	}
 
-	fm, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetKey, f.Filter.Addresses, f.Filter.Fields, false)
+	fm, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, params.TipSetCid, f.Filter.Addresses, f.Filter.Fields, false)
 	if err != nil {
 		return nil, err
 	}

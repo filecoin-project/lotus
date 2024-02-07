@@ -23,6 +23,8 @@ type SubActorEventFilter struct {
 
 	// If true, all available matching historical events will be written to the response stream
 	// before any new real-time events that match the given filter are written.
+	// If `Prefill` is true and `FromEpoch` is set to latest, the pre-fill operation will become a no-op.
+	// if `Prefill` is false and `FromEpoch` is set to earliest, historical events will still be sent to the client.
 	Prefill bool `json:"prefill"`
 }
 
@@ -37,14 +39,14 @@ type ActorEventFilter struct {
 
 	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// Optional, default: "latest".
-	FromBlock string `json:"fromBlock,omitempty"`
+	FromEpoch string `json:"fromEpoch,omitempty"`
 
 	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// Optional, default: "latest".
-	ToBlock string `json:"toBlock,omitempty"`
+	ToEpoch string `json:"toEpoch,omitempty"`
 
 	// Restricts events returned to those emitted from messages contained in this tipset.
-	// If `TipSetKey` is present in the filter criteria, then neither `FromBlock` nor `ToBlock` are allowed.
+	// If `TipSetCid` is present in the filter criteria, then neither `FromEpoch` nor `ToEpoch` are allowed.
 	TipSetCid *cid.Cid `json:"tipsetCid,omitempty"`
 }
 
