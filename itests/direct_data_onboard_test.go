@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -149,22 +151,28 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
 	)
 
-	evtChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
+	minerEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
 		Filter: types.ActorEventFilter{
-			MinEpoch: -1,
-			MaxEpoch: -1,
+			Addresses: []address.Address{miner.ActorAddr},
 		},
 		Prefill: true,
 	})
 	require.NoError(t, err)
 
-	events := make([]types.ActorEvent, 0)
-	go func() {
-		for e := range evtChan {
-			fmt.Printf("%s Got ActorEvent: %+v", time.Now().Format(time.StampMilli), e)
-			events = append(events, *e)
-		}
-	}()
+	// only consume and match sector-activated events
+	sectorActivatedCbor, err := ipld.Encode(basicnode.NewString("sector-activated"), dagcbor.Encode)
+	require.NoError(t, err)
+	sectorActivatedEvtsCh, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
+		Filter: types.ActorEventFilter{
+			Fields: map[string][]types.ActorEventBlock{
+				"$type": {
+					{Codec: 0x51, Value: sectorActivatedCbor},
+				},
+			},
+		},
+		Prefill: true,
+	})
+	require.NoError(t, err)
 
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
@@ -319,23 +327,107 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	allocations, err = client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Len(t, allocations, 0)
-
-	evts, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
-		MinEpoch: -1,
-		MaxEpoch: -1,
-	})
-	require.NoError(t, err)
-	for _, evt := range evts {
-		fmt.Printf("Got ActorEvent: %+v", evt)
-	}
-
 	eventsFromMessages := buildActorEventsFromMessages(t, ctx, miner.FullNode)
 	writeEventsToFile(t, ctx, miner.FullNode, eventsFromMessages)
-	for _, evt := range evts {
-		fmt.Printf("Got ActorEvent from messages: %+v", evt)
+
+	/* --- Tests for the Actor events API --- */
+	pstring := func(s string) *string { return &s }
+	// Match events from Get API and receipts
+	allEvtsFromGetAPI, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
+		FromBlock: pstring("earliest"),
+		ToBlock:   pstring("latest"),
+	})
+	require.NoError(t, err)
+	matchEvents(t, eventsFromMessages, getEventsArray(allEvtsFromGetAPI))
+
+	// match Miner Actor events from subscription channel and Miner Actor events obtained from receipts
+	var subMinerEvts []types.ActorEvent
+	for evt := range minerEvtsChan {
+		subMinerEvts = append(subMinerEvts, *evt)
+		if len(subMinerEvts) == 4 {
+			break
+		}
+	}
+	var allMinerEvts []types.ActorEvent
+	for _, evt := range eventsFromMessages {
+		if evt.EmitterAddr == miner.ActorAddr {
+			allMinerEvts = append(allMinerEvts, evt)
+		}
+	}
+	matchEvents(t, allMinerEvts, subMinerEvts)
+
+	// Match pre-filled events from sector activated channel and events obtained from receipts
+	var prefillSectorActivatedEvts []types.ActorEvent
+	for evt := range sectorActivatedEvtsCh {
+		prefillSectorActivatedEvts = append(prefillSectorActivatedEvts, *evt)
+		if len(prefillSectorActivatedEvts) == 2 {
+			break
+		}
+	}
+	require.Len(t, prefillSectorActivatedEvts, 2)
+	var sectorActivatedEvts []types.ActorEvent
+	for _, evt := range eventsFromMessages {
+		for _, entry := range evt.Entries {
+			if entry.Key == "$type" && bytes.Equal(entry.Value, sectorActivatedCbor) {
+				sectorActivatedEvts = append(sectorActivatedEvts, evt)
+				break
+			}
+		}
+	}
+	matchEvents(t, sectorActivatedEvts, prefillSectorActivatedEvts)
+
+	// Match pre-filled events from subscription channel and events obtained from receipts
+	allEvtsCh, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
+		Filter: types.ActorEventFilter{
+			FromBlock: pstring("earliest"),
+			ToBlock:   pstring("latest"),
+		},
+		Prefill: true,
+	})
+	require.NoError(t, err)
+	var prefillEvts []types.ActorEvent
+	for evt := range allEvtsCh {
+		prefillEvts = append(prefillEvts, *evt)
+		if len(prefillEvts) == len(eventsFromMessages) {
+			break
+		}
+	}
+	matchEvents(t, eventsFromMessages, prefillEvts)
+}
+
+func getEventsArray(ptr []*types.ActorEvent) []types.ActorEvent {
+	var evts []types.ActorEvent
+	for _, evt := range ptr {
+		evts = append(evts, *evt)
+	}
+	return evts
+}
+
+func matchEvents(t *testing.T, exp []types.ActorEvent, actual []types.ActorEvent) {
+	// height and tipset cid can mismatch because expected events are sourced using APIs that can put in different tipsets
+	for i := range exp {
+		exp[i].Height = 0
+		exp[i].TipSetKey = cid.Undef
+	}
+	for i := range actual {
+		actual[i].Height = 0
+		actual[i].TipSetKey = cid.Undef
 	}
 
-	// TODO: compare GetActorEvents & SubscribeActorEvents & eventsFromMessages for equality
+	require.Equal(t, len(exp), len(actual))
+	// marshal both arrays to json, sort by json, and compare
+	bz1, err := json.Marshal(exp)
+	require.NoError(t, err)
+	sort.Slice(bz1, func(i, j int) bool {
+		return bz1[i] <= bz1[j]
+	})
+
+	bz2, err := json.Marshal(actual)
+	require.NoError(t, err)
+	sort.Slice(bz2, func(i, j int) bool {
+		return bz2[i] <= bz2[j]
+	})
+	require.True(t, bytes.Equal(bz1, bz2))
 }
 
 func buildActorEventsFromMessages(t *testing.T, ctx context.Context, node v1api.FullNode) []types.ActorEvent {
@@ -374,7 +466,7 @@ func buildActorEventsFromMessages(t *testing.T, ctx context.Context, node v1api.
 							Entries:     evt.Entries,
 							EmitterAddr: addr,
 							Reverted:    false,
-							Height:      abi.ChainEpoch(height),
+							Height:      ts.Height(),
 							TipSetKey:   tsCid,
 							MsgCid:      m.Cid,
 						})
