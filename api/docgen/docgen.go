@@ -417,7 +417,7 @@ func init() {
 
 	addExample(&types.ActorEventBlock{
 		Codec: 0x51,
-		Value: []byte("data"),
+		Value: []byte("ddata"),
 	})
 
 	addExample(&types.ActorEventFilter{
@@ -426,12 +426,12 @@ func init() {
 			"abc": {
 				{
 					Codec: 0x51,
-					Value: []byte("data"),
+					Value: []byte("ddata"),
 				},
 			},
 		},
-		MinEpoch: 2301220,
-		MaxEpoch: 2301220,
+		FromEpoch: "earliest",
+		ToEpoch:   "latest",
 	})
 
 	addExample(&types.SubActorEventFilter{
@@ -441,12 +441,12 @@ func init() {
 				"abc": {
 					{
 						Codec: 0x51,
-						Value: []byte("data"),
+						Value: []byte("ddata"),
 					},
 				},
 			},
-			MinEpoch: 2301220,
-			MaxEpoch: 2301220,
+			FromEpoch: "earliest",
+			ToEpoch:   "latest",
 		},
 		Prefill: true,
 	})

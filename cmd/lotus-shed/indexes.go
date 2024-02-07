@@ -9,13 +9,11 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-varint"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -109,6 +107,7 @@ var backfillEventsCmd = &cli.Command{
 
 		addressLookups := make(map[abi.ActorID]address.Address)
 
+		// TODO: We don't need this address resolution anymore once https://github.com/filecoin-project/lotus/issues/11594 lands
 		resolveFn := func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 			// we only want to match using f4 addresses
 			idAddr, err := address.NewIDAddress(uint64(emitter))
@@ -118,18 +117,9 @@ var backfillEventsCmd = &cli.Command{
 
 			actor, err := api.StateGetActor(ctx, idAddr, ts.Key())
 			if err != nil || actor.Address == nil {
-				return address.Undef, false
+				return idAddr, true
 			}
 
-			// if robust address is not f4 then we won't match against it so bail early
-			if actor.Address.Protocol() != address.Delegated {
-				return address.Undef, false
-			}
-
-			// we have an f4 address, make sure it's assigned by the EAM
-			if namespace, _, err := varint.FromUvarint(actor.Address.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
-				return address.Undef, false
-			}
 			return *actor.Address, true
 		}
 

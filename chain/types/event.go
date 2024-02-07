@@ -28,7 +28,7 @@ type EventEntry struct {
 	// The event value's codec
 	Codec uint64
 
-	// The event value
+	// The event value. It is encoded using the codec specified above
 	Value []byte
 }
 

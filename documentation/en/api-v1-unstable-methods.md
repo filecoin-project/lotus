@@ -3392,7 +3392,8 @@ Response:
 
 
 ### GetActorEvents
-Actor events
+GetActorEvents returns all FVM and built-in Actor events that match the given filter.
+This is a request/response API.
 
 
 Perms: read
@@ -3401,19 +3402,19 @@ Inputs:
 ```json
 [
   {
-    "address": [
+    "addresses": [
       "f01234"
     ],
     "fields": {
       "abc": [
         {
           "codec": 81,
-          "value": "ZGF0YQ=="
+          "value": "ZGRhdGE="
         }
       ]
     },
-    "minEpoch": 2301220,
-    "maxEpoch": 2301220
+    "fromEpoch": "earliest",
+    "toEpoch": "latest"
   }
 ]
 ```
@@ -8779,6 +8780,12 @@ Response:
 
 
 ### SubscribeActorEvents
+SubscribeActorEvents returns a long-lived stream of all FVM and built-in Actor events that match the given filter.
+Events that match the given filter are written to the stream in real-time as they are emitted from the FVM.
+The response stream is closed when the client disconnects or if there is an error while writing an event to the stream.
+This API also allows clients to read all historical events matching the given filter before
+any real-time events are written to the response stream.
+NOTE: THIS API IS ONLY SUPPORTED OVER WEBSOCKETS FOR NOW
 
 
 Perms: read
@@ -8788,19 +8795,19 @@ Inputs:
 [
   {
     "filter": {
-      "address": [
+      "addresses": [
         "f01234"
       ],
       "fields": {
         "abc": [
           {
             "codec": 81,
-            "value": "ZGF0YQ=="
+            "value": "ZGRhdGE="
           }
         ]
       },
-      "minEpoch": 2301220,
-      "maxEpoch": 2301220
+      "fromEpoch": "earliest",
+      "toEpoch": "latest"
     },
     "prefill": true
   }
