@@ -35,7 +35,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DealID (abi.DealID) (uint64)
-	if len("DealID") > cbg.MaxLength {
+	if len("DealID") > 8192 {
 		return xerrors.Errorf("Value in field \"DealID\" was too long")
 	}
 
@@ -51,7 +51,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.PublishCid (cid.Cid) (struct)
-	if len("PublishCid") > cbg.MaxLength {
+	if len("PublishCid") > 8192 {
 		return xerrors.Errorf("Value in field \"PublishCid\" was too long")
 	}
 
@@ -73,7 +73,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DealProposal (market.DealProposal) (struct)
-	if len("DealProposal") > cbg.MaxLength {
+	if len("DealProposal") > 8192 {
 		return xerrors.Errorf("Value in field \"DealProposal\" was too long")
 	}
 
@@ -89,7 +89,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DealSchedule (piece.DealSchedule) (struct)
-	if len("DealSchedule") > cbg.MaxLength {
+	if len("DealSchedule") > 8192 {
 		return xerrors.Errorf("Value in field \"DealSchedule\" was too long")
 	}
 
@@ -105,7 +105,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.KeepUnsealed (bool) (bool)
-	if len("KeepUnsealed") > cbg.MaxLength {
+	if len("KeepUnsealed") > 8192 {
 		return xerrors.Errorf("Value in field \"KeepUnsealed\" was too long")
 	}
 
@@ -121,7 +121,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.PieceActivationManifest (miner.PieceActivationManifest) (struct)
-	if len("PieceActivationManifest") > cbg.MaxLength {
+	if len("PieceActivationManifest") > 8192 {
 		return xerrors.Errorf("Value in field \"PieceActivationManifest\" was too long")
 	}
 
@@ -167,7 +167,7 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -304,7 +304,7 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.EndEpoch (abi.ChainEpoch) (int64)
-	if len("EndEpoch") > cbg.MaxLength {
+	if len("EndEpoch") > 8192 {
 		return xerrors.Errorf("Value in field \"EndEpoch\" was too long")
 	}
 
@@ -326,7 +326,7 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.StartEpoch (abi.ChainEpoch) (int64)
-	if len("StartEpoch") > cbg.MaxLength {
+	if len("StartEpoch") > 8192 {
 		return xerrors.Errorf("Value in field \"StartEpoch\" was too long")
 	}
 
@@ -346,6 +346,7 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -378,7 +379,7 @@ func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -391,10 +392,10 @@ func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
 		case "EndEpoch":
 			{
 				maj, extra, err := cr.ReadHeader()
-				var extraI int64
 				if err != nil {
 					return err
 				}
+				var extraI int64
 				switch maj {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
@@ -417,10 +418,10 @@ func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
 		case "StartEpoch":
 			{
 				maj, extra, err := cr.ReadHeader()
-				var extraI int64
 				if err != nil {
 					return err
 				}
+				var extraI int64
 				switch maj {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)

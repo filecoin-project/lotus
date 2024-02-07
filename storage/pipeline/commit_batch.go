@@ -382,15 +382,14 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 	needFunds := collateral
 
-	arp, err := b.aggregateProofType(nv)
-	if err != nil {
-		res.Error = err.Error()
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate proof type: %w", err)
-	}
-	params.AggregateProofType = arp
-
 	if aggregate {
 		params.SectorProofs = nil // can't be set when aggregating
+		arp, err := b.aggregateProofType(nv)
+		if err != nil {
+			res.Error = err.Error()
+			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate proof type: %w", err)
+		}
+		params.AggregateProofType = &arp
 
 		mid, err := address.IDFromAddress(b.maddr)
 		if err != nil {
