@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"os"
 	"strconv"
 
@@ -39,6 +41,176 @@ var actorCmd = &cli.Command{
 		actorGetMethodNum,
 		actorProposeChangeBeneficiary,
 		actorConfirmChangeBeneficiary,
+		actorSetAddrsCmd,
+		actorSetPeeridCmd,
+	},
+}
+
+var actorSetAddrsCmd = &cli.Command{
+	Name:      "set-p2p-addrs",
+	Usage:     "set addresses that your miner can be publicly dialed on",
+	ArgsUsage: "<multiaddrs>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "actor",
+			Usage:    "specify the address of miner actor",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to send the message from",
+		},
+		&cli.BoolFlag{
+			Name:  "unset",
+			Usage: "unset address",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		args := cctx.Args().Slice()
+		unset := cctx.Bool("unset")
+		if len(args) == 0 && !unset {
+			return cli.ShowSubcommandHelp(cctx)
+		}
+		if len(args) > 0 && unset {
+			return fmt.Errorf("unset can only be used with no arguments")
+		}
+
+		var maddr address.Address
+		maddr, err := address.NewFromString(cctx.String("actor"))
+		if err != nil {
+			return fmt.Errorf("parsing address %s: %w", cctx.String("actor"), err)
+		}
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		var addrs []abi.Multiaddrs
+		for _, a := range args {
+			maddr, err := ma.NewMultiaddr(a)
+			if err != nil {
+				return fmt.Errorf("failed to parse %q as a multiaddr: %w", a, err)
+			}
+
+			maddrNop2p, strip := ma.SplitFunc(maddr, func(c ma.Component) bool {
+				return c.Protocol().Code == ma.P_P2P
+			})
+
+			if strip != nil {
+				fmt.Println("Stripping peerid ", strip, " from ", maddr)
+			}
+			addrs = append(addrs, maddrNop2p.Bytes())
+		}
+
+		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fromAddr := minfo.Worker
+		if from := cctx.String("from"); from != "" {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		fromId, err := api.StateLookupID(ctx, fromAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if !isController(minfo, fromId) {
+			return xerrors.Errorf("sender isn't a controller of miner: %s", fromId)
+		}
+
+		params, err := actors.SerializeParams(&miner.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		if err != nil {
+			return err
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			To:     maddr,
+			From:   fromId,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMiner.ChangeMultiaddrs,
+			Params: params,
+		}, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Requested multiaddrs change in message %s\n", smsg.Cid())
+		return nil
+
+	},
+}
+
+var actorSetPeeridCmd = &cli.Command{
+	Name:      "set-peer-id",
+	Usage:     "set the peer id of your miner",
+	ArgsUsage: "<peer id>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "actor",
+			Usage:    "specify the address of miner actor",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := address.NewFromString(cctx.String("actor"))
+		if err != nil {
+			return fmt.Errorf("parsing address %s: %w", cctx.String("actor"), err)
+		}
+
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		pid, err := peer.Decode(cctx.Args().Get(0))
+		if err != nil {
+			return fmt.Errorf("failed to parse input as a peerId: %w", err)
+		}
+
+		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		params, err := actors.SerializeParams(&miner.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		if err != nil {
+			return err
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			To:     maddr,
+			From:   minfo.Worker,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMiner.ChangePeerID,
+			Params: params,
+		}, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Requested peerid change in message %s\n", smsg.Cid())
+		return nil
+
 	},
 }
 
@@ -1086,4 +1258,18 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 
 		return nil
 	},
+}
+
+func isController(mi api.MinerInfo, addr address.Address) bool {
+	if addr == mi.Owner || addr == mi.Worker {
+		return true
+	}
+
+	for _, ca := range mi.ControlAddresses {
+		if addr == ca {
+			return true
+		}
+	}
+
+	return false
 }
