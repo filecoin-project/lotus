@@ -70,6 +70,15 @@ func (s *SealPoller) RunPoller(ctx context.Context) {
 	}
 }
 
+/*
+NOTE: TaskIDs are ONLY set while the tasks are executing or waiting to execute.
+      This means that there are ~4 states each task can be in:
+* Not run, and dependencies not solved (dependencies are 'After' fields of previous stages), task is null, After is false
+* Not run, and dependencies solved, task is null, After is false
+* Running or queued, task is set, After is false
+* Finished, task is null, After is true
+*/
+
 type pollTask struct {
 	SpID         int64 `db:"sp_id"`
 	SectorNumber int64 `db:"sector_number"`
@@ -158,7 +167,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 }
 
 func (s *SealPoller) pollStartSDR(ctx context.Context, task pollTask) {
-	if task.TaskSDR == nil && s.pollers[pollerSDR].IsSet() {
+	if !task.AfterSDR && task.TaskSDR == nil && s.pollers[pollerSDR].IsSet() {
 		s.pollers[pollerSDR].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_sdr = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_sdr is null`, id, task.SpID, task.SectorNumber)
 			if err != nil {
@@ -174,7 +183,10 @@ func (s *SealPoller) pollStartSDR(ctx context.Context, task pollTask) {
 }
 
 func (s *SealPoller) pollStartSDRTrees(ctx context.Context, task pollTask) {
-	if task.TaskTreeD == nil && task.TaskTreeC == nil && task.TaskTreeR == nil && s.pollers[pollerTrees].IsSet() && task.AfterSDR {
+	if !task.AfterTreeD && !task.AfterTreeC && !task.AfterTreeR &&
+		task.TaskTreeD == nil && task.TaskTreeC == nil && task.TaskTreeR == nil &&
+		s.pollers[pollerTrees].IsSet() && task.AfterSDR {
+
 		s.pollers[pollerTrees].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_tree_d = $1, task_id_tree_c = $1, task_id_tree_r = $1
                             WHERE sp_id = $2 AND sector_number = $3 and after_sdr = true and task_id_tree_d is null and task_id_tree_c is null and task_id_tree_r is null`, id, task.SpID, task.SectorNumber)
@@ -191,7 +203,10 @@ func (s *SealPoller) pollStartSDRTrees(ctx context.Context, task pollTask) {
 }
 
 func (s *SealPoller) pollStartPoRep(ctx context.Context, task pollTask, ts *types.TipSet) {
-	if s.pollers[pollerPoRep].IsSet() && task.AfterPrecommitMsgSuccess && task.SeedEpoch != nil && task.TaskPoRep == nil && ts.Height() >= abi.ChainEpoch(*task.SeedEpoch+seedEpochConfidence) {
+	if s.pollers[pollerPoRep].IsSet() && task.AfterPrecommitMsgSuccess && task.SeedEpoch != nil &&
+		task.TaskPoRep == nil && !task.AfterPoRep &&
+		ts.Height() >= abi.ChainEpoch(*task.SeedEpoch+seedEpochConfidence) {
+
 		s.pollers[pollerPoRep].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_porep = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_porep is null`, id, task.SpID, task.SectorNumber)
 			if err != nil {
@@ -207,7 +222,7 @@ func (s *SealPoller) pollStartPoRep(ctx context.Context, task pollTask, ts *type
 }
 
 func (s *SealPoller) pollStartFinalize(ctx context.Context, task pollTask, ts *types.TipSet) {
-	if s.pollers[pollerFinalize].IsSet() && task.AfterPoRep && task.TaskFinalize == nil {
+	if s.pollers[pollerFinalize].IsSet() && task.AfterPoRep && !task.AfterFinalize && task.TaskFinalize == nil {
 		s.pollers[pollerFinalize].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_finalize = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_finalize is null`, id, task.SpID, task.SectorNumber)
 			if err != nil {
@@ -223,7 +238,7 @@ func (s *SealPoller) pollStartFinalize(ctx context.Context, task pollTask, ts *t
 }
 
 func (s *SealPoller) pollStartMoveStorage(ctx context.Context, task pollTask) {
-	if s.pollers[pollerMoveStorage].IsSet() && task.AfterFinalize && task.TaskMoveStorage == nil {
+	if s.pollers[pollerMoveStorage].IsSet() && task.AfterFinalize && !task.AfterMoveStorage && task.TaskMoveStorage == nil {
 		s.pollers[pollerMoveStorage].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_move_storage = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_move_storage is null`, id, task.SpID, task.SectorNumber)
 			if err != nil {

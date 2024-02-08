@@ -75,6 +75,21 @@ create table sectors_sdr_pipeline (
     failed_reason varchar(20) not null default '',
     failed_reason_msg text not null default '',
 
+    -- foreign key
+    -- note: those foreign keys are a part of the retry mechanism. If a task
+    -- fails due to retry limit, it will drop the assigned task_id, and the
+    -- poller will reassign the task to a new node if it deems the task is
+    -- still valid to be retried.
+    foreign key (task_id_sdr) references harmony_task (id) on delete set null,
+    foreign key (task_id_tree_d) references harmony_task (id) on delete set null,
+    foreign key (task_id_tree_c) references harmony_task (id) on delete set null,
+    foreign key (task_id_tree_r) references harmony_task (id) on delete set null,
+    foreign key (task_id_precommit_msg) references harmony_task (id) on delete set null,
+    foreign key (task_id_porep) references harmony_task (id) on delete set null,
+    foreign key (task_id_finalize) references harmony_task (id) on delete set null,
+    foreign key (task_id_move_storage) references harmony_task (id) on delete set null,
+    foreign key (task_id_commit_msg) references harmony_task (id) on delete set null,
+
     -- constraints
     primary key (sp_id, sector_number)
 );

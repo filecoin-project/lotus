@@ -29,14 +29,10 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 retryAddTask:
 	_, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
-		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
-			VALUES ($1, $2, CURRENT_TIMESTAMP) `, h.Name, h.TaskEngine.ownerID)
+		err := tx.QueryRow(`INSERT INTO harmony_task (name, added_by, posted_time) 
+          VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id`, h.Name, h.TaskEngine.ownerID).Scan(&tID)
 		if err != nil {
 			return false, fmt.Errorf("could not insert into harmonyTask: %w", err)
-		}
-		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
-		if err != nil {
-			return false, fmt.Errorf("Could not select ID: %w", err)
 		}
 		return extra(tID, tx)
 	})
