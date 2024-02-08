@@ -32,7 +32,7 @@ func TestActorEventJson(t *testing.T) {
 		EmitterAddr: randomF4Addr(t, rng),
 		Reverted:    false,
 		Height:      1001,
-		TipSetKey:   randomCid(t, rng),
+		TipSetCid:   randomCid(t, rng),
 		MsgCid:      randomCid(t, rng),
 	}
 
