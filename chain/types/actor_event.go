@@ -31,7 +31,7 @@ type SubActorEventFilter struct {
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
 	// For now, this MUST be a Filecoin address.
-	Addresses []address.Address `json:"addresses"`
+	Addresses []address.Address `json:"addresses,omitempty"`
 
 	// Matches events with the specified key/values, or all events if empty.
 	// If the value is an empty slice, the filter will match on the key only, accepting any value.
@@ -51,10 +51,22 @@ type ActorEventFilter struct {
 }
 
 type ActorEvent struct {
-	Entries     []EventEntry
-	EmitterAddr address.Address // f4 address of emitter
-	Reverted    bool
-	Height      abi.ChainEpoch
-	TipSetKey   cid.Cid // tipset that contained the message
-	MsgCid      cid.Cid // cid of message that produced event
+	// Event entries in log form.
+	Entries []EventEntry `json:"entries"`
+
+	// Filecoin address of the actor that emitted this event.
+	EmitterAddr address.Address `json:"emitter"`
+
+	// Reverted is set to true if the message that produced this event was reverted because of a network re-org
+	// in that case, the event should be considered as reverted as well.
+	Reverted bool `json:"reverted"`
+
+	// Height of the tipset that contained the message that produced this event.
+	Height abi.ChainEpoch `json:"height"`
+
+	// CID of the tipset that contained the message that produced this event.
+	TipSetCid cid.Cid `json:"tipsetCid"`
+
+	// CID of message that produced this event.
+	MsgCid cid.Cid `json:"msgCid"`
 }

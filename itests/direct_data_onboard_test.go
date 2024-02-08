@@ -527,7 +527,7 @@ func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.
 						EmitterAddr: addr,
 						Reverted:    false,
 						Height:      ts.Height(),
-						TipSetKey:   tsCid,
+						TipSetCid:   tsCid,
 						MsgCid:      m.Cid,
 					})
 				}
