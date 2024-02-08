@@ -46,7 +46,7 @@ func TestActorEventJson(t *testing.T) {
 	require.Equal(t, in, out)
 
 	s := `
-{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"dmFsdWUx"},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipset_cid":{"/":"bafkqacx3dag26sfht3qlcdi"},"msg_cid":{"/":"bafkqacrziziykd6uuf4islq"}}
+{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"dmFsdWUx"},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetCid":{"/":"bafkqacx3dag26sfht3qlcdi"},"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}
 `
 	var out2 ActorEvent
 	err = json.Unmarshal([]byte(s), &out2)

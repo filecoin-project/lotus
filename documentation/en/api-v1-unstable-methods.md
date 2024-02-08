@@ -3434,10 +3434,10 @@ Response:
     "emitter": "f01234",
     "reverted": true,
     "height": 10101,
-    "tipset_cid": {
+    "tipsetCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "msg_cid": {
+    "msgCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   }
@@ -8827,10 +8827,10 @@ Response:
   "emitter": "f01234",
   "reverted": true,
   "height": 10101,
-  "tipset_cid": {
+  "tipsetCid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "msg_cid": {
+  "msgCid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
 }
