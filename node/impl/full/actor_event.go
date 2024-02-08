@@ -175,7 +175,7 @@ func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActor
 					EmitterAddr: ce.EmitterAddr,
 					Reverted:    ce.Reverted,
 					Height:      ce.Height,
-					TipSetKey:   c,
+					TipSetCid:   c,
 					MsgCid:      ce.MsgCid,
 				}
 
@@ -215,7 +215,7 @@ func getCollected(ctx context.Context, f *filter.EventFilter) ([]*types.ActorEve
 			EmitterAddr: e.EmitterAddr,
 			Reverted:    e.Reverted,
 			Height:      e.Height,
-			TipSetKey:   c,
+			TipSetCid:   c,
 			MsgCid:      e.MsgCid,
 		}
 

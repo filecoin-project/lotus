@@ -31,11 +31,11 @@ type SubActorEventFilter struct {
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
 	// For now, this MUST be a Filecoin address.
-	Addresses []address.Address `json:"addresses"`
+	Addresses []address.Address `json:"addresses,omitempty"`
 
 	// Matches events with the specified key/values, or all events if empty.
 	// If the value is an empty slice, the filter will match on the key only, accepting any value.
-	Fields map[string][]ActorEventBlock `json:"fields"`
+	Fields map[string][]ActorEventBlock `json:"fields,omitempty"`
 
 	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// Optional, default: "latest".
@@ -65,8 +65,8 @@ type ActorEvent struct {
 	Height abi.ChainEpoch `json:"height"`
 
 	// CID of the tipset that contained the message that produced this event.
-	TipSetKey cid.Cid `json:"tipset_cid"`
+	TipSetCid cid.Cid `json:"tipsetCid"`
 
 	// CID of message that produced this event.
-	MsgCid cid.Cid `json:"msg_cid"`
+	MsgCid cid.Cid `json:"msgCid"`
 }
