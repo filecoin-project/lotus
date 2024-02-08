@@ -16,7 +16,7 @@ import (
 )
 
 func (s *SealPoller) pollStartPrecommitMsg(ctx context.Context, task pollTask) {
-	if task.TaskPrecommitMsg == nil && task.AfterTreeR && task.AfterTreeD {
+	if task.TaskPrecommitMsg == nil && !task.AfterPrecommitMsg && task.AfterTreeR && task.AfterTreeD {
 		s.pollers[pollerPrecommitMsg].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_precommit_msg = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_precommit_msg is null and after_tree_r = true and after_tree_d = true`, id, task.SpID, task.SectorNumber)
 			if err != nil {
@@ -44,7 +44,7 @@ type dbExecResult struct {
 }
 
 func (s *SealPoller) pollPrecommitMsgLanded(ctx context.Context, task pollTask) error {
-	if task.TaskPrecommitMsg != nil && !task.AfterPrecommitMsgSuccess {
+	if task.AfterPrecommitMsg && !task.AfterPrecommitMsgSuccess {
 		var execResult []dbExecResult
 
 		err := s.db.Select(ctx, &execResult, `SELECT spipeline.precommit_msg_cid, spipeline.commit_msg_cid, executed_tsk_cid, executed_tsk_epoch, executed_msg_cid, executed_rcpt_exitcode, executed_rcpt_gas_used

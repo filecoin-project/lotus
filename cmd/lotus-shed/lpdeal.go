@@ -504,6 +504,8 @@ var lpBoostProxyCmd = &cli.Command{
 			pi := pis[0]
 			pis = pis[1:]
 
+			pieceInfos[pieceCid] = pis
+
 			pieceInfoLk.Unlock()
 
 			start := time.Now()
