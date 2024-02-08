@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"github.com/BurntSushi/toml"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/gbrlsnchs/jwt/v3"
@@ -85,9 +86,9 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 			SealProof:            0,
 			Activation:           0,
 			Expiration:           0,
-			DealWeight:           abi.DealWeight{},
-			VerifiedDealWeight:   abi.DealWeight{},
-			InitialPledge:        abi.TokenAmount{},
+			DealWeight:           big.Zero(),
+			VerifiedDealWeight:   big.Zero(),
+			InitialPledge:        big.Zero(),
 			OnTime:               0,
 			Early:                0,
 		}, nil
@@ -120,9 +121,9 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		SealProof:          0,
 		Activation:         0,
 		Expiration:         0,
-		DealWeight:         abi.DealWeight{},
-		VerifiedDealWeight: abi.DealWeight{},
-		InitialPledge:      abi.TokenAmount{},
+		DealWeight:         big.Zero(),
+		VerifiedDealWeight: big.Zero(),
+		InitialPledge:      big.Zero(),
 		OnTime:             0,
 		Early:              0,
 	}, nil
