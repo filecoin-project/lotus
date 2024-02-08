@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
-	"os"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -125,7 +122,7 @@ func TestOnboardRawPiece(t *testing.T) {
 	require.Equal(t, dc.PieceCID, *si.CommD)
 }
 
-func TestOnboardRawPieceVerified(t *testing.T) {
+func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	var (
@@ -151,6 +148,9 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
 	)
 
+	/* --- Setup subscription channels for ActorEvents --- */
+
+	// subscribe only to miner's actor events
 	minerEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
 		Filter: types.ActorEventFilter{
 			Addresses: []address.Address{miner.ActorAddr},
@@ -159,9 +159,8 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// only consume and match sector-activated events
-	sectorActivatedCbor, err := ipld.Encode(basicnode.NewString("sector-activated"), dagcbor.Encode)
-	require.NoError(t, err)
+	// subscribe only to sector-activated events
+	sectorActivatedCbor := stringToEventKey(t, "sector-activated")
 	sectorActivatedEvtsCh, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
 		Filter: types.ActorEventFilter{
 			Fields: map[string][]types.ActorEventBlock{
@@ -174,7 +173,12 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	/* --- Start mining --- */
+
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
+
+	minerId, err := address.IDFromAddress(miner.ActorAddr)
+	require.NoError(t, err)
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
 	sl, err := miner.SectorsListNonGenesis(ctx)
@@ -188,12 +192,16 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 
 	client.WaitForSectorActive(ctx, t, snum, maddr)
 
+	/* --- Prepare piece for onboarding --- */
+
 	pieceSize := abi.PaddedPieceSize(2048).Unpadded()
 	pieceData := make([]byte, pieceSize)
 	_, _ = rand.Read(pieceData)
 
 	dc, err := miner.ComputeDataCid(ctx, pieceSize, bytes.NewReader(pieceData))
 	require.NoError(t, err)
+
+	/* --- Setup verified registry and client allocator --- */
 
 	// get VRH
 	vrh, err := client.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
@@ -237,8 +245,7 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
-	minerId, err := address.IDFromAddress(miner.ActorAddr)
-	require.NoError(t, err)
+	/* --- Allocate datacap for the piece by the verified client --- */
 
 	allocationRequest := verifregtypes13.AllocationRequest{
 		Provider:   abi.ActorID(minerId),
@@ -278,10 +285,10 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
+	// check that we have an allocation
 	allocations, err := client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
-
-	require.Equal(t, 1, len(allocations))
+	require.Len(t, allocations, 1) // allocation waiting to be claimed
 
 	var allocationId verifregtypes13.AllocationId
 	var clientId abi.ActorID
@@ -290,6 +297,8 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 		clientId = value.Client
 		break
 	}
+
+	/* --- Onboard the piece --- */
 
 	head, err := client.ChainHead(ctx)
 	require.NoError(t, err)
@@ -317,6 +326,8 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 		so.Sector: {},
 	})
 
+	/* --- Verify that the piece has been onboarded --- */
+
 	si, err := miner.SectorsStatus(ctx, so.Sector, true)
 	require.NoError(t, err)
 	require.Equal(t, dc.PieceCID, *si.CommD)
@@ -324,48 +335,102 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 	require.Equal(t, si.DealWeight, big.Zero())
 	require.Equal(t, si.VerifiedDealWeight, big.Mul(big.NewInt(int64(dc.Size)), big.NewInt(int64(si.Expiration-si.Activation))))
 
+	// check that we have no more allocations because the allocation has been claimed by the miner for the piece
 	allocations, err = client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
-	require.Len(t, allocations, 0)
-	eventsFromMessages := buildActorEventsFromMessages(ctx, t, miner.FullNode)
-	fmt.Println("eventsFromMessages", eventsFromMessages)
-	writeEventsToFile(ctx, t, miner.FullNode, eventsFromMessages)
+	require.Len(t, allocations, 0) // allocation has been claimed
 
-	/* --- Tests for the Actor events API --- */
-	// Match events from Get API and receipts
+	/* --- Tests for ActorEvents --- */
+
+	// construct ActorEvents from messages and receipts
+	eventsFromMessages := buildActorEventsFromMessages(ctx, t, miner.FullNode)
+	fmt.Println("Events from message receipts:")
+	printEvents(ctx, t, miner.FullNode, eventsFromMessages)
+
+	require.GreaterOrEqual(t, len(eventsFromMessages), 8) // allow for additional events in the future
+	// check for precisely these events
+	for key, count := range map[string]int{
+		"sector-precommitted": 2, // first to begin mining, second to onboard the piece
+		"sector-activated":    2, // first to begin mining, second to onboard the piece
+		"verifier-balance":    2, // first to setup the verifier, second to allocate datacap to the verified client
+		"allocation":          1, // verified client allocates datacap to the miner
+		"claim":               1, // miner claims the allocation for the piece
+	} {
+		keyBytes := stringToEventKey(t, key)
+		found := 0
+		for _, event := range eventsFromMessages {
+			for _, e := range event.Entries {
+				if e.Key == "$type" && bytes.Equal(e.Value, keyBytes) {
+					found++
+					break
+				}
+			}
+		}
+		require.Equal(t, count, found, "unexpected number of events for %s", key)
+	}
+
+	// verify that we can trace a datacap allocation through to a claim with the events, since this
+	// information is not completely available from the state tree
+	claims := buildClaimsFromEvents(ctx, t, eventsFromMessages, miner.FullNode)
+	for _, claim := range claims {
+		p, err := address.NewIDAddress(uint64(claim.Provider))
+		require.NoError(t, err)
+		c, err := address.NewIDAddress(uint64(claim.Client))
+		require.NoError(t, err)
+		fmt.Printf("Claim<provider=%s, client=%s, data=%s, size=%d, termMin=%d, termMax=%d, termStart=%d, sector=%d>\n",
+			p, c, claim.Data, claim.Size, claim.TermMin, claim.TermMax, claim.TermStart, claim.Sector)
+	}
+	require.Equal(t, []*verifregtypes9.Claim{
+		{
+			Provider:  abi.ActorID(minerId),
+			Client:    clientId,
+			Data:      dc.PieceCID,
+			Size:      dc.Size,
+			TermMin:   verifregtypes13.MinimumVerifiedAllocationTerm,
+			TermMax:   verifregtypes13.MaximumVerifiedAllocationTerm,
+			TermStart: si.Activation,
+			Sector:    so.Sector,
+		},
+	}, claims)
+
+	// construct ActorEvents from GetActorEvents API
 	allEvtsFromGetAPI, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
 		FromEpoch: "earliest",
 		ToEpoch:   "latest",
 	})
 	require.NoError(t, err)
-	matchEvents(t, eventsFromMessages, getEventsArray(allEvtsFromGetAPI))
+	fmt.Println("Events from GetActorEvents:")
+	printEvents(ctx, t, miner.FullNode, allEvtsFromGetAPI)
+	// compare events from messages and receipts with events from GetActorEvents API
+	require.Equal(t, eventsFromMessages, allEvtsFromGetAPI)
 
-	// match Miner Actor events from subscription channel and Miner Actor events obtained from receipts
-	var subMinerEvts []types.ActorEvent
+	// construct ActorEvents from subscription channel for just the miner actor
+	var subMinerEvts []*types.ActorEvent
 	for evt := range minerEvtsChan {
-		subMinerEvts = append(subMinerEvts, *evt)
+		subMinerEvts = append(subMinerEvts, evt)
 		if len(subMinerEvts) == 4 {
 			break
 		}
 	}
-	var allMinerEvts []types.ActorEvent
+	var allMinerEvts []*types.ActorEvent
 	for _, evt := range eventsFromMessages {
 		if evt.EmitterAddr == miner.ActorAddr {
 			allMinerEvts = append(allMinerEvts, evt)
 		}
 	}
-	matchEvents(t, allMinerEvts, subMinerEvts)
+	// compare events from messages and receipts with events from subscription channel
+	require.Equal(t, allMinerEvts, subMinerEvts)
 
-	// Match pre-filled events from sector activated channel and events obtained from receipts
-	var prefillSectorActivatedEvts []types.ActorEvent
+	// construct ActorEvents from subscription channel for just the sector-activated events
+	var prefillSectorActivatedEvts []*types.ActorEvent
 	for evt := range sectorActivatedEvtsCh {
-		prefillSectorActivatedEvts = append(prefillSectorActivatedEvts, *evt)
+		prefillSectorActivatedEvts = append(prefillSectorActivatedEvts, evt)
 		if len(prefillSectorActivatedEvts) == 2 {
 			break
 		}
 	}
 	require.Len(t, prefillSectorActivatedEvts, 2)
-	var sectorActivatedEvts []types.ActorEvent
+	var sectorActivatedEvts []*types.ActorEvent
 	for _, evt := range eventsFromMessages {
 		for _, entry := range evt.Entries {
 			if entry.Key == "$type" && bytes.Equal(entry.Value, sectorActivatedCbor) {
@@ -374,9 +439,10 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 			}
 		}
 	}
-	matchEvents(t, sectorActivatedEvts, prefillSectorActivatedEvts)
+	// compare events from messages and receipts with events from subscription channel
+	require.Equal(t, sectorActivatedEvts, prefillSectorActivatedEvts)
 
-	// Match pre-filled events from subscription channel and events obtained from receipts
+	// construct ActorEvents from subscription channel for all actor events
 	allEvtsCh, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
 		Filter: types.ActorEventFilter{
 			FromEpoch: "earliest",
@@ -385,129 +451,25 @@ func TestOnboardRawPieceVerified(t *testing.T) {
 		Prefill: true,
 	})
 	require.NoError(t, err)
-	var prefillEvts []types.ActorEvent
+	var prefillEvts []*types.ActorEvent
 	for evt := range allEvtsCh {
-		prefillEvts = append(prefillEvts, *evt)
+		prefillEvts = append(prefillEvts, evt)
 		if len(prefillEvts) == len(eventsFromMessages) {
 			break
 		}
 	}
-	matchEvents(t, eventsFromMessages, prefillEvts)
+	// compare events from messages and receipts with events from subscription channel
+	require.Equal(t, eventsFromMessages, prefillEvts)
 }
 
-func getEventsArray(ptr []*types.ActorEvent) []types.ActorEvent {
-	var evts []types.ActorEvent
-	for _, evt := range ptr {
-		evts = append(evts, *evt)
-	}
-	return evts
-}
-
-func matchEvents(t *testing.T, exp []types.ActorEvent, actual []types.ActorEvent) {
-	// height and tipset cid can mismatch because expected events are sourced using APIs that can put in different tipsets
-	for i := range exp {
-		exp[i].Height = 0
-		exp[i].TipSetKey = cid.Undef
-	}
-	for i := range actual {
-		actual[i].Height = 0
-		actual[i].TipSetKey = cid.Undef
-	}
-
-	require.Equal(t, len(exp), len(actual))
-	// marshal both arrays to json, sort by json, and compare
-	bz1, err := json.Marshal(exp)
-	require.NoError(t, err)
-	sort.Slice(bz1, func(i, j int) bool {
-		return bz1[i] <= bz1[j]
-	})
-
-	bz2, err := json.Marshal(actual)
-	require.NoError(t, err)
-	sort.Slice(bz2, func(i, j int) bool {
-		return bz2[i] <= bz2[j]
-	})
-	fmt.Println("bz1", string(bz1))
-	fmt.Println("bz2", string(bz2))
-	require.True(t, bytes.Equal(bz1, bz2))
-}
-
-func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.FullNode) []types.ActorEvent {
-	actorEvents := make([]types.ActorEvent, 0)
-
-	head, err := node.ChainHead(ctx)
-	require.NoError(t, err)
-	for height := 0; height < int(head.Height()); height++ {
-		// for each tipset
-		ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
-		require.NoError(t, err)
-		for _, b := range ts.Blocks() {
-			// for each block
-			// alternative here is to go straight to receipts, but we need the message CID for our event
-			// list: node.ChainGetParentReceipts(ctx, b.Cid())
-			messages, err := node.ChainGetParentMessages(ctx, b.Cid())
-			require.NoError(t, err)
-			if len(messages) == 0 {
-				continue
-			}
-			for _, m := range messages {
-				receipt, err := node.StateSearchMsg(ctx, ts.Key(), m.Cid, -1, false)
-				require.NoError(t, err)
-				// receipt
-				if receipt.Receipt.EventsRoot != nil {
-					events, err := node.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
-					require.NoError(t, err)
-					for _, evt := range events {
-						// for each event
-						addr, err := address.NewIDAddress(uint64(evt.Emitter))
-						require.NoError(t, err)
-						tsCid, err := ts.Key().Cid()
-						require.NoError(t, err)
-
-						actorEvents = append(actorEvents, types.ActorEvent{
-							Entries:     evt.Entries,
-							EmitterAddr: addr,
-							Reverted:    false,
-							Height:      ts.Height(),
-							TipSetKey:   tsCid,
-							MsgCid:      m.Cid,
-						})
-					}
-				}
-			}
-		}
-	}
-	return actorEvents
-}
-
-func writeEventsToFile(ctx context.Context, t *testing.T, node v1api.FullNode, events []types.ActorEvent) {
-	file, err := os.Create("block.out")
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, file.Close())
-	}()
-	write := func(s string) {
-		_, err := file.WriteString(s)
-		require.NoError(t, err)
-	}
-	claimKeyCbor, err := ipld.Encode(basicnode.NewString("claim"), dagcbor.Encode)
-	require.NoError(t, err)
-
-	for _, event := range events {
-		entryStrings := []string{
-			fmt.Sprintf("height=%d", event.Height),
-			fmt.Sprintf("msg=%s", event.MsgCid),
-			fmt.Sprintf("emitter=%s", event.EmitterAddr),
-			fmt.Sprintf("reverted=%t", event.Reverted),
-		}
-		claims := make([]*verifregtypes9.Claim, 0)
+func buildClaimsFromEvents(ctx context.Context, t *testing.T, eventsFromMessages []*types.ActorEvent, node v1api.FullNode) []*verifregtypes9.Claim {
+	claimKeyCbor := stringToEventKey(t, "claim")
+	claims := make([]*verifregtypes9.Claim, 0)
+	for _, event := range eventsFromMessages {
 		var isClaim bool
 		var claimId int64 = -1
 		var providerId int64 = -1
-
 		for _, e := range event.Entries {
-			// for each event entry
-			entryStrings = append(entryStrings, fmt.Sprintf("%s=%s", e.Key, toDagJson(t, e.Codec, e.Value)))
 			if e.Key == "$type" && bytes.Equal(e.Value, claimKeyCbor) {
 				isClaim = true
 			} else if isClaim && e.Key == "id" {
@@ -527,21 +489,80 @@ func writeEventsToFile(ctx context.Context, t *testing.T, node v1api.FullNode, e
 				claims = append(claims, claim)
 			}
 		}
-		write(fmt.Sprintf("Event<%s>\n", strings.Join(entryStrings, ", ")))
-		if len(claims) > 0 {
-			for _, claim := range claims {
-				p, err := address.NewIDAddress(uint64(claim.Provider))
+	}
+	return claims
+}
+
+func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.FullNode) []*types.ActorEvent {
+	actorEvents := make([]*types.ActorEvent, 0)
+
+	head, err := node.ChainHead(ctx)
+	require.NoError(t, err)
+	for height := 0; height < int(head.Height()); height++ {
+		// for each tipset
+		ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
+		require.NoError(t, err)
+		messages, err := node.ChainGetMessagesInTipset(ctx, ts.Key())
+		require.NoError(t, err)
+		if len(messages) == 0 {
+			continue
+		}
+		for _, m := range messages {
+			receipt, err := node.StateSearchMsg(ctx, types.EmptyTSK, m.Cid, -1, false)
+			require.NoError(t, err)
+			require.NotNil(t, receipt)
+			// receipt
+			if receipt.Receipt.EventsRoot != nil {
+				events, err := node.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
 				require.NoError(t, err)
-				c, err := address.NewIDAddress(uint64(claim.Client))
-				require.NoError(t, err)
-				write(fmt.Sprintf("  Claim<provider=%s, client=%s, data=%s, size=%d, termMin=%d, termMax=%d, termStart=%d, sector=%d>\n",
-					p, c, claim.Data, claim.Size, claim.TermMin, claim.TermMax, claim.TermStart, claim.Sector))
+				for _, evt := range events {
+					// for each event
+					addr, err := address.NewIDAddress(uint64(evt.Emitter))
+					require.NoError(t, err)
+					tsCid, err := ts.Key().Cid()
+					require.NoError(t, err)
+
+					actorEvents = append(actorEvents, &types.ActorEvent{
+						Entries:     evt.Entries,
+						EmitterAddr: addr,
+						Reverted:    false,
+						Height:      ts.Height(),
+						TipSetKey:   tsCid,
+						MsgCid:      m.Cid,
+					})
+				}
 			}
 		}
 	}
+	return actorEvents
 }
 
-func toDagJson(t *testing.T, codec uint64, data []byte) string {
+func printEvents(ctx context.Context, t *testing.T, node v1api.FullNode, events []*types.ActorEvent) {
+	for _, event := range events {
+		entryStrings := []string{
+			fmt.Sprintf("height=%d", event.Height),
+			fmt.Sprintf("msg=%s", event.MsgCid),
+			fmt.Sprintf("emitter=%s", event.EmitterAddr),
+			fmt.Sprintf("reverted=%t", event.Reverted),
+		}
+		for _, e := range event.Entries {
+			// for each event entry
+			entryStrings = append(entryStrings, fmt.Sprintf("%s=%s", e.Key, eventValueToDagJson(t, e.Codec, e.Value)))
+		}
+		fmt.Printf("Event<%s>\n", strings.Join(entryStrings, ", "))
+	}
+}
+
+// stringToEventKey converts a string to a CBOR-encoded blob which matches what we expect from the
+// actor events.
+func stringToEventKey(t *testing.T, str string) []byte {
+	dcb, err := ipld.Encode(basicnode.NewString(str), dagcbor.Encode)
+	require.NoError(t, err)
+	return dcb
+}
+
+// eventValueToDagJson converts an ActorEvent value to a JSON string for printing.
+func eventValueToDagJson(t *testing.T, codec uint64, data []byte) string {
 	switch codec {
 	case 0x51:
 		nd, err := ipld.Decode(data, dagcbor.Decode)
