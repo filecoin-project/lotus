@@ -5,6 +5,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/api/client"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -90,6 +96,25 @@ func (p *ProviderAPI) Shutdown(context.Context) error {
 	return nil
 }
 
+func (p *ProviderAPI) StorageAddLocal(ctx context.Context, path string) error {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return xerrors.Errorf("expanding local path: %w", err)
+	}
+
+	if err := p.LocalStore.OpenPath(ctx, path); err != nil {
+		return xerrors.Errorf("opening local path: %w", err)
+	}
+
+	if err := p.LocalPaths.SetStorage(func(sc *storiface.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, storiface.LocalPath{Path: path})
+	}); err != nil {
+		return xerrors.Errorf("get storage config: %w", err)
+	}
+
+	return nil
+}
+
 func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan chan struct{}) error {
 	fh := &paths.FetchHandler{Local: dependencies.LocalStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 	remoteHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -157,4 +182,27 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 		eg.Go(web.ListenAndServe)
 	}
 	return eg.Wait()
+}
+
+func GetProviderAPI(ctx *cli.Context) (api.LotusProvider, jsonrpc.ClientCloser, error) {
+	addr, headers, err := cliutil.GetRawAPI(ctx, repo.Provider, "v0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	u, err := url.Parse(addr)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("parsing miner api URL: %w", err)
+	}
+
+	switch u.Scheme {
+	case "ws":
+		u.Scheme = "http"
+	case "wss":
+		u.Scheme = "https"
+	}
+
+	addr = u.String()
+
+	return client.NewProviderRpc(ctx.Context, addr, headers)
 }

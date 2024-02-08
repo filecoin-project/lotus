@@ -13,6 +13,8 @@ type LotusProvider interface {
 
 	AllocatePieceToSector(ctx context.Context, maddr address.Address, piece PieceDealInfo, rawSize int64, source url.URL, header http.Header) (SectorOffset, error) //perm:write
 
+	StorageAddLocal(ctx context.Context, path string) error //perm:admin
+
 	// Trigger shutdown
 	Shutdown(context.Context) error //perm:admin
 }

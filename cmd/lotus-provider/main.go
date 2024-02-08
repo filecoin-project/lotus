@@ -42,18 +42,13 @@ func main() {
 
 	local := []*cli.Command{
 		//initCmd,
+		cliCmd,
 		runCmd,
 		stopCmd,
 		configCmd,
 		testCmd,
 		webCmd,
 		pipelineCmd,
-		//backupCmd,
-		//lcli.WithCategory("chain", actorCmd),
-		//lcli.WithCategory("storage", sectorsCmd),
-		//lcli.WithCategory("storage", provingCmd),
-		//lcli.WithCategory("storage", storageCmd),
-		//lcli.WithCategory("storage", sealingCmd),
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")

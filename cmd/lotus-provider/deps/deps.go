@@ -101,6 +101,7 @@ type Deps struct {
 	Stor       *paths.Remote
 	Si         *paths.DBIndex
 	LocalStore *paths.Local
+	LocalPaths *paths.BasicLocalStorage
 	ListenAddr string
 }
 
@@ -193,7 +194,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}()
 	}
 
-	bls := &paths.BasicLocalStorage{
+	deps.LocalPaths = &paths.BasicLocalStorage{
 		PathToJSON: cctx.String("storage-json"),
 	}
 
@@ -212,7 +213,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}
 	}
 	if deps.LocalStore == nil {
-		deps.LocalStore, err = paths.NewLocal(ctx, bls, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
+		deps.LocalStore, err = paths.NewLocal(ctx, deps.LocalPaths, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
 		if err != nil {
 			return err
 		}
