@@ -137,7 +137,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
        task_id_commit_msg, after_commit_msg,
        after_commit_msg_success,
        failed, failed_reason
-    FROM sectors_sdr_pipeline WHERE after_commit_msg_success != true or after_finalize != true`)
+    FROM sectors_sdr_pipeline WHERE after_commit_msg_success != true or after_move_storage != true`)
 	if err != nil {
 		return err
 	}
@@ -159,6 +159,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		s.mustPoll(s.pollPrecommitMsgLanded(ctx, task))
 		s.pollStartPoRep(ctx, task, ts)
 		s.pollStartFinalize(ctx, task, ts)
+		s.pollStartMoveStorage(ctx, task)
 		s.pollStartCommitMsg(ctx, task)
 		s.mustPoll(s.pollCommitMsgLanded(ctx, task))
 	}

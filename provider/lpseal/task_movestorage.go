@@ -118,7 +118,7 @@ func (m *MoveStorageTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytas
 	}
 	var haveStorage bool
 	for _, l := range ls {
-		if l.CanSeal {
+		if l.CanStore {
 			haveStorage = true
 			break
 		}
