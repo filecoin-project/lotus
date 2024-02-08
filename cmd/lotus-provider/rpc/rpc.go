@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -77,7 +78,74 @@ func LotusProviderHandler(
 
 type ProviderAPI struct {
 	*deps.Deps
+	paths.SectorIndex
 	ShutdownChan chan struct{}
+}
+
+func (p *ProviderAPI) StorageDetachLocal(ctx context.Context, path string) error {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return xerrors.Errorf("expanding local path: %w", err)
+	}
+
+	// check that we have the path opened
+	lps, err := p.LocalStore.Local(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting local path list: %w", err)
+	}
+
+	var localPath *storiface.StoragePath
+	for _, lp := range lps {
+		if lp.LocalPath == path {
+			lp := lp // copy to make the linter happy
+			localPath = &lp
+			break
+		}
+	}
+	if localPath == nil {
+		return xerrors.Errorf("no local paths match '%s'", path)
+	}
+
+	// drop from the persisted storage.json
+	var found bool
+	if err := p.LocalPaths.SetStorage(func(sc *storiface.StorageConfig) {
+		out := make([]storiface.LocalPath, 0, len(sc.StoragePaths))
+		for _, storagePath := range sc.StoragePaths {
+			if storagePath.Path != path {
+				out = append(out, storagePath)
+				continue
+			}
+			found = true
+		}
+		sc.StoragePaths = out
+	}); err != nil {
+		return xerrors.Errorf("set storage config: %w", err)
+	}
+	if !found {
+		// maybe this is fine?
+		return xerrors.Errorf("path not found in storage.json")
+	}
+
+	// unregister locally, drop from sector index
+	return p.LocalStore.ClosePath(ctx, localPath.ID)
+}
+
+func (p *ProviderAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
+	ps, err := p.LocalStore.Local(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var out = make(map[storiface.ID]string)
+	for _, path := range ps {
+		out[path.ID] = path.LocalPath
+	}
+
+	return out, nil
+}
+
+func (p *ProviderAPI) StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
+	return p.LocalStore.FsStat(ctx, id)
 }
 
 func (p *ProviderAPI) Version(context.Context) (api.Version, error) {
@@ -147,7 +215,7 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 		Handler: LotusProviderHandler(
 			authVerify,
 			remoteHandler,
-			&ProviderAPI{dependencies, shutdownChan},
+			&ProviderAPI{dependencies, dependencies.Si, shutdownChan},
 			permissioned),
 		ReadHeaderTimeout: time.Minute * 3,
 		BaseContext: func(listener net.Listener) context.Context {
