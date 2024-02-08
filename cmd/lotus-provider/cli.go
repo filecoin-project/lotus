@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/rpc"
 	"github.com/gbrlsnchs/jwt/v3"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
@@ -82,6 +83,8 @@ var cliCmd = &cli.Command{
 			if selection < 1 || selection > len(machines) {
 				return xerrors.New("invalid selection")
 			}
+
+			machine = machines[selection-1].HostAndPort
 		}
 
 		var apiKeys []string
@@ -164,7 +167,25 @@ var cliCmd = &cli.Command{
 				return xerrors.Errorf("net from addr (%v): %w", laddr, err)
 			}
 
-			fmt.Printf("Token: %s:%s\n", string(apiToken), ma)
+			token := fmt.Sprintf("%s:%s", string(apiToken), ma)
+			if err := os.Setenv(providerEnvVar, token); err != nil {
+				return xerrors.Errorf("setting env var: %w", err)
+			}
+		}
+
+		{
+			api, closer, err := rpc.GetProviderAPI(cctx)
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			v, err := api.Version(ctx)
+			if err != nil {
+				return xerrors.Errorf("querying version: %w", err)
+			}
+
+			fmt.Println("remote node version: ", v.String())
 		}
 
 		return nil

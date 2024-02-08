@@ -9,15 +9,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/metrics"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
@@ -33,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -46,6 +36,14 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -837,6 +835,8 @@ type LotusProviderMethods struct {
 	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
 
 	Shutdown func(p0 context.Context) error `perm:"admin"`
+
+	StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
 	Version func(p0 context.Context) (Version, error) `perm:"admin"`
 }
@@ -5224,6 +5224,17 @@ func (s *LotusProviderStruct) Shutdown(p0 context.Context) error {
 }
 
 func (s *LotusProviderStub) Shutdown(p0 context.Context) error {
+	return ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageAddLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageAddLocal(p0, p1)
+}
+
+func (s *LotusProviderStub) StorageAddLocal(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
