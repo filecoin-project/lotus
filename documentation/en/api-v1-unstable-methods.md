@@ -3423,7 +3423,7 @@ Response:
 ```json
 [
   {
-    "Entries": [
+    "entries": [
       {
         "Flags": 7,
         "Key": "string value",
@@ -3431,13 +3431,13 @@ Response:
         "Value": "Ynl0ZSBhcnJheQ=="
       }
     ],
-    "EmitterAddr": "f01234",
-    "Reverted": true,
-    "Height": 10101,
-    "TipSetKey": {
+    "emitter": "f01234",
+    "reverted": true,
+    "height": 10101,
+    "tipsetCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "MsgCid": {
+    "msgCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   }
@@ -8817,7 +8817,7 @@ Inputs:
 Response:
 ```json
 {
-  "Entries": [
+  "entries": [
     {
       "Flags": 7,
       "Key": "string value",
@@ -8825,13 +8825,13 @@ Response:
       "Value": "Ynl0ZSBhcnJheQ=="
     }
   ],
-  "EmitterAddr": "f01234",
-  "Reverted": true,
-  "Height": 10101,
-  "TipSetKey": {
+  "emitter": "f01234",
+  "reverted": true,
+  "height": 10101,
+  "tipsetCid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "MsgCid": {
+  "msgCid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
 }
