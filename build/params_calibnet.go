@@ -19,7 +19,8 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandMainnet,
+	0:                  DrandMainnet,
+	UpgradeMangoHeight: DrandQuicknet,
 }
 
 const GenesisNetworkVersion = network.Version0
@@ -90,6 +91,8 @@ const UpgradeWatermelonFix2Height = 1108174
 
 // ??????
 const UpgradePineappleHeight = 999999999999999
+
+const UpgradeMangoHeight = UpgradePineappleHeight + 10
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
