@@ -279,18 +279,48 @@ func (sb *SealCalls) LocalStorage(ctx context.Context) ([]storiface.StoragePath,
 	return sb.sectors.localStore.Local(ctx)
 }
 
-func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
+func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed bool) error {
+	alloc := storiface.FTNone
+	if keepUnsealed {
+		// note: In lotus-provider we don't write the unsealed file in any of the previous stages, it's only written here from tree-d
+		alloc = storiface.FTUnsealed
+	}
+
+	sectorPaths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, alloc, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}
 	defer releaseSector()
 
 	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return xerrors.Errorf("getting sector size: %w", err)
+	}
 
-	// todo treed into unsealed
+	if keepUnsealed {
+		// tree-d contains exactly unsealed data in the prefix, so
+		// * we move it to a temp file
+		// * we truncate the temp file to the sector size
+		// * we move the temp file to the unsealed location
 
-	if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
+		// move tree-d to temp file
+		tempUnsealed := filepath.Join(sectorPaths.Cache, storiface.SectorName(sector.ID))
+		if err := os.Rename(filepath.Join(sectorPaths.Cache, proofpaths.TreeDName), tempUnsealed); err != nil {
+			return xerrors.Errorf("moving tree-d to temp file: %w", err)
+		}
+
+		// truncate sealed file to sector size
+		if err := os.Truncate(tempUnsealed, int64(ssize)); err != nil {
+			return xerrors.Errorf("truncating unsealed file to sector size: %w", err)
+		}
+
+		// move temp file to unsealed location
+		if err := paths.Move(tempUnsealed, sectorPaths.Unsealed); err != nil {
+			return xerrors.Errorf("move temp unsealed sector to final location (%s -> %s): %w", tempUnsealed, sectorPaths.Unsealed, err)
+		}
+	}
+
+	if err := ffi.ClearCache(uint64(ssize), sectorPaths.Cache); err != nil {
 		return xerrors.Errorf("clearing cache: %w", err)
 	}
 

@@ -50,6 +50,12 @@ func (f *FinalizeTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (do
 	}
 	task := tasks[0]
 
+	var keepUnsealed bool
+
+	if err := f.db.QueryRow(ctx, `select bool_or(not data_delete_on_finalize) from sectors_sdr_initial_pieces where sp_id=$1 and sector_number=$2`, task.SpID, task.SectorNumber).Scan(&keepUnsealed); err != nil {
+		return false, err
+	}
+
 	sector := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  abi.ActorID(task.SpID),
@@ -58,7 +64,7 @@ func (f *FinalizeTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (do
 		ProofType: abi.RegisteredSealProof(task.RegSealProof),
 	}
 
-	err = f.sc.FinalizeSector(ctx, sector)
+	err = f.sc.FinalizeSector(ctx, sector, keepUnsealed)
 	if err != nil {
 		return false, xerrors.Errorf("finalizing sector: %w", err)
 	}
