@@ -52,7 +52,7 @@ func (f *FinalizeTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (do
 
 	var keepUnsealed bool
 
-	if err := f.db.QueryRow(ctx, `select bool_or(not data_delete_on_finalize) from sectors_sdr_initial_pieces where sp_id=$1 and sector_number=$2`, task.SpID, task.SectorNumber).Scan(&keepUnsealed); err != nil {
+	if err := f.db.QueryRow(ctx, `select coalesce(bool_or(not data_delete_on_finalize), false) from sectors_sdr_initial_pieces where sp_id=$1 and sector_number=$2`, task.SpID, task.SectorNumber).Scan(&keepUnsealed); err != nil {
 		return false, err
 	}
 
