@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"strings"
 
 	"go.uber.org/fx"
@@ -22,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/provider/lpmarket"
 	"github.com/filecoin-project/lotus/provider/lpmarket/fakelm"
 	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 

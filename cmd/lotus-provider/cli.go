@@ -4,19 +4,22 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
+	"net"
+	"os"
+	"time"
+
 	"github.com/BurntSushi/toml"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/lotus/api"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/rpc"
 	"github.com/gbrlsnchs/jwt/v3"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"net"
-	"os"
-	"time"
+
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
+	"github.com/filecoin-project/lotus/api"
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/rpc"
 )
 
 const providerEnvVar = "PROVIDER_API_INFO"

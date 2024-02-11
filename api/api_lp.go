@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-
-	"github.com/filecoin-project/go-address"
 )
 
 type LotusProvider interface {

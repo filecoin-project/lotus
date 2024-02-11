@@ -10,6 +10,7 @@ VERSION:
    1.25.3-dev
 
 COMMANDS:
+   cli       Execute cli commands
    run       Start a lotus provider process
    stop      Stop a running lotus provider
    config    Manage node config by layers. The layer 'base' will always be applied. 
@@ -35,6 +36,27 @@ GLOBAL OPTIONS:
    --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h           show help
    --version, -v        print the version
+```
+
+## lotus-provider cli
+```
+NAME:
+   lotus-provider cli - Execute cli commands
+
+USAGE:
+   lotus-provider cli command [command options] [arguments...]
+
+COMMANDS:
+   storage  manage sector storage
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --machine value  machine host:port
+   --help, -h       show help
+```
+
+### lotus-provider cli storage
+```
 ```
 
 ## lotus-provider run
@@ -82,7 +104,9 @@ COMMANDS:
    list, ls                         List config layers you can get.
    interpret, view, stacked, stack  Interpret stacked config layers by this version of lotus-provider, with system-generated comments.
    remove, rm, del, delete          Remove a named config layer.
+   edit                             edit a config layer
    from-miner                       Express a database config (for lotus-provider) from an existing miner.
+   new-cluster                      Create new coniguration for a new cluster
    help, h                          Shows a list of commands or help for one command
 
 OPTIONS:
@@ -164,6 +188,23 @@ OPTIONS:
    --help, -h  show help
 ```
 
+### lotus-provider config edit
+```
+NAME:
+   lotus-provider config edit - edit a config layer
+
+USAGE:
+   lotus-provider config edit [command options] [layer name]
+
+OPTIONS:
+   --editor value         editor to use (default: "vim") [$EDITOR]
+   --source value         source config layer (default: <edited layer>)
+   --allow-owerwrite      allow overwrite of existing layer if source is a different layer (default: false)
+   --no-source-diff       save the whole config into the layer, not just the diff (default: false)
+   --no-interpret-source  do not interpret source layer (default: true if --source is set)
+   --help, -h             show help
+```
+
 ### lotus-provider config from-miner
 ```
 NAME:
@@ -180,6 +221,18 @@ OPTIONS:
    --to-layer value, -t value               The layer name for this data push. 'base' is recommended for single-miner setup.
    --overwrite, -o                          Use this with --to-layer to replace an existing layer (default: false)
    --help, -h                               show help
+```
+
+### lotus-provider config new-cluster
+```
+NAME:
+   lotus-provider config new-cluster - Create new coniguration for a new cluster
+
+USAGE:
+   lotus-provider config new-cluster [command options] [SP actor address...]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus-provider test

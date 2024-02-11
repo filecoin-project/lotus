@@ -4,6 +4,13 @@
   * [Version](#Version)
 * [Allocate](#Allocate)
   * [AllocatePieceToSector](#AllocatePieceToSector)
+* [Storage](#Storage)
+  * [StorageAddLocal](#StorageAddLocal)
+  * [StorageDetachLocal](#StorageDetachLocal)
+  * [StorageInfo](#StorageInfo)
+  * [StorageList](#StorageList)
+  * [StorageLocal](#StorageLocal)
+  * [StorageStat](#StorageStat)
 ## 
 
 
@@ -90,6 +97,133 @@ Response:
 {
   "Sector": 9,
   "Offset": 1032
+}
+```
+
+## Storage
+
+
+### StorageAddLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### StorageDetachLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### StorageInfo
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"
+]
+```
+
+Response:
+```json
+{
+  "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+  "URLs": [
+    "string value"
+  ],
+  "Weight": 42,
+  "MaxStorage": 42,
+  "CanSeal": true,
+  "CanStore": true,
+  "Groups": [
+    "string value"
+  ],
+  "AllowTo": [
+    "string value"
+  ],
+  "AllowTypes": [
+    "string value"
+  ],
+  "DenyTypes": [
+    "string value"
+  ]
+}
+```
+
+### StorageList
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": [
+    {
+      "Miner": 1000,
+      "Number": 100,
+      "SectorFileType": 2
+    }
+  ]
+}
+```
+
+### StorageLocal
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path"
+}
+```
+
+### StorageStat
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"
+]
+```
+
+Response:
+```json
+{
+  "Capacity": 9,
+  "Available": 9,
+  "FSAvailable": 9,
+  "Reserved": 9,
+  "Max": 9,
+  "Used": 9
 }
 ```
 

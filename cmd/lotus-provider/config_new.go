@@ -5,19 +5,22 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
+
 	"github.com/BurntSushi/toml"
 	"github.com/fatih/color"
+	"github.com/samber/lo"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-	"io"
 )
 
 var configNewCmd = &cli.Command{
