@@ -83,7 +83,7 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 		return nil, xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	lp := fakelm.NewLMRPCProvider(si, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, parts[1])
+	lp := fakelm.NewLMRPCProvider(si, fapi, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, parts[1])
 
 	ast := api.StorageMinerStruct{}
 

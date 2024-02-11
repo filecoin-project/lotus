@@ -6,6 +6,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/gbrlsnchs/jwt/v3"
@@ -26,7 +27,8 @@ import (
 )
 
 type LMRPCProvider struct {
-	si paths.SectorIndex
+	si   paths.SectorIndex
+	full api.FullNode
 
 	maddr   address.Address // lotus-miner RPC is single-actor
 	minerID abi.ActorID
@@ -38,9 +40,10 @@ type LMRPCProvider struct {
 	confLayer string
 }
 
-func NewLMRPCProvider(si paths.SectorIndex, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi lpmarket.Ingester, db *harmonydb.DB, confLayer string) *LMRPCProvider {
+func NewLMRPCProvider(si paths.SectorIndex, full api.FullNode, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi lpmarket.Ingester, db *harmonydb.DB, confLayer string) *LMRPCProvider {
 	return &LMRPCProvider{
 		si:        si,
+		full:      full,
 		maddr:     maddr,
 		minerID:   minerID,
 		ssize:     ssize,
@@ -65,14 +68,47 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		return api.SectorInfo{}, err
 	}
 
+	var ssip []struct {
+		PieceCID *string `db:"piece_cid"`
+		DealID   *int64  `db:"f05_deal_id"`
+	}
+
+	err = l.db.Select(ctx, &ssip, "select ssip.piece_cid, ssip.f05_deal_id from sectors_sdr_pipeline p left join sectors_sdr_initial_pieces ssip on p.sp_id = ssip.sp_id and p.sector_number = ssip.sector_number where p.sp_id = $1 and p.sector_number = $2", l.minerID, sid)
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+
+	var deals []abi.DealID
+	if len(ssip) > 0 {
+		for _, d := range ssip {
+			if d.DealID != nil {
+				deals = append(deals, abi.DealID(*d.DealID))
+			}
+		}
+	} else {
+		osi, err := l.full.StateSectorGetInfo(ctx, l.maddr, sid, types.EmptyTSK)
+		if err != nil {
+			return api.SectorInfo{}, err
+		}
+
+		if osi != nil {
+			deals = osi.DealIDs
+		}
+	}
+
 	if len(si) == 0 {
+		state := api.SectorState(sealing.UndefinedSectorState)
+		if len(ssip) > 0 {
+			state = api.SectorState(sealing.PreCommit1)
+		}
+
 		return api.SectorInfo{
 			SectorID:             sid,
-			State:                api.SectorState(sealing.UndefinedSectorState),
+			State:                state,
 			CommD:                nil,
 			CommR:                nil,
 			Proof:                nil,
-			Deals:                nil,
+			Deals:                deals,
 			Pieces:               nil,
 			Ticket:               api.SealTicket{},
 			Seed:                 api.SealSeed{},
@@ -94,9 +130,9 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		}, nil
 	}
 
-	var state api.SectorState = api.SectorState(sealing.Proving)
+	var state = api.SectorState(sealing.Proving)
 	if !si[0].CanStore {
-		state = api.SectorState(sealing.PreCommit1)
+		state = api.SectorState(sealing.PreCommit2)
 	}
 
 	// todo improve this with on-chain info
@@ -106,7 +142,7 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		CommD:                nil,
 		CommR:                nil,
 		Proof:                nil,
-		Deals:                nil,
+		Deals:                deals,
 		Pieces:               nil,
 		Ticket:               api.SealTicket{},
 		Seed:                 api.SealSeed{},

@@ -380,7 +380,7 @@ var lpBoostProxyCmd = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		lp := fakelm.NewLMRPCProvider(si, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, cctx.String("layers"))
+		lp := fakelm.NewLMRPCProvider(si, full, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, cctx.String("layers"))
 
 		laddr, err := net.ResolveTCPAddr("tcp", cctx.String("listen"))
 		if err != nil {
@@ -486,6 +486,11 @@ var lpBoostProxyCmd = &cli.Command{
 			pieceCid, err := cid.Decode(r.URL.Query().Get("piece_cid"))
 			if err != nil {
 				http.Error(w, "bad piece_cid", http.StatusBadRequest)
+				return
+			}
+
+			if r.Method != http.MethodGet {
+				http.Error(w, "bad method", http.StatusMethodNotAllowed)
 				return
 			}
 
