@@ -33,6 +33,9 @@ func Routes(r *mux.Router, deps *deps.Deps) error {
 	r.HandleFunc("/simpleinfo/tasks", a.indexTasks)
 	r.HandleFunc("/simpleinfo/taskhistory", a.indexTasksHistory)
 	r.HandleFunc("/simpleinfo/pipeline-porep", a.indexPipelinePorep)
+
+	// pipeline-porep page
+	r.HandleFunc("/simpleinfo/pipeline-porep/sectors", a.pipelinePorepSectors)
 	return nil
 }
 
