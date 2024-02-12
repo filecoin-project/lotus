@@ -111,6 +111,8 @@ func buildTraces(env *environment, addr []int, et *types.ExecutionTrace) error {
 		isEVM:  builtinactors.IsEvmActor(recurseInto.InvokedActor.State.Code),
 		traces: env.traces,
 	}
+	// Set capacity to the length so each `append` below creates a new slice. Otherwise, we'll
+	// end up repeatedly mutating previous paths.
 	addr = addr[:len(addr):len(addr)]
 	for i := range recurseInto.Subcalls {
 		err := buildTraces(subEnv, append(addr, subEnv.subtraceCount), &recurseInto.Subcalls[i])
