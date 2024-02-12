@@ -71,6 +71,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			slr = lpffi.NewSealCalls(stor, lstor, si)
 		}
 
+		// NOTE: Tasks with the LEAST priority are at the top
 		if cfg.Subsystems.EnableSealSDR {
 			sdrTask := lpseal.NewSDRTask(full, db, sp, slr, cfg.Subsystems.SealSDRMaxTasks)
 			activeTasks = append(activeTasks, sdrTask)
@@ -100,6 +101,11 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	log.Infow("This lotus_provider instance handles",
 		"miner_addresses", maddrs,
 		"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
+
+	// harmony treats the first task as highest priority, so reverse the order
+	// (we could have just appended to this list in the reverse order, but defining
+	//  tasks in pipeline order is more intuitive)
+	activeTasks = lo.Reverse(activeTasks)
 
 	ht, err := harmonytask.New(db, activeTasks, dependencies.ListenAddr)
 	if err != nil {
