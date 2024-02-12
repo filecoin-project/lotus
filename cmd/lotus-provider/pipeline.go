@@ -17,15 +17,15 @@ import (
 	"github.com/filecoin-project/lotus/provider/lpseal"
 )
 
-var pipelineCmd = &cli.Command{
-	Name:  "pipeline",
+var sealCmd = &cli.Command{
+	Name:  "seal",
 	Usage: "Manage the sealing pipeline",
 	Subcommands: []*cli.Command{
-		pipelineStartCmd,
+		sealStartCmd,
 	},
 }
 
-var pipelineStartCmd = &cli.Command{
+var sealStartCmd = &cli.Command{
 	Name:  "start",
 	Usage: "Start new sealing operations manually",
 	Flags: []cli.Flag{
@@ -51,11 +51,6 @@ var pipelineStartCmd = &cli.Command{
 			Name:  "synthetic",
 			Usage: "Use synthetic PoRep",
 			Value: false, // todo implement synthetic
-		},
-		&cli.StringSliceFlag{ // todo consider moving layers top level
-			Name:  "layers",
-			Usage: "list of layers to be interpreted (atop defaults). Default: base",
-			Value: cli.NewStringSlice("base"),
 		},
 	},
 	Action: func(cctx *cli.Context) error {

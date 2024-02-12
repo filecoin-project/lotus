@@ -48,7 +48,7 @@ func main() {
 		configCmd,
 		testCmd,
 		webCmd,
-		pipelineCmd,
+		sealCmd,
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")
@@ -124,10 +124,10 @@ func main() {
 				Hidden:  true,
 				Value:   "5433",
 			},
-			&cli.StringFlag{
-				Name:    "layers",
-				EnvVars: []string{"LOTUS_LAYERS", "LOTUS_CONFIG_LAYERS"},
-				Value:   "base",
+			&cli.StringSliceFlag{
+				Name:  "layers",
+				Usage: "list of layers to be interpreted (atop defaults). Default: base",
+				Value: cli.NewStringSlice("base"),
 			},
 			&cli.StringFlag{
 				Name:    deps.FlagRepoPath,
