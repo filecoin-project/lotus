@@ -328,5 +328,49 @@ func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.Sector
 }
 
 func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef) error {
-	return sb.sectors.storage.MoveStorage(ctx, sector, storiface.FTCache|storiface.FTSealed)
+	// only move the unsealed file if it still exists and needs moving
+	moveUnsealed := storiface.FTUnsealed
+	{
+		found, unsealedPathType, err := sb.sectorStorageType(ctx, sector, storiface.FTUnsealed)
+		if err != nil {
+			return xerrors.Errorf("checking cache storage type: %w", err)
+		}
+
+		if !found || unsealedPathType == storiface.PathStorage {
+			moveUnsealed = storiface.FTNone
+		}
+	}
+
+	toMove := storiface.FTCache | storiface.FTSealed | moveUnsealed
+
+	err := sb.sectors.storage.MoveStorage(ctx, sector, toMove)
+	if err != nil {
+		return xerrors.Errorf("moving storage: %w", err)
+	}
+
+	for _, fileType := range toMove.AllSet() {
+		if err := sb.sectors.storage.RemoveCopies(ctx, sector.ID, fileType); err != nil {
+			return xerrors.Errorf("rm copies (t:%s, s:%v): %w", fileType, sector, err)
+		}
+	}
+
+	return nil
+}
+
+func (sb *SealCalls) sectorStorageType(ctx context.Context, sector storiface.SectorRef, ft storiface.SectorFileType) (sectorFound bool, ptype storiface.PathType, err error) {
+	stores, err := sb.sectors.sindex.StorageFindSector(ctx, sector.ID, ft, 0, false)
+	if err != nil {
+		return false, "", xerrors.Errorf("finding sector: %w", err)
+	}
+	if len(stores) == 0 {
+		return false, "", nil
+	}
+
+	for _, store := range stores {
+		if store.CanSeal {
+			return true, storiface.PathSealing, nil
+		}
+	}
+
+	return true, storiface.PathStorage, nil
 }
