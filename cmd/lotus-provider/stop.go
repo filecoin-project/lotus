@@ -13,6 +13,8 @@ var stopCmd = &cli.Command{
 	Usage: "Stop a running lotus provider",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
+		SetupCloseHandler()
+
 		api, closer, err := lcli.GetAPI(cctx)
 		if err != nil {
 			return err

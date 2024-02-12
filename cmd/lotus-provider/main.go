@@ -17,6 +17,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/guidedSetup"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -36,7 +37,6 @@ func SetupCloseHandler() {
 }
 
 func main() {
-	SetupCloseHandler()
 
 	lotuslog.SetupLogLevels()
 
@@ -47,6 +47,7 @@ func main() {
 		configCmd,
 		testCmd,
 		webCmd,
+		guidedSetup.GuidedsetupCmd,
 		//backupCmd,
 		//lcli.WithCategory("chain", actorCmd),
 		//lcli.WithCategory("storage", sectorsCmd),

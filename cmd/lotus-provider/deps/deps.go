@@ -10,6 +10,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -44,14 +46,59 @@ import (
 var log = logging.Logger("lotus-provider/deps")
 
 func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
-	dbConfig := config.HarmonyDB{
-		Username: cctx.String("db-user"),
-		Password: cctx.String("db-password"),
-		Hosts:    strings.Split(cctx.String("db-host"), ","),
-		Database: cctx.String("db-name"),
-		Port:     cctx.String("db-port"),
+	// #1 CLI opts
+	fromCLI := func() (*harmonydb.DB, error) {
+		dbConfig := config.HarmonyDB{
+			Username: cctx.String("db-user"),
+			Password: cctx.String("db-password"),
+			Hosts:    strings.Split(cctx.String("db-host"), ","),
+			Database: cctx.String("db-name"),
+			Port:     cctx.String("db-port"),
+		}
+		return harmonydb.NewFromConfig(dbConfig)
 	}
-	return harmonydb.NewFromConfig(dbConfig)
+
+	// #2 Try local miner config
+	fromMiner := func() (*harmonydb.DB, error) {
+		u, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		b, err := os.ReadFile(filepath.Join(u, ".lotus", "config.toml"))
+		if err != nil {
+			return nil, err
+		}
+		cfg := config.DefaultStorageMiner()
+		if _, err := toml.Decode(string(b), &cfg); err != nil {
+			return nil, err
+		}
+		return harmonydb.NewFromConfig(cfg.HarmonyDB)
+	}
+	fromEnv := func() (*harmonydb.DB, error) {
+		// #3 Try env
+		sqlurlRegexp := `://(?P<username>[^:]+):(?P<password>[^@]+)@(?P<host>[^:]+):(?P<port>[^/]+)/(?P<dbname>.+)$`
+		ss := regexp.MustCompile(sqlurlRegexp).FindStringSubmatch(os.Getenv("LOTUS_DB"))
+		if len(ss) == 0 {
+			return nil, errors.New("no db connection string found in LOTUS_DB env")
+		}
+		return harmonydb.NewFromConfig(config.HarmonyDB{
+			Username: ss[1],
+			Password: ss[2],
+			Hosts:    []string{ss[3]},
+			Port:     ss[4],
+			Database: ss[5],
+		})
+	}
+
+	for _, f := range []func() (*harmonydb.DB, error){fromCLI, fromMiner, fromEnv} {
+		db, err := f()
+		if err != nil {
+			continue
+		}
+		return db, nil
+	}
+	log.Error("No db connection string found. User CLI args or env var: set LOTUS_DB=postgres://user:pass@host:port/dbname")
+	return fromCLI() //in-case it's not about bad config.
 }
 
 type JwtPayload struct {
@@ -90,17 +137,17 @@ func GetDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 }
 
 type Deps struct {
-	Cfg        *config.LotusProviderConfig
-	DB         *harmonydb.DB
+	Cfg        *config.LotusProviderConfig // values
+	DB         *harmonydb.DB               // has itest capability
 	Full       api.FullNode
 	Verif      storiface.Verifier
 	LW         *sealer.LocalWorker
 	As         *ctladdr.AddressSelector
-	Maddrs     []dtypes.MinerAddress
+	Maddrs     []dtypes.MinerAddress // values
 	Stor       *paths.Remote
 	Si         *paths.DBIndex
-	LocalStore *paths.Local
-	ListenAddr string
+	LocalStore *paths.Local // value
+	ListenAddr string       // value
 }
 
 const (
