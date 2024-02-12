@@ -22,7 +22,6 @@ import (
 
 const nodeSize = 32
 const threadChunkSize = 1 << 20
-const nodesPerChunk = threadChunkSize / nodeSize
 
 func hashChunk(data [][]byte) {
 	l1Nodes := len(data[0]) / nodeSize / 2

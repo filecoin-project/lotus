@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestUrlPieceReader_Read tests various scenarios of reading data from UrlPieceReader
@@ -12,7 +14,8 @@ func TestUrlPieceReader_Read(t *testing.T) {
 	// Create a test server
 	testData := "This is a test string."
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, testData)
+		_, err := io.WriteString(w, testData)
+		require.NoError(t, err)
 	}))
 	defer ts.Close()
 
@@ -29,6 +32,8 @@ func TestUrlPieceReader_Read(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
 			reader := UrlPieceReader{
 				Url:     ts.URL,

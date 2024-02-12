@@ -83,7 +83,7 @@ func (s *SealPoller) pollCommitMsgFail(ctx context.Context, task pollTask, execR
 		fallthrough
 	case exitcode.SysErrOutOfGas:
 		// just retry
-		return s.pollRetryPrecommitMsgSend(ctx, task, execResult)
+		return s.pollRetryCommitMsgSend(ctx, task, execResult)
 	default:
 		return xerrors.Errorf("commit message failed with exit code %s", exitcode.ExitCode(execResult.ExecutedRcptExitCode))
 	}
