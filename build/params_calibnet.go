@@ -92,7 +92,7 @@ const UpgradeWatermelonFix2Height = 1108174
 // 2024-02-27T14:00:00Z
 const UpgradeDragonHeight = 1390534
 
-const UpgradeMangoHeight = UpgradePineappleHeight + 10
+const UpgradeMangoHeight = UpgradeDragonHeight + 100
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

@@ -59,7 +59,7 @@ const UpgradeWatermelonHeight = -24
 
 const UpgradeDragonHeight = 5760
 
-const UpgradeMangoHeight = UpgradePineappleHeight + 10
+const UpgradeMangoHeight = UpgradeDragonHeight + 100
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
