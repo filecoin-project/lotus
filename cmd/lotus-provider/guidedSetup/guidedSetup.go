@@ -139,9 +139,8 @@ type MigrationData struct {
 }
 
 func configToDB(d *MigrationData) {
-	d.say(section, "Migrating configuration to database.")
-	d.say(notice, "This step will migrate the configuration from the config.toml to the database.\n")
-	d.say(plain, `A Lotus-Miner cluster shares a database and shares the work of managing multiple Miner IDs and their sectors.\n`)
+	d.say(section, "Migrating config.toml to database.")
+	d.say(plain, `A Lotus-Provider cluster shares a database. They share the work of proving multiple Miner ID's sectors.\n`)
 
 	type rawConfig struct {
 		Raw   []byte `db:"config"`
@@ -170,15 +169,15 @@ func configToDB(d *MigrationData) {
 }
 
 func oneLastThing(d *MigrationData) {
-	d.say(section, "One Last Thing")
-	d.say(plain, "We want to bring you the best SP tooling. Can we record your Miner ID as one that is trying lotus-provider?\n")
-	d.say(plain, "Hit return to tell CurioStorage.org that you've migrated to lotus-provider.\n")
+	d.say(section, "To bring you the best SP tooling...")
+	d.say(plain, "Share with the Curio team your interest in lotus-provider for this Miner ID.\n")
+	d.say(plain, "Hit return to tell http://CurioStorage.org that you've migrated to lotus-provider.\n")
 	_, err := (&promptui.Prompt{Label: "Press return to continue"}).Run()
 	if err != nil {
 		d.say(notice, "Aborting remaining steps.\n", err.Error())
 	}
 	// TODO http call to home with a simple message of
-	// this version and "lotus-provider" signed by the miner's key.
+	// this version, net (mainnet/testnet), and "lotus-provider" signed by the miner's key.
 }
 
 func doc(d *MigrationData) {
