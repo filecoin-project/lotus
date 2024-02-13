@@ -17,17 +17,16 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	_ "github.com/filecoin-project/lotus/cmd/lotus-provider/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
-
-	"github.com/charmbracelet/lipgloss"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 var GuidedsetupCmd = &cli.Command{
@@ -90,6 +89,11 @@ var (
 		Foreground(lipgloss.Color("black")).
 		Background(lipgloss.Color("#FFFFFF")).
 		Underline(true)
+
+	code = lipgloss.NewStyle().
+		Align(lipgloss.Left).
+		Foreground(lipgloss.Color("#00FF00")).
+		Background(lipgloss.Color("#f8f9fa"))
 )
 
 type migrationStep func(*MigrationData)
@@ -120,11 +124,9 @@ var migrationSteps = []migrationStep{
 	readMinerConfig, // Tells them to be on the miner machine
 	yugabyteConnect, // Miner is updated
 	verifySectors,   // Verify the sectors are in the database
-	configToDB,      // work on base configuration migration.
-	// probably should add default layers for enabling features.
-	// probably should add a web layer for the web interface.
-	//    This is where Boost configuration can be completed.
-	// Ask if they want to report their MinerID as one that's running Provider
+	configToDB,      // TODO work on base configuration migration.
+	doc,
+	oneLastThing,
 }
 
 type MigrationData struct {
@@ -156,9 +158,47 @@ func configToDB(d *MigrationData) {
 	//})
 	// NEEDS multiaddress PR committed to interpret configs correctly.
 
-	// TODO	d.say(plain, "This lotus-miner services the Miner ID: %s\n", "TODO MinerID") // TODO!!!
-	//TODO
+	// TODO	d.say(plain, "This lotus-miner services the Miner ID: %s\n", "TODO MinerID")
+
+	// This will be added to the new/existing base layer along with its specific wallet rules.
+	// (if existing): Here's the diff of this miner's config.toml and the db's base layer.
+	//      To edit, use the interactive editor by doing ....  after setup completes.
+	// (if new): Writing the base layer.
+
+	// commit the new base layer, also commit a miner-id-named layer.
 	d.say(plain, "TODO FINISH THIS FUNCTION\n")
+}
+
+func oneLastThing(d *MigrationData) {
+	d.say(section, "One Last Thing")
+	d.say(plain, "We want to bring you the best SP tooling. Can we record your Miner ID as one that is trying lotus-provider?\n")
+	d.say(plain, "Hit return to tell CurioStorage.org that you've migrated to lotus-provider.\n")
+	_, err := (&promptui.Prompt{Label: "Press return to continue"}).Run()
+	if err != nil {
+		d.say(notice, "Aborting remaining steps.\n", err.Error())
+	}
+	// TODO http call to home with a simple message of
+	// this version and "lotus-provider" signed by the miner's key.
+}
+
+func doc(d *MigrationData) {
+	d.say(plain, "The configuration layers have been created for you: base, post, gui, seal.")
+	d.say(plain, "Documentation: \n")
+	d.say(plain, "Put common configuration in 'base' and include it everywhere.\n")
+	d.say(plain, "Instances without tasks will still serve their sectors for other providers.\n")
+	d.say(plain, "As there are no local config.toml files, put per-machine changes in additional layers.\n")
+	d.say(plain, "Edit a layer with the command: ")
+	d.say(code, "lotus-provider config edit <layername>\n")
+
+	d.say(plain, "TODO FINISH THIS FUNCTION.\n")
+	// TODO !!
+	// show the command to start the web interface & the command to start the main provider.
+	//    This is where Boost configuration can be completed.
+	// Doc: You can run as many providers on the same tasks as you want. It provides redundancy.
+	d.say(plain, "Want PoST redundancy? Run many providers with the 'post' layer.\n")
+	d.say(plain, "Point your browser to your web GUI to complete setup with Boost and advanced featues.\n")
+
+	fmt.Println()
 }
 
 func verifySectors(d *MigrationData) {
@@ -183,6 +223,7 @@ func verifySectors(d *MigrationData) {
 	d.say(plain, "Sectors verified. %d sector locations found.\n", i)
 	d.say(plain, "Never remove the database info from the config.toml for lotus-miner as it avoids double PoSt.\n")
 
+	d.say(plain, "Finish sealing in progress before moving those systems to lotus-provider.\n")
 	stepCompleted(d, d.T("Verified Sectors in Database"))
 }
 

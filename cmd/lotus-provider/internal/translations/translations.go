@@ -3,7 +3,7 @@
 //  2. run `go generate` in the cmd/lotus-provider/internal/translations/ folder.
 //  3. Ask ChatGPT to translate the locale/??/out.gotext.json files' translation
 //     fields to their respective languages. Replace the messages.gotext.json files.
-//     In web UI, you need to hit "contine generating"
+//     In web UI, you need to hit "continue generating"
 //  4. run `go generate` in the cmd/lotus-provider/internal/translations/ folder to re-import.
 //
 // FUTURE Reliability: automate this with an openAPI call when translate fields turn up blank.

@@ -40,97 +40,112 @@ func init() {
 }
 
 var messageKeyToIndex = map[string]int{
-	"Cannot read the config.toml file in the provided directory, Error: %s\n": 32,
-	"Completed Step: %s\n\n":                                      34,
-	"Connected to Yugabyte":                                       27,
-	"Connected to Yugabyte. Schema is current.\n":                 22,
-	"Continue to connect and update schema.":                      15,
+	"A Lotus-Miner cluster shares a database and shares the work of managing multiple Miner IDs and their sectors.\\n": 6,
+	"Cannot read the config.toml file in the provided directory, Error: %s\n":                                          37,
+	"Completed Step: %s\n\n":                                      39,
+	"Connected to Yugabyte":                                       32,
+	"Connected to Yugabyte. Schema is current.\n":                 27,
+	"Continue to connect and update schema.":                      20,
 	"Ctrl+C pressed in Terminal":                                  3,
-	"Database config error occurred, abandoning migration: %s \n": 16,
-	"Database: %s":                                                14,
-	"Enter the Yugabyte database %s":                              19,
-	"Enter the Yugabyte database host(s)":                         17,
-	"Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)": 9,
-	"Enter the path to the configuration directory used by lotus-miner":                                 30,
-	"Error connecting to Yugabyte database: %s\n":                                                       21,
-	"Error encoding config.toml: %s\n":                                                                  23,
-	"Error reading filemode of config.toml: %s\n":                                                       24,
-	"Error verifying sectors: %s\n":                                                                     5,
-	"Error writing config.toml: %s\n":                                                                   25,
-	"Host: %s":                                                                                          10,
-	"Never remove the database info from the config.toml for lotus-miner as it avoids double PoSt.\n": 7,
-	"No host provided\n":                        18,
-	"No path provided, abandoning migration \n": 31,
-	"No value provided\n":                       20,
-	"Other":                                     29,
-	"Password: %s":                              13,
-	"Port: %s":                                  11,
-	"Read Miner Config":                         33,
-	"Restart Lotus Miner. \n":                   26,
-	"Sectors verified. %d sector locations found.\n":                                                              6,
-	"Select the location of your lotus-miner config directory?":                                                   28,
+	"Database config error occurred, abandoning migration: %s \n": 21,
+	"Database: %s":                                                19,
+	"Enter the Yugabyte database %s":                              24,
+	"Enter the Yugabyte database host(s)":                         22,
+	"Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)": 14,
+	"Enter the path to the configuration directory used by lotus-miner":                                 35,
+	"Error connecting to Yugabyte database: %s\n":                                                       26,
+	"Error encoding config.toml: %s\n":                                                                  28,
+	"Error reading filemode of config.toml: %s\n":                                                       29,
+	"Error reading from database: %s. Aborting Migration.\n":                                            7,
+	"Error verifying sectors: %s\n":                                                                     10,
+	"Error writing config.toml: %s\n":                                                                   30,
+	"Host: %s":                                                                                          15,
+	"Migrating configuration to database.":                                                              4,
+	"Never remove the database info from the config.toml for lotus-miner as it avoids double PoSt.\n":   12,
+	"No host provided\n":                                                                                23,
+	"No path provided, abandoning migration \n":                                                         36,
+	"No value provided\n":                                                                               25,
+	"Other":                                                                                             34,
+	"Password: %s":                                                                                      18,
+	"Port: %s":                                                                                          16,
+	"Read Miner Config":                                                                                 38,
+	"Restart Lotus Miner. \n":                                                                           31,
+	"Sectors verified. %d sector locations found.\n":                                                    11,
+	"Select the location of your lotus-miner config directory?":                                         33,
+	"TODO FINISH THIS FUNCTION\n":                                                                       8,
 	"This interactive tool will walk you through migration of lotus-provider.\nPress Ctrl+C to exit at any time.": 0,
+	"This step will migrate the configuration from the config.toml to the database.\n":                            5,
 	"This tool confirms each action it does.":                                                                     1,
 	"Use the arrow keys to navigate: ↓ ↑ → ← ":                                                                    2,
-	"Username: %s":                 12,
-	"Verified Sectors in Database": 8,
-	"Waiting for lotus-miner to write sectors into Yugabyte.": 4,
+	"Username: %s":                 17,
+	"Verified Sectors in Database": 13,
+	"Waiting for lotus-miner to write sectors into Yugabyte.": 9,
 }
 
-var enIndex = []uint32{ // 36 elements
+var enIndex = []uint32{ // 41 elements
 	// Entry 0 - 1F
 	0x00000000, 0x0000006b, 0x00000093, 0x000000c8,
-	0x000000e3, 0x0000011b, 0x0000013f, 0x00000174,
-	0x000001d7, 0x000001f4, 0x00000256, 0x00000262,
-	0x0000026e, 0x0000027e, 0x0000028e, 0x0000029e,
-	0x000002c5, 0x00000307, 0x0000032b, 0x00000341,
-	0x00000363, 0x0000037a, 0x000003ac, 0x000003db,
-	0x00000402, 0x00000434, 0x0000045a, 0x00000475,
-	0x0000048b, 0x000004c5, 0x000004cb, 0x0000050d,
+	0x000000e3, 0x00000108, 0x0000015c, 0x000001cc,
+	0x00000209, 0x00000228, 0x00000260, 0x00000284,
+	0x000002b9, 0x0000031c, 0x00000339, 0x0000039b,
+	0x000003a7, 0x000003b3, 0x000003c3, 0x000003d3,
+	0x000003e3, 0x0000040a, 0x0000044c, 0x00000470,
+	0x00000486, 0x000004a8, 0x000004bf, 0x000004f1,
+	0x00000520, 0x00000547, 0x00000579, 0x0000059f,
 	// Entry 20 - 3F
-	0x0000053a, 0x00000588, 0x0000059a, 0x000005b6,
-} // Size: 168 bytes
+	0x000005ba, 0x000005d0, 0x0000060a, 0x00000610,
+	0x00000652, 0x0000067f, 0x000006cd, 0x000006df,
+	0x000006fb,
+} // Size: 188 bytes
 
-const enData string = "" + // Size: 1462 bytes
+const enData string = "" + // Size: 1787 bytes
 	"\x02This interactive tool will walk you through migration of lotus-provi" +
 	"der.\x0aPress Ctrl+C to exit at any time.\x02This tool confirms each act" +
 	"ion it does.\x04\x00\x01 0\x02Use the arrow keys to navigate: ↓ ↑ → ←" +
-	"\x02Ctrl+C pressed in Terminal\x02Waiting for lotus-miner to write secto" +
-	"rs into Yugabyte.\x04\x00\x01\x0a\x1f\x02Error verifying sectors: %[1]s" +
-	"\x04\x00\x01\x0a0\x02Sectors verified. %[1]d sector locations found.\x04" +
-	"\x00\x01\x0a^\x02Never remove the database info from the config.toml for" +
-	" lotus-miner as it avoids double PoSt.\x02Verified Sectors in Database" +
-	"\x02Enter the info to connect to your Yugabyte database installation (ht" +
-	"tps://download.yugabyte.com/)\x02Host: %[1]s\x02Port: %[1]s\x02Username:" +
-	" %[1]s\x02Password: %[1]s\x02Database: %[1]s\x02Continue to connect and " +
-	"update schema.\x04\x00\x02 \x0a<\x02Database config error occurred, aban" +
-	"doning migration: %[1]s\x02Enter the Yugabyte database host(s)\x04\x00" +
-	"\x01\x0a\x11\x02No host provided\x02Enter the Yugabyte database %[1]s" +
-	"\x04\x00\x01\x0a\x12\x02No value provided\x04\x00\x01\x0a-\x02Error conn" +
-	"ecting to Yugabyte database: %[1]s\x04\x00\x01\x0a*\x02Connected to Yuga" +
-	"byte. Schema is current.\x04\x00\x01\x0a\x22\x02Error encoding config.to" +
-	"ml: %[1]s\x04\x00\x01\x0a-\x02Error reading filemode of config.toml: %[1" +
-	"]s\x04\x00\x01\x0a!\x02Error writing config.toml: %[1]s\x04\x00\x02 \x0a" +
-	"\x15\x02Restart Lotus Miner.\x02Connected to Yugabyte\x02Select the loca" +
-	"tion of your lotus-miner config directory?\x02Other\x02Enter the path to" +
-	" the configuration directory used by lotus-miner\x04\x00\x02 \x0a'\x02No" +
-	" path provided, abandoning migration\x04\x00\x01\x0aI\x02Cannot read the" +
-	" config.toml file in the provided directory, Error: %[1]s\x02Read Miner " +
-	"Config\x04\x00\x02\x0a\x0a\x16\x02Completed Step: %[1]s"
+	"\x02Ctrl+C pressed in Terminal\x02Migrating configuration to database." +
+	"\x04\x00\x01\x0aO\x02This step will migrate the configuration from the c" +
+	"onfig.toml to the database.\x02A Lotus-Miner cluster shares a database a" +
+	"nd shares the work of managing multiple Miner IDs and their sectors.\\n" +
+	"\x04\x00\x01\x0a8\x02Error reading from database: %[1]s. Aborting Migrat" +
+	"ion.\x04\x00\x01\x0a\x1a\x02TODO FINISH THIS FUNCTION\x02Waiting for lot" +
+	"us-miner to write sectors into Yugabyte.\x04\x00\x01\x0a\x1f\x02Error ve" +
+	"rifying sectors: %[1]s\x04\x00\x01\x0a0\x02Sectors verified. %[1]d secto" +
+	"r locations found.\x04\x00\x01\x0a^\x02Never remove the database info fr" +
+	"om the config.toml for lotus-miner as it avoids double PoSt.\x02Verified" +
+	" Sectors in Database\x02Enter the info to connect to your Yugabyte datab" +
+	"ase installation (https://download.yugabyte.com/)\x02Host: %[1]s\x02Port" +
+	": %[1]s\x02Username: %[1]s\x02Password: %[1]s\x02Database: %[1]s\x02Cont" +
+	"inue to connect and update schema.\x04\x00\x02 \x0a<\x02Database config " +
+	"error occurred, abandoning migration: %[1]s\x02Enter the Yugabyte databa" +
+	"se host(s)\x04\x00\x01\x0a\x11\x02No host provided\x02Enter the Yugabyte" +
+	" database %[1]s\x04\x00\x01\x0a\x12\x02No value provided\x04\x00\x01\x0a" +
+	"-\x02Error connecting to Yugabyte database: %[1]s\x04\x00\x01\x0a*\x02Co" +
+	"nnected to Yugabyte. Schema is current.\x04\x00\x01\x0a\x22\x02Error enc" +
+	"oding config.toml: %[1]s\x04\x00\x01\x0a-\x02Error reading filemode of c" +
+	"onfig.toml: %[1]s\x04\x00\x01\x0a!\x02Error writing config.toml: %[1]s" +
+	"\x04\x00\x02 \x0a\x15\x02Restart Lotus Miner.\x02Connected to Yugabyte" +
+	"\x02Select the location of your lotus-miner config directory?\x02Other" +
+	"\x02Enter the path to the configuration directory used by lotus-miner" +
+	"\x04\x00\x02 \x0a'\x02No path provided, abandoning migration\x04\x00\x01" +
+	"\x0aI\x02Cannot read the config.toml file in the provided directory, Err" +
+	"or: %[1]s\x02Read Miner Config\x04\x00\x02\x0a\x0a\x16\x02Completed Step" +
+	": %[1]s"
 
-var koIndex = []uint32{ // 36 elements
+var koIndex = []uint32{ // 41 elements
 	// Entry 0 - 1F
 	0x00000000, 0x0000007f, 0x000000b9, 0x000000b9,
-	0x000000da, 0x000000da, 0x00000106, 0x00000106,
-	0x0000019b, 0x0000019b, 0x00000209, 0x0000021a,
-	0x00000228, 0x00000240, 0x00000254, 0x0000026e,
-	0x00000298, 0x000002fc, 0x00000338, 0x00000367,
-	0x0000039f, 0x000003c8, 0x00000421, 0x00000467,
-	0x000004b3, 0x00000507, 0x0000054a, 0x0000056f,
-	0x00000585, 0x000005d4, 0x000005db, 0x00000636,
+	0x000000da, 0x000000da, 0x000000da, 0x000000da,
+	0x000000da, 0x000000da, 0x000000da, 0x00000106,
+	0x00000106, 0x0000019b, 0x0000019b, 0x00000209,
+	0x0000021a, 0x00000228, 0x00000240, 0x00000254,
+	0x0000026e, 0x00000298, 0x000002fc, 0x00000338,
+	0x00000367, 0x0000039f, 0x000003c8, 0x00000421,
+	0x00000467, 0x000004b3, 0x00000507, 0x0000054a,
 	// Entry 20 - 3F
-	0x00000689, 0x000006e8, 0x00000700, 0x0000071b,
-} // Size: 168 bytes
+	0x0000056f, 0x00000585, 0x000005d4, 0x000005db,
+	0x00000636, 0x00000689, 0x000006e8, 0x00000700,
+	0x0000071b,
+} // Size: 188 bytes
 
 const koData string = "" + // Size: 1819 bytes
 	"\x02이 대화형 도구는 로터스 공급자 이주를 안내합니다.\x0a언제든지 종료하려면 Ctrl+C를 누르십시오.\x02이 도구는 수" +
@@ -151,19 +166,21 @@ const koData string = "" + // Size: 1819 bytes
 	"않았으므로 마이그레이션을 포기합니다\x04\x00\x01\x0aZ\x02제공된 디렉토리에서 config.toml 파일을 읽을 " +
 	"수 없습니다. 오류: %[1]s\x02마이너 구성 읽기\x04\x00\x02\x0a\x0a\x15\x02단계 완료: %[1]s"
 
-var zhIndex = []uint32{ // 36 elements
+var zhIndex = []uint32{ // 41 elements
 	// Entry 0 - 1F
 	0x00000000, 0x00000055, 0x00000080, 0x00000080,
-	0x00000099, 0x00000099, 0x000000bc, 0x000000bc,
-	0x00000121, 0x00000121, 0x0000017b, 0x0000018a,
-	0x00000199, 0x000001ab, 0x000001ba, 0x000001cc,
-	0x000001eb, 0x00000224, 0x00000249, 0x0000025e,
-	0x0000027c, 0x0000028e, 0x000002bf, 0x000002f1,
-	0x00000319, 0x0000034d, 0x00000375, 0x00000396,
-	0x000003ab, 0x000003db, 0x000003e2, 0x00000412,
+	0x00000099, 0x00000099, 0x00000099, 0x00000099,
+	0x00000099, 0x00000099, 0x00000099, 0x000000bc,
+	0x000000bc, 0x00000121, 0x00000121, 0x0000017b,
+	0x0000018a, 0x00000199, 0x000001ab, 0x000001ba,
+	0x000001cc, 0x000001eb, 0x00000224, 0x00000249,
+	0x0000025e, 0x0000027c, 0x0000028e, 0x000002bf,
+	0x000002f1, 0x00000319, 0x0000034d, 0x00000375,
 	// Entry 20 - 3F
-	0x00000437, 0x00000480, 0x00000493, 0x000004ae,
-} // Size: 168 bytes
+	0x00000396, 0x000003ab, 0x000003db, 0x000003e2,
+	0x00000412, 0x00000437, 0x00000480, 0x00000493,
+	0x000004ae,
+} // Size: 188 bytes
 
 const zhData string = "" + // Size: 1198 bytes
 	"\x02此互动工具将引导您完成lotus-provider的迁移。\x0a随时按Ctrl+C退出。\x02此工具确认其执行的每个操作。\x02在" +
@@ -181,4 +198,4 @@ const zhData string = "" + // Size: 1198 bytes
 	"\x02无法读取提供的目录中的config.toml文件，错误：%[1]s\x02读取矿工配置\x04\x00\x02\x0a\x0a\x15" +
 	"\x02完成步骤：%[1]s"
 
-	// Total table size 4983 bytes (4KiB); checksum: 7348663B
+	// Total table size 5368 bytes (5KiB); checksum: 1762260B

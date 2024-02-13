@@ -10,13 +10,14 @@ VERSION:
    1.25.3-dev
 
 COMMANDS:
-   run      Start a lotus provider process
-   stop     Stop a running lotus provider
-   config   Manage node config by layers. The layer 'base' will always be applied. 
-   test     Utility functions for testing
-   web      Start lotus provider web interface
-   version  Print version
-   help, h  Shows a list of commands or help for one command
+   run           Start a lotus provider process
+   stop          Stop a running lotus provider
+   config        Manage node config by layers. The layer 'base' will always be applied. 
+   test          Utility functions for testing
+   web           Start lotus provider web interface
+   guided-setup  Run the guided setup for migrating from lotus-miner to lotus-provider
+   version       Print version
+   help, h       Shows a list of commands or help for one command
    DEVELOPER:
      auth          Manage RPC permissions
      log           Manage logging
@@ -265,6 +266,18 @@ OPTIONS:
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base. Web will be added (default: "base")
    --nosync                           don't check full-node sync status (default: false)
    --help, -h                         show help
+```
+
+## lotus-provider guided-setup
+```
+NAME:
+   lotus-provider guided-setup - Run the guided setup for migrating from lotus-miner to lotus-provider
+
+USAGE:
+   lotus-provider guided-setup [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## lotus-provider version

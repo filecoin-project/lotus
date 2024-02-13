@@ -22,6 +22,41 @@
             "translation": "在终端中按下Ctrl+C"
         },
         {
+            "id": "Migrating configuration to database.",
+            "message": "Migrating configuration to database.",
+            "translation": ""
+        },
+        {
+            "id": "This step will migrate the configuration from the config.toml to the database.",
+            "message": "This step will migrate the configuration from the config.toml to the database.",
+            "translation": ""
+        },
+        {
+            "id": "A Lotus-Miner cluster shares a database and shares the work of managing multiple Miner IDs and their sectors.\\n",
+            "message": "A Lotus-Miner cluster shares a database and shares the work of managing multiple Miner IDs and their sectors.\\n",
+            "translation": ""
+        },
+        {
+            "id": "Error reading from database: {Error}. Aborting Migration.",
+            "message": "Error reading from database: {Error}. Aborting Migration.",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "TODO FINISH THIS FUNCTION",
+            "message": "TODO FINISH THIS FUNCTION",
+            "translation": ""
+        },
+        {
             "id": "Waiting for lotus-miner to write sectors into Yugabyte.",
             "message": "Waiting for lotus-miner to write sectors into Yugabyte.",
             "translation": ""

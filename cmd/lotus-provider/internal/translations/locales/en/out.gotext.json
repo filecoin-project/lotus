@@ -30,6 +30,51 @@
             "fuzzy": true
         },
         {
+            "id": "Migrating configuration to database.",
+            "message": "Migrating configuration to database.",
+            "translation": "Migrating configuration to database.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "This step will migrate the configuration from the config.toml to the database.",
+            "message": "This step will migrate the configuration from the config.toml to the database.",
+            "translation": "This step will migrate the configuration from the config.toml to the database.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "A Lotus-Miner cluster shares a database and shares the work of managing multiple Miner IDs and their sectors.\\n",
+            "message": "A Lotus-Miner cluster shares a database and shares the work of managing multiple Miner IDs and their sectors.\\n",
+            "translation": "A Lotus-Miner cluster shares a database and shares the work of managing multiple Miner IDs and their sectors.\\n",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error reading from database: {Error}. Aborting Migration.",
+            "message": "Error reading from database: {Error}. Aborting Migration.",
+            "translation": "Error reading from database: {Error}. Aborting Migration.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "TODO FINISH THIS FUNCTION",
+            "message": "TODO FINISH THIS FUNCTION",
+            "translation": "TODO FINISH THIS FUNCTION",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
             "id": "Waiting for lotus-miner to write sectors into Yugabyte.",
             "message": "Waiting for lotus-miner to write sectors into Yugabyte.",
             "translation": "Waiting for lotus-miner to write sectors into Yugabyte.",
