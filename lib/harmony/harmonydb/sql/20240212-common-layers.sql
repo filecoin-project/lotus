@@ -19,4 +19,4 @@ INSERT INTO harmony_config (title, config) VALUES
   EnableSendCommitMsg = true
   EnableMoveStorage = true
   ')
-  ON CONFLICT (title) DO NOTHING;
+  ON CONFLICT (title) DO NOTHING; -- SPs may have these names defined already.
