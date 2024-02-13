@@ -7,6 +7,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin12 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -15,6 +16,17 @@ import (
 )
 
 var Methods = builtin12.MethodsEVM
+
+const (
+	ErrReverted exitcode.ExitCode = iota + 33
+	ErrInvalidInstruction
+	ErrUndefinedInstruction
+	ErrStackUnderflow
+	ErrStackOverflow
+	ErrIllegalMemoryAccess
+	ErrBadJumpdest
+	ErrSelfdestructFailed
+)
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {

@@ -987,17 +987,12 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 }
 
 type EthTrace struct {
-	Action       EthTraceAction `json:"action"`
-	Result       EthTraceResult `json:"result"`
-	Subtraces    int            `json:"subtraces"`
-	TraceAddress []int          `json:"traceAddress"`
-	Type         string         `json:"type"`
-	Error        string         `json:"error,omitempty"`
-}
-
-func (t *EthTrace) SetCallType(callType string) {
-	t.Action.CallType = callType
-	t.Type = callType
+	Type         string `json:"type"`
+	Error        string `json:"error,omitempty"`
+	Subtraces    int    `json:"subtraces"`
+	TraceAddress []int  `json:"traceAddress"`
+	Action       any    `json:"action"`
+	Result       any    `json:"result"`
 }
 
 type EthTraceBlock struct {
@@ -1016,16 +1011,29 @@ type EthTraceReplayBlockTransaction struct {
 	VmTrace         *string     `json:"vmTrace"`
 }
 
-type EthTraceAction struct {
-	CallType string      `json:"callType"`
-	From     EthAddress  `json:"from"`
-	To       *EthAddress `json:"to"`
-	Gas      EthUint64   `json:"gas"`
-	Input    EthBytes    `json:"input"`
-	Value    EthBigInt   `json:"value"`
+type EthCallTraceAction struct {
+	CallType string     `json:"callType"`
+	From     EthAddress `json:"from"`
+	To       EthAddress `json:"to"`
+	Gas      EthUint64  `json:"gas"`
+	Value    EthBigInt  `json:"value"`
+	Input    EthBytes   `json:"input"`
 }
 
-type EthTraceResult struct {
+type EthCallTraceResult struct {
 	GasUsed EthUint64 `json:"gasUsed"`
 	Output  EthBytes  `json:"output"`
+}
+
+type EthCreateTraceAction struct {
+	From  EthAddress `json:"from"`
+	Gas   EthUint64  `json:"gas"`
+	Value EthBigInt  `json:"value"`
+	Init  EthBytes   `json:"init"`
+}
+
+type EthCreateTraceResult struct {
+	Address *EthAddress `json:"address,omitempty"`
+	GasUsed EthUint64   `json:"gasUsed"`
+	Code    EthBytes    `json:"code"`
 }

@@ -2,18 +2,22 @@ package full
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v12/eam"
-	"github.com/filecoin-project/go-state-types/builtin/v12/evm"
+	eam12 "github.com/filecoin-project/go-state-types/builtin/v12/eam"
+	evm12 "github.com/filecoin-project/go-state-types/builtin/v12/evm"
+	init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/evm"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -55,6 +59,24 @@ func decodeParams[P any, T interface {
 	return params, nil
 }
 
+func decodeReturn[R any, T interface {
+	*R
+	cbg.CBORUnmarshaler
+}](ret *types.ReturnTrace) (T, error) {
+	var retval T = new(R)
+	switch ret.ReturnCodec {
+	case uint64(multicodec.DagCbor), uint64(multicodec.Cbor):
+	default:
+		return nil, xerrors.Errorf("Method returned an unexpected codec %d", ret.ReturnCodec)
+	}
+
+	if err := retval.UnmarshalCBOR(bytes.NewReader(ret.Return)); err != nil {
+		return nil, xerrors.Errorf("failed to decode return value: %w", err)
+	}
+
+	return retval, nil
+}
+
 func find[T any](values []T, cb func(t *T) *T) *T {
 	for i := range values {
 		if o := cb(&values[i]); o != nil {
@@ -87,6 +109,57 @@ func traceToAddress(act *types.ActorTrace) ethtypes.EthAddress {
 		}
 	}
 	return ethtypes.EthAddressFromActorID(act.Id)
+}
+
+// traceIsEVMOrEAM returns true if the trace is a call to an EVM or EAM actor.
+func traceIsEVMOrEAM(et *types.ExecutionTrace) bool {
+	if et.InvokedActor == nil {
+		return false
+	}
+	return builtinactors.IsEvmActor(et.InvokedActor.State.Code) ||
+		et.InvokedActor.Id != abi.ActorID(builtin.EthereumAddressManagerActorID)
+}
+
+func traceErrMsg(et *types.ExecutionTrace) string {
+	code := et.MsgRct.ExitCode
+
+	if code.IsSuccess() {
+		return ""
+	}
+
+	// EVM tools often expect this literal string.
+	if code == exitcode.SysErrOutOfGas {
+		return "out of gas"
+	}
+
+	// indicate when we have a "system" error.
+	if code < exitcode.FirstActorErrorCode {
+		return fmt.Sprintf("vm error: %s", code)
+	}
+
+	// handle special exit codes from the EVM/EAM.
+	if traceIsEVMOrEAM(et) {
+		switch code {
+		case evm.ErrReverted:
+			return "Reverted" // capitalized for compatibility
+		case evm.ErrInvalidInstruction:
+			return "invalid instruction"
+		case evm.ErrUndefinedInstruction:
+			return "undefined instruction"
+		case evm.ErrStackUnderflow:
+			return "stack underflow"
+		case evm.ErrStackOverflow:
+			return "stack overflow"
+		case evm.ErrIllegalMemoryAccess:
+			return "illegal memory access"
+		case evm.ErrBadJumpdest:
+			return "invalid jump destination"
+		case evm.ErrSelfdestructFailed:
+			return "self destruct failed"
+		}
+	}
+	// everything else...
+	return fmt.Sprintf("actor error: %s", code.Error())
 }
 
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
@@ -126,31 +199,6 @@ func buildTraces(env *environment, addr []int, et *types.ExecutionTrace) error {
 	return nil
 }
 
-func decodeCreate(msg *types.MessageTrace) (callType string, initcode []byte, err error) {
-	switch msg.Method {
-	case builtin.MethodsEAM.Create:
-		params, err := decodeParams[eam.CreateParams](msg)
-		if err != nil {
-			return "", nil, err
-		}
-		return "create", params.Initcode, nil
-	case builtin.MethodsEAM.Create2:
-		params, err := decodeParams[eam.Create2Params](msg)
-		if err != nil {
-			return "", nil, err
-		}
-		return "create2", params.Initcode, nil
-	case builtin.MethodsEAM.CreateExternal:
-		input, err := decodePayload(msg.Params, msg.ParamsCodec)
-		if err != nil {
-			return "", nil, err
-		}
-		return "create", input, nil
-	default:
-		return "", nil, xerrors.Errorf("unexpected CREATE method %d", msg.Method)
-	}
-}
-
 // buildTrace processes the passed execution trace and updates the environment, if necessary.
 //
 // On success, it returns a trace to add (or nil to skip) and the trace recurse into (or nil to skip).
@@ -187,43 +235,13 @@ func buildTrace(env *environment, addr []int, et *types.ExecutionTrace) (*ethtyp
 		return nil, nil, nil
 	}
 
-	// Step 1: Decode as a native call
-	to := traceToAddress(et.InvokedActor)
-	var errMsg string
-	if et.MsgRct.ExitCode.IsError() {
-		errMsg = et.MsgRct.ExitCode.Error()
-	}
-	trace := &ethtypes.EthTrace{
-		Action: ethtypes.EthTraceAction{
-			From:  env.caller,
-			To:    &to,
-			Gas:   ethtypes.EthUint64(et.Msg.GasLimit),
-			Value: ethtypes.EthBigInt(et.Msg.Value),
-			Input: encodeFilecoinParamsAsABI(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params),
-		},
-		Result: ethtypes.EthTraceResult{
-			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
-			Output:  encodeFilecoinReturnAsABI(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return),
-		},
-		TraceAddress: addr,
-		Error:        errMsg,
-	}
-
-	// Set the assumed call mode. We'll override this if the call ends up looking like a create,
-	// delegatecall, etc.
-	if et.Msg.ReadOnly {
-		trace.SetCallType("staticcall")
-	} else {
-		trace.SetCallType("call")
-	}
-
 	// Step 2: Decode as a contract invocation
 	//
 	// Normal EVM calls. We don't care if the caller/receiver are actually EVM actors, we only
 	// care if the call _looks_ like an EVM call. If we fail to decode it as an EVM call, we
 	// fallback on interpreting it as a native call.
 	if et.Msg.Method == builtin.MethodsEVM.InvokeContract {
-		return traceInvokeEVM(env, et, trace)
+		return traceEVMCall(env, addr, et)
 	}
 
 	// Step 3: Decode as a contract deployment
@@ -233,12 +251,12 @@ func buildTrace(env *environment, addr []int, et *types.ExecutionTrace) (*ethtyp
 	case builtin.InitActorAddr:
 		switch et.Msg.Method {
 		case builtin.MethodsInit.Exec, builtin.MethodsInit.Exec4:
-			return traceNativeCreate(env, et, trace)
+			return traceNativeCreate(env, addr, et)
 		}
 	case builtin.EthereumAddressManagerActorAddr:
 		switch et.Msg.Method {
 		case builtin.MethodsEAM.Create, builtin.MethodsEAM.Create2, builtin.MethodsEAM.CreateExternal:
-			return traceEthCreate(env, et, trace)
+			return traceEthCreate(env, addr, et)
 		}
 	}
 
@@ -252,29 +270,65 @@ func buildTrace(env *environment, addr []int, et *types.ExecutionTrace) (*ethtyp
 	// respect to the EAM), we only care about the ones relevant DELEGATECALL and can _ignore_
 	// all the others.
 	if env.isEVM && et.Msg.Method > 0 && et.Msg.Method < 1024 {
-		return traceEVMPrivate(env, et, trace, to)
+		return traceEVMPrivate(env, addr, et)
 	}
 
-	return trace, et, nil
+	return traceNativeCall(env, addr, et), et, nil
 }
 
-func traceInvokeEVM(env *environment, et *types.ExecutionTrace, trace *ethtypes.EthTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+// Build an EthTrace for a "call" with the given input & output.
+func traceCall(env *environment, addr []int, et *types.ExecutionTrace, input, output ethtypes.EthBytes) *ethtypes.EthTrace {
+	to := traceToAddress(et.InvokedActor)
+	callType := "call"
+	if et.Msg.ReadOnly {
+		callType = "staticcall"
+	}
+	return &ethtypes.EthTrace{
+		Type: "call",
+		Action: &ethtypes.EthCallTraceAction{
+			CallType: callType,
+			From:     env.caller,
+			To:       to,
+			Gas:      ethtypes.EthUint64(et.Msg.GasLimit),
+			Value:    ethtypes.EthBigInt(et.Msg.Value),
+			Input:    input,
+		},
+		Result: &ethtypes.EthCallTraceResult{
+			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
+			Output:  output,
+		},
+		TraceAddress: addr,
+		Error:        traceErrMsg(et),
+	}
+}
+
+// Build an EthTrace for a "call", parsing the inputs & outputs as a "native" FVM call.
+func traceNativeCall(env *environment, addr []int, et *types.ExecutionTrace) *ethtypes.EthTrace {
+	return traceCall(env, addr, et,
+		encodeFilecoinParamsAsABI(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params),
+		encodeFilecoinReturnAsABI(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return),
+	)
+}
+
+// Build an EthTrace for a "call", parsing the inputs & outputs as an EVM call (falling back on
+// treating it as a native call).
+func traceEVMCall(env *environment, addr []int, et *types.ExecutionTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	input, err := decodePayload(et.Msg.Params, et.Msg.ParamsCodec)
 	if err != nil {
 		log.Debugf("failed to decode contract invocation payload: %w", err)
-		return trace, et, nil
+		return traceNativeCall(env, addr, et), et, nil
 	}
 	output, err := decodePayload(et.MsgRct.Return, et.MsgRct.ReturnCodec)
 	if err != nil {
 		log.Debugf("failed to decode contract invocation return: %w", err)
-		return trace, et, nil
+		return traceNativeCall(env, addr, et), et, nil
 	}
-	trace.Action.Input = input
-	trace.Result.Output = output
-	return trace, et, nil
+	return traceCall(env, addr, et, input, output), et, nil
 }
 
-func traceNativeCreate(env *environment, et *types.ExecutionTrace, trace *ethtypes.EthTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+// Build an EthTrace for a native "create" operation. This should only be called with an
+// ExecutionTrace is an Exec or Exec4 method invocation on the Init actor.
+func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	if et.Msg.ReadOnly {
 		// "create" isn't valid in a staticcall, so we just skip this trace
 		// (couldn't have created an actor anyways).
@@ -316,39 +370,90 @@ func traceNativeCreate(env *environment, et *types.ExecutionTrace, trace *ethtyp
 		return nil, nil, xerrors.Errorf("direct call to Exec4 successfully called a constructor!")
 	}
 
-	// Contract creation has no "to".
-	trace.Action.To = nil
-	// If we get here, this isn't a native EVM create. Those always go through
-	// the EAM. So we have no "real" initcode and must use the sentinel value
-	// for "invalid" initcode.
-	trace.Action.Input = []byte{0xFE}
-	trace.SetCallType("create")
-	// Handle the output.
-	if et.MsgRct.ExitCode.IsError() {
-		// If the sub-call fails, record the reason. It's possible for the
-		// call to the init actor to fail, but for the construction to
-		// succeed, so we need to check the exit code here.
-		if subTrace.MsgRct.ExitCode.IsError() {
-			trace.Result.Output = encodeFilecoinReturnAsABI(
-				subTrace.MsgRct.ExitCode,
-				subTrace.MsgRct.ReturnCodec,
-				subTrace.MsgRct.Return,
-			)
-		} else {
-			// Otherwise, output nothing.
-			trace.Result.Output = nil
-		}
-	} else {
+	var output ethtypes.EthBytes
+	var createdAddr *ethtypes.EthAddress
+	if et.MsgRct.ExitCode.IsSuccess() {
 		// We're supposed to put the "installed bytecode" here. But this
 		// isn't an EVM actor, so we just put some invalid bytecode (this is
 		// the answer you'd get if you called EXTCODECOPY on a native
 		// non-account actor, anyways).
-		trace.Result.Output = []byte{0xFE}
+		output = []byte{0xFE}
+
+		// Extract the address of the created actor from the return value.
+		initReturn, err := decodeReturn[init12.ExecReturn](&et.MsgRct)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to decode init params after a successful Init.Exec call: %w", err)
+		}
+		actorId, err := address.IDFromAddress(initReturn.IDAddress)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to extract created actor ID from address: %w", err)
+		}
+		ethAddr := ethtypes.EthAddressFromActorID(abi.ActorID(actorId))
+		createdAddr = &ethAddr
 	}
-	return trace, subTrace, nil
+
+	return &ethtypes.EthTrace{
+		Type: "create",
+		Action: &ethtypes.EthCreateTraceAction{
+			From:  env.caller,
+			Gas:   ethtypes.EthUint64(et.Msg.GasLimit),
+			Value: ethtypes.EthBigInt(et.Msg.Value),
+			// If we get here, this isn't a native EVM create. Those always go through
+			// the EAM. So we have no "real" initcode and must use the sentinel value
+			// for "invalid" initcode.
+			Init: []byte{0xFE},
+		},
+		Result: &ethtypes.EthCreateTraceResult{
+			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
+			Address: createdAddr,
+			Code:    output,
+		},
+		TraceAddress: addr,
+		Error:        traceErrMsg(et),
+	}, subTrace, nil
 }
 
-func traceEthCreate(env *environment, et *types.ExecutionTrace, trace *ethtypes.EthTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+// Assert that these are all identical so we can simplify the below code and decode once.
+var _ *eam12.Return = (*eam12.Return)((*eam12.CreateReturn)(nil))
+var _ *eam12.Return = (*eam12.Return)((*eam12.Create2Return)(nil))
+var _ *eam12.Return = (*eam12.Return)((*eam12.CreateExternalReturn)(nil))
+
+// Decode the parameters and return value of an EVM smart contract creation through the EAM. This
+// should only be called with an ExecutionTrace for a Create, Create2, or CreateExternal method
+// invocation on the EAM.
+func decodeCreateViaEAM(et *types.ExecutionTrace) (initcode []byte, addr *ethtypes.EthAddress, err error) {
+	switch et.Msg.Method {
+	case builtin.MethodsEAM.Create:
+		params, err := decodeParams[eam12.CreateParams](&et.Msg)
+		if err != nil {
+			return nil, nil, err
+		}
+		initcode = params.Initcode
+	case builtin.MethodsEAM.Create2:
+		params, err := decodeParams[eam12.Create2Params](&et.Msg)
+		if err != nil {
+			return nil, nil, err
+		}
+		initcode = params.Initcode
+	case builtin.MethodsEAM.CreateExternal:
+		input, err := decodePayload(et.Msg.Params, et.Msg.ParamsCodec)
+		if err != nil {
+			return nil, nil, err
+		}
+		initcode = input
+	default:
+		return nil, nil, xerrors.Errorf("unexpected CREATE method %d", et.Msg.Method)
+	}
+	ret, err := decodeReturn[eam12.CreateReturn](&et.MsgRct)
+	if err != nil {
+		return nil, (*ethtypes.EthAddress)(&ret.EthAddress), err
+	}
+	return initcode, (*ethtypes.EthAddress)(&ret.EthAddress), nil
+}
+
+// Build an EthTrace for an EVM "create" operation. This should only be called with an
+// ExecutionTrace for a Create, Create2, or CreateExternal method invocation on the EAM.
+func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	// Same as the Init actor case above, see the comment there.
 	if et.Msg.ReadOnly {
 		return nil, nil, nil
@@ -378,48 +483,48 @@ func traceEthCreate(env *environment, et *types.ExecutionTrace, trace *ethtypes.
 		return nil, nil, nil
 	}
 
-	// Contract creation has no "to".
-	trace.Action.To = nil
-
 	// Decode inputs & determine create type.
-	method, initcode, err := decodeCreate(&et.Msg)
+	initcode, createdAddr, err := decodeCreateViaEAM(et)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("EAM called with invalid params, but it still tried to construct the contract: %w", err)
+		return nil, nil, xerrors.Errorf("EAM called with invalid params or returned an invalid result, but it still tried to construct the contract: %w", err)
 	}
-	trace.Action.Input = initcode
-	trace.SetCallType(method)
 
+	var output ethtypes.EthBytes
 	// Handle the output.
-	if et.MsgRct.ExitCode.IsError() {
-		if subTrace.MsgRct.ExitCode.IsError() {
-			// If we managed to call the constructor, parse/return its
-			// revert message.
-			output, err := decodePayload(subTrace.MsgRct.Return, subTrace.MsgRct.ReturnCodec)
-			if err != nil {
-				log.Debugf("EVM actor returned indecipherable create error: %w", err)
-				output = encodeFilecoinReturnAsABI(
-					subTrace.MsgRct.ExitCode,
-					subTrace.MsgRct.ReturnCodec,
-					subTrace.MsgRct.Return,
-				)
-			}
-			trace.Result.Output = output
-		} else {
-			// Otherwise, if we failed before that, we have no revert
-			// message.
-			trace.Result.Output = nil
-		}
-	} else {
+	switch et.MsgRct.ExitCode {
+	case 0: // success
 		// We're _supposed_ to include the contracts bytecode here, but we
 		// can't do that reliably (e.g., if some part of the trace reverts).
 		// So we don't try and include a sentinel "impossible bytecode"
 		// value (the value specified by EIP-3541).
-		trace.Result.Output = []byte{0xFE}
+		output = []byte{0xFE}
+	case 33: // Reverted, parse the revert message.
+		// If we managed to call the constructor, parse/return its revert message. If we
+		// fail, we just return no output.
+		output, _ = decodePayload(subTrace.MsgRct.Return, subTrace.MsgRct.ReturnCodec)
 	}
-	return trace, subTrace, nil
+
+	return &ethtypes.EthTrace{
+		Type: "create",
+		Action: &ethtypes.EthCreateTraceAction{
+			From:  env.caller,
+			Gas:   ethtypes.EthUint64(et.Msg.GasLimit),
+			Value: ethtypes.EthBigInt(et.Msg.Value),
+			Init:  initcode,
+		},
+		Result: &ethtypes.EthCreateTraceResult{
+			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
+			Address: createdAddr,
+			Code:    output,
+		},
+		TraceAddress: addr,
+		Error:        traceErrMsg(et),
+	}, subTrace, nil
 }
 
-func traceEVMPrivate(env *environment, et *types.ExecutionTrace, trace *ethtypes.EthTrace, to ethtypes.EthAddress) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+// Build an EthTrace for a "private" method invocation from the EVM. This should only be called with
+// an ExecutionTrace from an EVM instance and on a method between 1 and 1023 inclusive.
+func traceEVMPrivate(env *environment, addr []int, et *types.ExecutionTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	// The EVM actor implements DELEGATECALL by:
 	//
 	// 1. Asking the callee for its bytecode by calling it on the GetBytecode method.
@@ -440,6 +545,7 @@ func traceEVMPrivate(env *environment, et *types.ExecutionTrace, trace *ethtypes
 		// DELEGATECALL any non-EVM actor, but there's no need to encode that fact
 		// here in case we decide to loosen this up in the future.
 		if et.MsgRct.ExitCode.IsSuccess() {
+			to := traceToAddress(et.InvokedActor)
 			env.lastByteCode = &to
 		} else {
 			env.lastByteCode = nil
@@ -460,25 +566,38 @@ func traceEVMPrivate(env *environment, et *types.ExecutionTrace, trace *ethtypes
 		if env.lastByteCode == nil {
 			return nil, nil, xerrors.Errorf("unknown bytecode for delegate call")
 		}
-		if env.caller != to {
+
+		if to := traceToAddress(et.InvokedActor); env.caller != to {
 			return nil, nil, xerrors.Errorf("delegate-call not from & to self: %s != %s", env.caller, to)
 		}
 
-		trace.SetCallType("delegatecall")
-		trace.Action.To = env.lastByteCode
-
-		dp, err := decodeParams[evm.DelegateCallParams](&et.Msg)
+		dp, err := decodeParams[evm12.DelegateCallParams](&et.Msg)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("failed to decode delegate-call params: %w", err)
 		}
-		trace.Action.Input = dp.Input
 
-		trace.Result.Output, err = decodePayload(et.MsgRct.Return, et.MsgRct.ReturnCodec)
+		output, err := decodePayload(et.MsgRct.Return, et.MsgRct.ReturnCodec)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("failed to decode delegate-call return: %w", err)
 		}
 
-		return trace, et, nil
+		return &ethtypes.EthTrace{
+			Type: "call",
+			Action: &ethtypes.EthCallTraceAction{
+				CallType: "delegatecall",
+				From:     env.caller,
+				To:       *env.lastByteCode,
+				Gas:      ethtypes.EthUint64(et.Msg.GasLimit),
+				Value:    ethtypes.EthBigInt(et.Msg.Value),
+				Input:    dp.Input,
+			},
+			Result: &ethtypes.EthCallTraceResult{
+				GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
+				Output:  output,
+			},
+			TraceAddress: addr,
+			Error:        traceErrMsg(et),
+		}, et, nil
 	}
 	// We drop all other "private" calls from FEVM. We _forbid_ explicit calls between 0 and
 	// 1024 (exclusive), so any calls in this range must be implementation details.

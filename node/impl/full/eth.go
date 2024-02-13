@@ -948,7 +948,12 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 
 		var output []byte
 		if len(env.traces) > 0 {
-			output = env.traces[0].Result.Output
+			switch r := env.traces[0].Result.(type) {
+			case *ethtypes.EthCallTraceResult:
+				output = r.Output
+			case *ethtypes.EthCreateTraceResult:
+				output = r.Code
+			}
 		}
 
 		allTraces = append(allTraces, &ethtypes.EthTraceReplayBlockTransaction{

@@ -3094,24 +3094,14 @@ Response:
 ```json
 [
   {
-    "action": {
-      "callType": "string value",
-      "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-      "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-      "gas": "0x5",
-      "input": "0x07",
-      "value": "0x0"
-    },
-    "result": {
-      "gasUsed": "0x5",
-      "output": "0x07"
-    },
+    "type": "string value",
+    "error": "string value",
     "subtraces": 123,
     "traceAddress": [
       123
     ],
-    "type": "string value",
-    "error": "string value",
+    "action": {},
+    "result": {},
     "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
     "blockNumber": 9,
     "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
@@ -3144,24 +3134,14 @@ Response:
     "stateDiff": "string value",
     "trace": [
       {
-        "action": {
-          "callType": "string value",
-          "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-          "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-          "gas": "0x5",
-          "input": "0x07",
-          "value": "0x0"
-        },
-        "result": {
-          "gasUsed": "0x5",
-          "output": "0x07"
-        },
+        "type": "string value",
+        "error": "string value",
         "subtraces": 123,
         "traceAddress": [
           123
         ],
-        "type": "string value",
-        "error": "string value"
+        "action": {},
+        "result": {}
       }
     ],
     "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
