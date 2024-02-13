@@ -92,7 +92,8 @@ const UpgradeWatermelonFix2Height = 1108174
 // 2024-02-27T14:00:00Z
 const UpgradeDragonHeight = 1390534
 
-const UpgradePhoenixHeight = UpgradeDragonHeight + 100
+// This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
+const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
