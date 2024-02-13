@@ -16,9 +16,9 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
-	UpgradeMangoHeight: DrandQuicknet,
+	0:                    DrandIncentinet,
+	UpgradeSmokeHeight:   DrandMainnet,
+	UpgradePhoenixHeight: DrandQuicknet,
 }
 
 var NetworkBundle = "mainnet"
@@ -100,11 +100,11 @@ const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 const UpgradeWatermelonHeight = 3469380
 
 // ??????
-var UpgradePineappleHeight = abi.ChainEpoch(999999999999999)
+var UpgradeDragonHeight = abi.ChainEpoch(999999999999999)
 
-// This epoch, 10 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
+// This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
 // ??????
-var UpgradeMangoHeight = UpgradePineappleHeight + 10
+var UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
@@ -127,9 +127,9 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_PINEAPPLE") == "1" {
-		UpgradePineappleHeight = math.MaxInt64 - 1
-		UpgradeMangoHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_DRAGON") == "1" {
+		UpgradeDragonHeight = math.MaxInt64 - 1
+		UpgradePhoenixHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

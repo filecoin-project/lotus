@@ -16,11 +16,11 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandMainnet,
-	UpgradeMangoHeight: DrandQuicknet,
+	0:                    DrandMainnet,
+	UpgradePhoenixHeight: DrandQuicknet,
 }
 
-const GenesisNetworkVersion = network.Version20
+const GenesisNetworkVersion = network.Version21
 
 var NetworkBundle = "butterflynet"
 var BundleOverrides map[actorstypes.Version]string
@@ -57,10 +57,9 @@ const UpgradeLightningHeight = -22
 const UpgradeThunderHeight = -23
 const UpgradeWatermelonHeight = -24
 
-// ??????
-const UpgradePineappleHeight = 999999999999999
+const UpgradeDragonHeight = 5760
 
-const UpgradeMangoHeight = UpgradePineappleHeight + 10
+const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
