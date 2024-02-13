@@ -167,12 +167,6 @@ require (
 )
 
 require (
-	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-)
-
-require (
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -231,7 +225,6 @@ require (
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
 	github.com/huin/goupnp v1.2.0 // indirect
 	github.com/iancoleman/orderedmap v0.1.0 // indirect
-	github.com/invopop/jsonschema v0.12.0
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.1 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.3.0 // indirect

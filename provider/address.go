@@ -7,12 +7,12 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/provider/multictladdr"
 )
 
-func AddressSelector(addrConf []config.LotusProviderAddresses) func() (*ctladdr.MultiAddressSelector, error) {
-	return func() (*ctladdr.MultiAddressSelector, error) {
-		as := &ctladdr.MultiAddressSelector{
+func AddressSelector(addrConf []config.LotusProviderAddresses) func() (*multictladdr.MultiAddressSelector, error) {
+	return func() (*multictladdr.MultiAddressSelector, error) {
+		as := &multictladdr.MultiAddressSelector{
 			MinerMap: make(map[address.Address]api.AddressConfig),
 		}
 		if addrConf == nil {

@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
-	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/provider/multictladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
@@ -34,8 +34,8 @@ type WdPostRecoverDeclareTask struct {
 	faultTracker sealer.FaultTracker
 
 	maxDeclareRecoveriesGasFee types.FIL
-	as                         *ctladdr.MultiAddressSelector
-	actors                     []dtypes.MinerAddress
+	as                         *multictladdr.MultiAddressSelector
+	actors                     map[dtypes.MinerAddress]bool
 
 	startCheckTF promise.Promise[harmonytask.AddTaskFunc]
 }
@@ -61,11 +61,11 @@ func NewWdPostRecoverDeclareTask(sender *lpmessage.Sender,
 	db *harmonydb.DB,
 	api WdPostRecoverDeclareTaskApi,
 	faultTracker sealer.FaultTracker,
-	as *ctladdr.MultiAddressSelector,
+	as *multictladdr.MultiAddressSelector,
 	pcs *chainsched.ProviderChainSched,
 
 	maxDeclareRecoveriesGasFee types.FIL,
-	actors []dtypes.MinerAddress) (*WdPostRecoverDeclareTask, error) {
+	actors map[dtypes.MinerAddress]bool) (*WdPostRecoverDeclareTask, error) {
 	t := &WdPostRecoverDeclareTask{
 		sender:       sender,
 		db:           db,
@@ -235,7 +235,7 @@ func (w *WdPostRecoverDeclareTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 func (w *WdPostRecoverDeclareTask) processHeadChange(ctx context.Context, revert, apply *types.TipSet) error {
 	tf := w.startCheckTF.Val(ctx)
 
-	for _, act := range w.actors {
+	for act := range w.actors {
 		maddr := address.Address(act)
 
 		aid, err := address.IDFromAddress(maddr)

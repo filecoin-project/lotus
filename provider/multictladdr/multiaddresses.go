@@ -1,7 +1,9 @@
-package ctladdr
+package multictladdr
 
 import (
 	"context"
+
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -9,13 +11,16 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
+
+var log = logging.Logger("multictladdr")
 
 type MultiAddressSelector struct {
 	MinerMap map[address.Address]api.AddressConfig
 }
 
-func (as *MultiAddressSelector) AddressFor(ctx context.Context, a NodeApi, minerID address.Address, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+func (as *MultiAddressSelector) AddressFor(ctx context.Context, a ctladdr.NodeApi, minerID address.Address, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 	if as == nil {
 		// should only happen in some tests
 		log.Warnw("smart address selection disabled, using worker address")
@@ -72,5 +77,5 @@ func (as *MultiAddressSelector) AddressFor(ctx context.Context, a NodeApi, miner
 		addrs = append(addrs, mi.Owner)
 	}
 
-	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
+	return ctladdr.PickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
 }

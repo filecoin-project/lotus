@@ -35,7 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
-	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/provider/multictladdr"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -96,8 +96,8 @@ type Deps struct {
 	Full       api.FullNode
 	Verif      storiface.Verifier
 	LW         *sealer.LocalWorker
-	As         *ctladdr.MultiAddressSelector
-	Maddrs     []dtypes.MinerAddress
+	As         *multictladdr.MultiAddressSelector
+	Maddrs     map[dtypes.MinerAddress]bool
 	Stor       *paths.Remote
 	Si         *paths.DBIndex
 	LocalStore *paths.Local
@@ -243,7 +243,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 				if err != nil {
 					return err
 				}
-				deps.Maddrs = append(deps.Maddrs, dtypes.MinerAddress(addr))
+				deps.Maddrs[dtypes.MinerAddress(addr)] = true
 			}
 		}
 	}

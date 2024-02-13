@@ -189,7 +189,7 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 
 		di := dline.NewInfo(head.Height(), cctx.Uint64("deadline"), 0, 0, 0, 10 /*challenge window*/, 0, 0)
 
-		for _, maddr := range deps.Maddrs {
+		for maddr := range deps.Maddrs {
 			out, err := wdPostTask.DoPartition(ctx, head, address.Address(maddr), di, cctx.Uint64("partition"))
 			if err != nil {
 				fmt.Println("Error computing WindowPoSt for miner", maddr, err)
