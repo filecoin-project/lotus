@@ -69,7 +69,7 @@ var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
 
 var UpgradeDragonHeight = abi.ChainEpoch(20)
 
-var UpgradeMangoHeight = UpgradeDragonHeight + 100
+var UpgradePhoenixHeight = UpgradeDragonHeight + 100
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
@@ -78,8 +78,8 @@ const UpgradeWatermelonFixHeight = -100
 const UpgradeWatermelonFix2Height = -101
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandMainnet,
-	UpgradeMangoHeight: DrandQuicknet,
+	0:                    DrandMainnet,
+	UpgradePhoenixHeight: DrandQuicknet,
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
