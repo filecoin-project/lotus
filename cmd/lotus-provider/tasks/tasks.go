@@ -58,7 +58,12 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
-	hasAnySealingTask := cfg.Subsystems.EnableSealSDR
+	hasAnySealingTask := cfg.Subsystems.EnableSealSDR ||
+		cfg.Subsystems.EnableSealSDRTrees ||
+		cfg.Subsystems.EnableSendPrecommitMsg ||
+		cfg.Subsystems.EnablePoRepProof ||
+		cfg.Subsystems.EnableMoveStorage ||
+		cfg.Subsystems.EnableSendCommitMsg
 	{
 		// Sealing
 
