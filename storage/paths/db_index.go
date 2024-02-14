@@ -180,7 +180,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		}
 	}
 
-	retryWait := time.Millisecond * 100
+	retryWait := time.Millisecond * 20
 retryAttachStorage:
 	// Single transaction to attach storage which is not present in the DB
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
@@ -289,7 +289,7 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 
 		log.Warnw("Dropping sector path endpoint", "path", id, "url", url)
 	} else {
-		retryWait := time.Millisecond * 100
+		retryWait := time.Millisecond * 20
 	retryDropPath:
 		// Single transaction to drop storage path and sector decls which have this as a storage path
 		_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
@@ -321,15 +321,9 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 }
 
 func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
-
-	var canSeal, canStore bool
-	err := dbi.harmonyDB.QueryRow(ctx,
-		"SELECT can_seal, can_store FROM storage_path WHERE storage_id=$1", id).Scan(&canSeal, &canStore)
-	if err != nil {
-		return xerrors.Errorf("Querying for storage id %s fails with err %v", id, err)
-	}
-
-	_, err = dbi.harmonyDB.Exec(ctx,
+	retryWait := time.Millisecond * 20
+retryReportHealth:
+	_, err := dbi.harmonyDB.Exec(ctx,
 		"UPDATE storage_path set capacity=$1, available=$2, fs_available=$3, reserved=$4, used=$5, last_heartbeat=NOW()",
 		report.Stat.Capacity,
 		report.Stat.Available,
@@ -337,7 +331,20 @@ func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, re
 		report.Stat.Reserved,
 		report.Stat.Used)
 	if err != nil {
-		return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
+		//return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
+		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
+			goto retryReportHealth
+		}
+		return err
+	}
+
+	var canSeal, canStore bool
+	err = dbi.harmonyDB.QueryRow(ctx,
+		"SELECT can_seal, can_store FROM storage_path WHERE storage_id=$1", id).Scan(&canSeal, &canStore)
+	if err != nil {
+		return xerrors.Errorf("Querying for storage id %s fails with err %v", id, err)
 	}
 
 	if report.Stat.Capacity > 0 {
