@@ -145,7 +145,7 @@ func (p *ProviderAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string
 }
 
 func (p *ProviderAPI) StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
-	return p.LocalStore.FsStat(ctx, id)
+	return p.Stor.FsStat(ctx, id)
 }
 
 func (p *ProviderAPI) Version(context.Context) (api.Version, error) {
