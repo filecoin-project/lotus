@@ -82,10 +82,10 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a NodeApi, mi api.Min
 		addrs = append(addrs, mi.Owner)
 	}
 
-	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
+	return PickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
 }
 
-func pickAddress(ctx context.Context, a NodeApi, mi api.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
+func PickAddress(ctx context.Context, a NodeApi, mi api.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
 	leastBad := mi.Worker
 	bestAvail := minFunds
 

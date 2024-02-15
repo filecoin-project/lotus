@@ -740,9 +740,9 @@ over the worker address if this flag is set.`,
 		},
 		{
 			Name: "Addresses",
-			Type: "LotusProviderAddresses",
+			Type: "[]LotusProviderAddresses",
 
-			Comment: ``,
+			Comment: `Addresses of wallets per MinerAddress (one of the fields).`,
 		},
 		{
 			Name: "Proving",

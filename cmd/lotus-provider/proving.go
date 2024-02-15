@@ -74,7 +74,8 @@ var wdPostTaskCmd = &cli.Command{
 		}
 		ht := ts.Height()
 
-		addr, err := address.NewFromString(deps.Cfg.Addresses.MinerAddresses[0])
+		// It's not important to be super-accurate as it's only for basic testing.
+		addr, err := address.NewFromString(deps.Cfg.Addresses[0].MinerAddresses[0])
 		if err != nil {
 			return xerrors.Errorf("cannot get miner address %w", err)
 		}
@@ -188,7 +189,7 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 
 		di := dline.NewInfo(head.Height(), cctx.Uint64("deadline"), 0, 0, 0, 10 /*challenge window*/, 0, 0)
 
-		for _, maddr := range deps.Maddrs {
+		for maddr := range deps.Maddrs {
 			out, err := wdPostTask.DoPartition(ctx, head, address.Address(maddr), di, cctx.Uint64("partition"))
 			if err != nil {
 				fmt.Println("Error computing WindowPoSt for miner", maddr, err)

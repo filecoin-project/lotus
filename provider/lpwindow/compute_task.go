@@ -70,7 +70,7 @@ type WdPostTask struct {
 
 	windowPoStTF promise.Promise[harmonytask.AddTaskFunc]
 
-	actors []dtypes.MinerAddress
+	actors map[dtypes.MinerAddress]bool
 	max    int
 }
 
@@ -86,9 +86,8 @@ func NewWdPostTask(db *harmonydb.DB,
 	faultTracker sealer.FaultTracker,
 	prover ProverPoSt,
 	verifier storiface.Verifier,
-
 	pcs *chainsched.ProviderChainSched,
-	actors []dtypes.MinerAddress,
+	actors map[dtypes.MinerAddress]bool,
 	max int,
 ) (*WdPostTask, error) {
 	t := &WdPostTask{
@@ -356,7 +355,7 @@ func (t *WdPostTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 }
 
 func (t *WdPostTask) processHeadChange(ctx context.Context, revert, apply *types.TipSet) error {
-	for _, act := range t.actors {
+	for act := range t.actors {
 		maddr := address.Address(act)
 
 		aid, err := address.IDFromAddress(maddr)

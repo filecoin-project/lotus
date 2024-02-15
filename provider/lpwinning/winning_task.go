@@ -42,7 +42,7 @@ type WinPostTask struct {
 	verifier storiface.Verifier
 
 	api    WinPostAPI
-	actors []dtypes.MinerAddress
+	actors map[dtypes.MinerAddress]bool
 
 	mineTF promise.Promise[harmonytask.AddTaskFunc]
 }
@@ -70,7 +70,7 @@ type ProverWinningPoSt interface {
 	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, error)
 }
 
-func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors []dtypes.MinerAddress) *WinPostTask {
+func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
 	t := &WinPostTask{
 		max:      max,
 		db:       db,
@@ -572,7 +572,7 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 
 		baseEpoch := workBase.TipSet.Height()
 
-		for _, act := range t.actors {
+		for act := range t.actors {
 			spID, err := address.IDFromAddress(address.Address(act))
 			if err != nil {
 				log.Errorf("failed to get spID from address %s: %s", act, err)
