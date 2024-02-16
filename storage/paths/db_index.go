@@ -324,12 +324,13 @@ func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, re
 	retryWait := time.Millisecond * 20
 retryReportHealth:
 	_, err := dbi.harmonyDB.Exec(ctx,
-		"UPDATE storage_path set capacity=$1, available=$2, fs_available=$3, reserved=$4, used=$5, last_heartbeat=NOW()",
+		"UPDATE storage_path set capacity=$1, available=$2, fs_available=$3, reserved=$4, used=$5, last_heartbeat=NOW() where storage_id=$6",
 		report.Stat.Capacity,
 		report.Stat.Available,
 		report.Stat.FSAvailable,
 		report.Stat.Reserved,
-		report.Stat.Used)
+		report.Stat.Used,
+		id)
 	if err != nil {
 		//return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
 		if harmonydb.IsErrSerialization(err) {
