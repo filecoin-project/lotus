@@ -3,7 +3,6 @@ package lpseal
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/provider/multictladdr"
 
 	"golang.org/x/xerrors"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
+	"github.com/filecoin-project/lotus/provider/multictladdr"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
