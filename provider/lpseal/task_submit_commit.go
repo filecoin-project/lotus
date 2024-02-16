@@ -3,6 +3,7 @@ package lpseal
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/provider/multictladdr"
 
 	"golang.org/x/xerrors"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
-	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 type SubmitCommitAPI interface {
@@ -36,12 +36,12 @@ type SubmitCommitTask struct {
 	api SubmitCommitAPI
 
 	sender *lpmessage.Sender
-	as     sealing.AddressSelector
+	as     *multictladdr.MultiAddressSelector
 
 	maxFee types.FIL
 }
 
-func NewSubmitCommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitCommitAPI, sender *lpmessage.Sender, as sealing.AddressSelector, maxFee types.FIL) *SubmitCommitTask {
+func NewSubmitCommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitCommitAPI, sender *lpmessage.Sender, as *multictladdr.MultiAddressSelector, maxFee types.FIL) *SubmitCommitTask {
 	return &SubmitCommitTask{
 		sp:     sp,
 		db:     db,
@@ -118,7 +118,7 @@ func (s *SubmitCommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 		collateral = big.Zero()
 	}
 
-	a, _, err := s.as.AddressFor(ctx, s.api, mi, api.CommitAddr, collateral, big.Zero())
+	a, _, err := s.as.AddressFor(ctx, s.api, maddr, mi, api.CommitAddr, collateral, big.Zero())
 	if err != nil {
 		return false, xerrors.Errorf("getting address for precommit: %w", err)
 	}

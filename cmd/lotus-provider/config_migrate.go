@@ -125,7 +125,7 @@ func fromMiner(cctx *cli.Context) (err error) {
 		return fmt.Errorf("could not read config.toml: %w", err)
 	}
 	lpCfg := config.DefaultLotusProvider()
-	_, err = deps.LoadConfigWithUpgrades(string(buf), &lpCfg)
+	_, err = deps.LoadConfigWithUpgrades(string(buf), lpCfg)
 	if err != nil {
 		return fmt.Errorf("could not decode toml: %w", err)
 	}

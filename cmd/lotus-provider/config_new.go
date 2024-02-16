@@ -86,7 +86,14 @@ var configNewCmd = &cli.Command{
 				return xerrors.Errorf("Failed to get miner info: %w", err)
 			}
 
-			lpCfg.Addresses.MinerAddresses = append(lpCfg.Addresses.MinerAddresses, addr)
+			lpCfg.Addresses = append(lpCfg.Addresses, config.LotusProviderAddresses{
+				PreCommitControl:      nil,
+				CommitControl:         nil,
+				TerminateControl:      nil,
+				DisableOwnerFallback:  false,
+				DisableWorkerFallback: false,
+				MinerAddresses:        []string{addr},
+			})
 		}
 
 		{
