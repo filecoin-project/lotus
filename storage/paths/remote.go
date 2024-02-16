@@ -398,46 +398,47 @@ func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, er
 		return fsutil.FsStat{}, xerrors.Errorf("no known URLs for remote storage %s", id)
 	}
 
-	rl, err := url.Parse(si.URLs[0])
-	if err != nil {
-		return fsutil.FsStat{}, xerrors.Errorf("failed to parse url: %w", err)
-	}
-
-	rl.Path = gopath.Join(rl.Path, "stat", string(id))
-
-	req, err := http.NewRequest("GET", rl.String(), nil)
-	if err != nil {
-		return fsutil.FsStat{}, xerrors.Errorf("request: %w", err)
-	}
-	req.Header = r.auth
-	req = req.WithContext(ctx)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fsutil.FsStat{}, xerrors.Errorf("do request: %w", err)
-	}
-	switch resp.StatusCode {
-	case 200:
-		break
-	case 404:
-		return fsutil.FsStat{}, errPathNotFound
-	case 500:
-		b, err := io.ReadAll(resp.Body)
+	for _, urlStr := range si.URLs {
+		rl, err := url.Parse(urlStr)
 		if err != nil {
-			return fsutil.FsStat{}, xerrors.Errorf("fsstat: got http 500, then failed to read the error: %w", err)
+			log.Warnw("failed to parse URL", "url", urlStr, "error", err)
+			continue // Try the next URL
 		}
 
-		return fsutil.FsStat{}, xerrors.Errorf("fsstat: got http 500: %s", string(b))
+		rl.Path = gopath.Join(rl.Path, "stat", string(id))
+
+		req, err := http.NewRequest("GET", rl.String(), nil)
+		if err != nil {
+			log.Warnw("creating request failed", "url", rl.String(), "error", err)
+			continue // Try the next URL
+		}
+		req.Header = r.auth
+		req = req.WithContext(ctx)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Warnw("request failed", "url", rl.String(), "error", err)
+			continue // Try the next URL
+		}
+
+		if resp.StatusCode == 200 {
+			var out fsutil.FsStat
+			if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+				_ = resp.Body.Close()
+				log.Warnw("decoding response failed", "url", rl.String(), "error", err)
+				continue // Try the next URL
+			}
+			_ = resp.Body.Close()
+			return out, nil // Successfully decoded, return the result
+		} else {
+			b, _ := io.ReadAll(resp.Body) // Best-effort read the body for logging
+			log.Warnw("request to endpoint failed", "url", rl.String(), "statusCode", resp.StatusCode, "response", string(b))
+			_ = resp.Body.Close()
+			// Continue to try the next URL, don't return here as we want to try all URLs
+		}
 	}
 
-	var out fsutil.FsStat
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return fsutil.FsStat{}, xerrors.Errorf("decoding fsstat: %w", err)
-	}
-
-	defer resp.Body.Close() // nolint
-
-	return out, nil
+	return fsutil.FsStat{}, xerrors.Errorf("all endpoints failed for remote storage %s", id)
 }
 
 func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
