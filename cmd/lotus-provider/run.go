@@ -78,6 +78,10 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		if err := os.MkdirAll(os.TempDir(), 0755); err != nil {
+			log.Errorf("ensuring tempdir exists: %s", err)
+		}
+
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
