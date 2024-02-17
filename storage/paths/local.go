@@ -810,7 +810,7 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 	}
 }
 
-func (st *Local) GenetartePoRepVanillaProof(ctx context.Context, sr storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
+func (st *Local) GeneratePoRepVanillaProof(ctx context.Context, sr storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
 	src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire sector: %w", err)

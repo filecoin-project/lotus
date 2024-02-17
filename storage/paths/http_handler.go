@@ -329,7 +329,7 @@ func (handler *FetchHandler) generatePoRepVanillaProof(w http.ResponseWriter, r 
 		return
 	}
 
-	vanilla, err := handler.Local.GenetartePoRepVanillaProof(r.Context(), params.Sector, params.Sealed, params.Unsealed, params.Ticket, params.Seed)
+	vanilla, err := handler.Local.GeneratePoRepVanillaProof(r.Context(), params.Sector, params.Sealed, params.Unsealed, params.Ticket, params.Seed)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return

@@ -192,7 +192,7 @@ func (sb *SealCalls) GenerateSynthPoRep() {
 }
 
 func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
-	vproof, err := sb.sectors.storage.GenetartePoRepVanillaProof(ctx, sn, sealed, unsealed, ticket, seed)
+	vproof, err := sb.sectors.storage.GeneratePoRepVanillaProof(ctx, sn, sealed, unsealed, ticket, seed)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate vanilla proof: %w", err)
 	}

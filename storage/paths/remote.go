@@ -784,13 +784,17 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		return nil, err
 	}
 
+	merr := xerrors.Errorf("sector not found")
+
 	for _, info := range si {
 		for _, u := range info.BaseURLs {
 			url := fmt.Sprintf("%s/vanilla/single", u)
 
 			req, err := http.NewRequest("POST", url, strings.NewReader(string(jreq)))
 			if err != nil {
-				return nil, xerrors.Errorf("request: %w", err)
+				merr = multierror.Append(merr, xerrors.Errorf("request: %w", err))
+				log.Warnw("GenerateSingleVanillaProof request failed", "url", url, "error", err)
+				continue
 			}
 
 			if r.auth != nil {
@@ -800,7 +804,9 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				return nil, xerrors.Errorf("do request: %w", err)
+				merr = multierror.Append(merr, xerrors.Errorf("do request: %w", err))
+				log.Warnw("GenerateSingleVanillaProof do request failed", "url", url, "error", err)
+				continue
 			}
 
 			if resp.StatusCode != http.StatusOK {
@@ -810,14 +816,18 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 				}
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
-					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+					merr = multierror.Append(merr, xerrors.Errorf("resp.Body ReadAll: %w", err))
+					log.Warnw("GenerateSingleVanillaProof read response body failed", "url", url, "error", err)
+					continue
 				}
 
 				if err := resp.Body.Close(); err != nil {
 					log.Error("response close: ", err)
 				}
 
-				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body)))
+				merr = multierror.Append(merr, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body))))
+				log.Warnw("GenerateSingleVanillaProof non-200 code from remote", "code", resp.StatusCode, "url", url, "body", string(body))
+				continue
 			}
 
 			body, err := io.ReadAll(resp.Body)
@@ -826,7 +836,9 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 					log.Error("response close: ", err)
 				}
 
-				return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+				merr = multierror.Append(merr, xerrors.Errorf("resp.Body ReadAll: %w", err))
+				log.Warnw("GenerateSingleVanillaProof read response body failed", "url", url, "error", err)
+				continue
 			}
 
 			_ = resp.Body.Close()
@@ -835,21 +847,26 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		}
 	}
 
-	return nil, xerrors.Errorf("sector not found")
+	return nil, merr
 }
 
-func (r *Remote) GenetartePoRepVanillaProof(ctx context.Context, sr storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
-	p, err := r.local.GenetartePoRepVanillaProof(ctx, sr, sealed, unsealed, ticket, seed)
+func (r *Remote) GeneratePoRepVanillaProof(ctx context.Context, sr storiface.SectorRef, sealed, unsealed cid.Cid, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness) ([]byte, error) {
+	// Attempt to generate the proof locally first
+	p, err := r.local.GeneratePoRepVanillaProof(ctx, sr, sealed, unsealed, ticket, seed)
 	if err != errPathNotFound {
 		return p, err
 	}
 
+	// Define the file types to look for based on the sector's state
 	ft := storiface.FTSealed | storiface.FTCache
+
+	// Find sector information
 	si, err := r.index.StorageFindSector(ctx, sr.ID, ft, 0, false)
 	if err != nil {
 		return nil, xerrors.Errorf("finding sector %d failed: %w", sr.ID, err)
 	}
 
+	// Prepare request parameters
 	requestParams := PoRepVanillaParams{
 		Sector:   sr,
 		Sealed:   sealed,
@@ -862,58 +879,65 @@ func (r *Remote) GenetartePoRepVanillaProof(ctx context.Context, sr storiface.Se
 		return nil, err
 	}
 
+	merr := xerrors.Errorf("sector not found")
+
+	// Iterate over all found sector locations
 	for _, info := range si {
 		for _, u := range info.BaseURLs {
 			url := fmt.Sprintf("%s/vanilla/porep", u)
 
+			// Create and send the request
 			req, err := http.NewRequest("POST", url, strings.NewReader(string(jreq)))
 			if err != nil {
-				return nil, xerrors.Errorf("request: %w", err)
+				merr = multierror.Append(merr, xerrors.Errorf("request: %w", err))
+				log.Warnw("GeneratePoRepVanillaProof request failed", "url", url, "error", err)
+				continue
 			}
 
+			// Set auth headers if available
 			if r.auth != nil {
 				req.Header = r.auth.Clone()
 			}
 			req = req.WithContext(ctx)
 
+			// Execute the request
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				return nil, xerrors.Errorf("do request: %w", err)
+				merr = multierror.Append(merr, xerrors.Errorf("do request: %w", err))
+				log.Warnw("GeneratePoRepVanillaProof do request failed", "url", url, "error", err)
+				continue
 			}
 
+			// Handle non-OK status codes
 			if resp.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+
 				if resp.StatusCode == http.StatusNotFound {
 					log.Debugw("reading vanilla proof from remote not-found response", "url", url, "store", info.ID)
 					continue
 				}
-				body, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
-				}
 
-				if err := resp.Body.Close(); err != nil {
-					log.Error("response close: ", err)
-				}
-
-				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body)))
+				merr = multierror.Append(merr, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body))))
+				log.Warnw("GeneratePoRepVanillaProof non-200 code from remote", "code", resp.StatusCode, "url", url, "body", string(body))
+				continue
 			}
 
+			// Read the response body
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
-				if err := resp.Body.Close(); err != nil {
-					log.Error("response close: ", err)
-				}
-
-				return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+				merr = multierror.Append(merr, xerrors.Errorf("resp.Body ReadAll: %w", err))
+				log.Warnw("GeneratePoRepVanillaProof read response body failed", "url", url, "error", err)
 			}
-
 			_ = resp.Body.Close()
 
+			// Return the proof if successful
 			return body, nil
 		}
 	}
 
-	return nil, xerrors.Errorf("sector not found")
+	// Return the accumulated error if the proof was not generated
+	return nil, merr
 }
 
 type funcCloser func() error
