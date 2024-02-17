@@ -268,8 +268,53 @@ func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) 
 				Size:          64,
 			})
 		}
+	case abi.RegisteredSealProof_StackedDrg512MiBV1_1:
+		phase1Output.Config.RowsToDiscard = 0
+		phase1Output.Config.Size = 33554431
+		phase1Output.Labels["StackedDrg512MiBV1"] = &Labels{}
+		phase1Output.RegisteredProof = "StackedDrg512MiBV1_1"
+
+		for i := 0; i < 2; i++ {
+			phase1Output.Labels["StackedDrg512MiBV1"].Labels = append(phase1Output.Labels["StackedDrg512MiBV1"].Labels, Config{
+				ID:            fmt.Sprintf("layer-%d", i+1),
+				Path:          "placeholder",
+				RowsToDiscard: 0,
+				Size:          16777216,
+			})
+		}
+
+	case abi.RegisteredSealProof_StackedDrg32GiBV1_1:
+		phase1Output.Config.RowsToDiscard = 0
+		phase1Output.Config.Size = 2147483647
+		phase1Output.Labels["StackedDrg32GiBV1"] = &Labels{}
+		phase1Output.RegisteredProof = "StackedDrg32GiBV1_1"
+
+		for i := 0; i < 11; i++ {
+			phase1Output.Labels["StackedDrg32GiBV1"].Labels = append(phase1Output.Labels["StackedDrg32GiBV1"].Labels, Config{
+				ID:            fmt.Sprintf("layer-%d", i+1),
+				Path:          "/placeholder",
+				RowsToDiscard: 0,
+				Size:          1073741824,
+			})
+		}
+
+	case abi.RegisteredSealProof_StackedDrg64GiBV1_1:
+		phase1Output.Config.RowsToDiscard = 0
+		phase1Output.Config.Size = 4294967295
+		phase1Output.Labels["StackedDrg64GiBV1"] = &Labels{}
+		phase1Output.RegisteredProof = "StackedDrg64GiBV1_1"
+
+		for i := 0; i < 11; i++ {
+			phase1Output.Labels["StackedDrg64GiBV1"].Labels = append(phase1Output.Labels["StackedDrg64GiBV1"].Labels, Config{
+				ID:            fmt.Sprintf("layer-%d", i+1),
+				Path:          "/placeholder",
+				RowsToDiscard: 0,
+				Size:          2147483648,
+			})
+		}
+
 	default:
-		panic("todo")
+		panic("proof type not handled")
 	}
 
 	return json.Marshal(phase1Output)
