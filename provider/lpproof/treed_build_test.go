@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 )
 
 func TestTreeSize(t *testing.T) {

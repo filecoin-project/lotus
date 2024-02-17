@@ -71,6 +71,21 @@ func (mr *MockStoreMockRecorder) FsStat(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FsStat", reflect.TypeOf((*MockStore)(nil).FsStat), arg0, arg1)
 }
 
+// GeneratePoRepVanillaProof mocks base method.
+func (m *MockStore) GeneratePoRepVanillaProof(arg0 context.Context, arg1 storiface.SectorRef, arg2, arg3 cid.Cid, arg4 abi.SealRandomness, arg5 abi.InteractiveSealRandomness) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GeneratePoRepVanillaProof", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GeneratePoRepVanillaProof indicates an expected call of GeneratePoRepVanillaProof.
+func (mr *MockStoreMockRecorder) GeneratePoRepVanillaProof(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GeneratePoRepVanillaProof", reflect.TypeOf((*MockStore)(nil).GeneratePoRepVanillaProof), arg0, arg1, arg2, arg3, arg4, arg5)
+}
+
 // GenerateSingleVanillaProof mocks base method.
 func (m *MockStore) GenerateSingleVanillaProof(arg0 context.Context, arg1 abi.ActorID, arg2 storiface.PostSectorChallenge, arg3 abi.RegisteredPoStProof) ([]byte, error) {
 	m.ctrl.T.Helper()
@@ -84,21 +99,6 @@ func (m *MockStore) GenerateSingleVanillaProof(arg0 context.Context, arg1 abi.Ac
 func (mr *MockStoreMockRecorder) GenerateSingleVanillaProof(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateSingleVanillaProof", reflect.TypeOf((*MockStore)(nil).GenerateSingleVanillaProof), arg0, arg1, arg2, arg3)
-}
-
-// GenetartePoRepVanillaProof mocks base method.
-func (m *MockStore) GeneratePoRepVanillaProof(arg0 context.Context, arg1 storiface.SectorRef, arg2, arg3 cid.Cid, arg4 abi.SealRandomness, arg5 abi.InteractiveSealRandomness) ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GeneratePoRepVanillaProof", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GenetartePoRepVanillaProof indicates an expected call of GenetartePoRepVanillaProof.
-func (mr *MockStoreMockRecorder) GenetartePoRepVanillaProof(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GeneratePoRepVanillaProof", reflect.TypeOf((*MockStore)(nil).GeneratePoRepVanillaProof), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // MoveStorage mocks base method.
