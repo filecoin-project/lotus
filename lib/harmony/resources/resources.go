@@ -82,7 +82,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 			if reg.shutdown.Load() {
 				return
 			}
-			_, err := db.Exec(ctx, `UPDATE harmony_machines SET last_contact=CURRENT_TIMESTAMP`)
+			_, err := db.Exec(ctx, `UPDATE harmony_machines SET last_contact=CURRENT_TIMESTAMP where id=$1`, reg.MachineID)
 			if err != nil {
 				logger.Error("Cannot keepalive ", err)
 			}
