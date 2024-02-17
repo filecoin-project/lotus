@@ -1,9 +1,12 @@
 package lpproof
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -193,7 +196,7 @@ func Test8MiB(t *testing.T) {
 	dat, err := os.ReadFile(tempFile)
 	require.NoError(t, err)
 
-	actualD := hexPrint32LDedup(dat)
+	actualD := hexPrint32LDedup(bytes.NewReader(dat))
 	fmt.Println(actualD)
 
 	require.EqualValues(t, expectD8M, actualD)
@@ -214,46 +217,166 @@ func Test8MiBUnpad(t *testing.T) {
 	dat, err := os.ReadFile(tempFile)
 	require.NoError(t, err)
 
-	actualD := hexPrint32LDedup(dat)
+	actualD := hexPrint32LDedup(bytes.NewReader(dat))
 	fmt.Println(actualD)
 
 	require.EqualValues(t, expectD8M, actualD)
 	require.Equal(t, "baga6ea4seaqcgqckrcapts6hea44xbqugwocqneekvyp5fizbo6u3e2biluckla", commd.String())
 }
 
-func hexPrint32LDedup(b []byte) string {
-	var prevLine string
-	var currentLine string
-	var isDuplicate bool
+/*func Test32Golden(t *testing.T) {
+	datFile, err := os.Open("../../seal/cac/sc-02-data-tree-d.dat")
+	require.NoError(t, err)
 
+	bufReader := bufio.NewReaderSize(datFile, 1<<20)
+
+	actualD := hexPrint32LDedup(bufReader)
+	fmt.Println(actualD)
+}
+*/
+
+var expect32Null = `00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+*
+800000000: f5 a5 fd 42 d1 6a 20 30 27 98 ef 6e d3 09 97 9b 43 00 3d 23 20 d9 f0 e8 ea 98 31 a9 27 59 fb 0b 
+*
+c00000000: 37 31 bb 99 ac 68 9f 66 ee f5 97 3e 4a 94 da 18 8f 4d dc ae 58 07 24 fc 6f 3f d6 0d fd 48 83 33 
+*
+e00000000: 64 2a 60 7e f8 86 b0 04 bf 2c 19 78 46 3a e1 d4 69 3a c0 f4 10 eb 2d 1b 7a 47 fe 20 5e 5e 75 0f 
+*
+f00000000: 57 a2 38 1a 28 65 2b f4 7f 6b ef 7a ca 67 9b e4 ae de 58 71 ab 5c f3 eb 2c 08 11 44 88 cb 85 26 
+*
+f80000000: 1f 7a c9 59 55 10 e0 9e a4 1c 46 0b 17 64 30 bb 32 2c d6 fb 41 2e c5 7c b1 7d 98 9a 43 10 37 2f 
+*
+fc0000000: fc 7e 92 82 96 e5 16 fa ad e9 86 b2 8f 92 d4 4a 4f 24 b9 35 48 52 23 37 6a 79 90 27 bc 18 f8 33 
+*
+fe0000000: 08 c4 7b 38 ee 13 bc 43 f4 1b 91 5c 0e ed 99 11 a2 60 86 b3 ed 62 40 1b f9 d5 8b 8d 19 df f6 24 
+*
+ff0000000: b2 e4 7b fb 11 fa cd 94 1f 62 af 5c 75 0f 3e a5 cc 4d f5 17 d5 c4 f1 6d b2 b4 d7 7b ae c1 a3 2f 
+*
+ff8000000: f9 22 61 60 c8 f9 27 bf dc c4 18 cd f2 03 49 31 46 00 8e ae fb 7d 02 19 4d 5e 54 81 89 00 51 08 
+*
+ffc000000: 2c 1a 96 4b b9 0b 59 eb fe 0f 6d a2 9a d6 5a e3 e4 17 72 4a 8f 7c 11 74 5a 40 ca c1 e5 e7 40 11 
+*
+ffe000000: fe e3 78 ce f1 64 04 b1 99 ed e0 b1 3e 11 b6 24 ff 9d 78 4f bb ed 87 8d 83 29 7e 79 5e 02 4f 02 
+*
+fff000000: 8e 9e 24 03 fa 88 4c f6 23 7f 60 df 25 f8 3e e4 0d ca 9e d8 79 eb 6f 63 52 d1 50 84 f5 ad 0d 3f 
+*
+fff800000: 75 2d 96 93 fa 16 75 24 39 54 76 e3 17 a9 85 80 f0 09 47 af b7 a3 05 40 d6 25 a9 29 1c c1 2a 07 
+*
+fffc00000: 70 22 f6 0f 7e f6 ad fa 17 11 7a 52 61 9e 30 ce a8 2c 68 07 5a df 1c 66 77 86 ec 50 6e ef 2d 19 
+*
+fffe00000: d9 98 87 b9 73 57 3a 96 e1 13 93 64 52 36 c1 7b 1f 4c 70 34 d7 23 c7 a9 9f 70 9b b4 da 61 16 2b 
+*
+ffff00000: d0 b5 30 db b0 b4 f2 5c 5d 2f 2a 28 df ee 80 8b 53 41 2a 02 93 1f 18 c4 99 f5 a2 54 08 6b 13 26 
+*
+ffff80000: 84 c0 42 1b a0 68 5a 01 bf 79 5a 23 44 06 4f e4 24 bd 52 a9 d2 43 77 b3 94 ff 4c 4b 45 68 e8 11 
+*
+ffffc0000: 65 f2 9e 5d 98 d2 46 c3 8b 38 8c fc 06 db 1f 6b 02 13 03 c5 a2 89 00 0b dc e8 32 a9 c3 ec 42 1c 
+*
+ffffe0000: a2 24 75 08 28 58 50 96 5b 7e 33 4b 31 27 b0 c0 42 b1 d0 46 dc 54 40 21 37 62 7c d8 79 9c e1 3a 
+*
+fffff0000: da fd ab 6d a9 36 44 53 c2 6d 33 72 6b 9f ef e3 43 be 8f 81 64 9e c0 09 aa d3 fa ff 50 61 75 08 
+*
+fffff8000: d9 41 d5 e0 d6 31 4a 99 5c 33 ff bd 4f be 69 11 8d 73 d4 e5 fd 2c d3 1f 0f 7c 86 eb dd 14 e7 06 
+*
+fffffc000: 51 4c 43 5c 3d 04 d3 49 a5 36 5f bd 59 ff c7 13 62 91 11 78 59 91 c1 a3 c5 3a f2 20 79 74 1a 2f 
+*
+fffffe000: ad 06 85 39 69 d3 7d 34 ff 08 e0 9f 56 93 0a 4a d1 9a 89 de f6 0c bf ee 7e 1d 33 81 c1 e7 1c 37 
+*
+ffffff000: 39 56 0e 7b 13 a9 3b 07 a2 43 fd 27 20 ff a7 cb 3e 1d 2e 50 5a b3 62 9e 79 f4 63 13 51 2c da 06 
+*
+ffffff800: cc c3 c0 12 f5 b0 5e 81 1a 2b bf dd 0f 68 33 b8 42 75 b4 7b f2 29 c0 05 2a 82 48 4f 3c 1a 5b 3d 
+*
+ffffffc00: 7d f2 9b 69 77 31 99 e8 f2 b4 0b 77 91 9d 04 85 09 ee d7 68 e2 c7 29 7b 1f 14 37 03 4f c3 c6 2c 
+*
+ffffffe00: 66 ce 05 a3 66 75 52 cf 45 c0 2b cc 4e 83 92 91 9b de ac 35 de 2f f5 62 71 84 8e 9f 7b 67 51 07 
+*
+fffffff00: d8 61 02 18 42 5a b5 e9 5b 1c a6 23 9d 29 a2 e4 20 d7 06 a9 6f 37 3e 2f 9c 9a 91 d7 59 d1 9b 01 
+*
+fffffff80: 6d 36 4b 1e f8 46 44 1a 5a 4a 68 86 23 14 ac c0 a4 6f 01 67 17 e5 34 43 e8 39 ee df 83 c2 85 3c 
+*
+fffffffc0: 07 7e 5f de 35 c5 0a 93 03 a5 50 09 e3 49 8a 4e be df f3 9c 42 b7 10 b7 30 d8 ec 7a c7 af a6 3e 
+`
+
+func Test32G(t *testing.T) {
+	if os.Getenv("LOTUS_TEST_LARGE_SECTORS") != "1" {
+		t.Skip("skipping large sector test without env LOTUS_TEST_LARGE_SECTORS=1")
+	}
+
+	data := nullreader.NewNullReader(abi.PaddedPieceSize(32 << 30).Unpadded())
+
+	tempFile := filepath.Join(t.TempDir(), "tree.dat")
+
+	commd, err := BuildTreeD(data, true, tempFile, 32<<30)
+	require.NoError(t, err)
+	fmt.Println(commd)
+
+	// dump tree.dat
+	datFile, err := os.Open(tempFile)
+	require.NoError(t, err)
+	defer datFile.Close()
+
+	actualD := hexPrint32LDedup(bufio.NewReaderSize(datFile, 1<<20))
+	fmt.Println(actualD)
+
+	require.EqualValues(t, expect32Null, actualD)
+	require.Equal(t, "baga6ea4seaqao7s73y24kcutaosvacpdjgfe5pw76ooefnyqw4ynr3d2y6x2mpq", commd.String())
+}
+
+func hexPrint32LDedup(r io.Reader) string {
+	var prevLine []byte
 	var outStr string
+	var duplicateLine bool
+	buffer := make([]byte, 32)
+	offset := 0
 
-	for i, v := range b {
-		// Build the current line
-		currentLine += fmt.Sprintf("%02x ", v)
-
-		if (i+1)%32 == 0 || i == len(b)-1 {
-			// Check for duplicate line
-			wasDuplicate := isDuplicate
-			isDuplicate = currentLine == prevLine
-
-			if !isDuplicate {
-				if wasDuplicate {
-					//fmt.Println("*")
-					outStr += fmt.Sprintln("*")
-				}
-
-				//fmt.Printf("%08x: %s\n", i-31, currentLine)
-				outStr += fmt.Sprintf("%08x: %s\n", i-31, currentLine)
-			}
-
-			// Update the previous line and reset current line
-			prevLine = currentLine
-			currentLine = ""
+	for {
+		n, err := r.Read(buffer)
+		if err == io.EOF {
+			break
 		}
+		if err != nil {
+			// Handle the error according to your application's requirements
+			fmt.Println("Error reading:", err)
+			break
+		}
+
+		if string(prevLine) == string(buffer) {
+			// Mark as duplicate and skip processing
+			duplicateLine = true
+		} else {
+			if duplicateLine {
+				// Output a marker for the previous duplicate line
+				outStr += "*\n"
+				duplicateLine = false
+			}
+			// Convert to hex and output
+			outStr += fmt.Sprintf("%08x: %s\n", offset, toHex(buffer))
+
+			// Update prevLine
+			if len(prevLine) != 32 {
+				prevLine = make([]byte, 32)
+			}
+			copy(prevLine, buffer)
+		}
+
+		offset += n
+	}
+
+	// If the last line was a duplicate, ensure we mark it
+	if duplicateLine {
+		outStr += "*\n"
 	}
 
 	return outStr
+}
+
+func toHex(data []byte) string {
+	var hexStr string
+	for _, b := range data {
+		hexStr += fmt.Sprintf("%02x ", b)
+	}
+	return hexStr
 }
 
 func BenchmarkHashChunk(b *testing.B) {
@@ -342,6 +465,49 @@ func BenchmarkBuildTreeD512M(b *testing.B) {
 		err = os.Remove(tempFilePath)
 		if err != nil {
 			b.Fatalf("Failed to remove temporary file: %v", err)
+		}
+	}
+}
+
+func TestLayerOffset(t *testing.T) {
+	{
+		size := uint64(2048)
+
+		require.Equal(t, uint64(0), layerOffset(size, 0))
+		require.Equal(t, size, layerOffset(size, 1))
+		require.Equal(t, size+(size/2), layerOffset(size, 2))
+		require.Equal(t, size+(size/2)+(size/4), layerOffset(size, 3))
+		require.Equal(t, size+(size/2)+(size/4)+(size/8), layerOffset(size, 4))
+		require.Equal(t, size+(size/2)+(size/4)+(size/8)+(size/16), layerOffset(size, 5))
+	}
+
+	{
+		size := uint64(32 << 30)
+		maxLayers := 30
+
+		for i := 0; i <= maxLayers; i++ {
+			var expect uint64
+			for j := 0; j < i; j++ {
+				expect += size >> uint64(j)
+			}
+
+			fmt.Printf("layer %d: %d\n", i, expect)
+			require.Equal(t, expect, layerOffset(size, i))
+		}
+	}
+
+	{
+		size := uint64(64 << 30)
+		maxLayers := 31
+
+		for i := 0; i <= maxLayers; i++ {
+			var expect uint64
+			for j := 0; j < i; j++ {
+				expect += size >> uint64(j)
+			}
+
+			fmt.Printf("layer %d: %d\n", i, expect)
+			require.Equal(t, expect, layerOffset(size, i))
 		}
 	}
 }

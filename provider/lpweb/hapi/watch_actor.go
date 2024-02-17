@@ -29,7 +29,7 @@ func (a *app) watchActor() {
 }
 
 type minimalActorInfo struct {
-	Addresses struct {
+	Addresses []struct {
 		MinerAddresses []string
 	}
 }
@@ -49,12 +49,14 @@ func (a *app) updateActor(ctx context.Context) error {
 	confNameToAddr := map[address.Address][]string{} // address -> config names
 
 	err := forEachConfig[minimalActorInfo](a, func(name string, info minimalActorInfo) error {
-		for _, addr := range info.Addresses.MinerAddresses {
-			a, err := address.NewFromString(addr)
-			if err != nil {
-				return xerrors.Errorf("parsing address: %w", err)
+		for _, aset := range info.Addresses {
+			for _, addr := range aset.MinerAddresses {
+				a, err := address.NewFromString(addr)
+				if err != nil {
+					return xerrors.Errorf("parsing address: %w", err)
+				}
+				confNameToAddr[a] = append(confNameToAddr[a], name)
 			}
-			confNameToAddr[a] = append(confNameToAddr[a], name)
 		}
 
 		return nil

@@ -271,8 +271,13 @@ func treeSize(data abi.PaddedPieceSize) uint64 {
 }
 
 func layerOffset(size uint64, layer int) uint64 {
-	layerBits := uint64(1) << uint64(layer)
-	layerBits--
-	layerOff := (size * layerBits) >> uint64(layer-1)
-	return layerOff
+	allOnes := uint64(0xffff_ffff_ffff_ffff)
+
+	// get 'layer' bits set to 1
+	layerOnes := allOnes >> uint64(64-layer)
+
+	// shift layerOnes to the left such that the highest bit is at the same position as the highest bit in size (which is power-of-two)
+	sizeBitPos := bits.Len64(size) - 1
+	layerOnes <<= sizeBitPos - (layer - 1)
+	return layerOnes
 }
