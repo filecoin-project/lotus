@@ -142,7 +142,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		// The config feeds into task runners & their helpers
 		deps.Cfg, err = GetConfig(cctx, deps.DB)
 		if err != nil {
-			return err
+			return xerrors.Errorf("populate config: %w", err)
 		}
 	}
 
@@ -251,15 +251,19 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 			}
 		}
 	}
-	fmt.Println("last line of populate")
 	return nil
 }
 
-var oldAddresses = regexp.MustCompile("(?i)^[addresses]$")
+var oldAddresses = regexp.MustCompile("(?i)^\\[addresses\\]$")
 
 func LoadConfigWithUpgrades(text string, lp *config.LotusProviderConfig) (toml.MetaData, error) {
 	// allow migration from old config format that was limited to 1 wallet setup.
 	newText := oldAddresses.ReplaceAllString(text, "[[addresses]]")
+
+	if text != newText {
+		log.Warnw("Upgraded config!", "old", text, "new", newText)
+	}
+
 	meta, err := toml.Decode(newText, &lp)
 	return meta, err
 }
