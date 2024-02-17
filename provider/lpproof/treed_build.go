@@ -51,11 +51,17 @@ func hashChunk(data [][]byte) {
 	}
 }
 
-func BuildTreeD(data io.Reader, unpaddedData bool, outPath string, size abi.PaddedPieceSize) (cid.Cid, error) {
+func BuildTreeD(data io.Reader, unpaddedData bool, outPath string, size abi.PaddedPieceSize) (_ cid.Cid, err error) {
 	out, err := os.Create(outPath)
 	if err != nil {
 		return cid.Undef, err
 	}
+	defer func() {
+		cerr := out.Close()
+		if cerr != nil {
+			err = multierror.Append(err, cerr)
+		}
+	}()
 
 	outSize := treeSize(size)
 
