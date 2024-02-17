@@ -237,6 +237,9 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
 		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
 	}
+	if deps.Maddrs == nil {
+		deps.Maddrs = map[dtypes.MinerAddress]bool{}
+	}
 	if len(deps.Maddrs) == 0 {
 		for _, s := range deps.Cfg.Addresses {
 			for _, s := range s.MinerAddresses {
