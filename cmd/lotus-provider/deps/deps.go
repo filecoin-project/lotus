@@ -7,12 +7,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net"
-	"net/http"
-	"os"
-	"regexp"
-	"strings"
-
 	"github.com/BurntSushi/toml"
 	"github.com/gbrlsnchs/jwt/v3"
 	ds "github.com/ipfs/go-datastore"
@@ -20,6 +14,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+	"net"
+	"net/http"
+	"os"
+	"regexp"
+	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -235,7 +234,9 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
 		//  maybe with a lotus-provider specific abstraction. LocalWorker does persistent call tracking which we probably
 		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
-		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
+		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{
+			MaxParallelChallengeReads: deps.Cfg.Proving.ParallelCheckLimit,
+		}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
 	}
 	if deps.Maddrs == nil {
 		deps.Maddrs = map[dtypes.MinerAddress]bool{}

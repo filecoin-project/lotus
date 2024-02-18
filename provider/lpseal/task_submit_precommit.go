@@ -91,7 +91,6 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 	if err != nil {
 		return false, xerrors.Errorf("parsing unsealed CID: %w", err)
 	}
-	_ = unsealedCID
 
 	params := miner.PreCommitSectorBatchParams2{}
 
