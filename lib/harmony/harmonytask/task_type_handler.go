@@ -57,8 +57,9 @@ retryAddTask:
 }
 
 const (
-	workSourcePoller  = "poller"
-	workSourceRecover = "recovered"
+	WorkSourcePoller   = "poller"
+	WorkSourceRecover  = "recovered"
+	WorkSourceIAmBored = "bored"
 )
 
 // considerWork is called to attempt to start work on a task-id of this task type.
@@ -88,8 +89,13 @@ top:
 		return false
 	}
 
+	h.TaskEngine.WorkOrigin = from
+
 	// 3. What does the impl say?
 	tID, err := h.CanAccept(ids, h.TaskEngine)
+
+	h.TaskEngine.WorkOrigin = ""
+
 	if err != nil {
 		log.Error(err)
 		return false
@@ -100,7 +106,7 @@ top:
 	}
 
 	// if recovering we don't need to try to claim anything because those tasks are already claimed by us
-	if from != workSourceRecover {
+	if from != WorkSourceRecover {
 		// 4. Can we claim the work for our hostname?
 		ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
 		if err != nil {

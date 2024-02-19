@@ -264,3 +264,40 @@ func TestTaskRetry(t *testing.T) {
 			{2, false, "error: intentional 'error'"}}, res)
 	})
 }
+
+func TestBoredom(t *testing.T) {
+	//t.Parallel()
+	withDbSetup(t, func(m *kit.TestMiner) {
+		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
+		harmonytask.POLL_DURATION = time.Millisecond * 100
+		var taskID harmonytask.TaskID
+		var ran bool
+		boredParty := &passthru{
+			dtl: harmonytask.TaskTypeDetails{
+				Name: "boredTest",
+				Max:  -1,
+				Cost: resources.Resources{},
+				IAmBored: func(add harmonytask.AddTaskFunc) error {
+					add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+						taskID = tID
+						return true, nil
+					})
+					return nil
+				},
+			},
+			canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+				require.Equal(t, harmonytask.WorkSourceIAmBored, e.WorkOrigin)
+				return &list[0], nil
+			},
+			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+				require.Equal(t, taskID, tID)
+				ran = true
+				return true, nil
+			},
+		}
+		ht, err := harmonytask.New(cdb, []harmonytask.TaskInterface{boredParty}, "test:1")
+		require.NoError(t, err)
+		require.Eventually(t, func() bool { return ran }, time.Second, time.Millisecond*100)
+		ht.GracefullyTerminate(time.Hour)
+	})
+}
