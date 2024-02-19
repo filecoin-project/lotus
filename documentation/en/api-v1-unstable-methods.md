@@ -3431,6 +3431,7 @@ Response:
         "Value": "Ynl0ZSBhcnJheQ=="
       }
     ],
+    "type": "string value",
     "emitter": "f01234",
     "reverted": true,
     "height": 10101,
@@ -8825,6 +8826,7 @@ Response:
       "Value": "Ynl0ZSBhcnJheQ=="
     }
   ],
+  "type": "string value",
   "emitter": "f01234",
   "reverted": true,
   "height": 10101,

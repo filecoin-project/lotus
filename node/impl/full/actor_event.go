@@ -1,6 +1,7 @@
 package full
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -172,6 +173,7 @@ func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActor
 
 				ev := &types.ActorEvent{
 					Entries:     ce.Entries,
+					Type:        GetTypeFromEntries(ce.Entries),
 					EmitterAddr: ce.EmitterAddr,
 					Reverted:    ce.Reverted,
 					Height:      ce.Height,
@@ -212,6 +214,7 @@ func getCollected(ctx context.Context, f *filter.EventFilter) ([]*types.ActorEve
 
 		ev := &types.ActorEvent{
 			Entries:     e.Entries,
+			Type:        GetTypeFromEntries(e.Entries),
 			EmitterAddr: e.EmitterAddr,
 			Reverted:    e.Reverted,
 			Height:      e.Height,
@@ -223,4 +226,19 @@ func getCollected(ctx context.Context, f *filter.EventFilter) ([]*types.ActorEve
 	}
 
 	return out, nil
+}
+
+// GetTypeFromEntries will attempt to ascertain the event type from the entries, if possible.
+// It looks for a "$type" entry and returns its value if found.
+func GetTypeFromEntries(entries []types.EventEntry) string {
+	for _, e := range entries {
+		if e.Key == "$type" {
+			var cs abi.CborString
+			if err := cs.UnmarshalCBOR(bytes.NewReader(e.Value)); err == nil {
+				return string(cs)
+			}
+			return ""
+		}
+	}
+	return ""
 }

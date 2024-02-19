@@ -46,6 +46,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
@@ -361,6 +362,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 		for _, event := range eventsFromMessages {
 			for _, e := range event.Entries {
 				if e.Key == "$type" && bytes.Equal(e.Value, keyBytes) {
+					require.Equal(t, key, event.Type) // check that we set event Type properly from the entries
 					found++
 					break
 				}
@@ -524,6 +526,7 @@ func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.
 
 					actorEvents = append(actorEvents, &types.ActorEvent{
 						Entries:     evt.Entries,
+						Type:        full.GetTypeFromEntries(evt.Entries),
 						EmitterAddr: addr,
 						Reverted:    false,
 						Height:      ts.Height(),

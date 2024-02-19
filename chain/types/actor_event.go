@@ -54,6 +54,10 @@ type ActorEvent struct {
 	// Event entries in log form.
 	Entries []EventEntry `json:"entries"`
 
+	// Type of the actor event, if it can be ascertained from the Entries by looking for a "$type"
+	// key in the event fields.
+	Type string `json:"type,omitempty"`
+
 	// Filecoin address of the actor that emitted this event.
 	EmitterAddr address.Address `json:"emitter"`
 
