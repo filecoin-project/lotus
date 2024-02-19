@@ -26,20 +26,20 @@ var (
 	_ ActorEventAPI = *new(api.Gateway)
 )
 
-type ActorEvent struct {
+type ActorEventHandler struct {
 	EventFilterManager   *filter.EventFilterManager
 	MaxFilterHeightRange abi.ChainEpoch
 	Chain                *store.ChainStore
 }
 
-var _ ActorEventAPI = (*ActorEvent)(nil)
+var _ ActorEventAPI = (*ActorEventHandler)(nil)
 
 type ActorEventsAPI struct {
 	fx.In
 	ActorEventAPI
 }
 
-func (a *ActorEvent) GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+func (a *ActorEventHandler) GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	if a.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -66,7 +66,7 @@ type filterParams struct {
 	TipSetCid cid.Cid
 }
 
-func (a *ActorEvent) parseFilter(f *types.ActorEventFilter) (*filterParams, error) {
+func (a *ActorEventHandler) parseFilter(f *types.ActorEventFilter) (*filterParams, error) {
 	if f.TipSetCid != nil {
 		if len(f.FromEpoch) != 0 || len(f.ToEpoch) != 0 {
 			return nil, fmt.Errorf("cannot specify both TipSetCid and FromEpoch/ToEpoch")
@@ -101,7 +101,7 @@ func (a *ActorEvent) parseFilter(f *types.ActorEventFilter) (*filterParams, erro
 	}, nil
 }
 
-func (a *ActorEvent) SubscribeActorEvents(ctx context.Context, f *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, f *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if a.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
