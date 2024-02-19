@@ -498,10 +498,15 @@ func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.
 
 	head, err := node.ChainHead(ctx)
 	require.NoError(t, err)
+	var lastts types.TipSetKey
 	for height := 0; height < int(head.Height()); height++ {
 		// for each tipset
 		ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
 		require.NoError(t, err)
+		if ts.Key() == lastts {
+			continue
+		}
+		lastts = ts.Key()
 		messages, err := node.ChainGetMessagesInTipset(ctx, ts.Key())
 		require.NoError(t, err)
 		if len(messages) == 0 {
