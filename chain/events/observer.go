@@ -17,7 +17,7 @@ import (
 )
 
 type observer struct {
-	api EventAPI
+	api EventHelperAPI
 
 	gcConfidence abi.ChainEpoch
 
