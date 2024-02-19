@@ -503,3 +503,140 @@ func makeVerifier(ctx context.Context, t *testing.T, api *impl.FullNodeAPI, root
 	require.NoError(t, err)
 	require.Equal(t, allowance, *verifierAllowance)
 }
+
+func TestVerifiedListAllAllocations(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+
+	rootKey, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+
+	verifier1Key, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+
+	verifiedClientKey, err := key.GenerateKey(types.KTBLS)
+	require.NoError(t, err)
+
+	bal, err := types.ParseFIL("100fil")
+	require.NoError(t, err)
+
+	node, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
+		kit.Account(verifier1Key, abi.NewTokenAmount(bal.Int64())),
+		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
+	)
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	api := node.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// get VRH
+	vrh, err := api.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
+	fmt.Println(vrh.String())
+	require.NoError(t, err)
+
+	// import the root key.
+	rootAddr, err := api.WalletImport(ctx, &rootKey.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verifiers' keys.
+	verifier1Addr, err := api.WalletImport(ctx, &verifier1Key.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verified client's key.
+	verifiedClientAddr, err := api.WalletImport(ctx, &verifiedClientKey.KeyInfo)
+	require.NoError(t, err)
+
+	// resolve all keys
+
+	// make the 2 verifiers
+
+	makeVerifier(ctx, t, api, rootAddr, verifier1Addr)
+
+	// assign datacap to a client
+	initialDatacap := big.NewInt(20000)
+
+	params, err := actors.SerializeParams(&verifregst.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: initialDatacap})
+	require.NoError(t, err)
+
+	msg := &types.Message{
+		From:   verifier1Addr,
+		To:     verifreg.Address,
+		Method: verifreg.Methods.AddVerifiedClient,
+		Params: params,
+		Value:  big.Zero(),
+	}
+
+	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	// check datacap balance
+	dcap, err := api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, *dcap, initialDatacap)
+
+	minerId, err := address.IDFromAddress(miner.ActorAddr)
+	require.NoError(t, err)
+
+	allocationRequest1 := verifregst.AllocationRequest{
+		Provider:   abi.ActorID(minerId),
+		Data:       cid.MustParse("bafkqaaa"),
+		Size:       abi.PaddedPieceSize(initialDatacap.Uint64() / 2),
+		TermMin:    verifregst.MinimumVerifiedAllocationTerm,
+		TermMax:    verifregst.MinimumVerifiedAllocationTerm,
+		Expiration: verifregst.MaximumVerifiedAllocationExpiration,
+	}
+
+	allocationRequest2 := verifregst.AllocationRequest{
+		Provider:   abi.ActorID(minerId),
+		Data:       cid.MustParse("bafkqaaa"),
+		Size:       abi.PaddedPieceSize(initialDatacap.Uint64() / 2),
+		TermMin:    verifregst.MinimumVerifiedAllocationTerm,
+		TermMax:    verifregst.MinimumVerifiedAllocationTerm,
+		Expiration: verifregst.MaximumVerifiedAllocationExpiration,
+	}
+
+	allocationRequests := verifregst.AllocationRequests{
+		Allocations: []verifregst.AllocationRequest{allocationRequest1, allocationRequest2},
+	}
+
+	receiverParams, err := actors.SerializeParams(&allocationRequests)
+	require.NoError(t, err)
+
+	transferParams, err := actors.SerializeParams(&datacap2.TransferParams{
+		To:           builtin.VerifiedRegistryActorAddr,
+		Amount:       big.Mul(initialDatacap, builtin.TokenPrecision),
+		OperatorData: receiverParams,
+	})
+	require.NoError(t, err)
+
+	msg = &types.Message{
+		To:     builtin.DatacapActorAddr,
+		From:   verifiedClientAddr,
+		Method: datacap.Methods.TransferExported,
+		Params: transferParams,
+		Value:  big.Zero(),
+	}
+
+	sm, err = api.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	// check datacap balance
+	dcap, err = api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Nil(t, dcap)
+
+	allocations, err := api.StateGetAllAllocations(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, 2, len(allocations))
+}

@@ -106,6 +106,8 @@ For more information on how to use SupraSeal PC2 with your `lotus-worker`, as we
 - feat: metric: export Mpool message count ([filecoin-project/lotus#11361](https://github.com/filecoin-project/lotus/pull/11361))
    - Adds the mpool count as a prometheus metric.
 - feat: bench: flag to output GenerateWinningPoStWithVanilla params ([filecoin-project/lotus#11460](https://github.com/filecoin-project/lotus/pull/11460))
+- feat: api: new verified registry methods to get all allocations and claims ([filecoin-project/lotus#11631](https://github.com/filecoin-project/lotus/pull/11631))
+  - Add `StateGetAllAllocations` and `StateGetAllClaims` APIs
 
 ## Improvements
 - feat: bootstrap: add glif bootstrap node on calibration ([filecoin-project/lotus#11175](https://github.com/filecoin-project/lotus/pull/11175))
