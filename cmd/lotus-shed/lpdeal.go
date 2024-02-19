@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/metrics/proxy"
 	"io"
 	"net"
 	"net/http"
@@ -535,7 +536,9 @@ var lpBoostProxyCmd = &cli.Command{
 			color.Green("%s served %.3f MiB in %s (%.2f MiB/s)", pieceCid, float64(n)/(1024*1024), took, mbps)
 		}
 
-		mh, err := node.MinerHandler(&ast, false) // todo permissioned
+		finalApi := proxy.LoggingAPI[api.StorageMiner, api.StorageMinerStruct](&ast)
+
+		mh, err := node.MinerHandler(finalApi, false) // todo permissioned
 		if err != nil {
 			return err
 		}

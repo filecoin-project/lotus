@@ -3,6 +3,8 @@ package fakelm
 import (
 	"context"
 	"encoding/base64"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"net/http"
 	"net/url"
 
@@ -96,6 +98,11 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		}
 	}
 
+	spt, err := miner.SealProofTypeFromSectorSize(l.ssize, network.Version20, false) // good enough, just need this for ssize anyways
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+
 	if len(si) == 0 {
 		state := api.SectorState(sealing.UndefinedSectorState)
 		if len(ssip) > 0 {
@@ -119,7 +126,7 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 			ReplicaUpdateMessage: nil,
 			LastErr:              "",
 			Log:                  nil,
-			SealProof:            0,
+			SealProof:            spt,
 			Activation:           0,
 			Expiration:           0,
 			DealWeight:           big.Zero(),
@@ -154,7 +161,7 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		LastErr:              "",
 		Log:                  nil,
 
-		SealProof:          0,
+		SealProof:          spt,
 		Activation:         0,
 		Expiration:         0,
 		DealWeight:         big.Zero(),
