@@ -1189,7 +1189,9 @@ COMMANDS:
    check-notary-datacap           check a notary's remaining bytes
    sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
    list-allocations               List allocations made by client
+   list-all-allocations           List allocations available in the verified registry actor
    list-claims                    List claims made by provider
+   list-all-claims                List claims available in the verified registry actor
    remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
    help, h                        Shows a list of commands or help for one command
@@ -1285,6 +1287,19 @@ OPTIONS:
    --help, -h  show help
 ```
 
+### lotus filplus list-all-allocations
+```
+NAME:
+   lotus filplus list-all-allocations - List allocations available in the verified registry actor
+
+USAGE:
+   lotus filplus list-all-allocations [command options] clientAddress
+
+OPTIONS:
+   --expired   list only expired allocations (default: false)
+   --help, -h  show help
+```
+
 ### lotus filplus list-claims
 ```
 NAME:
@@ -1292,6 +1307,19 @@ NAME:
 
 USAGE:
    lotus filplus list-claims [command options] providerAddress
+
+OPTIONS:
+   --expired   list only expired claims (default: false)
+   --help, -h  show help
+```
+
+### lotus filplus list-all-claims
+```
+NAME:
+   lotus filplus list-all-claims - List claims available in the verified registry actor
+
+USAGE:
+   lotus filplus list-all-claims [command options] providerAddress
 
 OPTIONS:
    --expired   list only expired claims (default: false)

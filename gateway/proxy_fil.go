@@ -630,3 +630,23 @@ func (gw *Node) StateGetClaims(ctx context.Context, providerAddr address.Address
 	}
 	return gw.target.StateGetClaims(ctx, providerAddr, tsk)
 }
+
+func (gw *Node) StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.StateGetAllAllocations(ctx, tsk)
+}
+
+func (gw *Node) StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.StateGetAllClaims(ctx, tsk)
+}

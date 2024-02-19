@@ -114,6 +114,12 @@ func (s *state11) GetAllocations(clientIdAddr address.Address) (map[AllocationId
 
 }
 
+func (s *state11) GetAllAllocations() (map[AllocationId]Allocation, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v11")
+
+}
+
 func (s *state11) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg11.ClaimId(claimId))
@@ -131,6 +137,12 @@ func (s *state11) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, 
 	}
 
 	return retMap, err
+
+}
+
+func (s *state11) GetAllClaims() (map[ClaimId]Claim, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v11")
 
 }
 

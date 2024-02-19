@@ -43,7 +43,9 @@ var filplusCmd = &cli.Command{
 		filplusCheckNotaryCmd,
 		filplusSignRemoveDataCapProposal,
 		filplusListAllocationsCmd,
+		filplusListAllAllocationsCmd,
 		filplusListClaimsCmd,
+		filplusListAllClaimsCmd,
 		filplusRemoveExpiredAllocationsCmd,
 		filplusRemoveExpiredClaimsCmd,
 	},
@@ -797,5 +799,151 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		fmt.Println(hex.EncodeToString(sigBytes))
 
 		return nil
+	},
+}
+
+var filplusListAllAllocationsCmd = &cli.Command{
+	Name:      "list-all-allocations",
+	Usage:     "List allocations available in the verified registry actor",
+	ArgsUsage: "clientAddress",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "expired",
+			Usage: "list only expired allocations",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		verifregState, err := verifreg.Load(store, verifregActor)
+		if err != nil {
+			return err
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		allocationsMap, err := verifregState.GetAllAllocations()
+		if err != nil {
+			return err
+		}
+
+		tw := tablewriter.New(
+			tablewriter.Col("ID"),
+			tablewriter.Col("Provider"),
+			tablewriter.Col("Data"),
+			tablewriter.Col("Size"),
+			tablewriter.Col("TermMin"),
+			tablewriter.Col("TermMax"),
+			tablewriter.Col("Expiration"),
+		)
+
+		for allocationId, allocation := range allocationsMap {
+			if ts.Height() > allocation.Expiration || !cctx.IsSet("expired") {
+				tw.Write(map[string]interface{}{
+					"ID":         allocationId,
+					"Provider":   allocation.Provider,
+					"Data":       allocation.Data,
+					"Size":       allocation.Size,
+					"TermMin":    allocation.TermMin,
+					"TermMax":    allocation.TermMax,
+					"Expiration": allocation.Expiration,
+				})
+			}
+		}
+		return tw.Flush(os.Stdout)
+	},
+}
+
+var filplusListAllClaimsCmd = &cli.Command{
+	Name:      "list-all-claims",
+	Usage:     "List claims available in the verified registry actor",
+	ArgsUsage: "providerAddress",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "expired",
+			Usage: "list only expired claims",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		verifregState, err := verifreg.Load(store, verifregActor)
+		if err != nil {
+			return err
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		claimsMap, err := verifregState.GetAllClaims()
+		if err != nil {
+			return err
+		}
+
+		tw := tablewriter.New(
+			tablewriter.Col("ID"),
+			tablewriter.Col("Provider"),
+			tablewriter.Col("Client"),
+			tablewriter.Col("Data"),
+			tablewriter.Col("Size"),
+			tablewriter.Col("TermMin"),
+			tablewriter.Col("TermMax"),
+			tablewriter.Col("TermStart"),
+			tablewriter.Col("Sector"),
+		)
+
+		for claimId, claim := range claimsMap {
+			if ts.Height() > claim.TermMax || !cctx.IsSet("expired") {
+				tw.Write(map[string]interface{}{
+					"ID":        claimId,
+					"Provider":  claim.Provider,
+					"Client":    claim.Client,
+					"Data":      claim.Data,
+					"Size":      claim.Size,
+					"TermMin":   claim.TermMin,
+					"TermMax":   claim.TermMax,
+					"TermStart": claim.TermStart,
+					"Sector":    claim.Sector,
+				})
+			}
+		}
+		return tw.Flush(os.Stdout)
 	},
 }

@@ -2338,6 +2338,36 @@ func (mr *MockFullNodeMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockFullNode)(nil).StateGetActor), arg0, arg1, arg2)
 }
 
+// StateGetAllAllocations mocks base method.
+func (m *MockFullNode) StateGetAllAllocations(arg0 context.Context, arg1 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllAllocations", arg0, arg1)
+	ret0, _ := ret[0].(map[verifreg.AllocationId]verifreg.Allocation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllAllocations indicates an expected call of StateGetAllAllocations.
+func (mr *MockFullNodeMockRecorder) StateGetAllAllocations(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllAllocations", reflect.TypeOf((*MockFullNode)(nil).StateGetAllAllocations), arg0, arg1)
+}
+
+// StateGetAllClaims mocks base method.
+func (m *MockFullNode) StateGetAllClaims(arg0 context.Context, arg1 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllClaims", arg0, arg1)
+	ret0, _ := ret[0].(map[verifreg.ClaimId]verifreg.Claim)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllClaims indicates an expected call of StateGetAllClaims.
+func (mr *MockFullNodeMockRecorder) StateGetAllClaims(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllClaims", reflect.TypeOf((*MockFullNode)(nil).StateGetAllClaims), arg0, arg1)
+}
+
 // StateGetAllocation mocks base method.
 func (m *MockFullNode) StateGetAllocation(arg0 context.Context, arg1 address.Address, arg2 verifreg.AllocationId, arg3 types.TipSetKey) (*verifreg.Allocation, error) {
 	m.ctrl.T.Helper()
