@@ -265,15 +265,14 @@ func ConfigFullNode(c interface{}) Option {
 		),
 
 		// Actor event filtering support
-		Override(new(events.EventAPI), From(new(modules.EventAPI))),
-
+		Override(new(events.EventHelperAPI), From(new(modules.EventHelperAPI))),
 		Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Fevm)),
 
 		// in lite-mode Eth api is provided by gateway
 		ApplyIf(isFullNode,
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
-				Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm)),
+				Override(new(full.EthEventAPI), modules.EthEventHandler(cfg.Fevm)),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
@@ -283,7 +282,7 @@ func ConfigFullNode(c interface{}) Option {
 
 		ApplyIf(isFullNode,
 			If(cfg.Fevm.EnableActorEventsAPI,
-				Override(new(full.ActorEventAPI), modules.ActorEventAPI(cfg.Fevm)),
+				Override(new(full.ActorEventAPI), modules.ActorEventHandler(cfg.Fevm)),
 			),
 			If(!cfg.Fevm.EnableActorEventsAPI,
 				Override(new(full.ActorEventAPI), &full.ActorEventDummy{}),
