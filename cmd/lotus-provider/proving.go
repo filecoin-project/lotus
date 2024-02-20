@@ -80,8 +80,6 @@ var wdPostTaskCmd = &cli.Command{
 		}
 		var taskId int64
 
-		retryDelay := time.Millisecond * 10
-	retryAddTask:
 		_, err = deps.DB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			err = tx.QueryRow(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123) RETURNING id`).Scan(&taskId)
 			if err != nil {
@@ -100,13 +98,8 @@ var wdPostTaskCmd = &cli.Command{
 				return false, xerrors.Errorf("inserting into harmony_tests: %w", err)
 			}
 			return true, nil
-		})
+		}, harmonydb.RetrySerializationErr())
 		if err != nil {
-			if harmonydb.IsErrSerialization(err) {
-				time.Sleep(retryDelay)
-				retryDelay *= 2
-				goto retryAddTask
-			}
 			return xerrors.Errorf("writing SQL transaction: %w", err)
 		}
 		fmt.Printf("Inserted task %v. Waiting for success ", taskId)
@@ -122,6 +115,7 @@ var wdPostTaskCmd = &cli.Command{
 			}
 			fmt.Print(".")
 		}
+		fmt.Println()
 		log.Infof("Result: %s", result.String)
 		return nil
 	},
