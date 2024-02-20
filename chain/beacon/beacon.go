@@ -45,14 +45,17 @@ type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
 	VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte) error
 	MaxBeaconRoundForEpoch(network.Version, abi.ChainEpoch) uint64
+	IsChained() bool
 }
 
 func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockHeader, parentEpoch abi.ChainEpoch,
 	prevEntry types.BeaconEntry) error {
-	// Before nv22 we had "chained" beacons, and so required two entries at a fork
-	if nv < network.Version22 {
+
+	currBeacon := bSchedule.BeaconForEpoch(h.Height)
+	// When we have "chained" beacons, two entries at a fork are required.
+	if currBeacon.IsChained() {
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
-		currBeacon := bSchedule.BeaconForEpoch(h.Height)
+
 		if parentBeacon != currBeacon {
 			if len(h.BeaconEntries) != 2 {
 				return xerrors.Errorf("expected two beacon entries at beacon fork, got %d", len(h.BeaconEntries))
@@ -80,8 +83,8 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 		return xerrors.Errorf("expected to have beacon entries in this block, but didn't find any")
 	}
 
-	if nv < network.Version22 && prevEntry.Round == 0 {
-		// We skip verifying the genesis entry before nv22, since that was "chained" randomness.
+	// We skip verifying the genesis entry when randomness is "chained".
+	if currBeacon.IsChained() && prevEntry.Round == 0 {
 		return nil
 	}
 
@@ -110,10 +113,10 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 }
 
 func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.Version, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
-	// Before nv22 we had "chained" beacons, and so required two entries at a fork
-	if nv < network.Version22 {
+	// When we have "chained" beacons, two entries at a fork are required.
+	currBeacon := bSchedule.BeaconForEpoch(epoch)
+	if currBeacon.IsChained() {
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
-		currBeacon := bSchedule.BeaconForEpoch(epoch)
 		if parentBeacon != currBeacon {
 			// Fork logic
 			round := currBeacon.MaxBeaconRoundForEpoch(nv, epoch)

@@ -37,7 +37,8 @@ var log = logging.Logger("drand")
 //
 // The root trust for the Drand chain is configured from build.DrandChain.
 type DrandBeacon struct {
-	client dclient.Client
+	network dtypes.DrandEnum
+	client  dclient.Client
 
 	pubkey kyber.Point
 
@@ -50,6 +51,10 @@ type DrandBeacon struct {
 	scheme       *dcrypto.Scheme
 
 	localCache *lru.Cache[uint64, *types.BeaconEntry]
+}
+
+func (db *DrandBeacon) IsChained() bool {
+	return db.network != build.DrandQuicknet
 }
 
 // DrandHTTPClient interface overrides the user agent used by drand
@@ -117,6 +122,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 	}
 
 	db := &DrandBeacon{
+		network:    config.Network,
 		client:     client,
 		localCache: lc,
 	}
