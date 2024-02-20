@@ -17,8 +17,9 @@ import (
 
 var Methods = builtin12.MethodsEVM
 
+// See https://github.com/filecoin-project/builtin-actors/blob/6e781444cee5965278c46ef4ffe1fb1970f18d7d/actors/evm/src/lib.rs#L35-L42
 const (
-	ErrReverted exitcode.ExitCode = iota + 33
+	ErrReverted exitcode.ExitCode = iota + 33 // EVM exit codes start at 33
 	ErrInvalidInstruction
 	ErrUndefinedInstruction
 	ErrStackUnderflow
