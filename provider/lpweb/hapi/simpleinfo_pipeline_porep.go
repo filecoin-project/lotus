@@ -1,11 +1,11 @@
 package hapi
 
 import (
-	lru "github.com/hashicorp/golang-lru/v2"
-	blocks "github.com/ipfs/go-block-format"
 	"net/http"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+	blocks "github.com/ipfs/go-block-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
