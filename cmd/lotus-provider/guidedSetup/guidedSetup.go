@@ -6,8 +6,13 @@
 package guidedSetup
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"math/bits"
+	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -24,6 +29,12 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	_ "github.com/filecoin-project/lotus/cmd/lotus-provider/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -38,7 +49,7 @@ var GuidedsetupCmd = &cli.Command{
 
 		say(header, "This interactive tool will walk you through migration of lotus-provider.\nPress Ctrl+C to exit at any time.")
 
-		say(notice, "This tool confirms each action it does.")
+		say(notice, "This tool confirms each action it does and each step is reversable.")
 
 		// Run the migration steps
 		migrationData := MigrationData{
@@ -124,7 +135,7 @@ var migrationSteps = []migrationStep{
 	readMinerConfig, // Tells them to be on the miner machine
 	yugabyteConnect, // Miner is updated
 	verifySectors,   // Verify the sectors are in the database
-	configToDB,      // TODO work on base configuration migration.
+	configToDB,      // work on base configuration migration.
 	doc,
 	oneLastThing,
 }
@@ -136,6 +147,7 @@ type MigrationData struct {
 	MinerConfigPath string
 	MinerConfig     *config.StorageMiner
 	*harmonydb.DB
+	MinerID address.Address
 }
 
 func configToDB(d *MigrationData) {
@@ -152,11 +164,19 @@ func configToDB(d *MigrationData) {
 		d.say(notice, "Error reading from database: %s. Aborting Migration.\n", err.Error())
 		os.Exit(1)
 	}
+
+	// SaveCredsToDB
+	// 1. replace 'base' if not around with mig
+	// 2. if base is already around, add the miner ID to the list with all the other goodies mig+MINERID
+	// 3. If there's a base, diff it with the miner's config.toml and show the diff.
+	// TODO watch what gets printed so we don't give advice to use "mig-??"
+
 	//configs := lo.SliceToMap(configBytes, func(t rawConfig) (string, bool) {
-	// TODO
+	// TODO use new config reader
 	//})
 	// NEEDS multiaddress PR committed to interpret configs correctly.
 
+	//TODO clean-up shared.go to be multilingual and use it.
 	// TODO	d.say(plain, "This lotus-miner services the Miner ID: %s\n", "TODO MinerID")
 
 	// This will be added to the new/existing base layer along with its specific wallet rules.
@@ -168,16 +188,88 @@ func configToDB(d *MigrationData) {
 	d.say(plain, "TODO FINISH THIS FUNCTION\n")
 }
 
+// bucket returns the nearest power of 2 (rounded down) for the given power.
+func bucket(power *api.MinerPower) uint64 {
+	return 1 << bits.LeadingZeros64(power.TotalPower.QualityAdjPower.Uint64())
+}
+
 func oneLastThing(d *MigrationData) {
 	d.say(section, "To bring you the best SP tooling...")
 	d.say(plain, "Share with the Curio team your interest in lotus-provider for this Miner ID.\n")
 	d.say(plain, "Hit return to tell http://CurioStorage.org that you've migrated to lotus-provider.\n")
-	_, err := (&promptui.Prompt{Label: "Press return to continue"}).Run()
+	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
 		d.say(notice, "Aborting remaining steps.\n", err.Error())
+		os.Exit(1)
 	}
-	// TODO http call to home with a simple message of
-	// this version, net (mainnet/testnet), and "lotus-provider" signed by the miner's key.
+
+	d.say(section, "We want to build what you're using.")
+	if build.BuildType == build.BuildMainnet {
+		i, _, err := (&promptui.Select{
+			Label: d.T("Select what you want to share with the Curio team."),
+			Items: []string{
+				d.T("Individual Data: Miner ID, lotus-provider version, net (mainnet/testnet). Signed."),
+				d.T("Aggregate-Anonymous: Miner power (bucketed), version, and net."),
+				d.T("Hint: I am someone running lotus-provider in production."),
+				d.T("Nothing.")},
+			Templates: d.selectTemplates,
+		}).Run()
+		if err != nil {
+			d.say(notice, "Aborting remaining steps.\n", err.Error())
+			os.Exit(1)
+		}
+		if i != 3 {
+
+			api, closer, err := cliutil.GetFullNodeAPI(nil)
+			if err != nil {
+				d.say(notice, "Error connecting to lotus node: %s\n", err.Error())
+				os.Exit(1)
+			}
+			defer closer()
+
+			power, err := api.StateMinerPower(context.Background(), d.MinerID, types.EmptyTSK)
+			if err != nil {
+				d.say(notice, "Error getting miner power: %s\n", err.Error())
+				os.Exit(1)
+			}
+			msgMap := map[string]any{
+				"version": build.BuildVersion,
+				"net":     build.BuildType,
+				"power":   map[int]any{1: power, 2: bucket(power)},
+			}
+
+			if i == 1 { // Sign it
+				msgMap["minerID"] = d.MinerID
+			}
+			msg, err := json.Marshal(msgMap)
+			if err != nil {
+				d.say(notice, "Error marshalling message: %s\n", err.Error())
+				os.Exit(1)
+			}
+			if i == 1 {
+				mi, err := api.StateMinerInfo(context.Background(), d.MinerID, types.EmptyTSK)
+				if err != nil {
+					d.say(notice, "Error getting miner info: %s\n", err.Error())
+					os.Exit(1)
+				}
+				sig, err := api.WalletSign(context.Background(), mi.Worker, msg)
+				if err != nil {
+					d.say(notice, "Error signing message: %s\n", err.Error())
+					os.Exit(1)
+				}
+				msgMap["signature"] = base64.StdEncoding.EncodeToString(sig.Data)
+				msg, err = json.Marshal(msgMap)
+				if err != nil {
+					d.say(notice, "Error marshalling message: %s\n", err.Error())
+					os.Exit(1)
+				}
+			}
+
+			http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
+		}
+	} else {
+		d.say(plain, "Not mainnet, not sharing.\n")
+	}
 }
 
 func doc(d *MigrationData) {
@@ -189,6 +281,7 @@ func doc(d *MigrationData) {
 	d.say(plain, "Edit a layer with the command: ")
 	d.say(code, "lotus-provider config edit <layername>\n")
 
+	d.say(plain, "Join #fil-curio-users in Filecoin slack for help.\n")
 	d.say(plain, "TODO FINISH THIS FUNCTION.\n")
 	// TODO !!
 	// show the command to start the web interface & the command to start the main provider.
@@ -219,11 +312,15 @@ func verifySectors(d *MigrationData) {
 		fmt.Print(".")
 		time.Sleep(time.Second)
 	}
-	d.say(plain, "Sectors verified. %d sector locations found.\n", i)
-	d.say(plain, "Never remove the database info from the config.toml for lotus-miner as it avoids double PoSt.\n")
+	d.say(plain, "The sectors are in the database. The database is ready for lotus-provider.\n")
+	d.say(notice, "Now shut down lotus-miner and move the systems to lotus-provider.\n")
 
-	d.say(plain, "Finish sealing in progress before moving those systems to lotus-provider.\n")
-	stepCompleted(d, d.T("Verified Sectors in Database"))
+	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
+	if err != nil {
+		d.say(notice, "Aborting migration.\n")
+		os.Exit(1)
+	}
+	stepCompleted(d, d.T("Sectors verified. %d sector locations found.\n", i))
 }
 
 func yugabyteConnect(d *MigrationData) {
@@ -296,7 +393,7 @@ yugabyteFor:
 			d.say(notice, "Error encoding config.toml: %s\n", err.Error())
 			os.Exit(1)
 		}
-		_, _ = (&promptui.Prompt{Label: "Press return to update config.toml with Yugabyte info. Backup the file now."}).Run()
+		_, _ = (&promptui.Prompt{Label: d.T("Press return to update config.toml with Yugabyte info. Backup the file now.")}).Run()
 		stat, err := os.Stat(path.Join(d.MinerConfigPath, "config.toml"))
 		if err != nil {
 			d.say(notice, "Error reading filemode of config.toml: %s\n", err.Error())
@@ -314,6 +411,12 @@ yugabyteFor:
 }
 
 func readMinerConfig(d *MigrationData) {
+	d.say(plain, "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
+	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
+	if err != nil {
+		d.say(notice, "Aborting migration.\n")
+		os.Exit(1)
+	}
 	verifyPath := func(dir string) (*config.StorageMiner, error) {
 		cfg := config.DefaultStorageMiner()
 		_, err := toml.DecodeFile(path.Join(dir, "config.toml"), &cfg)

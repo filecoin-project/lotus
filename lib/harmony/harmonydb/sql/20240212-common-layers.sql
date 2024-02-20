@@ -18,5 +18,23 @@ INSERT INTO harmony_config (title, config) VALUES
   EnablePoRepProof = true
   EnableSendCommitMsg = true
   EnableMoveStorage = true
-  ')
+  '),
+
+  ('seal-gpu', '
+  [Subsystems]
+  EnableSealSDRTrees = true
+  '),
+
+  ('seal-snark', '
+  [Subsystems]
+  EnablePoRepProof = true
+  EnableSendPrecommitMsg = true
+  '),
+
+  ('seal-cpu', '
+  [Subsystems]
+  EnableSealSDR = true
+  EnableSendCommitMsg = true
+  EnableMoveStorage = true
+  '),
   ON CONFLICT (title) DO NOTHING; -- SPs may have these names defined already.

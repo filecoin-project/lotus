@@ -44,7 +44,7 @@ var configDefaultCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		comment := !cctx.Bool("no-comment")
-		cfg, err := getDefaultConfig(comment)
+		cfg, err := deps.GetDefaultConfig(comment)
 		if err != nil {
 			return err
 		}
@@ -52,15 +52,6 @@ var configDefaultCmd = &cli.Command{
 
 		return nil
 	},
-}
-
-func getDefaultConfig(comment bool) (string, error) {
-	c := config.DefaultLotusProvider()
-	cb, err := config.ConfigUpdate(c, nil, config.Commented(comment), config.DefaultKeepUncommented(), config.NoEnv())
-	if err != nil {
-		return "", err
-	}
-	return string(cb), nil
 }
 
 var configSetCmd = &cli.Command{

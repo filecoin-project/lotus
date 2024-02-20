@@ -77,9 +77,9 @@ func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 	fromEnv := func() (*harmonydb.DB, error) {
 		// #3 Try env
 		sqlurlRegexp := `://(?P<username>[^:]+):(?P<password>[^@]+)@(?P<host>[^:]+):(?P<port>[^/]+)/(?P<dbname>.+)$`
-		ss := regexp.MustCompile(sqlurlRegexp).FindStringSubmatch(os.Getenv("LOTUS_DB"))
+		ss := regexp.MustCompile(sqlurlRegexp).FindStringSubmatch(os.Getenv("PROVIDER_DB"))
 		if len(ss) == 0 {
-			return nil, errors.New("no db connection string found in LOTUS_DB env")
+			return nil, errors.New("no db connection string found in PROVIDER_DB env")
 		}
 		return harmonydb.NewFromConfig(config.HarmonyDB{
 			Username: ss[1],
@@ -97,7 +97,7 @@ func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 		}
 		return db, nil
 	}
-	log.Error("No db connection string found. User CLI args or env var: set LOTUS_DB=postgres://user:pass@host:port/dbname")
+	log.Error("No db connection string found. User CLI args or env var: set PROVIDER_DB=postgres://user:pass@host:port/dbname")
 	return fromCLI() //in-case it's not about bad config.
 }
 
@@ -326,4 +326,13 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 	// 3rd-parties can dynamically include config requirements and we can
 	// validate the config. Because of layering, we must validate @ startup.
 	return lp, nil
+}
+
+func GetDefaultConfig(comment bool) (string, error) {
+	c := config.DefaultLotusProvider()
+	cb, err := config.ConfigUpdate(c, nil, config.Commented(comment), config.DefaultKeepUncommented(), config.NoEnv())
+	if err != nil {
+		return "", err
+	}
+	return string(cb), nil
 }
