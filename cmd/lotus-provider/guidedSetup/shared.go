@@ -68,14 +68,6 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		return fmt.Errorf("miner cannot reach the db. Ensure the config toml's HarmonyDB entry"+
 			" is setup to reach Yugabyte correctly: %s", err.Error())
 	}
-	if layerName == "" {
-		layerName = fmt.Sprintf("mig%d", len(titles))
-	} else {
-		if lo.Contains(titles, layerName) && !overwrite {
-			return errors.New("the overwrite flag is needed to replace existing layer: " + layerName)
-		}
-	}
-	say(plain, "Layer %s created. ", layerName)
 
 	// Copy over identical settings:
 
@@ -108,7 +100,14 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		return xerrors.Errorf("parsing miner actor address: %w", err)
 	}
 
-	lpCfg.Addresses.MinerAddresses = []string{addr.String()}
+	lpCfg.Addresses = []config.LotusProviderAddresses{{
+		MinerAddresses:        []string{addr.String()},
+		PreCommitControl:      smCfg.Addresses.PreCommitControl,
+		CommitControl:         smCfg.Addresses.CommitControl,
+		TerminateControl:      smCfg.Addresses.TerminateControl,
+		DisableOwnerFallback:  smCfg.Addresses.DisableOwnerFallback,
+		DisableWorkerFallback: smCfg.Addresses.DisableWorkerFallback,
+	}}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
@@ -134,7 +133,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		return err
 	}
 
-	if !lo.Contains(titles, "base") {
+	if !lo.Contains(titles, "base") { // TODO REMOVE THIS. INSTEAD ADD A BASE or append to addresses
 		cfg, err := deps.GetDefaultConfig(true)
 		if err != nil {
 			return xerrors.Errorf("Cannot get default config: %w", err)
@@ -145,7 +144,14 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 			return err
 		}
 	}
-
+	if layerName == "" { // only make mig if base exists and we are different. // compare to base.
+		layerName = fmt.Sprintf("mig-%s", lpCfg.Addresses[0].MinerAddresses[0])
+	} else {
+		if lo.Contains(titles, layerName) && !overwrite {
+			return errors.New("the overwrite flag is needed to replace existing layer: " + layerName)
+		}
+	}
+	say(plain, "Layer %s created. ", layerName)
 	if overwrite {
 		_, err := db.Exec(ctx, "DELETE FROM harmony_config WHERE title=$1", layerName)
 		if err != nil {
