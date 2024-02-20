@@ -1,6 +1,8 @@
 package hapi
 
 import (
+	lru "github.com/hashicorp/golang-lru/v2"
+	blocks "github.com/ipfs/go-block-format"
 	"net/http"
 	"time"
 
@@ -15,6 +17,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/must"
 )
+
+var ChainBlockCache = must.One(lru.New[blockstore.MhString, blocks.Block](4096))
 
 func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -102,7 +106,7 @@ func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 	}
 	epoch := head.Height()
 
-	stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(a.workingApi))
+	stor := store.ActorStore(ctx, blockstore.NewReadCachedBlockstore(blockstore.NewAPIBlockstore(a.workingApi), ChainBlockCache))
 
 	type minerBitfields struct {
 		alloc, sectorSet, active, unproven, faulty bitfield.BitField
