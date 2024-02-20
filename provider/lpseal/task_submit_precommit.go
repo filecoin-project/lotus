@@ -110,19 +110,25 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 			PieceCID   string `db:"piece_cid"`
 			PieceSize  int64  `db:"piece_size"`
 
-			F05DealID int64 `db:"f05_deal_id"`
+			F05DealID       int64 `db:"f05_deal_id"`
+			F05DealEndEpoch int64 `db:"f05_deal_end_epoch"`
 		}
 
 		err = s.db.Select(ctx, &pieces, `
-		SELECT piece_index, piece_cid, piece_size, f05_deal_id
+		SELECT piece_index, piece_cid, piece_size, f05_deal_id, f05_deal_end_epoch
 		FROM sectors_sdr_initial_pieces
 		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index asc`, sectorParams.SpID, sectorParams.SectorNumber)
 		if err != nil {
 			return false, xerrors.Errorf("getting pieces: %w", err)
 		}
 
+		if len(pieces) > 1 {
+			return false, xerrors.Errorf("too many pieces") // todo support multiple pieces
+		}
+
 		if len(pieces) > 0 {
 			params.Sectors[0].UnsealedCid = &unsealedCID
+			params.Sectors[0].Expiration = abi.ChainEpoch(pieces[0].F05DealEndEpoch)
 
 			for _, p := range pieces {
 				params.Sectors[0].DealIDs = append(params.Sectors[0].DealIDs, abi.DealID(p.F05DealID))
