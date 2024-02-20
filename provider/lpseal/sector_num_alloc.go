@@ -32,6 +32,8 @@ func AllocateSectorNumbers(ctx context.Context, a AllocAPI, db *harmonydb.DB, ma
 	var res []abi.SectorNumber
 
 	comm, err := db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+		res = nil // reset result in case of retry
+
 		// query from db, if exists unmarsal to bitfield
 		var dbAllocated bitfield.BitField
 		var rawJson []byte
