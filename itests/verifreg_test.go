@@ -585,7 +585,7 @@ func TestVerifiedListAllAllocations(t *testing.T) {
 
 	allocationRequest1 := verifregst.AllocationRequest{
 		Provider:   abi.ActorID(minerId),
-		Data:       cid.MustParse("bafkqaaa"),
+		Data:       cid.MustParse("baga6ea4seaaqa"),
 		Size:       abi.PaddedPieceSize(initialDatacap.Uint64() / 2),
 		TermMin:    verifregst.MinimumVerifiedAllocationTerm,
 		TermMax:    verifregst.MinimumVerifiedAllocationTerm,
@@ -594,7 +594,7 @@ func TestVerifiedListAllAllocations(t *testing.T) {
 
 	allocationRequest2 := verifregst.AllocationRequest{
 		Provider:   abi.ActorID(minerId),
-		Data:       cid.MustParse("bafkqaaa"),
+		Data:       cid.MustParse("baga6ea4seaaqc"),
 		Size:       abi.PaddedPieceSize(initialDatacap.Uint64() / 2),
 		TermMin:    verifregst.MinimumVerifiedAllocationTerm,
 		TermMax:    verifregst.MinimumVerifiedAllocationTerm,
@@ -630,13 +630,23 @@ func TestVerifiedListAllAllocations(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
-	// check datacap balance
-	dcap, err = api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
-	require.NoError(t, err)
-	require.Nil(t, dcap)
-
 	allocations, err := api.StateGetAllAllocations(ctx, types.EmptyTSK)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, len(allocations))
+
+	var pcids []string
+
+	for _, a := range allocations {
+		clientIdAddr, err := api.StateLookupID(ctx, verifiedClientAddr, types.EmptyTSK)
+		require.NoError(t, err)
+		clientId, err := address.IDFromAddress(clientIdAddr)
+		require.NoError(t, err)
+		require.Equal(t, abi.ActorID(clientId), a.Client)
+		require.Equal(t, abi.ActorID(minerId), a.Provider)
+		require.Equal(t, abi.PaddedPieceSize(10000), a.Size)
+		pcids = append(pcids, a.Data.String())
+	}
+
+	require.ElementsMatch(t, []string{"baga6ea4seaaqa", "baga6ea4seaaqc"}, pcids)
 }

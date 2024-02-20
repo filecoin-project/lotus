@@ -1188,10 +1188,8 @@ COMMANDS:
    check-client-datacap           check verified client remaining bytes
    check-notary-datacap           check a notary's remaining bytes
    sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
-   list-allocations               List allocations made by client
-   list-all-allocations           List allocations available in the verified registry actor
-   list-claims                    List claims made by provider
-   list-all-claims                List claims available in the verified registry actor
+   list-allocations               List allocations available in verified registry actor or made by a client if specified
+   list-claims                    List claims available in verified registry actor or made by provider if specified
    remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
    help, h                        Shows a list of commands or help for one command
@@ -1277,49 +1275,24 @@ OPTIONS:
 ### lotus filplus list-allocations
 ```
 NAME:
-   lotus filplus list-allocations - List allocations made by client
+   lotus filplus list-allocations - List allocations available in verified registry actor or made by a client if specified
 
 USAGE:
    lotus filplus list-allocations [command options] clientAddress
 
 OPTIONS:
    --expired   list only expired allocations (default: false)
-   --help, -h  show help
-```
-
-### lotus filplus list-all-allocations
-```
-NAME:
-   lotus filplus list-all-allocations - List allocations available in the verified registry actor
-
-USAGE:
-   lotus filplus list-all-allocations [command options] clientAddress
-
-OPTIONS:
-   --expired   list only expired allocations (default: false)
+   --json      output results in json format (default: false)
    --help, -h  show help
 ```
 
 ### lotus filplus list-claims
 ```
 NAME:
-   lotus filplus list-claims - List claims made by provider
+   lotus filplus list-claims - List claims available in verified registry actor or made by provider if specified
 
 USAGE:
    lotus filplus list-claims [command options] providerAddress
-
-OPTIONS:
-   --expired   list only expired claims (default: false)
-   --help, -h  show help
-```
-
-### lotus filplus list-all-claims
-```
-NAME:
-   lotus filplus list-all-claims - List claims available in the verified registry actor
-
-USAGE:
-   lotus filplus list-all-claims [command options] providerAddress
 
 OPTIONS:
    --expired   list only expired claims (default: false)

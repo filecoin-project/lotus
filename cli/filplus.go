@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
@@ -43,9 +44,7 @@ var filplusCmd = &cli.Command{
 		filplusCheckNotaryCmd,
 		filplusSignRemoveDataCapProposal,
 		filplusListAllocationsCmd,
-		filplusListAllAllocationsCmd,
 		filplusListClaimsCmd,
-		filplusListAllClaimsCmd,
 		filplusRemoveExpiredAllocationsCmd,
 		filplusRemoveExpiredClaimsCmd,
 	},
@@ -235,16 +234,21 @@ var filplusListClientsCmd = &cli.Command{
 
 var filplusListAllocationsCmd = &cli.Command{
 	Name:      "list-allocations",
-	Usage:     "List allocations made by client",
+	Usage:     "List allocations available in verified registry actor or made by a client if specified",
 	ArgsUsage: "clientAddress",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "expired",
 			Usage: "list only expired allocations",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "output results in json format",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 1 {
+		if cctx.NArg() > 1 {
 			return IncorrectNumArgs(cctx)
 		}
 
@@ -255,14 +259,77 @@ var filplusListAllocationsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		clientAddr, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
+		writeOut := func(tsHeight abi.ChainEpoch, allocations map[verifreg.AllocationId]verifreg.Allocation, json, expired bool) error {
+			// Map Keys. Corresponds to the standard tablewriter output
+			allocationID := "AllocationID"
+			client := "Client"
+			provider := "Miner"
+			pieceCid := "PieceCid"
+			pieceSize := "PieceSize"
+			tMin := "TermMin"
+			tMax := "TermMax"
+			expr := "Expiration"
 
-		clientIdAddr, err := api.StateLookupID(ctx, clientAddr, types.EmptyTSK)
-		if err != nil {
-			return err
+			// One-to-one mapping between tablewriter keys and JSON keys
+			tableKeysToJsonKeys := map[string]string{
+				allocationID: strings.ToLower(allocationID),
+				client:       strings.ToLower(client),
+				provider:     strings.ToLower(provider),
+				pieceCid:     strings.ToLower(pieceCid),
+				pieceSize:    strings.ToLower(pieceSize),
+				tMin:         strings.ToLower(tMin),
+				tMax:         strings.ToLower(tMax),
+				expr:         strings.ToLower(expr),
+			}
+
+			var allocs []map[string]interface{}
+
+			for key, val := range allocations {
+				if tsHeight > val.Expiration || !expired {
+					alloc := map[string]interface{}{
+						allocationID: key,
+						client:       val.Client,
+						provider:     val.Provider,
+						pieceCid:     val.Data,
+						pieceSize:    val.Size,
+						tMin:         val.TermMin,
+						tMax:         val.TermMax,
+						expr:         val.Expiration,
+					}
+					allocs = append(allocs, alloc)
+				}
+			}
+
+			if json {
+				// get a new list of wallets with json keys instead of tablewriter keys
+				var jsonAllocs []map[string]interface{}
+				for _, alloc := range allocs {
+					jsonAlloc := make(map[string]interface{})
+					for k, v := range alloc {
+						jsonAlloc[tableKeysToJsonKeys[k]] = v
+					}
+					jsonAllocs = append(jsonAllocs, jsonAlloc)
+				}
+				// then return this!
+				return PrintJson(jsonAllocs)
+			}
+			// Init the tablewriter's columns
+			tw := tablewriter.New(
+				tablewriter.Col(allocationID),
+				tablewriter.Col(client),
+				tablewriter.Col(provider),
+				tablewriter.Col(pieceCid),
+				tablewriter.Col(pieceSize),
+				tablewriter.Col(tMin),
+				tablewriter.Col(tMax),
+				tablewriter.NewLineCol(expr))
+			// populate it with content
+			for _, alloc := range allocs {
+
+				tw.Write(alloc)
+			}
+			// return the corresponding string
+			return tw.Flush(os.Stdout)
 		}
 
 		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
@@ -282,41 +349,38 @@ var filplusListAllocationsCmd = &cli.Command{
 			return err
 		}
 
-		allocationsMap, err := verifregState.GetAllocations(clientIdAddr)
+		if cctx.NArg() == 1 {
+			clientAddr, err := address.NewFromString(cctx.Args().Get(0))
+			if err != nil {
+				return err
+			}
+
+			clientIdAddr, err := api.StateLookupID(ctx, clientAddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			allocationsMap, err := verifregState.GetAllocations(clientIdAddr)
+			if err != nil {
+				return err
+			}
+
+			return writeOut(ts.Height(), allocationsMap, cctx.Bool("json"), cctx.Bool("expired"))
+		}
+
+		allocationsMap, err := verifregState.GetAllAllocations()
 		if err != nil {
 			return err
 		}
 
-		tw := tablewriter.New(
-			tablewriter.Col("ID"),
-			tablewriter.Col("Provider"),
-			tablewriter.Col("Data"),
-			tablewriter.Col("Size"),
-			tablewriter.Col("TermMin"),
-			tablewriter.Col("TermMax"),
-			tablewriter.Col("Expiration"),
-		)
+		return writeOut(ts.Height(), allocationsMap, cctx.Bool("json"), cctx.Bool("expired"))
 
-		for allocationId, allocation := range allocationsMap {
-			if ts.Height() > allocation.Expiration || !cctx.IsSet("expired") {
-				tw.Write(map[string]interface{}{
-					"ID":         allocationId,
-					"Provider":   allocation.Provider,
-					"Data":       allocation.Data,
-					"Size":       allocation.Size,
-					"TermMin":    allocation.TermMin,
-					"TermMax":    allocation.TermMax,
-					"Expiration": allocation.Expiration,
-				})
-			}
-		}
-		return tw.Flush(os.Stdout)
 	},
 }
 
 var filplusListClaimsCmd = &cli.Command{
 	Name:      "list-claims",
-	Usage:     "List claims made by provider",
+	Usage:     "List claims available in verified registry actor or made by provider if specified",
 	ArgsUsage: "providerAddress",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -325,7 +389,7 @@ var filplusListClaimsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 1 {
+		if cctx.NArg() > 1 {
 			return IncorrectNumArgs(cctx)
 		}
 
@@ -336,14 +400,81 @@ var filplusListClaimsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		providerAddr, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
+		writeOut := func(tsHeight abi.ChainEpoch, claims map[verifreg.ClaimId]verifreg.Claim, json, expired bool) error {
+			// Map Keys. Corresponds to the standard tablewriter output
+			allocationID := "ClaimID"
+			provider := "Provider"
+			client := "Client"
+			data := "Data"
+			size := "Size"
+			tMin := "TermMin"
+			tMax := "TermMax"
+			tStart := "TermStart"
+			sector := "Sector"
 
-		providerIdAddr, err := api.StateLookupID(ctx, providerAddr, types.EmptyTSK)
-		if err != nil {
-			return err
+			// One-to-one mapping between tablewriter keys and JSON keys
+			tableKeysToJsonKeys := map[string]string{
+				allocationID: strings.ToLower(allocationID),
+				provider:     strings.ToLower(provider),
+				client:       strings.ToLower(client),
+				data:         strings.ToLower(data),
+				size:         strings.ToLower(size),
+				tMin:         strings.ToLower(tMin),
+				tMax:         strings.ToLower(tMax),
+				tStart:       strings.ToLower(tStart),
+				sector:       strings.ToLower(sector),
+			}
+
+			var allocs []map[string]interface{}
+
+			for key, val := range claims {
+				if tsHeight > val.TermMax || !expired {
+					alloc := map[string]interface{}{
+						allocationID: key,
+						provider:     val.Provider,
+						client:       val.Client,
+						data:         val.Data,
+						size:         val.Size,
+						tMin:         val.TermMin,
+						tMax:         val.TermMax,
+						tStart:       val.TermStart,
+						sector:       val.Sector,
+					}
+					allocs = append(allocs, alloc)
+				}
+			}
+
+			if json {
+				// get a new list of wallets with json keys instead of tablewriter keys
+				var jsonAllocs []map[string]interface{}
+				for _, alloc := range allocs {
+					jsonAlloc := make(map[string]interface{})
+					for k, v := range alloc {
+						jsonAlloc[tableKeysToJsonKeys[k]] = v
+					}
+					jsonAllocs = append(jsonAllocs, jsonAlloc)
+				}
+				// then return this!
+				return PrintJson(jsonAllocs)
+			}
+			// Init the tablewriter's columns
+			tw := tablewriter.New(
+				tablewriter.Col(allocationID),
+				tablewriter.Col(client),
+				tablewriter.Col(provider),
+				tablewriter.Col(data),
+				tablewriter.Col(size),
+				tablewriter.Col(tMin),
+				tablewriter.Col(tMax),
+				tablewriter.Col(tStart),
+				tablewriter.NewLineCol(sector))
+			// populate it with content
+			for _, alloc := range allocs {
+
+				tw.Write(alloc)
+			}
+			// return the corresponding string
+			return tw.Flush(os.Stdout)
 		}
 
 		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
@@ -363,39 +494,32 @@ var filplusListClaimsCmd = &cli.Command{
 			return err
 		}
 
-		claimsMap, err := verifregState.GetClaims(providerIdAddr)
+		if cctx.NArg() == 1 {
+			providerAddr, err := address.NewFromString(cctx.Args().Get(0))
+			if err != nil {
+				return err
+			}
+
+			providerIdAddr, err := api.StateLookupID(ctx, providerAddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			claimsMap, err := verifregState.GetClaims(providerIdAddr)
+			if err != nil {
+				return err
+			}
+
+			return writeOut(ts.Height(), claimsMap, cctx.Bool("json"), cctx.Bool("expired"))
+		}
+
+		claimsMap, err := verifregState.GetAllClaims()
 		if err != nil {
 			return err
 		}
 
-		tw := tablewriter.New(
-			tablewriter.Col("ID"),
-			tablewriter.Col("Provider"),
-			tablewriter.Col("Client"),
-			tablewriter.Col("Data"),
-			tablewriter.Col("Size"),
-			tablewriter.Col("TermMin"),
-			tablewriter.Col("TermMax"),
-			tablewriter.Col("TermStart"),
-			tablewriter.Col("Sector"),
-		)
+		return writeOut(ts.Height(), claimsMap, cctx.Bool("json"), cctx.Bool("expired"))
 
-		for claimId, claim := range claimsMap {
-			if ts.Height() > claim.TermMax || !cctx.IsSet("expired") {
-				tw.Write(map[string]interface{}{
-					"ID":        claimId,
-					"Provider":  claim.Provider,
-					"Client":    claim.Client,
-					"Data":      claim.Data,
-					"Size":      claim.Size,
-					"TermMin":   claim.TermMin,
-					"TermMax":   claim.TermMax,
-					"TermStart": claim.TermStart,
-					"Sector":    claim.Sector,
-				})
-			}
-		}
-		return tw.Flush(os.Stdout)
 	},
 }
 
@@ -799,151 +923,5 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		fmt.Println(hex.EncodeToString(sigBytes))
 
 		return nil
-	},
-}
-
-var filplusListAllAllocationsCmd = &cli.Command{
-	Name:      "list-all-allocations",
-	Usage:     "List allocations available in the verified registry actor",
-	ArgsUsage: "clientAddress",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "expired",
-			Usage: "list only expired allocations",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
-		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
-
-		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		verifregState, err := verifreg.Load(store, verifregActor)
-		if err != nil {
-			return err
-		}
-
-		ts, err := api.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-
-		allocationsMap, err := verifregState.GetAllAllocations()
-		if err != nil {
-			return err
-		}
-
-		tw := tablewriter.New(
-			tablewriter.Col("ID"),
-			tablewriter.Col("Provider"),
-			tablewriter.Col("Data"),
-			tablewriter.Col("Size"),
-			tablewriter.Col("TermMin"),
-			tablewriter.Col("TermMax"),
-			tablewriter.Col("Expiration"),
-		)
-
-		for allocationId, allocation := range allocationsMap {
-			if ts.Height() > allocation.Expiration || !cctx.IsSet("expired") {
-				tw.Write(map[string]interface{}{
-					"ID":         allocationId,
-					"Provider":   allocation.Provider,
-					"Data":       allocation.Data,
-					"Size":       allocation.Size,
-					"TermMin":    allocation.TermMin,
-					"TermMax":    allocation.TermMax,
-					"Expiration": allocation.Expiration,
-				})
-			}
-		}
-		return tw.Flush(os.Stdout)
-	},
-}
-
-var filplusListAllClaimsCmd = &cli.Command{
-	Name:      "list-all-claims",
-	Usage:     "List claims available in the verified registry actor",
-	ArgsUsage: "providerAddress",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "expired",
-			Usage: "list only expired claims",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
-		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
-
-		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		verifregState, err := verifreg.Load(store, verifregActor)
-		if err != nil {
-			return err
-		}
-
-		ts, err := api.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-
-		claimsMap, err := verifregState.GetAllClaims()
-		if err != nil {
-			return err
-		}
-
-		tw := tablewriter.New(
-			tablewriter.Col("ID"),
-			tablewriter.Col("Provider"),
-			tablewriter.Col("Client"),
-			tablewriter.Col("Data"),
-			tablewriter.Col("Size"),
-			tablewriter.Col("TermMin"),
-			tablewriter.Col("TermMax"),
-			tablewriter.Col("TermStart"),
-			tablewriter.Col("Sector"),
-		)
-
-		for claimId, claim := range claimsMap {
-			if ts.Height() > claim.TermMax || !cctx.IsSet("expired") {
-				tw.Write(map[string]interface{}{
-					"ID":        claimId,
-					"Provider":  claim.Provider,
-					"Client":    claim.Client,
-					"Data":      claim.Data,
-					"Size":      claim.Size,
-					"TermMin":   claim.TermMin,
-					"TermMax":   claim.TermMax,
-					"TermStart": claim.TermStart,
-					"Sector":    claim.Sector,
-				})
-			}
-		}
-		return tw.Flush(os.Stdout)
 	},
 }
