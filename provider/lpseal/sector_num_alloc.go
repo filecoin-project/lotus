@@ -112,7 +112,7 @@ func AllocateSectorNumbers(ctx context.Context, a AllocAPI, db *harmonydb.DB, ma
 		}
 
 		return true, nil
-	})
+	}, harmonydb.RetrySerializationErr())
 
 	if err != nil {
 		return nil, xerrors.Errorf("allocating sector numbers: %w", err)

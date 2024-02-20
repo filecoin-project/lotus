@@ -565,9 +565,8 @@ var lpBoostProxyCmd = &cli.Command{
 		server := &http.Server{
 			Addr:         cctx.String("listen"),
 			Handler:      mux,
-			ReadTimeout:  15 * time.Second,
+			ReadTimeout:  48 * time.Hour,
 			WriteTimeout: 48 * time.Hour, // really high because we block until TreeD
-			IdleTimeout:  60 * time.Second,
 		}
 
 		return server.ListenAndServe()

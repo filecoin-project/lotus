@@ -248,6 +248,7 @@ func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
 
 		// if we're below the RawSize, return an unexpected EOF error
 		if u.readSoFar < u.RawSize {
+			log.Errorw("unexpected EOF", "readSoFar", u.readSoFar, "rawSize", u.RawSize, "url", u.Url)
 			return n, io.ErrUnexpectedEOF
 		}
 	}
