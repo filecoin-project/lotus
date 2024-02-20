@@ -68,8 +68,10 @@ type StorageMiner struct {
 type LotusProviderConfig struct {
 	Subsystems ProviderSubsystemsConfig
 
-	Fees      LotusProviderFees
-	Addresses LotusProviderAddresses
+	Fees LotusProviderFees
+
+	// Addresses of wallets per MinerAddress (one of the fields).
+	Addresses []LotusProviderAddresses
 	Proving   ProvingConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
