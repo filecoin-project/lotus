@@ -8359,7 +8359,7 @@
         {
             "name": "Filecoin.EthTraceBlock",
             "description": "```go\nfunc (s *FullNodeStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {\n\tif s.Internal.EthTraceBlock == nil {\n\t\treturn *new([]*ethtypes.EthTraceBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceBlock(p0, p1)\n}\n```",
-            "summary": "TraceAPI related methods\n\nReturns traces created at given block\n",
+            "summary": "Returns an OpenEthereum-compatible trace of the given block (implementing `trace_block`),\ntranslating Filecoin semantics into Ethereum semantics and tracing both EVM and FVM calls.\n\nFeatures:\n\n- FVM actor create events, calls, etc. show up as if they were EVM smart contract events.\n- Native FVM call inputs are ABI-encoded (Solidity ABI) as if they were calls to a\n  `handle_filecoin_method(uint64 method, uint64 codec, bytes params)` function\n  (where `codec` is the IPLD codec of `params`).\n- Native FVM call outputs (return values) are ABI-encoded as `(uint32 exit_code, uint64\n  codec, bytes output)` where `codec` is the IPLD codec of `output`.\n\nLimitations (for now):\n\n1. Block rewards are not included in the trace.\n2. SELFDESTRUCT operations are not included in the trace.\n3. EVM smart contract \"create\" events always specify `0xfe` as the \"code\" for newly created EVM smart contracts.\n",
             "paramStructure": "by-position",
             "params": [
                 {
