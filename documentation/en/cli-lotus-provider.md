@@ -10,15 +10,15 @@ VERSION:
    1.25.3-dev
 
 COMMANDS:
-   cli       Execute cli commands
-   run       Start a lotus provider process
-   stop      Stop a running lotus provider
-   config    Manage node config by layers. The layer 'base' will always be applied. 
-   test      Utility functions for testing
-   web       Start lotus provider web interface
-   pipeline  Manage the sealing pipeline
-   version   Print version
-   help, h   Shows a list of commands or help for one command
+   cli      Execute cli commands
+   run      Start a lotus provider process
+   stop     Stop a running lotus provider
+   config   Manage node config by layers. The layer 'base' will always be applied. 
+   test     Utility functions for testing
+   web      Start lotus provider web interface
+   seal     Manage the sealing pipeline
+   version  Print version
+   help, h  Shows a list of commands or help for one command
    DEVELOPER:
      auth          Manage RPC permissions
      log           Manage logging
@@ -26,16 +26,16 @@ COMMANDS:
      fetch-params  Fetch proving parameters
 
 GLOBAL OPTIONS:
-   --color              use color in display output (default: depends on output being a TTY)
-   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$LOTUS_DB_HOST]
-   --db-name value      (default: "yugabyte") [$LOTUS_DB_NAME, $LOTUS_HARMONYDB_HOSTS]
-   --db-user value      (default: "yugabyte") [$LOTUS_DB_USER, $LOTUS_HARMONYDB_USERNAME]
-   --db-password value  (default: "yugabyte") [$LOTUS_DB_PASSWORD, $LOTUS_HARMONYDB_PASSWORD]
-   --layers value       (default: "base") [$LOTUS_LAYERS, $LOTUS_CONFIG_LAYERS]
-   --repo-path value    (default: "~/.lotusprovider") [$LOTUS_REPO_PATH]
-   --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h           show help
-   --version, -v        print the version
+   --color                            use color in display output (default: depends on output being a TTY)
+   --db-host value                    Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$LOTUS_DB_HOST]
+   --db-name value                    (default: "yugabyte") [$LOTUS_DB_NAME, $LOTUS_HARMONYDB_HOSTS]
+   --db-user value                    (default: "yugabyte") [$LOTUS_DB_USER, $LOTUS_HARMONYDB_USERNAME]
+   --db-password value                (default: "yugabyte") [$LOTUS_DB_PASSWORD, $LOTUS_HARMONYDB_PASSWORD]
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base") [$CURIO_LAYERS]
+   --repo-path value                  (default: "~/.lotusprovider") [$LOTUS_REPO_PATH]
+   --vv                               enables very verbose mode, useful for debugging the CLI (default: false)
+   --help, -h                         show help
+   --version, -v                      print the version
 ```
 
 ## lotus-provider cli
@@ -51,7 +51,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --machine value  machine host:port
+   --machine value  machine host:port (lotus-provider run --listen address)
    --help, -h       show help
 ```
 
@@ -68,13 +68,12 @@ USAGE:
    lotus-provider run [command options] [arguments...]
 
 OPTIONS:
-   --listen value                     host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
-   --nosync                           don't check full-node sync status (default: false)
-   --manage-fdlimit                   manage open file limit (default: true)
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
-   --storage-json value               path to json file containing storage config (default: "~/.lotus-provider/storage.json")
-   --journal value                    path to journal files (default: "~/.lotus-provider/")
-   --help, -h                         show help
+   --listen value        host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
+   --nosync              don't check full-node sync status (default: false)
+   --manage-fdlimit      manage open file limit (default: true)
+   --storage-json value  path to json file containing storage config (default: "~/.lotus-provider/storage.json")
+   --journal value       path to journal files (default: "~/.lotus-provider/")
+   --help, -h            show help
 ```
 
 ## lotus-provider stop
@@ -217,7 +216,7 @@ DESCRIPTION:
    Express a database config (for lotus-provider) from an existing miner.
 
 OPTIONS:
-   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --miner-repo value, --storagerepo value  Miner repo path (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --to-layer value, -t value               The layer name for this data push. 'base' is recommended for single-miner setup.
    --overwrite, -o                          Use this with --to-layer to replace an existing layer (default: false)
    --help, -h                               show help
@@ -297,9 +296,8 @@ USAGE:
    lotus-provider test window-post task [command options] [arguments...]
 
 OPTIONS:
-   --deadline value                   deadline to compute WindowPoSt for  (default: 0)
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
-   --help, -h                         show help
+   --deadline value  deadline to compute WindowPoSt for  (default: 0)
+   --help, -h        show help
 ```
 
 ## lotus-provider web
@@ -315,19 +313,18 @@ DESCRIPTION:
      This creates the 'web' layer if it does not exist, then calls run with that layer.
 
 OPTIONS:
-   --listen value                     Address to listen on (default: "127.0.0.1:4701")
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base. Web will be added (default: "base")
-   --nosync                           don't check full-node sync status (default: false)
-   --help, -h                         show help
+   --listen value  Address to listen on (default: "127.0.0.1:4701")
+   --nosync        don't check full-node sync status (default: false)
+   --help, -h      show help
 ```
 
-## lotus-provider pipeline
+## lotus-provider seal
 ```
 NAME:
-   lotus-provider pipeline - Manage the sealing pipeline
+   lotus-provider seal - Manage the sealing pipeline
 
 USAGE:
-   lotus-provider pipeline command [command options] [arguments...]
+   lotus-provider seal command [command options] [arguments...]
 
 COMMANDS:
    start    Start new sealing operations manually
@@ -337,22 +334,21 @@ OPTIONS:
    --help, -h  show help
 ```
 
-### lotus-provider pipeline start
+### lotus-provider seal start
 ```
 NAME:
-   lotus-provider pipeline start - Start new sealing operations manually
+   lotus-provider seal start - Start new sealing operations manually
 
 USAGE:
-   lotus-provider pipeline start [command options] [arguments...]
+   lotus-provider seal start [command options] [arguments...]
 
 OPTIONS:
-   --actor value                      Specify actor address to start sealing sectors for
-   --now                              Start sealing sectors for all actors now (not on schedule) (default: false)
-   --cc                               Start sealing new CC sectors (default: false)
-   --count value                      Number of sectors to start (default: 1)
-   --synthetic                        Use synthetic PoRep (default: false)
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
-   --help, -h                         show help
+   --actor value  Specify actor address to start sealing sectors for
+   --now          Start sealing sectors for all actors now (not on schedule) (default: false)
+   --cc           Start sealing new CC sectors (default: false)
+   --count value  Number of sectors to start (default: 1)
+   --synthetic    Use synthetic PoRep (default: false)
+   --help, -h     show help
 ```
 
 ## lotus-provider version
