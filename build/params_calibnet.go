@@ -89,8 +89,8 @@ const UpgradeWatermelonFixHeight = 1070494
 // 2023-11-21T13:00:00Z
 const UpgradeWatermelonFix2Height = 1108174
 
-// 2024-02-27T14:00:00Z
-const UpgradeDragonHeight = 1390534
+// 2024-03-06T14:00:00Z
+const UpgradeDragonHeight = 1413574
 
 // This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
 const UpgradePhoenixHeight = UpgradeDragonHeight + 120
