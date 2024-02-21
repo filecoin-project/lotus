@@ -116,7 +116,14 @@ func (s *state10) GetAllocations(clientIdAddr address.Address) (map[AllocationId
 
 func (s *state10) GetAllAllocations() (map[AllocationId]Allocation, error) {
 
-	return nil, xerrors.Errorf("unsupported in actors v10")
+	v10Map, err := s.State.GetAllAllocations(s.store)
+
+	retMap := make(map[AllocationId]Allocation, len(v10Map))
+	for k, v := range v10Map {
+		retMap[AllocationId(k)] = Allocation(v)
+	}
+
+	return retMap, err
 
 }
 
@@ -142,7 +149,14 @@ func (s *state10) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, 
 
 func (s *state10) GetAllClaims() (map[ClaimId]Claim, error) {
 
-	return nil, xerrors.Errorf("unsupported in actors v10")
+	v10Map, err := s.State.GetAllClaims(s.store)
+
+	retMap := make(map[ClaimId]Claim, len(v10Map))
+	for k, v := range v10Map {
+		retMap[ClaimId(k)] = Claim(v)
+	}
+
+	return retMap, err
 
 }
 

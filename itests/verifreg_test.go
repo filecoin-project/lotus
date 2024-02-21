@@ -504,7 +504,7 @@ func makeVerifier(ctx context.Context, t *testing.T, api *impl.FullNodeAPI, root
 	require.Equal(t, allowance, *verifierAllowance)
 }
 
-func TestVerifiedListAllAllocations(t *testing.T) {
+func TestVerifiedListAllAllocationsAndClaims(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 
 	rootKey, err := key.GenerateKey(types.KTSecp256k1)
@@ -649,4 +649,6 @@ func TestVerifiedListAllAllocations(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, []string{"baga6ea4seaaqa", "baga6ea4seaaqc"}, pcids)
+
+	// TODO: Add claims check to this test once https://github.com/filecoin-project/lotus/pull/11618 lands
 }

@@ -146,7 +146,7 @@ func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[Allocati
 }
 
 func (s *state{{.v}}) GetAllAllocations() (map[AllocationId]Allocation, error) {
-{{if (le .v 12)}}
+{{if (le .v 8)}}
     return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
 	v{{.v}}Map, err := s.State.GetAllAllocations(s.store)
@@ -186,7 +186,7 @@ func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[ClaimId]Cla
 }
 
 func (s *state{{.v}}) GetAllClaims() (map[ClaimId]Claim, error) {
-{{if (le .v 12)}}
+{{if (le .v 8)}}
     return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
 	v{{.v}}Map, err := s.State.GetAllClaims(s.store)
