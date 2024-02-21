@@ -137,7 +137,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
        task_id_commit_msg, after_commit_msg,
        after_commit_msg_success,
        failed, failed_reason
-    FROM sectors_sdr_pipeline WHERE after_commit_msg_success != true or after_move_storage != true`)
+    FROM sectors_sdr_pipeline WHERE after_commit_msg_success != TRUE OR after_move_storage != TRUE`)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (s *SealPoller) poll(ctx context.Context) error {
 func (s *SealPoller) pollStartSDR(ctx context.Context, task pollTask) {
 	if !task.AfterSDR && task.TaskSDR == nil && s.pollers[pollerSDR].IsSet() {
 		s.pollers[pollerSDR].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_sdr = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_sdr is null`, id, task.SpID, task.SectorNumber)
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_sdr = $1 WHERE sp_id = $2 AND sector_number = $3 AND task_id_sdr IS NULL`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}
@@ -194,7 +194,7 @@ func (s *SealPoller) pollStartSDRTrees(ctx context.Context, task pollTask) {
 
 		s.pollers[pollerTrees].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_tree_d = $1, task_id_tree_c = $1, task_id_tree_r = $1
-                            WHERE sp_id = $2 AND sector_number = $3 and after_sdr = true and task_id_tree_d is null and task_id_tree_c is null and task_id_tree_r is null`, id, task.SpID, task.SectorNumber)
+                            WHERE sp_id = $2 AND sector_number = $3 AND after_sdr = TRUE AND task_id_tree_d IS NULL AND task_id_tree_c IS NULL AND task_id_tree_r IS NULL`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}
@@ -225,7 +225,7 @@ func (s *SealPoller) pollStartPoRep(ctx context.Context, task pollTask, ts *type
 		ts.Height() >= abi.ChainEpoch(*task.SeedEpoch+seedEpochConfidence) {
 
 		s.pollers[pollerPoRep].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_porep = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_porep is null`, id, task.SpID, task.SectorNumber)
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_porep = $1 WHERE sp_id = $2 AND sector_number = $3 AND task_id_porep IS NULL`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}
@@ -245,7 +245,7 @@ func (t pollTask) afterPoRep() bool {
 func (s *SealPoller) pollStartFinalize(ctx context.Context, task pollTask, ts *types.TipSet) {
 	if s.pollers[pollerFinalize].IsSet() && task.afterPoRep() && !task.AfterFinalize && task.TaskFinalize == nil {
 		s.pollers[pollerFinalize].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_finalize = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_finalize is null`, id, task.SpID, task.SectorNumber)
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_finalize = $1 WHERE sp_id = $2 AND sector_number = $3 AND task_id_finalize IS NULL`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}
@@ -265,7 +265,7 @@ func (t pollTask) afterFinalize() bool {
 func (s *SealPoller) pollStartMoveStorage(ctx context.Context, task pollTask) {
 	if s.pollers[pollerMoveStorage].IsSet() && task.afterFinalize() && !task.AfterMoveStorage && task.TaskMoveStorage == nil {
 		s.pollers[pollerMoveStorage].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_move_storage = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_move_storage is null`, id, task.SpID, task.SectorNumber)
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_move_storage = $1 WHERE sp_id = $2 AND sector_number = $3 AND task_id_move_storage IS NULL`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}

@@ -41,7 +41,7 @@ func (m *MoveStorageTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) 
 	ctx := context.Background()
 
 	err = m.db.Select(ctx, &tasks, `
-		select sp_id, sector_number, reg_seal_proof from sectors_sdr_pipeline where task_id_move_storage=$1`, taskID)
+		SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_move_storage = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting task: %w", err)
 	}
@@ -63,7 +63,7 @@ func (m *MoveStorageTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) 
 		return false, xerrors.Errorf("moving storage: %w", err)
 	}
 
-	_, err = m.db.Exec(ctx, `update sectors_sdr_pipeline set after_move_storage=true where task_id_move_storage=$1`, taskID)
+	_, err = m.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET after_move_storage = true WHERE task_id_move_storage = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("updating task: %w", err)
 	}

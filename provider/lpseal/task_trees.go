@@ -51,7 +51,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	err = t.db.Select(ctx, &sectorParamsArr, `
 		SELECT sp_id, sector_number, reg_seal_proof
 		FROM sectors_sdr_pipeline
-		WHERE task_id_tree_r = $1 and task_id_tree_c = $1 and task_id_tree_d = $1`, taskID)
+		WHERE task_id_tree_r = $1 AND task_id_tree_c = $1 AND task_id_tree_d = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting sector params: %w", err)
 	}
@@ -74,7 +74,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	err = t.db.Select(ctx, &pieces, `
 		SELECT piece_index, piece_cid, piece_size, data_url, data_headers, data_raw_size
 		FROM sectors_sdr_initial_pieces
-		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index asc`, sectorParams.SpID, sectorParams.SectorNumber)
+		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index ASC`, sectorParams.SpID, sectorParams.SectorNumber)
 	if err != nil {
 		return false, xerrors.Errorf("getting pieces: %w", err)
 	}

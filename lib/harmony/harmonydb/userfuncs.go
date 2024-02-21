@@ -137,13 +137,13 @@ type TransactionOptions struct {
 
 type TransactionOption func(*TransactionOptions)
 
-func RetrySerializationErr() TransactionOption {
+func OptionRetry() TransactionOption {
 	return func(o *TransactionOptions) {
 		o.RetrySerializationError = true
 	}
 }
 
-func InitialSerializationErrorRetryWait(d time.Duration) TransactionOption {
+func OptionSerialRetryTime(d time.Duration) TransactionOption {
 	return func(o *TransactionOptions) {
 		o.InitialSerializationErrorRetryWait = d
 	}

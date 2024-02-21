@@ -75,7 +75,7 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		DealID   *int64  `db:"f05_deal_id"`
 	}
 
-	err = l.db.Select(ctx, &ssip, "select ssip.piece_cid, ssip.f05_deal_id from sectors_sdr_pipeline p left join sectors_sdr_initial_pieces ssip on p.sp_id = ssip.sp_id and p.sector_number = ssip.sector_number where p.sp_id = $1 and p.sector_number = $2", l.minerID, sid)
+	err = l.db.Select(ctx, &ssip, "SELECT ssip.piece_cid, ssip.f05_deal_id FROM sectors_sdr_pipeline p LEFT JOIN sectors_sdr_initial_pieces ssip ON p.sp_id = ssip.sp_id AND p.sector_number = ssip.sector_number WHERE p.sp_id = $1 AND p.sector_number = $2", l.minerID, sid)
 	if err != nil {
 		return api.SectorInfo{}, err
 	}

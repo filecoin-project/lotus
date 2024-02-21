@@ -78,7 +78,7 @@ func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address
 		}
 		n := numbers[0]
 
-		_, err := tx.Exec("insert into sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) values ($1, $2, $3)", mid, n, spt)
+		_, err := tx.Exec("INSERT INTO sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) VALUES ($1, $2, $3)", mid, n, spt)
 		if err != nil {
 			return false, xerrors.Errorf("inserting into sectors_sdr_pipeline: %w", err)
 		}

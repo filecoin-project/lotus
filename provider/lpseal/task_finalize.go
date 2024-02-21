@@ -40,7 +40,7 @@ func (f *FinalizeTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (do
 	ctx := context.Background()
 
 	err = f.db.Select(ctx, &tasks, `
-		select sp_id, sector_number, reg_seal_proof from sectors_sdr_pipeline where task_id_finalize=$1`, taskID)
+		SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_finalize = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting task: %w", err)
 	}
@@ -52,7 +52,7 @@ func (f *FinalizeTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (do
 
 	var keepUnsealed bool
 
-	if err := f.db.QueryRow(ctx, `select coalesce(bool_or(not data_delete_on_finalize), false) from sectors_sdr_initial_pieces where sp_id=$1 and sector_number=$2`, task.SpID, task.SectorNumber).Scan(&keepUnsealed); err != nil {
+	if err := f.db.QueryRow(ctx, `SELECT COALESCE(BOOL_OR(NOT data_delete_on_finalize), FALSE) FROM sectors_sdr_initial_pieces WHERE sp_id = $1 AND sector_number = $2`, task.SpID, task.SectorNumber).Scan(&keepUnsealed); err != nil {
 		return false, err
 	}
 
@@ -98,9 +98,10 @@ func (f *FinalizeTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.T
 	}
 
 	err := f.db.Select(ctx, &tasks, `
-		select p.task_id_finalize, p.sp_id, p.sector_number, l.storage_id from sectors_sdr_pipeline p
-		    inner join sector_location l on p.sp_id=l.miner_id and p.sector_number=l.sector_num
-		    where task_id_finalize = ANY ($1) and l.sector_filetype=4`, indIDs)
+		SELECT p.task_id_finalize, p.sp_id, p.sector_number, l.storage_id FROM sectors_sdr_pipeline p
+			INNER JOIN sector_location l ON p.sp_id = l.miner_id AND p.sector_number = l.sector_num
+			WHERE task_id_finalize = ANY ($1) AND l.sector_filetype = 4
+`, indIDs)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tasks: %w", err)
 	}

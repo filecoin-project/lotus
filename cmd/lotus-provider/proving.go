@@ -98,7 +98,7 @@ var wdPostTaskCmd = &cli.Command{
 				return false, xerrors.Errorf("inserting into harmony_tests: %w", err)
 			}
 			return true, nil
-		}, harmonydb.RetrySerializationErr())
+		}, harmonydb.OptionRetry())
 		if err != nil {
 			return xerrors.Errorf("writing SQL transaction: %w", err)
 		}

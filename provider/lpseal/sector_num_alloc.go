@@ -38,7 +38,7 @@ func AllocateSectorNumbers(ctx context.Context, a AllocAPI, db *harmonydb.DB, ma
 		var dbAllocated bitfield.BitField
 		var rawJson []byte
 
-		err = tx.QueryRow("select COALESCE(allocated, '[0]') from sectors_allocated_numbers sa FULL OUTER JOIN (SELECT 1) AS d ON true where sp_id = $1 or sp_id is null", mid).Scan(&rawJson)
+		err = tx.QueryRow("SELECT COALESCE(allocated, '[0]') from sectors_allocated_numbers sa FULL OUTER JOIN (SELECT 1) AS d ON TRUE WHERE sp_id = $1 OR sp_id IS NULL", mid).Scan(&rawJson)
 		if err != nil {
 			return false, xerrors.Errorf("querying allocated sector numbers: %w", err)
 		}
@@ -97,7 +97,7 @@ func AllocateSectorNumbers(ctx context.Context, a AllocAPI, db *harmonydb.DB, ma
 			return false, xerrors.Errorf("marshaling allocated sector numbers: %w", err)
 		}
 
-		_, err = tx.Exec("insert into sectors_allocated_numbers(sp_id, allocated) values($1, $2) on conflict(sp_id) do update set allocated = $2", mid, rawJson)
+		_, err = tx.Exec("INSERT INTO sectors_allocated_numbers(sp_id, allocated) VALUES($1, $2) ON CONFLICT(sp_id) DO UPDATE SET allocated = $2", mid, rawJson)
 		if err != nil {
 			return false, xerrors.Errorf("persisting allocated sector numbers: %w", err)
 		}
@@ -114,7 +114,7 @@ func AllocateSectorNumbers(ctx context.Context, a AllocAPI, db *harmonydb.DB, ma
 		}
 
 		return true, nil
-	}, harmonydb.RetrySerializationErr())
+	}, harmonydb.OptionRetry())
 
 	if err != nil {
 		return nil, xerrors.Errorf("allocating sector numbers: %w", err)

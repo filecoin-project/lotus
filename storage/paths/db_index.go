@@ -241,7 +241,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 			return false, xerrors.Errorf("StorageAttach insert fails: %v", err)
 		}
 		return true, nil
-	}, harmonydb.RetrySerializationErr())
+	}, harmonydb.OptionRetry())
 
 	return err
 }
@@ -293,7 +293,7 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 				return false, err
 			}
 			return true, nil
-		}, harmonydb.RetrySerializationErr())
+		}, harmonydb.OptionRetry())
 		if err != nil {
 			return err
 		}
@@ -407,7 +407,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 		}
 
 		return true, nil
-	}, harmonydb.RetrySerializationErr())
+	}, harmonydb.OptionRetry())
 
 	return err
 }
@@ -846,7 +846,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		return true, nil
-	}, harmonydb.RetrySerializationErr())
+	}, harmonydb.OptionRetry())
 	if err != nil {
 		return false, err
 	}

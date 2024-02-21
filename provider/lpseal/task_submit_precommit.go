@@ -117,7 +117,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		err = s.db.Select(ctx, &pieces, `
 		SELECT piece_index, piece_cid, piece_size, f05_deal_id, f05_deal_end_epoch
 		FROM sectors_sdr_initial_pieces
-		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index asc`, sectorParams.SpID, sectorParams.SectorNumber)
+		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index ASC`, sectorParams.SpID, sectorParams.SectorNumber)
 		if err != nil {
 			return false, xerrors.Errorf("getting pieces: %w", err)
 		}
@@ -175,7 +175,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 
 	// set precommit_msg_cid
 	_, err = s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET precommit_msg_cid = $1, after_precommit_msg = true
+		SET precommit_msg_cid = $1, after_precommit_msg = TRUE
 		WHERE task_id_precommit_msg = $2`, mcid, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("updating precommit_msg_cid: %w", err)

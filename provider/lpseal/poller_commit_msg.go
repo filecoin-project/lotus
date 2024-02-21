@@ -17,7 +17,7 @@ import (
 func (s *SealPoller) pollStartCommitMsg(ctx context.Context, task pollTask) {
 	if task.afterPoRep() && len(task.PoRepProof) > 0 && task.TaskCommitMsg == nil && !task.AfterCommitMsg && s.pollers[pollerCommitMsg].IsSet() {
 		s.pollers[pollerCommitMsg].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_commit_msg = $1 WHERE sp_id = $2 AND sector_number = $3 and task_id_commit_msg is null`, id, task.SpID, task.SectorNumber)
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_commit_msg = $1 WHERE sp_id = $2 AND sector_number = $3 AND task_id_commit_msg IS NULL`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}
@@ -37,7 +37,7 @@ func (s *SealPoller) pollCommitMsgLanded(ctx context.Context, task pollTask) err
 		err := s.db.Select(ctx, &execResult, `SELECT spipeline.precommit_msg_cid, spipeline.commit_msg_cid, executed_tsk_cid, executed_tsk_epoch, executed_msg_cid, executed_rcpt_exitcode, executed_rcpt_gas_used
 					FROM sectors_sdr_pipeline spipeline
 					JOIN message_waits ON spipeline.commit_msg_cid = message_waits.signed_message_cid
-					WHERE sp_id = $1 AND sector_number = $2 AND executed_tsk_epoch is not null`, task.SpID, task.SectorNumber)
+					WHERE sp_id = $1 AND sector_number = $2 AND executed_tsk_epoch IS NOT NULL`, task.SpID, task.SectorNumber)
 		if err != nil {
 			log.Errorw("failed to query message_waits", "error", err)
 		}
@@ -64,8 +64,8 @@ func (s *SealPoller) pollCommitMsgLanded(ctx context.Context, task pollTask) err
 				// yay!
 
 				_, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET
-						after_commit_msg_success = true, commit_msg_tsk = $1
-						WHERE sp_id = $2 AND sector_number = $3 and after_commit_msg_success = false`,
+						after_commit_msg_success = TRUE, commit_msg_tsk = $1
+						WHERE sp_id = $2 AND sector_number = $3 AND after_commit_msg_success = FALSE`,
 					execResult[0].ExecutedTskCID, task.SpID, task.SectorNumber)
 				if err != nil {
 					return xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
@@ -97,8 +97,8 @@ func (s *SealPoller) pollRetryCommitMsgSend(ctx context.Context, task pollTask, 
 	// make the pipeline entry seem like precommit send didn't happen, next poll loop will retry
 
 	_, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET
-                                commit_msg_cid = null, task_id_commit_msg = null
-                            	WHERE commit_msg_cid = $1 AND sp_id = $2 AND sector_number = $3 AND after_commit_msg_success = false`,
+                                commit_msg_cid = NULL, task_id_commit_msg = NULL
+                            	WHERE commit_msg_cid = $1 AND sp_id = $2 AND sector_number = $3 AND after_commit_msg_success = FALSE`,
 		*execResult.CommitMsgCID, task.SpID, task.SectorNumber)
 	if err != nil {
 		return xerrors.Errorf("update sectors_sdr_pipeline to retry precommit msg send: %w", err)
