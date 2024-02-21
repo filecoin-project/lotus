@@ -875,9 +875,26 @@ type FullNode interface {
 	Web3ClientVersion(ctx context.Context) (string, error) //perm:read
 
 	// TraceAPI related methods
+
+	// Returns an OpenEthereum-compatible trace of the given block (implementing `trace_block`),
+	// translating Filecoin semantics into Ethereum semantics and tracing both EVM and FVM calls.
 	//
-	// Returns traces created at given block
+	// Features:
+	//
+	// - FVM actor create events, calls, etc. show up as if they were EVM smart contract events.
+	// - Native FVM call inputs are ABI-encoded (Solidity ABI) as if they were calls to a
+	//   `handle_filecoin_method(uint64 method, uint64 codec, bytes params)` function
+	//   (where `codec` is the IPLD codec of `params`).
+	// - Native FVM call outputs (return values) are ABI-encoded as `(uint32 exit_code, uint64
+	//   codec, bytes output)` where `codec` is the IPLD codec of `output`.
+	//
+	// Limitations (for now):
+	//
+	// 1. Block rewards are not included in the trace.
+	// 2. SELFDESTRUCT operations are not included in the trace.
+	// 3. EVM smart contract "create" events always specify `0xfe` as the "code" for newly created EVM smart contracts.
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) //perm:read
+
 	// Replays all transactions in a block returning the requested traces for each transaction
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) //perm:read
 
