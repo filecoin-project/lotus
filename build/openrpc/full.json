@@ -8359,7 +8359,7 @@
         {
             "name": "Filecoin.EthTraceBlock",
             "description": "```go\nfunc (s *FullNodeStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {\n\tif s.Internal.EthTraceBlock == nil {\n\t\treturn *new([]*ethtypes.EthTraceBlock), ErrNotSupported\n\t}\n\treturn s.Internal.EthTraceBlock(p0, p1)\n}\n```",
-            "summary": "TraceAPI related methods\n\nReturns traces created at given block\n",
+            "summary": "Returns an OpenEthereum-compatible trace of the given block (implementing `trace_block`),\ntranslating Filecoin semantics into Ethereum semantics and tracing both EVM and FVM calls.\n\nFeatures:\n\n- FVM actor create events, calls, etc. show up as if they were EVM smart contract events.\n- Native FVM call inputs are ABI-encoded (Solidity ABI) as if they were calls to a\n  `handle_filecoin_method(uint64 method, uint64 codec, bytes params)` function\n  (where `codec` is the IPLD codec of `params`).\n- Native FVM call outputs (return values) are ABI-encoded as `(uint32 exit_code, uint64\n  codec, bytes output)` where `codec` is the IPLD codec of `output`.\n\nLimitations (for now):\n\n1. Block rewards are not included in the trace.\n2. SELFDESTRUCT operations are not included in the trace.\n3. EVM smart contract \"create\" events always specify `0xfe` as the \"code\" for newly created EVM smart contracts.\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -8386,23 +8386,14 @@
                     "examples": [
                         [
                             {
-                                "action": {
-                                    "callType": "string value",
-                                    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-                                    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-                                    "gas": "0x5",
-                                    "input": "0x07",
-                                    "value": "0x0"
-                                },
-                                "result": {
-                                    "gasUsed": "0x5",
-                                    "output": "0x07"
-                                },
+                                "type": "string value",
+                                "error": "string value",
                                 "subtraces": 123,
                                 "traceAddress": [
                                     123
                                 ],
-                                "Type": "string value",
+                                "action": {},
+                                "result": {},
                                 "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
                                 "blockNumber": 9,
                                 "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
@@ -8414,52 +8405,8 @@
                         {
                             "additionalProperties": false,
                             "properties": {
-                                "Type": {
-                                    "type": "string"
-                                },
                                 "action": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "callType": {
-                                            "type": "string"
-                                        },
-                                        "from": {
-                                            "items": {
-                                                "description": "Number is a number",
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "maxItems": 20,
-                                            "minItems": 20,
-                                            "type": "array"
-                                        },
-                                        "gas": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "input": {
-                                            "items": {
-                                                "description": "Number is a number",
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "type": "array"
-                                        },
-                                        "to": {
-                                            "items": {
-                                                "description": "Number is a number",
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "maxItems": 20,
-                                            "minItems": 20,
-                                            "type": "array"
-                                        },
-                                        "value": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        }
-                                    },
+                                    "additionalProperties": true,
                                     "type": "object"
                                 },
                                 "blockHash": {
@@ -8476,22 +8423,11 @@
                                     "title": "number",
                                     "type": "number"
                                 },
+                                "error": {
+                                    "type": "string"
+                                },
                                 "result": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "gasUsed": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "output": {
-                                            "items": {
-                                                "description": "Number is a number",
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "type": "array"
-                                        }
-                                    },
+                                    "additionalProperties": true,
                                     "type": "object"
                                 },
                                 "subtraces": {
@@ -8519,6 +8455,9 @@
                                 "transactionPosition": {
                                     "title": "number",
                                     "type": "number"
+                                },
+                                "type": {
+                                    "type": "string"
                                 }
                             },
                             "type": [
@@ -8597,23 +8536,14 @@
                                 "stateDiff": "string value",
                                 "trace": [
                                     {
-                                        "action": {
-                                            "callType": "string value",
-                                            "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-                                            "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-                                            "gas": "0x5",
-                                            "input": "0x07",
-                                            "value": "0x0"
-                                        },
-                                        "result": {
-                                            "gasUsed": "0x5",
-                                            "output": "0x07"
-                                        },
+                                        "type": "string value",
+                                        "error": "string value",
                                         "subtraces": 123,
                                         "traceAddress": [
                                             123
                                         ],
-                                        "Type": "string value"
+                                        "action": {},
+                                        "result": {}
                                     }
                                 ],
                                 "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
@@ -8640,70 +8570,15 @@
                                     "items": {
                                         "additionalProperties": false,
                                         "properties": {
-                                            "Type": {
-                                                "type": "string"
-                                            },
                                             "action": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "callType": {
-                                                        "type": "string"
-                                                    },
-                                                    "from": {
-                                                        "items": {
-                                                            "description": "Number is a number",
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "maxItems": 20,
-                                                        "minItems": 20,
-                                                        "type": "array"
-                                                    },
-                                                    "gas": {
-                                                        "title": "number",
-                                                        "type": "number"
-                                                    },
-                                                    "input": {
-                                                        "items": {
-                                                            "description": "Number is a number",
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "type": "array"
-                                                    },
-                                                    "to": {
-                                                        "items": {
-                                                            "description": "Number is a number",
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "maxItems": 20,
-                                                        "minItems": 20,
-                                                        "type": "array"
-                                                    },
-                                                    "value": {
-                                                        "additionalProperties": false,
-                                                        "type": "object"
-                                                    }
-                                                },
+                                                "additionalProperties": true,
                                                 "type": "object"
                                             },
+                                            "error": {
+                                                "type": "string"
+                                            },
                                             "result": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "gasUsed": {
-                                                        "title": "number",
-                                                        "type": "number"
-                                                    },
-                                                    "output": {
-                                                        "items": {
-                                                            "description": "Number is a number",
-                                                            "title": "number",
-                                                            "type": "number"
-                                                        },
-                                                        "type": "array"
-                                                    }
-                                                },
+                                                "additionalProperties": true,
                                                 "type": "object"
                                             },
                                             "subtraces": {
@@ -8717,6 +8592,9 @@
                                                     "type": "number"
                                                 },
                                                 "type": "array"
+                                            },
+                                            "type": {
+                                                "type": "string"
                                             }
                                         },
                                         "type": "object"

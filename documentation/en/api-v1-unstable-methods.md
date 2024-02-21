@@ -3076,9 +3076,23 @@ Inputs: `null`
 Response: `false`
 
 ### EthTraceBlock
-TraceAPI related methods
+Returns an OpenEthereum-compatible trace of the given block (implementing `trace_block`),
+translating Filecoin semantics into Ethereum semantics and tracing both EVM and FVM calls.
 
-Returns traces created at given block
+Features:
+
+- FVM actor create events, calls, etc. show up as if they were EVM smart contract events.
+- Native FVM call inputs are ABI-encoded (Solidity ABI) as if they were calls to a
+  `handle_filecoin_method(uint64 method, uint64 codec, bytes params)` function
+  (where `codec` is the IPLD codec of `params`).
+- Native FVM call outputs (return values) are ABI-encoded as `(uint32 exit_code, uint64
+  codec, bytes output)` where `codec` is the IPLD codec of `output`.
+
+Limitations (for now):
+
+1. Block rewards are not included in the trace.
+2. SELFDESTRUCT operations are not included in the trace.
+3. EVM smart contract "create" events always specify `0xfe` as the "code" for newly created EVM smart contracts.
 
 
 Perms: read
@@ -3094,23 +3108,14 @@ Response:
 ```json
 [
   {
-    "action": {
-      "callType": "string value",
-      "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-      "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-      "gas": "0x5",
-      "input": "0x07",
-      "value": "0x0"
-    },
-    "result": {
-      "gasUsed": "0x5",
-      "output": "0x07"
-    },
+    "type": "string value",
+    "error": "string value",
     "subtraces": 123,
     "traceAddress": [
       123
     ],
-    "Type": "string value",
+    "action": {},
+    "result": {},
     "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
     "blockNumber": 9,
     "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
@@ -3143,23 +3148,14 @@ Response:
     "stateDiff": "string value",
     "trace": [
       {
-        "action": {
-          "callType": "string value",
-          "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-          "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-          "gas": "0x5",
-          "input": "0x07",
-          "value": "0x0"
-        },
-        "result": {
-          "gasUsed": "0x5",
-          "output": "0x07"
-        },
+        "type": "string value",
+        "error": "string value",
         "subtraces": 123,
         "traceAddress": [
           123
         ],
-        "Type": "string value"
+        "action": {},
+        "result": {}
       }
     ],
     "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
