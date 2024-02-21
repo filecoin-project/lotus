@@ -78,7 +78,10 @@ func (a *app) updateRpc(ctx context.Context) error {
 			if err != nil {
 				continue
 			}
-			_ = closer // todo
+			go func() {
+				<-ctx.Done()
+				closer()
+			}()
 
 			a.workingApi = v1api
 		}

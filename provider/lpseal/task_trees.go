@@ -142,9 +142,6 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		return false, xerrors.Errorf("computing tree d: %w", err)
 	}
 
-	// todo: Sooo tree-d contains exactly the unsealed data in the prefix
-	//  when we finalize we can totally just truncate that file and move it to unsealed !!
-
 	// R / C
 	sealed, unsealed, err := t.sc.TreeRC(ctx, sref, commd)
 	if err != nil {
