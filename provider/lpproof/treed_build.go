@@ -176,6 +176,8 @@ func BuildTreeD(data io.Reader, unpaddedData bool, outPath string, size abi.Padd
 		// start processing
 		workWg.Add(1)
 		go func(startOffset uint64) {
+			defer workWg.Done()
+
 			if unpaddedData {
 				paddedBuf := pool.Get(int(abi.UnpaddedPieceSize(len(workBuffer[0])).Padded()))
 				fr32.PadSingle(workBuffer[0], paddedBuf)
@@ -214,8 +216,6 @@ func BuildTreeD(data io.Reader, unpaddedData bool, outPath string, size abi.Padd
 			bufLk.Lock()
 			workerBuffers = append(workerBuffers, workBuffer)
 			bufLk.Unlock()
-
-			workWg.Done()
 		}(processed)
 
 		processed += processedSize
