@@ -114,6 +114,19 @@ func (s *state13) GetAllocations(clientIdAddr address.Address) (map[AllocationId
 
 }
 
+func (s *state13) GetAllAllocations() (map[AllocationId]Allocation, error) {
+
+	v13Map, err := s.State.GetAllAllocations(s.store)
+
+	retMap := make(map[AllocationId]Allocation, len(v13Map))
+	for k, v := range v13Map {
+		retMap[AllocationId(k)] = Allocation(v)
+	}
+
+	return retMap, err
+
+}
+
 func (s *state13) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg13.ClaimId(claimId))
@@ -124,6 +137,19 @@ func (s *state13) GetClaim(providerIdAddr address.Address, claimId verifreg9.Cla
 func (s *state13) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
 
 	v13Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[ClaimId]Claim, len(v13Map))
+	for k, v := range v13Map {
+		retMap[ClaimId(k)] = Claim(v)
+	}
+
+	return retMap, err
+
+}
+
+func (s *state13) GetAllClaims() (map[ClaimId]Claim, error) {
+
+	v13Map, err := s.State.GetAllClaims(s.store)
 
 	retMap := make(map[ClaimId]Claim, len(v13Map))
 	for k, v := range v13Map {

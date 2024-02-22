@@ -280,6 +280,10 @@ type FullNodeMethods struct {
 
 	StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
 
+	StateGetAllAllocations func(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) `perm:"read"`
+
+	StateGetAllClaims func(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) `perm:"read"`
+
 	StateGetAllocation func(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
 
 	StateGetAllocationForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
@@ -1835,6 +1839,28 @@ func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p
 
 func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+	if s.Internal.StateGetAllAllocations == nil {
+		return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
+	}
+	return s.Internal.StateGetAllAllocations(p0, p1)
+}
+
+func (s *FullNodeStub) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+	return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+	if s.Internal.StateGetAllClaims == nil {
+		return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
+	}
+	return s.Internal.StateGetAllClaims(p0, p1)
+}
+
+func (s *FullNodeStub) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+	return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) {

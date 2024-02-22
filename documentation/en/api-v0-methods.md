@@ -170,6 +170,8 @@
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetAllAllocations](#StateGetAllAllocations)
+  * [StateGetAllClaims](#StateGetAllClaims)
   * [StateGetAllocation](#StateGetAllocation)
   * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
   * [StateGetAllocations](#StateGetAllocations)
@@ -5312,6 +5314,50 @@ Response:
   "Address": "f01234"
 }
 ```
+
+### StateGetAllAllocations
+StateGetAllAllocations returns the all the allocations available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
+### StateGetAllClaims
+StateGetAllClaims returns the all the claims available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
 
 ### StateGetAllocation
 StateGetAllocation returns the allocation for a given address and allocation ID.
