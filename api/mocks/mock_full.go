@@ -3954,7 +3954,7 @@ func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 in
 }
 
 // SubscribeActorEvents mocks base method.
-func (m *MockFullNode) SubscribeActorEvents(arg0 context.Context, arg1 *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (m *MockFullNode) SubscribeActorEvents(arg0 context.Context, arg1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubscribeActorEvents", arg0, arg1)
 	ret0, _ := ret[0].(<-chan *types.ActorEvent)

@@ -330,13 +330,6 @@
   # env var: LOTUS_FEVM_ENABLEETHRPC
   #EnableEthRPC = false
 
-  # EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).
-  # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
-  #
-  # type: bool
-  # env var: LOTUS_FEVM_ENABLEACTOREVENTSAPI
-  #EnableActorEventsAPI = false
-
   # EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
   # Set to 0 to keep all mappings
   #
@@ -394,6 +387,17 @@
     # type: string
     # env var: LOTUS_FEVM_EVENTS_DATABASEPATH
     #DatabasePath = ""
+
+
+[ActorEvents]
+  # EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+  # emitted by (smart contracts + built-in Actors).
+  # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+  # disabled by setting their respective Disable* options in Fevm.Events.
+  #
+  # type: bool
+  # env var: LOTUS_ACTOREVENTS_ENABLEACTOREVENTSAPI
+  #EnableActorEventsAPI = false
 
 
 [Index]

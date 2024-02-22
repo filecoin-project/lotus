@@ -1263,6 +1263,11 @@ func (e *EthEventHandler) EthGetFilterLogs(ctx context.Context, id ethtypes.EthF
 	return nil, xerrors.Errorf("wrong filter type")
 }
 
+// parseBlockRange is similar to actor event's parseHeightRange but with slightly different semantics
+//
+// * "block" instead of "height"
+// * strings that can have "latest" and "earliest" and nil
+// * hex strings for actual heights
 func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
 	if fromBlock == nil || *fromBlock == "latest" || len(*fromBlock) == 0 {
 		minHeight = heaviest

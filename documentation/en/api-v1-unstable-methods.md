@@ -3413,8 +3413,8 @@ Inputs:
         }
       ]
     },
-    "fromEpoch": "earliest",
-    "toEpoch": "latest"
+    "fromHeight": 1010,
+    "toHeight": 1020
   }
 ]
 ```
@@ -3434,9 +3434,14 @@ Response:
     "emitter": "f01234",
     "reverted": true,
     "height": 10101,
-    "tipsetCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "tipsetKey": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      {
+        "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+      }
+    ],
     "msgCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
@@ -8794,22 +8799,19 @@ Inputs:
 ```json
 [
   {
-    "filter": {
-      "addresses": [
-        "f01234"
-      ],
-      "fields": {
-        "abc": [
-          {
-            "codec": 81,
-            "value": "ZGRhdGE="
-          }
-        ]
-      },
-      "fromEpoch": "earliest",
-      "toEpoch": "latest"
+    "addresses": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGRhdGE="
+        }
+      ]
     },
-    "prefill": true
+    "fromHeight": 1010,
+    "toHeight": 1020
   }
 ]
 ```
@@ -8828,9 +8830,14 @@ Response:
   "emitter": "f01234",
   "reverted": true,
   "height": 10101,
-  "tipsetCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "tipsetKey": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
   "msgCid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
