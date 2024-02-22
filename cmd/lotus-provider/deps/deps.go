@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/harmony/resources/storagemgr"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -102,6 +103,7 @@ type Deps struct {
 	Si         *paths.DBIndex
 	LocalStore *paths.Local
 	ListenAddr string
+	StorageMgr *storagemgr.StorageMgr
 }
 
 const (
@@ -246,6 +248,14 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 				deps.Maddrs[dtypes.MinerAddress(addr)] = true
 			}
 		}
+	}
+
+	if deps.StorageMgr == nil {
+		lo, err := deps.LocalStore.Local(ctx)
+		if err != nil {
+			return xerrors.Errorf("could not get local storage: %w", err)
+		}
+		deps.StorageMgr = storagemgr.New(lo)
 	}
 	fmt.Println("last line of populate")
 	return nil

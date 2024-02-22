@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -19,8 +20,9 @@ var log = logging.Logger("harmonytask")
 type taskTypeHandler struct {
 	TaskInterface
 	TaskTypeDetails
-	TaskEngine *TaskEngine
-	Count      atomic.Int32
+	TaskEngine  *TaskEngine
+	Count       atomic.Int32
+	LocationMap sync.Map
 }
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
@@ -120,6 +122,15 @@ top:
 		}
 	}
 
+	var location string
+	if c := h.TaskTypeDetails.Cost.Storage.Claim; c != nil {
+		if location, err = c(int(*tID)); err != nil {
+			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+			return false
+		}
+		h.LocationMap.Store(*tID, location)
+	}
+
 	h.Count.Add(1)
 	go func() {
 		log.Infow("Beginning work on Task", "id", *tID, "from", from, "name", h.Name)
@@ -138,6 +149,12 @@ top:
 			}
 			h.Count.Add(-1)
 
+			if r := h.TaskTypeDetails.Cost.Storage.MarkComplete; r != nil {
+				h.LocationMap.Delete(*tID)
+				if err := r(location); err != nil {
+					log.Errorw("Could not release storage", "error", err)
+				}
+			}
 			h.recordCompletion(*tID, workStart, done, doErr)
 			if done {
 				for _, fs := range h.TaskEngine.follows[h.Name] { // Do we know of any follows for this task type?
@@ -249,6 +266,10 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	}
 	if r.Gpu-h.Cost.Gpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
+	}
+
+	if has := h.TaskTypeDetails.Cost.Storage.HasCapacity; has != nil && !has() {
+		return errors.New("Did not accept " + h.Name + " task: out of available Storage")
 	}
 	return nil
 }

@@ -24,6 +24,20 @@ type Resources struct {
 	Gpu       float64
 	Ram       uint64
 	MachineID int
+	Storage
+}
+
+// Optional Storage management.
+// See storagemgr/storagemgt.go for more details.
+type Storage struct {
+	HasCapacity func() bool
+
+	// This allows some other system to claim space for this task.
+	Claim func(taskID int) (location string, err error)
+
+	// This allows some other system to consider the task done.
+	// It's up to the caller to remove the data, if that applies.
+	MarkComplete func(location string) error
 }
 type Reg struct {
 	Resources
