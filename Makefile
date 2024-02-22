@@ -246,7 +246,10 @@ install-daemon-service: install-daemon
 	install -C -m 0644 ./scripts/lotus-daemon.service /etc/systemd/system/lotus-daemon.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
+	@echo "lotus-daemon service installed."
+	@echo "To start the service, run: 'sudo systemctl start lotus-daemon'"
+	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-daemon'"
+	@echo "NOTE: Please ensure that the memory limits in /etc/systemd/system/lotus-daemon.service are appropriate for this node."
 
 install-miner-service: install-miner install-daemon-service
 	mkdir -p /etc/systemd/system
@@ -254,7 +257,9 @@ install-miner-service: install-miner install-daemon-service
 	install -C -m 0644 ./scripts/lotus-miner.service /etc/systemd/system/lotus-miner.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
+	@echo "lotus-miner service installed."
+	@echo "To start the service, run: 'sudo systemctl start lotus-miner'"
+	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-miner'"
 
 install-provider-service: install-provider install-daemon-service
 	mkdir -p /etc/systemd/system
