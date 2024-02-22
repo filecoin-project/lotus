@@ -724,32 +724,6 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 	return result, nil
 }
 
-/*
-2024-02-17T01:24:10.243+0100    WARN    stores  paths/remote.go:258     acquireFromRemote encountered errors when fetching sector from remote   {"errors": "1 error occurred:\n\t* fetch error http://10.99.16.4:3456/remote/cache/s-t02620-1 (storage 0bd90137-1219-4fb6-82d4-138a72c692b7) -> /data/3/store/cache/fetching/s-t02620-1: do request: Get \"http://10.99.16.4:3456/remote/cache/s-t02620-1\": dial tcp 10.99.16.4:3456: connect: connection refused\n\n"}
-2024-02-17T01:24:10.248+0100    INFO    stores  paths/remote.go:359     Delete http://10.99.16.4:12300/remote/cache/s-t02620-1?keep=0ff4da63-7e0d-477e-a2ee-814c9fd7ef71
-
-==> /var/log/lotus/provider1.log <==
-2024-02-17T01:25:32.820+0100    INFO    harmonytask     harmonytask/task_type_handler.go:121    Beginning work on Task  {"id": 7815, "from": "poller", "name": "WinPost"}
-
-==> /var/log/lotus/provider4.log <==
-2024-02-17T01:25:45.058+0100    ERROR   harmonytask     harmonytask/task_type_handler.go:131    Recovered from a serious error while processing SDRTrees task 7702: todo Stack: goroutine 334 [running]:
-github.com/filecoin-project/lotus/lib/harmony/harmonytask.(*taskTypeHandler).considerWork.func1.1()
-        /home/magik6k/github.com/filecoin-project/go-lotus/lib/harmony/harmonytask/task_type_handler.go:130 +0xc5
-panic({0x2210100?, 0x4557680?})
-        /usr/lib/go/src/runtime/panic.go:770 +0x132
-github.com/filecoin-project/lotus/provider/lpffi.(*SealCalls).makePhase1Out(0x10?, {{0xc0009ba120?, 0xf?}}, 0x8)
-        /home/magik6k/github.com/filecoin-project/go-lotus/provider/lpffi/sdr_funcs.go:272 +0x445
-github.com/filecoin-project/lotus/provider/lpffi.(*SealCalls).TreeRC(0xc000884118, {0x457c9b8, 0xa4c7d40}, {{0xa3c, 0x1}, 0x8}, {{0xc0009ba120?, 0x800000000?}})
-        /home/magik6k/github.com/filecoin-project/go-lotus/provider/lpffi/sdr_funcs.go:133 +0x95
-github.com/filecoin-project/lotus/provider/lpseal.(*TreesTask).Do(0xc00017c5e0, 0x1e16, 0x6?)
-        /home/magik6k/github.com/filecoin-project/go-lotus/provider/lpseal/task_trees.go:149 +0x5ca
-github.com/filecoin-project/lotus/lib/harmony/harmonytask.(*taskTypeHandler).considerWork.func1()
-        /home/magik6k/github.com/filecoin-project/go-lotus/lib/harmony/harmonytask/task_type_handler.go:147 +0x2a6
-created by github.com/filecoin-project/lotus/lib/harmony/harmonytask.(*taskTypeHandler).considerWork in goroutine 230
-        /home/magik6k/github.com/filecoin-project/go-lotus/lib/harmony/harmonytask/task_type_handler.go:120 +0x465
-
-*/
-
 // timeout after which we consider a lock to be stale
 const LockTimeOut = 300 * time.Second
 

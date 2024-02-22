@@ -333,6 +333,10 @@ require (
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
 
+// https://github.com/magik6k/reflink/commit/cff5a40f3eeca17f44fc95a57ff3878e5ac761dc
+// https://github.com/KarpelesLab/reflink/pull/2
+replace github.com/KarpelesLab/reflink => github.com/magik6k/reflink v1.0.2-patch1
+
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
