@@ -11,6 +11,8 @@ Restart=always
 RestartSec=10
 
 MemoryAccounting=true
+# Depending on the complexity of API usage of this node, you may need to adjust the following
+# memory options. Please monitor the node's performance and adjust accordingly.
 MemoryHigh=8G
 MemoryMax=10G
 LimitNOFILE=8192:10240
