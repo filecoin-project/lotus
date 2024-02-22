@@ -307,6 +307,10 @@ install-completions:
 	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
 
+unittests:
+	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests)
+.PHONY: unittests
+
 clean:
 	rm -rf $(CLEAN) $(BINS)
 	-$(MAKE) -C $(FFI_PATH) clean
