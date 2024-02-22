@@ -66,7 +66,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed lotus-provider
+build-devnets: build lotus-seed lotus-shed curio
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -97,14 +97,14 @@ lotus-miner: $(BUILD_DEPS)
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
-lotus-provider: $(BUILD_DEPS)
-	rm -f lotus-provider
-	$(GOCC) build $(GOFLAGS) -o lotus-provider ./cmd/lotus-provider
-.PHONY: lotus-provider
-BINS+=lotus-provider
+curio: $(BUILD_DEPS)
+	rm -f curio
+	$(GOCC) build $(GOFLAGS) -o curio ./cmd/curio
+.PHONY: curio
+BINS+=curio
 
-lp2k: GOFLAGS+=-tags=2k
-lp2k: lotus-provider
+curio2k: GOFLAGS+=-tags=2k
+curio2k: curio
 
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
@@ -130,7 +130,7 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker install-provider
+install: install-daemon install-miner install-worker install-curio
 
 install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
@@ -138,8 +138,8 @@ install-daemon:
 install-miner:
 	install -C ./lotus-miner /usr/local/bin/lotus-miner
 
-install-provider:
-	install -C ./lotus-provider /usr/local/bin/lotus-provider
+install-curio:
+	install -C ./curio /usr/local/bin/curio
 
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
@@ -156,8 +156,8 @@ uninstall-daemon:
 uninstall-miner:
 	rm -f /usr/local/bin/lotus-miner
 
-uninstall-provider:
-	rm -f /usr/local/bin/lotus-provider
+uninstall-curio:
+	rm -f /usr/local/bin/curio
 
 uninstall-worker:
 	rm -f /usr/local/bin/lotus-worker
@@ -256,13 +256,13 @@ install-miner-service: install-miner install-daemon-service
 	@echo
 	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
 
-install-provider-service: install-provider install-daemon-service
+install-curio-service: install-curio install-daemon-service
 	mkdir -p /etc/systemd/system
 	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-provider.service /etc/systemd/system/lotus-provider.service
+	install -C -m 0644 ./scripts/curio.service /etc/systemd/system/curio.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus-provider service installed. Don't forget to run 'sudo systemctl start lotus-provider' to start it and 'sudo systemctl enable lotus-provider' for it to be enabled on startup."
+	@echo "Curio service installed. Don't forget to run 'sudo systemctl start curio' to start it and 'sudo systemctl enable curio' for it to be enabled on startup."
 
 install-main-services: install-miner-service
 
@@ -282,10 +282,10 @@ clean-miner-service:
 	rm -f /etc/systemd/system/lotus-miner.service
 	systemctl daemon-reload
 
-clean-provider-service:
-	-systemctl stop lotus-provider
-	-systemctl disable lotus-provider
-	rm -f /etc/systemd/system/lotus-provider.service
+clean-curio-service:
+	-systemctl stop curio
+	-systemctl disable curio
+	rm -f /etc/systemd/system/curio.service
 	systemctl daemon-reload
 
 clean-main-services: clean-daemon-service
@@ -358,7 +358,7 @@ docsgen-md-bin: api-gen actors-gen
 docsgen-openrpc-bin: api-gen actors-gen
 	$(GOCC) build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
-docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker docsgen-md-provider
+docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker docsgen-md-curio
 
 docsgen-md-full: docsgen-md-bin
 	./docgen-md "api/api_full.go" "FullNode" "api" "./api" > documentation/en/api-v1-unstable-methods.md
@@ -367,8 +367,8 @@ docsgen-md-storage: docsgen-md-bin
 	./docgen-md "api/api_storage.go" "StorageMiner" "api" "./api" > documentation/en/api-v0-methods-miner.md
 docsgen-md-worker: docsgen-md-bin
 	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
-docsgen-md-provider: docsgen-md-bin
-	./docgen-md "api/api_lp.go" "Provider" "api" "./api" > documentation/en/api-v0-methods-provider.md
+docsgen-md-curio: docsgen-md-bin
+	./docgen-md "api/api_curio.go" "Curio" "api" "./api" > documentation/en/api-v0-methods-curio.md
 
 docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker docsgen-openrpc-gateway
 
@@ -393,16 +393,16 @@ gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci
 
 jen: gen
 
-snap: lotus lotus-miner lotus-worker lotus-provider
+snap: lotus lotus-miner lotus-worker curio
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
 # separate from gen because it needs binaries
-docsgen-cli: lotus lotus-miner lotus-worker lotus-provider
+docsgen-cli: lotus lotus-miner lotus-worker curio
 	python3 ./scripts/generate-lotus-cli.py
 	./lotus config default > documentation/en/default-lotus-config.toml
 	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
-	./lotus-provider config default > documentation/en/default-lotus-provider-config.toml
+	./curio config default > documentation/en/default-curio-config.toml
 .PHONY: docsgen-cli
 
 print-%:

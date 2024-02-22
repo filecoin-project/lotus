@@ -1,0 +1,600 @@
+{
+    "language": "zh",
+    "messages": [
+        {
+            "id": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
+            "message": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
+            "translation": ""
+        },
+        {
+            "id": "This tool confirms each action it does and each step is reversable.",
+            "message": "This tool confirms each action it does and each step is reversable.",
+            "translation": ""
+        },
+        {
+            "id": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "message": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "translation": ""
+        },
+        {
+            "id": "Ctrl+C pressed in Terminal",
+            "message": "Ctrl+C pressed in Terminal",
+            "translation": "在终端中按下Ctrl+C"
+        },
+        {
+            "id": "Migrating config.toml to database.",
+            "message": "Migrating config.toml to database.",
+            "translation": ""
+        },
+        {
+            "id": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
+            "message": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
+            "translation": ""
+        },
+        {
+            "id": "Error reading from database: {Error}. Aborting Migration.",
+            "message": "Error reading from database: {Error}. Aborting Migration.",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "TODO FINISH THIS FUNCTION",
+            "message": "TODO FINISH THIS FUNCTION",
+            "translation": ""
+        },
+        {
+            "id": "To bring you the best SP tooling...",
+            "message": "To bring you the best SP tooling...",
+            "translation": ""
+        },
+        {
+            "id": "Share with the Curio team your interest in curio for this Miner ID.",
+            "message": "Share with the Curio team your interest in curio for this Miner ID.",
+            "translation": ""
+        },
+        {
+            "id": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
+            "message": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
+            "translation": ""
+        },
+        {
+            "id": "Press return to continue",
+            "message": "Press return to continue",
+            "translation": ""
+        },
+        {
+            "id": "Aborting remaining steps.",
+            "message": "Aborting remaining steps.",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]v",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "We want to build what you're using.",
+            "message": "We want to build what you're using.",
+            "translation": ""
+        },
+        {
+            "id": "Select what you want to share with the Curio team.",
+            "message": "Select what you want to share with the Curio team.",
+            "translation": ""
+        },
+        {
+            "id": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
+            "message": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
+            "translation": ""
+        },
+        {
+            "id": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
+            "message": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
+            "translation": ""
+        },
+        {
+            "id": "Hint: I am someone running curio in production.",
+            "message": "Hint: I am someone running curio in production.",
+            "translation": ""
+        },
+        {
+            "id": "Nothing.",
+            "message": "Nothing.",
+            "translation": ""
+        },
+        {
+            "id": "Error connecting to lotus node: {Error}",
+            "message": "Error connecting to lotus node: {Error}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Error getting miner power: {Error}",
+            "message": "Error getting miner power: {Error}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Error marshalling message: {Error}",
+            "message": "Error marshalling message: {Error}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Error getting miner info: {Error}",
+            "message": "Error getting miner info: {Error}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Error signing message: {Error}",
+            "message": "Error signing message: {Error}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Not mainnet, not sharing.",
+            "message": "Not mainnet, not sharing.",
+            "translation": ""
+        },
+        {
+            "id": "The configuration layers have been created for you: base, post, gui, seal.",
+            "message": "The configuration layers have been created for you: base, post, gui, seal.",
+            "translation": ""
+        },
+        {
+            "id": "Documentation:",
+            "message": "Documentation:",
+            "translation": ""
+        },
+        {
+            "id": "Put common configuration in 'base' and include it everywhere.",
+            "message": "Put common configuration in 'base' and include it everywhere.",
+            "translation": ""
+        },
+        {
+            "id": "Instances without tasks will still serve their sectors for other Curio instances.",
+            "message": "Instances without tasks will still serve their sectors for other Curio instances.",
+            "translation": ""
+        },
+        {
+            "id": "As there are no local config.toml files, put per-machine changes in additional layers.",
+            "message": "As there are no local config.toml files, put per-machine changes in additional layers.",
+            "translation": ""
+        },
+        {
+            "id": "Edit a layer with the command:",
+            "message": "Edit a layer with the command:",
+            "translation": ""
+        },
+        {
+            "id": "curio config edit \u003clayername\u003e",
+            "message": "curio config edit \u003clayername\u003e",
+            "translation": ""
+        },
+        {
+            "id": "Join #fil-curio-users in Filecoin slack for help.",
+            "message": "Join #fil-curio-users in Filecoin slack for help.",
+            "translation": ""
+        },
+        {
+            "id": "TODO FINISH THIS FUNCTION.",
+            "message": "TODO FINISH THIS FUNCTION.",
+            "translation": ""
+        },
+        {
+            "id": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
+            "message": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
+            "translation": ""
+        },
+        {
+            "id": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
+            "message": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
+            "translation": ""
+        },
+        {
+            "id": "Waiting for lotus-miner to write sectors into Yugabyte.",
+            "message": "Waiting for lotus-miner to write sectors into Yugabyte.",
+            "translation": ""
+        },
+        {
+            "id": "Error verifying sectors: {Error}",
+            "message": "Error verifying sectors: {Error}",
+            "translation": "验证扇区时出错：{Error}",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "The sectors are in the database. The database is ready for curio.",
+            "message": "The sectors are in the database. The database is ready for curio.",
+            "translation": ""
+        },
+        {
+            "id": "Now shut down lotus-miner and move the systems to curio.",
+            "message": "Now shut down lotus-miner and move the systems to curio.",
+            "translation": ""
+        },
+        {
+            "id": "Aborting migration.",
+            "message": "Aborting migration.",
+            "translation": ""
+        },
+        {
+            "id": "Sectors verified. {I} sector locations found.",
+            "message": "Sectors verified. {I} sector locations found.",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "I",
+                    "string": "%[1]d",
+                    "type": "[]int",
+                    "underlyingType": "[]int",
+                    "argNum": 1,
+                    "expr": "i"
+                }
+            ]
+        },
+        {
+            "id": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "message": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "translation": "输入连接到您的Yugabyte数据库安装的信息（https://download.yugabyte.com/）"
+        },
+        {
+            "id": "Host: {Hosts_}",
+            "message": "Host: {Hosts_}",
+            "translation": "主机：{Hosts_}",
+            "placeholders": [
+                {
+                    "id": "Hosts_",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "strings.Join(harmonycfg.Hosts, \",\")"
+                }
+            ]
+        },
+        {
+            "id": "Port: {Port}",
+            "message": "Port: {Port}",
+            "translation": "端口：{Port}",
+            "placeholders": [
+                {
+                    "id": "Port",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Port"
+                }
+            ]
+        },
+        {
+            "id": "Username: {Username}",
+            "message": "Username: {Username}",
+            "translation": "用户名：{Username}",
+            "placeholders": [
+                {
+                    "id": "Username",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Username"
+                }
+            ]
+        },
+        {
+            "id": "Password: {Password}",
+            "message": "Password: {Password}",
+            "translation": "密码：{Password}",
+            "placeholders": [
+                {
+                    "id": "Password",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Password"
+                }
+            ]
+        },
+        {
+            "id": "Database: {Database}",
+            "message": "Database: {Database}",
+            "translation": "数据库：{Database}",
+            "placeholders": [
+                {
+                    "id": "Database",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Database"
+                }
+            ]
+        },
+        {
+            "id": "Continue to connect and update schema.",
+            "message": "Continue to connect and update schema.",
+            "translation": "继续连接和更新架构。"
+        },
+        {
+            "id": "Database config error occurred, abandoning migration: {Error}",
+            "message": "Database config error occurred, abandoning migration: {Error}",
+            "translation": "发生数据库配置错误，放弃迁移：{Error}",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Enter the Yugabyte database host(s)",
+            "message": "Enter the Yugabyte database host(s)",
+            "translation": "输入Yugabyte数据库主机（S）"
+        },
+        {
+            "id": "No host provided",
+            "message": "No host provided",
+            "translation": "未提供主机"
+        },
+        {
+            "id": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "message": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "translation": "输入Yugabyte数据库 {Stringport_username_password_databasei_1}",
+            "placeholders": [
+                {
+                    "id": "Stringport_username_password_databasei_1",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "[]string{\"port\", \"username\", \"password\", \"database\"}[i-1]"
+                }
+            ]
+        },
+        {
+            "id": "No value provided",
+            "message": "No value provided",
+            "translation": "未提供值"
+        },
+        {
+            "id": "Error connecting to Yugabyte database: {Error}",
+            "message": "Error connecting to Yugabyte database: {Error}",
+            "translation": "连接到Yugabyte数据库时出错：{Error}",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Connected to Yugabyte. Schema is current.",
+            "message": "Connected to Yugabyte. Schema is current.",
+            "translation": "已连接到Yugabyte。模式是当前的。"
+        },
+        {
+            "id": "Error encoding config.toml: {Error}",
+            "message": "Error encoding config.toml: {Error}",
+            "translation": "编码config.toml时出错：{Error}",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Press return to update config.toml with Yugabyte info. Backup the file now.",
+            "message": "Press return to update config.toml with Yugabyte info. Backup the file now.",
+            "translation": ""
+        },
+        {
+            "id": "Error reading filemode of config.toml: {Error}",
+            "message": "Error reading filemode of config.toml: {Error}",
+            "translation": "读取config.toml文件模式时出错：{Error}",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Error writing config.toml: {Error}",
+            "message": "Error writing config.toml: {Error}",
+            "translation": "写入config.toml时出错：{Error}",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Restart Lotus Miner.",
+            "message": "Restart Lotus Miner.",
+            "translation": "重新启动Lotus Miner。"
+        },
+        {
+            "id": "Connected to Yugabyte",
+            "message": "Connected to Yugabyte",
+            "translation": "已连接到Yugabyte"
+        },
+        {
+            "id": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "message": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "translation": ""
+        },
+        {
+            "id": "Select the location of your lotus-miner config directory?",
+            "message": "Select the location of your lotus-miner config directory?",
+            "translation": "选择您的lotus-miner配置目录的位置？"
+        },
+        {
+            "id": "Other",
+            "message": "Other",
+            "translation": "其他"
+        },
+        {
+            "id": "Enter the path to the configuration directory used by lotus-miner",
+            "message": "Enter the path to the configuration directory used by lotus-miner",
+            "translation": "输入lotus-miner使用的配置目录的路径"
+        },
+        {
+            "id": "No path provided, abandoning migration",
+            "message": "No path provided, abandoning migration",
+            "translation": "未提供路径，放弃迁移"
+        },
+        {
+            "id": "Cannot read the config.toml file in the provided directory, Error: {Error}",
+            "message": "Cannot read the config.toml file in the provided directory, Error: {Error}",
+            "translation": "无法读取提供的目录中的config.toml文件，错误：{Error}",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Read Miner Config",
+            "message": "Read Miner Config",
+            "translation": "读取矿工配置"
+        },
+        {
+            "id": "Completed Step: {Step}",
+            "message": "Completed Step: {Step}",
+            "translation": "完成步骤：{Step}",
+            "placeholders": [
+                {
+                    "id": "Step",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "step"
+                }
+            ]
+        },
+        {
+            "id": "Layer {LayerName} created.",
+            "message": "Layer {LayerName} created.",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "LayerName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "layerName"
+                }
+            ]
+        },
+        {
+            "id": "To work with the config:",
+            "message": "To work with the config:",
+            "translation": ""
+        },
+        {
+            "id": "To run Curio: in its own machine or cgroup without other files, use the command:",
+            "message": "To run Curio: in its own machine or cgroup without other files, use the command:",
+            "translation": ""
+        }
+    ]
+}

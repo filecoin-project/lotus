@@ -1,0 +1,746 @@
+{
+    "language": "en",
+    "messages": [
+        {
+            "id": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
+            "message": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
+            "translation": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "This tool confirms each action it does and each step is reversable.",
+            "message": "This tool confirms each action it does and each step is reversable.",
+            "translation": "This tool confirms each action it does and each step is reversable.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "message": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "translation": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Ctrl+C pressed in Terminal",
+            "message": "Ctrl+C pressed in Terminal",
+            "translation": "Ctrl+C pressed in Terminal",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Migrating config.toml to database.",
+            "message": "Migrating config.toml to database.",
+            "translation": "Migrating config.toml to database.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
+            "message": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
+            "translation": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error reading from database: {Error}. Aborting Migration.",
+            "message": "Error reading from database: {Error}. Aborting Migration.",
+            "translation": "Error reading from database: {Error}. Aborting Migration.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "TODO FINISH THIS FUNCTION",
+            "message": "TODO FINISH THIS FUNCTION",
+            "translation": "TODO FINISH THIS FUNCTION",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "To bring you the best SP tooling...",
+            "message": "To bring you the best SP tooling...",
+            "translation": "To bring you the best SP tooling...",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Share with the Curio team your interest in curio for this Miner ID.",
+            "message": "Share with the Curio team your interest in curio for this Miner ID.",
+            "translation": "Share with the Curio team your interest in curio for this Miner ID.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
+            "message": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
+            "translation": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Press return to continue",
+            "message": "Press return to continue",
+            "translation": "Press return to continue",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Aborting remaining steps.",
+            "message": "Aborting remaining steps.",
+            "translation": "Aborting remaining steps.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]v",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "We want to build what you're using.",
+            "message": "We want to build what you're using.",
+            "translation": "We want to build what you're using.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Select what you want to share with the Curio team.",
+            "message": "Select what you want to share with the Curio team.",
+            "translation": "Select what you want to share with the Curio team.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
+            "message": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
+            "translation": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
+            "message": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
+            "translation": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Hint: I am someone running curio in production.",
+            "message": "Hint: I am someone running curio in production.",
+            "translation": "Hint: I am someone running curio in production.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Nothing.",
+            "message": "Nothing.",
+            "translation": "Nothing.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error connecting to lotus node: {Error}",
+            "message": "Error connecting to lotus node: {Error}",
+            "translation": "Error connecting to lotus node: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error getting miner power: {Error}",
+            "message": "Error getting miner power: {Error}",
+            "translation": "Error getting miner power: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error marshalling message: {Error}",
+            "message": "Error marshalling message: {Error}",
+            "translation": "Error marshalling message: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error getting miner info: {Error}",
+            "message": "Error getting miner info: {Error}",
+            "translation": "Error getting miner info: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error signing message: {Error}",
+            "message": "Error signing message: {Error}",
+            "translation": "Error signing message: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Not mainnet, not sharing.",
+            "message": "Not mainnet, not sharing.",
+            "translation": "Not mainnet, not sharing.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "The configuration layers have been created for you: base, post, gui, seal.",
+            "message": "The configuration layers have been created for you: base, post, gui, seal.",
+            "translation": "The configuration layers have been created for you: base, post, gui, seal.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Documentation:",
+            "message": "Documentation:",
+            "translation": "Documentation:",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Put common configuration in 'base' and include it everywhere.",
+            "message": "Put common configuration in 'base' and include it everywhere.",
+            "translation": "Put common configuration in 'base' and include it everywhere.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Instances without tasks will still serve their sectors for other Curio instances.",
+            "message": "Instances without tasks will still serve their sectors for other Curio instances.",
+            "translation": "Instances without tasks will still serve their sectors for other Curio instances.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "As there are no local config.toml files, put per-machine changes in additional layers.",
+            "message": "As there are no local config.toml files, put per-machine changes in additional layers.",
+            "translation": "As there are no local config.toml files, put per-machine changes in additional layers.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Edit a layer with the command:",
+            "message": "Edit a layer with the command:",
+            "translation": "Edit a layer with the command:",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "curio config edit \u003clayername\u003e",
+            "message": "curio config edit \u003clayername\u003e",
+            "translation": "curio config edit \u003clayername\u003e",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Join #fil-curio-users in Filecoin slack for help.",
+            "message": "Join #fil-curio-users in Filecoin slack for help.",
+            "translation": "Join #fil-curio-users in Filecoin slack for help.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "TODO FINISH THIS FUNCTION.",
+            "message": "TODO FINISH THIS FUNCTION.",
+            "translation": "TODO FINISH THIS FUNCTION.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
+            "message": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
+            "translation": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
+            "message": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
+            "translation": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Waiting for lotus-miner to write sectors into Yugabyte.",
+            "message": "Waiting for lotus-miner to write sectors into Yugabyte.",
+            "translation": "Waiting for lotus-miner to write sectors into Yugabyte.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error verifying sectors: {Error}",
+            "message": "Error verifying sectors: {Error}",
+            "translation": "Error verifying sectors: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "The sectors are in the database. The database is ready for curio.",
+            "message": "The sectors are in the database. The database is ready for curio.",
+            "translation": "The sectors are in the database. The database is ready for curio.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Now shut down lotus-miner and move the systems to curio.",
+            "message": "Now shut down lotus-miner and move the systems to curio.",
+            "translation": "Now shut down lotus-miner and move the systems to curio.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Aborting migration.",
+            "message": "Aborting migration.",
+            "translation": "Aborting migration.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Sectors verified. {I} sector locations found.",
+            "message": "Sectors verified. {I} sector locations found.",
+            "translation": "Sectors verified. {I} sector locations found.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "I",
+                    "string": "%[1]d",
+                    "type": "[]int",
+                    "underlyingType": "[]int",
+                    "argNum": 1,
+                    "expr": "i"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "message": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "translation": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Host: {Hosts_}",
+            "message": "Host: {Hosts_}",
+            "translation": "Host: {Hosts_}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Hosts_",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "strings.Join(harmonycfg.Hosts, \",\")"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Port: {Port}",
+            "message": "Port: {Port}",
+            "translation": "Port: {Port}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Port",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Port"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Username: {Username}",
+            "message": "Username: {Username}",
+            "translation": "Username: {Username}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Username",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Username"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Password: {Password}",
+            "message": "Password: {Password}",
+            "translation": "Password: {Password}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Password",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Password"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Database: {Database}",
+            "message": "Database: {Database}",
+            "translation": "Database: {Database}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Database",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonycfg.Database"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Continue to connect and update schema.",
+            "message": "Continue to connect and update schema.",
+            "translation": "Continue to connect and update schema.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Database config error occurred, abandoning migration: {Error}",
+            "message": "Database config error occurred, abandoning migration: {Error}",
+            "translation": "Database config error occurred, abandoning migration: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the Yugabyte database host(s)",
+            "message": "Enter the Yugabyte database host(s)",
+            "translation": "Enter the Yugabyte database host(s)",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "No host provided",
+            "message": "No host provided",
+            "translation": "No host provided",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "message": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "translation": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Stringport_username_password_databasei_1",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "[]string{\"port\", \"username\", \"password\", \"database\"}[i-1]"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "No value provided",
+            "message": "No value provided",
+            "translation": "No value provided",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error connecting to Yugabyte database: {Error}",
+            "message": "Error connecting to Yugabyte database: {Error}",
+            "translation": "Error connecting to Yugabyte database: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Connected to Yugabyte. Schema is current.",
+            "message": "Connected to Yugabyte. Schema is current.",
+            "translation": "Connected to Yugabyte. Schema is current.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error encoding config.toml: {Error}",
+            "message": "Error encoding config.toml: {Error}",
+            "translation": "Error encoding config.toml: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Press return to update config.toml with Yugabyte info. Backup the file now.",
+            "message": "Press return to update config.toml with Yugabyte info. Backup the file now.",
+            "translation": "Press return to update config.toml with Yugabyte info. Backup the file now.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error reading filemode of config.toml: {Error}",
+            "message": "Error reading filemode of config.toml: {Error}",
+            "translation": "Error reading filemode of config.toml: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error writing config.toml: {Error}",
+            "message": "Error writing config.toml: {Error}",
+            "translation": "Error writing config.toml: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Restart Lotus Miner.",
+            "message": "Restart Lotus Miner.",
+            "translation": "Restart Lotus Miner.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Connected to Yugabyte",
+            "message": "Connected to Yugabyte",
+            "translation": "Connected to Yugabyte",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "message": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "translation": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Select the location of your lotus-miner config directory?",
+            "message": "Select the location of your lotus-miner config directory?",
+            "translation": "Select the location of your lotus-miner config directory?",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Other",
+            "message": "Other",
+            "translation": "Other",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the path to the configuration directory used by lotus-miner",
+            "message": "Enter the path to the configuration directory used by lotus-miner",
+            "translation": "Enter the path to the configuration directory used by lotus-miner",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "No path provided, abandoning migration",
+            "message": "No path provided, abandoning migration",
+            "translation": "No path provided, abandoning migration",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Cannot read the config.toml file in the provided directory, Error: {Error}",
+            "message": "Cannot read the config.toml file in the provided directory, Error: {Error}",
+            "translation": "Cannot read the config.toml file in the provided directory, Error: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Read Miner Config",
+            "message": "Read Miner Config",
+            "translation": "Read Miner Config",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Completed Step: {Step}",
+            "message": "Completed Step: {Step}",
+            "translation": "Completed Step: {Step}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Step",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "step"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Layer {LayerName} created.",
+            "message": "Layer {LayerName} created.",
+            "translation": "Layer {LayerName} created.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "LayerName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "layerName"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "To work with the config:",
+            "message": "To work with the config:",
+            "translation": "To work with the config:",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "To run Curio: in its own machine or cgroup without other files, use the command:",
+            "message": "To run Curio: in its own machine or cgroup without other files, use the command:",
+            "translation": "To run Curio: in its own machine or cgroup without other files, use the command:",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        }
+    ]
+}
