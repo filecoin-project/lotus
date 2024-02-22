@@ -249,7 +249,6 @@ install-daemon-service: install-daemon
 	@echo "lotus-daemon service installed."
 	@echo "To start the service, run: 'sudo systemctl start lotus-daemon'"
 	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-daemon'"
-	@echo "NOTE: Please ensure that the memory limits in /etc/systemd/system/lotus-daemon.service are appropriate for this node."
 
 install-miner-service: install-miner install-daemon-service
 	mkdir -p /etc/systemd/system
