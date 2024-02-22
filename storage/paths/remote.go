@@ -430,12 +430,13 @@ func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, er
 			}
 			_ = resp.Body.Close()
 			return out, nil // Successfully decoded, return the result
-		} else {
-			b, _ := io.ReadAll(resp.Body) // Best-effort read the body for logging
-			log.Warnw("request to endpoint failed", "url", rl.String(), "statusCode", resp.StatusCode, "response", string(b))
-			_ = resp.Body.Close()
-			// Continue to try the next URL, don't return here as we want to try all URLs
 		}
+
+		// non-200 status code
+		b, _ := io.ReadAll(resp.Body) // Best-effort read the body for logging
+		log.Warnw("request to endpoint failed", "url", rl.String(), "statusCode", resp.StatusCode, "response", string(b))
+		_ = resp.Body.Close()
+		// Continue to try the next URL, don't return here as we want to try all URLs
 	}
 
 	return fsutil.FsStat{}, xerrors.Errorf("all endpoints failed for remote storage %s", id)

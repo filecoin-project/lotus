@@ -315,7 +315,9 @@ func Test32G(t *testing.T) {
 	// dump tree.dat
 	datFile, err := os.Open(tempFile)
 	require.NoError(t, err)
-	defer datFile.Close()
+	defer func() {
+		require.NoError(t, datFile.Close())
+	}()
 
 	actualD := hexPrint32LDedup(bufio.NewReaderSize(datFile, 1<<20))
 	fmt.Println(actualD)
