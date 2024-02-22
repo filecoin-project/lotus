@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/cmd/curio/guidedSetup"
+	"github.com/filecoin-project/lotus/cmd/curio/guidedsetup"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -58,6 +58,6 @@ func fromMiner(cctx *cli.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("cannot read API: %w", err)
 	}
-	err = guidedSetup.SaveConfigToLayer(minerRepoPath, layerName, overwrite, header)
+	err = guidedsetup.SaveConfigToLayer(minerRepoPath, layerName, overwrite, header)
 	return err
 }

@@ -57,7 +57,7 @@ type TestFullNode struct {
 
 // TestProviderNode represents a Provider node enrolled in an Ensemble.
 type TestProviderNode struct {
-	v1api.LotusProviderStruct
+	v1api.CurioStruct
 
 	t *testing.T
 

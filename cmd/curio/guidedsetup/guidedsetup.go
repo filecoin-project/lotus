@@ -1,9 +1,9 @@
-// guidedSetup for migration from lotus-miner to curio
+// guidedsetup for migration from lotus-miner to curio
 //
 //	IF STRINGS CHANGED {
 //			follow instructions at ../internal/translations/translations.go
 //	}
-package guidedSetup
+package guidedsetup
 
 import (
 	"bytes"
@@ -49,7 +49,7 @@ var GuidedsetupCmd = &cli.Command{
 
 		say(header, "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.")
 
-		say(notice, "This tool confirms each action it does and each step is reversable.")
+		say(notice, "This tool confirms each action it does and each step can be reversed.")
 
 		// Run the migration steps
 		migrationData := MigrationData{
@@ -121,7 +121,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 	if _, ok := have[lang.String()]; !ok {
 		lang = language.English
 		notice.Copy().AlignHorizontal(lipgloss.Right).
-			Render("$LANG unsupported. Avaiable: " + strings.Join(lo.Keys(have), ", "))
+			Render("$LANG unsupported. Available: " + strings.Join(lo.Keys(have), ", "))
 	}
 	return func(key message.Reference, a ...interface{}) string {
 			return message.NewPrinter(lang).Sprintf(key, a...)
@@ -265,7 +265,15 @@ func oneLastThing(d *MigrationData) {
 				}
 			}
 
-			http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
+			rep, err := http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
+			if err != nil {
+				d.say(notice, "Error updating Curio storage team about the new instance: %s\n", err.Error())
+				os.Exit(1)
+			}
+			if rep.StatusCode != 200 {
+				d.say(notice, "Received a non success code from the server: %d\n", rep.StatusCode)
+				os.Exit(1)
+			}
 		}
 	} else {
 		d.say(plain, "Not mainnet, not sharing.\n")

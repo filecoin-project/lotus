@@ -1,4 +1,4 @@
-package guidedSetup
+package guidedsetup
 
 import (
 	"bytes"

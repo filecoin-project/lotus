@@ -1,5 +1,5 @@
 // Usage:
-//  1. change strings in guidedSetup folder that use d.T() or d.say().
+//  1. change strings in guidedsetup folder that use d.T() or d.say().
 //  2. run `go generate` in the cmd/curio/internal/translations/ folder.
 //  3. Ask ChatGPT to translate the locale/??/out.gotext.json files' translation
 //     fields to their respective languages. Replace the messages.gotext.json files.

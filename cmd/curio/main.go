@@ -17,7 +17,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
-	"github.com/filecoin-project/lotus/cmd/curio/guidedSetup"
+	"github.com/filecoin-project/lotus/cmd/curio/guidedsetup"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -47,7 +47,7 @@ func main() {
 		configCmd,
 		testCmd,
 		webCmd,
-		guidedSetup.GuidedsetupCmd,
+		guidedsetup.GuidedsetupCmd,
 		//backupCmd,
 		//lcli.WithCategory("chain", actorCmd),
 		//lcli.WithCategory("storage", sectorsCmd),
