@@ -120,10 +120,11 @@ var runCmd = &cli.Command{
 			fmt.Println("err", err)
 			return err
 		}
-		fmt.Println("ef")
+
+		// Get rid of all the partial-writes of any potential previous runs.
+		dependencies.StorageMgr.Cleanup()
 
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
-		fmt.Println("gh")
 
 		if err != nil {
 			return nil
