@@ -301,7 +301,7 @@ var filplusListAllocationsCmd = &cli.Command{
 			}
 
 			if json {
-				// get a new list of wallets with json keys instead of tablewriter keys
+				// get a new list of allocations with json keys instead of tablewriter keys
 				var jsonAllocs []map[string]interface{}
 				for _, alloc := range allocs {
 					jsonAlloc := make(map[string]interface{})
@@ -325,7 +325,6 @@ var filplusListAllocationsCmd = &cli.Command{
 				tablewriter.NewLineCol(expr))
 			// populate it with content
 			for _, alloc := range allocs {
-
 				tw.Write(alloc)
 			}
 			// return the corresponding string
@@ -402,7 +401,7 @@ var filplusListClaimsCmd = &cli.Command{
 
 		writeOut := func(tsHeight abi.ChainEpoch, claims map[verifreg.ClaimId]verifreg.Claim, json, expired bool) error {
 			// Map Keys. Corresponds to the standard tablewriter output
-			allocationID := "ClaimID"
+			claimID := "ClaimID"
 			provider := "Provider"
 			client := "Client"
 			data := "Data"
@@ -414,52 +413,52 @@ var filplusListClaimsCmd = &cli.Command{
 
 			// One-to-one mapping between tablewriter keys and JSON keys
 			tableKeysToJsonKeys := map[string]string{
-				allocationID: strings.ToLower(allocationID),
-				provider:     strings.ToLower(provider),
-				client:       strings.ToLower(client),
-				data:         strings.ToLower(data),
-				size:         strings.ToLower(size),
-				tMin:         strings.ToLower(tMin),
-				tMax:         strings.ToLower(tMax),
-				tStart:       strings.ToLower(tStart),
-				sector:       strings.ToLower(sector),
+				claimID:  strings.ToLower(claimID),
+				provider: strings.ToLower(provider),
+				client:   strings.ToLower(client),
+				data:     strings.ToLower(data),
+				size:     strings.ToLower(size),
+				tMin:     strings.ToLower(tMin),
+				tMax:     strings.ToLower(tMax),
+				tStart:   strings.ToLower(tStart),
+				sector:   strings.ToLower(sector),
 			}
 
-			var allocs []map[string]interface{}
+			var claimList []map[string]interface{}
 
 			for key, val := range claims {
 				if tsHeight > val.TermMax || !expired {
-					alloc := map[string]interface{}{
-						allocationID: key,
-						provider:     val.Provider,
-						client:       val.Client,
-						data:         val.Data,
-						size:         val.Size,
-						tMin:         val.TermMin,
-						tMax:         val.TermMax,
-						tStart:       val.TermStart,
-						sector:       val.Sector,
+					claim := map[string]interface{}{
+						claimID:  key,
+						provider: val.Provider,
+						client:   val.Client,
+						data:     val.Data,
+						size:     val.Size,
+						tMin:     val.TermMin,
+						tMax:     val.TermMax,
+						tStart:   val.TermStart,
+						sector:   val.Sector,
 					}
-					allocs = append(allocs, alloc)
+					claimList = append(claimList, claim)
 				}
 			}
 
 			if json {
-				// get a new list of wallets with json keys instead of tablewriter keys
-				var jsonAllocs []map[string]interface{}
-				for _, alloc := range allocs {
-					jsonAlloc := make(map[string]interface{})
-					for k, v := range alloc {
-						jsonAlloc[tableKeysToJsonKeys[k]] = v
+				// get a new list of claims with json keys instead of tablewriter keys
+				var jsonClaims []map[string]interface{}
+				for _, claim := range claimList {
+					jsonClaim := make(map[string]interface{})
+					for k, v := range claim {
+						jsonClaim[tableKeysToJsonKeys[k]] = v
 					}
-					jsonAllocs = append(jsonAllocs, jsonAlloc)
+					jsonClaims = append(jsonClaims, jsonClaim)
 				}
 				// then return this!
-				return PrintJson(jsonAllocs)
+				return PrintJson(jsonClaims)
 			}
 			// Init the tablewriter's columns
 			tw := tablewriter.New(
-				tablewriter.Col(allocationID),
+				tablewriter.Col(claimID),
 				tablewriter.Col(client),
 				tablewriter.Col(provider),
 				tablewriter.Col(data),
@@ -469,7 +468,7 @@ var filplusListClaimsCmd = &cli.Command{
 				tablewriter.Col(tStart),
 				tablewriter.NewLineCol(sector))
 			// populate it with content
-			for _, alloc := range allocs {
+			for _, alloc := range claimList {
 
 				tw.Write(alloc)
 			}
