@@ -61,9 +61,10 @@ type storageProvider struct {
 type ReleaseStorageFunc func() // free storage reservation
 
 type StorageReservation struct {
-	Release ReleaseStorageFunc
-	Paths   storiface.SectorPaths
-	PathIDs storiface.SectorPaths
+	Release          ReleaseStorageFunc
+	DeclareAllocated func()
+	Paths            storiface.SectorPaths
+	PathIDs          storiface.SectorPaths
 }
 
 type AcquireSettings struct {
@@ -120,6 +121,8 @@ func (sb *SealCalls) ReserveSDRStorage(ctx context.Context, sector storiface.Sec
 	// storage writelock sector
 	lkctx, cancel := context.WithCancel(ctx)
 
+	allocate := storiface.FTCache
+
 	lockAcquireTimuout := time.Second * 10
 	lockAcquireTimer := time.NewTimer(lockAcquireTimuout)
 
@@ -132,7 +135,7 @@ func (sb *SealCalls) ReserveSDRStorage(ctx context.Context, sector storiface.Sec
 		}
 	}()
 
-	if err := sb.sectors.sindex.StorageLock(lkctx, sector.ID, storiface.FTNone, storiface.FTCache); err != nil {
+	if err := sb.sectors.sindex.StorageLock(lkctx, sector.ID, storiface.FTNone, allocate); err != nil {
 		// timer will expire
 		return nil, err
 	}
@@ -148,7 +151,7 @@ func (sb *SealCalls) ReserveSDRStorage(ctx context.Context, sector storiface.Sec
 
 	// find anywhere
 	//  if found return nil, for now
-	s, err := sb.sectors.sindex.StorageFindSector(ctx, sector.ID, storiface.FTCache, must.One(sector.ProofType.SectorSize()), false)
+	s, err := sb.sectors.sindex.StorageFindSector(ctx, sector.ID, allocate, must.One(sector.ProofType.SectorSize()), false)
 	if err != nil {
 		return nil, err
 	}
@@ -170,34 +173,38 @@ func (sb *SealCalls) ReserveSDRStorage(ctx context.Context, sector storiface.Sec
 	}
 
 	// acquire a path to make a reservation in
-	pathsFs, pathIDs, err := sb.sectors.localStore.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing, storiface.AcquireMove)
+	pathsFs, pathIDs, err := sb.sectors.localStore.AcquireSector(ctx, sector, storiface.FTNone, allocate, storiface.PathSealing, storiface.AcquireMove)
 	if err != nil {
 		return nil, err
 	}
 
 	// reserve the space
-	release, err := sb.sectors.localStore.Reserve(ctx, sector, storiface.FTCache, pathIDs, storiface.FSOverheadSeal)
+	release, err := sb.sectors.localStore.Reserve(ctx, sector, allocate, pathIDs, storiface.FSOverheadSeal)
 	if err != nil {
 		return nil, err
+	}
+
+	declareAllocated := func() {
+		for _, fileType := range allocate.AllSet() {
+			sid := storiface.PathByType(pathIDs, fileType)
+			if err := sb.sectors.sindex.StorageDeclareSector(ctx, storiface.ID(sid), sector.ID, fileType, true); err != nil {
+				log.Errorf("declare sector error: %+v", err)
+			}
+		}
 	}
 
 	// note: we drop the sector writelock on return; THAT IS INTENTIONAL, this code runs in CanAccept, which doesn't
 	// guarantee that the work for this sector will happen on this node; SDR CanAccept just ensures that the node can
 	// run the job, harmonytask is what ensures that only one SDR runs at a time
 	return &StorageReservation{
-		Release: release,
-		Paths:   pathsFs,
-		PathIDs: pathIDs,
+		Release:          release,
+		DeclareAllocated: declareAllocated,
+		Paths:            pathsFs,
+		PathIDs:          pathIDs,
 	}, nil
 }
 
-func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, commKcid cid.Cid) error {
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing)
-	if err != nil {
-		return xerrors.Errorf("acquiring sector paths: %w", err)
-	}
-	defer releaseSector()
-
+func (sb *SealCalls) GenerateSDR(ctx context.Context, reservation *StorageReservation, sector storiface.SectorRef, ticket abi.SealRandomness, commKcid cid.Cid) error {
 	// prepare SDR params
 	commp, err := commcid.CIDToDataCommitmentV1(commKcid)
 	if err != nil {
@@ -209,14 +216,30 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef
 		return xerrors.Errorf("computing replica id: %w", err)
 	}
 
+	// acquire sector paths
+	var sectorPaths storiface.SectorPaths
+	if reservation != nil {
+		sectorPaths = reservation.Paths
+		// note: GenerateSDR manages the reservation, so we only need to declare at the end
+		defer reservation.DeclareAllocated()
+	} else {
+		var releaseSector func()
+		var err error
+		sectorPaths, releaseSector, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing)
+		if err != nil {
+			return xerrors.Errorf("acquiring sector paths: %w", err)
+		}
+		defer releaseSector()
+	}
+
 	// generate new sector key
 	err = ffi.GenerateSDR(
 		sector.ProofType,
-		paths.Cache,
+		sectorPaths.Cache,
 		replicaID,
 	)
 	if err != nil {
-		return xerrors.Errorf("generating SDR %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
+		return xerrors.Errorf("generating SDR %d (%s): %w", sector.ID.Number, sectorPaths.Unsealed, err)
 	}
 
 	return nil

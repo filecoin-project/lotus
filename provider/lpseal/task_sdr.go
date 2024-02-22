@@ -50,8 +50,32 @@ func NewSDRTask(api SDRAPI, db *harmonydb.DB, sp *SealPoller, sc *lpffi.SealCall
 	}
 }
 
+type SDRTaskData struct {
+	reservation *lpffi.StorageReservation
+}
+
+func (s *SDRTaskData) NotClaimed() error {
+	if s.reservation != nil {
+		s.reservation.Release()
+		s.reservation = nil
+	}
+
+	return nil
+}
+
 func (s *SDRTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
+
+	acceptData, ok := data.(*SDRTaskData)
+	if !ok {
+		return false, xerrors.Errorf("invalid data type")
+	}
+	defer func() {
+		if acceptData.reservation != nil {
+			acceptData.reservation.Release()
+			acceptData.reservation = nil
+		}
+	}()
 
 	var sectorParamsArr []struct {
 		SpID         int64                   `db:"sp_id"`
@@ -146,7 +170,7 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, sti
 	//                Trees; After one retry, it should return the sector to the
 	// 			      SDR stage; max number of retries should be configurable
 
-	err = s.sc.GenerateSDR(ctx, sref, ticket, commd)
+	err = s.sc.GenerateSDR(ctx, acceptData.reservation, sref, ticket, commd)
 	if err != nil {
 		return false, xerrors.Errorf("generating sdr: %w", err)
 	}
@@ -187,11 +211,49 @@ func (s *SDRTask) getTicket(ctx context.Context, maddr address.Address) (abi.Sea
 }
 
 func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
-	// todo check storage (reserve too?)
-	//_ =s.sc.ReserveSDRStorage()
+	ctx := context.Background()
 
-	id := ids[0]
-	return &id, nil, nil
+	for _, taskID := range ids {
+		var sectorParamsArr []struct {
+			SpID         int64                   `db:"sp_id"`
+			SectorNumber int64                   `db:"sector_number"`
+			RegSealProof abi.RegisteredSealProof `db:"reg_seal_proof"`
+		}
+
+		err := s.db.Select(ctx, &sectorParamsArr, `
+		SELECT sp_id, sector_number, reg_seal_proof
+		FROM sectors_sdr_pipeline
+		WHERE task_id_sdr = $1`, taskID)
+		if err != nil {
+			log.Errorw("getting sector params", "error", err)
+			continue
+		}
+
+		if len(sectorParamsArr) != 1 {
+			log.Errorw("expected 1 sector params, got", "count", len(sectorParamsArr))
+			continue
+		}
+		sectorParams := sectorParamsArr[0]
+
+		sectorID := abi.SectorID{
+			Miner:  abi.ActorID(sectorParams.SpID),
+			Number: abi.SectorNumber(sectorParams.SectorNumber),
+		}
+		sectorRef := storiface.SectorRef{
+			ID:        sectorID,
+			ProofType: sectorParams.RegSealProof,
+		}
+
+		res, err := s.sc.ReserveSDRStorage(ctx, sectorRef)
+		if err != nil {
+			log.Errorw("reserving storage", "error", err)
+			continue
+		}
+
+		return &taskID, &SDRTaskData{reservation: res}, nil
+	}
+
+	return nil, nil, nil
 }
 
 func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
