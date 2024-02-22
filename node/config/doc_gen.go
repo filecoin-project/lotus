@@ -29,6 +29,17 @@ var Doc = map[string][]DocField{
 			Comment: ``,
 		},
 	},
+	"ActorEventsConfig": {
+		{
+			Name: "EnableActorEventsAPI",
+			Type: "bool",
+
+			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+emitted by (smart contracts + built-in Actors).
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+disabled by setting their respective Disable* options in Fevm.Events.`,
+		},
+	},
 	"ApisConfig": {
 		{
 			Name: "ChainApiInfo",
@@ -455,13 +466,6 @@ rewards. This address should have adequate funds to cover gas fees.`,
 This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
 		},
 		{
-			Name: "EnableActorEventsAPI",
-			Type: "bool",
-
-			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).
-This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
-		},
-		{
 			Name: "EthTxHashMappingLifetimeDays",
 			Type: "int",
 
@@ -509,6 +513,12 @@ Set to 0 to keep all mappings`,
 		{
 			Name: "Fevm",
 			Type: "FevmConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "ActorEvents",
+			Type: "ActorEventsConfig",
 
 			Comment: ``,
 		},
