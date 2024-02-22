@@ -198,7 +198,7 @@ func (a *ActorEventDummy) GetActorEvents(ctx context.Context, filter *types.Acto
 	return nil, ErrActorEventModuleDisabled
 }
 
-func (a *ActorEventDummy) SubscribeActorEvents(ctx context.Context, filter *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (a *ActorEventDummy) SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	return nil, ErrActorEventModuleDisabled
 }
 

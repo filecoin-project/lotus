@@ -444,7 +444,7 @@ func (gw *Node) GetActorEvents(ctx context.Context, filter *types.ActorEventFilt
 	return gw.target.GetActorEvents(ctx, filter)
 }
 
-func (gw *Node) SubscribeActorEvents(ctx context.Context, filter *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (gw *Node) SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}

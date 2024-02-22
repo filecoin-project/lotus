@@ -151,25 +151,19 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	/* --- Setup subscription channels for ActorEvents --- */
 
 	// subscribe only to miner's actor events
-	minerEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
-		Filter: types.ActorEventFilter{
-			Addresses: []address.Address{miner.ActorAddr},
-		},
-		Prefill: true,
+	minerEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+		Addresses: []address.Address{miner.ActorAddr},
 	})
 	require.NoError(t, err)
 
 	// subscribe only to sector-activated events
 	sectorActivatedCbor := stringToEventKey(t, "sector-activated")
-	sectorActivatedEvtsCh, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
-		Filter: types.ActorEventFilter{
-			Fields: map[string][]types.ActorEventBlock{
-				"$type": {
-					{Codec: 0x51, Value: sectorActivatedCbor},
-				},
+	sectorActivatedEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+		Fields: map[string][]types.ActorEventBlock{
+			"$type": {
+				{Codec: 0x51, Value: sectorActivatedCbor},
 			},
 		},
-		Prefill: true,
 	})
 	require.NoError(t, err)
 
@@ -303,6 +297,13 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	head, err := client.ChainHead(ctx)
 	require.NoError(t, err)
 
+	// subscribe to actor events up until the current head
+	initialEventsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+		FromHeight: epochPtr(0),
+		ToHeight:   epochPtr(int64(head.Height())),
+	})
+	require.NoError(t, err)
+
 	so, err := miner.SectorAddPieceToAny(ctx, pieceSize, bytes.NewReader(pieceData), piece.PieceDealInfo{
 		PublishCid:   nil,
 		DealID:       0,
@@ -395,8 +396,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 
 	// construct ActorEvents from GetActorEvents API
 	allEvtsFromGetAPI, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
-		FromEpoch: "earliest",
-		ToEpoch:   "latest",
+		FromHeight: epochPtr(0),
 	})
 	require.NoError(t, err)
 	fmt.Println("Events from GetActorEvents:")
@@ -414,7 +414,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	}
 	var allMinerEvts []*types.ActorEvent
 	for _, evt := range eventsFromMessages {
-		if evt.EmitterAddr == miner.ActorAddr {
+		if evt.Emitter == miner.ActorAddr {
 			allMinerEvts = append(allMinerEvts, evt)
 		}
 	}
@@ -423,7 +423,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 
 	// construct ActorEvents from subscription channel for just the sector-activated events
 	var prefillSectorActivatedEvts []*types.ActorEvent
-	for evt := range sectorActivatedEvtsCh {
+	for evt := range sectorActivatedEvtsChan {
 		prefillSectorActivatedEvts = append(prefillSectorActivatedEvts, evt)
 		if len(prefillSectorActivatedEvts) == 2 {
 			break
@@ -442,17 +442,25 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	// compare events from messages and receipts with events from subscription channel
 	require.Equal(t, sectorActivatedEvts, prefillSectorActivatedEvts)
 
+	// check that our `ToHeight` filter works as expected
+	var initialEvents []*types.ActorEvent
+	// TODO: this should probably close the channel when it knows it's done
+	for evt := range initialEventsChan {
+		initialEvents = append(initialEvents, evt)
+		// sector-precommitted, sector-activated, verifier-balance, verifier-balance
+		if len(initialEvents) == 4 {
+			break
+		}
+	}
+	require.Equal(t, eventsFromMessages[0:4], initialEvents)
+
 	// construct ActorEvents from subscription channel for all actor events
-	allEvtsCh, err := miner.FullNode.SubscribeActorEvents(ctx, &types.SubActorEventFilter{
-		Filter: types.ActorEventFilter{
-			FromEpoch: "earliest",
-			ToEpoch:   "latest",
-		},
-		Prefill: true,
+	allEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+		FromHeight: epochPtr(0),
 	})
 	require.NoError(t, err)
 	var prefillEvts []*types.ActorEvent
-	for evt := range allEvtsCh {
+	for evt := range allEvtsChan {
 		prefillEvts = append(prefillEvts, evt)
 		if len(prefillEvts) == len(eventsFromMessages) {
 			break
@@ -524,16 +532,14 @@ func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.
 					// for each event
 					addr, err := address.NewIDAddress(uint64(evt.Emitter))
 					require.NoError(t, err)
-					tsCid, err := ts.Key().Cid()
-					require.NoError(t, err)
 
 					actorEvents = append(actorEvents, &types.ActorEvent{
-						Entries:     evt.Entries,
-						EmitterAddr: addr,
-						Reverted:    false,
-						Height:      ts.Height(),
-						TipSetCid:   tsCid,
-						MsgCid:      m.Cid,
+						Entries:   evt.Entries,
+						Emitter:   addr,
+						Reverted:  false,
+						Height:    ts.Height(),
+						TipSetKey: ts.Key(),
+						MsgCid:    m.Cid,
 					})
 				}
 			}
@@ -547,7 +553,7 @@ func printEvents(ctx context.Context, t *testing.T, node v1api.FullNode, events 
 		entryStrings := []string{
 			fmt.Sprintf("height=%d", event.Height),
 			fmt.Sprintf("msg=%s", event.MsgCid),
-			fmt.Sprintf("emitter=%s", event.EmitterAddr),
+			fmt.Sprintf("emitter=%s", event.Emitter),
 			fmt.Sprintf("reverted=%t", event.Reverted),
 		}
 		for _, e := range event.Entries {
@@ -847,4 +853,9 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 	}
 
 	miner.WaitSectorsProving(ctx, toCheck)
+}
+
+func epochPtr(ei int64) *abi.ChainEpoch {
+	ep := abi.ChainEpoch(ei)
+	return &ep
 }

@@ -430,25 +430,8 @@ func init() {
 				},
 			},
 		},
-		FromEpoch: "earliest",
-		ToEpoch:   "latest",
-	})
-
-	addExample(&types.SubActorEventFilter{
-		Filter: types.ActorEventFilter{
-			Addresses: []address.Address{addr},
-			Fields: map[string][]types.ActorEventBlock{
-				"abc": {
-					{
-						Codec: 0x51,
-						Value: []byte("ddata"),
-					},
-				},
-			},
-			FromEpoch: "earliest",
-			ToEpoch:   "latest",
-		},
-		Prefill: true,
+		FromHeight: epochPtr(1010),
+		ToHeight:   epochPtr(1020),
 	})
 }
 
@@ -553,6 +536,11 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 	}
 
 	return ns.Interface()
+}
+
+func epochPtr(ei int64) *abi.ChainEpoch {
+	ep := abi.ChainEpoch(ei)
+	return &ep
 }
 
 type Visitor struct {

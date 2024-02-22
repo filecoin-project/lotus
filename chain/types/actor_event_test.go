@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 )
 
@@ -29,11 +30,11 @@ func TestActorEventJson(t *testing.T) {
 				Value: []byte("value2"),
 			},
 		},
-		EmitterAddr: randomF4Addr(t, rng),
-		Reverted:    false,
-		Height:      1001,
-		TipSetCid:   randomCid(t, rng),
-		MsgCid:      randomCid(t, rng),
+		Emitter:   randomF4Addr(t, rng),
+		Reverted:  false,
+		Height:    1001,
+		TipSetKey: NewTipSetKey(randomCid(t, rng)),
+		MsgCid:    randomCid(t, rng),
 	}
 
 	bz, err := json.Marshal(in)
@@ -46,7 +47,7 @@ func TestActorEventJson(t *testing.T) {
 	require.Equal(t, in, out)
 
 	s := `
-{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"dmFsdWUx"},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetCid":{"/":"bafkqacx3dag26sfht3qlcdi"},"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}
+{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"dmFsdWUx"},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetKey":[{"/":"bafkqacx3dag26sfht3qlcdi"}],"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}
 `
 	var out2 ActorEvent
 	err = json.Unmarshal([]byte(s), &out2)
@@ -77,9 +78,9 @@ func TestActorEventBlockJson(t *testing.T) {
 }
 
 func TestSubActorEventFilterJson(t *testing.T) {
-	c := randomCid(t, pseudo.New(pseudo.NewSource(0)))
-	from := "earliest"
-	to := "latest"
+	tsk := NewTipSetKey(randomCid(t, pseudo.New(pseudo.NewSource(0))))
+	from := abi.ChainEpoch(0)
+	to := abi.ChainEpoch(100)
 	f := ActorEventFilter{
 		Addresses: []address.Address{
 			randomF4Addr(t, pseudo.New(pseudo.NewSource(0))),
@@ -99,16 +100,17 @@ func TestSubActorEventFilterJson(t *testing.T) {
 				},
 			},
 		},
-		FromEpoch: from,
-		ToEpoch:   to,
-		TipSetCid: &c,
+		FromHeight: &from,
+		ToHeight:   &to,
+		TipSetKey:  &tsk,
 	}
 
 	bz, err := json.Marshal(f)
 	require.NoError(t, err)
 	require.NotEmpty(t, bz)
+	t.Logf("%s", bz)
 
-	s := `{"addresses":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"dmFsdWUx"}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromEpoch":"earliest","toEpoch":"latest","tipsetCid":{"/":"bafkqacqbst64f6rp7taeduy"}}`
+	s := `{"addresses":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"dmFsdWUx"}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromHeight":0,"toHeight":100,"tipsetKey":[{"/":"bafkqacqbst64f6rp7taeduy"}]}`
 	var out ActorEventFilter
 	err = json.Unmarshal([]byte(s), &out)
 	require.NoError(t, err)
