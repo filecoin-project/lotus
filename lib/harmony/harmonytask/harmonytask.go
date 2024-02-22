@@ -54,13 +54,15 @@ type TaskInterface interface {
 	// ONLY be called by harmonytask.
 	// Indicate if the task no-longer needs scheduling with done=true including
 	// cases where it's past the deadline.
-	Do(taskID TaskID, stillOwned func() bool) (done bool, err error)
+	Do(taskID TaskID, acceptData AcceptData, stillOwned func() bool) (done bool, err error)
 
 	// CanAccept should return if the task can run on this machine. It should
 	// return null if the task type is not allowed on this machine.
 	// It should select the task it most wants to accomplish.
 	// It is also responsible for determining & reserving disk space (including scratch).
-	CanAccept([]TaskID, *TaskEngine) (*TaskID, error)
+	// AcceptData is an optional parameter which can be used to pass data to the Do function.
+	// If the task is not claimed on this node, harmonytask will call NotClaimed on the AcceptData.
+	CanAccept([]TaskID, *TaskEngine) (*TaskID, AcceptData, error)
 
 	// TypeDetails() returns static details about how this task behaves and
 	// how this machine will run it. Read once at the beginning.

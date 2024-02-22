@@ -111,7 +111,7 @@ func NewWdPostTask(db *harmonydb.DB,
 	return t, nil
 }
 
-func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *WdPostTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	log.Debugw("WdPostTask.Do()", "taskID", taskID)
 
 	var spID, pps, dlIdx, partIdx uint64
@@ -245,12 +245,12 @@ func entToStr[T any](t T, i int) string {
 	return fmt.Sprint(t)
 }
 
-func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	// GetEpoch
 	ts, err := t.api.ChainHead(context.Background())
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// GetData for tasks
@@ -275,7 +275,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 	from wdpost_partition_tasks 
 	where task_id IN (SELECT unnest(string_to_array($1, ','))::bigint)`, strings.Join(lo.Map(ids, entToStr[harmonytask.TaskID]), ","))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Accept those past deadline, then delete them in Do().
@@ -284,7 +284,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 
 		if tasks[i].dlInfo.PeriodElapsed() {
 			// note: Those may be test tasks
-			return &tasks[i].TaskID, nil
+			return &tasks[i].TaskID, nil, nil
 		}
 	}
 
@@ -317,7 +317,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 	})*/
 	if len(tasks) == 0 {
 		log.Infof("RAM too small for any WDPost task")
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// Ignore those with too many failures unless they are the only ones left.
@@ -337,7 +337,7 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		return tasks[i].dlInfo.Open < tasks[j].dlInfo.Open
 	})
 
-	return &tasks[0].TaskID, nil
+	return &tasks[0].TaskID, nil, nil
 }
 
 var res = storiface.ResourceTable[sealtasks.TTGenerateWindowPoSt]

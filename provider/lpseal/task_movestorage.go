@@ -31,7 +31,7 @@ func NewMoveStorageTask(sp *SealPoller, sc *lpffi.SealCalls, db *harmonydb.DB, m
 	}
 }
 
-func (m *MoveStorageTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (m *MoveStorageTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	var tasks []struct {
 		SpID         int64 `db:"sp_id"`
 		SectorNumber int64 `db:"sector_number"`
@@ -71,7 +71,7 @@ func (m *MoveStorageTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) 
 	return true, nil
 }
 
-func (m *MoveStorageTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (m *MoveStorageTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 
 	ctx := context.Background()
 	/*
@@ -117,7 +117,7 @@ func (m *MoveStorageTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytas
 	////
 	ls, err := m.sc.LocalStorage(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("getting local storage: %w", err)
+		return nil, nil, xerrors.Errorf("getting local storage: %w", err)
 	}
 	var haveStorage bool
 	for _, l := range ls {
@@ -128,11 +128,11 @@ func (m *MoveStorageTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytas
 	}
 
 	if !haveStorage {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	id := ids[0]
-	return &id, nil
+	return &id, nil, nil
 }
 
 func (m *MoveStorageTask) TypeDetails() harmonytask.TaskTypeDetails {

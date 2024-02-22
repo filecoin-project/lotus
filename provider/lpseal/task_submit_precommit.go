@@ -52,7 +52,7 @@ func NewSubmitPrecommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitPrecommi
 	}
 }
 
-func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
 	var sectorParamsArr []struct {
@@ -189,9 +189,9 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 	return true, nil
 }
 
-func (s *SubmitPrecommitTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (s *SubmitPrecommitTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	id := ids[0]
-	return &id, nil
+	return &id, nil, nil
 }
 
 func (s *SubmitPrecommitTask) TypeDetails() harmonytask.TaskTypeDetails {

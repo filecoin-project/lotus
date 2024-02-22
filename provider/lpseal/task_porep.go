@@ -43,7 +43,7 @@ func NewPoRepTask(db *harmonydb.DB, api PoRepAPI, sp *SealPoller, sc *lpffi.Seal
 	}
 }
 
-func (p *PoRepTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (p *PoRepTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
 	var sectorParamsArr []struct {
@@ -129,11 +129,11 @@ func (p *PoRepTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	return true, nil
 }
 
-func (p *PoRepTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (p *PoRepTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	// todo sort by priority
 
 	id := ids[0]
-	return &id, nil
+	return &id, nil, nil
 }
 
 func (p *PoRepTask) TypeDetails() harmonytask.TaskTypeDetails {

@@ -85,11 +85,21 @@ top:
 	}
 
 	// 3. What does the impl say?
-	tID, err := h.CanAccept(ids, h.TaskEngine)
+	tID, acceptData, err := h.CanAccept(ids, h.TaskEngine)
 	if err != nil {
 		log.Error(err)
 		return false
 	}
+
+	notClaimedAcceptData := acceptData
+	defer func() {
+		if notClaimedAcceptData != nil {
+			if err := notClaimedAcceptData.NotClaimed(); err != nil {
+				log.Errorw("NotClaimed() error", "error", err, "type", h.Name, "id", ids[0])
+			}
+		}
+	}()
+
 	if tID == nil {
 		log.Infow("did not accept task", "task_id", ids[0], "reason", "CanAccept() refused", "name", h.Name)
 		return false
@@ -144,7 +154,11 @@ top:
 			}
 		}()
 
-		done, doErr = h.Do(*tID, func() bool {
+		// set notClaimedAcceptData to nil so it doesn't get called in the defer
+		notClaimedAcceptData = nil
+
+		// Do the work
+		done, doErr = h.Do(*tID, acceptData, func() bool {
 			var owner int
 			// Background here because we don't want GracefulRestart to block this save.
 			err := h.TaskEngine.db.QueryRow(context.Background(),

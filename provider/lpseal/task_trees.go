@@ -39,7 +39,7 @@ func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *lpffi.SealCalls, maxTree
 	}
 }
 
-func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *TreesTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
 	var sectorParamsArr []struct {
@@ -170,11 +170,11 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	return true, nil
 }
 
-func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	// todo reserve storage
 
 	id := ids[0]
-	return &id, nil
+	return &id, nil, nil
 }
 
 func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {

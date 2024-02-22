@@ -50,7 +50,7 @@ func NewSDRTask(api SDRAPI, db *harmonydb.DB, sp *SealPoller, sc *lpffi.SealCall
 	}
 }
 
-func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (s *SDRTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
 	var sectorParamsArr []struct {
@@ -186,12 +186,12 @@ func (s *SDRTask) getTicket(ctx context.Context, maddr address.Address) (abi.Sea
 	return abi.SealRandomness(rand), ticketEpoch, nil
 }
 
-func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	// todo check storage (reserve too?)
 	//_ =s.sc.ReserveSDRStorage()
 
 	id := ids[0]
-	return &id, nil
+	return &id, nil, nil
 }
 
 func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {

@@ -46,8 +46,8 @@ func (t *task1) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, e
 	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[tID]))
 	return true, nil
 }
-func (t *task1) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	return &list[0], nil
+func (t *task1) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
+	return &list[0], nil, nil
 }
 func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
@@ -107,7 +107,7 @@ type passthru struct {
 func (t *passthru) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	return t.do(tID, stillOwned)
 }
-func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	return t.canAccept(list, e)
 }
 func (t *passthru) TypeDetails() harmonytask.TaskTypeDetails {

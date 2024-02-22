@@ -59,7 +59,7 @@ type SendTask struct {
 	db *harmonydb.DB
 }
 
-func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (s *SendTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	ctx := context.TODO()
 
 	// get message from db
@@ -219,18 +219,18 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 	return true, nil
 }
 
-func (s *SendTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (s *SendTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	if len(ids) == 0 {
 		// probably can't happen, but panicking is bad
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	if s.signer == nil {
 		// can't sign messages here
-		return nil, nil
+		return nil, nil, nil
 	}
 
-	return &ids[0], nil
+	return &ids[0], nil, nil
 }
 
 func (s *SendTask) TypeDetails() harmonytask.TaskTypeDetails {

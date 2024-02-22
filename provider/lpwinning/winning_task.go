@@ -86,7 +86,7 @@ func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifie
 	return t
 }
 
-func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *WinPostTask) Do(taskID harmonytask.TaskID, data harmonytask.AcceptData, stillOwned func() bool) (done bool, err error) {
 	log.Debugw("WinPostTask.Do()", "taskID", taskID)
 
 	ctx := context.TODO()
@@ -421,10 +421,10 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	return true, nil
 }
 
-func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, harmonytask.AcceptData, error) {
 	if len(ids) == 0 {
 		// probably can't happen, but panicking is bad
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// select lowest epoch
@@ -434,7 +434,7 @@ func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.Ta
 		var epoch uint64
 		err := t.db.QueryRow(context.Background(), `SELECT epoch FROM mining_tasks WHERE task_id = $1`, id).Scan(&epoch)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if lowestEpoch == 0 || abi.ChainEpoch(epoch) < lowestEpoch {
@@ -443,7 +443,7 @@ func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.Ta
 		}
 	}
 
-	return &lowestEpochID, nil
+	return &lowestEpochID, nil, nil
 }
 
 func (t *WinPostTask) TypeDetails() harmonytask.TaskTypeDetails {
