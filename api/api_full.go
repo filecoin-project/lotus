@@ -919,7 +919,7 @@ type FullNode interface {
 	// This API also allows clients to read all historical events matching the given filter before
 	// any real-time events are written to the response stream.
 	// NOTE: THIS API IS ONLY SUPPORTED OVER WEBSOCKETS FOR NOW
-	SubscribeActorEvents(ctx context.Context, filter *types.SubActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
+	SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
 }
 
 // reverse interface to the client, called after EthSubscribe

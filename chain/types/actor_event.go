@@ -18,16 +18,6 @@ type ActorEventBlock struct {
 	Value []byte `json:"value"`
 }
 
-type SubActorEventFilter struct {
-	Filter ActorEventFilter `json:"filter"`
-
-	// If true, all available matching historical events will be written to the response stream
-	// before any new real-time events that match the given filter are written.
-	// If `Prefill` is true and `FromEpoch` is set to latest, the pre-fill operation will become a no-op.
-	// if `Prefill` is false and `FromEpoch` is set to earliest, historical events will still be sent to the client.
-	Prefill bool `json:"prefill"`
-}
-
 type ActorEventFilter struct {
 	// Matches events from one of these actors, or any actor if empty.
 	// For now, this MUST be a Filecoin address.
@@ -37,17 +27,17 @@ type ActorEventFilter struct {
 	// If the value is an empty slice, the filter will match on the key only, accepting any value.
 	Fields map[string][]ActorEventBlock `json:"fields,omitempty"`
 
-	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
-	// Optional, default: "latest".
-	FromEpoch string `json:"fromEpoch,omitempty"`
+	// The height of the earliest tipset to include in the query. If empty, the query starts at the
+	// last finalized tipset.
+	FromHeight *abi.ChainEpoch `json:"fromHeight,omitempty"`
 
-	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
-	// Optional, default: "latest".
-	ToEpoch string `json:"toEpoch,omitempty"`
+	// The height of the latest tipset to include in the query. If empty, the query ends at the
+	// latest tipset.
+	ToHeight *abi.ChainEpoch `json:"toHeight,omitempty"`
 
 	// Restricts events returned to those emitted from messages contained in this tipset.
-	// If `TipSetCid` is present in the filter criteria, then neither `FromEpoch` nor `ToEpoch` are allowed.
-	TipSetCid *cid.Cid `json:"tipsetCid,omitempty"`
+	// If `TipSetKey` is legt empty in the filter criteria, then neither `FromHeight` nor `ToHeight` are allowed.
+	TipSetKey *TipSetKey `json:"tipsetKey,omitempty"`
 }
 
 type ActorEvent struct {
@@ -55,7 +45,7 @@ type ActorEvent struct {
 	Entries []EventEntry `json:"entries"`
 
 	// Filecoin address of the actor that emitted this event.
-	EmitterAddr address.Address `json:"emitter"`
+	Emitter address.Address `json:"emitter"`
 
 	// Reverted is set to true if the message that produced this event was reverted because of a network re-org
 	// in that case, the event should be considered as reverted as well.
@@ -64,8 +54,8 @@ type ActorEvent struct {
 	// Height of the tipset that contained the message that produced this event.
 	Height abi.ChainEpoch `json:"height"`
 
-	// CID of the tipset that contained the message that produced this event.
-	TipSetCid cid.Cid `json:"tipsetCid"`
+	// The tipset that contained the message that produced this event.
+	TipSetKey TipSetKey `json:"tipsetKey"`
 
 	// CID of message that produced this event.
 	MsgCid cid.Cid `json:"msgCid"`

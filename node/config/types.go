@@ -28,6 +28,7 @@ type FullNode struct {
 	Chainstore    Chainstore
 	Cluster       UserRaftConfig
 	Fevm          FevmConfig
+	ActorEvents   ActorEventsConfig
 	Index         IndexConfig
 	FaultReporter FaultReporterConfig
 }
@@ -786,10 +787,6 @@ type FevmConfig struct {
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
 	EnableEthRPC bool
 
-	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events emitted by (smart contracts + built-in Actors).
-	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
-	EnableActorEventsAPI bool
-
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
@@ -833,6 +830,14 @@ type Events struct {
 	// Set upper bound on index size
 }
 
+type ActorEventsConfig struct {
+	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+	// emitted by (smart contracts + built-in Actors).
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+	// disabled by setting their respective Disable* options in Fevm.Events.
+	EnableActorEventsAPI bool
+}
+
 type IndexConfig struct {
 	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
@@ -856,6 +861,7 @@ type HarmonyDB struct {
 	// The port to find Yugabyte. Blank for default.
 	Port string
 }
+
 type FaultReporterConfig struct {
 	// EnableConsensusFaultReporter controls whether the node will monitor and
 	// report consensus faults. When enabled, the node will watch for malicious
