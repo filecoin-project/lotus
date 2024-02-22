@@ -180,14 +180,12 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		}
 	}
 
-	retryWait := time.Millisecond * 100
-retryAttachStorage:
 	// Single transaction to attach storage which is not present in the DB
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 		var urls sql.NullString
 		var storageId sql.NullString
 		err = tx.QueryRow(
-			"Select storage_id, urls FROM storage_path WHERE storage_id = $1", string(si.ID)).Scan(&storageId, &urls)
+			"SELECT storage_id, urls FROM storage_path WHERE storage_id = $1", string(si.ID)).Scan(&storageId, &urls)
 		if err != nil && !strings.Contains(err.Error(), "no rows in result set") {
 			return false, xerrors.Errorf("storage attach select fails: %v", err)
 		}
@@ -202,7 +200,7 @@ retryAttachStorage:
 			currUrls = union(currUrls, si.URLs)
 
 			_, err = tx.Exec(
-				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9 WHERE storage_id=$10",
+				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9, last_heartbeat=NOW() WHERE storage_id=$10",
 				strings.Join(currUrls, ","),
 				si.Weight,
 				si.MaxStorage,
@@ -223,7 +221,7 @@ retryAttachStorage:
 		// Insert storage id
 		_, err = tx.Exec(
 			"INSERT INTO storage_path "+
-				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())",
 			si.ID,
 			strings.Join(si.URLs, ","),
 			si.Weight,
@@ -238,23 +236,14 @@ retryAttachStorage:
 			st.Available,
 			st.FSAvailable,
 			st.Reserved,
-			st.Used,
-			time.Now())
+			st.Used)
 		if err != nil {
 			return false, xerrors.Errorf("StorageAttach insert fails: %v", err)
 		}
 		return true, nil
-	})
-	if err != nil {
-		if harmonydb.IsErrSerialization(err) {
-			time.Sleep(retryWait)
-			retryWait *= 2
-			goto retryAttachStorage
-		}
-		return err
-	}
+	}, harmonydb.OptionRetry())
 
-	return nil
+	return err
 }
 
 func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url string) error {
@@ -290,8 +279,6 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 
 		log.Warnw("Dropping sector path endpoint", "path", id, "url", url)
 	} else {
-		retryWait := time.Millisecond * 100
-	retryDropPath:
 		// Single transaction to drop storage path and sector decls which have this as a storage path
 		_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			// Drop storage path completely
@@ -306,40 +293,42 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 				return false, err
 			}
 			return true, nil
-		})
+		}, harmonydb.OptionRetry())
 		if err != nil {
-			if harmonydb.IsErrSerialization(err) {
-				time.Sleep(retryWait)
-				retryWait *= 2
-				goto retryDropPath
-			}
 			return err
 		}
 		log.Warnw("Dropping sector storage", "path", id)
 	}
 
-	return nil
+	return err
 }
 
 func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
-
-	var canSeal, canStore bool
-	err := dbi.harmonyDB.QueryRow(ctx,
-		"SELECT can_seal, can_store FROM storage_path WHERE storage_id=$1", id).Scan(&canSeal, &canStore)
-	if err != nil {
-		return xerrors.Errorf("Querying for storage id %s fails with err %v", id, err)
-	}
-
-	_, err = dbi.harmonyDB.Exec(ctx,
-		"UPDATE storage_path set capacity=$1, available=$2, fs_available=$3, reserved=$4, used=$5, last_heartbeat=$6",
+	retryWait := time.Millisecond * 20
+retryReportHealth:
+	_, err := dbi.harmonyDB.Exec(ctx,
+		"UPDATE storage_path set capacity=$1, available=$2, fs_available=$3, reserved=$4, used=$5, last_heartbeat=NOW() where storage_id=$6",
 		report.Stat.Capacity,
 		report.Stat.Available,
 		report.Stat.FSAvailable,
 		report.Stat.Reserved,
 		report.Stat.Used,
-		time.Now())
+		id)
 	if err != nil {
-		return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
+		//return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
+		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
+			goto retryReportHealth
+		}
+		return err
+	}
+
+	var canSeal, canStore bool
+	err = dbi.harmonyDB.QueryRow(ctx,
+		"SELECT can_seal, can_store FROM storage_path WHERE storage_id=$1", id).Scan(&canSeal, &canStore)
+	if err != nil {
+		return xerrors.Errorf("Querying for storage id %s fails with err %v", id, err)
 	}
 
 	if report.Stat.Capacity > 0 {
@@ -386,8 +375,6 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 		return xerrors.Errorf("invalid filetype")
 	}
 
-	retryWait := time.Millisecond * 100
-retryStorageDeclareSector:
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 		var currPrimary sql.NullBool
 		err = tx.QueryRow(
@@ -420,17 +407,9 @@ retryStorageDeclareSector:
 		}
 
 		return true, nil
-	})
-	if err != nil {
-		if harmonydb.IsErrSerialization(err) {
-			time.Sleep(retryWait)
-			retryWait *= 2
-			goto retryStorageDeclareSector
-		}
-		return err
-	}
+	}, harmonydb.OptionRetry())
 
-	return nil
+	return err
 }
 
 func (dbi *DBIndex) StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error {
@@ -574,9 +553,9 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 				FROM storage_path 
 				WHERE can_seal=true 
 				  and available >= $1 
-				  and NOW()-last_heartbeat < $2 
+				  and NOW()-($2 * INTERVAL '1 second') < last_heartbeat
 				  and heartbeat_err is null`,
-			spaceReq, SkippedHeartbeatThresh)
+			spaceReq, SkippedHeartbeatThresh.Seconds())
 		if err != nil {
 			return nil, xerrors.Errorf("Selecting allowfetch storage paths from DB fails err: %v", err)
 		}
@@ -713,12 +692,12 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 								deny_types 
 						 FROM storage_path 
 						 WHERE available >= $1
-						 and NOW()-last_heartbeat < $2 
+						 and NOW()-($2 * INTERVAL '1 second') < last_heartbeat
 						 and heartbeat_err is null
-						 and ($3 and can_seal = TRUE or $4 and can_store = TRUE)
+						 and (($3 and can_seal = TRUE) or ($4 and can_store = TRUE))
 						order by (available::numeric * weight) desc`,
 		spaceReq,
-		SkippedHeartbeatThresh,
+		SkippedHeartbeatThresh.Seconds(),
 		pathType == storiface.PathSealing,
 		pathType == storiface.PathStorage,
 	)
@@ -841,7 +820,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		return true, nil
-	})
+	}, harmonydb.OptionRetry())
 	if err != nil {
 		return false, err
 	}

@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/go-sysinfo"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/pbnjay/memory"
 	"golang.org/x/sys/unix"
 	"golang.org/x/xerrors"
 
@@ -82,7 +82,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 			if reg.shutdown.Load() {
 				return
 			}
-			_, err := db.Exec(ctx, `UPDATE harmony_machines SET last_contact=CURRENT_TIMESTAMP`)
+			_, err := db.Exec(ctx, `UPDATE harmony_machines SET last_contact=CURRENT_TIMESTAMP where id=$1`, reg.MachineID)
 			if err != nil {
 				logger.Error("Cannot keepalive ", err)
 			}
@@ -122,9 +122,19 @@ func getResources() (res Resources, err error) {
 		}
 	}
 
+	h, err := sysinfo.Host()
+	if err != nil {
+		return Resources{}, err
+	}
+
+	mem, err := h.Memory()
+	if err != nil {
+		return Resources{}, err
+	}
+
 	res = Resources{
 		Cpu: runtime.NumCPU(),
-		Ram: memory.FreeMemory(),
+		Ram: mem.Available,
 		Gpu: getGPUDevices(),
 	}
 

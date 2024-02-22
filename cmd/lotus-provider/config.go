@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 
+	"github.com/BurntSushi/toml"
+	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -27,7 +30,9 @@ var configCmd = &cli.Command{
 		configListCmd,
 		configViewCmd,
 		configRmCmd,
+		configEditCmd,
 		configMigrateCmd,
+		configNewCmd,
 	},
 }
 
@@ -237,4 +242,210 @@ var configViewCmd = &cli.Command{
 		fmt.Println(string(cb))
 		return nil
 	},
+}
+
+var configEditCmd = &cli.Command{
+	Name:      "edit",
+	Usage:     "edit a config layer",
+	ArgsUsage: "[layer name]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "editor",
+			Usage:   "editor to use",
+			Value:   "vim",
+			EnvVars: []string{"EDITOR"},
+		},
+		&cli.StringFlag{
+			Name:        "source",
+			Usage:       "source config layer",
+			DefaultText: "<edited layer>",
+		},
+		&cli.BoolFlag{
+			Name:  "allow-owerwrite",
+			Usage: "allow overwrite of existing layer if source is a different layer",
+		},
+		&cli.BoolFlag{
+			Name:  "no-source-diff",
+			Usage: "save the whole config into the layer, not just the diff",
+		},
+		&cli.BoolFlag{
+			Name:        "no-interpret-source",
+			Usage:       "do not interpret source layer",
+			DefaultText: "true if --source is set",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		layer := cctx.Args().First()
+		if layer == "" {
+			return errors.New("layer name is required")
+		}
+
+		source := layer
+		if cctx.IsSet("source") {
+			source = cctx.String("source")
+
+			if source == layer && !cctx.Bool("allow-owerwrite") {
+				return errors.New("source and target layers are the same")
+			}
+		}
+
+		db, err := deps.MakeDB(cctx)
+		if err != nil {
+			return err
+		}
+
+		sourceConfig, err := getConfig(db, source)
+		if err != nil {
+			return xerrors.Errorf("getting source config: %w", err)
+		}
+
+		if cctx.IsSet("source") && source != layer && !cctx.Bool("no-interpret-source") {
+			lp := config.DefaultLotusProvider()
+			if _, err := toml.Decode(sourceConfig, lp); err != nil {
+				return xerrors.Errorf("parsing source config: %w", err)
+			}
+
+			cb, err := config.ConfigUpdate(lp, config.DefaultLotusProvider(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+			if err != nil {
+				return xerrors.Errorf("interpreting source config: %w", err)
+			}
+			sourceConfig = string(cb)
+		}
+
+		editor := cctx.String("editor")
+		newConfig, err := edit(editor, sourceConfig)
+		if err != nil {
+			return xerrors.Errorf("editing config: %w", err)
+		}
+
+		toWrite := newConfig
+
+		if cctx.IsSet("source") && !cctx.Bool("no-source-diff") {
+			updated, err := diff(sourceConfig, newConfig)
+			if err != nil {
+				return xerrors.Errorf("computing diff: %w", err)
+			}
+
+			{
+				fmt.Printf("%s will write changes as the layer because %s is not set\n", color.YellowString(">"), color.GreenString("--no-source-diff"))
+				fmt.Println(updated)
+				fmt.Printf("%s Confirm [y]: ", color.YellowString(">"))
+
+				for {
+					var confirmBuf [16]byte
+					n, err := os.Stdin.Read(confirmBuf[:])
+					if err != nil {
+						return xerrors.Errorf("reading confirmation: %w", err)
+					}
+					confirm := strings.TrimSpace(string(confirmBuf[:n]))
+
+					if confirm == "" {
+						confirm = "y"
+					}
+
+					if confirm[:1] == "y" {
+						break
+					}
+					if confirm[:1] == "n" {
+						return nil
+					}
+
+					fmt.Printf("%s Confirm [y]:\n", color.YellowString(">"))
+				}
+			}
+
+			toWrite = updated
+		}
+
+		fmt.Printf("%s Writing config for layer %s\n", color.YellowString(">"), color.GreenString(layer))
+
+		return setConfig(db, layer, toWrite)
+	},
+}
+
+func diff(sourceConf, newConf string) (string, error) {
+	lpSrc := config.DefaultLotusProvider()
+	lpNew := config.DefaultLotusProvider()
+
+	_, err := toml.Decode(sourceConf, lpSrc)
+	if err != nil {
+		return "", xerrors.Errorf("decoding source config: %w", err)
+	}
+
+	_, err = toml.Decode(newConf, lpNew)
+	if err != nil {
+		return "", xerrors.Errorf("decoding new config: %w", err)
+	}
+
+	cb, err := config.ConfigUpdate(lpNew, lpSrc, config.Commented(true), config.NoEnv())
+	if err != nil {
+		return "", xerrors.Errorf("interpreting source config: %w", err)
+	}
+
+	lines := strings.Split(string(cb), "\n")
+	var outLines []string
+	var categoryBuf string
+
+	for _, line := range lines {
+		// drop empty lines
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		// drop lines starting with '#'
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		// if starting with [, it's a category
+		if strings.HasPrefix(strings.TrimSpace(line), "[") {
+			categoryBuf = line
+			continue
+		}
+
+		if categoryBuf != "" {
+			outLines = append(outLines, categoryBuf)
+			categoryBuf = ""
+		}
+
+		outLines = append(outLines, line)
+	}
+
+	return strings.Join(outLines, "\n"), nil
+}
+
+func edit(editor, cfg string) (string, error) {
+	file, err := os.CreateTemp("", "lotus-provider-config-*.toml")
+	if err != nil {
+		return "", err
+	}
+
+	_, err = file.WriteString(cfg)
+	if err != nil {
+		return "", err
+	}
+
+	filePath := file.Name()
+
+	if err := file.Close(); err != nil {
+		return "", err
+	}
+
+	defer func() {
+		_ = os.Remove(filePath)
+	}()
+
+	cmd := exec.Command(editor, filePath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), err
 }

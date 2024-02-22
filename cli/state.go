@@ -1388,15 +1388,19 @@ func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 
 	p, err := stmgr.GetParamType(ar, code, method) // todo use api for correct actor registry
 	if err != nil {
-		return "", err
+		return fmt.Sprintf("raw:%x; DECODE ERR: %s", params, err.Error()), nil
 	}
 
 	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
-		return "", err
+		return fmt.Sprintf("raw:%x; DECODE cbor ERR: %s", params, err.Error()), nil
 	}
 
 	b, err := json.MarshalIndent(p, "", "  ")
-	return string(b), err
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
 
 func JsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
@@ -1407,7 +1411,7 @@ func JsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) 
 	re := reflect.New(methodMeta.Ret.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-		return "", err
+		return fmt.Sprintf("raw:%x; DECODE ERR: %s", ret, err.Error()), nil
 	}
 
 	b, err := json.MarshalIndent(p, "", "  ")

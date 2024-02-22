@@ -5,6 +5,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -832,7 +834,21 @@ type LotusProviderStruct struct {
 }
 
 type LotusProviderMethods struct {
+	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
+
 	Shutdown func(p0 context.Context) error `perm:"admin"`
+
+	StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+	StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+	StorageInfo func(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) `perm:"admin"`
+
+	StorageList func(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) `perm:"admin"`
+
+	StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
+
+	StorageStat func(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) `perm:"admin"`
 
 	Version func(p0 context.Context) (Version, error) `perm:"admin"`
 }
@@ -5201,6 +5217,17 @@ func (s *GatewayStub) Web3ClientVersion(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
 }
 
+func (s *LotusProviderStruct) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+	if s.Internal.AllocatePieceToSector == nil {
+		return *new(SectorOffset), ErrNotSupported
+	}
+	return s.Internal.AllocatePieceToSector(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *LotusProviderStub) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+	return *new(SectorOffset), ErrNotSupported
+}
+
 func (s *LotusProviderStruct) Shutdown(p0 context.Context) error {
 	if s.Internal.Shutdown == nil {
 		return ErrNotSupported
@@ -5210,6 +5237,72 @@ func (s *LotusProviderStruct) Shutdown(p0 context.Context) error {
 
 func (s *LotusProviderStub) Shutdown(p0 context.Context) error {
 	return ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageAddLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageAddLocal(p0, p1)
+}
+
+func (s *LotusProviderStub) StorageAddLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageDetachLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachLocal(p0, p1)
+}
+
+func (s *LotusProviderStub) StorageDetachLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
+	if s.Internal.StorageInfo == nil {
+		return *new(storiface.StorageInfo), ErrNotSupported
+	}
+	return s.Internal.StorageInfo(p0, p1)
+}
+
+func (s *LotusProviderStub) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
+	return *new(storiface.StorageInfo), ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
+	if s.Internal.StorageList == nil {
+		return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
+	}
+	return s.Internal.StorageList(p0)
+}
+
+func (s *LotusProviderStub) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
+	return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	if s.Internal.StorageLocal == nil {
+		return *new(map[storiface.ID]string), ErrNotSupported
+	}
+	return s.Internal.StorageLocal(p0)
+}
+
+func (s *LotusProviderStub) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	return *new(map[storiface.ID]string), ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
+	if s.Internal.StorageStat == nil {
+		return *new(fsutil.FsStat), ErrNotSupported
+	}
+	return s.Internal.StorageStat(p0, p1)
+}
+
+func (s *LotusProviderStub) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
+	return *new(fsutil.FsStat), ErrNotSupported
 }
 
 func (s *LotusProviderStruct) Version(p0 context.Context) (Version, error) {

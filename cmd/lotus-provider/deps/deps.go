@@ -101,6 +101,7 @@ type Deps struct {
 	Stor       *paths.Remote
 	Si         *paths.DBIndex
 	LocalStore *paths.Local
+	LocalPaths *paths.BasicLocalStorage
 	ListenAddr string
 }
 
@@ -141,7 +142,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		// The config feeds into task runners & their helpers
 		deps.Cfg, err = GetConfig(cctx, deps.DB)
 		if err != nil {
-			return err
+			return xerrors.Errorf("populate config: %w", err)
 		}
 	}
 
@@ -193,7 +194,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}()
 	}
 
-	bls := &paths.BasicLocalStorage{
+	deps.LocalPaths = &paths.BasicLocalStorage{
 		PathToJSON: cctx.String("storage-json"),
 	}
 
@@ -212,7 +213,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}
 	}
 	if deps.LocalStore == nil {
-		deps.LocalStore, err = paths.NewLocal(ctx, bls, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
+		deps.LocalStore, err = paths.NewLocal(ctx, deps.LocalPaths, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -234,7 +235,12 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
 		//  maybe with a lotus-provider specific abstraction. LocalWorker does persistent call tracking which we probably
 		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
-		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
+		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{
+			MaxParallelChallengeReads: deps.Cfg.Proving.ParallelCheckLimit,
+		}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
+	}
+	if deps.Maddrs == nil {
+		deps.Maddrs = map[dtypes.MinerAddress]bool{}
 	}
 	if len(deps.Maddrs) == 0 {
 		for _, s := range deps.Cfg.Addresses {
@@ -247,15 +253,19 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 			}
 		}
 	}
-	fmt.Println("last line of populate")
 	return nil
 }
 
-var oldAddresses = regexp.MustCompile("(?i)^[addresses]$")
+var oldAddresses = regexp.MustCompile("(?i)^\\[addresses\\]$")
 
 func LoadConfigWithUpgrades(text string, lp *config.LotusProviderConfig) (toml.MetaData, error) {
 	// allow migration from old config format that was limited to 1 wallet setup.
 	newText := oldAddresses.ReplaceAllString(text, "[[addresses]]")
+
+	if text != newText {
+		log.Warnw("Upgraded config!", "old", text, "new", newText)
+	}
+
 	meta, err := toml.Decode(newText, &lp)
 	return meta, err
 }
@@ -291,4 +301,33 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 	// 3rd-parties can dynamically include config requirements and we can
 	// validate the config. Because of layering, we must validate @ startup.
 	return lp, nil
+}
+
+func GetDepsCLI(ctx context.Context, cctx *cli.Context) (*Deps, error) {
+	db, err := MakeDB(cctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := GetConfig(cctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		select {
+		case <-ctx.Done():
+			fullCloser()
+		}
+	}()
+
+	return &Deps{
+		Cfg:  cfg,
+		DB:   db,
+		Full: full,
+	}, nil
 }
