@@ -41,6 +41,11 @@ type TaskTypeDetails struct {
 	Follows map[string]func(TaskID, AddTaskFunc) (bool, error)
 }
 
+type AcceptData interface {
+	// NotClaimed is called by harmonytask when the task is not claimed by this node
+	NotClaimed() error
+}
+
 // TaskInterface must be implemented in order to have a task used by harmonytask.
 type TaskInterface interface {
 	// Do the task assigned. Call stillOwned before making single-writer-only

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/must"
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/KarpelesLab/reflink"
 	"github.com/ipfs/go-cid"
@@ -56,15 +58,44 @@ type storageProvider struct {
 	sindex     paths.SectorIndex
 }
 
-func (l *storageProvider) AcquireSector(ctx context.Context, sector storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
+type ReleaseStorageFunc func() // free storage reservation
+
+type StorageReservation struct {
+	Release ReleaseStorageFunc
+	Paths   storiface.SectorPaths
+	PathIDs storiface.SectorPaths
+}
+
+type AcquireSettings struct {
+	release ReleaseStorageFunc
+}
+
+type AcquireOption func(*AcquireSettings)
+
+func WithReservation(release ReleaseStorageFunc) AcquireOption {
+	return func(settings *AcquireSettings) {
+		settings.release = release
+	}
+}
+
+func (l *storageProvider) AcquireSector(ctx context.Context, sector storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType, opts ...AcquireOption) (storiface.SectorPaths, func(), error) {
+	settings := &AcquireSettings{}
+	for _, opt := range opts {
+		opt(settings)
+	}
+
 	paths, storageIDs, err := l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
 	if err != nil {
 		return storiface.SectorPaths{}, nil, err
 	}
 
-	releaseStorage, err := l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal)
-	if err != nil {
-		return storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
+	var releaseStorage func() = settings.release
+
+	if releaseStorage == nil {
+		releaseStorage, err = l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal)
+		if err != nil {
+			return storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
+		}
 	}
 
 	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
@@ -82,6 +113,81 @@ func (l *storageProvider) AcquireSector(ctx context.Context, sector storiface.Se
 				log.Errorf("declare sector error: %+v", err)
 			}
 		}
+	}, nil
+}
+
+func (sb *SealCalls) ReserveSDRStorage(ctx context.Context, sector storiface.SectorRef) (*StorageReservation, error) {
+	// storage writelock sector
+	lkctx, cancel := context.WithCancel(ctx)
+
+	lockAcquireTimuout := time.Second * 10
+	lockAcquireTimer := time.NewTimer(lockAcquireTimuout)
+
+	go func() {
+		defer cancel()
+
+		select {
+		case <-lockAcquireTimer.C:
+		case <-ctx.Done():
+		}
+	}()
+
+	if err := sb.sectors.sindex.StorageLock(lkctx, sector.ID, storiface.FTNone, storiface.FTCache); err != nil {
+		// timer will expire
+		return nil, err
+	}
+
+	if !lockAcquireTimer.Stop() {
+		// timer expired, so lkctx is done, and that means the lock was acquired and dropped..
+		return nil, xerrors.Errorf("failed to acquire lock")
+	}
+	defer func() {
+		// make sure we release the sector lock
+		lockAcquireTimer.Reset(0)
+	}()
+
+	// find anywhere
+	//  if found return nil, for now
+	s, err := sb.sectors.sindex.StorageFindSector(ctx, sector.ID, storiface.FTCache, must.One(sector.ProofType.SectorSize()), false)
+	if err != nil {
+		return nil, err
+	}
+
+	lp, err := sb.sectors.localStore.Local(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// see if there are any non-local sector files in storage
+	for _, info := range s {
+		for _, l := range lp {
+			if l.ID == info.ID {
+				continue
+			}
+
+			return nil, xerrors.Errorf("sector cache already exists and isn't in local storage, can't reserve")
+		}
+	}
+
+	// acquire a path to make a reservation in
+	pathsFs, pathIDs, err := sb.sectors.localStore.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing, storiface.AcquireMove)
+	if err != nil {
+		return nil, err
+	}
+
+	// reserve the space
+	release, err := sb.sectors.localStore.Reserve(ctx, sector, storiface.FTCache, pathIDs, storiface.FSOverheadSeal)
+	if err != nil {
+		return nil, err
+	}
+
+	// note: we drop the sector writelock on return; THAT IS INTENTIONAL, this code runs in CanAccept, which doesn't
+	// guarantee that the work for this sector will happen on this node; SDR CanAccept just ensures that the node can
+	// run the job, harmonytask is what ensures that only one SDR runs at a time
+	return &StorageReservation{
+		Release: release,
+		Paths:   pathsFs,
+		PathIDs: pathIDs,
 	}, nil
 }
 

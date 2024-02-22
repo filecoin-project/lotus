@@ -188,6 +188,7 @@ func (s *SDRTask) getTicket(ctx context.Context, maddr address.Address) (abi.Sea
 
 func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	// todo check storage (reserve too?)
+	//_ =s.sc.ReserveSDRStorage()
 
 	id := ids[0]
 	return &id, nil

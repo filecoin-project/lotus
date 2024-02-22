@@ -437,6 +437,10 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
 		}
 
+		if _, ok := p.reservations[sid.ID]; ok {
+			return nil, xerrors.Errorf("sector %v already reserved on %s", sid, id)
+		}
+
 		p.reserved += overhead
 		p.reservations[sid.ID] |= fileType
 
