@@ -482,10 +482,6 @@ type GatewayMethods struct {
 
 	StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) ``
 
-	StateGetAllAllocations func(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) ``
-
-	StateGetAllClaims func(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) ``
-
 	StateGetAllocation func(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) ``
 
 	StateGetAllocationForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) ``
@@ -2888,28 +2884,6 @@ func (s *GatewayStruct) StateGetActor(p0 context.Context, p1 address.Address, p2
 
 func (s *GatewayStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *GatewayStruct) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
-	if s.Internal.StateGetAllAllocations == nil {
-		return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
-	}
-	return s.Internal.StateGetAllAllocations(p0, p1)
-}
-
-func (s *GatewayStub) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
-	return *new(map[verifregtypes.AllocationId]verifregtypes.Allocation), ErrNotSupported
-}
-
-func (s *GatewayStruct) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
-	if s.Internal.StateGetAllClaims == nil {
-		return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
-	}
-	return s.Internal.StateGetAllClaims(p0, p1)
-}
-
-func (s *GatewayStub) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
-	return *new(map[verifregtypes.ClaimId]verifregtypes.Claim), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) {
