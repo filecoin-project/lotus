@@ -10,4 +10,4 @@
 // FUTURE Cost Savings: avoid re-translating stuff that's in messages.gotext.json already.
 package translations
 
-//go:generate gotext -srclang=en update -out=catalog.go -lang=en,zh,ko github.com/filecoin-project/lotus/cmd/curio/guidedSetup
+//go:generate gotext -srclang=en update -out=catalog.go -lang=en,zh,ko github.com/filecoin-project/lotus/cmd/curio/guidedsetup
