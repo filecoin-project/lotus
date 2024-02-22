@@ -113,6 +113,19 @@ func (s *state9) GetAllocations(clientIdAddr address.Address) (map[AllocationId]
 
 }
 
+func (s *state9) GetAllAllocations() (map[AllocationId]Allocation, error) {
+
+	v9Map, err := s.State.GetAllAllocations(s.store)
+
+	retMap := make(map[AllocationId]Allocation, len(v9Map))
+	for k, v := range v9Map {
+		retMap[AllocationId(k)] = Allocation(v)
+	}
+
+	return retMap, err
+
+}
+
 func (s *state9) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg9.ClaimId(claimId))
@@ -123,6 +136,19 @@ func (s *state9) GetClaim(providerIdAddr address.Address, claimId verifreg9.Clai
 func (s *state9) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
 
 	v9Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[ClaimId]Claim, len(v9Map))
+	for k, v := range v9Map {
+		retMap[ClaimId(k)] = Claim(v)
+	}
+
+	return retMap, err
+
+}
+
+func (s *state9) GetAllClaims() (map[ClaimId]Claim, error) {
+
+	v9Map, err := s.State.GetAllClaims(s.store)
 
 	retMap := make(map[ClaimId]Claim, len(v9Map))
 	for k, v := range v9Map {

@@ -47,8 +47,41 @@ Replace the `CodeCid` field in the message trace (added in 1.23.4) with an `Invo
     "Subcalls": [],
 }
 ```
-
 This means the trace now contains an accurate "snapshot" of the actor at the time of the call, information that may not be present in the final state-tree (e.g., due to reverts). This will hopefully improve the performance and accuracy of indexing services.
+
+### Lotus API
+2 new methods have benn added to the Lotus API called `GetAllAllocations` and `GetAllClaims` which lists all the available allocations and claims available in the actor state.
+
+### Lotus CLI
+The `filplus` commands used for listing allocations and claims have been updated. If no argument is provided to the either command, they will list out all the allocations and claims in the verified registry actor.
+The output list columns have been modified to `AllocationID` and `ClaimID` instead of ID. 
+
+```shell
+lotus filplus list-allocations --help
+NAME:
+   lotus filplus list-allocations - List allocations available in verified registry actor or made by a client if specified
+
+USAGE:
+   lotus filplus list-allocations [command options] clientAddress
+
+OPTIONS:
+   --expired   list only expired allocations (default: false)
+   --json      output results in json format (default: false)
+   --help, -h  show help
+
+
+lotus filplus list-claims --help     
+NAME:
+   lotus filplus list-claims - List claims available in verified registry actor or made by provider if specified
+
+USAGE:
+   lotus filplus list-claims [command options] providerAddress
+
+OPTIONS:
+   --expired   list only expired claims (default: false)
+   --help, -h  show help
+```
+
 
 # v1.25.2 / 2024-01-11 
 
