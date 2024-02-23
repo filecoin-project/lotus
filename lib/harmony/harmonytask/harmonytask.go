@@ -49,7 +49,7 @@ type TaskInterface interface {
 	// ONLY be called by harmonytask.
 	// Indicate if the task no-longer needs scheduling with done=true including
 	// cases where it's past the deadline.
-	Do(taskID TaskID, te *TaskEngine, stillOwned func() bool) (done bool, err error)
+	Do(taskID TaskID, stillOwned func() bool) (done bool, err error)
 
 	// CanAccept should return if the task can run on this machine. It should
 	// return null if the task type is not allowed on this machine.

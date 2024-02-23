@@ -37,7 +37,7 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 	f(miner)
 }
 
-func (t *task1) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, stillOwned func() bool) (done bool, err error) {
+func (t *task1) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	if !stillOwned() {
 		return false, errors.New("Why not still owned?")
 	}
@@ -104,8 +104,8 @@ type passthru struct {
 	adder     func(add harmonytask.AddTaskFunc)
 }
 
-func (t *passthru) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, stillOwned func() bool) (done bool, err error) {
-	return t.do(tID, stillOwned)
+func (t *passthru) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+	return t.do(taskID, stillOwned)
 }
 func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	return t.canAccept(list, e)

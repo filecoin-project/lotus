@@ -86,7 +86,7 @@ func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifie
 	return t
 }
 
-func (t *WinPostTask) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, stillOwned func() bool) (done bool, err error) {
+func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	log.Debugw("WinPostTask.Do()", "taskID", taskID)
 
 	ctx := context.TODO()

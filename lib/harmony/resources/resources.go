@@ -29,15 +29,15 @@ type Resources struct {
 
 // Optional Storage management.
 // See storagemgr/storagemgt.go for more details.
-type Storage struct {
-	HasCapacity func() bool
+type Storage interface {
+	HasCapacity() bool
 
 	// This allows some other system to claim space for this task.
-	Claim func(taskID int) (location string, err error)
+	Claim(taskID int) error
 
 	// This allows some other system to consider the task done.
 	// It's up to the caller to remove the data, if that applies.
-	MarkComplete func(location string) error
+	MarkComplete() error
 }
 type Reg struct {
 	Resources

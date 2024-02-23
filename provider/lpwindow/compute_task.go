@@ -111,7 +111,7 @@ func NewWdPostTask(db *harmonydb.DB,
 	return t, nil
 }
 
-func (t *WdPostTask) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, stillOwned func() bool) (done bool, err error) {
+func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	log.Debugw("WdPostTask.Do()", "taskID", taskID)
 
 	var spID, pps, dlIdx, partIdx uint64

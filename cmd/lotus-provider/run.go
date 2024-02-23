@@ -119,10 +119,6 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		// Get rid of all the partial-writes of any potential previous runs.
-		dependencies.StorageMgr.Cleanup()
-
-
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
 
 		if err != nil {

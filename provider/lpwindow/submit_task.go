@@ -71,7 +71,7 @@ func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sen
 	return res, nil
 }
 
-func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, stillOwned func() bool) (done bool, err error) {
+func (w *WdPostSubmitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	log.Debugw("WdPostSubmitTask.Do", "taskID", taskID)
 
 	var spID uint64

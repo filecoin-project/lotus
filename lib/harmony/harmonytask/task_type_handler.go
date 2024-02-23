@@ -100,17 +100,19 @@ top:
 	var location string
 	releaseStorage := func() {
 	}
-	if c := h.TaskTypeDetails.Cost.Storage.Claim; c != nil {
-		if location, err = c(int(*tID)); err != nil {
-			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
-			return false
-		}
-		h.LocationMap.Store(*tID, location)
-		releaseStorage = func() {
-			if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(location); err != nil {
-				log.Errorw("Could not release storage", "error", err)
+	if h.TaskTypeDetails.Cost.Storage != nil {
+		if c := h.TaskTypeDetails.Cost.Storage.Claim; c != nil {
+			if err = c(int(*tID)); err != nil {
+				log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+				return false
 			}
-			h.LocationMap.Delete(*tID)
+			h.LocationMap.Store(*tID, location)
+			releaseStorage = func() {
+				if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(); err != nil {
+					log.Errorw("Could not release storage", "error", err)
+				}
+				h.LocationMap.Delete(*tID)
+			}
 		}
 	}
 
@@ -270,8 +272,10 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
 	}
 
-	if has := h.TaskTypeDetails.Cost.Storage.HasCapacity; has != nil && !has() {
-		return errors.New("Did not accept " + h.Name + " task: out of available Storage")
+	if h.TaskTypeDetails.Cost.Storage != nil {
+		if has := h.TaskTypeDetails.Cost.Storage.HasCapacity; has != nil && !has() {
+			return errors.New("Did not accept " + h.Name + " task: out of available Storage")
+		}
 	}
 	return nil
 }

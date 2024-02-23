@@ -86,7 +86,7 @@ func NewWdPostRecoverDeclareTask(sender *lpmessage.Sender,
 	return t, nil
 }
 
-func (w *WdPostRecoverDeclareTask) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, stillOwned func() bool) (done bool, err error) {
+func (w *WdPostRecoverDeclareTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	log.Debugw("WdPostRecoverDeclareTask.Do()", "taskID", taskID)
 	ctx := context.Background()
 
