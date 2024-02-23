@@ -56,8 +56,11 @@ func New(paths []storiface.StoragePath) *StorageMgr {
 		if p.CanSeal {
 			t = UsageStaging
 		}
-		if strings.Contains(p.LocalPath, "cache") || strings.Contains(p.LocalPath, "tmp") {
+		if strings.Contains(p.LocalPath, "cache") {
 			t = UsageCache
+		}
+		if strings.Contains(p.LocalPath, "tmp") {
+			t = UsageTemporary
 		}
 		purposes[t] = append(purposes[t], path(p.LocalPath))
 	}
@@ -73,7 +76,7 @@ func (s *StorageMgr) Cleanup() {
 			for _, u := range getJSON(path) {
 				_ = os.RemoveAll(u.Location)
 			}
-			os.Remove(string(path) + "/claims.json")
+			_ = os.Remove(string(path) + "/claims.json")
 		}
 	}
 }
@@ -127,7 +130,8 @@ func (s *StorageMgr) hasCapacity(purpose Usage, need uint64) (path, bool) {
 		for _, c := range consumages {
 			free -= c.Need // presume the whole need is used
 
-			filepath.Walk(c.Location, func(path string, info os.FileInfo, err error) error {
+			// no point in believing the errors on hot storage
+			_ = filepath.Walk(c.Location, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -137,6 +141,7 @@ func (s *StorageMgr) hasCapacity(purpose Usage, need uint64) (path, bool) {
 				free += uint64(info.Size()) // give more space available if it's already used
 				return nil
 			})
+
 		}
 		if free > need {
 			return path, true
