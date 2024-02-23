@@ -1962,6 +1962,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeThunderHeight:     build.UpgradeThunderHeight,
 			UpgradeWatermelonHeight:  build.UpgradeWatermelonHeight,
 			UpgradeDragonHeight:      build.UpgradeDragonHeight,
+			UpgradePhoenixHeight:     build.UpgradePhoenixHeight,
 		},
 	}, nil
 }
