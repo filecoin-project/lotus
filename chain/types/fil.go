@@ -77,6 +77,10 @@ func (f FIL) MarshalText() (text []byte, err error) {
 }
 
 func (f FIL) UnmarshalText(text []byte) error {
+	if f.Int == nil {
+		return fmt.Errorf("cannot unmarshal into nil BigInt (text:%s)", string(text))
+	}
+
 	p, err := ParseFIL(string(text))
 	if err != nil {
 		return err

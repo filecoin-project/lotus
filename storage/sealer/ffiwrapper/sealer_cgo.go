@@ -520,7 +520,7 @@ func (sb *Sealer) regenerateSectorKey(ctx context.Context, sector storiface.Sect
 	// prepare SDR params
 	commp, err := commcid.CIDToDataCommitmentV1(keyDataCid)
 	if err != nil {
-		return xerrors.Errorf("computing commP: %w", err)
+		return xerrors.Errorf("computing commK: %w", err)
 	}
 
 	replicaID, err := sector.ProofType.ReplicaId(sector.ID.Miner, sector.ID.Number, ticket, commp)

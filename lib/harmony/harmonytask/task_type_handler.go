@@ -31,14 +31,10 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 retryAddTask:
 	_, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
-		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
-			VALUES ($1, $2, CURRENT_TIMESTAMP) `, h.Name, h.TaskEngine.ownerID)
+		err := tx.QueryRow(`INSERT INTO harmony_task (name, added_by, posted_time) 
+          VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id`, h.Name, h.TaskEngine.ownerID).Scan(&tID)
 		if err != nil {
 			return false, fmt.Errorf("could not insert into harmonyTask: %w", err)
-		}
-		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
-		if err != nil {
-			return false, fmt.Errorf("Could not select ID: %v", err)
 		}
 		return extra(tID, tx)
 	})
@@ -53,7 +49,7 @@ retryAddTask:
 			retryWait *= 2
 			goto retryAddTask
 		}
-		log.Error("Could not add task. AddTasFunc failed: %v", err)
+		log.Errorw("Could not add task. AddTasFunc failed", "error", err, "type", h.Name)
 		return
 	}
 }
@@ -190,6 +186,7 @@ retryRecordCompletion:
 	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
+
 		if err != nil {
 			return false, fmt.Errorf("could not log completion: %w ", err)
 		}
@@ -235,7 +232,7 @@ retryRecordCompletion:
 		}
 		_, err = tx.Exec(`INSERT INTO harmony_task_history 
 									 (task_id,   name, posted,    work_start, work_end, result, completed_by_host_and_port,      err)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, tID, h.Name, postedTime, workStart, workEnd, done, h.TaskEngine.hostAndPort, result)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, tID, h.Name, postedTime.UTC(), workStart.UTC(), workEnd.UTC(), done, h.TaskEngine.hostAndPort, result)
 		if err != nil {
 			return false, fmt.Errorf("could not write history: %w", err)
 		}
