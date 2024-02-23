@@ -1,11 +1,14 @@
 package full
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -176,4 +179,41 @@ func TestABIEncoding(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, expectedBytes, encodeAsABIHelper(22, 81, dataBytes))
+}
+
+func TestDecodePayload(t *testing.T) {
+	// "empty"
+	b, err := decodePayload(nil, 0)
+	require.NoError(t, err)
+	require.Empty(t, b)
+
+	// raw empty
+	_, err = decodePayload(nil, uint64(multicodec.Raw))
+	require.NoError(t, err)
+	require.Empty(t, b)
+
+	// raw non-empty
+	b, err = decodePayload([]byte{1}, uint64(multicodec.Raw))
+	require.NoError(t, err)
+	require.EqualValues(t, b, []byte{1})
+
+	// Invalid cbor bytes
+	_, err = decodePayload(nil, uint64(multicodec.DagCbor))
+	require.Error(t, err)
+
+	// valid cbor bytes
+	var w bytes.Buffer
+	require.NoError(t, cbg.WriteByteArray(&w, []byte{1}))
+	b, err = decodePayload(w.Bytes(), uint64(multicodec.DagCbor))
+	require.NoError(t, err)
+	require.EqualValues(t, b, []byte{1})
+
+	// regular cbor also works.
+	b, err = decodePayload(w.Bytes(), uint64(multicodec.Cbor))
+	require.NoError(t, err)
+	require.EqualValues(t, b, []byte{1})
+
+	// random codec should fail
+	_, err = decodePayload(w.Bytes(), 42)
+	require.Error(t, err)
 }

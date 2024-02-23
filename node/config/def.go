@@ -353,6 +353,7 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			PreCommitControl: []string{},
 			CommitControl:    []string{},
 			TerminateControl: []string{},
+			MinerAddresses:   []string{},
 		}},
 		Proving: ProvingConfig{
 			ParallelCheckLimit:    32,

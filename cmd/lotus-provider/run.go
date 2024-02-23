@@ -50,11 +50,6 @@ var runCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
-		&cli.StringSliceFlag{
-			Name:  "layers",
-			Usage: "list of layers to be interpreted (atop defaults). Default: base",
-			Value: cli.NewStringSlice("base"),
-		},
 		&cli.StringFlag{
 			Name:  "storage-json",
 			Usage: "path to json file containing storage config",
@@ -81,6 +76,10 @@ var runCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+		}
+
+		if err := os.MkdirAll(os.TempDir(), 0755); err != nil {
+			log.Errorf("ensuring tempdir exists: %s", err)
 		}
 
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
@@ -117,12 +116,12 @@ var runCmd = &cli.Command{
 		dependencies := &deps.Deps{}
 		err = dependencies.PopulateRemainingDeps(ctx, cctx, true)
 		if err != nil {
-			fmt.Println("err", err)
 			return err
 		}
 
 		// Get rid of all the partial-writes of any potential previous runs.
 		dependencies.StorageMgr.Cleanup()
+
 
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
 
@@ -153,11 +152,6 @@ var webCmd = &cli.Command{
 			Name:  "listen",
 			Usage: "Address to listen on",
 			Value: "127.0.0.1:4701",
-		},
-		&cli.StringSliceFlag{
-			Name:  "layers",
-			Usage: "list of layers to be interpreted (atop defaults). Default: base. Web will be added",
-			Value: cli.NewStringSlice("base"),
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",

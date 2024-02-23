@@ -102,8 +102,10 @@ func NewWdPostTask(db *harmonydb.DB,
 		max:    max,
 	}
 
-	if err := pcs.AddHandler(t.processHeadChange); err != nil {
-		return nil, err
+	if pcs != nil {
+		if err := pcs.AddHandler(t.processHeadChange); err != nil {
+			return nil, err
+		}
 	}
 
 	return t, nil
@@ -133,9 +135,32 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, s
 
 	deadline := wdpost.NewDeadlineInfo(abi.ChainEpoch(pps), dlIdx, head.Height())
 
-	if deadline.PeriodElapsed() {
+	var testTask *int
+	isTestTask := func() bool {
+		if testTask != nil {
+			return *testTask > 0
+		}
+
+		testTask = new(int)
+		err := t.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM harmony_test WHERE task_id = $1`, taskID).Scan(testTask)
+		if err != nil {
+			log.Errorf("WdPostTask.Do() failed to queryRow: %v", err)
+			return false
+		}
+
+		return *testTask > 0
+	}
+
+	if deadline.PeriodElapsed() && !isTestTask() {
 		log.Errorf("WdPost removed stale task: %v %v", taskID, deadline)
 		return true, nil
+	}
+
+	if deadline.Challenge > head.Height() {
+		if isTestTask() {
+			deadline = wdpost.NewDeadlineInfo(abi.ChainEpoch(pps)-deadline.WPoStProvingPeriod, dlIdx, head.Height()-deadline.WPoStProvingPeriod)
+			log.Warnw("Test task is in the future, adjusting to past", "taskID", taskID, "deadline", deadline)
+		}
 	}
 
 	maddr, err := address.NewIDAddress(spID)
@@ -161,11 +186,7 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, te *harmonytask.TaskEngine, s
 		return false, xerrors.Errorf("marshaling PoSt: %w", err)
 	}
 
-	testTaskIDCt := 0
-	if err = t.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM harmony_test WHERE task_id = $1`, taskID).Scan(&testTaskIDCt); err != nil {
-		return false, xerrors.Errorf("querying for test task: %w", err)
-	}
-	if testTaskIDCt == 1 {
+	if isTestTask() {
 		// Do not send test tasks to the chain but to harmony_test & stdout.
 
 		data, err := json.MarshalIndent(map[string]any{
@@ -241,7 +262,6 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		PartitionIndex     uint64
 
 		dlInfo *dline.Info `pgx:"-"`
-		openTs *types.TipSet
 	}
 	var tasks []wdTaskDef
 
@@ -263,12 +283,8 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEng
 		tasks[i].dlInfo = wdpost.NewDeadlineInfo(tasks[i].ProvingPeriodStart, tasks[i].DeadlineIndex, ts.Height())
 
 		if tasks[i].dlInfo.PeriodElapsed() {
+			// note: Those may be test tasks
 			return &tasks[i].TaskID, nil
-		}
-
-		tasks[i].openTs, err = t.api.ChainGetTipSetAfterHeight(context.Background(), tasks[i].dlInfo.Open, ts.Key())
-		if err != nil {
-			return nil, xerrors.Errorf("getting task open tipset: %w", err)
 		}
 	}
 

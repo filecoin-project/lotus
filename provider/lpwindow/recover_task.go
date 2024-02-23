@@ -77,8 +77,10 @@ func NewWdPostRecoverDeclareTask(sender *lpmessage.Sender,
 		actors:                     actors,
 	}
 
-	if err := pcs.AddHandler(t.processHeadChange); err != nil {
-		return nil, err
+	if pcs != nil {
+		if err := pcs.AddHandler(t.processHeadChange); err != nil {
+			return nil, err
+		}
 	}
 
 	return t, nil

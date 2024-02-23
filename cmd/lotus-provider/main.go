@@ -42,17 +42,13 @@ func main() {
 
 	local := []*cli.Command{
 		//initCmd,
+		cliCmd,
 		runCmd,
 		stopCmd,
 		configCmd,
 		testCmd,
 		webCmd,
-		//backupCmd,
-		//lcli.WithCategory("chain", actorCmd),
-		//lcli.WithCategory("storage", sectorsCmd),
-		//lcli.WithCategory("storage", provingCmd),
-		//lcli.WithCategory("storage", storageCmd),
-		//lcli.WithCategory("storage", sealingCmd),
+		sealCmd,
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")
@@ -128,10 +124,11 @@ func main() {
 				Hidden:  true,
 				Value:   "5433",
 			},
-			&cli.StringFlag{
+			&cli.StringSliceFlag{
 				Name:    "layers",
-				EnvVars: []string{"LOTUS_LAYERS", "LOTUS_CONFIG_LAYERS"},
-				Value:   "base",
+				EnvVars: []string{"CURIO_LAYERS"},
+				Usage:   "list of layers to be interpreted (atop defaults). Default: base",
+				Value:   cli.NewStringSlice("base"),
 			},
 			&cli.StringFlag{
 				Name:    deps.FlagRepoPath,

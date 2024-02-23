@@ -28,8 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var pathTypes = []storiface.SectorFileType{storiface.FTUnsealed, storiface.FTSealed, storiface.FTCache, storiface.FTUpdate, storiface.FTUpdateCache}
-
 type WorkerConfig struct {
 	TaskTypes []sealtasks.TaskType
 	NoSwap    bool
@@ -167,7 +165,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 	return paths, func() {
 		releaseStorage()
 
-		for _, fileType := range pathTypes {
+		for _, fileType := range storiface.PathTypes {
 			if fileType&allocate == 0 {
 				continue
 			}
@@ -180,14 +178,14 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 	}, nil
 }
 
+func (l *localWorkerPathProvider) AcquireSectorCopy(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+	return (&localWorkerPathProvider{w: l.w, op: storiface.AcquireCopy}).AcquireSector(ctx, id, existing, allocate, ptype)
+}
+
 func FFIExec(opts ...ffiwrapper.FFIWrapperOpt) func(l *LocalWorker) (storiface.Storage, error) {
 	return func(l *LocalWorker) (storiface.Storage, error) {
 		return ffiwrapper.New(&localWorkerPathProvider{w: l}, opts...)
 	}
-}
-
-func (l *localWorkerPathProvider) AcquireSectorCopy(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
-	return (&localWorkerPathProvider{w: l.w, op: storiface.AcquireCopy}).AcquireSector(ctx, id, existing, allocate, ptype)
 }
 
 type ReturnType string

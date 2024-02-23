@@ -20,14 +20,12 @@ import (
 //var log = logging.Logger("provider")
 
 func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc config.ProvingConfig,
-	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker, sender *lpmessage.Sender,
+	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker, sender *lpmessage.Sender, chainSched *chainsched.ProviderChainSched,
 	as *multictladdr.MultiAddressSelector, addresses map[dtypes.MinerAddress]bool, db *harmonydb.DB,
 	stor paths.Store, idx paths.SectorIndex, max int) (*lpwindow.WdPostTask, *lpwindow.WdPostSubmitTask, *lpwindow.WdPostRecoverDeclareTask, error) {
 
-	chainSched := chainsched.New(api)
-
 	// todo config
-	ft := lpwindow.NewSimpleFaultTracker(stor, idx, 32, 5*time.Second, 300*time.Second)
+	ft := lpwindow.NewSimpleFaultTracker(stor, idx, pc.ParallelCheckLimit, time.Duration(pc.SingleCheckTimeout), time.Duration(pc.PartitionCheckTimeout))
 
 	computeTask, err := lpwindow.NewWdPostTask(db, api, ft, lw, verif, chainSched, addresses, max)
 	if err != nil {
@@ -43,8 +41,6 @@ func WindowPostScheduler(ctx context.Context, fc config.LotusProviderFees, pc co
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	go chainSched.Run(ctx)
 
 	return computeTask, submitTask, recoverTask, nil
 }
