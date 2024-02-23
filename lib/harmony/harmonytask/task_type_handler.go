@@ -101,12 +101,31 @@ top:
 		return false
 	}
 
+	var location string
+	releaseStorage := func() {
+	}
+	if c := h.TaskTypeDetails.Cost.Storage.Claim; c != nil {
+		if location, err = c(int(*tID)); err != nil {
+			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+			return false
+		}
+		h.LocationMap.Store(*tID, location)
+		releaseStorage = func() {
+			if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(location); err != nil {
+				log.Errorw("Could not release storage", "error", err)
+			}
+			h.LocationMap.Delete(*tID)
+		}
+	}
+
 	// if recovering we don't need to try to claim anything because those tasks are already claimed by us
 	if from != workSourceRecover {
 		// 4. Can we claim the work for our hostname?
 		ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
 		if err != nil {
 			log.Error(err)
+
+			releaseStorage()
 			return false
 		}
 		if ct == 0 {
@@ -120,15 +139,6 @@ top:
 			ids = tryAgain
 			goto top
 		}
-	}
-
-	var location string
-	if c := h.TaskTypeDetails.Cost.Storage.Claim; c != nil {
-		if location, err = c(int(*tID)); err != nil {
-			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
-			return false
-		}
-		h.LocationMap.Store(*tID, location)
 	}
 
 	h.Count.Add(1)
@@ -149,12 +159,7 @@ top:
 			}
 			h.Count.Add(-1)
 
-			if r := h.TaskTypeDetails.Cost.Storage.MarkComplete; r != nil {
-				h.LocationMap.Delete(*tID)
-				if err := r(location); err != nil {
-					log.Errorw("Could not release storage", "error", err)
-				}
-			}
+			releaseStorage()
 			h.recordCompletion(*tID, workStart, done, doErr)
 			if done {
 				for _, fs := range h.TaskEngine.follows[h.Name] { // Do we know of any follows for this task type?
