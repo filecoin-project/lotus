@@ -6,9 +6,11 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/provider"
 	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpffi"
@@ -37,6 +39,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 
 	chainSched := chainsched.New(full)
 
+	var needProofParams bool
+
 	///////////////////////////////////////////////////////////////////////
 	///// Task Selection
 	///////////////////////////////////////////////////////////////////////
@@ -50,11 +54,13 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 				return nil, err
 			}
 			activeTasks = append(activeTasks, wdPostTask, wdPoStSubmitTask, derlareRecoverTask)
+			needProofParams = true
 		}
 
 		if cfg.Subsystems.EnableWinningPost {
 			winPoStTask := lpwinning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
 			activeTasks = append(activeTasks, winPoStTask)
+			needProofParams = true
 		}
 	}
 
@@ -93,6 +99,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		if cfg.Subsystems.EnablePoRepProof {
 			porepTask := lpseal.NewPoRepTask(db, full, sp, slr, cfg.Subsystems.PoRepProofMaxTasks)
 			activeTasks = append(activeTasks, porepTask)
+			needProofParams = true
 		}
 		if cfg.Subsystems.EnableMoveStorage {
 			moveStorageTask := lpseal.NewMoveStorageTask(sp, slr, db, cfg.Subsystems.MoveStorageMaxTasks)
@@ -103,6 +110,15 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, commitTask)
 		}
 	}
+
+	if needProofParams {
+		for spt := range dependencies.ProofTypes {
+			if err := modules.GetParams(true)(spt); err != nil {
+				return nil, xerrors.Errorf("getting params: %w", err)
+			}
+		}
+	}
+
 	log.Infow("This lotus_provider instance handles",
 		"miner_addresses", maddrs,
 		"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))

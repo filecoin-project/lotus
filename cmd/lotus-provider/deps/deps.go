@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
@@ -98,6 +100,7 @@ type Deps struct {
 	LW         *sealer.LocalWorker
 	As         *multictladdr.MultiAddressSelector
 	Maddrs     map[dtypes.MinerAddress]bool
+	ProofTypes map[abi.RegisteredSealProof]bool
 	Stor       *paths.Remote
 	Si         *paths.DBIndex
 	LocalStore *paths.Local
@@ -251,6 +254,18 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 				}
 				deps.Maddrs[dtypes.MinerAddress(addr)] = true
 			}
+		}
+	}
+	if deps.ProofTypes == nil {
+		deps.ProofTypes = map[abi.RegisteredSealProof]bool{}
+	}
+	if len(deps.ProofTypes) == 0 {
+		for maddr := range deps.Maddrs {
+			spt, err := modules.SealProofType(maddr, deps.Full)
+			if err != nil {
+				return err
+			}
+			deps.ProofTypes[spt] = true
 		}
 	}
 	return nil
