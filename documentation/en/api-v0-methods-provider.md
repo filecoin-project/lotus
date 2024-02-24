@@ -7,6 +7,7 @@
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageDetachLocal](#StorageDetachLocal)
+  * [StorageFindSector](#StorageFindSector)
   * [StorageInfo](#StorageInfo)
   * [StorageList](#StorageList)
   * [StorageLocal](#StorageLocal)
@@ -130,6 +131,49 @@ Inputs:
 ```
 
 Response: `{}`
+
+### StorageFindSector
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Miner": 1000,
+    "Number": 9
+  },
+  1,
+  34359738368,
+  true
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+    "URLs": [
+      "string value"
+    ],
+    "BaseURLs": [
+      "string value"
+    ],
+    "Weight": 42,
+    "CanSeal": true,
+    "CanStore": true,
+    "Primary": true,
+    "AllowTypes": [
+      "string value"
+    ],
+    "DenyTypes": [
+      "string value"
+    ]
+  }
+]
+```
 
 ### StorageInfo
 
