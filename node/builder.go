@@ -106,8 +106,6 @@ const (
 	HandleIncomingMessagesKey
 	HandlePaymentChannelManagerKey
 
-	RelayIndexerMessagesKey
-
 	// miner
 	PreflightChecksKey
 	GetParamsKey
