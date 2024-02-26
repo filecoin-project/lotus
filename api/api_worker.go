@@ -84,7 +84,6 @@ type Worker interface {
 
 	// Trigger shutdown
 	Shutdown(context.Context) error //perm:admin
-
 }
 
 var _ storiface.WorkerCalls = *new(Worker)

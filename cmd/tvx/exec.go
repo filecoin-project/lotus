@@ -129,9 +129,7 @@ func processTipsetOpts() error {
 				_ = w.Flush()
 			}
 			conformance.TipsetVectorOpts.OnTipsetApplied = append(conformance.TipsetVectorOpts.OnTipsetApplied, cb)
-
 		}
-
 	}
 	return nil
 }

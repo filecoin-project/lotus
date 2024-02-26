@@ -79,7 +79,7 @@ var genesisNewCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(genf, genb, 0644); err != nil {
+		if err := os.WriteFile(genf, genb, 0o644); err != nil {
 			return err
 		}
 
@@ -155,7 +155,7 @@ var genesisAddMinerCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(genf, genb, 0644); err != nil {
+		if err := os.WriteFile(genf, genb, 0o644); err != nil {
 			return err
 		}
 
@@ -236,7 +236,7 @@ var genesisAddMsigsCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0o644); err != nil {
 			return err
 		}
 		return nil
@@ -403,7 +403,7 @@ var genesisSetVRKCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0o644); err != nil {
 			return err
 		}
 		return nil
@@ -499,7 +499,7 @@ var genesisSetRemainderCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0o644); err != nil {
 			return err
 		}
 		return nil
@@ -549,7 +549,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0o644); err != nil {
 			return err
 		}
 		return nil
@@ -661,7 +661,7 @@ var genesisSetVRKSignersCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0o644); err != nil {
 			return err
 		}
 		return nil

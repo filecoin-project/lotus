@@ -30,8 +30,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var aggFeeNum = big.NewInt(110)
-var aggFeeDen = big.NewInt(100)
+var (
+	aggFeeNum = big.NewInt(110)
+	aggFeeDen = big.NewInt(100)
+)
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
 
@@ -415,7 +417,6 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config, sectors []abi.SectorN
 }
 
 func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
-
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
@@ -684,6 +685,7 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSe
 
 	return collateral, nil
 }
+
 func (b *CommitBatcher) aggregateProofType(nv network.Version) (abi.RegisteredAggregationProof, error) {
 	if nv < network.Version16 {
 		return abi.RegisteredAggregationProof_SnarkPackV1, nil

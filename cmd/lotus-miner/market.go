@@ -381,7 +381,6 @@ var dealsImportDataCmd = &cli.Command{
 		fpath := cctx.Args().Get(1)
 
 		return api.DealsImportData(ctx, propCid, fpath)
-
 	},
 }
 

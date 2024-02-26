@@ -44,7 +44,7 @@ func (t *TestingLocalStorage) Stat(path string) (fsutil.FsStat, error) {
 
 func (t *TestingLocalStorage) init(subpath string) error {
 	path := filepath.Join(t.root, subpath)
-	if err := os.Mkdir(path, 0755); err != nil {
+	if err := os.Mkdir(path, 0o755); err != nil {
 		return err
 	}
 
@@ -62,7 +62,7 @@ func (t *TestingLocalStorage) init(subpath string) error {
 		return err
 	}
 
-	if err := os.WriteFile(metaFile, mb, 0644); err != nil {
+	if err := os.WriteFile(metaFile, mb, 0o644); err != nil {
 		return err
 	}
 

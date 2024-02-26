@@ -87,7 +87,7 @@ var invariantsCmd = &cli.Command{
 		}
 
 		path = filepath.Join(path, "hot.badger")
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return err
 		}
 
@@ -117,7 +117,6 @@ var invariantsCmd = &cli.Command{
 		defer func() {
 			if err := ss.Close(); err != nil {
 				log.Warnf("failed to close blockstore: %s", err)
-
 			}
 		}()
 		bs := ss

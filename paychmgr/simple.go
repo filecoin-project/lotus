@@ -685,7 +685,6 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 // Change the state of the channel in the store
 func (ca *channelAccessor) mutateChannelInfo(ctx context.Context, channelID string, mutate func(*ChannelInfo)) {
 	channelInfo, err := ca.store.ByChannelID(ctx, channelID)
-
 	// If there's an error reading or writing to the store just log an error.
 	// For now we're assuming it's unlikely to happen in practice.
 	// Later we may want to implement a transactional approach, whereby

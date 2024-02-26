@@ -58,7 +58,7 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 		}
 	}
 
-	err := os.MkdirAll(reportPath, 0755)
+	err := os.MkdirAll(reportPath, 0o755)
 	if err != nil {
 		panicLog.Error(err.Error())
 		return
@@ -94,7 +94,6 @@ func writeStackTrace(file string) {
 	if _, err := f.Write(debug.Stack()); err != nil {
 		panicLog.Error(err.Error())
 	}
-
 }
 
 func writeProfile(profileType string, file string) {
@@ -133,7 +132,7 @@ func writeJournalTail(tailLen int, repoPath, file string) {
 		panicLog.Warnf("failed getting latest journal: %s", err.Error())
 		return
 	}
-	j, err := os.OpenFile(jPath, os.O_RDONLY, 0400)
+	j, err := os.OpenFile(jPath, os.O_RDONLY, 0o400)
 	if err != nil {
 		panicLog.Error(err.Error())
 		return

@@ -468,7 +468,6 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 			ems[i].evs[int(u)] = &cpy //nolint:scopelint
 			return nil
 		})
-
 		if err != nil {
 			return nil, xerrors.Errorf("read events: %w", err)
 		}

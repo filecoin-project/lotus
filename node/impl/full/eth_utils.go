@@ -295,8 +295,11 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs *store.ChainStore, 
 	return stRoot, msgs, rcpts, nil
 }
 
-const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
-const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
+const (
+	errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
+	panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
+)
+
 // Eth ABI (solidity) panic codes.
 var panicErrorCodes map[uint64]string = map[uint64]string{
 	0x00: "Panic()",
@@ -739,7 +742,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			// Fore-recompute, we must have enabled the Event APIs after computing this
 			// tipset.
 			if _, _, err := sa.StateManager.RecomputeTipSetState(ctx, ts); err != nil {
-
 				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
 			}
 			// Try again

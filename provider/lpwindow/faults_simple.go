@@ -26,7 +26,8 @@ type SimpleFaultTracker struct {
 }
 
 func NewSimpleFaultTracker(storage paths.Store, index paths.SectorIndex,
-	parallelCheckLimit int, singleCheckTimeout time.Duration, partitionCheckTimeout time.Duration) *SimpleFaultTracker {
+	parallelCheckLimit int, singleCheckTimeout time.Duration, partitionCheckTimeout time.Duration,
+) *SimpleFaultTracker {
 	return &SimpleFaultTracker{
 		storage: storage,
 		index:   index,
@@ -45,7 +46,7 @@ func (m *SimpleFaultTracker) CheckProvable(ctx context.Context, pp abi.Registere
 		return nil, xerrors.Errorf("rg is nil")
 	}
 
-	var bad = make(map[abi.SectorID]string)
+	bad := make(map[abi.SectorID]string)
 	var badLk sync.Mutex
 
 	var postRand abi.PoStRandomness = make([]byte, abi.RandomnessLength)

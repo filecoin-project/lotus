@@ -89,7 +89,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	contractFilAddr, err := ethAddr.ToFilecoinAddress()
 	require.NoError(t, err)
 
-	//transfer half the wallet balance
+	// transfer half the wallet balance
 	bal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	sendAmount := big.Div(bal, big.NewInt(2))
@@ -112,7 +112,6 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, actorPostCreate.Balance, sendAmount)
 	require.True(t, builtin.IsEvmActor(actorPostCreate.Code))
-
 }
 
 func TestDeployAddressMultipleTimes(t *testing.T) {
@@ -164,5 +163,4 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 
 	// Check that this time eth address returned from CreateExternal is not the same as eth address predicted at the start
 	require.NotEqual(t, &ethAddr, receipt.ContractAddress)
-
 }

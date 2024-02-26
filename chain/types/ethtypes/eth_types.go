@@ -272,7 +272,8 @@ func (sr EthSyncingResult) MarshalJSON() ([]byte, error) {
 	}{
 		StartingBlock: sr.StartingBlock,
 		CurrentBlock:  sr.CurrentBlock,
-		HighestBlock:  sr.HighestBlock})
+		HighestBlock:  sr.HighestBlock,
+	})
 }
 
 const (

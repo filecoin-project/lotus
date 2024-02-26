@@ -88,7 +88,7 @@ type ApisConfig struct {
 }
 
 type JournalConfig struct {
-	//Events of the form: "system1:event1,system1:event2[,...]"
+	// Events of the form: "system1:event1,system1:event2[,...]"
 	DisabledEvents string
 }
 

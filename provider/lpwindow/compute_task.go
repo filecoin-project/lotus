@@ -228,7 +228,6 @@ func (t *WdPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 		deadline.Close,
 		msgbuf.Bytes(),
 	)
-
 	if err != nil {
 		log.Errorf("WdPostTask.Do() failed to insert into wdpost_proofs: %v", err)
 		return false, err
@@ -248,7 +247,6 @@ func entToStr[T any](t T, i int) string {
 func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID, te *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	// GetEpoch
 	ts, err := t.api.ChainHead(context.Background())
-
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +416,6 @@ func (t *WdPostTask) processHeadChange(ctx context.Context, revert, apply *types
 }
 
 func (t *WdPostTask) addTaskToDB(taskId harmonytask.TaskID, taskIdent wdTaskIdentity, tx *harmonydb.Tx) (bool, error) {
-
 	_, err := tx.Exec(
 		`INSERT INTO wdpost_partition_tasks (
                          task_id,

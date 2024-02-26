@@ -134,7 +134,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 
 	// Sector size
 	mi, err := fullapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-
 	if err != nil {
 		return err
 	}
@@ -165,7 +164,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 		),
 	)
 	secCounts, err := fullapi.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
-
 	if err != nil {
 		return err
 	}
@@ -266,7 +264,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	colorTokenAmount("      Available:  %s\n", availBalance)
 
 	mb, err := fullapi.StateMarketBalance(ctx, maddr, types.EmptyTSK)
-
 	if err != nil {
 		return xerrors.Errorf("getting market balance: %w", err)
 	}
@@ -277,7 +274,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
 
 	wb, err := fullapi.WalletBalance(ctx, mi.Worker)
-
 	if err != nil {
 		return xerrors.Errorf("getting worker balance: %w", err)
 	}
@@ -375,78 +371,80 @@ type stateMeta struct {
 	state sealing.SectorState
 }
 
-var stateOrder = map[sealing.SectorState]stateMeta{}
-var stateList = []stateMeta{
-	{col: 39, state: "Total"},
-	{col: color.FgGreen, state: sealing.Proving},
-	{col: color.FgGreen, state: sealing.Available},
-	{col: color.FgGreen, state: sealing.UpdateActivating},
+var (
+	stateOrder = map[sealing.SectorState]stateMeta{}
+	stateList  = []stateMeta{
+		{col: 39, state: "Total"},
+		{col: color.FgGreen, state: sealing.Proving},
+		{col: color.FgGreen, state: sealing.Available},
+		{col: color.FgGreen, state: sealing.UpdateActivating},
 
-	{col: color.FgMagenta, state: sealing.ReceiveSector},
+		{col: color.FgMagenta, state: sealing.ReceiveSector},
 
-	{col: color.FgBlue, state: sealing.Empty},
-	{col: color.FgBlue, state: sealing.WaitDeals},
-	{col: color.FgBlue, state: sealing.AddPiece},
-	{col: color.FgBlue, state: sealing.SnapDealsWaitDeals},
-	{col: color.FgBlue, state: sealing.SnapDealsAddPiece},
+		{col: color.FgBlue, state: sealing.Empty},
+		{col: color.FgBlue, state: sealing.WaitDeals},
+		{col: color.FgBlue, state: sealing.AddPiece},
+		{col: color.FgBlue, state: sealing.SnapDealsWaitDeals},
+		{col: color.FgBlue, state: sealing.SnapDealsAddPiece},
 
-	{col: color.FgRed, state: sealing.UndefinedSectorState},
-	{col: color.FgYellow, state: sealing.Packing},
-	{col: color.FgYellow, state: sealing.GetTicket},
-	{col: color.FgYellow, state: sealing.PreCommit1},
-	{col: color.FgYellow, state: sealing.PreCommit2},
-	{col: color.FgYellow, state: sealing.PreCommitting},
-	{col: color.FgYellow, state: sealing.PreCommitWait},
-	{col: color.FgYellow, state: sealing.SubmitPreCommitBatch},
-	{col: color.FgYellow, state: sealing.PreCommitBatchWait},
-	{col: color.FgYellow, state: sealing.WaitSeed},
-	{col: color.FgYellow, state: sealing.Committing},
-	{col: color.FgYellow, state: sealing.CommitFinalize},
-	{col: color.FgYellow, state: sealing.SubmitCommit},
-	{col: color.FgYellow, state: sealing.CommitWait},
-	{col: color.FgYellow, state: sealing.SubmitCommitAggregate},
-	{col: color.FgYellow, state: sealing.CommitAggregateWait},
-	{col: color.FgYellow, state: sealing.FinalizeSector},
-	{col: color.FgYellow, state: sealing.SnapDealsPacking},
-	{col: color.FgYellow, state: sealing.UpdateReplica},
-	{col: color.FgYellow, state: sealing.ProveReplicaUpdate},
-	{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
-	{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
-	{col: color.FgYellow, state: sealing.WaitMutable},
-	{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
-	{col: color.FgYellow, state: sealing.ReleaseSectorKey},
+		{col: color.FgRed, state: sealing.UndefinedSectorState},
+		{col: color.FgYellow, state: sealing.Packing},
+		{col: color.FgYellow, state: sealing.GetTicket},
+		{col: color.FgYellow, state: sealing.PreCommit1},
+		{col: color.FgYellow, state: sealing.PreCommit2},
+		{col: color.FgYellow, state: sealing.PreCommitting},
+		{col: color.FgYellow, state: sealing.PreCommitWait},
+		{col: color.FgYellow, state: sealing.SubmitPreCommitBatch},
+		{col: color.FgYellow, state: sealing.PreCommitBatchWait},
+		{col: color.FgYellow, state: sealing.WaitSeed},
+		{col: color.FgYellow, state: sealing.Committing},
+		{col: color.FgYellow, state: sealing.CommitFinalize},
+		{col: color.FgYellow, state: sealing.SubmitCommit},
+		{col: color.FgYellow, state: sealing.CommitWait},
+		{col: color.FgYellow, state: sealing.SubmitCommitAggregate},
+		{col: color.FgYellow, state: sealing.CommitAggregateWait},
+		{col: color.FgYellow, state: sealing.FinalizeSector},
+		{col: color.FgYellow, state: sealing.SnapDealsPacking},
+		{col: color.FgYellow, state: sealing.UpdateReplica},
+		{col: color.FgYellow, state: sealing.ProveReplicaUpdate},
+		{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
+		{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
+		{col: color.FgYellow, state: sealing.WaitMutable},
+		{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
+		{col: color.FgYellow, state: sealing.ReleaseSectorKey},
 
-	{col: color.FgCyan, state: sealing.Terminating},
-	{col: color.FgCyan, state: sealing.TerminateWait},
-	{col: color.FgCyan, state: sealing.TerminateFinality},
-	{col: color.FgCyan, state: sealing.TerminateFailed},
-	{col: color.FgCyan, state: sealing.Removing},
-	{col: color.FgCyan, state: sealing.Removed},
-	{col: color.FgCyan, state: sealing.AbortUpgrade},
+		{col: color.FgCyan, state: sealing.Terminating},
+		{col: color.FgCyan, state: sealing.TerminateWait},
+		{col: color.FgCyan, state: sealing.TerminateFinality},
+		{col: color.FgCyan, state: sealing.TerminateFailed},
+		{col: color.FgCyan, state: sealing.Removing},
+		{col: color.FgCyan, state: sealing.Removed},
+		{col: color.FgCyan, state: sealing.AbortUpgrade},
 
-	{col: color.FgRed, state: sealing.FailedUnrecoverable},
-	{col: color.FgRed, state: sealing.AddPieceFailed},
-	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
-	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
-	{col: color.FgRed, state: sealing.PreCommitFailed},
-	{col: color.FgRed, state: sealing.ComputeProofFailed},
-	{col: color.FgRed, state: sealing.RemoteCommitFailed},
-	{col: color.FgRed, state: sealing.CommitFailed},
-	{col: color.FgRed, state: sealing.CommitFinalizeFailed},
-	{col: color.FgRed, state: sealing.PackingFailed},
-	{col: color.FgRed, state: sealing.FinalizeFailed},
-	{col: color.FgRed, state: sealing.Faulty},
-	{col: color.FgRed, state: sealing.FaultReported},
-	{col: color.FgRed, state: sealing.FaultedFinal},
-	{col: color.FgRed, state: sealing.RemoveFailed},
-	{col: color.FgRed, state: sealing.DealsExpired},
-	{col: color.FgRed, state: sealing.RecoverDealIDs},
-	{col: color.FgRed, state: sealing.SnapDealsAddPieceFailed},
-	{col: color.FgRed, state: sealing.SnapDealsDealsExpired},
-	{col: color.FgRed, state: sealing.ReplicaUpdateFailed},
-	{col: color.FgRed, state: sealing.ReleaseSectorKeyFailed},
-	{col: color.FgRed, state: sealing.FinalizeReplicaUpdateFailed},
-}
+		{col: color.FgRed, state: sealing.FailedUnrecoverable},
+		{col: color.FgRed, state: sealing.AddPieceFailed},
+		{col: color.FgRed, state: sealing.SealPreCommit1Failed},
+		{col: color.FgRed, state: sealing.SealPreCommit2Failed},
+		{col: color.FgRed, state: sealing.PreCommitFailed},
+		{col: color.FgRed, state: sealing.ComputeProofFailed},
+		{col: color.FgRed, state: sealing.RemoteCommitFailed},
+		{col: color.FgRed, state: sealing.CommitFailed},
+		{col: color.FgRed, state: sealing.CommitFinalizeFailed},
+		{col: color.FgRed, state: sealing.PackingFailed},
+		{col: color.FgRed, state: sealing.FinalizeFailed},
+		{col: color.FgRed, state: sealing.Faulty},
+		{col: color.FgRed, state: sealing.FaultReported},
+		{col: color.FgRed, state: sealing.FaultedFinal},
+		{col: color.FgRed, state: sealing.RemoveFailed},
+		{col: color.FgRed, state: sealing.DealsExpired},
+		{col: color.FgRed, state: sealing.RecoverDealIDs},
+		{col: color.FgRed, state: sealing.SnapDealsAddPieceFailed},
+		{col: color.FgRed, state: sealing.SnapDealsDealsExpired},
+		{col: color.FgRed, state: sealing.ReplicaUpdateFailed},
+		{col: color.FgRed, state: sealing.ReleaseSectorKeyFailed},
+		{col: color.FgRed, state: sealing.FinalizeReplicaUpdateFailed},
+	}
+)
 
 func init() {
 	for i, state := range stateList {

@@ -209,7 +209,7 @@ func forEachConfig[T any](a *debug, cb func(name string, v T) error) error {
 }
 
 func (d *debug) loadConfigs(ctx context.Context) (map[string]string, error) {
-	//err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
+	// err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
 
 	rows, err := d.DB.Query(ctx, `SELECT title, config FROM harmony_config`)
 	if err != nil {

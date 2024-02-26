@@ -519,7 +519,6 @@ func TestEthTxFromNativeAccount_BadInput(t *testing.T) {
 	input, err := hex.DecodeString(expectedHex1)
 	require.NoError(t, err)
 	require.EqualValues(t, input, tx.Input)
-
 }
 
 // Invoke a native method.

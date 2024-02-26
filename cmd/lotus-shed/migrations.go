@@ -119,7 +119,7 @@ var migrationsCmd = &cli.Command{
 		}
 
 		path = filepath.Join(path, "hot.badger")
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return err
 		}
 
@@ -149,7 +149,6 @@ var migrationsCmd = &cli.Command{
 		defer func() {
 			if err := ss.Close(); err != nil {
 				log.Warnf("failed to close blockstore: %s", err)
-
 			}
 		}()
 		bs := ss
@@ -251,12 +250,13 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 	}
 }
 
-type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, stmgr.ExecMonitor, cid.Cid, abi.ChainEpoch, *types.TipSet) (cid.Cid, error)
-type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
-type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
+type (
+	UpgradeActorsFunc    = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, stmgr.ExecMonitor, cid.Cid, abi.ChainEpoch, *types.TipSet) (cid.Cid, error)
+	PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
+	CheckInvariantsFunc  = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
+)
 
 func checkNv21Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
-
 	actorStore := store.ActorStore(ctx, bs)
 	startTime := time.Now()
 
@@ -287,8 +287,8 @@ func checkNv21Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateR
 
 	return nil
 }
-func checkNv19Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 
+func checkNv19Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 	actorStore := store.ActorStore(ctx, bs)
 	startTime := time.Now()
 
@@ -446,7 +446,7 @@ func getVerifreg8Datacaps(stateTreeV8 *state.StateTree, actorStore adt.Store) (m
 		return nil, xerrors.Errorf("failed to get verifreg actor state: %w", err)
 	}
 
-	var verifregDatacaps = make(map[address.Address]abi.StoragePower)
+	verifregDatacaps := make(map[address.Address]abi.StoragePower)
 	err = verifregStateV8.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
 		verifregDatacaps[addr] = dcap
 		return nil
@@ -464,7 +464,7 @@ func getDatacap9Datacaps(stateTreeV9 *state.StateTree, actorStore adt.Store) (ma
 		return nil, xerrors.Errorf("failed to get datacap actor state: %w", err)
 	}
 
-	var datacaps = make(map[address.Address]abi.StoragePower)
+	datacaps := make(map[address.Address]abi.StoragePower)
 	err = datacapStateV9.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
 		datacaps[addr] = dcap
 		return nil
@@ -518,7 +518,7 @@ func checkPendingVerifiedDeals(stateTreeV8 *state.StateTree, stateTreeV9 *state.
 		return xerrors.Errorf("failed to load v8 states array: %w", err)
 	}
 
-	var numPendingVerifiedDeals = 0
+	numPendingVerifiedDeals := 0
 	var proposal market8.DealProposal
 	err = dealProposalsV8.ForEach(&proposal, func(dealID int64) error {
 		// If not verified, do nothing
@@ -812,7 +812,7 @@ func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 *state.StateTree, store
 }
 
 func countAllocations(verifregState verifreg9.State, store adt.Store) (int, error) {
-	var count = 0
+	count := 0
 
 	actorToHamtMap, err := adt9.AsMap(store, verifregState.Allocations, builtin.DefaultHamtBitwidth)
 	if err != nil {

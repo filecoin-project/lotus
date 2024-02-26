@@ -105,8 +105,10 @@ func (g *GasPriceCache) GetTSGasStats(ctx context.Context, cstore *store.ChainSt
 	return prices, nil
 }
 
-const MinGasPremium = 100e3
-const MaxSpendOnFeeDenom = 100
+const (
+	MinGasPremium      = 100e3
+	MaxSpendOnFeeDenom = 100
+)
 
 func (a *GasAPI) GasEstimateFeeCap(
 	ctx context.Context,
@@ -116,6 +118,7 @@ func (a *GasAPI) GasEstimateFeeCap(
 ) (types.BigInt, error) {
 	return gasEstimateFeeCap(a.Chain, msg, maxqueueblks)
 }
+
 func (m *GasModule) GasEstimateFeeCap(
 	ctx context.Context,
 	msg *types.Message,
@@ -124,6 +127,7 @@ func (m *GasModule) GasEstimateFeeCap(
 ) (types.BigInt, error) {
 	return gasEstimateFeeCap(m.Chain, msg, maxqueueblks)
 }
+
 func gasEstimateFeeCap(cstore *store.ChainStore, msg *types.Message, maxqueueblks int64) (types.BigInt, error) {
 	ts := cstore.GetHeaviestTipSet()
 
@@ -175,6 +179,7 @@ func (a *GasAPI) GasEstimateGasPremium(
 ) (types.BigInt, error) {
 	return gasEstimateGasPremium(ctx, a.Chain, a.PriceCache, nblocksincl)
 }
+
 func (m *GasModule) GasEstimateGasPremium(
 	ctx context.Context,
 	nblocksincl uint64,
@@ -184,6 +189,7 @@ func (m *GasModule) GasEstimateGasPremium(
 ) (types.BigInt, error) {
 	return gasEstimateGasPremium(ctx, m.Chain, m.PriceCache, nblocksincl)
 }
+
 func gasEstimateGasPremium(ctx context.Context, cstore *store.ChainStore, cache *GasPriceCache, nblocksincl uint64) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
@@ -242,6 +248,7 @@ func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, 
 	}
 	return gasEstimateGasLimit(ctx, a.Chain, a.Stmgr, a.Mpool, msgIn, ts)
 }
+
 func (m *GasModule) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -335,7 +342,6 @@ func gasEstimateGasLimit(
 	// Overestimate gas around the upgrade
 	if ts.Height() <= build.UpgradeHyggeHeight && (build.UpgradeHyggeHeight-ts.Height() <= 20) {
 		func() {
-
 			// Bare transfers get about 3x more expensive: https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0057.md#product-considerations
 			if msgIn.Method == builtin.MethodSend {
 				transitionalMulti = 3.0

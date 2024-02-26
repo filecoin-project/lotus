@@ -49,7 +49,6 @@ func ContextWithMarker(ctx context.Context) (context.Context, gomock.Matcher) {
 	marker := new(int)
 	outCtx := context.WithValue(ctx, markerKey, marker)
 	return outCtx, contextMatcher{marker: marker}
-
 }
 
 func setupMockSrvcs(t *testing.T) (*ServicesImpl, *mocks.MockFullNode) {
@@ -214,6 +213,5 @@ func TestSendService(t *testing.T) {
 		proto, err := srvcs.MessageForSend(ctx, params)
 		assert.NoError(t, err)
 		assert.True(t, mm.Matches(proto))
-
 	})
 }

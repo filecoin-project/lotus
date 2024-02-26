@@ -362,7 +362,6 @@ var walletImport = &cli.Command{
 				}
 				inpdata = indata
 			}
-
 		} else {
 			fdata, err := os.ReadFile(cctx.Args().First())
 			if err != nil {
@@ -446,19 +445,16 @@ var walletSign = &cli.Command{
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
-
 		if err != nil {
 			return err
 		}
 
 		msg, err := hex.DecodeString(cctx.Args().Get(1))
-
 		if err != nil {
 			return err
 		}
 
 		sig, err := api.WalletSign(ctx, addr, msg)
-
 		if err != nil {
 			// Check if the address is a multisig address
 			act, actErr := api.StateGetActor(ctx, addr, types.EmptyTSK)
@@ -494,19 +490,16 @@ var walletVerify = &cli.Command{
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
-
 		if err != nil {
 			return err
 		}
 
 		msg, err := hex.DecodeString(cctx.Args().Get(1))
-
 		if err != nil {
 			return err
 		}
 
 		sigBytes, err := hex.DecodeString(cctx.Args().Get(2))
-
 		if err != nil {
 			return err
 		}

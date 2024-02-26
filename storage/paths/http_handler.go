@@ -33,6 +33,7 @@ type DefaultPartialFileHandler struct{}
 func (d *DefaultPartialFileHandler) OpenPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialfile.PartialFile, error) {
 	return partialfile.OpenPartialFile(maxPieceSize, path)
 }
+
 func (d *DefaultPartialFileHandler) HasAllocated(pf *partialfile.PartialFile, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	return pf.HasAllocated(offset, size)
 }

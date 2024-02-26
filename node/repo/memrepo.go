@@ -111,7 +111,7 @@ func (lmem *lockedMemRepo) Path() string {
 		// this is required due to the method makeDealStaging from cmd/lotus-storage-miner/init.go
 		// deal-staging is the directory deal files are staged in before being sealed into sectors
 		// for offline deal flow.
-		if err := os.MkdirAll(filepath.Join(t, "deal-staging"), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Join(t, "deal-staging"), 0o755); err != nil {
 			panic(err)
 		}
 	}
@@ -127,7 +127,8 @@ func (lmem *lockedMemRepo) initSectorStore(t string) {
 	if err := config.WriteStorageFile(filepath.Join(t, fsStorageConfig), storiface.StorageConfig{
 		StoragePaths: []storiface.LocalPath{
 			{Path: t},
-		}}); err != nil {
+		},
+	}); err != nil {
 		panic(err)
 	}
 
@@ -141,7 +142,7 @@ func (lmem *lockedMemRepo) initSectorStore(t string) {
 		panic(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(t, "sectorstore.json"), b, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(t, "sectorstore.json"), b, 0o644); err != nil {
 		panic(err)
 	}
 }
@@ -270,7 +271,7 @@ func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDoma
 
 func (lmem *lockedMemRepo) SplitstorePath() (string, error) {
 	splitstorePath := filepath.Join(lmem.Path(), "splitstore")
-	if err := os.MkdirAll(splitstorePath, 0755); err != nil {
+	if err := os.MkdirAll(splitstorePath, 0o755); err != nil {
 		return "", err
 	}
 	return splitstorePath, nil
@@ -278,7 +279,7 @@ func (lmem *lockedMemRepo) SplitstorePath() (string, error) {
 
 func (lmem *lockedMemRepo) SqlitePath() (string, error) {
 	sqlitePath := filepath.Join(lmem.Path(), "sqlite")
-	if err := os.MkdirAll(sqlitePath, 0755); err != nil {
+	if err := os.MkdirAll(sqlitePath, 0o755); err != nil {
 		return "", err
 	}
 	return sqlitePath, nil

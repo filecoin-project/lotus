@@ -30,7 +30,8 @@ func WorkerHandler(
 	authv func(ctx context.Context, token string) ([]auth.Permission, error),
 	remote http.HandlerFunc,
 	a api.Worker,
-	permissioned bool) http.Handler {
+	permissioned bool,
+) http.Handler {
 	mux := mux.NewRouter()
 	readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 	rpcServer := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors), readerServerOpt)
@@ -154,7 +155,6 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 }
 
 func (w *Worker) StorageDetachAll(ctx context.Context) error {
-
 	lps, err := w.LocalStore.Local(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting local path list: %w", err)
@@ -212,5 +212,7 @@ func (w *Worker) Shutdown(ctx context.Context) error {
 	return w.LocalWorker.Close()
 }
 
-var _ storiface.WorkerCalls = &Worker{}
-var _ api.Worker = &Worker{}
+var (
+	_ storiface.WorkerCalls = &Worker{}
+	_ api.Worker            = &Worker{}
+)

@@ -213,10 +213,10 @@ func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr ad
 			}
 
 			// Proof generation successful, stop retrying
-			//somethingToProve = true
+			// somethingToProve = true
 			params.Partitions = partitions
 			params.Proofs = postOut
-			//break
+			// break
 
 			return &params, nil
 		}
@@ -230,7 +230,8 @@ type CheckSectorsAPI interface {
 }
 
 func checkSectors(ctx context.Context, api CheckSectorsAPI, ft sealer.FaultTracker,
-	maddr address.Address, check bitfield.BitField, tsk types.TipSetKey) (bitfield.BitField, error) {
+	maddr address.Address, check bitfield.BitField, tsk types.TipSetKey,
+) (bitfield.BitField, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("failed to convert to ID addr: %w", err)
@@ -323,7 +324,7 @@ func (t *WdPostTask) sectorsForProof(ctx context.Context, maddr address.Address,
 	if err := allSectors.ForEach(func(sectorNo uint64) error {
 		if info, found := sectorByID[sectorNo]; found {
 			proofSectors = append(proofSectors, info)
-		} //else {
+		} // else {
 		//skip
 		// todo: testing: old logic used to put 'substitute' sectors here
 		//  that probably isn't needed post nv19, but we do need to check that

@@ -76,7 +76,7 @@ var FevmBalanceCmd = &cli.Command{
 		}
 
 		path = filepath.Join(path, "hot.badger")
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return err
 		}
 
@@ -171,7 +171,7 @@ var FevmActorsCmd = &cli.Command{
 		}
 
 		path = filepath.Join(path, "hot.badger")
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return err
 		}
 

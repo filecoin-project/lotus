@@ -16,7 +16,7 @@ import (
 )
 
 func TestTipSetKey(t *testing.T) {
-	//stm: @TYPES_TIPSETKEY_FROM_BYTES_001, @TYPES_TIPSETKEY_NEW_001
+	// stm: @TYPES_TIPSETKEY_FROM_BYTES_001, @TYPES_TIPSETKEY_NEW_001
 	cb := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}
 	c1, _ := cb.Sum([]byte("a"))
 	c2, _ := cb.Sum([]byte("b"))

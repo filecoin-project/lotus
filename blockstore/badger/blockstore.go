@@ -25,10 +25,8 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 )
 
-var (
-	// KeyPool is the buffer pool we use to compute storage keys.
-	KeyPool *pool.BufferPool = pool.GlobalPool
-)
+// KeyPool is the buffer pool we use to compute storage keys.
+var KeyPool *pool.BufferPool = pool.GlobalPool
 
 var (
 	// ErrBlockstoreClosed is returned from blockstore operations after
@@ -123,12 +121,14 @@ type Blockstore struct {
 	prefixLen int
 }
 
-var _ blockstore.Blockstore = (*Blockstore)(nil)
-var _ blockstore.Viewer = (*Blockstore)(nil)
-var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
-var _ blockstore.BlockstoreGC = (*Blockstore)(nil)
-var _ blockstore.BlockstoreSize = (*Blockstore)(nil)
-var _ io.Closer = (*Blockstore)(nil)
+var (
+	_ blockstore.Blockstore         = (*Blockstore)(nil)
+	_ blockstore.Viewer             = (*Blockstore)(nil)
+	_ blockstore.BlockstoreIterator = (*Blockstore)(nil)
+	_ blockstore.BlockstoreGC       = (*Blockstore)(nil)
+	_ blockstore.BlockstoreSize     = (*Blockstore)(nil)
+	_ io.Closer                     = (*Blockstore)(nil)
+)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
 func Open(opts Options) (*Blockstore, error) {

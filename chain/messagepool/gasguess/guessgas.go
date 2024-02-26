@@ -17,11 +17,15 @@ import (
 
 type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
 
-const failedGasGuessRatio = 0.5
-const failedGasGuessMax = 25_000_000
+const (
+	failedGasGuessRatio = 0.5
+	failedGasGuessMax   = 25_000_000
+)
 
-const MinGas = 1298450
-const MaxGas = 1600271356
+const (
+	MinGas = 1298450
+	MaxGas = 1600271356
+)
 
 type CostKey struct {
 	Code cid.Cid

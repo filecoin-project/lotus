@@ -200,6 +200,7 @@ func TestCommitFinalizeFailed(t *testing.T) {
 		}
 	}
 }
+
 func TestSeedRevert(t *testing.T) {
 	ma, _ := address.NewIDAddress(55151)
 	m := test{

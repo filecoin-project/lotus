@@ -166,7 +166,6 @@ var actorSetAddrsCmd = &cli.Command{
 
 		fmt.Printf("Requested multiaddrs change in message %s\n", smsg.Cid())
 		return nil
-
 	},
 }
 
@@ -236,7 +235,6 @@ var actorSetPeeridCmd = &cli.Command{
 
 		fmt.Printf("Requested peerid change in message %s\n", smsg.Cid())
 		return nil
-
 	},
 }
 
@@ -536,7 +534,7 @@ var actorControlList = &cli.Command{
 			}
 			b := actor.Balance
 
-			var k = a
+			k := a
 			// 'a' maybe a 'robust', in that case, 'StateAccountKey' returns an error.
 			if builtin2.IsAccountActor(actor.Code) {
 				if k, err = api.StateAccountKey(ctx, a, types.EmptyTSK); err != nil {
@@ -1379,14 +1377,16 @@ var actorCompactAllocatedCmd = &cli.Command{
 			}
 
 			maskBf, err = bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
-				Runs: []rlepluslazy.Run{{Val: true, Len: last - m}}})
+				Runs: []rlepluslazy.Run{{Val: true, Len: last - m}},
+			})
 			if err != nil {
 				return xerrors.Errorf("forming bitfield: %w", err)
 			}
 		case cctx.IsSet("mask-upto-n"):
 			n := cctx.Uint64("mask-upto-n")
 			maskBf, err = bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
-				Runs: []rlepluslazy.Run{{Val: true, Len: n}}})
+				Runs: []rlepluslazy.Run{{Val: true, Len: n}},
+			})
 			if err != nil {
 				return xerrors.Errorf("forming bitfield: %w", err)
 			}

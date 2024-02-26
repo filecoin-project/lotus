@@ -45,8 +45,10 @@ type WorkerConfig struct {
 }
 
 // used do provide custom proofs impl (mostly used in testing)
-type ExecutorFunc func(w *LocalWorker) (storiface.Storage, error)
-type EnvFunc func(string) (string, bool)
+type (
+	ExecutorFunc func(w *LocalWorker) (storiface.Storage, error)
+	EnvFunc      func(string) (string, bool)
+)
 
 type LocalWorker struct {
 	storage    paths.Store
@@ -386,7 +388,6 @@ func (l *LocalWorker) Fetch(ctx context.Context, sector storiface.SectorRef, fil
 
 func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, SealPreCommit1, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-
 		{
 			// cleanup previous failed attempts if they exist
 			if err := l.storage.Remove(ctx, sector.ID, storiface.FTSealed, true, nil); err != nil {

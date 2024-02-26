@@ -39,7 +39,7 @@ type TestWorker struct {
 func (tm *TestWorker) AddStorage(ctx context.Context, t *testing.T, conf func(*storiface.LocalStorageMeta)) storiface.ID {
 	p := t.TempDir()
 
-	if err := os.MkdirAll(p, 0755); err != nil {
+	if err := os.MkdirAll(p, 0o755); err != nil {
 		if !os.IsExist(err) {
 			require.NoError(t, err)
 		}
@@ -66,7 +66,7 @@ func (tm *TestWorker) AddStorage(ctx context.Context, t *testing.T, conf func(*s
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(p, metaFile), b, 0644)
+	err = os.WriteFile(filepath.Join(p, metaFile), b, 0o644)
 	require.NoError(t, err)
 
 	err = tm.StorageAddLocal(ctx, p)

@@ -6,7 +6,7 @@ import (
 )
 
 func TestMemBasic(t *testing.T) {
-	//stm: @REPO_MEM_001
+	// stm: @REPO_MEM_001
 	repo := NewMemory(nil)
 	basicTest(t, repo)
 }

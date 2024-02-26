@@ -234,7 +234,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 				Err2:             data.currentDealInfoErr2,
 			}
 			scm := newSectorCommittedManager(eventsAPI, mockDIAPI, mockPCAPI)
-			//stm: @MARKET_ADAPTER_ON_SECTOR_PRE_COMMIT_001
+			// stm: @MARKET_ADAPTER_ON_SECTOR_PRE_COMMIT_001
 			err = scm.OnDealSectorPreCommitted(ctx, provider, proposal, publishCid, cb)
 			if data.expectedError == nil {
 				require.NoError(t, err)
@@ -449,7 +449,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 				Err2:             data.currentDealInfoErr2,
 			}
 			scm := newSectorCommittedManager(eventsAPI, mockDIAPI, mockPCAPI)
-			//stm: @MARKET_ADAPTER_ON_SECTOR_COMMIT_001
+			// stm: @MARKET_ADAPTER_ON_SECTOR_COMMIT_001
 			err = scm.OnDealSectorCommitted(ctx, provider, sectorNumber, proposal, publishCid, cb)
 			if data.expectedError == nil {
 				require.NoError(t, err)

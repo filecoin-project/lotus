@@ -181,7 +181,7 @@ var exportRawCmd = &cli.Command{
 		defer lr.Close() //nolint:errcheck
 
 		out := cctx.Args().First()
-		err = os.Mkdir(out, 0755)
+		err = os.Mkdir(out, 0o755)
 		if err != nil {
 			return xerrors.Errorf("creating output dir: %w", err)
 		}

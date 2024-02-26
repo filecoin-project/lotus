@@ -138,8 +138,8 @@ func NewSyncer(ds dtypes.MetadataDS,
 	self peer.ID,
 	beacon beacon.Schedule,
 	gent Genesis,
-	consensus consensus.Consensus) (*Syncer, error) {
-
+	consensus consensus.Consensus,
+) (*Syncer, error) {
 	s := &Syncer{
 		ds:             ds,
 		beacon:         beacon,
@@ -867,8 +867,10 @@ loop:
 	return blockSet, nil
 }
 
-var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
-var ErrForkCheckpoint = fmt.Errorf("fork would require us to diverge from checkpointed block")
+var (
+	ErrForkTooLong    = fmt.Errorf("fork longer than threshold")
+	ErrForkCheckpoint = fmt.Errorf("fork would require us to diverge from checkpointed block")
+)
 
 // syncFork tries to obtain the chain fragment that links a fork into a common
 // ancestor in our view of the chain.
@@ -877,7 +879,6 @@ var ErrForkCheckpoint = fmt.Errorf("fork would require us to diverge from checkp
 // we add the entire subchain to the denylist. Else, we find the common ancestor, and add the missing chain
 // fragment until the fork point to the returned []TipSet.
 func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet, ignoreCheckpoint bool) ([]*types.TipSet, error) {
-
 	var chkpt *types.TipSet
 	if !ignoreCheckpoint {
 		chkpt = syncer.store.GetCheckpoint()
@@ -1167,7 +1168,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 	defer span.End()
 
 	for _, m := range bst.Bls {
-		//log.Infof("putting BLS message: %s", m.Cid())
+		// log.Infof("putting BLS message: %s", m.Cid())
 		if _, err := store.PutMessage(ctx, bs, m); err != nil {
 			log.Errorf("failed to persist messages: %+v", err)
 			return xerrors.Errorf("BLS message processing failed: %w", err)
@@ -1177,7 +1178,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 		if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
 			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
-		//log.Infof("putting secp256k1 message: %s", m.Cid())
+		// log.Infof("putting secp256k1 message: %s", m.Cid())
 		if _, err := store.PutMessage(ctx, bs, m); err != nil {
 			log.Errorf("failed to persist messages: %+v", err)
 			return xerrors.Errorf("secp256k1 message processing failed: %w", err)

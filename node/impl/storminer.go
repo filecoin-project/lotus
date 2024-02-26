@@ -258,7 +258,6 @@ func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector storif
 }
 
 func (sm *StorageMinerAPI) SectorUnseal(ctx context.Context, sectorNum abi.SectorNumber) error {
-
 	status, err := sm.Miner.SectorsStatus(ctx, sectorNum, false)
 	if err != nil {
 		return err
@@ -716,7 +715,8 @@ func (sm *StorageMinerAPI) MarketDataTransferDiagnostics(ctx context.Context, mp
 func (sm *StorageMinerAPI) generateTransfers(ctx context.Context,
 	transportChannels map[datatransfer.ChannelID]gst.ChannelGraphsyncRequests,
 	gsPeerState peerstate.PeerState,
-	allChannels map[datatransfer.ChannelID]datatransfer.ChannelState) []*api.GraphSyncDataTransfer {
+	allChannels map[datatransfer.ChannelID]datatransfer.ChannelState,
+) []*api.GraphSyncDataTransfer {
 	tc := &transferConverter{
 		matchedChannelIds: make(map[datatransfer.ChannelID]struct{}),
 		matchedRequests:   make(map[graphsync.RequestID]*api.GraphSyncDataTransfer),
@@ -761,7 +761,8 @@ type transferConverter struct {
 
 // convert transfer assembles transfer and diagnostic data for a given graphsync/data-transfer request
 func (tc *transferConverter) convertTransfer(channelID datatransfer.ChannelID, hasChannelID bool, channelState *api.DataTransferChannel, baseDiagnostics []string,
-	requestID graphsync.RequestID, isCurrentChannelRequest bool) {
+	requestID graphsync.RequestID, isCurrentChannelRequest bool,
+) {
 	diagnostics := baseDiagnostics
 	state, hasState := tc.requestStates[requestID]
 	stateString := state.String()
@@ -1073,7 +1074,6 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 	}()
 
 	return res, nil
-
 }
 
 func (sm *StorageMinerAPI) DagstoreRecoverShard(ctx context.Context, key string) error {
@@ -1330,7 +1330,7 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 		return nil, err
 	}
 
-	var out = make(map[abi.SectorNumber]string)
+	out := make(map[abi.SectorNumber]string)
 	for sid, err := range bad {
 		out[sid.Number] = err
 	}

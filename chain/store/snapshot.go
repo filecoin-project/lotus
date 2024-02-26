@@ -300,7 +300,7 @@ type walkScheduler struct {
 	writeErrorChan chan error
 
 	// tracks number of inflight tasks
-	//taskWg sync.WaitGroup
+	// taskWg sync.WaitGroup
 	// launches workers and collects errors if any occur
 	workers *errgroup.Group
 	// set of CIDs already exported
@@ -398,7 +398,7 @@ func (s *walkScheduler) Wait() error {
 
 func (s *walkScheduler) enqueueIfNew(task walkTask) {
 	if multicodec.Code(task.c.Prefix().MhType) == multicodec.Identity {
-		//log.Infow("ignored", "cid", todo.c.String())
+		// log.Infow("ignored", "cid", todo.c.String())
 		return
 	}
 
@@ -407,7 +407,7 @@ func (s *walkScheduler) enqueueIfNew(task walkTask) {
 	switch multicodec.Code(task.c.Prefix().Codec) {
 	case multicodec.Cbor, multicodec.DagCbor, multicodec.Raw:
 	default:
-		//log.Infow("ignored", "cid", todo.c.String())
+		// log.Infow("ignored", "cid", todo.c.String())
 		return
 	}
 	if _, loaded := s.seen.LoadOrStore(task.c, struct{}{}); loaded {
@@ -575,7 +575,6 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 			epoch:            t.epoch,
 		})
 	})
-
 	if err != nil {
 		return xerrors.Errorf(
 			"ScanForLinks(%s). Task: %s. Block: %s (%s). Epoch: %d. Err: %w",
@@ -589,8 +588,8 @@ func (cs *ChainStore) ExportRange(
 	w io.Writer,
 	head, tail *types.TipSet,
 	messages, receipts, stateroots bool,
-	workers int) error {
-
+	workers int,
+) error {
 	h := &car.CarHeader{
 		Roots:   head.Cids(),
 		Version: 1,

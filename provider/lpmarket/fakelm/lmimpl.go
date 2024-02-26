@@ -137,7 +137,7 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		}, nil
 	}
 
-	var state = api.SectorState(sealing.Proving)
+	state := api.SectorState(sealing.Proving)
 	if !si[0].CanStore {
 		state = api.SectorState(sealing.PreCommit2)
 	}

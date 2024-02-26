@@ -69,6 +69,7 @@ func (db *DB) Query(ctx context.Context, sql rawStringOnly, arguments ...any) (*
 	q, err := db.pgx.Query(ctx, string(sql), arguments...)
 	return &Query{q}, err
 }
+
 func (q *Query) StructScan(s any) error {
 	return pgxscan.ScanRow(s, q.Qry.(pgx.Rows))
 }
@@ -125,7 +126,7 @@ type Tx struct {
 // & non-transaction calls in transactions. It only checks 20 frames.
 // Fast: This memory should all be in CPU Caches.
 func (db *DB) usedInTransaction() bool {
-	var framePtrs = (&[20]uintptr{})[:]                   // 20 can be stack-local (no alloc)
+	framePtrs := (&[20]uintptr{})[:]                      // 20 can be stack-local (no alloc)
 	framePtrs = framePtrs[:runtime.Callers(3, framePtrs)] // skip past our caller.
 	return lo.Contains(framePtrs, db.BTFP.Load())         // Unsafe read @ beginTx overlap, but 'return false' is correct there.
 }

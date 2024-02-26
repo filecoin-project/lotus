@@ -6,8 +6,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-const dataFilePrefix = "sc-02-data-"
-const TreeDName = dataFilePrefix + "tree-d.dat"
+const (
+	dataFilePrefix = "sc-02-data-"
+	TreeDName      = dataFilePrefix + "tree-d.dat"
+)
 
 func LayerFileName(layer int) string {
 	return fmt.Sprintf("%slayer-%d.dat", dataFilePrefix, layer)

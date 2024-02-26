@@ -40,6 +40,7 @@ type errNoWait struct{}
 func (err errNoWait) Error() string {
 	return "wait time exceeded"
 }
+
 func (err errNoWait) Timeout() bool {
 	return true
 }

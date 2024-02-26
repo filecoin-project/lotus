@@ -14,8 +14,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const NoTimeout = math.MaxInt64
-const NoHeight = abi.ChainEpoch(-1)
+const (
+	NoTimeout = math.MaxInt64
+	NoHeight  = abi.ChainEpoch(-1)
+)
 
 type triggerID = uint64
 

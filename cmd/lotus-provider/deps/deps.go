@@ -269,6 +269,7 @@ func LoadConfigWithUpgrades(text string, lp *config.LotusProviderConfig) (toml.M
 	meta, err := toml.Decode(newText, &lp)
 	return meta, err
 }
+
 func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
 	lp := config.DefaultLotusProvider()
 	have := []string{}

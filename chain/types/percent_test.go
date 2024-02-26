@@ -30,5 +30,4 @@ func TestPercent(t *testing.T) {
 			require.Equal(t, tc.p, p)
 		})
 	}
-
 }

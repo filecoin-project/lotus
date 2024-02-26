@@ -200,7 +200,6 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 			atomic.AddInt64(count, 1)
 			return markSet.Mark(c)
 		})
-
 	if err != nil {
 		return xerrors.Errorf("error marking: %w", err)
 	}
@@ -258,7 +257,6 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 
 		return nil
 	})
-
 	if err != nil {
 		return xerrors.Errorf("error dead objects: %w", err)
 	}
@@ -407,7 +405,8 @@ func (s *SplitStore) completePrune() error {
 // the given predicate.
 // missing references are ignored, as we expect to have plenty for snapshot syncs.
 func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bool,
-	f func(cid.Cid) error) error {
+	f func(cid.Cid) error,
+) error {
 	visited := cid.NewSet()
 	toWalk := ts.Cids()
 	walkCnt := 0
@@ -472,7 +471,6 @@ func (s *SplitStore) walkChainDeep(ts *types.TipSet, retainStateP func(int64) bo
 		err := s.view(c, func(data []byte) error {
 			return hdr.UnmarshalCBOR(bytes.NewBuffer(data))
 		})
-
 		if err != nil {
 			return xerrors.Errorf("error unmarshaling block header (cid: %s): %w", c, err)
 		}
@@ -571,7 +569,6 @@ func (s *SplitStore) walkObjectLax(c cid.Cid, f func(cid.Cid) error) error {
 			links = append(links, c)
 		})
 	})
-
 	if err != nil {
 		if ipld.IsNotFound(err) { // not a problem for deep walks
 			return nil

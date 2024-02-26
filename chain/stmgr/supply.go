@@ -29,7 +29,6 @@ import (
 
 // sets up information about the vesting schedule
 func (sm *StateManager) setupGenesisVestingSchedule(ctx context.Context) error {
-
 	gb, err := sm.cs.GetGenesis(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
@@ -99,7 +98,6 @@ func (sm *StateManager) setupGenesisVestingSchedule(ctx context.Context) error {
 
 // sets up information about the vesting schedule post the ignition upgrade
 func (sm *StateManager) setupPostIgnitionVesting(ctx context.Context) error {
-
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
@@ -144,7 +142,6 @@ func (sm *StateManager) setupPostIgnitionVesting(ctx context.Context) error {
 
 // sets up information about the vesting schedule post the calico upgrade
 func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
-
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 0 days
@@ -304,7 +301,6 @@ func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmoun
 }
 
 func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
@@ -473,7 +469,6 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 
 		return nil
 	})
-
 	if err != nil {
 		return types.EmptyInt, err
 	}

@@ -114,7 +114,6 @@ var configSetCmd = &cli.Command{
 		_ = lp
 
 		err = setConfig(db, name, string(bytes))
-
 		if err != nil {
 			return fmt.Errorf("unable to save config layer: %w", err)
 		}
@@ -213,6 +212,7 @@ var configRmCmd = &cli.Command{
 		return nil
 	},
 }
+
 var configViewCmd = &cli.Command{
 	Name:      "interpret",
 	Aliases:   []string{"view", "stacked", "stack"},

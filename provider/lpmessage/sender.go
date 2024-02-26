@@ -203,7 +203,7 @@ func (s *SendTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done b
 	_, err = s.api.MpoolPush(ctx, sigMsg)
 
 	// persist send result
-	var sendSuccess = err == nil
+	sendSuccess := err == nil
 	var sendError string
 	if err != nil {
 		sendError = err.Error()

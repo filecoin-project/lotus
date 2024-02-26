@@ -14,8 +14,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
-type MinerAddress address.Address
-type MinerID abi.ActorID
+type (
+	MinerAddress address.Address
+	MinerID      abi.ActorID
+)
 
 // ConsiderOnlineStorageDealsConfigFunc is a function which reads from miner
 // config to determine if the user has disabled storage deals (or not).
@@ -90,10 +92,14 @@ type SetExpectedSealDurationFunc func(time.Duration) error
 // too determine how long sealing is expected to take
 type GetExpectedSealDurationFunc func() (time.Duration, error)
 
-type SetMaxDealStartDelayFunc func(time.Duration) error
-type GetMaxDealStartDelayFunc func() (time.Duration, error)
+type (
+	SetMaxDealStartDelayFunc func(time.Duration) error
+	GetMaxDealStartDelayFunc func() (time.Duration, error)
+)
 
-type StorageDealFilter func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
-type RetrievalDealFilter func(ctx context.Context, deal retrievalmarket.ProviderDealState) (bool, string, error)
+type (
+	StorageDealFilter   func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
+	RetrievalDealFilter func(ctx context.Context, deal retrievalmarket.ProviderDealState) (bool, string, error)
+)
 
 type RetrievalPricingFunc func(ctx context.Context, dealPricingParams retrievalmarket.PricingInput) (retrievalmarket.Ask, error)

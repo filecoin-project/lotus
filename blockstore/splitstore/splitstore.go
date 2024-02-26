@@ -337,7 +337,6 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	}
 
 	has, err := s.hot.Has(ctx, cid)
-
 	if err != nil {
 		return has, err
 	}
@@ -356,7 +355,6 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	}
 
 	return has, err
-
 }
 
 func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
@@ -740,7 +738,7 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		s.pruneEpoch = bytesToEpoch(bs)
 	case dstore.ErrNotFound:
 		if curTs == nil {
-			//this can happen in some tests
+			// this can happen in some tests
 			break
 		}
 		if err := s.setPruneEpoch(curTs.Height()); err != nil {

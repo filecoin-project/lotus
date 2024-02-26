@@ -70,10 +70,10 @@ func WriteStorageFile(filePath string, config storiface.StorageConfig) error {
 		}
 	}
 
-	if err := os.MkdirAll(path.Dir(filePath), 0755); err != nil {
+	if err := os.MkdirAll(path.Dir(filePath), 0o755); err != nil {
 		return xerrors.Errorf("making storage config parent directory: %w", err)
 	}
-	if err := os.WriteFile(filePath, b, 0644); err != nil {
+	if err := os.WriteFile(filePath, b, 0o644); err != nil {
 		return xerrors.Errorf("persisting storage config (%s): %w", filePath, err)
 	}
 

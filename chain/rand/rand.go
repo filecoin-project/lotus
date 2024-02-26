@@ -191,7 +191,6 @@ func (sr *stateRand) GetBeaconRandomness(ctx context.Context, filecoinEpoch abi.
 
 func (sr *stateRand) DrawChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	digest, err := sr.GetChainRandomness(ctx, filecoinEpoch)
-
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness: %w", err)
 	}
@@ -206,7 +205,6 @@ func (sr *stateRand) DrawChainRandomness(ctx context.Context, pers crypto.Domain
 
 func (sr *stateRand) DrawBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	digest, err := sr.GetBeaconRandomness(ctx, filecoinEpoch)
-
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get beacon randomness: %w", err)
 	}

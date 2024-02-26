@@ -151,14 +151,16 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 	return c
 }
 
-var _ rt0.Runtime = (*Runtime)(nil)
-var _ rt5.Runtime = (*Runtime)(nil)
-var _ rt2.Runtime = (*Runtime)(nil)
-var _ rt3.Runtime = (*Runtime)(nil)
-var _ rt4.Runtime = (*Runtime)(nil)
-var _ rt5.Runtime = (*Runtime)(nil)
-var _ rt6.Runtime = (*Runtime)(nil)
-var _ rt7.Runtime = (*Runtime)(nil)
+var (
+	_ rt0.Runtime = (*Runtime)(nil)
+	_ rt5.Runtime = (*Runtime)(nil)
+	_ rt2.Runtime = (*Runtime)(nil)
+	_ rt3.Runtime = (*Runtime)(nil)
+	_ rt4.Runtime = (*Runtime)(nil)
+	_ rt5.Runtime = (*Runtime)(nil)
+	_ rt6.Runtime = (*Runtime)(nil)
+	_ rt7.Runtime = (*Runtime)(nil)
+)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -231,13 +233,11 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	digest, err := rt.vm.rand.GetChainRandomness(rt.ctx, randEpoch)
-
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 
 	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
-
 	if err != nil {
 		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
 	}
@@ -247,13 +247,11 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	digest, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, randEpoch)
-
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 
 	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
-
 	if err != nil {
 		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
 	}
@@ -579,7 +577,6 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 			panic(err)
 		}
 	}
-
 }
 
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {

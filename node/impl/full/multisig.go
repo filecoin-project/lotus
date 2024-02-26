@@ -41,7 +41,6 @@ func (a *MsigAPI) messageBuilder(ctx context.Context, from address.Address) (mul
 // TODO: remove gp (gasPrice) from arguments
 // TODO: Add "vesting start" to arguments.
 func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*api.MessagePrototype, error) {
-
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
 		return nil, err
@@ -59,7 +58,6 @@ func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Ad
 }
 
 func (a *MsigAPI) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*api.MessagePrototype, error) {
-
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
 		return nil, err

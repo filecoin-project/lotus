@@ -31,8 +31,10 @@ const (
 	numPollers
 )
 
-const sealPollerInterval = 10 * time.Second
-const seedEpochConfidence = 3
+const (
+	sealPollerInterval  = 10 * time.Second
+	seedEpochConfidence = 3
+)
 
 type SealPollerAPI interface {
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)

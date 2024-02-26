@@ -62,7 +62,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	boundaryEpoch := currentEpoch - CompactionBoundary
 
 	outputPath := filepath.Join(s.path, "check.txt")
-	output, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	output, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
 		return xerrors.Errorf("error opening check output file %s: %w", outputPath, err)
 	}

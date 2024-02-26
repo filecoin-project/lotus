@@ -370,7 +370,6 @@ assignLoop:
 
 			log.Debugf("assign worker sector %d to %s", todo.Sector.ID.Number, worker.Info.Hostname)
 			err := sw.startProcessingTask(todo)
-
 			if err != nil {
 				log.Errorf("startProcessingTask error: %+v", err)
 				go todo.respond(xerrors.Errorf("startProcessingTask error: %w", err))
@@ -430,7 +429,6 @@ assignLoop:
 
 			log.Debugf("assign worker sector %d (ready)", todo.Sector.ID.Number)
 			err := sw.startProcessingReadyTask(todo)
-
 			if err != nil {
 				log.Errorf("startProcessingTask error: %+v", err)
 				go todo.respond(xerrors.Errorf("startProcessingTask error: %w", err))

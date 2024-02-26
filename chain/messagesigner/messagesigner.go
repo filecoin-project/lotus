@@ -21,8 +21,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-const dsKeyActorNonce = "ActorNextNonce"
-const dsKeyMsgUUIDSet = "MsgUuidSet"
+const (
+	dsKeyActorNonce = "ActorNextNonce"
+	dsKeyMsgUUIDSet = "MsgUuidSet"
+)
 
 var log = logging.Logger("messagesigner")
 
@@ -80,7 +82,6 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, sp
 		Type:  api.MTChainMsg,
 		Extra: mb.RawData(),
 	})
-
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w, addr=%s", err, msg.From)
 	}
@@ -105,7 +106,6 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, sp
 }
 
 func (ms *MessageSigner) GetSignedMessage(ctx context.Context, uuid uuid.UUID) (*types.SignedMessage, error) {
-
 	key := datastore.KeyWithNamespaces([]string{dsKeyMsgUUIDSet, uuid.String()})
 	bytes, err := ms.ds.Get(ctx, key)
 	if err != nil {
@@ -115,7 +115,6 @@ func (ms *MessageSigner) GetSignedMessage(ctx context.Context, uuid uuid.UUID) (
 }
 
 func (ms *MessageSigner) StoreSignedMessage(ctx context.Context, uuid uuid.UUID, message *types.SignedMessage) error {
-
 	key := datastore.KeyWithNamespaces([]string{dsKeyMsgUUIDSet, uuid.String()})
 	serializedMsg, err := message.Serialize()
 	if err != nil {

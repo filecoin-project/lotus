@@ -246,7 +246,6 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fu
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return a.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
-
 }
 
 func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
@@ -1622,6 +1621,7 @@ func (g gasRewardSorter) Len() int { return len(g) }
 func (g gasRewardSorter) Swap(i, j int) {
 	g[i], g[j] = g[j], g[i]
 }
+
 func (g gasRewardSorter) Less(i, j int) bool {
 	return g[i].premium.Int.Cmp(g[j].premium.Int) == -1
 }

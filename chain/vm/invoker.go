@@ -52,8 +52,10 @@ func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
 	}
 }
 
-type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
-type nativeCode map[abi.MethodNum]invokeFunc
+type (
+	invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
+	nativeCode map[abi.MethodNum]invokeFunc
+)
 
 type actorInfo struct {
 	methods nativeCode
@@ -82,7 +84,6 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
 	return act.methods[method](rt, params)
-
 }
 
 func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, vmactors []builtin.RegistryEntry) {

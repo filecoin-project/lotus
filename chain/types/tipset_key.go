@@ -190,5 +190,7 @@ func decodeKey(encoded []byte) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-var _ typegen.CBORMarshaler = &TipSetKey{}
-var _ typegen.CBORUnmarshaler = &TipSetKey{}
+var (
+	_ typegen.CBORMarshaler   = &TipSetKey{}
+	_ typegen.CBORUnmarshaler = &TipSetKey{}
+)

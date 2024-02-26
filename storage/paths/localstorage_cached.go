@@ -11,8 +11,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var StatTimeout = 5 * time.Second
-var MaxDiskUsageDuration = time.Second
+var (
+	StatTimeout          = 5 * time.Second
+	MaxDiskUsageDuration = time.Second
+)
 
 type cachedLocalStorage struct {
 	base LocalStorage

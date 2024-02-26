@@ -41,7 +41,7 @@ var badgerMarkSetBatchSize = 16384
 
 func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 	msPath := filepath.Join(path, "markset.badger")
-	err := os.MkdirAll(msPath, 0755) //nolint:gosec
+	err := os.MkdirAll(msPath, 0o755) //nolint:gosec
 	if err != nil {
 		return nil, xerrors.Errorf("error creating markset directory: %w", err)
 	}
@@ -385,7 +385,7 @@ func openBadgerDB(path string, recover bool) (*badger.DB, error) {
 			return nil, xerrors.Errorf("error clearing markset directory: %w", err)
 		}
 
-		err = os.MkdirAll(path, 0755) //nolint:gosec
+		err = os.MkdirAll(path, 0o755) //nolint:gosec
 		if err != nil {
 			return nil, xerrors.Errorf("error creating markset directory: %w", err)
 		}

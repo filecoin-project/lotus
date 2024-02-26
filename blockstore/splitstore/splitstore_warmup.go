@@ -16,10 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var (
-	// WarmupBoundary is the number of epochs to load state during warmup.
-	WarmupBoundary = build.Finality
-)
+// WarmupBoundary is the number of epochs to load state during warmup.
+var WarmupBoundary = build.Finality
 
 // warmup acquires the compaction lock and spawns a goroutine to warm up the hotstore;
 // this is necessary when we sync from a snapshot or when we enable the splitstore
@@ -111,7 +109,6 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 
 			return nil
 		}, func(cid.Cid) error { return nil })
-
 	if err != nil {
 		return err
 	}

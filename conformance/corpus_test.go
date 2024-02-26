@@ -94,7 +94,6 @@ func TestConformance(t *testing.T) {
 		vectors = append(vectors, rel)
 		return nil
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}

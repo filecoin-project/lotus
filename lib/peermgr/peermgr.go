@@ -39,7 +39,7 @@ type PeerMgr struct {
 
 	// peerLeads is a set of peers we hear about through the network
 	// and who may be good peers to connect to for expanding our peer set
-	//peerLeads map[peer.ID]time.Time // TODO: unused
+	// peerLeads map[peer.ID]time.Time // TODO: unused
 
 	peersLk sync.Mutex
 	peers   map[peer.ID]time.Duration
@@ -130,7 +130,6 @@ func (pmgr *PeerMgr) SetPeerLatency(p peer.ID, latency time.Duration) {
 	if _, ok := pmgr.peers[p]; ok {
 		pmgr.peers[p] = latency
 	}
-
 }
 
 func (pmgr *PeerMgr) Disconnect(p peer.ID) {

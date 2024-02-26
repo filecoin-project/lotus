@@ -48,7 +48,7 @@ func backup(ctx context.Context, mds dtypes.MetadataDS, fpath string) error {
 		return xerrors.Errorf("backup file name (%s) must be inside base path (%s)", fpath, bb)
 	}
 
-	out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
+	out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return xerrors.Errorf("open %s: %w", fpath, err)
 	}

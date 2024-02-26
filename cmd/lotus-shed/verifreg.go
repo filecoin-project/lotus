@@ -107,9 +107,8 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 			return fmt.Errorf("failed to add verifier: %d", mwait.Receipt.ExitCode)
 		}
 
-		//TODO: Internal msg might still have failed
+		// TODO: Internal msg might still have failed
 		return nil
-
 	},
 }
 
@@ -174,7 +173,6 @@ var verifRegAddVerifierFromAccountCmd = &cli.Command{
 		}
 
 		return nil
-
 	},
 }
 
@@ -525,7 +523,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 			return fmt.Errorf("failed to removed verified data cap: %d", mwait.Receipt.ExitCode)
 		}
 
-		//TODO: Internal msg might still have failed
+		// TODO: Internal msg might still have failed
 		return nil
 	},
 }

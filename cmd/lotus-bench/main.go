@@ -412,7 +412,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			err = os.MkdirAll(sdir, 0775) //nolint:gosec
+			err = os.MkdirAll(sdir, 0o775) //nolint:gosec
 			if err != nil {
 				return xerrors.Errorf("creating sectorbuilder dir: %w", err)
 			}
@@ -428,7 +428,7 @@ var sealBenchCmd = &cli.Command{
 			}()
 
 			// TODO: pretty sure this isnt even needed?
-			if err := os.MkdirAll(tsdir, 0775); err != nil {
+			if err := os.MkdirAll(tsdir, 0o775); err != nil {
 				return err
 			}
 
@@ -701,8 +701,10 @@ var sealBenchCmd = &cli.Command{
 		}
 
 		bo.EnvVar = make(map[string]string)
-		for _, envKey := range []string{"BELLMAN_NO_GPU", "FIL_PROOFS_USE_GPU_COLUMN_BUILDER",
-			"FIL_PROOFS_USE_GPU_TREE_BUILDER", "FIL_PROOFS_USE_MULTICORE_SDR", "BELLMAN_CUSTOM_GPU"} {
+		for _, envKey := range []string{
+			"BELLMAN_NO_GPU", "FIL_PROOFS_USE_GPU_COLUMN_BUILDER",
+			"FIL_PROOFS_USE_GPU_TREE_BUILDER", "FIL_PROOFS_USE_MULTICORE_SDR", "BELLMAN_CUSTOM_GPU",
+		} {
 			envValue, found := os.LookupEnv(envKey)
 			if found {
 				bo.EnvVar[envKey] = envValue
@@ -868,7 +870,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 							return err
 						}
 
-						if err := os.WriteFile(saveC2inp, b, 0664); err != nil {
+						if err := os.WriteFile(saveC2inp, b, 0o664); err != nil {
 							log.Warnf("%+v", err)
 						}
 					}

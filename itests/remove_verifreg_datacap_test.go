@@ -63,7 +63,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	// Publish (but NOT activate) a verified storage deal from that clien
 
 	// get VRH
-	//stm: @CHAIN_STATE_VERIFIED_REGISTRY_ROOT_KEY_001
+	// stm: @CHAIN_STATE_VERIFIED_REGISTRY_ROOT_KEY_001
 	vrh, err := clientApi.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
 	fmt.Println(vrh.String())
 	require.NoError(t, err)
@@ -106,7 +106,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	sm, err := clientApi.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err, "AddVerifier failed")
 
-	//stm: @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err := clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
@@ -125,7 +125,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	sm, err = clientApi.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err, "AddVerifier failed")
 
-	//stm: @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
@@ -147,13 +147,13 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	sm, err = clientApi.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
-	//stm: @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
 
 	// check datacap balance
-	//stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
+	// stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
 	dc, err := clientApi.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, *dc, datacapToAssign)

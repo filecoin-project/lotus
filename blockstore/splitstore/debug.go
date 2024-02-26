@@ -34,7 +34,7 @@ type debugLogOp struct {
 
 func openDebugLog(path string) (*debugLog, error) {
 	basePath := filepath.Join(path, "debug")
-	err := os.MkdirAll(basePath, 0755)
+	err := os.MkdirAll(basePath, 0o755)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (d *debugLog) timestamp() string {
 
 func openDebugLogOp(basePath, name string) (*debugLogOp, error) {
 	path := filepath.Join(basePath, name)
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
 		return nil, xerrors.Errorf("error opening %s: %w", name, err)
 	}
@@ -264,7 +264,7 @@ func (d *debugLogOp) Rotate() {
 	}()
 
 	d.count = 0
-	d.log, err = os.OpenFile(d.path, os.O_WRONLY|os.O_CREATE, 0644)
+	d.log, err = os.OpenFile(d.path, os.O_WRONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Warnf("error opening log (file: %s): %s", d.path, err)
 		return

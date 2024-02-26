@@ -29,7 +29,6 @@ func TraverseDag(
 	onOpen func(node mdagipld.Node) error,
 	visitCallback traversal.AdvVisitFn,
 ) error {
-
 	if optionalSelector == nil {
 		optionalSelector = selectorparse.CommonSelector_MatchAllRecursively
 	}

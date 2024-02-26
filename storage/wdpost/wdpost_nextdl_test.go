@@ -23,14 +23,14 @@ func TestNextDeadline(t *testing.T) {
 	require.EqualValues(t, 60, di.Close)
 
 	for i := 1; i < 1+int(minertypes.WPoStPeriodDeadlines)*2; i++ {
-		//stm: @WDPOST_NEXT_DEADLINE_001
+		// stm: @WDPOST_NEXT_DEADLINE_001
 		di = NextDeadline(di)
 		deadlineIdx = i % int(minertypes.WPoStPeriodDeadlines)
 		expPeriodStart := int(minertypes.WPoStProvingPeriod) * (i / int(minertypes.WPoStPeriodDeadlines))
 		expOpen := expPeriodStart + deadlineIdx*int(minertypes.WPoStChallengeWindow)
 		expClose := expOpen + int(minertypes.WPoStChallengeWindow)
 		expChallenge := expOpen - int(minertypes.WPoStChallengeLookback)
-		//fmt.Printf("%d: %d@%d %d-%d (%d)\n", i, expPeriodStart, deadlineIdx, expOpen, expClose, expChallenge)
+		// fmt.Printf("%d: %d@%d %d-%d (%d)\n", i, expPeriodStart, deadlineIdx, expOpen, expClose, expChallenge)
 		require.EqualValues(t, deadlineIdx, di.Index)
 		require.EqualValues(t, expPeriodStart, di.PeriodStart)
 		require.EqualValues(t, expOpen, di.Open)

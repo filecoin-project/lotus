@@ -30,7 +30,6 @@ func findDocSect(root, section, name string) *DocField {
 				docSection = Doc[field.Type]
 				break
 			}
-
 		}
 	}
 

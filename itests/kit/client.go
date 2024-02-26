@@ -149,7 +149,7 @@ func createRandomFile(rseed, size int) ([]byte, string, error) {
 	}
 
 	path := filepath.Join(dir, "sourcefile.dat")
-	err = os.WriteFile(path, data, 0644)
+	err = os.WriteFile(path, data, 0o644)
 	if err != nil {
 		return nil, "", err
 	}

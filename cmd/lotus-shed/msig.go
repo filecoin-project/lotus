@@ -105,7 +105,6 @@ var multisigGetAllCmd = &cli.Command{
 				ms, err := multisig.Load(store, act)
 				if err != nil {
 					return fmt.Errorf("load msig failed %v", err)
-
 				}
 
 				signers, _ := ms.Signers()

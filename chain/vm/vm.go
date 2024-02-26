@@ -70,7 +70,6 @@ func ResolveToDeterministicAddr(state types.StateTree, cst cbor.IpldStore, addr 
 		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
 	return aast.PubkeyAddress()
-
 }
 
 var (
@@ -296,7 +295,8 @@ type ApplyRet struct {
 }
 
 func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtime,
-	gasCharge *GasCharge, start time.Time) ([]byte, aerrors.ActorError, *Runtime) {
+	gasCharge *GasCharge, start time.Time,
+) ([]byte, aerrors.ActorError, *Runtime) {
 	defer atomic.AddUint64(&StatSends, 1)
 
 	st := vm.cstate

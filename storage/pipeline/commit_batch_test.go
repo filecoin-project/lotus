@@ -32,7 +32,7 @@ import (
 )
 
 func TestCommitBatcher(t *testing.T) {
-	//stm: @CHAIN_STATE_MINER_PRE_COM_INFO_001, @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
+	// stm: @CHAIN_STATE_MINER_PRE_COM_INFO_001, @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
 
@@ -156,7 +156,7 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
-	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001, @CHAIN_STATE_MINER_GET_COLLATERAL_001
+	// stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001, @CHAIN_STATE_MINER_GET_COLLATERAL_001
 	expectSend := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
 		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
@@ -451,7 +451,7 @@ var dummyAddr = func() address.Address {
 func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.TipSet {
 	dummyCid, _ := cid.Parse("bafkqaaa")
 
-	var ts, err = types.NewTipSet([]*types.BlockHeader{
+	ts, err := types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
 			Miner:  dummyAddr,

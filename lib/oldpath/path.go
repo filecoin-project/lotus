@@ -77,7 +77,6 @@ func (p Path) IsJustAKey() bool {
 // segment, separately. If there is no more to pop (the path is just a key),
 // the original path is returned.
 func (p Path) PopLastSegment() (Path, string, error) {
-
 	if p.IsJustAKey() {
 		return p, "", nil
 	}
@@ -124,7 +123,7 @@ func ParsePath(txt string) (Path, error) {
 		return "", &pathError{error: fmt.Errorf("path does not begin with '/'"), path: txt}
 	}
 
-	//TODO: make this smarter
+	// TODO: make this smarter
 	switch parts[1] {
 	case "ipfs", "ipld":
 		if parts[2] == "" {

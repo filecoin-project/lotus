@@ -60,7 +60,8 @@ type FilecoinEC struct {
 const MaxHeightDrift = 5
 
 var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
-	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error {
+	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams,
+) error {
 	ser, err := actors.SerializeParams(params)
 	if err != nil {
 		return xerrors.Errorf("failed to serialize award params: %w", err)
@@ -234,7 +235,6 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			return xerrors.Errorf("check block signature failed: %w", err)
 		}
 		return nil
-
 	})
 
 	beaconValuesCheck := async.Err(func() error {
@@ -444,11 +444,12 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	return nil
 }
 
-var ErrSoftFailure = errors.New("soft validation failure")
-var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
+var (
+	ErrSoftFailure       = errors.New("soft validation failure")
+	ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
+)
 
 func (filec *FilecoinEC) ValidateBlockHeader(ctx context.Context, b *types.BlockHeader) (rejectReason string, err error) {
-
 	// we want to ensure that it is a block from a known miner; we reject blocks from unknown miners
 	// to prevent spam attacks.
 	// the logic works as follows: we lookup the miner in the chain for its key.
@@ -523,13 +524,14 @@ func (filec *FilecoinEC) isChainNearSynced() bool {
 }
 
 func verifyBlockSignature(ctx context.Context, h *types.BlockHeader,
-	addr address.Address) error {
+	addr address.Address,
+) error {
 	return sigs.CheckBlockSignature(ctx, h, addr)
 }
 
 func signBlock(ctx context.Context, w api.Wallet,
-	addr address.Address, next *types.BlockHeader) error {
-
+	addr address.Address, next *types.BlockHeader,
+) error {
 	nosigbytes, err := next.SigningBytes()
 	if err != nil {
 		return xerrors.Errorf("failed to get signing bytes for block: %w", err)

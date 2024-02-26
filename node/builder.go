@@ -247,6 +247,7 @@ func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool {
 	return s.nodeType == repo.FullNode && !s.Lite
 }
+
 func isLiteNode(s *Settings) bool {
 	return s.nodeType == repo.FullNode && s.Lite
 }

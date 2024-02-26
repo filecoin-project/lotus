@@ -85,7 +85,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	em stmgr.ExecMonitor,
 	vmTracing bool,
 	baseFee abi.TokenAmount,
-	ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+	ts *types.TipSet,
+) (cid.Cid, cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
 	defer done()
 
@@ -312,7 +313,8 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	sm *stmgr.StateManager,
 	ts *types.TipSet,
 	em stmgr.ExecMonitor,
-	vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
+	vmTracing bool,
+) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 

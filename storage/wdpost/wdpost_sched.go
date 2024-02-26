@@ -102,7 +102,8 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
-	actors []dtypes.MinerAddress) (*WindowPoStScheduler, error) {
+	actors []dtypes.MinerAddress,
+) (*WindowPoStScheduler, error) {
 	var actorInfos []ActorInfo
 
 	for _, actor := range actors {

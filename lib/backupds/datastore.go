@@ -238,5 +238,7 @@ func (b *bbatch) Commit(ctx context.Context) error {
 	return b.b.Commit(ctx)
 }
 
-var _ datastore.Batch = &bbatch{}
-var _ datastore.Batching = &Datastore{}
+var (
+	_ datastore.Batch    = &bbatch{}
+	_ datastore.Batching = &Datastore{}
+)

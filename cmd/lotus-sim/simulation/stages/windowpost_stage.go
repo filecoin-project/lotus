@@ -92,7 +92,6 @@ func (stage *WindowPoStStage) queueMiner(
 	addr address.Address, minerState miner.State,
 	commitEpoch abi.ChainEpoch, commitRand abi.Randomness,
 ) error {
-
 	if active, err := minerState.DeadlineCronActive(); err != nil {
 		return err
 	} else if !active {

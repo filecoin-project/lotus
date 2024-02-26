@@ -23,7 +23,7 @@ type BackupAPI interface {
 type BackupApiFn func(ctx *cli.Context) (BackupAPI, jsonrpc.ClientCloser, error)
 
 func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Command {
-	var offlineBackup = func(cctx *cli.Context) error {
+	offlineBackup := func(cctx *cli.Context) error {
 		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
 
 		repoPath := cctx.String(repoFlag)
@@ -65,7 +65,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 			return xerrors.Errorf("backup file %s already exists. Overwriting it will corrupt the file, please specify another file name", fpath)
 		}
 
-		out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
+		out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			return xerrors.Errorf("opening backup file %s: %w", fpath, err)
 		}
@@ -84,7 +84,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 		return nil
 	}
 
-	var onlineBackup = func(cctx *cli.Context) error {
+	onlineBackup := func(cctx *cli.Context) error {
 		api, closer, err := getApi(cctx)
 		if err != nil {
 			return xerrors.Errorf("getting api: %w (if the node isn't running you can use the --offline flag)", err)

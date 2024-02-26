@@ -78,7 +78,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		if err := os.MkdirAll(os.TempDir(), 0755); err != nil {
+		if err := os.MkdirAll(os.TempDir(), 0o755); err != nil {
 			log.Errorf("ensuring tempdir exists: %s", err)
 		}
 
@@ -120,7 +120,6 @@ var runCmd = &cli.Command{
 		}
 
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
-
 		if err != nil {
 			return nil
 		}
@@ -130,8 +129,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
-		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
+		finishCh := node.MonitorShutdown(shutdownChan) // node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+		// node.ShutdownHandler{Component: "provider", StopFunc: stop},
 
 		<-finishCh
 		return nil

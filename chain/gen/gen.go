@@ -102,11 +102,13 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 	Meta:    rootkeyMultisig.ActorMeta(),
 }
 
-var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
-var remAccMeta = genesis.MultisigMeta{
-	Signers:   []address.Address{remAccTestKey},
-	Threshold: 1,
-}
+var (
+	remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
+	remAccMeta       = genesis.MultisigMeta{
+		Signers:   []address.Address{remAccTestKey},
+		Threshold: 1,
+	}
+)
 
 var DefaultRemainderAccountActor = genesis.Actor{
 	Type:    genesis.TMultisig,
@@ -498,8 +500,8 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet,
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
 	eticket *types.ElectionProof, bvals []types.BeaconEntry, height abi.ChainEpoch,
-	wpost []proof7.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
-
+	wpost []proof7.PoStProof, msgs []*types.SignedMessage,
+) (*types.FullBlock, error) {
 	var ts uint64
 	if cg.Timestamper != nil {
 		ts = cg.Timestamper(parents, height-parents.Height())
@@ -640,8 +642,8 @@ func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInf
 }
 
 func IsRoundWinner(ctx context.Context, round abi.ChainEpoch,
-	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
-
+	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI,
+) (*types.ElectionProof, error) {
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)

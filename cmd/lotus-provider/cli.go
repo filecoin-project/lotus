@@ -102,7 +102,7 @@ var cliCmd = &cli.Command{
 				return xerrors.Errorf("getting configs: %w", err)
 			}
 
-			var seen = make(map[string]struct{})
+			seen := make(map[string]struct{})
 
 			for _, config := range dbconfigs {
 				var layer struct {

@@ -34,7 +34,7 @@ import (
 func TestSectorImportAfterPC2(t *testing.T) {
 	kit.QuietMiningLogs()
 
-	var blockTime = 50 * time.Millisecond
+	blockTime := 50 * time.Millisecond
 
 	////////
 	// Start a miner node
@@ -125,7 +125,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 
 	// make finalized cache, put it in [sectorDir]/fin-cache while keeping the large cache for remote C1
 	finDst := filepath.Join(sectorDir, "fin-cache", fmt.Sprintf("s-t01000-%d", snum))
-	require.NoError(t, os.MkdirAll(finDst, 0777))
+	require.NoError(t, os.MkdirAll(finDst, 0o777))
 	require.NoError(t, sealer.FinalizeSectorInto(ctx, sref, finDst))
 
 	////////
@@ -292,7 +292,6 @@ func remoteCommit2(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Req
 
 func remoteGetSector(sectorRoot string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		vars := mux.Vars(r)
 
 		// validate sector id

@@ -68,7 +68,8 @@ func (m *Sealing) GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error) {
 
 func collateralSendAmount(ctx context.Context, api interface {
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
-}, maddr address.Address, cfg sealiface.Config, collateral abi.TokenAmount) (abi.TokenAmount, error) {
+}, maddr address.Address, cfg sealiface.Config, collateral abi.TokenAmount,
+) (abi.TokenAmount, error) {
 	if cfg.CollateralFromMinerBalance {
 		if cfg.DisableCollateralFallback {
 			return big.Zero(), nil
@@ -96,7 +97,8 @@ func collateralSendAmount(ctx context.Context, api interface {
 func simulateMsgGas(ctx context.Context, sa interface {
 	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
 },
-	from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (*types.Message, error) {
+	from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte,
+) (*types.Message, error) {
 	msg := types.Message{
 		To:     to,
 		From:   from,
@@ -110,7 +112,8 @@ func simulateMsgGas(ctx context.Context, sa interface {
 
 func sendMsg(ctx context.Context, sa interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
-}, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {
+}, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte,
+) (cid.Cid, error) {
 	msg := types.Message{
 		To:     to,
 		From:   from,

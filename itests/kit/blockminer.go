@@ -93,11 +93,10 @@ func (p *partitionTracker) recordIfPost(t *testing.T, bm *BlockMiner, msg *types
 }
 
 func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, dlinfo *dline.Info) {
-
 	tracker := newPartitionTracker(ctx, dlinfo.Index, bm)
 	if !tracker.done(bm.t) { // need to wait for post
 		bm.t.Logf("expect %d partitions proved but only see %d", len(tracker.partitions), tracker.count(bm.t))
-		poolEvts, err := bm.miner.FullNode.MpoolSub(ctx) //subscribe before checking pending so we don't miss any events
+		poolEvts, err := bm.miner.FullNode.MpoolSub(ctx) // subscribe before checking pending so we don't miss any events
 		require.NoError(bm.t, err)
 
 		// First check pending messages we'll mine this epoch
@@ -117,7 +116,6 @@ func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, dlinfo *d
 				if tracker.recordIfPost(bm.t, bm, msg) {
 					fmt.Printf("found post in message of prev tipset\n")
 				}
-
 			}
 			for _, msg := range msgs.SecpkMessages {
 				if tracker.recordIfPost(bm.t, bm, &msg.Message) {
@@ -252,7 +250,6 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			}
 		}
 	}()
-
 }
 
 func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {

@@ -196,7 +196,7 @@ func (a *app) clusterTaskHistorySummary(ctx context.Context) ([]taskHistorySumma
 
 		t.Posted = posted.Local().Round(time.Second).Format("02 Jan 06 15:04")
 		t.Start = start.Local().Round(time.Second).Format("02 Jan 06 15:04")
-		//t.End = end.Local().Round(time.Second).Format("02 Jan 06 15:04")
+		// t.End = end.Local().Round(time.Second).Format("02 Jan 06 15:04")
 
 		t.Queued = start.Sub(posted).Round(time.Second).String()
 		if t.Queued == "0s" {

@@ -77,6 +77,7 @@ func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Addres
 
 	return result
 }
+
 func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
 	return e.DeployContractWithValue(ctx, sender, bytecode, big.Zero())
 }
@@ -100,6 +101,7 @@ func (e *EVM) DeployContractFromFilenameWithValue(ctx context.Context, binFilena
 	require.NoError(e.t, err)
 	return fromAddr, idAddr
 }
+
 func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
 	return e.DeployContractFromFilenameWithValue(ctx, binFilename, big.Zero())
 }

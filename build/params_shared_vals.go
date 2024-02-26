@@ -18,8 +18,10 @@ import (
 // /////
 // Storage
 
-const UnixfsChunkSize uint64 = 1 << 20
-const UnixfsLinksPerLevel = 1024
+const (
+	UnixfsChunkSize     uint64 = 1 << 20
+	UnixfsLinksPerLevel        = 1024
+)
 
 // /////
 // Consensus / Network
@@ -41,13 +43,17 @@ const ForkLengthThreshold = Finality
 var BlocksPerEpoch = uint64(builtin2.ExpectedLeadersPerEpoch)
 
 // Epochs
-const Finality = policy.ChainFinality
-const MessageConfidence = uint64(5)
+const (
+	Finality          = policy.ChainFinality
+	MessageConfidence = uint64(5)
+)
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
-const WRatioNum = int64(1)
-const WRatioDen = uint64(2)
+const (
+	WRatioNum = int64(1)
+	WRatioDen = uint64(2)
+)
 
 // /////
 // Proofs
@@ -75,14 +81,20 @@ var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 var Devnet = true
 
-const FilBase = uint64(2_000_000_000)
-const FilAllocStorageMining = uint64(1_100_000_000)
+const (
+	FilBase               = uint64(2_000_000_000)
+	FilAllocStorageMining = uint64(1_100_000_000)
+)
 
-const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
-const FilReserved = uint64(300_000_000)
+const (
+	FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+	FilReserved       = uint64(300_000_000)
+)
 
-var InitialRewardBalance *big.Int
-var InitialFilReserved *big.Int
+var (
+	InitialRewardBalance *big.Int
+	InitialFilReserved   *big.Int
+)
 
 // TODO: Move other important consts here
 
@@ -115,14 +127,18 @@ const VerifSigCacheSize = 32000
 // TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 10000
 
-var BlockGasLimit = int64(10_000_000_000)
-var BlockGasTarget = BlockGasLimit / 2
+var (
+	BlockGasLimit  = int64(10_000_000_000)
+	BlockGasTarget = BlockGasLimit / 2
+)
 
-const BaseFeeMaxChangeDenom = 8 // 12.5%
-const InitialBaseFee = 100e6
-const MinimumBaseFee = 100
-const PackingEfficiencyNum = 4
-const PackingEfficiencyDenom = 5
+const (
+	BaseFeeMaxChangeDenom  = 8 // 12.5%
+	InitialBaseFee         = 100e6
+	MinimumBaseFee         = 100
+	PackingEfficiencyNum   = 4
+	PackingEfficiencyDenom = 5
+)
 
 // Actor consts
 // TODO: pieceSize unused from actors

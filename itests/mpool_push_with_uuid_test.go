@@ -18,7 +18,7 @@ import (
 )
 
 func TestMpoolPushWithoutUuidWithMaxFee(t *testing.T) {
-	//stm: @TOKEN_WALLET_SIGN_001, @CHAIN_MEMPOOL_PUSH_001
+	// stm: @TOKEN_WALLET_SIGN_001, @CHAIN_MEMPOOL_PUSH_001
 	ctx := context.Background()
 
 	kit.QuietMiningLogs()

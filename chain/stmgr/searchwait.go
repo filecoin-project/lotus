@@ -176,7 +176,6 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 	}
 
 	fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head, msg, lookbackLimit, allowReplaced)
-
 	if err != nil {
 		log.Warnf("failed to look back through chain for message %s", mcid)
 		return nil, nil, cid.Undef, err

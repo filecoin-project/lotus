@@ -81,8 +81,7 @@ type SupportsStagingDeals interface {
 
 var FullNode fullNode
 
-type fullNode struct {
-}
+type fullNode struct{}
 
 func (fullNode) Type() string {
 	return "FullNode"
@@ -160,8 +159,7 @@ func (markets) APIInfoEnvVars() (primary string, fallbacks []string, deprecated 
 	return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
 }
 
-type worker struct {
-}
+type worker struct{}
 
 var Worker worker
 
@@ -211,8 +209,7 @@ func (provider) APIInfoEnvVars() (primary string, fallbacks []string, deprecated
 
 var Wallet wallet
 
-type wallet struct {
-}
+type wallet struct{}
 
 func (wallet) Type() string {
 	return "Wallet"
@@ -288,7 +285,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 	}
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
-	err = os.MkdirAll(fsr.path, 0755) //nolint: gosec
+	err = os.MkdirAll(fsr.path, 0o755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -298,7 +295,6 @@ func (fsr *FsRepo) Init(t RepoType) error {
 	}
 
 	return fsr.initKeystore()
-
 }
 
 func (fsr *FsRepo) initConfig(t RepoType) error {
@@ -337,7 +333,7 @@ func (fsr *FsRepo) initKeystore() error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	return os.Mkdir(kstorePath, 0700)
+	return os.Mkdir(kstorePath, 0o700)
 }
 
 // APIEndpoint returns endpoint of API in this repo
@@ -492,7 +488,7 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 		path := fsr.join(filepath.Join(fsDatastore, "chain"))
 		readonly := fsr.readonly
 
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			fsr.bsErr = err
 			return
 		}
@@ -522,7 +518,7 @@ func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
 	fsr.ssOnce.Do(func() {
 		path := fsr.join(filepath.Join(fsDatastore, "splitstore"))
 
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			fsr.ssErr = err
 			return
 		}
@@ -537,7 +533,7 @@ func (fsr *fsLockedRepo) SqlitePath() (string, error) {
 	fsr.sqlOnce.Do(func() {
 		path := fsr.join(fsSqlite)
 
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			fsr.sqlErr = err
 			return
 		}
@@ -605,7 +601,7 @@ func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	}
 
 	// write buffer of TOML bytes to config file
-	err = os.WriteFile(fsr.configPath, buf.Bytes(), 0644)
+	err = os.WriteFile(fsr.configPath, buf.Bytes(), 0o644)
 	if err != nil {
 		return err
 	}
@@ -658,14 +654,14 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return os.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
+	return os.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0o644)
 }
 
 func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return os.WriteFile(fsr.join(fsAPIToken), token, 0600)
+	return os.WriteFile(fsr.join(fsAPIToken), token, 0o600)
 }
 
 func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
@@ -696,7 +692,7 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 	}
 	keys := make([]string, 0, len(files))
 	for _, f := range files {
-		if f.Mode()&0077 != 0 {
+		if f.Mode()&0o077 != 0 {
 			return nil, xerrors.Errorf(kstrPermissionMsg, f.Name(), f.Mode())
 		}
 		name, err := base32.RawStdEncoding.DecodeString(f.Name())
@@ -724,7 +720,7 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, err)
 	}
 
-	if fstat.Mode()&0077 != 0 {
+	if fstat.Mode()&0o077 != 0 {
 		return types.KeyInfo{}, xerrors.Errorf(kstrPermissionMsg, name, fstat.Mode())
 	}
 
@@ -783,7 +779,7 @@ func (fsr *fsLockedRepo) put(rawName string, info types.KeyInfo, retries int) er
 		return xerrors.Errorf("encoding key '%s': %w", name, err)
 	}
 
-	err = os.WriteFile(keyPath, keyData, 0600)
+	err = os.WriteFile(keyPath, keyData, 0o600)
 	if err != nil {
 		return xerrors.Errorf("writing key '%s': %w", name, err)
 	}

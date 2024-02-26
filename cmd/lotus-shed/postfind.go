@@ -34,7 +34,7 @@ var postFindCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "lookback",
 			Usage: "number of past epochs to search for post",
-			Value: 2880, //default 1 day
+			Value: 2880, // default 1 day
 		},
 	},
 	Action: func(c *cli.Context) error {

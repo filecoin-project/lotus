@@ -414,9 +414,11 @@ func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (
 }
 
 // Assert that these are all identical so we can simplify the below code and decode once.
-var _ *eam12.Return = (*eam12.Return)((*eam12.CreateReturn)(nil))
-var _ *eam12.Return = (*eam12.Return)((*eam12.Create2Return)(nil))
-var _ *eam12.Return = (*eam12.Return)((*eam12.CreateExternalReturn)(nil))
+var (
+	_ *eam12.Return = (*eam12.Return)((*eam12.CreateReturn)(nil))
+	_ *eam12.Return = (*eam12.Return)((*eam12.Create2Return)(nil))
+	_ *eam12.Return = (*eam12.Return)((*eam12.CreateExternalReturn)(nil))
+)
 
 // Decode the parameters and return value of an EVM smart contract creation through the EAM. This
 // should only be called with an ExecutionTrace for a Create, Create2, or CreateExternal method

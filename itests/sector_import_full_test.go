@@ -33,7 +33,6 @@ import (
 )
 
 func TestSectorImport(t *testing.T) {
-
 	type testCase struct {
 		c1handler func(s *ffiwrapper.Sealer, m *kit.TestMiner) func(w http.ResponseWriter, r *http.Request)
 
@@ -60,7 +59,7 @@ func TestSectorImport(t *testing.T) {
 		return func(t *testing.T) {
 			kit.QuietMiningLogs()
 
-			var blockTime = 50 * time.Millisecond
+			blockTime := 50 * time.Millisecond
 
 			////////
 			// Start a miner node
@@ -150,7 +149,7 @@ func TestSectorImport(t *testing.T) {
 
 			// make finalized cache, put it in [sectorDir]/fin-cache while keeping the large cache for remote C1
 			finDst := filepath.Join(sectorDir, "fin-cache", fmt.Sprintf("s-t01000-%d", snum))
-			require.NoError(t, os.MkdirAll(finDst, 0777))
+			require.NoError(t, os.MkdirAll(finDst, 0o777))
 			require.NoError(t, sealer.FinalizeSectorInto(ctx, sref, finDst))
 
 			////////
@@ -346,7 +345,6 @@ func TestSectorImport(t *testing.T) {
 		}
 		testCase.expectImportErrContains = "tickets differ"
 	})))
-
 }
 
 // note: stuff below is almost the same as in _simple version of this file; We need
@@ -440,7 +438,6 @@ func testRemoteCommit2(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http
 
 func testRemoteGetSector(sectorRoot string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		vars := mux.Vars(r)
 
 		// validate sector id

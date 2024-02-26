@@ -60,10 +60,8 @@ var (
 	CheckSyncGap = true
 )
 
-var (
-	// used to signal end of walk
-	errStopWalk = errors.New("stop walk")
-)
+// used to signal end of walk
+var errStopWalk = errors.New("stop walk")
 
 const (
 	batchSize              = 16384
@@ -104,7 +102,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 				s.chainSyncMx.Unlock()
 			}
 			// already out of sync, no signaling necessary
-
 		}
 		// TODO: ok to use hysteresis with no transitions between 30s and 1m?
 		if time.Since(timestamp) < SyncWaitTime {
@@ -118,7 +115,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 				s.chainSyncCond.Broadcast()
 				s.chainSyncMx.Unlock()
 			}
-
 		}
 		// 2. protect the new tipset(s)
 		s.protectTipSets(apply)
@@ -216,7 +212,6 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 			}
 			defer s.txnLk.RUnlock()
 			s.markLiveRefs(cids)
-
 		}()
 		return
 	}
@@ -501,7 +496,6 @@ func (s *SplitStore) applyProtectors() error {
 			count++
 			return nil
 		})
-
 		if err != nil {
 			return xerrors.Errorf("error applynig protector: %w", err)
 		}
@@ -958,7 +952,8 @@ func (s *SplitStore) endCriticalSection() {
 }
 
 func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEpoch,
-	visitor ObjectVisitor, fHot, fCold func(cid.Cid) error) error {
+	visitor ObjectVisitor, fHot, fCold func(cid.Cid) error,
+) error {
 	var walked ObjectVisitor
 	var mx sync.Mutex
 	// we copy the tipset first into a new slice, which allows us to reuse it in every epoch.
@@ -1169,7 +1164,6 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 			links = append(links, c)
 		})
 	})
-
 	if err != nil {
 		return 0, xerrors.Errorf("error scanning linked block (cid: %s): %w", c, err)
 	}
@@ -1238,7 +1232,6 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 			links = append(links, c)
 		})
 	})
-
 	if err != nil {
 		return 0, xerrors.Errorf("error scanning linked block (cid: %s): %w", c, err)
 	}
@@ -1339,7 +1332,6 @@ func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return xerrors.Errorf("error iterating coldset: %w", err)
 	}
@@ -1393,7 +1385,6 @@ func (s *SplitStore) purge(coldr *ColdSetReader, checkpoint *Checkpoint, markSet
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -1577,7 +1568,6 @@ func (s *SplitStore) completePurge(coldr *ColdSetReader, checkpoint *Checkpoint,
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -1658,7 +1648,6 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 					missing[c] = struct{}{}
 					return errStopWalk
 				})
-
 			if err != nil {
 				log.Warnf("error marking: %s", err)
 			}

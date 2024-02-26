@@ -141,7 +141,8 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx,
 	chain *store.ChainStore,
 	cns consensus.Consensus,
 	h host.Host,
-	nn dtypes.NetworkName) {
+	nn dtypes.NetworkName,
+) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	v := sub.NewBlockValidator(

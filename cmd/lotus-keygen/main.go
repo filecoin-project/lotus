@@ -15,7 +15,6 @@ import (
 )
 
 func main() {
-
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{

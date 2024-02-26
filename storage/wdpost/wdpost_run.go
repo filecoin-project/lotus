@@ -116,7 +116,6 @@ func (s *WindowPoStScheduler) startSubmitPoST(
 	posts []miner.SubmitWindowedPoStParams,
 	completeSubmitPoST CompleteSubmitPoSTCb,
 ) context.CancelFunc {
-
 	ctx, abort := context.WithCancel(ctx)
 	go func() {
 		defer abort()

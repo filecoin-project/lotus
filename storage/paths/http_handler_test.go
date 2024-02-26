@@ -22,7 +22,6 @@ import (
 )
 
 func TestRemoteGetAllocated(t *testing.T) {
-
 	emptyPartialFile := &partialfile.PartialFile{}
 	pfPath := "path"
 	expectedSectorRef := storiface.SectorRef{
@@ -102,7 +101,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"fails when errors out during acquiring unsealed sector file": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: "path",
@@ -113,7 +111,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"fails when unsealed sector file is not found locally": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{},
 					storiface.SectorPaths{}, nil).Times(1)
@@ -122,7 +119,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"fails when error while opening partial file": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: pfPath,
@@ -139,7 +135,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"fails when determining partial file allocation returns an error": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: pfPath,
@@ -158,7 +153,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"StatusRequestedRangeNotSatisfiable when piece is NOT allocated in partial file": {
 			expectedStatusCode: http.StatusRequestedRangeNotSatisfiable,
 			storeFnc: func(l *mocks.MockStore) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: pfPath,
@@ -177,7 +171,6 @@ func TestRemoteGetAllocated(t *testing.T) {
 		"OK when piece is allocated in partial file": {
 			expectedStatusCode: http.StatusOK,
 			storeFnc: func(l *mocks.MockStore) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: pfPath,
@@ -300,7 +293,6 @@ func TestRemoteGetSector(t *testing.T) {
 		},
 		"fails when error while acquiring sector file": {
 			storeFnc: func(l *mocks.MockStore, _ string) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: "path",
@@ -313,7 +305,6 @@ func TestRemoteGetSector(t *testing.T) {
 		"fails when acquired sector file path is empty": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore, _ string) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{},
 					storiface.SectorPaths{}, nil).Times(1)
@@ -323,7 +314,6 @@ func TestRemoteGetSector(t *testing.T) {
 		"fails when acquired file does not exist": {
 			expectedStatusCode: http.StatusInternalServerError,
 			storeFnc: func(l *mocks.MockStore, _ string) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: "path",
@@ -334,7 +324,6 @@ func TestRemoteGetSector(t *testing.T) {
 		},
 		"successfully read a sector file": {
 			storeFnc: func(l *mocks.MockStore, path string) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: path,
@@ -349,7 +338,6 @@ func TestRemoteGetSector(t *testing.T) {
 		},
 		"successfully read a sector dir": {
 			storeFnc: func(l *mocks.MockStore, path string) {
-
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 					Unsealed: path,

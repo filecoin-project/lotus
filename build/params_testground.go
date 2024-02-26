@@ -133,8 +133,10 @@ var (
 	GenesisFile       = ""
 )
 
-const Finality = policy.ChainFinality
-const ForkLengthThreshold = Finality
+const (
+	Finality            = policy.ChainFinality
+	ForkLengthThreshold = Finality
+)
 
 const BootstrapPeerThreshold = 1
 

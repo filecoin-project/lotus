@@ -35,10 +35,12 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
-var addPieceRetryWait = 5 * time.Minute
-var addPieceRetryTimeout = 6 * time.Hour
-var defaultMaxProviderCollateralMultiplier = uint64(2)
-var log = logging.Logger("storageadapter")
+var (
+	addPieceRetryWait                      = 5 * time.Minute
+	addPieceRetryTimeout                   = 6 * time.Hour
+	defaultMaxProviderCollateralMultiplier = uint64(2)
+	log                                    = logging.Logger("storageadapter")
+)
 
 type ProviderNodeAdapter struct {
 	v1api.FullNode

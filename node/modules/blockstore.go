@@ -52,7 +52,7 @@ func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlocksto
 	}
 
 	path = filepath.Join(path, "hot.badger")
-	if err := os.MkdirAll(path, 0755); err != nil {
+	if err := os.MkdirAll(path, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -69,7 +69,8 @@ func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlocksto
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
 			return bs.Close()
-		}})
+		},
+	})
 
 	return bs, nil
 }

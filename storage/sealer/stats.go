@@ -56,7 +56,7 @@ func (m *Manager) WorkerStats(ctx context.Context) map[uuid.UUID]storiface.Worke
 
 	m.sched.workersLk.RUnlock()
 
-	//list post workers
+	// list post workers
 	m.winningPoStSched.WorkerStats(ctx, cb)
 	m.windowPoStSched.WorkerStats(ctx, cb)
 	return out

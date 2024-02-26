@@ -37,7 +37,6 @@ func (s *RPCStateManager) GetPaychState(ctx context.Context, addr address.Addres
 		return nil, nil, err
 	}
 	return act, actState, nil
-
 }
 
 func (s *RPCStateManager) LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {

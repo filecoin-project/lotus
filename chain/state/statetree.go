@@ -557,7 +557,6 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 				return err
 			}
 		}
-
 	}
 
 	// Now walk through the saved actors.

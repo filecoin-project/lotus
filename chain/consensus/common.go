@@ -72,7 +72,8 @@ func RunAsyncChecks(ctx context.Context, await []async.ErrorFuture) error {
 
 // CommonBlkChecks performed by all consensus implementations.
 func CommonBlkChecks(ctx context.Context, sm *stmgr.StateManager, cs *store.ChainStore,
-	b *types.FullBlock, baseTs *types.TipSet) []async.ErrorFuture {
+	b *types.FullBlock, baseTs *types.TipSet,
+) []async.ErrorFuture {
 	h := b.Header
 	msgsCheck := async.Err(func() error {
 		if b.Cid() == build.WhitelistedBlock {
@@ -304,7 +305,6 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 	bmroot, err := bmArr.Root()
 	if err != nil {
 		return xerrors.Errorf("failed to root bls msgs: %w", err)
-
 	}
 
 	smroot, err := smArr.Root()
@@ -336,8 +336,8 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 // CreateBlockHeader generates the block header from the block template of
 // the block being proposed.
 func CreateBlockHeader(ctx context.Context, sm *stmgr.StateManager, pts *types.TipSet,
-	bt *api.BlockTemplate) (*types.BlockHeader, []*types.Message, []*types.SignedMessage, error) {
-
+	bt *api.BlockTemplate,
+) (*types.BlockHeader, []*types.Message, []*types.SignedMessage, error) {
 	st, recpts, err := sm.TipSetState(ctx, pts)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("failed to load tipset state: %w", err)
@@ -426,7 +426,6 @@ func CreateBlockHeader(ctx context.Context, sm *stmgr.StateManager, pts *types.T
 	next.ParentBaseFee = baseFee
 
 	return next, blsMessages, secpkMessages, err
-
 }
 
 // Basic sanity-checks performed when a block is proposed locally.
@@ -502,7 +501,6 @@ func validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
-
 	if err != nil {
 		return err
 	}

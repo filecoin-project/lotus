@@ -238,7 +238,6 @@ var MpoolStat = &cli.Command{
 			currTs := ts
 			for i := 0; i < cctx.Int("basefee-lookback"); i++ {
 				currTs, err = api.ChainGetTipSet(ctx, currTs.Parents())
-
 				if err != nil {
 					return xerrors.Errorf("walking chain: %w", err)
 				}

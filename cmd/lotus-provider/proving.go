@@ -24,7 +24,7 @@ var testCmd = &cli.Command{
 	Name:  "test",
 	Usage: "Utility functions for testing",
 	Subcommands: []*cli.Command{
-		//provingInfoCmd,
+		// provingInfoCmd,
 		wdPostCmd,
 	},
 }
@@ -154,7 +154,6 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-
 		ctx := context.Background()
 		deps, err := deps.GetDeps(ctx, cctx)
 		if err != nil {

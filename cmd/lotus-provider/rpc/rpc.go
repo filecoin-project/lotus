@@ -47,7 +47,8 @@ func LotusProviderHandler(
 	authv func(ctx context.Context, token string) ([]auth.Permission, error),
 	remote http.HandlerFunc,
 	a api.LotusProvider,
-	permissioned bool) http.Handler {
+	permissioned bool,
+) http.Handler {
 	mux := mux.NewRouter()
 	readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 	rpcServer := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors), readerServerOpt)
@@ -136,7 +137,7 @@ func (p *ProviderAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string
 		return nil, err
 	}
 
-	var out = make(map[storiface.ID]string)
+	out := make(map[storiface.ID]string)
 	for _, path := range ps {
 		out[path.ID] = path.LocalPath
 	}

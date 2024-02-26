@@ -61,7 +61,7 @@ func newTestStorage(t *testing.T) *testStorage {
 		}, "", "  ")
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(tp, "sectorstore.json"), b, 0644)
+		err = os.WriteFile(filepath.Join(tp, "sectorstore.json"), b, 0o644)
 		require.NoError(t, err)
 	}
 
@@ -530,7 +530,7 @@ func TestRedoPC1(t *testing.T) {
 
 // Manager restarts in the middle of a task, restarts it, it completes
 func TestRestartManager(t *testing.T) {
-	//stm: @WORKER_JOBS_001
+	// stm: @WORKER_JOBS_001
 	test := func(returnBeforeCall bool) func(*testing.T) {
 		return func(t *testing.T) {
 			logging.SetAllLoggers(logging.LevelDebug)
@@ -675,7 +675,7 @@ func TestRestartWorker(t *testing.T) {
 	<-arch
 	require.NoError(t, w.Close())
 
-	//stm: @WORKER_STATS_001
+	// stm: @WORKER_STATS_001
 	for {
 		if len(m.WorkerStats(ctx)) == 0 {
 			break
@@ -738,7 +738,7 @@ func TestReenableWorker(t *testing.T) {
 	// disable
 	atomic.StoreInt64(&w.testDisable, 1)
 
-	//stm: @WORKER_STATS_001
+	// stm: @WORKER_STATS_001
 	for i := 0; i < 100; i++ {
 		if !m.WorkerStats(ctx)[w.session].Enabled {
 			break

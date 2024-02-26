@@ -88,199 +88,223 @@ func init() {
 func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
 
-	updates := []stmgr.Upgrade{{
-		Height:    build.UpgradeBreezeHeight,
-		Network:   network.Version1,
-		Migration: UpgradeFaucetBurnRecovery,
-	}, {
-		Height:    build.UpgradeSmokeHeight,
-		Network:   network.Version2,
-		Migration: nil,
-	}, {
-		Height:    build.UpgradeIgnitionHeight,
-		Network:   network.Version3,
-		Migration: UpgradeIgnition,
-	}, {
-		Height:    build.UpgradeRefuelHeight,
-		Network:   network.Version3,
-		Migration: UpgradeRefuel,
-	}, {
-		Height:    build.UpgradeAssemblyHeight,
-		Network:   network.Version4,
-		Expensive: true,
-		Migration: UpgradeActorsV2,
-	}, {
-		Height:    build.UpgradeTapeHeight,
-		Network:   network.Version5,
-		Migration: nil,
-	}, {
-		Height:    build.UpgradeLiftoffHeight,
-		Network:   network.Version5,
-		Migration: UpgradeLiftoff,
-	}, {
-		Height:    build.UpgradeKumquatHeight,
-		Network:   network.Version6,
-		Migration: nil,
-	}, {
-		Height:    build.UpgradeCalicoHeight,
-		Network:   network.Version7,
-		Migration: UpgradeCalico,
-	}, {
-		Height:    build.UpgradePersianHeight,
-		Network:   network.Version8,
-		Migration: nil,
-	}, {
-		Height:    build.UpgradeOrangeHeight,
-		Network:   network.Version9,
-		Migration: nil,
-	}, {
-		Height:    build.UpgradeTrustHeight,
-		Network:   network.Version10,
-		Migration: UpgradeActorsV3,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV3,
-			StartWithin:     120,
-			DontStartWithin: 60,
-			StopWithin:      35,
-		}, {
-			PreMigration:    PreUpgradeActorsV3,
-			StartWithin:     30,
-			DontStartWithin: 15,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeNorwegianHeight,
-		Network:   network.Version11,
-		Migration: nil,
-	}, {
-		Height:    build.UpgradeTurboHeight,
-		Network:   network.Version12,
-		Migration: UpgradeActorsV4,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV4,
-			StartWithin:     120,
-			DontStartWithin: 60,
-			StopWithin:      35,
-		}, {
-			PreMigration:    PreUpgradeActorsV4,
-			StartWithin:     30,
-			DontStartWithin: 15,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeHyperdriveHeight,
-		Network:   network.Version13,
-		Migration: UpgradeActorsV5,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV5,
-			StartWithin:     120,
-			DontStartWithin: 60,
-			StopWithin:      35,
-		}, {
-			PreMigration:    PreUpgradeActorsV5,
-			StartWithin:     30,
-			DontStartWithin: 15,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeChocolateHeight,
-		Network:   network.Version14,
-		Migration: UpgradeActorsV6,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV6,
-			StartWithin:     120,
-			DontStartWithin: 60,
-			StopWithin:      35,
-		}, {
-			PreMigration:    PreUpgradeActorsV6,
-			StartWithin:     30,
-			DontStartWithin: 15,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeOhSnapHeight,
-		Network:   network.Version15,
-		Migration: UpgradeActorsV7,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV7,
-			StartWithin:     180,
-			DontStartWithin: 60,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeSkyrHeight,
-		Network:   network.Version16,
-		Migration: UpgradeActorsV8,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV8,
-			StartWithin:     180,
-			DontStartWithin: 60,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeSharkHeight,
-		Network:   network.Version17,
-		Migration: UpgradeActorsV9,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV9,
-			StartWithin:     240,
-			DontStartWithin: 60,
-			StopWithin:      20,
-		}, {
-			PreMigration:    PreUpgradeActorsV9,
-			StartWithin:     15,
-			DontStartWithin: 10,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeHyggeHeight,
-		Network:   network.Version18,
-		Migration: UpgradeActorsV10,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV10,
-			StartWithin:     60,
-			DontStartWithin: 10,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeLightningHeight,
-		Network:   network.Version19,
-		Migration: UpgradeActorsV11,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV11,
-			StartWithin:     120,
-			DontStartWithin: 15,
-			StopWithin:      10,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeThunderHeight,
-		Network:   network.Version20,
-		Migration: nil,
-	}, {
-		Height:    build.UpgradeWatermelonHeight,
-		Network:   network.Version21,
-		Migration: UpgradeActorsV12,
-		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    PreUpgradeActorsV12,
-			StartWithin:     180,
-			DontStartWithin: 15,
-			StopWithin:      10,
-		}},
-		Expensive: true,
-	}, {
-		Height:    build.UpgradeWatermelonFixHeight,
-		Network:   network.Version21,
-		Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID1, calibnetv12BuggyManifestCID2),
-	},
+	updates := []stmgr.Upgrade{
+		{
+			Height:    build.UpgradeBreezeHeight,
+			Network:   network.Version1,
+			Migration: UpgradeFaucetBurnRecovery,
+		},
+		{
+			Height:    build.UpgradeSmokeHeight,
+			Network:   network.Version2,
+			Migration: nil,
+		},
+		{
+			Height:    build.UpgradeIgnitionHeight,
+			Network:   network.Version3,
+			Migration: UpgradeIgnition,
+		},
+		{
+			Height:    build.UpgradeRefuelHeight,
+			Network:   network.Version3,
+			Migration: UpgradeRefuel,
+		},
+		{
+			Height:    build.UpgradeAssemblyHeight,
+			Network:   network.Version4,
+			Expensive: true,
+			Migration: UpgradeActorsV2,
+		},
+		{
+			Height:    build.UpgradeTapeHeight,
+			Network:   network.Version5,
+			Migration: nil,
+		},
+		{
+			Height:    build.UpgradeLiftoffHeight,
+			Network:   network.Version5,
+			Migration: UpgradeLiftoff,
+		},
+		{
+			Height:    build.UpgradeKumquatHeight,
+			Network:   network.Version6,
+			Migration: nil,
+		},
+		{
+			Height:    build.UpgradeCalicoHeight,
+			Network:   network.Version7,
+			Migration: UpgradeCalico,
+		},
+		{
+			Height:    build.UpgradePersianHeight,
+			Network:   network.Version8,
+			Migration: nil,
+		},
+		{
+			Height:    build.UpgradeOrangeHeight,
+			Network:   network.Version9,
+			Migration: nil,
+		},
+		{
+			Height:    build.UpgradeTrustHeight,
+			Network:   network.Version10,
+			Migration: UpgradeActorsV3,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV3,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    PreUpgradeActorsV3,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeNorwegianHeight,
+			Network:   network.Version11,
+			Migration: nil,
+		},
+		{
+			Height:    build.UpgradeTurboHeight,
+			Network:   network.Version12,
+			Migration: UpgradeActorsV4,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV4,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    PreUpgradeActorsV4,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeHyperdriveHeight,
+			Network:   network.Version13,
+			Migration: UpgradeActorsV5,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV5,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    PreUpgradeActorsV5,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeChocolateHeight,
+			Network:   network.Version14,
+			Migration: UpgradeActorsV6,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV6,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    PreUpgradeActorsV6,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeOhSnapHeight,
+			Network:   network.Version15,
+			Migration: UpgradeActorsV7,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV7,
+				StartWithin:     180,
+				DontStartWithin: 60,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeSkyrHeight,
+			Network:   network.Version16,
+			Migration: UpgradeActorsV8,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV8,
+				StartWithin:     180,
+				DontStartWithin: 60,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeSharkHeight,
+			Network:   network.Version17,
+			Migration: UpgradeActorsV9,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV9,
+				StartWithin:     240,
+				DontStartWithin: 60,
+				StopWithin:      20,
+			}, {
+				PreMigration:    PreUpgradeActorsV9,
+				StartWithin:     15,
+				DontStartWithin: 10,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeHyggeHeight,
+			Network:   network.Version18,
+			Migration: UpgradeActorsV10,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV10,
+				StartWithin:     60,
+				DontStartWithin: 10,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeLightningHeight,
+			Network:   network.Version19,
+			Migration: UpgradeActorsV11,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV11,
+				StartWithin:     120,
+				DontStartWithin: 15,
+				StopWithin:      10,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeThunderHeight,
+			Network:   network.Version20,
+			Migration: nil,
+		},
+		{
+			Height:    build.UpgradeWatermelonHeight,
+			Network:   network.Version21,
+			Migration: UpgradeActorsV12,
+			PreMigrations: []stmgr.PreMigration{{
+				PreMigration:    PreUpgradeActorsV12,
+				StartWithin:     180,
+				DontStartWithin: 15,
+				StopWithin:      10,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    build.UpgradeWatermelonFixHeight,
+			Network:   network.Version21,
+			Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID1, calibnetv12BuggyManifestCID2),
+		},
 		{
 			Height:    build.UpgradeWatermelonFix2Height,
 			Network:   network.Version21,
@@ -793,7 +817,6 @@ func resetGenesisMsigs0(ctx context.Context, sm *stmgr.StateManager, store adt0.
 		}
 		return nil
 	})
-
 	if err != nil {
 		return xerrors.Errorf("iterating over genesis actors: %w", err)
 	}
@@ -833,7 +856,6 @@ func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *state.St
 }
 
 func UpgradeRefuel(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-
 	store := sm.ChainStore().ActorStore(ctx)
 	tree, err := sm.StateTree(root)
 	if err != nil {
@@ -1360,8 +1382,10 @@ func PreUpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
-	config := nv15.Config{MaxWorkers: uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5}
+	config := nv15.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
 
 	_, err = upgradeActorsV7Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
 	return err
@@ -1374,7 +1398,7 @@ func upgradeActorsV7Common(
 ) (cid.Cid, error) {
 	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
 	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
-	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
+	// buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
 	store := store.ActorStore(ctx, writeStore)
 	// Load the state root.
 	var stateRoot types.StateRoot
@@ -1455,8 +1479,10 @@ func PreUpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
-	config := nv16.Config{MaxWorkers: uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5}
+	config := nv16.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
 
 	_, err = upgradeActorsV8Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
 	return err
@@ -1524,7 +1550,8 @@ func upgradeActorsV8Common(
 }
 
 func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
 	// Use all the CPUs except 3.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -1547,7 +1574,8 @@ func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 }
 
 func PreUpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid,
-	epoch abi.ChainEpoch, ts *types.TipSet) error {
+	epoch abi.ChainEpoch, ts *types.TipSet,
+) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
 	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
@@ -1561,8 +1589,10 @@ func PreUpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
-	config := nv17.Config{MaxWorkers: uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5}
+	config := nv17.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
 
 	_, err = upgradeActorsV9Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
 	return err
@@ -1652,7 +1682,8 @@ func PreUpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmg
 }
 
 func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
 	// Use all the CPUs except 3.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -1760,7 +1791,8 @@ func PreUpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, cache stmg
 }
 
 func UpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
 	// Use all the CPUs except 2.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -1862,7 +1894,8 @@ func PreUpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, cache stmg
 }
 
 func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
 	// Use all the CPUs except 2.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {

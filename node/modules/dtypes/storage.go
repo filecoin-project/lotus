@@ -65,28 +65,36 @@ type (
 	ExposedBlockstore blockstore.Blockstore
 )
 
-type ChainBitswap exchange.Interface
-type ChainBlockService bserv.BlockService
+type (
+	ChainBitswap      exchange.Interface
+	ChainBlockService bserv.BlockService
+)
 
-type ClientImportMgr *imports.Manager
-type ClientBlockstore blockstore.BasicBlockstore
-type ClientDealStore *statestore.StateStore
-type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
-type ClientDatastore datastore.Batching
+type (
+	ClientImportMgr        *imports.Manager
+	ClientBlockstore       blockstore.BasicBlockstore
+	ClientDealStore        *statestore.StateStore
+	ClientRequestValidator *requestvalidation.UnifiedRequestValidator
+	ClientDatastore        datastore.Batching
+)
 
 type Graphsync graphsync.GraphExchange
 
 // ClientDataTransfer is a data transfer manager for the client
 type ClientDataTransfer datatransfer.Manager
 
-type ProviderDealStore *statestore.StateStore
-type ProviderPieceStore piecestore.PieceStore
+type (
+	ProviderDealStore  *statestore.StateStore
+	ProviderPieceStore piecestore.PieceStore
+)
 
 type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 
 // ProviderDataTransfer is a data transfer manager for the provider
-type ProviderDataTransfer datatransfer.Manager
-type ProviderTransferNetwork dtnet.DataTransferNetwork
-type ProviderTransport datatransfer.Transport
-type StagingBlockstore blockstore.BasicBlockstore
-type StagingGraphsync graphsync.GraphExchange
+type (
+	ProviderDataTransfer    datatransfer.Manager
+	ProviderTransferNetwork dtnet.DataTransferNetwork
+	ProviderTransport       datatransfer.Transport
+	StagingBlockstore       blockstore.BasicBlockstore
+	StagingGraphsync        graphsync.GraphExchange
+)

@@ -46,9 +46,11 @@ func (t *task1) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, e
 	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[tID]))
 	return true, nil
 }
+
 func (t *task1) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	return &list[0], nil
 }
+
 func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
 		Max:         100,
@@ -60,6 +62,7 @@ func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
 		},
 	}
 }
+
 func (t *task1) Adder(add harmonytask.AddTaskFunc) {
 	for _, vTmp := range t.toAdd {
 		v := vTmp
@@ -74,12 +77,12 @@ func (t *task1) Adder(add harmonytask.AddTaskFunc) {
 }
 
 func init() {
-	//logging.SetLogLevel("harmonydb", "debug")
-	//logging.SetLogLevel("harmonytask", "debug")
+	// logging.SetLogLevel("harmonydb", "debug")
+	// logging.SetLogLevel("harmonytask", "debug")
 }
 
 func TestHarmonyTasks(t *testing.T) {
-	//t.Parallel()
+	// t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		t1 := &task1{
@@ -107,12 +110,15 @@ type passthru struct {
 func (t *passthru) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	return t.do(tID, stillOwned)
 }
+
 func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	return t.canAccept(list, e)
 }
+
 func (t *passthru) TypeDetails() harmonytask.TaskTypeDetails {
 	return t.dtl
 }
+
 func (t *passthru) Adder(add harmonytask.AddTaskFunc) {
 	if t.adder != nil {
 		t.adder(add)
@@ -120,8 +126,10 @@ func (t *passthru) Adder(add harmonytask.AddTaskFunc) {
 }
 
 // Common stuff
-var dtl = harmonytask.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Resources{}}
-var lettersMutex sync.Mutex
+var (
+	dtl          = harmonytask.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Resources{}}
+	lettersMutex sync.Mutex
+)
 
 func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 	return &passthru{
@@ -141,6 +149,7 @@ func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 		},
 	}
 }
+
 func fooLetterSaver(t *testing.T, cdb *harmonydb.DB, dest *[]string) *passthru {
 	return &passthru{
 		dtl: dtl,
@@ -161,7 +170,7 @@ func fooLetterSaver(t *testing.T, cdb *harmonydb.DB, dest *[]string) *passthru {
 }
 
 func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
-	//t.Parallel()
+	// t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
@@ -181,7 +190,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 }
 
 func TestWorkStealing(t *testing.T) {
-	//t.Parallel()
+	// t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		ctx := context.Background()
@@ -210,7 +219,7 @@ func TestWorkStealing(t *testing.T) {
 }
 
 func TestTaskRetry(t *testing.T) {
-	//t.Parallel()
+	// t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
@@ -261,6 +270,7 @@ func TestTaskRetry(t *testing.T) {
 			{1, true, ""},
 			{2, true, ""},
 			{1, false, "error: intentional 'error'"},
-			{2, false, "error: intentional 'error'"}}, res)
+			{2, false, "error: intentional 'error'"},
+		}, res)
 	})
 }

@@ -4,8 +4,10 @@ import (
 	"github.com/filecoin-project/lotus/api"
 )
 
-type FullNode = api.FullNode
-type FullNodeStruct = api.FullNodeStruct
+type (
+	FullNode       = api.FullNode
+	FullNodeStruct = api.FullNodeStruct
+)
 
 type RawFullNodeAPI FullNode
 

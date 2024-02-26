@@ -323,7 +323,6 @@ every day of chain processed.
 			case <-ctx.Done():
 				return ctx.Err()
 			}
-
 		}
 
 		printLk.Lock()
@@ -555,7 +554,6 @@ var chainBalanceStateCmd = &cli.Command{
 
 		var infos []accountInfo
 		err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
-
 			ai := accountInfo{
 				Address:       addr,
 				Balance:       types.FIL(act.Balance),
@@ -671,7 +669,6 @@ func printAccountInfos(infos []accountInfo, minerInfo bool) {
 			fmt.Printf("%s,%s,%s\n", acc.Address, acc.Balance.Unitless(), acc.Type)
 		}
 	}
-
 }
 
 var chainPledgeCmd = &cli.Command{

@@ -34,7 +34,6 @@ import (
 
 // Startup a node with hotstore and discard coldstore.  Compact once and return
 func TestHotstoreCompactsOnce(t *testing.T) {
-
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
 	splitstore.CheckSyncGap = false

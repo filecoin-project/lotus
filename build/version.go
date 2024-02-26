@@ -2,8 +2,10 @@ package build
 
 import "os"
 
-var CurrentCommit string
-var BuildType int
+var (
+	CurrentCommit string
+	BuildType     int
+)
 
 const (
 	BuildDefault      = 0

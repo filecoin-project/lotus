@@ -466,7 +466,6 @@ func TestRevertMessages(t *testing.T) {
 	if len(p) != 3 {
 		t.Fatal("expected three messages in mempool")
 	}
-
 }
 
 func TestPruningSimple(t *testing.T) {

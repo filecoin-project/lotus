@@ -20,8 +20,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 )
 
-const nodeSize = 32
-const threadChunkSize = 1 << 20
+const (
+	nodeSize        = 32
+	threadChunkSize = 1 << 20
+)
 
 func hashChunk(data [][]byte) {
 	l1Nodes := len(data[0]) / nodeSize / 2

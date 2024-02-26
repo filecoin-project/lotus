@@ -315,7 +315,6 @@ var provingDeadlineInfoCmd = &cli.Command{
 	},
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
-
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
 		}
@@ -643,7 +642,7 @@ It will not send any messages to the chain.`,
 			return err
 		}
 
-		//convert sector information into easily readable information
+		// convert sector information into easily readable information
 		type PoStPartition struct {
 			Index   uint64
 			Skipped []uint64

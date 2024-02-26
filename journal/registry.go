@@ -5,7 +5,6 @@ import "sync"
 // EventTypeRegistry is a component that constructs tracked EventType tokens,
 // for usage with a Journal.
 type EventTypeRegistry interface {
-
 	// RegisterEventType introduces a new event type to a journal, and
 	// returns an EventType token that components can later use to check whether
 	// journalling for that type is enabled/suppressed, and to tag journal

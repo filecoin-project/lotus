@@ -74,7 +74,8 @@ var infoCommitGasSimCommand = &cli.Command{
 		}
 		qua := quantile.New(estims...)
 		hist, err := stati.NewHistogram([]float64{
-			1, 3, 5, 7, 15, 30, 50, 100, 200, 400, 600, 700, 819})
+			1, 3, 5, 7, 15, 30, 50, 100, 200, 400, 600, 700, 819,
+		})
 		if err != nil {
 			return err
 		}

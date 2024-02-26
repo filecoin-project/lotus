@@ -171,7 +171,6 @@ func fetchCids(
 	cids []cid.Cid,
 	cb func(int, blocks.Block) error,
 ) error {
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

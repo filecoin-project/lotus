@@ -102,7 +102,7 @@ func runExtractMany(c *cli.Context) error {
 	}
 
 	// Ensure the output directory exists.
-	if err := os.MkdirAll(outdir, 0755); err != nil {
+	if err := os.MkdirAll(outdir, 0o755); err != nil {
 		return fmt.Errorf("could not create output dir %s: %w", outdir, err)
 	}
 

@@ -16,7 +16,7 @@ type Checkpoint struct {
 }
 
 func NewCheckpoint(path string) (*Checkpoint, error) {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_SYNC, 0644)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_SYNC, 0o644)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating checkpoint: %w", err)
 	}
@@ -41,7 +41,7 @@ func OpenCheckpoint(path string) (*Checkpoint, cid.Cid, error) {
 		return nil, cid.Undef, xerrors.Errorf("error reading cid from checkpoint: %w", err)
 	}
 
-	fileout, err := os.OpenFile(path, os.O_WRONLY|os.O_SYNC, 0644)
+	fileout, err := os.OpenFile(path, os.O_WRONLY|os.O_SYNC, 0o644)
 	if err != nil {
 		return nil, cid.Undef, xerrors.Errorf("error opening checkpoint for writing: %w", err)
 	}

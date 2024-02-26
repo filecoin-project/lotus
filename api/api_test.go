@@ -30,7 +30,7 @@ func goCmd() string {
 }
 
 func TestDoesntDependOnFFI(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_FFI_DEPENDENCE_001
+	// stm: @OTHER_IMPLEMENTATION_FFI_DEPENDENCE_001
 	deps, err := exec.Command(goCmd(), "list", "-deps", "github.com/filecoin-project/lotus/api").Output()
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestDoesntDependOnFFI(t *testing.T) {
 }
 
 func TestDoesntDependOnBuild(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_FFI_DEPENDENCE_002
+	// stm: @OTHER_IMPLEMENTATION_FFI_DEPENDENCE_002
 	deps, err := exec.Command(goCmd(), "list", "-deps", "github.com/filecoin-project/lotus/api").Output()
 	if err != nil {
 		t.Fatal(err)
@@ -56,7 +56,7 @@ func TestDoesntDependOnBuild(t *testing.T) {
 }
 
 func TestReturnTypes(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_001
+	// stm: @OTHER_IMPLEMENTATION_001
 	errType := reflect.TypeOf(new(error)).Elem()
 	bareIface := reflect.TypeOf(new(interface{})).Elem()
 	jmarsh := reflect.TypeOf(new(json.Marshaler)).Elem()
@@ -122,7 +122,7 @@ func TestReturnTypes(t *testing.T) {
 }
 
 func TestPermTags(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_PERM_TAGS_001
+	// stm: @OTHER_IMPLEMENTATION_PERM_TAGS_001
 	_ = PermissionedFullAPI(&FullNodeStruct{})
 	_ = PermissionedStorMinerAPI(&StorageMinerStruct{})
 	_ = PermissionedWorkerAPI(&WorkerStruct{})

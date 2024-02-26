@@ -78,8 +78,10 @@ var log = logging.Logger("client")
 var DefaultHashFunction = unixfs.DefaultHashFunction
 
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
-const dealStartBufferHours uint64 = 8 * 24
-const DefaultDAGStoreDir = "dagstore"
+const (
+	dealStartBufferHours uint64 = 8 * 24
+	DefaultDAGStoreDir          = "dagstore"
+)
 
 type API struct {
 	fx.In
@@ -218,7 +220,6 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			FastRetrieval: params.FastRetrieval,
 			VerifiedDeal:  params.VerifiedDeal,
 		})
-
 		if err != nil {
 			return nil, xerrors.Errorf("failed to start deal: %w", err)
 		}
@@ -694,7 +695,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	}
 
 	// open the file again, seek to the header position, and write.
-	f, err := os.OpenFile(path, os.O_WRONLY, 0755)
+	f, err := os.OpenFile(path, os.O_WRONLY, 0o755)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to open car: %w", err)
 	}
@@ -772,7 +773,6 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID rm.DealID) e
 func getDataSelector(dps *api.Selector, matchPath bool) (datamodel.Node, error) {
 	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if dps != nil {
-
 		if strings.HasPrefix(string(*dps), "{") {
 			var err error
 			sel, err = selectorparse.ParseJSONSelector(string(*dps))
@@ -864,7 +864,6 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 		order.Client,
 		order.Miner,
 	)
-
 	if err != nil {
 		return 0, xerrors.Errorf("Retrieve failed: %w", err)
 	}
@@ -932,7 +931,7 @@ func (ed *ExportDest) doWrite(cb func(io.Writer) error) error {
 		return cb(ed.Writer)
 	}
 
-	f, err := os.OpenFile(ed.Path, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(ed.Path, os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
@@ -1011,7 +1010,6 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 	var lk sync.Mutex
 
 	return dest.doWrite(func(w io.Writer) error {
-
 		if err := car.WriteHeader(&car.CarHeader{
 			Roots:   roots,
 			Version: 1,
@@ -1154,7 +1152,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 		}
 
 		var newRoot cid.Cid
-		var errHalt = errors.New("halt walk")
+		errHalt := errors.New("halt walk")
 		if err := utils.TraverseDag(
 			ctx,
 			ds,

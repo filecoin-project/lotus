@@ -508,7 +508,7 @@ var simpleCommit1 = &cli.Command{
 			return err
 		}
 
-		if err := os.WriteFile(cctx.Args().Get(4), b, 0664); err != nil {
+		if err := os.WriteFile(cctx.Args().Get(4), b, 0o664); err != nil {
 			log.Warnf("%+v", err)
 		}
 
@@ -944,7 +944,7 @@ var simpleProveReplicaUpdate1 = &cli.Command{
 			return xerrors.Errorf("json marshal vanilla proofs: %w", err)
 		}
 
-		if err := os.WriteFile(cctx.Args().Get(7), vpjb, 0666); err != nil {
+		if err := os.WriteFile(cctx.Args().Get(7), vpjb, 0o666); err != nil {
 			return xerrors.Errorf("writing vanilla proofs file: %w", err)
 		}
 

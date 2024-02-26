@@ -105,7 +105,7 @@ top:
 		}
 		if ct == 0 {
 			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
-			var tryAgain = make([]TaskID, 0, len(ids)-1)
+			tryAgain := make([]TaskID, 0, len(ids)-1)
 			for _, id := range ids {
 				if id != *tID {
 					tryAgain = append(tryAgain, id)
@@ -169,7 +169,6 @@ retryRecordCompletion:
 	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
-
 		if err != nil {
 			return false, fmt.Errorf("could not log completion: %w ", err)
 		}
@@ -177,7 +176,6 @@ retryRecordCompletion:
 		if done {
 			_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
 			if err != nil {
-
 				return false, fmt.Errorf("could not log completion: %w", err)
 			}
 			result = ""

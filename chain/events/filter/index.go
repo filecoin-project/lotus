@@ -69,9 +69,7 @@ var ddls = []string{
 	`INSERT OR IGNORE INTO _meta (version) VALUES (3)`,
 }
 
-var (
-	log = logging.Logger("filter")
-)
+var log = logging.Logger("filter")
 
 const (
 	schemaVersion = 3

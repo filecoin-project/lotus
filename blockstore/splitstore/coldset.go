@@ -20,7 +20,7 @@ type ColdSetReader struct {
 }
 
 func NewColdSetWriter(path string) (*ColdSetWriter, error) {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating coldset: %w", err)
 	}

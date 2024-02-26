@@ -68,7 +68,6 @@ var mpoolManage = &cli.Command{
 		t.PushScene(mm.addrSelect())
 
 		err = t.Run()
-
 		if err != nil {
 			panic(err)
 		}
@@ -137,10 +136,11 @@ func (mi *msgInfo) Row() []string {
 	} else {
 		fCk = "[:orange:]" + fmt.Sprintf("%d", failedChecks)
 	}
-	return []string{"…" + cidStr[len(cidStr)-32:], shortAddr,
+	return []string{
+		"…" + cidStr[len(cidStr)-32:], shortAddr,
 		fmt.Sprintf("%d", mi.sm.Message.Nonce), types.FIL(mi.sm.Message.Value).String(),
-		fmt.Sprintf("%d", mi.sm.Message.Method), fCk}
-
+		fmt.Sprintf("%d", mi.sm.Message.Method), fCk,
+	}
 }
 
 func (mm *mmUI) messageLising(a address.Address) func(*imtui.Tui) error {
@@ -154,7 +154,6 @@ func (mm *mmUI) messageLising(a address.Address) func(*imtui.Tui) error {
 			}
 			return false
 		}, types.EmptyTSK)
-
 		if err != nil {
 			return nil, xerrors.Errorf("getting pending: %w", err)
 		}
@@ -274,7 +273,6 @@ func (mm *mmUI) messageDetail(mi msgInfo) func(*imtui.Tui) error {
 				Message:    nop,
 				ValidNonce: true,
 			}, true)
-
 			if err != nil {
 				return xerrors.Errorf("publishing noop message: %w", err)
 			}

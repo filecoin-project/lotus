@@ -19,7 +19,7 @@ func RandomWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 	for sqi := 0; sqi < queueLen; sqi++ {
 		task := (*sh.SchedQueue)[sqi]
 
-		//bestAssigned := math.MaxInt // smaller = better
+		// bestAssigned := math.MaxInt // smaller = better
 
 		type choice struct {
 			selectedWindow int

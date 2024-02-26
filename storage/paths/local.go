@@ -316,7 +316,7 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 		ents, err := os.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
 			if os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil { // nolint
+				if err := os.MkdirAll(filepath.Join(p, t.String()), 0o755); err != nil { // nolint
 					return xerrors.Errorf("openPath mkdir '%s': %w", filepath.Join(p, t.String()), err)
 				}
 

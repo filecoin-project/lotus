@@ -162,7 +162,7 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 				log.Errorw("reflink treed -> sealed failed, falling back to slow copy, use single scratch btrfs or xfs filesystem", "error", err, "sector", sector, "cache", paths.Cache, "sealed", paths.Sealed)
 
 				// fallback to slow copy, copy ssize bytes from treed to sealed
-				dst, err := os.OpenFile(paths.Sealed, os.O_WRONLY|os.O_CREATE, 0644)
+				dst, err := os.OpenFile(paths.Sealed, os.O_WRONLY|os.O_CREATE, 0o644)
 				if err != nil {
 					return cid.Undef, cid.Undef, xerrors.Errorf("opening sealed sector file: %w", err)
 				}

@@ -95,6 +95,7 @@ func (cv *cachingVerifier) VerifyWindowPoSt(ctx context.Context, info prooftypes
 		return cv.backend.VerifyWindowPoSt(ctx, info)
 	}, &info)
 }
+
 func (cv *cachingVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, a abi.ActorID, rnd abi.PoStRandomness, u uint64) ([]uint64, error) {
 	return cv.backend.GenerateWinningPoStSectorChallenge(ctx, proofType, a, rnd, u)
 }

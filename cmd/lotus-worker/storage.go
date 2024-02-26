@@ -79,7 +79,7 @@ var storageAttachCmd = &cli.Command{
 		}
 
 		if cctx.Bool("init") {
-			if err := os.MkdirAll(p, 0755); err != nil {
+			if err := os.MkdirAll(p, 0o755); err != nil {
 				if !os.IsExist(err) {
 					return err
 				}
@@ -120,7 +120,7 @@ var storageAttachCmd = &cli.Command{
 				return xerrors.Errorf("marshaling storage config: %w", err)
 			}
 
-			if err := os.WriteFile(filepath.Join(p, metaFile), b, 0644); err != nil {
+			if err := os.WriteFile(filepath.Join(p, metaFile), b, 0o644); err != nil {
 				return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(p, metaFile), err)
 			}
 		}

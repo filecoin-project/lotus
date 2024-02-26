@@ -124,7 +124,6 @@ func Test2K(t *testing.T) {
 	fmt.Println()
 
 	require.Equal(t, "baga6ea4seaqovgk4kr4eoifujh6jfmdqvw3m6zrvyjqzu6s6abkketui6jjoydi", commd.String())
-
 }
 
 const expectD8M = `00000000: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 

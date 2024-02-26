@@ -92,7 +92,7 @@ func TestMigrationNV17(t *testing.T) {
 	// Publish (but NOT activate) a verified storage deal from that clien
 
 	// get VRH
-	//stm: @CHAIN_STATE_VERIFIED_REGISTRY_ROOT_KEY_001
+	// stm: @CHAIN_STATE_VERIFIED_REGISTRY_ROOT_KEY_001
 	vrh, err := clientApi.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
 	fmt.Println(vrh.String())
 	require.NoError(t, err)
@@ -135,7 +135,7 @@ func TestMigrationNV17(t *testing.T) {
 	sm, err := clientApi.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err, "AddVerifier failed")
 
-	//stm: @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err := clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
@@ -154,7 +154,7 @@ func TestMigrationNV17(t *testing.T) {
 	sm, err = clientApi.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err, "AddVerifier failed")
 
-	//stm: @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
@@ -176,13 +176,13 @@ func TestMigrationNV17(t *testing.T) {
 	sm, err = clientApi.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
-	//stm: @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
 
 	// check datacap balance
-	//stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
+	// stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
 	dc, err := clientApi.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, *dc, datacapToAssign)
@@ -660,7 +660,7 @@ func TestMigrationNV19(t *testing.T) {
 
 waitForProof19:
 	for {
-		//stm: @CHAIN_STATE_GET_ACTOR_001
+		// stm: @CHAIN_STATE_GET_ACTOR_001
 		wact, err := testClient.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 		require.NoError(t, err)
 		if wact.Nonce > en19 {
@@ -703,7 +703,7 @@ waitForProof19:
 
 waitForProof20:
 	for {
-		//stm: @CHAIN_STATE_GET_ACTOR_001
+		// stm: @CHAIN_STATE_GET_ACTOR_001
 		wact, err := testClient.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 		require.NoError(t, err)
 		if wact.Nonce > en20 {
@@ -761,7 +761,6 @@ waitForProof20:
 	require.NoError(t, err)
 
 	require.Equal(t, v1proof, minerInfo.WindowPoStProofType)
-
 }
 
 func TestMigrationNV21(t *testing.T) {
@@ -823,8 +822,8 @@ func TestMigrationNV21(t *testing.T) {
 
 	// start post migration checks
 
-	//todo @aayush sector info changes
+	// todo @aayush sector info changes
 
-	//todo @zen Direct data onboarding tests
+	// todo @zen Direct data onboarding tests
 
 }

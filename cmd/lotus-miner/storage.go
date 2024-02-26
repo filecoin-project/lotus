@@ -125,7 +125,7 @@ over time
 		}
 
 		if cctx.Bool("init") {
-			if err := os.MkdirAll(p, 0755); err != nil {
+			if err := os.MkdirAll(p, 0o755); err != nil {
 				if !os.IsExist(err) {
 					return err
 				}
@@ -166,7 +166,7 @@ over time
 				return xerrors.Errorf("marshaling storage config: %w", err)
 			}
 
-			if err := os.WriteFile(filepath.Join(p, metaFile), b, 0644); err != nil {
+			if err := os.WriteFile(filepath.Join(p, metaFile), b, 0o644); err != nil {
 				return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(p, metaFile), err)
 			}
 		}
@@ -359,7 +359,7 @@ var storageListCmd = &cli.Command{
 				return strings.Repeat(s, count)
 			}
 
-			var barCols = int64(50)
+			barCols := int64(50)
 
 			// filesystem use bar
 			{
@@ -737,7 +737,6 @@ var storageListSectorsCmd = &cli.Command{
 				}
 
 				for _, info := range si {
-
 					list = append(list, entry{
 						id:      sector,
 						storage: info.ID,

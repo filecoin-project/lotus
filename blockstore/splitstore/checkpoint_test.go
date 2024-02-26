@@ -134,5 +134,4 @@ func TestCheckpoint(t *testing.T) {
 	if err := cp.Close(); err != nil {
 		t.Fatal(err)
 	}
-
 }

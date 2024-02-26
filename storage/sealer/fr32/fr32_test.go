@@ -70,7 +70,6 @@ func TestPadChunkFFI(t *testing.T) {
 }
 
 func TestPadChunkRandEqFFI(t *testing.T) {
-
 	for i := 0; i < 200; i++ {
 		var input [127]byte
 		_, err := rand.Read(input[:])

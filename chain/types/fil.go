@@ -26,10 +26,12 @@ func (f FIL) Unitless() string {
 	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".")
 }
 
-var AttoFil = NewInt(1)
-var FemtoFil = BigMul(AttoFil, NewInt(1000))
-var PicoFil = BigMul(FemtoFil, NewInt(1000))
-var NanoFil = BigMul(PicoFil, NewInt(1000))
+var (
+	AttoFil  = NewInt(1)
+	FemtoFil = BigMul(AttoFil, NewInt(1000))
+	PicoFil  = BigMul(FemtoFil, NewInt(1000))
+	NanoFil  = BigMul(PicoFil, NewInt(1000))
+)
 
 var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m"}
 
@@ -138,5 +140,7 @@ func MustParseFIL(s string) FIL {
 	return n
 }
 
-var _ encoding.TextMarshaler = (*FIL)(nil)
-var _ encoding.TextUnmarshaler = (*FIL)(nil)
+var (
+	_ encoding.TextMarshaler   = (*FIL)(nil)
+	_ encoding.TextUnmarshaler = (*FIL)(nil)
+)

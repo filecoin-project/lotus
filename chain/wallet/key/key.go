@@ -77,7 +77,6 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	return k, nil
-
 }
 
 func ActSigType(typ types.KeyType) crypto.SigType {

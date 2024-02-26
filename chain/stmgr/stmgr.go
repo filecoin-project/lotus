@@ -39,11 +39,15 @@ import (
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
-const LookbackNoLimit = api.LookbackNoLimit
-const ReceiptAmtBitwidth = 3
+const (
+	LookbackNoLimit    = api.LookbackNoLimit
+	ReceiptAmtBitwidth = 3
+)
 
-var execTraceCacheSize = 16
-var log = logging.Logger("statemgr")
+var (
+	execTraceCacheSize = 16
+	log                = logging.Logger("statemgr")
+)
 
 type StateManagerAPI interface {
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
@@ -520,7 +524,6 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 	}
 
 	return ret, nil
-
 }
 
 func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
@@ -553,7 +556,6 @@ func (sm *StateManager) GetRandomnessDigestFromBeacon(ctx context.Context, randE
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
 	return r.GetBeaconRandomness(ctx, randEpoch)
-
 }
 
 func (sm *StateManager) GetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) ([32]byte, error) {

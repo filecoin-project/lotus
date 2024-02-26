@@ -31,7 +31,7 @@ import (
 const metaFile = "sectorstore.json"
 
 func createTestStorage(t *testing.T, p string, seal bool, att ...*paths.Local) storiface.ID {
-	if err := os.MkdirAll(p, 0755); err != nil {
+	if err := os.MkdirAll(p, 0o755); err != nil {
 		if !os.IsExist(err) {
 			require.NoError(t, err)
 		}
@@ -47,7 +47,7 @@ func createTestStorage(t *testing.T, p string, seal bool, att ...*paths.Local) s
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	require.NoError(t, err)
 
-	require.NoError(t, os.WriteFile(filepath.Join(p, metaFile), b, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(p, metaFile), b, 0o644))
 
 	for _, s := range att {
 		require.NoError(t, s.OpenPath(context.Background(), p))
@@ -129,7 +129,7 @@ func TestMoveShared(t *testing.T) {
 
 	data := make([]byte, 2032)
 	data[1] = 54
-	require.NoError(t, os.WriteFile(sp.Sealed, data, 0666))
+	require.NoError(t, os.WriteFile(sp.Sealed, data, 0o666))
 	fmt.Println("write to ", sp.Sealed)
 
 	require.NoError(t, index.StorageDeclareSector(ctx, storiface.ID(sid.Sealed), s1ref.ID, storiface.FTSealed, true))
@@ -150,7 +150,7 @@ func TestMoveShared(t *testing.T) {
 }
 
 func TestReader(t *testing.T) {
-	//stm: @STORAGE_INFO_001
+	// stm: @STORAGE_INFO_001
 	logging.SetAllLoggers(logging.LevelDebug)
 	bz := []byte("Hello World")
 
@@ -189,7 +189,6 @@ func TestReader(t *testing.T) {
 		expectedNonNilReader bool
 		expectedSectorBytes  []byte
 	}{
-
 		// -------- have the unsealed file locally
 		"fails when error while acquiring unsealed file": {
 			storeFnc: func(l *mocks.MockStore) {
@@ -248,7 +247,6 @@ func TestReader(t *testing.T) {
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, nil)
 				mockPfReader(pf, emptyPartialFile, offset, size, nil, xerrors.New("reader error"))
-
 			},
 			errStr: "reader error",
 		},
@@ -291,7 +289,6 @@ func TestReader(t *testing.T) {
 					false, nil)
 
 				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
-
 			},
 
 			indexFnc: func(in *mocks.MockSectorIndex, url string) {
@@ -365,7 +362,6 @@ func TestReader(t *testing.T) {
 				require.NoError(t, err)
 
 				mockPfReader(pf, emptyPartialFile, offset, size, f, nil)
-
 			},
 
 			expectedNonNilReader: true,
@@ -385,7 +381,6 @@ func TestReader(t *testing.T) {
 					false, nil)
 
 				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
-
 			},
 
 			indexFnc: func(in *mocks.MockSectorIndex, url string) {
@@ -505,7 +500,6 @@ func TestReader(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedSectorBytes, bz)
 			}
-
 		})
 	}
 }
@@ -545,7 +539,6 @@ func TestCheckIsUnsealed(t *testing.T) {
 		errStr            string
 		expectedIsUnealed bool
 	}{
-
 		// -------- have the unsealed file locally
 		"fails when error while acquiring unsealed file": {
 			storeFnc: func(l *mocks.MockStore) {
@@ -677,7 +670,6 @@ func TestCheckIsUnsealed(t *testing.T) {
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, nil)
 				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
-
 			},
 
 			expectedIsUnealed: true,
@@ -782,7 +774,6 @@ func TestCheckIsUnsealed(t *testing.T) {
 			}
 
 			require.Equal(t, tc.expectedIsUnealed, isUnsealed)
-
 		})
 	}
 }
@@ -801,13 +792,15 @@ func mockPartialFileOpen(pf *mocks.MockPartialFileHandler, sectorSize abi.Sector
 }
 
 func mockCheckAllocation(pf *mocks.MockPartialFileHandler, offset, size abi.PaddedPieceSize, file *partialfile.PartialFile,
-	out bool, err error) {
+	out bool, err error,
+) {
 	pf.EXPECT().HasAllocated(file, storiface.UnpaddedByteIndex(offset.Unpadded()),
 		size.Unpadded()).Return(out, err).Times(1)
 }
 
 func mockPfReader(pf *mocks.MockPartialFileHandler, file *partialfile.PartialFile, offset, size abi.PaddedPieceSize,
-	outFile *os.File, err error) {
+	outFile *os.File, err error,
+) {
 	pf.EXPECT().Reader(file, storiface.PaddedByteIndex(offset), size).Return(outFile, err)
 }
 

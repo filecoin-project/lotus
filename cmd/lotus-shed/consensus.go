@@ -171,7 +171,6 @@ var consensusCheckCmd = &cli.Command{
 		genesisBuckets := make(map[types.TipSetKey][]*consensusItem)
 		for _, node := range nodes {
 			genesisBuckets[node.genesisTipset.Key()] = append(genesisBuckets[node.genesisTipset.Key()], node)
-
 		}
 
 		if len(genesisBuckets) != 1 {

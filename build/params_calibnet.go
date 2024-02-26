@@ -24,20 +24,28 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 
 const GenesisNetworkVersion = network.Version0
 
-var NetworkBundle = "calibrationnet"
-var BundleOverrides map[actorstypes.Version]string
-var ActorDebugging = false
+var (
+	NetworkBundle   = "calibrationnet"
+	BundleOverrides map[actorstypes.Version]string
+	ActorDebugging  = false
+)
 
-const BootstrappersFile = "calibnet.pi"
-const GenesisFile = "calibnet.car"
+const (
+	BootstrappersFile = "calibnet.pi"
+	GenesisFile       = "calibnet.car"
+)
 
-const UpgradeBreezeHeight = -1
-const BreezeGasTampingDuration = 120
+const (
+	UpgradeBreezeHeight      = -1
+	BreezeGasTampingDuration = 120
+)
 
 const UpgradeSmokeHeight = -2
 
-const UpgradeIgnitionHeight = -3
-const UpgradeRefuelHeight = -4
+const (
+	UpgradeIgnitionHeight = -3
+	UpgradeRefuelHeight   = -4
+)
 
 var UpgradeAssemblyHeight = abi.ChainEpoch(30)
 
@@ -47,8 +55,10 @@ const UpgradeLiftoffHeight = -5
 
 const UpgradeKumquatHeight = 90
 
-const UpgradeCalicoHeight = 120
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
+const (
+	UpgradeCalicoHeight  = 120
+	UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
+)
 
 const UpgradeClausHeight = 270
 
@@ -92,9 +102,12 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
-var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
-var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
-var PreCommitChallengeDelay = abi.ChainEpoch(150)
+
+var (
+	ConsensusMinerMinPower  = abi.NewStoragePower(32 << 30)
+	MinVerifiedDealSize     = abi.NewStoragePower(1 << 20)
+	PreCommitChallengeDelay = abi.ChainEpoch(150)
+)
 
 func init() {
 	policy.SetSupportedProofTypes(SupportedProofTypes...)
@@ -107,8 +120,8 @@ func init() {
 	Devnet = true
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
-	//set this value too high may impacts your block submission; set this value too low may cause you miss
-	//parent tipsets for blocking forming and mining.
+	// set this value too high may impacts your block submission; set this value too low may cause you miss
+	// parent tipsets for blocking forming and mining.
 	if len(os.Getenv("PROPAGATION_DELAY_SECS")) != 0 {
 		pds, err := strconv.ParseUint(os.Getenv("PROPAGATION_DELAY_SECS"), 10, 64)
 		if err != nil {
@@ -122,7 +135,6 @@ func init() {
 	}
 
 	BuildType = BuildCalibnet
-
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

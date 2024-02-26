@@ -186,5 +186,7 @@ func (e *EthModuleDummy) EthTraceReplayBlockTransactions(ctx context.Context, bl
 	return nil, ErrModuleDisabled
 }
 
-var _ EthModuleAPI = &EthModuleDummy{}
-var _ EthEventAPI = &EthModuleDummy{}
+var (
+	_ EthModuleAPI = &EthModuleDummy{}
+	_ EthEventAPI  = &EthModuleDummy{}
+)

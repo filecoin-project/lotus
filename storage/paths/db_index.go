@@ -43,7 +43,6 @@ func NewDBIndex(al *alerting.Alerting, db *harmonydb.DB) *DBIndex {
 }
 
 func (dbi *DBIndex) StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error) {
-
 	var sectorEntries []struct {
 		StorageId      string
 		MinerId        sql.NullInt64
@@ -116,7 +115,7 @@ func splitString(str string) []string {
 }
 
 func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
-	var allow, deny = make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
+	allow, deny := make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
 
 	if _, hasAlert := dbi.pathAlerts[si.ID]; dbi.alerting != nil && !hasAlert {
 		dbi.pathAlerts[si.ID] = dbi.alerting.AddAlertType("sector-index", "pathconf-"+string(si.ID))
@@ -148,7 +147,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 	for id, typ := range si.DenyTypes {
 		_, err := storiface.TypeFromString(typ)
 		if err != nil {
-			//No need to hard-fail here, just warn the user
+			// No need to hard-fail here, just warn the user
 			hasConfigIssues = true
 
 			if dbi.alerting != nil {
@@ -247,7 +246,6 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 }
 
 func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url string) error {
-
 	// If url not in path urls, error out
 	// if this is only path url for this storage path, drop storage path and sector decls which have this as a storage path
 
@@ -315,7 +313,7 @@ retryReportHealth:
 		report.Stat.Used,
 		id)
 	if err != nil {
-		//return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
+		// return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
 		if harmonydb.IsErrSerialization(err) {
 			time.Sleep(retryWait)
 			retryWait *= 2
@@ -370,7 +368,6 @@ func (dbi *DBIndex) checkFileType(fileType storiface.SectorFileType) bool {
 }
 
 func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
-
 	if !dbi.checkFileType(ft) {
 		return xerrors.Errorf("invalid filetype")
 	}
@@ -413,7 +410,6 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 }
 
 func (dbi *DBIndex) StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error {
-
 	if !dbi.checkFileType(ft) {
 		return xerrors.Errorf("invalid filetype")
 	}
@@ -429,7 +425,6 @@ func (dbi *DBIndex) StorageDropSector(ctx context.Context, storageID storiface.I
 }
 
 func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error) {
-
 	var result []storiface.SectorStorageInfo
 
 	allowList := make(map[string]struct{})
@@ -616,7 +611,6 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 }
 
 func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface.StorageInfo, error) {
-
 	var qResults []struct {
 		Urls       string
 		Weight     uint64
@@ -747,7 +741,6 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		WriteTs        sql.NullTime
 	}
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
-
 		fts := (read | write).AllSet()
 		err = tx.Select(&rows,
 			`SELECT sector_filetype, read_ts, read_refs, write_ts 
@@ -871,11 +864,9 @@ func (dbi *DBIndex) unlock(sector abi.SectorID, read storiface.SectorFileType, w
 	}
 
 	return true, nil
-
 }
 
 func (dbi *DBIndex) StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error {
-
 	retries := 5
 	maxWaitTime := 300 // Set max wait time to 5 minutes
 
@@ -914,7 +905,6 @@ func (dbi *DBIndex) StorageLock(ctx context.Context, sector abi.SectorID, read s
 		if err != nil {
 			log.Errorf("unlocking sector %v for filetypes: read=%d, write=%d, fails with err: %v", sector, read, write, err)
 		}
-
 	}()
 
 	return nil
@@ -941,7 +931,6 @@ func (dbi *DBIndex) StorageTryLock(ctx context.Context, sector abi.SectorID, rea
 }
 
 func (dbi *DBIndex) StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error) {
-
 	var rows []struct {
 		MinerId        uint64
 		SectorNum      uint64

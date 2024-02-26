@@ -115,17 +115,19 @@ func New(hosts []string, username, password, database, port string, itestID ITes
 	return &db, db.upgrade()
 }
 
-type tracer struct {
-}
+type tracer struct{}
 
 type ctxkey string
 
-const SQL_START = ctxkey("sqlStart")
-const SQL_STRING = ctxkey("sqlString")
+const (
+	SQL_START  = ctxkey("sqlStart")
+	SQL_STRING = ctxkey("sqlString")
+)
 
 func (t tracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
 	return context.WithValue(context.WithValue(ctx, SQL_START, time.Now()), SQL_STRING, data.SQL)
 }
+
 func (t tracer) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData) {
 	DBMeasures.Hits.M(1)
 	ms := time.Since(ctx.Value(SQL_START).(time.Time)).Milliseconds()
@@ -157,7 +159,6 @@ func (db *DB) GetRoutableIP() (string, error) {
 
 // addStatsAndConnect connects a prometheus logger. Be sure to run this before using the DB.
 func (db *DB) addStatsAndConnect() error {
-
 	db.cfg.ConnConfig.Tracer = tracer{}
 
 	hostnameToIndex := map[string]float64{}
@@ -169,7 +170,7 @@ func (db *DB) addStatsAndConnect() error {
 		DBMeasures.OpenConnections.M(int64(s.TotalConns()))
 		DBMeasures.WhichHost.Observe(hostnameToIndex[c.Config().Host])
 
-		//FUTURE place for any connection seasoning
+		// FUTURE place for any connection seasoning
 		return nil
 	}
 
@@ -200,8 +201,10 @@ func (db *DB) ITestDeleteAll() {
 	}
 }
 
-var schemaREString = "^[A-Za-z0-9_]+$"
-var schemaRE = regexp.MustCompile(schemaREString)
+var (
+	schemaREString = "^[A-Za-z0-9_]+$"
+	schemaRE       = regexp.MustCompile(schemaREString)
+)
 
 func ensureSchemaExists(connString, schema string) error {
 	// FUTURE allow using fallback DBs for start-up.

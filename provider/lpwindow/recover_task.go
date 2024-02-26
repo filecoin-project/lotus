@@ -65,7 +65,8 @@ func NewWdPostRecoverDeclareTask(sender *lpmessage.Sender,
 	pcs *chainsched.ProviderChainSched,
 
 	maxDeclareRecoveriesGasFee types.FIL,
-	actors map[dtypes.MinerAddress]bool) (*WdPostRecoverDeclareTask, error) {
+	actors map[dtypes.MinerAddress]bool,
+) (*WdPostRecoverDeclareTask, error) {
 	t := &WdPostRecoverDeclareTask{
 		sender:       sender,
 		db:           db,

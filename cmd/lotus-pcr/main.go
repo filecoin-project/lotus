@@ -516,8 +516,8 @@ var runCmd = &cli.Command{
 			blockmap:                   blockmap,
 		}
 
-		var refunds = NewMinersRefund()
-		var rounds = 0
+		refunds := NewMinersRefund()
+		rounds := 0
 		nextMinerRecovery := r.MinerRecoveryHeight() + minerRecoveryPeriod
 
 		for tipset := range tipsetsCh {
@@ -909,7 +909,6 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 }
 
 func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
-
 	m := msg.Message
 	var refundValue types.BigInt
 	var messageMethod string
@@ -936,7 +935,6 @@ func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *
 }
 
 func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
-
 	m := msg.Message
 	var refundValue types.BigInt
 	var messageMethod string
@@ -1249,7 +1247,6 @@ func (r *Repo) exists() (bool, error) {
 		err = nil
 	}
 	return !notexist, err
-
 }
 
 func (r *Repo) init() error {
@@ -1261,7 +1258,7 @@ func (r *Repo) init() error {
 		return nil
 	}
 
-	err = os.Mkdir(r.path, 0755) //nolint: gosec
+	err = os.Mkdir(r.path, 0o755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -1290,7 +1287,7 @@ func (r *Repo) Open() error {
 }
 
 func loadChainEpoch(fn string) (abi.ChainEpoch, error) {
-	f, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE, 0644)
+	f, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		return 0, err
 	}
@@ -1314,7 +1311,7 @@ func loadChainEpoch(fn string) (abi.ChainEpoch, error) {
 func (r *Repo) loadBlockList() error {
 	var err error
 	fpath := filepath.Join(r.path, "blocklist")
-	f, err := os.OpenFile(fpath, os.O_RDWR|os.O_CREATE, 0644)
+	f, err := os.OpenFile(fpath, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		return err
 	}
@@ -1383,7 +1380,7 @@ func (r *Repo) MinerRecoveryHeight() abi.ChainEpoch {
 func (r *Repo) SetHeight(last abi.ChainEpoch) (err error) {
 	r.lastHeight = last
 	var f *os.File
-	f, err = os.OpenFile(filepath.Join(r.path, "height"), os.O_RDWR, 0644)
+	f, err = os.OpenFile(filepath.Join(r.path, "height"), os.O_RDWR, 0o644)
 	if err != nil {
 		return
 	}
@@ -1402,7 +1399,7 @@ func (r *Repo) SetHeight(last abi.ChainEpoch) (err error) {
 func (r *Repo) SetMinerRecoveryHeight(last abi.ChainEpoch) (err error) {
 	r.lastMinerRecoveryHeight = last
 	var f *os.File
-	f, err = os.OpenFile(filepath.Join(r.path, "miner_recovery_height"), os.O_RDWR, 0644)
+	f, err = os.OpenFile(filepath.Join(r.path, "miner_recovery_height"), os.O_RDWR, 0o644)
 	if err != nil {
 		return
 	}

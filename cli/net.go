@@ -417,7 +417,6 @@ var NetFindPeer = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		addrs, err := api.NetFindPeer(ctx, pid)
-
 		if err != nil {
 			return err
 		}
@@ -533,7 +532,6 @@ var NetBandwidthCmd = &cli.Command{
 		}
 
 		return tw.Flush()
-
 	},
 }
 
@@ -748,7 +746,7 @@ func BarString(total, y, g float64) string {
 		gBars = 0
 	}
 	eBars := int(BarCols) - yBars - gBars
-	var barString = color.YellowString(strings.Repeat("|", yBars)) +
+	barString := color.YellowString(strings.Repeat("|", yBars)) +
 		color.GreenString(strings.Repeat("|", gBars))
 	if eBars >= 0 {
 		barString += strings.Repeat(" ", eBars)
@@ -850,7 +848,6 @@ var NetStatCmd = &cli.Command{
 				tmp := stat.stat
 				printScope(&tmp, name+stat.name)
 			}
-
 		}
 
 		printScopes("svc:", result.Services)

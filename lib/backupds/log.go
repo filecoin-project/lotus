@@ -18,7 +18,7 @@ import (
 var loghead = datastore.NewKey("/backupds/log/head") // string([logfile base name];[uuid];[unix ts])
 
 func (d *Datastore) startLog(logdir string) error {
-	if err := os.MkdirAll(logdir, 0755); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(logdir, 0o755); err != nil && !os.IsExist(err) {
 		return xerrors.Errorf("mkdir logdir ('%s'): %w", logdir, err)
 	}
 
@@ -103,7 +103,7 @@ func (d *Datastore) createLog(logdir string) (*logfile, string, error) {
 	p := filepath.Join(logdir, strconv.FormatInt(time.Now().Unix(), 10)+".log.cbor")
 	log.Infow("creating log", "file", p)
 
-	f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+	f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return nil, "", err
 	}
@@ -138,7 +138,7 @@ func (d *Datastore) openLog(p string) (*logfile, string, error) {
 		return nil, "", xerrors.Errorf("loghead log file doesn't match, opening %s, expected %s", p, lhp[0])
 	}
 
-	f, err := os.OpenFile(p, os.O_RDWR, 0644)
+	f, err := os.OpenFile(p, os.O_RDWR, 0o644)
 	if err != nil {
 		return nil, "", err
 	}

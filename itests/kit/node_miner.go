@@ -178,7 +178,7 @@ const metaFile = "sectorstore.json"
 func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*storiface.LocalStorageMeta)) storiface.ID {
 	p := t.TempDir()
 
-	if err := os.MkdirAll(p, 0755); err != nil {
+	if err := os.MkdirAll(p, 0o755); err != nil {
 		if !os.IsExist(err) {
 			require.NoError(t, err)
 		}
@@ -205,7 +205,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*st
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(p, metaFile), b, 0644)
+	err = os.WriteFile(filepath.Join(p, metaFile), b, 0o644)
 	require.NoError(t, err)
 
 	err = tm.StorageAddLocal(ctx, p)
@@ -213,6 +213,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*st
 
 	return cfg.ID
 }
+
 func (tm *TestMiner) SectorsListNonGenesis(ctx context.Context) ([]abi.SectorNumber, error) {
 	l, err := tm.SectorsList(ctx)
 	if err != nil {

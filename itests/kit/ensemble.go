@@ -707,7 +707,7 @@ func (n *Ensemble) Start() *Ensemble {
 		assigner := m.options.minerAssigner
 		disallowRemoteFinalize := m.options.disallowRemoteFinalize
 
-		var mineBlock = make(chan lotusminer.MineReq)
+		mineBlock := make(chan lotusminer.MineReq)
 
 		copy := *m.FullNode
 		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
@@ -917,8 +917,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		err = rpc.ListenAndServe(ctx, p.Deps, shutdownChan) // Monitor for shutdown.
 		require.NoError(n.t, err)
-		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
-		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
+		finishCh := node.MonitorShutdown(shutdownChan) // node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+		// node.ShutdownHandler{Component: "provider", StopFunc: stop},
 
 		<-finishCh
 
@@ -1066,7 +1066,7 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 }
 
 func (n *Ensemble) generateGenesis() *genesis.Template {
-	var verifRoot = gen.DefaultVerifregRootkeyActor
+	verifRoot := gen.DefaultVerifregRootkeyActor
 	if k := n.options.verifiedRoot.key; k != nil {
 		verifRoot = genesis.Actor{
 			Type:    genesis.TAccount,

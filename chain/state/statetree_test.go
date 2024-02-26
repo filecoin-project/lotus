@@ -18,7 +18,7 @@ import (
 )
 
 func BenchmarkStateTreeSet(b *testing.B) {
-	//stm: @CHAIN_STATETREE_SET_ACTOR_001
+	// stm: @CHAIN_STATETREE_SET_ACTOR_001
 	cst := cbor.NewMemCborStore()
 	st, err := NewStateTree(cst, types.StateTreeVersion1)
 	if err != nil {
@@ -46,7 +46,7 @@ func BenchmarkStateTreeSet(b *testing.B) {
 }
 
 func BenchmarkStateTreeSetFlush(b *testing.B) {
-	//stm: @CHAIN_STATETREE_SET_ACTOR_001
+	// stm: @CHAIN_STATETREE_SET_ACTOR_001
 	cst := cbor.NewMemCborStore()
 	sv, err := VersionForNetwork(build.TestNetworkVersion)
 	if err != nil {
@@ -82,8 +82,8 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 }
 
 func TestResolveCache(t *testing.T) {
-	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
-	//stm: @CHAIN_STATETREE_SNAPSHOT_001, @CHAIN_STATETREE_SNAPSHOT_CLEAR_001
+	// stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
+	// stm: @CHAIN_STATETREE_SNAPSHOT_001, @CHAIN_STATETREE_SNAPSHOT_CLEAR_001
 	cst := cbor.NewMemCborStore()
 	sv, err := VersionForNetwork(build.TestNetworkVersion)
 	if err != nil {
@@ -182,12 +182,11 @@ func TestResolveCache(t *testing.T) {
 	if act.Nonce != 2 {
 		t.Fatalf("expected nonce 2, got %d", act.Nonce)
 	}
-
 }
 
 func BenchmarkStateTree10kGetActor(b *testing.B) {
-	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
-	//stm: @CHAIN_STATETREE_FLUSH_001
+	// stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
+	// stm: @CHAIN_STATETREE_FLUSH_001
 	cst := cbor.NewMemCborStore()
 	sv, err := VersionForNetwork(build.TestNetworkVersion)
 	if err != nil {
@@ -235,7 +234,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 }
 
 func TestSetCache(t *testing.T) {
-	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
+	// stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
 	cst := cbor.NewMemCborStore()
 	sv, err := VersionForNetwork(build.TestNetworkVersion)
 	if err != nil {
@@ -277,8 +276,8 @@ func TestSetCache(t *testing.T) {
 }
 
 func TestSnapshots(t *testing.T) {
-	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
-	//stm: @CHAIN_STATETREE_FLUSH_001, @CHAIN_STATETREE_SNAPSHOT_REVERT_001, CHAIN_STATETREE_SNAPSHOT_CLEAR_001
+	// stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
+	// stm: @CHAIN_STATETREE_FLUSH_001, @CHAIN_STATETREE_SNAPSHOT_REVERT_001, CHAIN_STATETREE_SNAPSHOT_CLEAR_001
 	ctx := context.Background()
 	cst := cbor.NewMemCborStore()
 
@@ -293,7 +292,7 @@ func TestSnapshots(t *testing.T) {
 	}
 
 	var addrs []address.Address
-	//for _, a := range []string{"t15ocrptbu4i5qucjvvwecihd7fqqgzb27pz5l5zy", "t1dpyvgavvl3f4ujlk6odedss54z6rt5gyuknsuva", "t1feiejbkcvozy7iltt2pxzuoq4d2kpbsusugan7a", "t3rgjfqybjx7bahuhfv7nwfg3tlm4i4zyvldfirjvzm5z5xwjoqbj3rfi2mpmlxpqwxxxafgpkjilqzpg7cefa"} {
+	// for _, a := range []string{"t15ocrptbu4i5qucjvvwecihd7fqqgzb27pz5l5zy", "t1dpyvgavvl3f4ujlk6odedss54z6rt5gyuknsuva", "t1feiejbkcvozy7iltt2pxzuoq4d2kpbsusugan7a", "t3rgjfqybjx7bahuhfv7nwfg3tlm4i4zyvldfirjvzm5z5xwjoqbj3rfi2mpmlxpqwxxxafgpkjilqzpg7cefa"} {
 	for _, a := range []string{"t0100", "t0101", "t0102", "t0103"} {
 		addr, err := address.NewFromString(a)
 		if err != nil {
@@ -369,7 +368,7 @@ func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
 }
 
 func TestStateTreeConsistency(t *testing.T) {
-	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001, @CHAIN_STATETREE_FLUSH_001
+	// stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001, @CHAIN_STATETREE_FLUSH_001
 	cst := cbor.NewMemCborStore()
 
 	// TODO: ActorUpgrade: this test tests pre actors v2

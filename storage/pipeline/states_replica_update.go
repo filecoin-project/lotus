@@ -74,7 +74,6 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 	proof, err := m.sealer.ProveReplicaUpdate2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), *sector.CommR, *sector.UpdateSealed, *sector.UpdateUnsealed, vanillaProofs)
 	if err != nil {
 		return ctx.Send(SectorProveReplicaUpdateFailed{xerrors.Errorf("prove replica update (2) failed: %w", err)})
-
 	}
 	return ctx.Send(SectorProveReplicaUpdate{
 		Proof: proof,
@@ -82,7 +81,6 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 }
 
 func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
-
 	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
@@ -156,13 +154,13 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		SealProof:    sp,
 		SectorNumber: sector.SectorNumber,
 		SealedCID:    *sector.UpdateSealed,
-		//SealRandEpoch: 0,
+		// SealRandEpoch: 0,
 		DealIDs:    sector.dealIDs(),
 		Expiration: onChainInfo.Expiration,
-		//ReplaceCapacity: false,
-		//ReplaceSectorDeadline: 0,
-		//ReplaceSectorPartition: 0,
-		//ReplaceSectorNumber: 0,
+		// ReplaceCapacity: false,
+		// ReplaceSectorDeadline: 0,
+		// ReplaceSectorPartition: 0,
+		// ReplaceSectorNumber: 0,
 	}
 
 	collateral, err := m.Api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, virtualPCI, ts.Key())
@@ -278,7 +276,7 @@ func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector Secto
 
 	switch mw.Receipt.ExitCode {
 	case exitcode.Ok:
-		//expected
+		// expected
 	case exitcode.SysErrInsufficientFunds:
 		fallthrough
 	case exitcode.SysErrOutOfGas:

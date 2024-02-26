@@ -25,7 +25,6 @@ type Libp2pMeshCreator struct {
 }
 
 func (mc Libp2pMeshCreator) Connect(ctx context.Context) error {
-
 	// Add the markets host ID to list of daemon's protected peers first, before any attempt to
 	// connect to full node over libp2p.
 	marketsPeerID := mc.marketsHost.ID()

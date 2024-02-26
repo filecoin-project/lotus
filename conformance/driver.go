@@ -179,7 +179,6 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		params.BaseFee,
 		nil,
 	)
-
 	if err != nil {
 		return nil, err
 	}

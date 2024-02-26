@@ -122,7 +122,7 @@ var jwtTokenCmd = &cli.Command{
 			return err
 		}
 
-		return os.WriteFile(cctx.String("output"), token, 0600)
+		return os.WriteFile(cctx.String("output"), token, 0o600)
 	},
 }
 
@@ -161,7 +161,7 @@ var jwtNewCmd = &cli.Command{
 		}
 
 		filename := fmt.Sprintf("jwt-%s.jwts", keyName)
-		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 		if err != nil {
 			return err
 		}
@@ -183,6 +183,6 @@ var jwtNewCmd = &cli.Command{
 		}
 
 		filenameToken := fmt.Sprintf("jwt-%s.token", keyName)
-		return os.WriteFile(filenameToken, token, 0600)
+		return os.WriteFile(filenameToken, token, 0o600)
 	},
 }

@@ -252,7 +252,7 @@ var initCmd = &cli.Command{
 					return xerrors.Errorf("marshaling storage config: %w", err)
 				}
 
-				if err := os.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+				if err := os.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0o644); err != nil {
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 

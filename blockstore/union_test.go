@@ -17,7 +17,7 @@ var (
 )
 
 func TestUnionBlockstore_Get(t *testing.T) {
-	//stm: @SPLITSTORE_UNION_BLOCKSTORE_GET_001
+	// stm: @SPLITSTORE_UNION_BLOCKSTORE_GET_001
 	ctx := context.Background()
 	m1 := NewMemory()
 	m2 := NewMemory()
@@ -37,9 +37,9 @@ func TestUnionBlockstore_Get(t *testing.T) {
 }
 
 func TestUnionBlockstore_Put_PutMany_Delete_AllKeysChan(t *testing.T) {
-	//stm: @SPLITSTORE_UNION_BLOCKSTORE_PUT_001, @SPLITSTORE_UNION_BLOCKSTORE_HAS_001
-	//stm: @SPLITSTORE_UNION_BLOCKSTORE_PUT_MANY_001, @SPLITSTORE_UNION_BLOCKSTORE_DELETE_001
-	//stm: @SPLITSTORE_UNION_BLOCKSTORE_ALL_KEYS_CHAN_001
+	// stm: @SPLITSTORE_UNION_BLOCKSTORE_PUT_001, @SPLITSTORE_UNION_BLOCKSTORE_HAS_001
+	// stm: @SPLITSTORE_UNION_BLOCKSTORE_PUT_MANY_001, @SPLITSTORE_UNION_BLOCKSTORE_DELETE_001
+	// stm: @SPLITSTORE_UNION_BLOCKSTORE_ALL_KEYS_CHAN_001
 	ctx := context.Background()
 	m1 := NewMemory()
 	m2 := NewMemory()

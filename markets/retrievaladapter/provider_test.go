@@ -21,7 +21,7 @@ import (
 )
 
 func TestGetPricingInput(t *testing.T) {
-	//stm: @CHAIN_STATE_MARKET_STORAGE_DEAL_001
+	// stm: @CHAIN_STATE_MARKET_STORAGE_DEAL_001
 	ctx := context.Background()
 	tsk := &types.TipSet{}
 	key := tsk.Key()
@@ -65,7 +65,6 @@ func TestGetPricingInput(t *testing.T) {
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[0], key).Return(out1, nil),
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[1], key).Return(out2, nil),
 				)
-
 			},
 			expectedErrorStr: "failed to find matching piece",
 		},
@@ -90,7 +89,6 @@ func TestGetPricingInput(t *testing.T) {
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[0], key).Return(out1, xerrors.New("error 1")),
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[1], key).Return(out2, xerrors.New("error 2")),
 				)
-
 			},
 			expectedErrorStr: "failed to fetch storage deal state",
 		},
@@ -115,7 +113,6 @@ func TestGetPricingInput(t *testing.T) {
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[0], key).Return(out1, nil),
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[1], key).Return(out2, nil),
 				)
-
 			},
 			expectedPieceSize: unpaddedSize,
 			expectedVerified:  true,
@@ -141,7 +138,6 @@ func TestGetPricingInput(t *testing.T) {
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[0], key).Return(out1, xerrors.New("some error")),
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[1], key).Return(out2, nil),
 				)
-
 			},
 			expectedPieceSize: unpaddedSize,
 			expectedVerified:  true,
@@ -168,7 +164,6 @@ func TestGetPricingInput(t *testing.T) {
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[0], key).Return(out1, nil),
 					n.EXPECT().StateMarketStorageDeal(gomock.Any(), deals[1], key).Return(out2, nil),
 				)
-
 			},
 			expectedPieceSize: unpaddedSize,
 			expectedVerified:  false,

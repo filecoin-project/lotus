@@ -11,7 +11,7 @@ type jsonTracerTransport struct {
 }
 
 func NewJsonTracerTransport(file string) (TracerTransport, error) {
-	out, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
+	out, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o660)
 	if err != nil {
 		return nil, err
 	}

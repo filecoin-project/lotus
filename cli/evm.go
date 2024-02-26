@@ -99,7 +99,6 @@ var EvmCallSimulateCmd = &cli.Command{
 	Usage:     "Simulate an eth contract call",
 	ArgsUsage: "[from] [to] [params]",
 	Action: func(cctx *cli.Context) error {
-
 		if cctx.NArg() != 3 {
 			return IncorrectNumArgs(cctx)
 		}
@@ -139,7 +138,6 @@ var EvmCallSimulateCmd = &cli.Command{
 		fmt.Println("Result: ", res)
 
 		return nil
-
 	},
 }
 
@@ -148,7 +146,6 @@ var EvmGetContractAddress = &cli.Command{
 	Usage:     "Generate contract address from smart contract code",
 	ArgsUsage: "[senderEthAddr] [salt] [contractHexPath]",
 	Action: func(cctx *cli.Context) error {
-
 		if cctx.NArg() != 3 {
 			return IncorrectNumArgs(cctx)
 		}
@@ -174,7 +171,6 @@ var EvmGetContractAddress = &cli.Command{
 		}
 		contractHex, err := os.ReadFile(contractBin)
 		if err != nil {
-
 			return err
 		}
 		contract, err := ethtypes.DecodeHexStringTrimSpace(string(contractHex))
@@ -441,7 +437,6 @@ var EvmInvokeCmd = &cli.Command{
 					fmt.Printf("\t\tKey: %s, Value: 0x%x, Flags: b%b\n", e.Key, value, e.Flags)
 				}
 				return nil
-
 			})
 		}
 		if err != nil {
@@ -499,7 +494,6 @@ var EvmGetBytecode = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-
 		if cctx.NArg() != 2 {
 			return IncorrectNumArgs(cctx)
 		}

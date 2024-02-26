@@ -12,10 +12,12 @@ import (
 )
 
 // Consts (except for unit test)
-var POLL_DURATION = time.Second * 3             // Poll for Work this frequently
-var POLL_NEXT_DURATION = 100 * time.Millisecond // After scheduling a task, wait this long before scheduling another
-var CLEANUP_FREQUENCY = 5 * time.Minute         // Check for dead workers this often * everyone
-var FOLLOW_FREQUENCY = 1 * time.Minute          // Check for work to follow this often
+var (
+	POLL_DURATION      = time.Second * 3        // Poll for Work this frequently
+	POLL_NEXT_DURATION = 100 * time.Millisecond // After scheduling a task, wait this long before scheduling another
+	CLEANUP_FREQUENCY  = 5 * time.Minute        // Check for dead workers this often * everyone
+	FOLLOW_FREQUENCY   = 1 * time.Minute        // Check for work to follow this often
+)
 
 type TaskTypeDetails struct {
 	// Max returns how many tasks this machine can run of this type.
@@ -123,8 +125,8 @@ type TaskID int
 func New(
 	db *harmonydb.DB,
 	impls []TaskInterface,
-	hostnameAndPort string) (*TaskEngine, error) {
-
+	hostnameAndPort string,
+) (*TaskEngine, error) {
 	reg, err := resources.Register(db, hostnameAndPort)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get resources: %w", err)

@@ -4,6 +4,7 @@ package cl
 
 // #include "cl.h"
 import "C"
+
 import (
 	"fmt"
 	"unsafe"

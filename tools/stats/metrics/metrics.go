@@ -7,8 +7,10 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
-var Timer = metrics.Timer
-var SinceInMilliseconds = metrics.SinceInMilliseconds
+var (
+	Timer               = metrics.Timer
+	SinceInMilliseconds = metrics.SinceInMilliseconds
+)
 
 // Distribution
 var (

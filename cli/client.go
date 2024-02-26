@@ -357,7 +357,6 @@ The minimum value is 518400 (6 months).`,
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-
 		expectedArgsMsg := "expected 4 args: dataCid, miner, price, duration"
 
 		if !cctx.Args().Present() {
@@ -1194,6 +1193,7 @@ func isTerminalError(status retrievalmarket.DealStatus) bool {
 	// should patch this in go-fil-markets but to solve the problem immediate and not have buggy output
 	return retrievalmarket.IsTerminalError(status) || status == retrievalmarket.DealStatusErrored || status == retrievalmarket.DealStatusCancelled
 }
+
 func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []lapi.RetrievalInfo, verbose bool, showFailed bool, completed bool) error {
 	var deals []api.RetrievalInfo
 	for _, deal := range localDeals {
@@ -1237,7 +1237,6 @@ func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []lapi.
 }
 
 func toRetrievalOutput(d api.RetrievalInfo, verbose bool) map[string]interface{} {
-
 	payloadCID := d.PayloadCID.String()
 	provider := d.Provider.String()
 	if !verbose {

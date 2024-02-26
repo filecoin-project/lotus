@@ -45,8 +45,10 @@ var (
 	blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 )
 
-var DefaultTipSetCacheSize = 8192
-var DefaultMsgMetaCacheSize = 2048
+var (
+	DefaultTipSetCacheSize  = 8192
+	DefaultMsgMetaCacheSize = 2048
+)
 
 var ErrNotifeeDone = errors.New("notifee is done and should be removed")
 
@@ -216,6 +218,7 @@ func (cs *ChainStore) Load(ctx context.Context) error {
 	}
 	return nil
 }
+
 func (cs *ChainStore) loadHead(ctx context.Context) error {
 	head, err := cs.metadataDs.Get(ctx, chainHeadKey)
 	if err == dstore.ErrNotFound {
@@ -978,7 +981,6 @@ func ReorgOps(ctx context.Context, lts func(ctx context.Context, _ types.TipSetK
 	}
 
 	return leftChain, rightChain, nil
-
 }
 
 // GetHeaviestTipSet returns the current heaviest tipset known (i.e. our head).

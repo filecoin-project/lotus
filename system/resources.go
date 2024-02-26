@@ -8,9 +8,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var (
-	logSystem = logging.Logger("system")
-)
+var logSystem = logging.Logger("system")
 
 // EnvMaximumHeap is name of the environment variable with which the user can
 // specify a maximum heap size to abide by. The value of the env variable should

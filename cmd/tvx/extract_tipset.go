@@ -153,7 +153,8 @@ func extractTipsets(ctx context.Context, tss ...*types.TipSet) (*schema.TestVect
 			ID: fmt.Sprintf("@%d..@%d", base.Height(), last.Height()),
 			Gen: []schema.GenerationData{
 				{Source: fmt.Sprintf("network:%s", ntwkName)},
-				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
+				{Source: "github.com/filecoin-project/lotus", Version: version.String()},
+			},
 			// will be completed by extra tipset stamps.
 		},
 		Selector: schema.Selector{

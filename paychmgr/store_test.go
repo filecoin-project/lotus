@@ -14,8 +14,8 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	//stm: @TOKEN_PAYCH_ALLOCATE_LANE_001, @TOKEN_PAYCH_LIST_CHANNELS_001
-	//stm: @TOKEN_PAYCH_TRACK_CHANNEL_002, @TOKEN_PAYCH_TRACK_CHANNEL_001
+	// stm: @TOKEN_PAYCH_ALLOCATE_LANE_001, @TOKEN_PAYCH_LIST_CHANNELS_001
+	// stm: @TOKEN_PAYCH_TRACK_CHANNEL_002, @TOKEN_PAYCH_TRACK_CHANNEL_001
 	ctx := context.Background()
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))

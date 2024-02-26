@@ -79,6 +79,7 @@ func (mockVerifier) VerifyReplicaUpdate(update prooftypes.ReplicaUpdateInfo) (bo
 func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info prooftypes.WinningPoStVerifyInfo) (bool, error) {
 	panic("should not be called")
 }
+
 func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info prooftypes.WindowPoStVerifyInfo) (bool, error) {
 	if len(info.Proofs) != 1 {
 		return false, fmt.Errorf("expected exactly one proof")

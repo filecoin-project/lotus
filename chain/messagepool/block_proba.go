@@ -5,8 +5,10 @@ import (
 	"sync"
 )
 
-var noWinnersProbCache []float64
-var noWinnersProbOnce sync.Once
+var (
+	noWinnersProbCache []float64
+	noWinnersProbOnce  sync.Once
+)
 
 func noWinnersProb() []float64 {
 	noWinnersProbOnce.Do(func() {
@@ -26,8 +28,10 @@ func noWinnersProb() []float64 {
 	return noWinnersProbCache
 }
 
-var noWinnersProbAssumingCache []float64
-var noWinnersProbAssumingOnce sync.Once
+var (
+	noWinnersProbAssumingCache []float64
+	noWinnersProbAssumingOnce  sync.Once
+)
 
 func noWinnersProbAssumingMoreThanOne() []float64 {
 	noWinnersProbAssumingOnce.Do(func() {

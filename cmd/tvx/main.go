@@ -118,7 +118,7 @@ func destroy(_ *cli.Context) error {
 func ensureDir(path string) error {
 	switch fi, err := os.Stat(path); {
 	case os.IsNotExist(err):
-		if err := os.MkdirAll(path, 0755); err != nil {
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", path, err)
 		}
 	case err == nil:
