@@ -444,15 +444,11 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 
 	// check that our `ToHeight` filter works as expected
 	var initialEvents []*types.ActorEvent
-	// TODO: this should probably close the channel when it knows it's done
 	for evt := range initialEventsChan {
 		initialEvents = append(initialEvents, evt)
-		// sector-precommitted, sector-activated, verifier-balance, verifier-balance
-		if len(initialEvents) == 4 {
-			break
-		}
 	}
-	require.Equal(t, eventsFromMessages[0:4], initialEvents)
+	// sector-precommitted, sector-activated, verifier-balance, verifier-balance, allocation
+	require.Equal(t, eventsFromMessages[0:5], initialEvents)
 
 	// construct ActorEvents from subscription channel for all actor events
 	allEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
