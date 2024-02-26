@@ -28,7 +28,7 @@ type FullNode struct {
 	Chainstore    Chainstore
 	Cluster       UserRaftConfig
 	Fevm          FevmConfig
-	ActorEvents   ActorEventsConfig
+	Events        EventsConfig
 	Index         IndexConfig
 	FaultReporter FaultReporterConfig
 }
@@ -796,12 +796,12 @@ type FevmConfig struct {
 
 type Events struct {
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool
 
 	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableHistoricFilterAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
@@ -830,7 +830,7 @@ type Events struct {
 	// Set upper bound on index size
 }
 
-type ActorEventsConfig struct {
+type EventsConfig struct {
 	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
 	// emitted by (smart contracts + built-in Actors).
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be

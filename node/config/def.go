@@ -119,7 +119,7 @@ func DefaultFullNode() *FullNode {
 				MaxFilterHeightRange:     2880, // conservative limit of one day
 			},
 		},
-		ActorEvents: ActorEventsConfig{
+		Events: EventsConfig{
 			EnableActorEventsAPI: false,
 		},
 	}
