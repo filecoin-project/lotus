@@ -281,10 +281,10 @@ func ConfigFullNode(c interface{}) Option {
 		),
 
 		ApplyIf(isFullNode,
-			If(cfg.ActorEvents.EnableActorEventsAPI,
-				Override(new(full.ActorEventAPI), modules.ActorEventHandler(cfg.ActorEvents.EnableActorEventsAPI, cfg.Fevm)),
+			If(cfg.Events.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), modules.ActorEventHandler(cfg.Events.EnableActorEventsAPI, cfg.Fevm)),
 			),
-			If(!cfg.ActorEvents.EnableActorEventsAPI,
+			If(!cfg.Events.EnableActorEventsAPI,
 				Override(new(full.ActorEventAPI), &full.ActorEventDummy{}),
 			),
 		),
