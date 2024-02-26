@@ -284,6 +284,14 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 			return true
 		}
 
+		// for the case where we have a MaxHeight set, we don't get a signal from the filter when we
+		// reach that height, so we need to check it ourselves, do it now but also in the loop
+		if params.MaxHeight > 0 && a.Chain.GetHeaviestTipSet().Height() > params.MaxHeight {
+			return
+		}
+		ticker := time.NewTicker(time.Duration(build.BlockDelaySecs) * time.Second)
+		defer ticker.Stop()
+
 		for ctx.Err() == nil {
 			if len(buffer) > 0 {
 				// check if we need to disconnect the client because they've fallen behind, always allow at
@@ -312,6 +320,10 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 					}
 				case <-ctx.Done():
 					return
+				case <-ticker.C:
+					if params.MaxHeight > 0 && a.Chain.GetHeaviestTipSet().Height() > params.MaxHeight {
+						return
+					}
 				}
 			}
 		}
