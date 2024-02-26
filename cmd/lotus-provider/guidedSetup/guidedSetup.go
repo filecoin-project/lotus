@@ -47,9 +47,8 @@ var GuidedsetupCmd = &cli.Command{
 		T, say := SetupLanguage()
 		setupCtrlC(say)
 
-		say(header, "This interactive tool will walk you through migration of lotus-provider.\nPress Ctrl+C to exit at any time.")
-
-		say(notice, "This tool confirms each action it does and each step is reversable.")
+		say(header, "This interactive tool migrates lotus-miner to lotus-provider in 5 minutes.\n")
+		say(notice, "Each step needs your confirmation & is reversable. Press Ctrl+C to exit at any time.")
 
 		// Run the migration steps
 		migrationData := MigrationData{
@@ -113,7 +112,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 	lang, err := language.Parse(os.Getenv("LANG")[:2])
 	if err != nil {
 		lang = language.English
-		fmt.Println("Error parsing language, defaulting to English")
+		fmt.Println("Error parsing language, defaulting to English. Please reach out to the Curio team if you would like to have additional language support.")
 	}
 
 	langs := message.DefaultCatalog.Languages()
@@ -151,8 +150,9 @@ type MigrationData struct {
 }
 
 func configToDB(d *MigrationData) {
-	d.say(section, "Migrating config.toml to database.")
-	d.say(plain, `A Lotus-Provider cluster shares a database. They share the work of proving multiple Miner ID's sectors.\n`)
+	d.say(section, "Migrating config.toml to database.\n")
+	d.say(plain, "Lotus-Providers run 1 per machine. Multiple machines cooperate through YugabyteDB.\n")
+	d.say(plain, "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.\n")
 
 	type rawConfig struct {
 		Raw   []byte `db:"config"`
@@ -204,49 +204,46 @@ func oneLastThing(d *MigrationData) {
 	}
 
 	d.say(section, "We want to build what you're using.")
-	if build.BuildType == build.BuildMainnet {
-		i, _, err := (&promptui.Select{
-			Label: d.T("Select what you want to share with the Curio team."),
-			Items: []string{
-				d.T("Individual Data: Miner ID, lotus-provider version, net (mainnet/testnet). Signed."),
-				d.T("Aggregate-Anonymous: Miner power (bucketed), version, and net."),
-				d.T("Hint: I am someone running lotus-provider in production."),
-				d.T("Nothing.")},
-			Templates: d.selectTemplates,
-		}).Run()
-		if err != nil {
-			d.say(notice, "Aborting remaining steps.\n", err.Error())
-			os.Exit(1)
+	i, _, err := (&promptui.Select{
+		Label: d.T("Select what you want to share with the Curio team."),
+		Items: []string{
+			d.T("Individual Data: Miner ID, lotus-provider version, net (mainnet/testnet). Signed."),
+			d.T("Aggregate-Anonymous: Miner power (bucketed), version, and net."),
+			d.T("Hint: I am someone running lotus-provider on [test or main]."),
+			d.T("Nothing.")},
+		Templates: d.selectTemplates,
+	}).Run()
+	if err != nil {
+		d.say(notice, "Aborting remaining steps.\n", err.Error())
+		os.Exit(1)
+	}
+	if i < 3 {
+		msgMap := map[string]any{
+			"chain": build.BuildTypeString(),
 		}
-		if i != 3 {
-
+		if i < 2 {
 			api, closer, err := cliutil.GetFullNodeAPI(nil)
 			if err != nil {
 				d.say(notice, "Error connecting to lotus node: %s\n", err.Error())
 				os.Exit(1)
 			}
 			defer closer()
-
 			power, err := api.StateMinerPower(context.Background(), d.MinerID, types.EmptyTSK)
 			if err != nil {
 				d.say(notice, "Error getting miner power: %s\n", err.Error())
 				os.Exit(1)
 			}
-			msgMap := map[string]any{
-				"version": build.BuildVersion,
-				"net":     build.BuildType,
-				"power":   map[int]any{1: power, 2: bucket(power)},
-			}
+			msgMap["version"] = build.BuildVersion
+			msgMap["net"] = build.BuildType
+			msgMap["power"] = map[int]any{1: power, 2: bucket(power)}
 
-			if i == 1 { // Sign it
-				msgMap["minerID"] = d.MinerID
-			}
-			msg, err := json.Marshal(msgMap)
-			if err != nil {
-				d.say(notice, "Error marshalling message: %s\n", err.Error())
-				os.Exit(1)
-			}
-			if i == 1 {
+			if i < 1 { // Sign it
+				msgMap["miner_id"] = d.MinerID
+				msg, err := json.Marshal(msgMap)
+				if err != nil {
+					d.say(notice, "Error marshalling message: %s\n", err.Error())
+					os.Exit(1)
+				}
 				mi, err := api.StateMinerInfo(context.Background(), d.MinerID, types.EmptyTSK)
 				if err != nil {
 					d.say(notice, "Error getting miner info: %s\n", err.Error())
@@ -258,36 +255,32 @@ func oneLastThing(d *MigrationData) {
 					os.Exit(1)
 				}
 				msgMap["signature"] = base64.StdEncoding.EncodeToString(sig.Data)
-				msg, err = json.Marshal(msgMap)
-				if err != nil {
-					d.say(notice, "Error marshalling message: %s\n", err.Error())
-					os.Exit(1)
-				}
 			}
-
-			http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
 		}
-	} else {
-		d.say(plain, "Not mainnet, not sharing.\n")
+		msg, err := json.Marshal(msgMap)
+		if err != nil {
+			d.say(notice, "Error marshalling message: %s\n", err.Error())
+			os.Exit(1)
+		}
+		// TODO ensure this endpoint is up and running.
+		http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
 	}
 }
 
 func doc(d *MigrationData) {
-	d.say(plain, "The configuration layers have been created for you: base, post, gui, seal.")
+	d.say(plain, "The following configuration layers have been created for you: base, post, gui, seal.")
 	d.say(plain, "Documentation: \n")
-	d.say(plain, "Put common configuration in 'base' and include it everywhere.\n")
-	d.say(plain, "Instances without tasks will still serve their sectors for other providers.\n")
-	d.say(plain, "As there are no local config.toml files, put per-machine changes in additional layers.\n")
-	d.say(plain, "Edit a layer with the command: ")
-	d.say(code, "lotus-provider config edit <layername>\n")
+	d.say(plain, "Edit configuration layers with the command: \n")
+	d.say(plain, "lotus-provider config edit <layername>\n\n")
+	d.say(plain, "The 'base' layer should store common configuration. You likely want all lotus-providers to include it in their --layers argument.\n")
+	d.say(plain, "Make other layers for per-machine changes.\n")
 
 	d.say(plain, "Join #fil-curio-users in Filecoin slack for help.\n")
 	d.say(plain, "TODO FINISH THIS FUNCTION.\n")
 	// TODO !!
 	// show the command to start the web interface & the command to start the main provider.
 	//    This is where Boost configuration can be completed.
-	// Doc: You can run as many providers on the same tasks as you want. It provides redundancy.
-	d.say(plain, "Want PoST redundancy? Run many providers with the 'post' layer.\n")
+	d.say(plain, "Want PoST redundancy? Run many lotus-provider instances with the 'post' layer.\n")
 	d.say(plain, "Point your browser to your web GUI to complete setup with Boost and advanced featues.\n")
 
 	fmt.Println()
