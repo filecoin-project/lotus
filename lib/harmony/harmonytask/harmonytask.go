@@ -314,13 +314,3 @@ func (e *TaskEngine) ResourcesAvailable() resources.Resources {
 	}
 	return tmp
 }
-
-// This helps <task>.Do() determine where its storage allocation is.
-func (e *TaskEngine) GetWorkingLocation(taskID TaskID) string {
-	for _, t := range e.handlers {
-		if v, ok := t.LocationMap.Load(taskID); ok {
-			return v.(string)
-		}
-	}
-	return ""
-}

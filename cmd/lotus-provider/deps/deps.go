@@ -254,8 +254,6 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		}
 	}
 
-	fmt.Println("last line of populate")
-
 	return nil
 }
 

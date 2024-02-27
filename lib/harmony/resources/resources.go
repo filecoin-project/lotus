@@ -28,7 +28,6 @@ type Resources struct {
 }
 
 // Optional Storage management.
-// See storagemgr/storagemgt.go for more details.
 type Storage interface {
 	HasCapacity() bool
 
@@ -37,7 +36,7 @@ type Storage interface {
 
 	// This allows some other system to consider the task done.
 	// It's up to the caller to remove the data, if that applies.
-	MarkComplete() error
+	MarkComplete(taskID int) error
 }
 type Reg struct {
 	Resources

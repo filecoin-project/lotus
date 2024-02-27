@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,9 +19,8 @@ var log = logging.Logger("harmonytask")
 type taskTypeHandler struct {
 	TaskInterface
 	TaskTypeDetails
-	TaskEngine  *TaskEngine
-	Count       atomic.Int32
-	LocationMap sync.Map
+	TaskEngine *TaskEngine
+	Count      atomic.Int32
 }
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
@@ -97,21 +95,16 @@ top:
 		return false
 	}
 
-	var location string
 	releaseStorage := func() {
 	}
 	if h.TaskTypeDetails.Cost.Storage != nil {
-		if c := h.TaskTypeDetails.Cost.Storage.Claim; c != nil {
-			if err = c(int(*tID)); err != nil {
-				log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
-				return false
-			}
-			h.LocationMap.Store(*tID, location)
-			releaseStorage = func() {
-				if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(); err != nil {
-					log.Errorw("Could not release storage", "error", err)
-				}
-				h.LocationMap.Delete(*tID)
+		if err = h.TaskTypeDetails.Cost.Storage.Claim(int(*tID)); err != nil {
+			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+			return false
+		}
+		releaseStorage = func() {
+			if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(int(*tID)); err != nil {
+				log.Errorw("Could not release storage", "error", err)
 			}
 		}
 	}
@@ -128,6 +121,8 @@ top:
 		}
 		if ct == 0 {
 			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
+			releaseStorage()
+
 			var tryAgain = make([]TaskID, 0, len(ids)-1)
 			for _, id := range ids {
 				if id != *tID {
@@ -273,7 +268,7 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	}
 
 	if h.TaskTypeDetails.Cost.Storage != nil {
-		if has := h.TaskTypeDetails.Cost.Storage.HasCapacity; has != nil && !has() {
+		if !h.TaskTypeDetails.Cost.Storage.HasCapacity() {
 			return errors.New("Did not accept " + h.Name + " task: out of available Storage")
 		}
 	}
