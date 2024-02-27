@@ -146,7 +146,7 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 	//                Trees; After one retry, it should return the sector to the
 	// 			      SDR stage; max number of retries should be configurable
 
-	err = s.sc.GenerateSDR(ctx, sref, ticket, commd)
+	err = s.sc.GenerateSDR(ctx, taskID, sref, ticket, commd)
 	if err != nil {
 		return false, xerrors.Errorf("generating sdr: %w", err)
 	}
@@ -194,13 +194,19 @@ func (s *SDRTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEn
 }
 
 func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
+	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
+	if isDevnet {
+		ssize = abi.SectorSize(2 << 20)
+	}
+
 	res := harmonytask.TaskTypeDetails{
 		Max:  s.max,
 		Name: "SDR",
 		Cost: resources.Resources{ // todo offset for prefetch?
-			Cpu: 4, // todo multicore sdr
-			Gpu: 0,
-			Ram: 54 << 30,
+			Cpu:     4, // todo multicore sdr
+			Gpu:     0,
+			Ram:     54 << 30,
+			Storage: s.sc.Storage(s.taskToSector, storiface.FTCache, storiface.FTNone, ssize, storiface.PathSealing),
 		},
 		MaxFailures: 2,
 		Follows:     nil,
@@ -215,6 +221,21 @@ func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
 
 func (s *SDRTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	s.sp.pollers[pollerSDR].Set(taskFunc)
+}
+
+func (s *SDRTask) taskToSector(id harmonytask.TaskID) (lpffi.SectorRef, error) {
+	var refs []lpffi.SectorRef
+
+	err := s.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_sdr = $1`, id)
+	if err != nil {
+		return lpffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
+	}
+
+	if len(refs) != 1 {
+		return lpffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
+	}
+
+	return refs[0], nil
 }
 
 var _ harmonytask.TaskInterface = &SDRTask{}
