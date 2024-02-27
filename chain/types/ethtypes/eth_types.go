@@ -337,6 +337,13 @@ func IsEthAddress(addr address.Address) bool {
 	return namespace == builtintypes.EthereumAddressManagerActorID && len(payload) == 20 && !bytes.HasPrefix(payload, maskedIDPrefix[:])
 }
 
+func EthAddressFromActorID(id abi.ActorID) EthAddress {
+	var ethaddr EthAddress
+	ethaddr[0] = 0xff
+	binary.BigEndian.PutUint64(ethaddr[12:], uint64(id))
+	return ethaddr
+}
+
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 	switch addr.Protocol() {
 	case address.ID:
@@ -344,10 +351,7 @@ func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 		if err != nil {
 			return EthAddress{}, err
 		}
-		var ethaddr EthAddress
-		ethaddr[0] = 0xff
-		binary.BigEndian.PutUint64(ethaddr[12:], id)
-		return ethaddr, nil
+		return EthAddressFromActorID(abi.ActorID(id)), nil
 	case address.Delegated:
 		payload := addr.Payload()
 		namespace, n, err := varint.FromUvarint(payload)
@@ -971,22 +975,12 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 }
 
 type EthTrace struct {
-	Action       EthTraceAction `json:"action"`
-	Result       EthTraceResult `json:"result"`
-	Subtraces    int            `json:"subtraces"`
-	TraceAddress []int          `json:"traceAddress"`
-	Type         string         `json:"Type"`
-
-	Parent *EthTrace `json:"-"`
-
-	// if a subtrace makes a call to GetBytecode, we store a pointer to that subtrace here
-	// which we then lookup when checking for delegatecall (InvokeContractDelegate)
-	LastByteCode *EthTrace `json:"-"`
-}
-
-func (t *EthTrace) SetCallType(callType string) {
-	t.Action.CallType = callType
-	t.Type = callType
+	Type         string `json:"type"`
+	Error        string `json:"error,omitempty"`
+	Subtraces    int    `json:"subtraces"`
+	TraceAddress []int  `json:"traceAddress"`
+	Action       any    `json:"action"`
+	Result       any    `json:"result"`
 }
 
 type EthTraceBlock struct {
@@ -1005,21 +999,29 @@ type EthTraceReplayBlockTransaction struct {
 	VmTrace         *string     `json:"vmTrace"`
 }
 
-type EthTraceAction struct {
+type EthCallTraceAction struct {
 	CallType string     `json:"callType"`
 	From     EthAddress `json:"from"`
 	To       EthAddress `json:"to"`
 	Gas      EthUint64  `json:"gas"`
-	Input    EthBytes   `json:"input"`
 	Value    EthBigInt  `json:"value"`
-
-	FilecoinMethod  abi.MethodNum   `json:"-"`
-	FilecoinCodeCid cid.Cid         `json:"-"`
-	FilecoinFrom    address.Address `json:"-"`
-	FilecoinTo      address.Address `json:"-"`
+	Input    EthBytes   `json:"input"`
 }
 
-type EthTraceResult struct {
+type EthCallTraceResult struct {
 	GasUsed EthUint64 `json:"gasUsed"`
 	Output  EthBytes  `json:"output"`
+}
+
+type EthCreateTraceAction struct {
+	From  EthAddress `json:"from"`
+	Gas   EthUint64  `json:"gas"`
+	Value EthBigInt  `json:"value"`
+	Init  EthBytes   `json:"init"`
+}
+
+type EthCreateTraceResult struct {
+	Address *EthAddress `json:"address,omitempty"`
+	GasUsed EthUint64   `json:"gasUsed"`
+	Code    EthBytes    `json:"code"`
 }

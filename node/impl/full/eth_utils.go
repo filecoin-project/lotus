@@ -381,26 +381,12 @@ func parseEthRevert(ret []byte) string {
 //  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
+//
+// If the actor doesn't exist in the state-tree but we have its ID, we use a masked ID address. It could have been deleted.
 func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAddress, error) {
-	// BLOCK A: We are trying to get an actual Ethereum address from an f410 address.
 	// Attempt to convert directly, if it's an f4 address.
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
 	if err == nil && !ethAddr.IsMaskedID() {
-		return ethAddr, nil
-	}
-
-	// Lookup on the target actor and try to get an f410 address.
-	if actor, err := st.GetActor(addr); err != nil {
-		return ethtypes.EthAddress{}, err
-	} else if actor.Address != nil {
-		if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
-			return ethAddr, nil
-		}
-	}
-
-	// BLOCK B: We gave up on getting an actual Ethereum address and are falling back to a Masked ID address.
-	// Check if we already have an ID addr, and use it if possible.
-	if err == nil && ethAddr.IsMaskedID() {
 		return ethAddr, nil
 	}
 
@@ -409,6 +395,21 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
+
+	// Lookup on the target actor and try to get an f410 address.
+	if actor, err := st.GetActor(idAddr); errors.Is(err, types.ErrActorNotFound) {
+		// Not found -> use a masked ID address
+	} else if err != nil {
+		// Any other error -> fail.
+		return ethtypes.EthAddress{}, err
+	} else if actor.Address == nil {
+		// No delegated address -> use masked ID address.
+	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+		// Conversable into an eth address, use it.
+		return ethAddr, nil
+	}
+
+	// Otherwise, use the masked address.
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
