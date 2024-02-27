@@ -87,30 +87,6 @@ your node if metadata log is disabled`,
 	},
 	"Client": {
 		{
-			Name: "UseIpfs",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsOnlineMode",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsMAddr",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsUseForRetrieval",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
 			Name: "SimultaneousTransfersForStorage",
 			Type: "uint64",
 
