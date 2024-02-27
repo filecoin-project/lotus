@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -37,9 +41,9 @@ stored while moving through the sealing pipeline (references as 'seal').`,
 		storageAttachCmd,
 		storageDetachCmd,
 		storageListCmd,
+		storageFindCmd,
 		/*storageDetachCmd,
 		storageRedeclareCmd,
-		storageFindCmd,
 		storageCleanupCmd,
 		storageLocks,*/
 	},
@@ -391,6 +395,115 @@ var storageListCmd = &cli.Command{
 				fmt.Printf("\tURL: %s%s\n", l, rtt) // TODO; try pinging maybe?? print latency?
 			}
 			fmt.Println()
+		}
+
+		return nil
+	},
+}
+
+type storedSector struct {
+	id    storiface.ID
+	store storiface.SectorStorageInfo
+	types map[storiface.SectorFileType]bool
+}
+
+var storageFindCmd = &cli.Command{
+	Name:      "find",
+	Usage:     "find sector in the storage system",
+	ArgsUsage: "[miner address] [sector number]",
+	Action: func(cctx *cli.Context) error {
+		minerApi, closer, err := rpc.GetProviderAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		maddr := cctx.Args().First()
+		ma, err := address.NewFromString(maddr)
+		if err != nil {
+			return xerrors.Errorf("parsing miner address: %w", err)
+		}
+
+		mid, err := address.IDFromAddress(ma)
+		if err != nil {
+			return err
+		}
+
+		if !cctx.Args().Present() {
+			return xerrors.New("Usage: lotus-miner storage find [sector number]")
+		}
+
+		snum, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		sid := abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: abi.SectorNumber(snum),
+		}
+
+		sectorTypes := []storiface.SectorFileType{
+			storiface.FTUnsealed, storiface.FTSealed, storiface.FTCache, storiface.FTUpdate, storiface.FTUpdateCache,
+		}
+
+		byId := make(map[storiface.ID]*storedSector)
+		for _, sectorType := range sectorTypes {
+			infos, err := minerApi.StorageFindSector(ctx, sid, sectorType, 0, false)
+			if err != nil {
+				return xerrors.Errorf("finding sector type %d: %w", sectorType, err)
+			}
+
+			for _, info := range infos {
+				sts, ok := byId[info.ID]
+				if !ok {
+					sts = &storedSector{
+						id:    info.ID,
+						store: info,
+						types: make(map[storiface.SectorFileType]bool),
+					}
+					byId[info.ID] = sts
+				}
+				sts.types[sectorType] = true
+			}
+		}
+
+		local, err := minerApi.StorageLocal(ctx)
+		if err != nil {
+			return err
+		}
+
+		var out []*storedSector
+		for _, sector := range byId {
+			out = append(out, sector)
+		}
+		sort.Slice(out, func(i, j int) bool {
+			return out[i].id < out[j].id
+		})
+
+		for _, info := range out {
+			var types []string
+			for sectorType, present := range info.types {
+				if present {
+					types = append(types, sectorType.String())
+				}
+			}
+			sort.Strings(types) // Optional: Sort types for consistent output
+			fmt.Printf("In %s (%s)\n", info.id, strings.Join(types, ", "))
+			fmt.Printf("\tSealing: %t; Storage: %t\n", info.store.CanSeal, info.store.CanStore)
+			if localPath, ok := local[info.id]; ok {
+				fmt.Printf("\tLocal (%s)\n", localPath)
+			} else {
+				fmt.Printf("\tRemote\n")
+			}
+			for _, l := range info.store.URLs {
+				fmt.Printf("\tURL: %s\n", l)
+			}
 		}
 
 		return nil

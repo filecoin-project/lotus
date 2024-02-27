@@ -842,6 +842,8 @@ type LotusProviderMethods struct {
 
 	StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
+	StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
+
 	StorageInfo func(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) `perm:"admin"`
 
 	StorageList func(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) `perm:"admin"`
@@ -5259,6 +5261,17 @@ func (s *LotusProviderStruct) StorageDetachLocal(p0 context.Context, p1 string) 
 
 func (s *LotusProviderStub) StorageDetachLocal(p0 context.Context, p1 string) error {
 	return ErrNotSupported
+}
+
+func (s *LotusProviderStruct) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
+	if s.Internal.StorageFindSector == nil {
+		return *new([]storiface.SectorStorageInfo), ErrNotSupported
+	}
+	return s.Internal.StorageFindSector(p0, p1, p2, p3, p4)
+}
+
+func (s *LotusProviderStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
+	return *new([]storiface.SectorStorageInfo), ErrNotSupported
 }
 
 func (s *LotusProviderStruct) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
