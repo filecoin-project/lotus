@@ -83,6 +83,23 @@ OPTIONS:
 ```
 
 
+### Ethereum Tracing API (`trace_block` and `trace_replayBlockTransactions`)
+
+For those with the Ethereum JSON-RPC API enabled, the experimental Ethereum Tracing API has been improved significantly and should be considered "functional". However, it's still new and should be tested extensively before relying on it. This API translates FVM traces to Ethereum-style traces, implementing the OpenEthereum `trace_block` and `trace_replayBlockTransactions` APIs.
+
+This release fixes numerous bugs with this API and now ABI-encodes non-EVM inputs/outputs as if they were explicit EVM calls to [`handle_filecoin_method`][handlefilecoinmethod] for better block explorer compatibility.
+
+However, there are some _significant_ limitations:
+
+1. The Geth APIs are not implemented, only the OpenEthereum (Erigon, etc.) APIs.
+2. Block rewards are not (yet) included in the trace.
+3. Selfdestruct operations are not included in the trace.
+4. EVM smart contract "create" events always specify `0xfe` as the "code" for newly created EVM smart contracts.
+
+Additionally, Filecoin is not Ethereum no matter how much we try to provide API/tooling compatibility. This API attempts to translate Filecoin semantics into Ethereum semantics as accurately as possible, but it's hardly the best source of data unless you _need_ Filecoin to look like an Ethereum compatible chain. If you're trying to build a new integration with Filecoin, please use the native `StateCompute` method instead.
+
+[handlefilecoinmethod]: https://fips.filecoin.io/FIPS/fip-0054.html#handlefilecoinmethod-general-handler-for-method-numbers--1024
+
 # v1.25.2 / 2024-01-11 
 
 This is an optional but **highly recommended feature release** of Lotus, as it includes fixes for synchronizations issues that users have experienced. The feature release also introduces `Lotus-Provider` in its alpha testing phase, as well as the ability to call external PC2-binaries during the sealing process.
