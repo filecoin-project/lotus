@@ -97,7 +97,7 @@ func (s *SealPoller) pollRetryCommitMsgSend(ctx context.Context, task pollTask, 
 	// make the pipeline entry seem like precommit send didn't happen, next poll loop will retry
 
 	_, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET
-                                commit_msg_cid = NULL, task_id_commit_msg = NULL
+                                commit_msg_cid = NULL, task_id_commit_msg = NULL, after_commit_msg = FALSE
                             	WHERE commit_msg_cid = $1 AND sp_id = $2 AND sector_number = $3 AND after_commit_msg_success = FALSE`,
 		*execResult.CommitMsgCID, task.SpID, task.SectorNumber)
 	if err != nil {
