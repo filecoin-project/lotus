@@ -2,11 +2,13 @@ package lpffi
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"golang.org/x/xerrors"
 	"io"
 	"os"
 	"time"
+
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func (sb *SealCalls) WritePiece(ctx context.Context, pieceID storiface.PieceNumber, size int64, data io.Reader) error {

@@ -9711,11 +9711,13 @@
                                         0,
                                         1,
                                         0,
+                                        0,
                                         0
                                     ],
                                     "Read": [
                                         2,
                                         3,
+                                        0,
                                         0,
                                         0,
                                         0
@@ -9736,8 +9738,8 @@
                                             "title": "number",
                                             "type": "number"
                                         },
-                                        "maxItems": 5,
-                                        "minItems": 5,
+                                        "maxItems": 6,
+                                        "minItems": 6,
                                         "type": "array"
                                     },
                                     "Sector": {
@@ -9760,8 +9762,8 @@
                                             "title": "number",
                                             "type": "number"
                                         },
-                                        "maxItems": 5,
-                                        "minItems": 5,
+                                        "maxItems": 6,
+                                        "minItems": 6,
                                         "type": "array"
                                     }
                                 },
