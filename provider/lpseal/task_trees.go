@@ -200,6 +200,7 @@ type UrlPieceReader struct {
 	RawSize int64 // the exact number of bytes read, if we read more or less that's an error
 
 	readSoFar int64
+	closed    bool
 	active    io.ReadCloser // auto-closed on EOF
 }
 
@@ -239,6 +240,7 @@ func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
 	// If EOF is reached, close the reader
 	if err == io.EOF {
 		cerr := u.active.Close()
+		u.closed = true
 		if cerr != nil {
 			log.Errorf("error closing http piece reader: %s", cerr)
 		}
@@ -251,6 +253,15 @@ func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
 	}
 
 	return n, err
+}
+
+func (u *UrlPieceReader) Close() error {
+	if !u.closed {
+		u.closed = true
+		return u.active.Close()
+	}
+
+	return nil
 }
 
 var _ harmonytask.TaskInterface = &TreesTask{}

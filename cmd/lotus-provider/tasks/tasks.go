@@ -3,6 +3,9 @@ package tasks
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/lazy"
+	"github.com/filecoin-project/lotus/lib/must"
+	"github.com/filecoin-project/lotus/provider/lppiece"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
@@ -64,6 +67,18 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
+	slrLazy := lazy.MakeLazy(func() (*lpffi.SealCalls, error) {
+		return lpffi.NewSealCalls(stor, lstor, si), nil
+	})
+
+	{
+		// Piece handling
+		if cfg.Subsystems.EnableParkPiece {
+			parkPieceTask := lppiece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
+			activeTasks = append(activeTasks, parkPieceTask)
+		}
+	}
+
 	hasAnySealingTask := cfg.Subsystems.EnableSealSDR ||
 		cfg.Subsystems.EnableSealSDRTrees ||
 		cfg.Subsystems.EnableSendPrecommitMsg ||
@@ -79,7 +94,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			sp = lpseal.NewPoller(db, full)
 			go sp.RunPoller(ctx)
 
-			slr = lpffi.NewSealCalls(stor, lstor, si)
+			slr = must.One(slrLazy.Val())
 		}
 
 		// NOTE: Tasks with the LEAST priority are at the top
