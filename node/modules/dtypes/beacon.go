@@ -13,4 +13,5 @@ type DrandConfig struct {
 	Servers       []string
 	Relays        []string
 	ChainInfoJSON string
+	IsChained     bool
 }
