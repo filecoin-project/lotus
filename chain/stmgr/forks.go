@@ -203,10 +203,6 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 			log.Errorw("FAILED migration", "height", height, "from", root, "error", err)
 			return cid.Undef, err
 		}
-		// Yes, we update the cache, even for the final upgrade epoch. Why? Reverts. This
-		// can save us a _lot_ of time because very few actors will have changed if we
-		// do a small revert then need to re-run the migration.
-		u.cache.Update(tmpCache)
 		log.Warnw("COMPLETED migration",
 			"height", height,
 			"from", root,
