@@ -95,16 +95,34 @@ top:
 		return false
 	}
 
+	releaseStorage := func() {
+	}
+	if h.TaskTypeDetails.Cost.Storage != nil {
+		if err = h.TaskTypeDetails.Cost.Storage.Claim(int(*tID)); err != nil {
+			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+			return false
+		}
+		releaseStorage = func() {
+			if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(int(*tID)); err != nil {
+				log.Errorw("Could not release storage", "error", err)
+			}
+		}
+	}
+
 	// if recovering we don't need to try to claim anything because those tasks are already claimed by us
 	if from != workSourceRecover {
 		// 4. Can we claim the work for our hostname?
 		ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
 		if err != nil {
 			log.Error(err)
+
+			releaseStorage()
 			return false
 		}
 		if ct == 0 {
 			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
+			releaseStorage()
+
 			var tryAgain = make([]TaskID, 0, len(ids)-1)
 			for _, id := range ids {
 				if id != *tID {
@@ -134,6 +152,7 @@ top:
 			}
 			h.Count.Add(-1)
 
+			releaseStorage()
 			h.recordCompletion(*tID, workStart, done, doErr)
 			if done {
 				for _, fs := range h.TaskEngine.follows[h.Name] { // Do we know of any follows for this task type?
@@ -246,6 +265,12 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	}
 	if r.Gpu-h.Cost.Gpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
+	}
+
+	if h.TaskTypeDetails.Cost.Storage != nil {
+		if !h.TaskTypeDetails.Cost.Storage.HasCapacity() {
+			return errors.New("Did not accept " + h.Name + " task: out of available Storage")
+		}
 	}
 	return nil
 }

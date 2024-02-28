@@ -256,6 +256,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 			}
 		}
 	}
+  
 	if deps.ProofTypes == nil {
 		deps.ProofTypes = map[abi.RegisteredSealProof]bool{}
 	}
@@ -268,6 +269,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 			deps.ProofTypes[spt] = true
 		}
 	}
+
 	return nil
 }
 

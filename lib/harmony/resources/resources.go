@@ -24,6 +24,19 @@ type Resources struct {
 	Gpu       float64
 	Ram       uint64
 	MachineID int
+	Storage
+}
+
+// Optional Storage management.
+type Storage interface {
+	HasCapacity() bool
+
+	// This allows some other system to claim space for this task.
+	Claim(taskID int) error
+
+	// This allows some other system to consider the task done.
+	// It's up to the caller to remove the data, if that applies.
+	MarkComplete(taskID int) error
 }
 type Reg struct {
 	Resources
