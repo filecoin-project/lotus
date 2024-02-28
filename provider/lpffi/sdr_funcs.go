@@ -11,6 +11,7 @@ import (
 	"github.com/KarpelesLab/reflink"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/puzpuzpuz/xsync/v2"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	proof2 "github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/provider/lpproof"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
@@ -43,28 +45,51 @@ type SealCalls struct {
 func NewSealCalls(st paths.Store, ls *paths.Local, si paths.SectorIndex) *SealCalls {
 	return &SealCalls{
 		sectors: &storageProvider{
-			storage:    st,
-			localStore: ls,
-			sindex:     si,
+			storage:             st,
+			localStore:          ls,
+			sindex:              si,
+			storageReservations: xsync.NewIntegerMapOf[harmonytask.TaskID, *StorageReservation](),
 		},
 	}
 }
 
 type storageProvider struct {
-	storage    paths.Store
-	localStore *paths.Local
-	sindex     paths.SectorIndex
+	storage             paths.Store
+	localStore          *paths.Local
+	sindex              paths.SectorIndex
+	storageReservations *xsync.MapOf[harmonytask.TaskID, *StorageReservation]
 }
 
-func (l *storageProvider) AcquireSector(ctx context.Context, sector storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
-	paths, storageIDs, err := l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
-	if err != nil {
-		return storiface.SectorPaths{}, nil, err
-	}
+func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask.TaskID, sector storiface.SectorRef, existing, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
+	var paths, storageIDs storiface.SectorPaths
+	var releaseStorage func()
 
-	releaseStorage, err := l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal)
-	if err != nil {
-		return storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
+	var ok bool
+	var resv *StorageReservation
+	if taskID != nil {
+		resv, ok = l.storageReservations.Load(*taskID)
+	}
+	if ok {
+		if resv.Alloc != allocate || resv.Existing != existing {
+			// this should never happen, only when task definition is wrong
+			return storiface.SectorPaths{}, nil, xerrors.Errorf("storage reservation type mismatch")
+		}
+
+		log.Debugw("using existing storage reservation", "task", taskID, "sector", sector, "existing", existing, "allocate", allocate)
+
+		paths = resv.Paths
+		releaseStorage = resv.Release
+	} else {
+		var err error
+		paths, storageIDs, err = l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
+		if err != nil {
+			return storiface.SectorPaths{}, nil, err
+		}
+
+		releaseStorage, err = l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal)
+		if err != nil {
+			return storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
+		}
 	}
 
 	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
@@ -85,8 +110,8 @@ func (l *storageProvider) AcquireSector(ctx context.Context, sector storiface.Se
 	}, nil
 }
 
-func (sb *SealCalls) GenerateSDR(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, commKcid cid.Cid) error {
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing)
+func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID, sector storiface.SectorRef, ticket abi.SealRandomness, commKcid cid.Cid) error {
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, &taskID, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -120,7 +145,7 @@ func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size
 	maybeUns := storiface.FTNone
 	// todo sectors with data
 
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, maybeUns, storiface.PathSealing)
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, maybeUns, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -135,7 +160,7 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
 	}
 
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -331,7 +356,7 @@ func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.Sector
 		alloc = storiface.FTUnsealed
 	}
 
-	sectorPaths, releaseSector, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, alloc, storiface.PathSealing)
+	sectorPaths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, alloc, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}
