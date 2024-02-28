@@ -182,7 +182,15 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 		if err == nil {
 			if ok {
 				log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
-				return migCid, nil
+				foundMigratedRoot, err := sm.ChainStore().StateBlockstore().Has(ctx, migCid)
+				if err != nil {
+					log.Errorw("failed to check whether previous migration result is present", "err", err)
+				} else if !foundMigratedRoot {
+					log.Errorw("cached migration result not found in blockstore, running migration again")
+					u.migrationResultCache.Delete(ctx, root)
+				} else {
+					return migCid, nil
+				}
 			}
 		} else if !errors.Is(err, datastore.ErrNotFound) {
 			log.Errorw("failed to lookup previous migration result", "err", err)
