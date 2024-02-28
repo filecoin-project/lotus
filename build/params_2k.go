@@ -23,7 +23,7 @@ var NetworkBundle = "devnet"
 var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = true
 
-const GenesisNetworkVersion = network.Version21
+var GenesisNetworkVersion = network.Version21
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -96,6 +96,22 @@ func init() {
 	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
 	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
 
+	getGenesisNetworkVersion := func(ev string, def network.Version) network.Version {
+		hs, found := os.LookupEnv(ev)
+		if found {
+			h, err := strconv.Atoi(hs)
+			if err != nil {
+				log.Panicf("failed to parse %s env var", ev)
+			}
+
+			return network.Version(h)
+		}
+
+		return def
+	}
+
+	GenesisNetworkVersion = getGenesisNetworkVersion("LOTUS_GENESIS_NETWORK_VERSION", GenesisNetworkVersion)
+
 	getUpgradeHeight := func(ev string, def abi.ChainEpoch) abi.ChainEpoch {
 		hs, found := os.LookupEnv(ev)
 		if found {
@@ -135,6 +151,12 @@ func init() {
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
 	UpgradeDragonHeight = getUpgradeHeight("LOTUS_DRAGON_HEIGHT", UpgradeDragonHeight)
+
+	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
+	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
+		0:                    DrandMainnet,
+		UpgradePhoenixHeight: DrandQuicknet,
+	}
 
 	BuildType |= Build2k
 
