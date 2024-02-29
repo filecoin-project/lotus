@@ -65,13 +65,13 @@ type StorageMiner struct {
 	HarmonyDB HarmonyDB
 }
 
-type LotusProviderConfig struct {
-	Subsystems ProviderSubsystemsConfig
+type CurioConfig struct {
+	Subsystems CurioSubsystemsConfig
 
-	Fees LotusProviderFees
+	Fees CurioFees
 
 	// Addresses of wallets per MinerAddress (one of the fields).
-	Addresses []LotusProviderAddresses
+	Addresses []CurioAddresses
 	Proving   ProvingConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
@@ -92,7 +92,7 @@ type JournalConfig struct {
 	DisabledEvents string
 }
 
-type ProviderSubsystemsConfig struct {
+type CurioSubsystemsConfig struct {
 	EnableWindowPost    bool
 	WindowPostMaxTasks  int
 	EnableWinningPost   bool
@@ -557,7 +557,7 @@ type MinerFeeConfig struct {
 	MaximizeWindowPoStFeeCap bool
 }
 
-type LotusProviderFees struct {
+type CurioFees struct {
 	DefaultMaxFee      types.FIL
 	MaxPreCommitGasFee types.FIL
 	MaxCommitGasFee    types.FIL
@@ -589,7 +589,7 @@ type MinerAddressConfig struct {
 	DisableWorkerFallback bool
 }
 
-type LotusProviderAddresses struct {
+type CurioAddresses struct {
 	// Addresses to send PreCommit messages from
 	PreCommitControl []string
 	// Addresses to send Commit messages from

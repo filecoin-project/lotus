@@ -111,6 +111,19 @@ type CommonNetStub struct {
 	NetStub
 }
 
+type CurioStruct struct {
+	Internal CurioMethods
+}
+
+type CurioMethods struct {
+	Shutdown func(p0 context.Context) error `perm:"admin"`
+
+	Version func(p0 context.Context) (Version, error) `perm:"admin"`
+}
+
+type CurioStub struct {
+}
+
 type EthSubscriberStruct struct {
 	Internal EthSubscriberMethods
 }
@@ -827,19 +840,6 @@ type GatewayMethods struct {
 type GatewayStub struct {
 }
 
-type LotusProviderStruct struct {
-	Internal LotusProviderMethods
-}
-
-type LotusProviderMethods struct {
-	Shutdown func(p0 context.Context) error `perm:"admin"`
-
-	Version func(p0 context.Context) (Version, error) `perm:"admin"`
-}
-
-type LotusProviderStub struct {
-}
-
 type NetStruct struct {
 	Internal NetMethods
 }
@@ -1448,6 +1448,28 @@ func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
 
 func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
 	return *new(APIVersion), ErrNotSupported
+}
+
+func (s *CurioStruct) Shutdown(p0 context.Context) error {
+	if s.Internal.Shutdown == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.Shutdown(p0)
+}
+
+func (s *CurioStub) Shutdown(p0 context.Context) error {
+	return ErrNotSupported
+}
+
+func (s *CurioStruct) Version(p0 context.Context) (Version, error) {
+	if s.Internal.Version == nil {
+		return *new(Version), ErrNotSupported
+	}
+	return s.Internal.Version(p0)
+}
+
+func (s *CurioStub) Version(p0 context.Context) (Version, error) {
+	return *new(Version), ErrNotSupported
 }
 
 func (s *EthSubscriberStruct) EthSubscription(p0 context.Context, p1 jsonrpc.RawParams) error {
@@ -5201,28 +5223,6 @@ func (s *GatewayStub) Web3ClientVersion(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (s *LotusProviderStruct) Shutdown(p0 context.Context) error {
-	if s.Internal.Shutdown == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.Shutdown(p0)
-}
-
-func (s *LotusProviderStub) Shutdown(p0 context.Context) error {
-	return ErrNotSupported
-}
-
-func (s *LotusProviderStruct) Version(p0 context.Context) (Version, error) {
-	if s.Internal.Version == nil {
-		return *new(Version), ErrNotSupported
-	}
-	return s.Internal.Version(p0)
-}
-
-func (s *LotusProviderStub) Version(p0 context.Context) (Version, error) {
-	return *new(Version), ErrNotSupported
-}
-
 func (s *NetStruct) ID(p0 context.Context) (peer.ID, error) {
 	if s.Internal.ID == nil {
 		return *new(peer.ID), ErrNotSupported
@@ -7448,10 +7448,10 @@ func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)
 var _ CommonNet = new(CommonNetStruct)
+var _ Curio = new(CurioStruct)
 var _ EthSubscriber = new(EthSubscriberStruct)
 var _ FullNode = new(FullNodeStruct)
 var _ Gateway = new(GatewayStruct)
-var _ LotusProvider = new(LotusProviderStruct)
 var _ Net = new(NetStruct)
 var _ Signable = new(SignableStruct)
 var _ StorageMiner = new(StorageMinerStruct)
