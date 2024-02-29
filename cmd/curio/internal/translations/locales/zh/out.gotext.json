@@ -7,8 +7,8 @@
             "translation": ""
         },
         {
-            "id": "This tool confirms each action it does and each step is reversable.",
-            "message": "This tool confirms each action it does and each step is reversable.",
+            "id": "This tool confirms each action it does and each step can be reversed.",
+            "message": "This tool confirms each action it does and each step can be reversed.",
             "translation": ""
         },
         {
@@ -188,6 +188,36 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Error updating Curio storage team about the new instance: {Error}",
+            "message": "Error updating Curio storage team about the new instance: {Error}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ]
+        },
+        {
+            "id": "Received a non success code from the server: {StatusCode}",
+            "message": "Received a non success code from the server: {StatusCode}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "StatusCode",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "rep.StatusCode"
                 }
             ]
         },

@@ -9,9 +9,9 @@
             "fuzzy": true
         },
         {
-            "id": "This tool confirms each action it does and each step is reversable.",
-            "message": "This tool confirms each action it does and each step is reversable.",
-            "translation": "This tool confirms each action it does and each step is reversable.",
+            "id": "This tool confirms each action it does and each step can be reversed.",
+            "message": "This tool confirms each action it does and each step can be reversed.",
+            "translation": "This tool confirms each action it does and each step can be reversed.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -235,6 +235,40 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error updating Curio storage team about the new instance: {Error}",
+            "message": "Error updating Curio storage team about the new instance: {Error}",
+            "translation": "Error updating Curio storage team about the new instance: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Received a non success code from the server: {StatusCode}",
+            "message": "Received a non success code from the server: {StatusCode}",
+            "translation": "Received a non success code from the server: {StatusCode}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "StatusCode",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "rep.StatusCode"
                 }
             ],
             "fuzzy": true

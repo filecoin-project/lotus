@@ -206,7 +206,7 @@ func (curio) RepoFlags() []string {
 }
 
 func (curio) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
-	return "PROVIDER_API_INFO", nil, nil
+	return "CURIO_API_INFO", nil, nil
 }
 
 var Wallet wallet
