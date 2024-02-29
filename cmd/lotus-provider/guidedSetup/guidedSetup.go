@@ -272,10 +272,11 @@ func doc(d *MigrationData) {
 	d.say(plain, "Documentation: \n")
 	d.say(plain, "Edit configuration layers with the command: \n")
 	d.say(plain, "lotus-provider config edit <layername>\n\n")
-	d.say(plain, "The 'base' layer should store common configuration. You likely want all lotus-providers to include it in their --layers argument.\n")
-	d.say(plain, "Make other layers for per-machine changes.\n")
+	d.say(plain, "The 'base' layer stores common configuration. All lotus-providers can include it in their --layers argument.\n")
+	d.say(plain, "You can add other layers for per-machine configuration changes.\n")
 
-	d.say(plain, "Join #fil-curio-users in Filecoin slack for help.\n")
+	d.say(plain, "Join #fil-curio-help in Filecoin slack for help.\n")
+	d.say(plain, "Join #fil-curio-dev in Filecoin slack to follow development and feedback!\n")
 	d.say(plain, "TODO FINISH THIS FUNCTION.\n")
 	// TODO !!
 	// show the command to start the web interface & the command to start the main provider.
