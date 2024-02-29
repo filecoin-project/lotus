@@ -42,7 +42,7 @@ type SealCalls struct {
 	externCalls ExternalSealer*/
 }
 
-func NewSealCalls(st paths.Store, ls *paths.Local, si paths.SectorIndex) *SealCalls {
+func NewSealCalls(st *paths.Remote, ls *paths.Local, si paths.SectorIndex) *SealCalls {
 	return &SealCalls{
 		sectors: &storageProvider{
 			storage:             st,
@@ -54,7 +54,7 @@ func NewSealCalls(st paths.Store, ls *paths.Local, si paths.SectorIndex) *SealCa
 }
 
 type storageProvider struct {
-	storage             paths.Store
+	storage             *paths.Remote
 	localStore          *paths.Local
 	sindex              paths.SectorIndex
 	storageReservations *xsync.MapOf[harmonytask.TaskID, *StorageReservation]
