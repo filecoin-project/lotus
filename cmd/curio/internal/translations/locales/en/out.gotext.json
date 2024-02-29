@@ -2,16 +2,16 @@
     "language": "en",
     "messages": [
         {
-            "id": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
-            "message": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
-            "translation": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
+            "id": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
+            "message": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
+            "translation": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "This tool confirms each action it does and each step can be reversed.",
-            "message": "This tool confirms each action it does and each step can be reversed.",
-            "translation": "This tool confirms each action it does and each step can be reversed.",
+            "id": "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.",
+            "message": "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.",
+            "translation": "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -37,9 +37,16 @@
             "fuzzy": true
         },
         {
-            "id": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
-            "message": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
-            "translation": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
+            "id": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
+            "message": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
+            "translation": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
+            "message": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
+            "translation": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -75,16 +82,16 @@
             "fuzzy": true
         },
         {
-            "id": "Share with the Curio team your interest in curio for this Miner ID.",
-            "message": "Share with the Curio team your interest in curio for this Miner ID.",
-            "translation": "Share with the Curio team your interest in curio for this Miner ID.",
+            "id": "Share with the Curio team your interest in Curio for this Miner ID.",
+            "message": "Share with the Curio team your interest in Curio for this Miner ID.",
+            "translation": "Share with the Curio team your interest in Curio for this Miner ID.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
-            "message": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
-            "translation": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
+            "id": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
+            "message": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
+            "translation": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -127,9 +134,9 @@
             "fuzzy": true
         },
         {
-            "id": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
-            "message": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
-            "translation": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
+            "id": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
+            "message": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
+            "translation": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -141,9 +148,9 @@
             "fuzzy": true
         },
         {
-            "id": "Hint: I am someone running curio in production.",
-            "message": "Hint: I am someone running curio in production.",
-            "translation": "Hint: I am someone running curio in production.",
+            "id": "Hint: I am someone running Curio on [test or main].",
+            "message": "Hint: I am someone running Curio on [test or main].",
+            "translation": "Hint: I am someone running Curio on [test or main].",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -240,50 +247,9 @@
             "fuzzy": true
         },
         {
-            "id": "Error updating Curio storage team about the new instance: {Error}",
-            "message": "Error updating Curio storage team about the new instance: {Error}",
-            "translation": "Error updating Curio storage team about the new instance: {Error}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Received a non success code from the server: {StatusCode}",
-            "message": "Received a non success code from the server: {StatusCode}",
-            "translation": "Received a non success code from the server: {StatusCode}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "StatusCode",
-                    "string": "%[1]d",
-                    "type": "int",
-                    "underlyingType": "int",
-                    "argNum": 1,
-                    "expr": "rep.StatusCode"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Not mainnet, not sharing.",
-            "message": "Not mainnet, not sharing.",
-            "translation": "Not mainnet, not sharing.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "The configuration layers have been created for you: base, post, gui, seal.",
-            "message": "The configuration layers have been created for you: base, post, gui, seal.",
-            "translation": "The configuration layers have been created for you: base, post, gui, seal.",
+            "id": "The following configuration layers have been created for you: base, post, gui, seal.",
+            "message": "The following configuration layers have been created for you: base, post, gui, seal.",
+            "translation": "The following configuration layers have been created for you: base, post, gui, seal.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -295,30 +261,9 @@
             "fuzzy": true
         },
         {
-            "id": "Put common configuration in 'base' and include it everywhere.",
-            "message": "Put common configuration in 'base' and include it everywhere.",
-            "translation": "Put common configuration in 'base' and include it everywhere.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Instances without tasks will still serve their sectors for other Curio instances.",
-            "message": "Instances without tasks will still serve their sectors for other Curio instances.",
-            "translation": "Instances without tasks will still serve their sectors for other Curio instances.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "As there are no local config.toml files, put per-machine changes in additional layers.",
-            "message": "As there are no local config.toml files, put per-machine changes in additional layers.",
-            "translation": "As there are no local config.toml files, put per-machine changes in additional layers.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Edit a layer with the command:",
-            "message": "Edit a layer with the command:",
-            "translation": "Edit a layer with the command:",
+            "id": "Edit configuration layers with the command:",
+            "message": "Edit configuration layers with the command:",
+            "translation": "Edit configuration layers with the command:",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -326,6 +271,20 @@
             "id": "curio config edit \u003clayername\u003e",
             "message": "curio config edit \u003clayername\u003e",
             "translation": "curio config edit \u003clayername\u003e",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
+            "message": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
+            "translation": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Make other layers for per-machine changes.",
+            "message": "Make other layers for per-machine changes.",
+            "translation": "Make other layers for per-machine changes.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -382,16 +341,16 @@
             "fuzzy": true
         },
         {
-            "id": "The sectors are in the database. The database is ready for curio.",
-            "message": "The sectors are in the database. The database is ready for curio.",
-            "translation": "The sectors are in the database. The database is ready for curio.",
+            "id": "The sectors are in the database. The database is ready for Curio.",
+            "message": "The sectors are in the database. The database is ready for Curio.",
+            "translation": "The sectors are in the database. The database is ready for Curio.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Now shut down lotus-miner and move the systems to curio.",
-            "message": "Now shut down lotus-miner and move the systems to curio.",
-            "translation": "Now shut down lotus-miner and move the systems to curio.",
+            "id": "Now shut down lotus-miner and move the systems to Curio.",
+            "message": "Now shut down lotus-miner and move the systems to Curio.",
+            "translation": "Now shut down lotus-miner and move the systems to Curio.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -743,6 +702,13 @@
                     "expr": "step"
                 }
             ],
+            "fuzzy": true
+        },
+        {
+            "id": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
+            "message": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
+            "translation": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
+            "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {

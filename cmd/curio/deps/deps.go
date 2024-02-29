@@ -58,21 +58,33 @@ func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 		return harmonydb.NewFromConfig(dbConfig)
 	}
 
+	readToml := func(path string) (*harmonydb.DB, error) {
+		cfg, err := config.FromFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if c, ok := cfg.(*config.StorageMiner); !ok {
+			return harmonydb.NewFromConfig(c.HarmonyDB)
+		}
+		return nil, errors.New("not a miner config")
+	}
+
 	// #2 Try local miner config
+	fromMinerEnv := func() (*harmonydb.DB, error) {
+		v := os.Getenv("LOTUS_MINER_PATH")
+		if v == "" {
+			return nil, errors.New("no miner env")
+		}
+		return readToml(filepath.Join(v, "config.toml"))
+
+	}
+
 	fromMiner := func() (*harmonydb.DB, error) {
 		u, err := os.UserHomeDir()
 		if err != nil {
 			return nil, err
 		}
-		b, err := os.ReadFile(filepath.Join(u, ".lotus", "config.toml"))
-		if err != nil {
-			return nil, err
-		}
-		cfg := config.DefaultStorageMiner()
-		if _, err := toml.Decode(string(b), &cfg); err != nil {
-			return nil, err
-		}
-		return harmonydb.NewFromConfig(cfg.HarmonyDB)
+		return readToml(filepath.Join(u, ".lotusminer/config.toml"))
 	}
 	fromEnv := func() (*harmonydb.DB, error) {
 		// #3 Try env
@@ -90,7 +102,7 @@ func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 		})
 	}
 
-	for _, f := range []func() (*harmonydb.DB, error){fromCLI, fromMiner, fromEnv} {
+	for _, f := range []func() (*harmonydb.DB, error){fromCLI, fromMinerEnv, fromMiner, fromEnv} {
 		db, err := f()
 		if err != nil {
 			continue

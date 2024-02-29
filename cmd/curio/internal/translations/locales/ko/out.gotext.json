@@ -2,13 +2,13 @@
     "language": "ko",
     "messages": [
         {
-            "id": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
-            "message": "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.",
+            "id": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
+            "message": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
             "translation": ""
         },
         {
-            "id": "This tool confirms each action it does and each step can be reversed.",
-            "message": "This tool confirms each action it does and each step can be reversed.",
+            "id": "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.",
+            "message": "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.",
             "translation": ""
         },
         {
@@ -27,8 +27,13 @@
             "translation": ""
         },
         {
-            "id": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
-            "message": "A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\\n",
+            "id": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
+            "message": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
+            "translation": ""
+        },
+        {
+            "id": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
+            "message": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
             "translation": ""
         },
         {
@@ -57,13 +62,13 @@
             "translation": ""
         },
         {
-            "id": "Share with the Curio team your interest in curio for this Miner ID.",
-            "message": "Share with the Curio team your interest in curio for this Miner ID.",
+            "id": "Share with the Curio team your interest in Curio for this Miner ID.",
+            "message": "Share with the Curio team your interest in Curio for this Miner ID.",
             "translation": ""
         },
         {
-            "id": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
-            "message": "Hit return to tell http://CurioStorage.org that you've migrated to curio.",
+            "id": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
+            "message": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
             "translation": ""
         },
         {
@@ -97,8 +102,8 @@
             "translation": ""
         },
         {
-            "id": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
-            "message": "Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed.",
+            "id": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
+            "message": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
             "translation": ""
         },
         {
@@ -107,8 +112,8 @@
             "translation": ""
         },
         {
-            "id": "Hint: I am someone running curio in production.",
-            "message": "Hint: I am someone running curio in production.",
+            "id": "Hint: I am someone running Curio on [test or main].",
+            "message": "Hint: I am someone running Curio on [test or main].",
             "translation": ""
         },
         {
@@ -192,43 +197,8 @@
             ]
         },
         {
-            "id": "Error updating Curio storage team about the new instance: {Error}",
-            "message": "Error updating Curio storage team about the new instance: {Error}",
-            "translation": "",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ]
-        },
-        {
-            "id": "Received a non success code from the server: {StatusCode}",
-            "message": "Received a non success code from the server: {StatusCode}",
-            "translation": "",
-            "placeholders": [
-                {
-                    "id": "StatusCode",
-                    "string": "%[1]d",
-                    "type": "int",
-                    "underlyingType": "int",
-                    "argNum": 1,
-                    "expr": "rep.StatusCode"
-                }
-            ]
-        },
-        {
-            "id": "Not mainnet, not sharing.",
-            "message": "Not mainnet, not sharing.",
-            "translation": ""
-        },
-        {
-            "id": "The configuration layers have been created for you: base, post, gui, seal.",
-            "message": "The configuration layers have been created for you: base, post, gui, seal.",
+            "id": "The following configuration layers have been created for you: base, post, gui, seal.",
+            "message": "The following configuration layers have been created for you: base, post, gui, seal.",
             "translation": ""
         },
         {
@@ -237,28 +207,23 @@
             "translation": ""
         },
         {
-            "id": "Put common configuration in 'base' and include it everywhere.",
-            "message": "Put common configuration in 'base' and include it everywhere.",
-            "translation": ""
-        },
-        {
-            "id": "Instances without tasks will still serve their sectors for other Curio instances.",
-            "message": "Instances without tasks will still serve their sectors for other Curio instances.",
-            "translation": ""
-        },
-        {
-            "id": "As there are no local config.toml files, put per-machine changes in additional layers.",
-            "message": "As there are no local config.toml files, put per-machine changes in additional layers.",
-            "translation": ""
-        },
-        {
-            "id": "Edit a layer with the command:",
-            "message": "Edit a layer with the command:",
+            "id": "Edit configuration layers with the command:",
+            "message": "Edit configuration layers with the command:",
             "translation": ""
         },
         {
             "id": "curio config edit \u003clayername\u003e",
             "message": "curio config edit \u003clayername\u003e",
+            "translation": ""
+        },
+        {
+            "id": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
+            "message": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
+            "translation": ""
+        },
+        {
+            "id": "Make other layers for per-machine changes.",
+            "message": "Make other layers for per-machine changes.",
             "translation": ""
         },
         {
@@ -302,13 +267,13 @@
             ]
         },
         {
-            "id": "The sectors are in the database. The database is ready for curio.",
-            "message": "The sectors are in the database. The database is ready for curio.",
+            "id": "The sectors are in the database. The database is ready for Curio.",
+            "message": "The sectors are in the database. The database is ready for Curio.",
             "translation": ""
         },
         {
-            "id": "Now shut down lotus-miner and move the systems to curio.",
-            "message": "Now shut down lotus-miner and move the systems to curio.",
+            "id": "Now shut down lotus-miner and move the systems to Curio.",
+            "message": "Now shut down lotus-miner and move the systems to Curio.",
             "translation": ""
         },
         {
@@ -600,6 +565,11 @@
                     "expr": "step"
                 }
             ]
+        },
+        {
+            "id": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
+            "message": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
+            "translation": ""
         },
         {
             "id": "Layer {LayerName} created.",

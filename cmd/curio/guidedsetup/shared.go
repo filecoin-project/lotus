@@ -134,7 +134,40 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		return err
 	}
 
-	if !lo.Contains(titles, "base") { // TODO REMOVE THIS. INSTEAD ADD A BASE or append to addresses
+	if lo.Contains(titles, "base") {
+		// append addresses
+		var baseCfg config.CurioConfig
+		var baseText string
+		db.QueryRow(ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
+		_, err := deps.LoadConfigWithUpgrades(baseText, &baseCfg)
+		if err != nil {
+			return xerrors.Errorf("Cannot load base config: %w", err)
+		}
+		for _, addr := range baseCfg.Addresses {
+			if lo.Contains(addr.MinerAddresses, curioCfg.Addresses[0].MinerAddresses[0]) {
+				goto skipWritingToBase
+			}
+		}
+		// write to base
+		{
+			baseCfg.Addresses = append(baseCfg.Addresses, curioCfg.Addresses[0])
+			cb, err := config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+			if err != nil {
+				return xerrors.Errorf("cannot interpret config: %w", err)
+			}
+			var buf bytes.Buffer
+			err = toml.NewEncoder(&buf).Encode(cb)
+			if err != nil {
+				return xerrors.Errorf("cannot encode config: %w", err)
+			}
+			_, err = db.Exec(ctx, "UPDATE harmony_config SET config=$1 WHERE title='base'", buf.String())
+			if err != nil {
+				return xerrors.Errorf("cannot update base config: %w", err)
+			}
+			say(plain, "Configuration 'base' was updated to include this miner's address and its wallet setup.")
+		}
+	skipWritingToBase:
+	} else if layerName == "" {
 		cfg, err := deps.GetDefaultConfig(true)
 		if err != nil {
 			return xerrors.Errorf("Cannot get default config: %w", err)
@@ -145,6 +178,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 			return err
 		}
 	}
+
 	if layerName == "" { // only make mig if base exists and we are different. // compare to base.
 		layerName = fmt.Sprintf("mig-%s", curioCfg.Addresses[0].MinerAddresses[0])
 	} else {

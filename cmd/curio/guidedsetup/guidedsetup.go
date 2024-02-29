@@ -1,4 +1,4 @@
-// guidedsetup for migration from lotus-miner to curio
+// guidedSetup for migration from lotus-miner to Curio
 //
 //	IF STRINGS CHANGED {
 //			follow instructions at ../internal/translations/translations.go
@@ -42,14 +42,13 @@ import (
 
 var GuidedsetupCmd = &cli.Command{
 	Name:  "guided-setup",
-	Usage: "Run the guided setup for migrating from lotus-miner to curio",
+	Usage: "Run the guided setup for migrating from lotus-miner to Curio",
 	Action: func(cctx *cli.Context) (err error) {
 		T, say := SetupLanguage()
 		setupCtrlC(say)
 
-		say(header, "This interactive tool will walk you through migration of curio.\nPress Ctrl+C to exit at any time.")
-
-		say(notice, "This tool confirms each action it does and each step can be reversed.")
+		say(header, "This interactive tool migrates lotus-miner to Curio in 5 minutes.\n")
+		say(notice, "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.")
 
 		// Run the migration steps
 		migrationData := MigrationData{
@@ -113,7 +112,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 	lang, err := language.Parse(os.Getenv("LANG")[:2])
 	if err != nil {
 		lang = language.English
-		fmt.Println("Error parsing language, defaulting to English")
+		fmt.Println("Error parsing language, defaulting to English. Please reach out to the Curio team if you would like to have additional language support.")
 	}
 
 	langs := message.DefaultCatalog.Languages()
@@ -121,7 +120,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 	if _, ok := have[lang.String()]; !ok {
 		lang = language.English
 		notice.Copy().AlignHorizontal(lipgloss.Right).
-			Render("$LANG unsupported. Available: " + strings.Join(lo.Keys(have), ", "))
+			Render("$LANG unsupported. Avaiable: " + strings.Join(lo.Keys(have), ", "))
 	}
 	return func(key message.Reference, a ...interface{}) string {
 			return message.NewPrinter(lang).Sprintf(key, a...)
@@ -151,8 +150,9 @@ type MigrationData struct {
 }
 
 func configToDB(d *MigrationData) {
-	d.say(section, "Migrating config.toml to database.")
-	d.say(plain, `A Curio cluster shares a database. They share the work of proving multiple Miner ID's sectors.\n`)
+	d.say(section, "Migrating config.toml to database.\n")
+	d.say(plain, "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.\n")
+	d.say(plain, "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.\n")
 
 	type rawConfig struct {
 		Raw   []byte `db:"config"`
@@ -195,8 +195,8 @@ func bucket(power *api.MinerPower) uint64 {
 
 func oneLastThing(d *MigrationData) {
 	d.say(section, "To bring you the best SP tooling...")
-	d.say(plain, "Share with the Curio team your interest in curio for this Miner ID.\n")
-	d.say(plain, "Hit return to tell http://CurioStorage.org that you've migrated to curio.\n")
+	d.say(plain, "Share with the Curio team your interest in Curio for this Miner ID.\n")
+	d.say(plain, "Hit return to tell http://CurioStorage.org that you've migrated to Curio.\n")
 	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
 		d.say(notice, "Aborting remaining steps.\n", err.Error())
@@ -204,49 +204,46 @@ func oneLastThing(d *MigrationData) {
 	}
 
 	d.say(section, "We want to build what you're using.")
-	if build.BuildType == build.BuildMainnet {
-		i, _, err := (&promptui.Select{
-			Label: d.T("Select what you want to share with the Curio team."),
-			Items: []string{
-				d.T("Individual Data: Miner ID, curio version, net (mainnet/testnet). Signed."),
-				d.T("Aggregate-Anonymous: Miner power (bucketed), version, and net."),
-				d.T("Hint: I am someone running curio in production."),
-				d.T("Nothing.")},
-			Templates: d.selectTemplates,
-		}).Run()
-		if err != nil {
-			d.say(notice, "Aborting remaining steps.\n", err.Error())
-			os.Exit(1)
+	i, _, err := (&promptui.Select{
+		Label: d.T("Select what you want to share with the Curio team."),
+		Items: []string{
+			d.T("Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed."),
+			d.T("Aggregate-Anonymous: Miner power (bucketed), version, and net."),
+			d.T("Hint: I am someone running Curio on [test or main]."),
+			d.T("Nothing.")},
+		Templates: d.selectTemplates,
+	}).Run()
+	if err != nil {
+		d.say(notice, "Aborting remaining steps.\n", err.Error())
+		os.Exit(1)
+	}
+	if i < 3 {
+		msgMap := map[string]any{
+			"chain": build.BuildTypeString(),
 		}
-		if i != 3 {
-
+		if i < 2 {
 			api, closer, err := cliutil.GetFullNodeAPI(nil)
 			if err != nil {
 				d.say(notice, "Error connecting to lotus node: %s\n", err.Error())
 				os.Exit(1)
 			}
 			defer closer()
-
 			power, err := api.StateMinerPower(context.Background(), d.MinerID, types.EmptyTSK)
 			if err != nil {
 				d.say(notice, "Error getting miner power: %s\n", err.Error())
 				os.Exit(1)
 			}
-			msgMap := map[string]any{
-				"version": build.BuildVersion,
-				"net":     build.BuildType,
-				"power":   map[int]any{1: power, 2: bucket(power)},
-			}
+			msgMap["version"] = build.BuildVersion
+			msgMap["net"] = build.BuildType
+			msgMap["power"] = map[int]any{1: power, 2: bucket(power)}
 
-			if i == 1 { // Sign it
-				msgMap["minerID"] = d.MinerID
-			}
-			msg, err := json.Marshal(msgMap)
-			if err != nil {
-				d.say(notice, "Error marshalling message: %s\n", err.Error())
-				os.Exit(1)
-			}
-			if i == 1 {
+			if i < 1 { // Sign it
+				msgMap["miner_id"] = d.MinerID
+				msg, err := json.Marshal(msgMap)
+				if err != nil {
+					d.say(notice, "Error marshalling message: %s\n", err.Error())
+					os.Exit(1)
+				}
 				mi, err := api.StateMinerInfo(context.Background(), d.MinerID, types.EmptyTSK)
 				if err != nil {
 					d.say(notice, "Error getting miner info: %s\n", err.Error())
@@ -258,43 +255,31 @@ func oneLastThing(d *MigrationData) {
 					os.Exit(1)
 				}
 				msgMap["signature"] = base64.StdEncoding.EncodeToString(sig.Data)
-				msg, err = json.Marshal(msgMap)
-				if err != nil {
-					d.say(notice, "Error marshalling message: %s\n", err.Error())
-					os.Exit(1)
-				}
-			}
-
-			rep, err := http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
-			if err != nil {
-				d.say(notice, "Error updating Curio storage team about the new instance: %s\n", err.Error())
-				os.Exit(1)
-			}
-			if rep.StatusCode != 200 {
-				d.say(notice, "Received a non success code from the server: %d\n", rep.StatusCode)
-				os.Exit(1)
 			}
 		}
-	} else {
-		d.say(plain, "Not mainnet, not sharing.\n")
+		msg, err := json.Marshal(msgMap)
+		if err != nil {
+			d.say(notice, "Error marshalling message: %s\n", err.Error())
+			os.Exit(1)
+		}
+		// TODO ensure this endpoint is up and running.
+		http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
 	}
 }
 
 func doc(d *MigrationData) {
-	d.say(plain, "The configuration layers have been created for you: base, post, gui, seal.")
+	d.say(plain, "The following configuration layers have been created for you: base, post, gui, seal.")
 	d.say(plain, "Documentation: \n")
-	d.say(plain, "Put common configuration in 'base' and include it everywhere.\n")
-	d.say(plain, "Instances without tasks will still serve their sectors for other Curio instances.\n")
-	d.say(plain, "As there are no local config.toml files, put per-machine changes in additional layers.\n")
-	d.say(plain, "Edit a layer with the command: ")
-	d.say(code, "curio config edit <layername>\n")
+	d.say(plain, "Edit configuration layers with the command: \n")
+	d.say(plain, "curio config edit <layername>\n\n")
+	d.say(plain, "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.\n")
+	d.say(plain, "Make other layers for per-machine changes.\n")
 
 	d.say(plain, "Join #fil-curio-users in Filecoin slack for help.\n")
 	d.say(plain, "TODO FINISH THIS FUNCTION.\n")
 	// TODO !!
-	// show the command to start the web interface & the command to start the main curio.
+	// show the command to start the web interface & the command to start the main Curio instance.
 	//    This is where Boost configuration can be completed.
-	// Doc: You can run as many Curio instances on the same tasks as you want. It provides redundancy.
 	d.say(plain, "Want PoST redundancy? Run many Curio instances with the 'post' layer.\n")
 	d.say(plain, "Point your browser to your web GUI to complete setup with Boost and advanced featues.\n")
 
@@ -320,8 +305,8 @@ func verifySectors(d *MigrationData) {
 		fmt.Print(".")
 		time.Sleep(time.Second)
 	}
-	d.say(plain, "The sectors are in the database. The database is ready for curio.\n")
-	d.say(notice, "Now shut down lotus-miner and move the systems to curio.\n")
+	d.say(plain, "The sectors are in the database. The database is ready for Curio.\n")
+	d.say(notice, "Now shut down lotus-miner and move the systems to Curio.\n")
 
 	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
