@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/google/uuid"
 	"io"
 	"net"
 	"net/http"
@@ -14,7 +16,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
@@ -427,7 +428,7 @@ var lpBoostProxyCmd = &cli.Command{
 		}
 
 		pieceInfoLk := new(sync.Mutex)
-		pieceInfos := map[cid.Cid][]pieceInfo{}
+		pieceInfos := map[uuid.UUID][]pieceInfo{}
 
 		ast.Internal.SectorAddPieceToAny = func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
 			origPieceData := pieceData
@@ -449,24 +450,67 @@ var lpBoostProxyCmd = &cli.Command{
 				done: make(chan struct{}),
 			}
 
+			pieceUUID := uuid.New()
+
 			pieceInfoLk.Lock()
-			pieceInfos[deal.DealProposal.PieceCID] = append(pieceInfos[deal.DealProposal.PieceCID], pi)
+			pieceInfos[pieceUUID] = append(pieceInfos[pieceUUID], pi)
 			pieceInfoLk.Unlock()
 
 			// /piece?piece_cid=xxxx
 			dataUrl := rootUrl
 			dataUrl.Path = "/piece"
-			dataUrl.RawQuery = "piece_cid=" + deal.DealProposal.PieceCID.String()
+			dataUrl.RawQuery = "piece_id=" + pieceUUID.String()
+
+			// add piece entry
+
+			var refID int64
+
+			comm, err := db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+				// Add parked_piece, on conflict do nothing
+				var pieceID int64
+				err = tx.QueryRow(`
+					INSERT INTO parked_pieces (piece_cid, piece_padded_size, piece_raw_size)
+					VALUES ($1, $2, $3)
+					ON CONFLICT (piece_cid) DO UPDATE
+					SET piece_cid = EXCLUDED.piece_cid
+					RETURNING id`, deal.DealProposal.PieceCID.String(), int64(pieceSize.Padded()), int64(pieceSize)).Scan(&pieceID)
+				if err != nil {
+					return false, xerrors.Errorf("upserting parked piece and getting id: %w", err)
+				}
+
+				// Add parked_piece_ref
+				err = tx.QueryRow(`INSERT INTO parked_piece_refs (piece_id, data_url)
+					VALUES ($1, $2) RETURNING ref_id`, pieceID, dataUrl.String()).Scan(&refID)
+				if err != nil {
+					return false, xerrors.Errorf("inserting parked piece ref: %w", err)
+				}
+
+				// If everything went well, commit the transaction
+				return true, nil // This will commit the transaction
+			}, harmonydb.OptionRetry())
+			if err != nil {
+				return api.SectorOffset{}, xerrors.Errorf("inserting parked piece: %w", err)
+			}
+			if !comm {
+				return api.SectorOffset{}, xerrors.Errorf("piece tx didn't commit")
+			}
+
+			// wait for piece to be parked
+
+			<-pi.done
+
+			pieceIDUrl := url.URL{
+				Scheme: "pieceref",
+				Opaque: fmt.Sprintf("%d", refID),
+			}
 
 			// make a sector
-			so, err := pin.AllocatePieceToSector(ctx, maddr, deal, int64(pieceSize), dataUrl, nil)
+			so, err := pin.AllocatePieceToSector(ctx, maddr, deal, int64(pieceSize), pieceIDUrl, nil)
 			if err != nil {
 				return api.SectorOffset{}, err
 			}
 
 			color.Blue("%s piece assigned to sector f0%d:%d @ %d", deal.DealProposal.PieceCID, mid, so.Sector, so.Offset)
-
-			<-pi.done
 
 			return so, nil
 		}
@@ -484,10 +528,12 @@ var lpBoostProxyCmd = &cli.Command{
 		ast.Internal.StorageGetLocks = si.StorageGetLocks
 
 		var pieceHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
-			// /piece?piece_cid=xxxx
-			pieceCid, err := cid.Decode(r.URL.Query().Get("piece_cid"))
+			// /piece?piece_id=xxxx
+			pieceUUID := r.URL.Query().Get("piece_id")
+
+			pu, err := uuid.Parse(pieceUUID)
 			if err != nil {
-				http.Error(w, "bad piece_cid", http.StatusBadRequest)
+				http.Error(w, "bad piece id", http.StatusBadRequest)
 				return
 			}
 
@@ -496,13 +542,13 @@ var lpBoostProxyCmd = &cli.Command{
 				return
 			}
 
-			fmt.Printf("%s request for piece from %s\n", pieceCid, r.RemoteAddr)
+			fmt.Printf("%s request for piece from %s\n", pieceUUID, r.RemoteAddr)
 
 			pieceInfoLk.Lock()
-			pis, ok := pieceInfos[pieceCid]
+			pis, ok := pieceInfos[pu]
 			if !ok {
 				http.Error(w, "piece not found", http.StatusNotFound)
-				color.Red("%s not found", pieceCid)
+				color.Red("%s not found", pu)
 				pieceInfoLk.Unlock()
 				return
 			}
@@ -511,7 +557,10 @@ var lpBoostProxyCmd = &cli.Command{
 			pi := pis[0]
 			pis = pis[1:]
 
-			pieceInfos[pieceCid] = pis
+			pieceInfos[pu] = pis
+			if len(pis) == 0 {
+				delete(pieceInfos, pu)
+			}
 
 			pieceInfoLk.Unlock()
 
@@ -533,7 +582,7 @@ var lpBoostProxyCmd = &cli.Command{
 				return
 			}
 
-			color.Green("%s served %.3f MiB in %s (%.2f MiB/s)", pieceCid, float64(n)/(1024*1024), took, mbps)
+			color.Green("%s served %.3f MiB in %s (%.2f MiB/s)", pu, float64(n)/(1024*1024), took, mbps)
 		}
 
 		finalApi := proxy.LoggingAPI[api.StorageMiner, api.StorageMinerStruct](&ast)

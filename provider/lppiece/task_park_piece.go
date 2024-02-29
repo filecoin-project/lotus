@@ -3,14 +3,11 @@ package lppiece
 import (
 	"context"
 	"encoding/json"
-	"net/http"
+	"strconv"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
@@ -22,6 +19,7 @@ import (
 )
 
 var log = logging.Logger("lppiece")
+var PieceParkPollInterval = time.Second * 15
 
 // ParkPieceTask gets a piece from some origin, and parks it in storage
 // Pieces are always f00, piece ID is mapped to pieceCID in the DB
@@ -35,108 +33,138 @@ type ParkPieceTask struct {
 }
 
 func NewParkPieceTask(db *harmonydb.DB, sc *lpffi.SealCalls, max int) *ParkPieceTask {
-	return &ParkPieceTask{
+	pt := &ParkPieceTask{
 		db: db,
 		sc: sc,
 
 		max: max,
 	}
+	go pt.pollPieceTasks(context.Background())
+	return pt
 }
 
-func (p *ParkPieceTask) PullPiece(ctx context.Context, pieceCID cid.Cid, rawSize int64, paddedSize abi.PaddedPieceSize, dataUrl string, headers http.Header) error {
-	p.TF.Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, err error) {
-		var pieceID int
-		err = tx.QueryRow(`INSERT INTO parked_pieces (piece_cid, piece_padded_size, piece_raw_size) VALUES ($1, $2, $3) RETURNING id`, pieceCID.String(), int64(paddedSize), rawSize).Scan(&pieceID)
-		if err != nil {
-			return false, xerrors.Errorf("inserting parked piece: %w", err)
+func (p *ParkPieceTask) pollPieceTasks(ctx context.Context) {
+	for {
+		// select parked pieces with no task_id
+		var pieceIDs []struct {
+			ID storiface.PieceNumber `db:"id"`
 		}
 
-		var refID int
-		err = tx.QueryRow(`INSERT INTO parked_piece_refs (piece_id) VALUES ($1) RETURNING ref_id`, pieceID).Scan(&refID)
+		err := p.db.Select(ctx, &pieceIDs, `SELECT id FROM parked_pieces WHERE complete = FALSE AND task_id IS NULL`)
 		if err != nil {
-			return false, xerrors.Errorf("inserting parked piece ref: %w", err)
+			log.Errorf("failed to get parked pieces: %s", err)
+			time.Sleep(PieceParkPollInterval)
+			continue
 		}
 
-		headersJson, err := json.Marshal(headers)
-		if err != nil {
-			return false, xerrors.Errorf("marshaling headers: %w", err)
+		if len(pieceIDs) == 0 {
+			time.Sleep(PieceParkPollInterval)
+			continue
 		}
 
-		_, err = tx.Exec(`INSERT INTO park_piece_tasks (task_id, piece_ref_id, data_url, data_headers, data_raw_size, data_delete_on_finalize)
-			VALUES ($1, $2, $3, $4, $5, $6)`, id, refID, dataUrl, headersJson, rawSize, false)
-		if err != nil {
-			return false, xerrors.Errorf("inserting park piece task: %w", err)
+		for _, pieceID := range pieceIDs {
+			// create a task for each piece
+			p.TF.Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, err error) {
+				// update
+				n, err := tx.Exec(`UPDATE parked_pieces SET task_id = $1 WHERE id = $2 AND complete = FALSE AND task_id IS NULL`, id, pieceID.ID)
+				if err != nil {
+					return false, xerrors.Errorf("updating parked piece: %w", err)
+				}
+
+				// commit only if we updated the piece
+				return n > 0, nil
+			})
 		}
-
-		return true, nil
-	})
-
-	return nil
+	}
 }
 
 func (p *ParkPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
-	var taskData []struct {
-		PieceID        int       `db:"id"`
-		PieceCreatedAt time.Time `db:"created_at"`
-		PieceCID       string    `db:"piece_cid"`
-		Complete       bool      `db:"complete"`
-
-		DataURL              string `db:"data_url"`
-		DataHeaders          string `db:"data_headers"`
-		DataRawSize          int64  `db:"data_raw_size"`
-		DataDeleteOnFinalize bool   `db:"data_delete_on_finalize"`
+	// Define a struct to hold piece data.
+	var piecesData []struct {
+		PieceID         int64     `db:"id"`
+		PieceCreatedAt  time.Time `db:"created_at"`
+		PieceCID        string    `db:"piece_cid"`
+		Complete        bool      `db:"complete"`
+		PiecePaddedSize int64     `db:"piece_padded_size"`
+		PieceRawSize    string    `db:"piece_raw_size"`
 	}
 
-	err = p.db.Select(ctx, &taskData, `
-		select
-			pp.id,
-			pp.created_at,
-			pp.piece_cid,
-			pp.complete,
-			ppt.data_url,
-			ppt.data_headers,
-			ppt.data_raw_size,
-			ppt.data_delete_on_finalize
-		from park_piece_tasks ppt
-		join parked_piece_refs ppr on ppt.piece_ref_id = ppr.ref_id
-		join parked_pieces pp on ppr.piece_id = pp.id
-		where ppt.task_id = $1
-	`, taskID)
+	// Select the piece data using the task ID.
+	err = p.db.Select(ctx, &piecesData, `
+        SELECT id, created_at, piece_cid, complete, piece_padded_size, piece_raw_size
+        FROM parked_pieces
+        WHERE task_id = $1
+    `, taskID)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("fetching piece data: %w", err)
 	}
 
-	if len(taskData) != 1 {
-		return false, xerrors.Errorf("expected 1 task, got %d", len(taskData))
+	if len(piecesData) == 0 {
+		return false, xerrors.Errorf("no piece data found for task_id: %d", taskID)
 	}
 
-	if taskData[0].Complete {
-		log.Warnw("park piece task already complete", "task_id", taskID, "piece_cid", taskData[0].PieceCID)
+	pieceData := piecesData[0]
+
+	if pieceData.Complete {
+		log.Warnw("park piece task already complete", "task_id", taskID, "piece_cid", pieceData.PieceCID)
 		return true, nil
 	}
 
-	upr := &lpseal.UrlPieceReader{
-		Url:     taskData[0].DataURL,
-		RawSize: taskData[0].DataRawSize,
-	}
-	defer func() {
-		_ = upr.Close()
-	}()
-
-	pnum := storiface.PieceNumber(taskData[0].PieceID)
-
-	if err := p.sc.WritePiece(ctx, pnum, taskData[0].DataRawSize, upr); err != nil {
-		return false, xerrors.Errorf("write piece: %w", err)
+	// Define a struct for reference data.
+	var refData []struct {
+		DataURL     string          `db:"data_url"`
+		DataHeaders json.RawMessage `db:"data_headers"`
 	}
 
-	_, err = p.db.Exec(ctx, `update parked_pieces set complete = true where id = $1`, taskData[0].PieceID)
+	// Now, select the first reference data that has a URL.
+	err = p.db.Select(ctx, &refData, `
+        SELECT data_url, data_headers
+        FROM parked_piece_refs
+        WHERE piece_id = $1 AND data_url IS NOT NULL
+        LIMIT 1
+    `, pieceData.PieceID)
 	if err != nil {
-		return false, xerrors.Errorf("marking piece as complete: %w", err)
+		return false, xerrors.Errorf("fetching reference data: %w", err)
 	}
 
-	return true, nil
+	if len(refData) == 0 {
+		return false, xerrors.Errorf("no refs found for piece_id: %d", pieceData.PieceID)
+	}
+
+	// Convert piece_raw_size from string to int64.
+	pieceRawSize, err := strconv.ParseInt(pieceData.PieceRawSize, 10, 64)
+	if err != nil {
+		return false, xerrors.Errorf("parsing piece raw size: %w", err)
+	}
+
+	if refData[0].DataURL != "" {
+		upr := &lpseal.UrlPieceReader{
+			Url:     refData[0].DataURL,
+			RawSize: pieceRawSize,
+		}
+		defer func() {
+			_ = upr.Close()
+		}()
+
+		pnum := storiface.PieceNumber(pieceData.PieceID)
+
+		if err := p.sc.WritePiece(ctx, pnum, pieceRawSize, upr); err != nil {
+			return false, xerrors.Errorf("write piece: %w", err)
+		}
+
+		// Update the piece as complete after a successful write.
+		_, err = p.db.Exec(ctx, `UPDATE parked_pieces SET complete = TRUE WHERE id = $1`, pieceData.PieceID)
+		if err != nil {
+			return false, xerrors.Errorf("marking piece as complete: %w", err)
+		}
+
+		return true, nil
+	}
+
+	// If no URL is found, this indicates an issue since at least one URL is expected.
+	return false, xerrors.Errorf("no data URL found for piece_id: %d", pieceData.PieceID)
 }
 
 func (p *ParkPieceTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
