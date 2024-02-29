@@ -84,7 +84,7 @@ func New(hosts []string, username, password, database, port string, itestID ITes
 		}
 	}
 
-	schema := "lotus"
+	schema := "curio"
 	if itest != "" {
 		schema = "itest_" + itest
 	}

@@ -168,7 +168,7 @@ func GetRawAPIMultiV2(ctx *cli.Context, ainfoCfg []string, version string) ([]Ht
 	var httpHeads []HttpHead
 
 	if len(ainfoCfg) == 0 {
-		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './lotus-provider config get base >/tmp/base.toml' \nthen adding   \n[APIs] \n ChainApiInfo = [\" result_from lotus auth api-info --perm=admin \"]\n  and updating it with './lotus-provider config set /tmp/base.toml'")
+		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './curio config get base >/tmp/base.toml' \nthen adding   \n[APIs] \n ChainApiInfo = [\" result_from lotus auth api-info --perm=admin \"]\n  and updating it with './curio config set /tmp/base.toml'")
 	}
 	for _, i := range ainfoCfg {
 		ainfo := ParseApiInfo(i)
@@ -415,7 +415,7 @@ func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNo
 	return &v1API, finalCloser, nil
 }
 
-func GetFullNodeAPIV1LotusProvider(ctx *cli.Context, ainfoCfg []string, opts ...GetFullNodeOption) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPIV1Curio(ctx *cli.Context, ainfoCfg []string, opts ...GetFullNodeOption) (v1api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
 		return tn.(v1api.FullNode), func() {}, nil
 	}
