@@ -103,7 +103,6 @@ func (a *ActorEventHandler) GetActorEvents(ctx context.Context, evtFilter *types
 	}
 
 	// Install a filter just for this call, collect events, remove the filter
-
 	tipSetCid, err := params.GetTipSetCid()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
@@ -112,12 +111,13 @@ func (a *ActorEventHandler) GetActorEvents(ctx context.Context, evtFilter *types
 	if err != nil {
 		return nil, err
 	}
-
-	evs := getCollected(ctx, f)
-	if err := a.eventFilterManager.Remove(ctx, f.ID()); err != nil {
-		log.Warnf("failed to remove filter: %s", err)
-	}
-	return evs, nil
+	defer func() {
+		// Remove the temporary filter regardless of the original context.
+		if err := a.eventFilterManager.Remove(context.Background(), f.ID()); err != nil {
+			log.Warnf("failed to remove filter: %s", err)
+		}
+	}()
+	return getCollected(ctx, f), nil
 }
 
 type filterParams struct {
