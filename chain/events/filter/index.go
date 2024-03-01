@@ -481,7 +481,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 }
 
 // PrefillFilter fills a filter's collection of events from the historic index
-func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter, excludeReverted bool) error {
+func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
 	clauses := []string{}
 	values := []any{}
 	joins := []string{}

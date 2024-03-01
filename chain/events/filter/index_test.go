@@ -82,13 +82,13 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 
 	testCases := []struct {
 		name   string
-		filter *EventFilter
+		filter *eventFilter
 		te     *TipSetEvents
 		want   []*CollectedEvent
 	}{
 		{
 			name: "nomatch tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14001,
 				maxHeight: -1,
 			},
@@ -97,7 +97,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "nomatch tipset max height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: 13999,
 			},
@@ -106,7 +106,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "match tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14000,
 				maxHeight: -1,
 			},
@@ -115,7 +115,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "match tipset cid",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				tipsetCid: cid14000,
@@ -125,7 +125,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "nomatch address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a2},
@@ -135,7 +135,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "match address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a1},
@@ -145,7 +145,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "match one entry",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -159,7 +159,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "match one entry with alternate values",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -175,7 +175,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -190,7 +190,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -204,7 +204,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "match one entry with multiple keys",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -221,7 +221,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -238,7 +238,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -255,7 +255,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one unindexed key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -272,7 +272,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.PrefillFilter(context.Background(), tc.filter, false); err != nil {
+			if err := ei.prefillFilter(context.Background(), tc.filter, false); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 
@@ -409,13 +409,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	inclusiveTestCases := []struct {
 		name   string
-		filter *EventFilter
+		filter *eventFilter
 		te     *TipSetEvents
 		want   []*CollectedEvent
 	}{
 		{
 			name: "nomatch tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14001,
 				maxHeight: -1,
 			},
@@ -424,7 +424,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch tipset max height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: 13999,
 			},
@@ -433,7 +433,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14000,
 				maxHeight: -1,
 			},
@@ -442,7 +442,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match tipset cid",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				tipsetCid: cid14000,
@@ -452,7 +452,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match tipset cid",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				tipsetCid: reveredCID14000,
@@ -462,7 +462,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a3},
@@ -472,7 +472,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match address 2",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a2},
@@ -482,7 +482,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match address 1",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a1},
@@ -492,7 +492,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match one entry",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -506,7 +506,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match one entry with alternate values",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -522,7 +522,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -537,7 +537,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -551,7 +551,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match one entry with multiple keys",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -568,7 +568,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match one entry with multiple keys",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -585,7 +585,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -602,7 +602,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -619,7 +619,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one unindexed key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -633,7 +633,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one unindexed key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -649,13 +649,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	exclusiveTestCases := []struct {
 		name   string
-		filter *EventFilter
+		filter *eventFilter
 		te     *TipSetEvents
 		want   []*CollectedEvent
 	}{
 		{
 			name: "nomatch tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14001,
 				maxHeight: -1,
 			},
@@ -664,7 +664,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch tipset max height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: 13999,
 			},
@@ -673,7 +673,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14000,
 				maxHeight: -1,
 			},
@@ -682,7 +682,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match tipset cid",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				tipsetCid: cid14000,
@@ -692,7 +692,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match tipset cid but reverted",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				tipsetCid: reveredCID14000,
@@ -702,7 +702,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a3},
@@ -712,7 +712,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch address 2 but reverted",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a2},
@@ -722,7 +722,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a1},
@@ -732,7 +732,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match one entry",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -746,7 +746,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match one entry with alternate values",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -762,7 +762,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -777,7 +777,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -791,7 +791,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "match one entry with multiple keys",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -808,7 +808,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -825,7 +825,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with matching reverted value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -842,7 +842,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -859,7 +859,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one unindexed key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -876,7 +876,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	for _, tc := range inclusiveTestCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.PrefillFilter(context.Background(), tc.filter, false); err != nil {
+			if err := ei.prefillFilter(context.Background(), tc.filter, false); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 
@@ -888,7 +888,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	for _, tc := range exclusiveTestCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.PrefillFilter(context.Background(), tc.filter, true); err != nil {
+			if err := ei.prefillFilter(context.Background(), tc.filter, true); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 
