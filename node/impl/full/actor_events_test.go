@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/raulk/clock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -238,7 +239,7 @@ func TestGetActorEvents(t *testing.T) {
 				req.NoError(err)
 				expectedEvents := collectedToActorEvents(collectedEvents)
 				req.Equal(expectedEvents, gotEvents)
-				efm.assertRemoved(filter.ID())
+				efm.requireRemoved(filter.ID())
 			}
 		})
 	}
@@ -306,9 +307,8 @@ func TestSubscribeActorEvents(t *testing.T) {
 			eventChan, err := handler.SubscribeActorEvents(ctx, aef)
 			req.NoError(err)
 
-			gotEvents := make([]*types.ActorEvent, 0)
-
 			// assume we can cleanly pick up all historical events in one go
+			var gotEvents []*types.ActorEvent
 			for len(gotEvents) < len(historicalEvents) && ctx.Err() == nil {
 				select {
 				case e, ok := <-eventChan:
@@ -371,7 +371,7 @@ func TestSubscribeActorEvents(t *testing.T) {
 				}
 
 				// collect eventsPerEpoch more events
-				newEvents := make([]*types.ActorEvent, 0)
+				var newEvents []*types.ActorEvent
 				for len(newEvents) < eventsPerEpoch && !prematureEnd && ctx.Err() == nil {
 					select {
 					case e, ok := <-eventChan: // receive the events from the subscription
@@ -404,8 +404,8 @@ func TestSubscribeActorEvents(t *testing.T) {
 			}
 
 			// cleanup
-			mockFilter.waitAssertClearSubChannelCalled(500 * time.Millisecond)
-			mockFilterManager.waitAssertRemoved(mockFilter.ID(), 500*time.Millisecond)
+			mockFilter.requireClearSubChannelCalledEventually(500 * time.Millisecond)
+			mockFilterManager.requireRemovedEventually(mockFilter.ID(), 500*time.Millisecond)
 		})
 	}
 }
@@ -460,7 +460,7 @@ func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 			eventChan, err := handler.SubscribeActorEvents(ctx, aef)
 			req.NoError(err)
 
-			gotEvents := make([]*types.ActorEvent, 0)
+			var gotEvents []*types.ActorEvent
 
 			// assume we can cleanly pick up all historical events in one go
 		receiveLoop:
@@ -490,7 +490,7 @@ func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 			req.NoError(err)
 			mockChain.setHeaviestTipSet(ts)
 			mockClock.Add(blockDelay)
-			mockFilterManager.waitAssertRemoved(mockFilter.ID(), 1*time.Second)
+			mockFilterManager.requireRemovedEventually(mockFilter.ID(), 1*time.Second)
 		})
 	}
 }
@@ -537,13 +537,13 @@ type mockFilter struct {
 
 func newMockFilter(ctx context.Context, t *testing.T, rng *pseudo.Rand, historicalEvents []*filter.CollectedEvent) *mockFilter {
 	t.Helper()
-	byt := make([]byte, 32)
-	_, err := rng.Read(byt)
+	var id [32]byte
+	_, err := rng.Read(id[:])
 	require.NoError(t, err)
 	return &mockFilter{
 		t:                t,
 		ctx:              ctx,
-		id:               types.FilterID(byt),
+		id:               id,
 		historicalEvents: historicalEvents,
 	}
 }
@@ -559,22 +559,23 @@ func (m *mockFilter) sendEventToChannel(e *filter.CollectedEvent) {
 	}
 }
 
-func (m *mockFilter) waitAssertClearSubChannelCalled(timeout time.Duration) {
+func (m *mockFilter) requireClearSubChannelCalledEventually(timeout time.Duration) {
 	m.t.Helper()
-	for start := time.Now(); time.Since(start) < timeout; time.Sleep(10 * time.Millisecond) {
-		m.lk.Lock()
-		c := m.clearSubChannelCalls
-		m.lk.Unlock()
-		switch c {
-		case 0:
-			continue
-		case 1:
-			return
-		default:
-			m.t.Fatalf("ClearSubChannel called more than once")
-		}
-	}
-	m.t.Fatalf("ClearSubChannel not called")
+	require.Eventually(m.t,
+		func() bool {
+			m.lk.Lock()
+			c := m.clearSubChannelCalls
+			m.lk.Unlock()
+			switch c {
+			case 0:
+				return false
+			case 1:
+				return true
+			default:
+				m.t.Fatalf("ClearSubChannel called more than once: %d", c)
+				return false
+			}
+		}, timeout, 10*time.Millisecond, "ClearSubChannel is not called exactly once")
 }
 
 func (m *mockFilter) ID() types.FilterID {
@@ -653,26 +654,24 @@ func (m *mockEventFilterManager) expectInstall(
 	})
 }
 
-func (m *mockEventFilterManager) assertRemoved(id types.FilterID) {
+func (m *mockEventFilterManager) requireRemoved(id types.FilterID) {
 	m.t.Helper()
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	require.Contains(m.t, m.removed, id)
 }
 
-func (m *mockEventFilterManager) waitAssertRemoved(id types.FilterID, timeout time.Duration) {
+func (m *mockEventFilterManager) requireRemovedEventually(id types.FilterID, timeout time.Duration) {
 	m.t.Helper()
-	for start := time.Now(); time.Since(start) < timeout; time.Sleep(10 * time.Millisecond) {
+	require.Eventuallyf(m.t, func() bool {
 		m.lk.Lock()
-		if len(m.removed) == 0 {
-			m.lk.Unlock()
-			continue
-		}
 		defer m.lk.Unlock()
-		require.Contains(m.t, m.removed, id)
-		return
-	}
-	m.t.Fatalf("filter %x not removed", id)
+		if len(m.removed) == 0 {
+			return false
+		}
+		assert.Contains(m.t, m.removed, id)
+		return true
+	}, timeout, 10*time.Millisecond, "filter %x not removed", id)
 }
 
 func (m *mockEventFilterManager) Install(
