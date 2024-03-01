@@ -24,11 +24,6 @@ import (
 var testCid = cid.MustParse("bafyreicmaj5hhoy5mgqvamfhgexxyergw7hdeshizghodwkjg6qmpoco7i")
 
 func TestParseHeightRange(t *testing.T) {
-	epochPtr := func(i int) *abi.ChainEpoch {
-		e := abi.ChainEpoch(i)
-		return &e
-	}
-
 	testCases := []struct {
 		name     string
 		heaviest abi.ChainEpoch
@@ -139,10 +134,13 @@ func TestGetActorEvents(t *testing.T) {
 	ctx := context.Background()
 	req := require.New(t)
 
-	seed := time.Now().UnixNano()
+	const (
+		seed                 = 984651320
+		maxFilterHeightRange = 100
+	)
+
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
-	const maxFilterHeightRange = 100
 
 	minerAddr, err := address.NewIDAddress(uint64(rng.Int63()))
 	req.NoError(err)
@@ -250,17 +248,18 @@ func TestSubscribeActorEvents(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	seed := time.Now().UnixNano()
+	const (
+		seed                 = 984651320
+		maxFilterHeightRange = 100
+		blockDelay           = 30 * time.Second
+		filterStartHeight    = 0
+		currentHeight        = 10
+		finishHeight         = 20
+		eventsPerEpoch       = 2
+	)
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
 	mockClock := clock.NewMock()
-
-	const maxFilterHeightRange = 100
-	const blockDelay = 30 * time.Second
-	const filterStartHeight = 0
-	const currentHeight = 10
-	const finishHeight = 20
-	const eventsPerEpoch = 2
 
 	minerAddr, err := address.NewIDAddress(uint64(rng.Int63()))
 	require.NoError(t, err)
@@ -415,17 +414,17 @@ func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 	// Similar to TestSubscribeActorEvents but we set an explicit end that caps out at the current height
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-
-	seed := time.Now().UnixNano()
+	const (
+		seed                 = 984651320
+		maxFilterHeightRange = 100
+		blockDelay           = 30 * time.Second
+		filterStartHeight    = 0
+		currentHeight        = 10
+		eventsPerEpoch       = 2
+	)
 	t.Logf("seed: %d", seed)
 	rng := pseudo.New(pseudo.NewSource(seed))
 	mockClock := clock.NewMock()
-
-	const maxFilterHeightRange = 100
-	const blockDelay = 30 * time.Second
-	const filterStartHeight = 0
-	const currentHeight = 10
-	const eventsPerEpoch = 2
 
 	minerAddr, err := address.NewIDAddress(uint64(rng.Int63()))
 	require.NoError(t, err)
@@ -602,14 +601,14 @@ func (m *mockFilter) ClearSubChannel() {
 	m.ch = nil
 }
 
-func (m *mockFilter) TakeCollectedEvents(ctx context.Context) []*filter.CollectedEvent {
+func (m *mockFilter) TakeCollectedEvents(context.Context) []*filter.CollectedEvent {
 	e := m.historicalEvents
 	m.historicalEvents = nil
 	m.lastTaken = time.Now()
 	return e
 }
 
-func (m *mockFilter) CollectEvents(ctx context.Context, tse *filter.TipSetEvents, reorg bool, ar filter.AddressResolver) error {
+func (m *mockFilter) CollectEvents(context.Context, *filter.TipSetEvents, bool, filter.AddressResolver) error {
 	m.t.Fatalf("unexpected call to CollectEvents")
 	return nil
 }
