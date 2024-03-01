@@ -29,7 +29,8 @@ func TestParseHeightRange(t *testing.T) {
 		return &e
 	}
 
-	tcs := map[string]struct {
+	testCases := []struct {
+		name     string
 		heaviest abi.ChainEpoch
 		from     *abi.ChainEpoch
 		to       *abi.ChainEpoch
@@ -38,7 +39,8 @@ func TestParseHeightRange(t *testing.T) {
 		maxOut   abi.ChainEpoch
 		errStr   string
 	}{
-		"fails when both are specified and range is greater than max allowed range": {
+		{
+			name:     "fails when both are specified and range is greater than max allowed range",
 			heaviest: 100,
 			from:     epochPtr(256),
 			to:       epochPtr(512),
@@ -47,7 +49,8 @@ func TestParseHeightRange(t *testing.T) {
 			maxOut:   0,
 			errStr:   "too large",
 		},
-		"fails when min is specified and range is greater than max allowed range": {
+		{
+			name:     "fails when min is specified and range is greater than max allowed range",
 			heaviest: 500,
 			from:     epochPtr(16),
 			to:       nil,
@@ -56,7 +59,8 @@ func TestParseHeightRange(t *testing.T) {
 			maxOut:   0,
 			errStr:   "'from' height is too far in the past",
 		},
-		"fails when max is specified and range is greater than max allowed range": {
+		{
+			name:     "fails when max is specified and range is greater than max allowed range",
 			heaviest: 500,
 			from:     nil,
 			to:       epochPtr(65536),
@@ -65,7 +69,8 @@ func TestParseHeightRange(t *testing.T) {
 			maxOut:   0,
 			errStr:   "'to' height is too far in the future",
 		},
-		"fails when from is greater than to": {
+		{
+			name:     "fails when from is greater than to",
 			heaviest: 100,
 			from:     epochPtr(512),
 			to:       epochPtr(256),
@@ -74,7 +79,8 @@ func TestParseHeightRange(t *testing.T) {
 			maxOut:   0,
 			errStr:   "must be after",
 		},
-		"works when range is valid (nil from)": {
+		{
+			name:     "works when range is valid (nil from)",
 			heaviest: 500,
 			from:     nil,
 			to:       epochPtr(48),
@@ -82,7 +88,8 @@ func TestParseHeightRange(t *testing.T) {
 			minOut:   -1,
 			maxOut:   48,
 		},
-		"works when range is valid (nil to)": {
+		{
+			name:     "works when range is valid (nil to)",
 			heaviest: 500,
 			from:     epochPtr(0),
 			to:       nil,
@@ -90,7 +97,8 @@ func TestParseHeightRange(t *testing.T) {
 			minOut:   0,
 			maxOut:   -1,
 		},
-		"works when range is valid (nil from and to)": {
+		{
+			name:     "works when range is valid (nil from and to)",
 			heaviest: 500,
 			from:     nil,
 			to:       nil,
@@ -98,7 +106,8 @@ func TestParseHeightRange(t *testing.T) {
 			minOut:   -1,
 			maxOut:   -1,
 		},
-		"works when range is valid and specified": {
+		{
+			name:     "works when range is valid and specified",
 			heaviest: 500,
 			from:     epochPtr(16),
 			to:       epochPtr(48),
@@ -108,17 +117,17 @@ func TestParseHeightRange(t *testing.T) {
 		},
 	}
 
-	for name, tc := range tcs {
-		tc2 := tc
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			req := require.New(t)
-			min, max, err := parseHeightRange(tc2.heaviest, tc2.from, tc2.to, tc2.maxRange)
-			req.Equal(tc2.minOut, min)
-			req.Equal(tc2.maxOut, max)
-			if tc2.errStr != "" {
+			min, max, err := parseHeightRange(tc.heaviest, tc.from, tc.to, tc.maxRange)
+			req.Equal(tc.minOut, min)
+			req.Equal(tc.maxOut, max)
+			if tc.errStr != "" {
 				t.Log(err)
 				req.Error(err)
-				req.Contains(err.Error(), tc2.errStr)
+				req.Contains(err.Error(), tc.errStr)
 			} else {
 				req.NoError(err)
 			}
@@ -138,7 +147,8 @@ func TestGetActorEvents(t *testing.T) {
 	minerAddr, err := address.NewIDAddress(uint64(rng.Int63()))
 	req.NoError(err)
 
-	testCases := map[string]struct {
+	testCases := []struct {
+		name                   string
 		filter                 *types.ActorEventFilter
 		currentHeight          int64
 		installMinHeight       int64
@@ -149,17 +159,20 @@ func TestGetActorEvents(t *testing.T) {
 		installExcludeReverted bool
 		expectErr              string
 	}{
-		"nil filter": {
+		{
+			name:             "nil filter",
 			filter:           nil,
 			installMinHeight: -1,
 			installMaxHeight: -1,
 		},
-		"empty filter": {
+		{
+			name:             "empty filter",
 			filter:           &types.ActorEventFilter{},
 			installMinHeight: -1,
 			installMaxHeight: -1,
 		},
-		"basic height range filter": {
+		{
+			name: "basic height range filter",
 			filter: &types.ActorEventFilter{
 				FromHeight: epochPtr(0),
 				ToHeight:   epochPtr(maxFilterHeightRange),
@@ -167,7 +180,8 @@ func TestGetActorEvents(t *testing.T) {
 			installMinHeight: 0,
 			installMaxHeight: maxFilterHeightRange,
 		},
-		"from, no to height": {
+		{
+			name: "from, no to height",
 			filter: &types.ActorEventFilter{
 				FromHeight: epochPtr(0),
 			},
@@ -175,21 +189,24 @@ func TestGetActorEvents(t *testing.T) {
 			installMinHeight: 0,
 			installMaxHeight: -1,
 		},
-		"to, no from height": {
+		{
+			name: "to, no from height",
 			filter: &types.ActorEventFilter{
 				ToHeight: epochPtr(maxFilterHeightRange - 1),
 			},
 			installMinHeight: -1,
 			installMaxHeight: maxFilterHeightRange - 1,
 		},
-		"from, no to height, too far": {
+		{
+			name: "from, no to height, too far",
 			filter: &types.ActorEventFilter{
 				FromHeight: epochPtr(0),
 			},
 			currentHeight: maxFilterHeightRange + 1,
 			expectErr:     "invalid epoch range: 'from' height is too far in the past",
 		},
-		"to, no from height, too far": {
+		{
+			name: "to, no from height, too far",
 			filter: &types.ActorEventFilter{
 				ToHeight: epochPtr(maxFilterHeightRange + 1),
 			},
@@ -198,9 +215,9 @@ func TestGetActorEvents(t *testing.T) {
 		},
 	}
 
-	for name, tc := range testCases {
+	for _, tc := range testCases {
 		tc := tc
-		t.Run(name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			efm := newMockEventFilterManager(t)
 			collectedEvents := makeCollectedEvents(t, rng, 0, 1, 10)
 			filter := newMockFilter(ctx, t, rng, collectedEvents)
@@ -660,7 +677,7 @@ func (m *mockEventFilterManager) waitAssertRemoved(id types.FilterID, timeout ti
 }
 
 func (m *mockEventFilterManager) Install(
-	ctx context.Context,
+	_ context.Context,
 	minHeight, maxHeight abi.ChainEpoch,
 	tipsetCid cid.Cid,
 	addresses []address.Address,
@@ -681,7 +698,7 @@ func (m *mockEventFilterManager) Install(
 	return exp.returnFilter, nil
 }
 
-func (m *mockEventFilterManager) Remove(ctx context.Context, id types.FilterID) error {
+func (m *mockEventFilterManager) Remove(_ context.Context, id types.FilterID) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	m.removed = append(m.removed, id)
