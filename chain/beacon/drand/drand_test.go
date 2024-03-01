@@ -3,6 +3,7 @@
 package drand
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
@@ -18,7 +19,12 @@ import (
 
 func TestPrintGroupInfo(t *testing.T) {
 	server := build.DrandConfigs[build.DrandTestnet].Servers[0]
-	c, err := hclient.New(server, nil, nil)
+	chainInfo := build.DrandConfigs[build.DrandTestnet].ChainInfoJSON
+
+	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(chainInfo)))
+	assert.NoError(t, err)
+	c, err := hclient.NewWithInfo(server, drandChain, nil)
+
 	assert.NoError(t, err)
 	cg := c.(interface {
 		FetchChainInfo(ctx context.Context, groupHash []byte) (*dchain.Info, error)
