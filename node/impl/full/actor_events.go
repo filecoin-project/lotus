@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/raulk/clock"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events/filter"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -27,21 +27,70 @@ var (
 	_ ActorEventAPI = *new(api.Gateway)
 )
 
-type ActorEventHandler struct {
-	EventFilterManager   *filter.EventFilterManager
-	MaxFilterHeightRange abi.ChainEpoch
-	Chain                *store.ChainStore
+type ChainAccessor interface {
+	GetHeaviestTipSet() *types.TipSet
 }
 
-var _ ActorEventAPI = (*ActorEventHandler)(nil)
+type EventFilterManager interface {
+	Install(
+		ctx context.Context,
+		minHeight, maxHeight abi.ChainEpoch,
+		tipsetCid cid.Cid,
+		addresses []address.Address,
+		keysWithCodec map[string][]types.ActorEventBlock,
+		excludeReverted bool,
+	) (filter.EventFilter, error)
+	Remove(ctx context.Context, id types.FilterID) error
+}
 
 type ActorEventsAPI struct {
 	fx.In
 	ActorEventAPI
 }
 
+type ActorEventHandler struct {
+	chain                ChainAccessor
+	eventFilterManager   EventFilterManager
+	blockDelay           time.Duration
+	maxFilterHeightRange abi.ChainEpoch
+	clock                clock.Clock
+}
+
+var _ ActorEventAPI = (*ActorEventHandler)(nil)
+
+func NewActorEventHandler(
+	chain ChainAccessor,
+	eventFilterManager EventFilterManager,
+	blockDelay time.Duration,
+	maxFilterHeightRange abi.ChainEpoch,
+) *ActorEventHandler {
+	return &ActorEventHandler{
+		chain:                chain,
+		eventFilterManager:   eventFilterManager,
+		blockDelay:           blockDelay,
+		maxFilterHeightRange: maxFilterHeightRange,
+		clock:                clock.New(),
+	}
+}
+
+func NewActorEventHandlerWithClock(
+	chain ChainAccessor,
+	eventFilterManager EventFilterManager,
+	blockDelay time.Duration,
+	maxFilterHeightRange abi.ChainEpoch,
+	clock clock.Clock,
+) *ActorEventHandler {
+	return &ActorEventHandler{
+		chain:                chain,
+		eventFilterManager:   eventFilterManager,
+		blockDelay:           blockDelay,
+		maxFilterHeightRange: maxFilterHeightRange,
+		clock:                clock,
+	}
+}
+
 func (a *ActorEventHandler) GetActorEvents(ctx context.Context, evtFilter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
-	if a.EventFilterManager == nil {
+	if a.eventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
 
@@ -59,13 +108,13 @@ func (a *ActorEventHandler) GetActorEvents(ctx context.Context, evtFilter *types
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
 	}
-	f, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
+	f, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
 
-	evs, _, _ := getCollected(ctx, f)
-	if err := a.EventFilterManager.Remove(ctx, f.ID()); err != nil {
+	evs := getCollected(ctx, f)
+	if err := a.eventFilterManager.Remove(ctx, f.ID()); err != nil {
 		log.Warnf("failed to remove filter: %s", err)
 	}
 	return evs, nil
@@ -90,18 +139,14 @@ func (a *ActorEventHandler) parseFilter(f types.ActorEventFilter) (*filterParams
 			return nil, fmt.Errorf("cannot specify both TipSetKey and FromHeight/ToHeight")
 		}
 
-		tsk := types.EmptyTSK
-		if f.TipSetKey != nil {
-			tsk = *f.TipSetKey
-		}
 		return &filterParams{
 			MinHeight: 0,
 			MaxHeight: 0,
-			TipSetKey: tsk,
+			TipSetKey: *f.TipSetKey,
 		}, nil
 	}
 
-	min, max, err := parseHeightRange(a.Chain.GetHeaviestTipSet().Height(), f.FromHeight, f.ToHeight, a.MaxFilterHeightRange)
+	min, max, err := parseHeightRange(a.chain.GetHeaviestTipSet().Height(), f.FromHeight, f.ToHeight, a.maxFilterHeightRange)
 	if err != nil {
 		return nil, err
 	}
@@ -156,9 +201,10 @@ func parseHeightRange(heaviest abi.ChainEpoch, fromHeight, toHeight *abi.ChainEp
 }
 
 func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
-	if a.EventFilterManager == nil {
+	if a.eventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
+
 	if evtFilter == nil {
 		evtFilter = &types.ActorEventFilter{}
 	}
@@ -171,22 +217,18 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
 	}
-	fm, err := a.EventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
+	fm, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
 
-	// The goal for the code below is to be able to send events on the `out` channel as fast as
-	// possible and not let it get too far behind the rate at which the events are generated.
-	// For historical events we see the rate at which they were generated by looking the height range;
-	// we then make sure that the client can receive them at least twice as fast as they were
-	// generated so they catch up quick enough to receive new events.
-	// For ongoing events we use an exponential moving average of the events per height to make sure
-	// that the client doesn't fall behind.
-	// In both cases we allow a little bit of slack but need to avoid letting the client bloat the
-	// buffer too much.
-	// There is no special handling for reverts, so they will just look like a lot more events per
-	// epoch and the user has to receive them anyway.
+	// The goal for the code below is to send events on the `out` channel as fast as possible and not
+	// let it get too far behind the rate at which the events are generated.
+	// For historical events, we aim to send all events within a single block's time (30s on mainnet).
+	// This ensures that the client can catch up quickly enough to start receiving new events.
+	// For ongoing events, we also aim to send all events within a single block's time, so we never
+	// want to be buffering events (approximately) more than one epoch behind the current head.
+	// It's approximate because we only update our notion of "current epoch" once per ~blocktime.
 
 	out := make(chan *types.ActorEvent)
 
@@ -195,54 +237,41 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 			// tell the caller we're done
 			close(out)
 			fm.ClearSubChannel()
-			if err := a.EventFilterManager.Remove(ctx, fm.ID()); err != nil {
+			if err := a.eventFilterManager.Remove(ctx, fm.ID()); err != nil {
 				log.Warnf("failed to remove filter: %s", err)
 			}
 		}()
 
+		// When we start sending real-time events, we want to make sure that we don't fall behind more
+		// than one epoch's worth of events (approximately). Capture this value now, before we send
+		// historical events to allow for a little bit of slack in the historical event sending.
+		minBacklogHeight := a.chain.GetHeaviestTipSet().Height() - 1
+
 		// Handle any historical events that our filter may have picked up -----------------------------
 
-		evs, minEpoch, maxEpoch := getCollected(ctx, fm)
+		evs := getCollected(ctx, fm)
 		if len(evs) > 0 {
-			// must be able to send events at least twice as fast as they were generated
-			epochRange := maxEpoch - minEpoch
-			if epochRange <= 0 {
-				epochRange = 1
-			}
-			eventsPerEpoch := float64(len(evs)) / float64(epochRange)
-			eventsPerSecond := 2 * eventsPerEpoch / float64(build.BlockDelaySecs)
-			// a minimum rate of 1 event per second if we don't have many events
-			if eventsPerSecond < 1 {
-				eventsPerSecond = 1
-			}
-
-			// send events from evs to the out channel and ensure we don't do it slower than eventsPerMs
-			ticker := time.NewTicker(time.Second)
-			defer ticker.Stop()
-
-			const maxSlowTicks = 3 // slightly forgiving, allow 3 slow ticks (seconds) before giving up
-			slowTicks := 0
-			sentEvents := 0.0
-
+			// ensure we get all events out on the channel within one block's time (30s on mainnet)
+			timer := a.clock.Timer(a.blockDelay)
 			for _, ev := range evs {
 				select {
 				case out <- ev:
-					sentEvents++
-				case <-ticker.C:
-					if sentEvents < eventsPerSecond {
-						slowTicks++
-						if slowTicks >= maxSlowTicks {
-							log.Errorf("closing event subscription due to slow event sending rate")
-							return
-						}
-					} else {
-						slowTicks = 0
-					}
-					sentEvents = 0
+				case <-timer.C:
+					log.Errorf("closing event subscription due to slow event sending rate")
+					timer.Stop()
+					return
 				case <-ctx.Done():
+					timer.Stop()
 					return
 				}
 			}
+			timer.Stop()
+		}
+
+		// for the case where we have a MaxHeight set, we don't get a signal from the filter when we
+		// reach that height, so we need to check it ourselves, do it now but also in the loop
+		if params.MaxHeight > 0 && a.chain.GetHeaviestTipSet().Height() > params.MaxHeight {
+			return
 		}
 
 		// Handle ongoing events from the filter -------------------------------------------------------
@@ -251,10 +280,7 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 		fm.SetSubChannel(in)
 
 		var buffer []*types.ActorEvent
-		const α = 0.2                        // decay factor for the events per height EMA
-		var eventsPerHeightEma float64 = 256 // exponential moving average of events per height, initially guess at 256
-		var lastHeight abi.ChainEpoch        // last seen event height
-		var eventsAtCurrentHeight int        // number of events at the current height
+		nextBacklogHeightUpdate := a.clock.Now().Add(a.blockDelay)
 
 		collectEvent := func(ev interface{}) bool {
 			ce, ok := ev.(*filter.CollectedEvent)
@@ -263,15 +289,12 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 				return false
 			}
 
-			if ce.Height > lastHeight {
-				// update the EMA of events per height when the height increases
-				if lastHeight != 0 {
-					eventsPerHeightEma = α*float64(eventsAtCurrentHeight) + (1-α)*eventsPerHeightEma
-				}
-				lastHeight = ce.Height
-				eventsAtCurrentHeight = 0
+			if ce.Height < minBacklogHeight {
+				// since we mostly care about buffer size, we only trigger a too-slow close when the buffer
+				// increases, i.e. we collect a new event
+				log.Errorf("closing event subscription due to slow event sending rate")
+				return false
 			}
-			eventsAtCurrentHeight++
 
 			buffer = append(buffer, &types.ActorEvent{
 				Entries:   ce.Entries,
@@ -284,23 +307,11 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 			return true
 		}
 
-		// for the case where we have a MaxHeight set, we don't get a signal from the filter when we
-		// reach that height, so we need to check it ourselves, do it now but also in the loop
-		if params.MaxHeight > 0 && a.Chain.GetHeaviestTipSet().Height() > params.MaxHeight {
-			return
-		}
-		ticker := time.NewTicker(time.Duration(build.BlockDelaySecs) * time.Second)
+		ticker := a.clock.Ticker(a.blockDelay)
 		defer ticker.Stop()
 
 		for ctx.Err() == nil {
 			if len(buffer) > 0 {
-				// check if we need to disconnect the client because they've fallen behind, always allow at
-				// least 8 events in the buffer to provide a little bit of slack
-				if len(buffer) > 8 && float64(len(buffer)) > eventsPerHeightEma/2 {
-					log.Errorf("closing event subscription due to slow event sending rate")
-					return
-				}
-
 				select {
 				case ev, ok := <-in: // incoming event
 					if !ok || !collectEvent(ev) {
@@ -309,6 +320,12 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 				case out <- buffer[0]: // successful send
 					buffer[0] = nil
 					buffer = buffer[1:]
+				case <-ticker.C:
+					// check that our backlog isn't too big by looking at the oldest event
+					if buffer[0].Height < minBacklogHeight {
+						log.Errorf("closing event subscription due to slow event sending rate")
+						return
+					}
 				case <-ctx.Done():
 					return
 				}
@@ -321,10 +338,17 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					if params.MaxHeight > 0 && a.Chain.GetHeaviestTipSet().Height() > params.MaxHeight {
+					currentHeight := a.chain.GetHeaviestTipSet().Height()
+					if params.MaxHeight > 0 && currentHeight > params.MaxHeight {
+						// we've reached the filter's MaxHeight, we're done so we can close the channel
 						return
 					}
 				}
+			}
+
+			if a.clock.Now().After(nextBacklogHeightUpdate) {
+				minBacklogHeight = a.chain.GetHeaviestTipSet().Height() - 1
+				nextBacklogHeightUpdate = a.clock.Now().Add(a.blockDelay)
 			}
 		}
 	}()
@@ -332,19 +356,12 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 	return out, nil
 }
 
-func getCollected(ctx context.Context, f *filter.EventFilter) ([]*types.ActorEvent, abi.ChainEpoch, abi.ChainEpoch) {
+func getCollected(ctx context.Context, f filter.EventFilter) []*types.ActorEvent {
 	ces := f.TakeCollectedEvents(ctx)
 
 	var out []*types.ActorEvent
-	var min, max abi.ChainEpoch
 
 	for _, e := range ces {
-		if min == 0 || e.Height < min {
-			min = e.Height
-		}
-		if e.Height > max {
-			max = e.Height
-		}
 		out = append(out, &types.ActorEvent{
 			Entries:   e.Entries,
 			Emitter:   e.EmitterAddr,
@@ -355,5 +372,5 @@ func getCollected(ctx context.Context, f *filter.EventFilter) ([]*types.ActorEve
 		})
 	}
 
-	return out, min, max
+	return out
 }
