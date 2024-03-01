@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -163,18 +164,16 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 
 func ActorEventHandler(enable bool, fevmCfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.ActorEventHandler, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.ActorEventHandler, error) {
-		ee := &full.ActorEventHandler{
-			MaxFilterHeightRange: abi.ChainEpoch(fevmCfg.Events.MaxFilterHeightRange),
-			Chain:                cs,
-		}
 
 		if !enable || fevmCfg.Events.DisableRealTimeFilterAPI {
-			// all Actor events functionality is disabled
-			return ee, nil
+			fm = nil
 		}
 
-		ee.EventFilterManager = fm
-
-		return ee, nil
+		return full.NewActorEventHandler(
+			cs,
+			fm,
+			time.Duration(build.BlockDelaySecs)*time.Second,
+			abi.ChainEpoch(fevmCfg.Events.MaxFilterHeightRange),
+		), nil
 	}
 }

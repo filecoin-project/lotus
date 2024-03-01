@@ -372,7 +372,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 
 	// verify that we can trace a datacap allocation through to a claim with the events, since this
 	// information is not completely available from the state tree
-	claims := buildClaimsFromEvents(ctx, t, eventsFromMessages, miner.FullNode)
+	claims := buildClaimsFromMessages(ctx, t, eventsFromMessages, miner.FullNode)
 	for _, claim := range claims {
 		p, err := address.NewIDAddress(uint64(claim.Provider))
 		require.NoError(t, err)
@@ -395,6 +395,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	}, claims)
 
 	// construct ActorEvents from GetActorEvents API
+	t.Logf("Inspecting full events list from GetActorEvents")
 	allEvtsFromGetAPI, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
 		FromHeight: epochPtr(0),
 	})
@@ -405,6 +406,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.Equal(t, eventsFromMessages, allEvtsFromGetAPI)
 
 	// construct ActorEvents from subscription channel for just the miner actor
+	t.Logf("Inspecting only miner's events list from SubscribeActorEvents")
 	var subMinerEvts []*types.ActorEvent
 	for evt := range minerEvtsChan {
 		subMinerEvts = append(subMinerEvts, evt)
@@ -421,15 +423,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	// compare events from messages and receipts with events from subscription channel
 	require.Equal(t, allMinerEvts, subMinerEvts)
 
-	// construct ActorEvents from subscription channel for just the sector-activated events
-	var prefillSectorActivatedEvts []*types.ActorEvent
-	for evt := range sectorActivatedEvtsChan {
-		prefillSectorActivatedEvts = append(prefillSectorActivatedEvts, evt)
-		if len(prefillSectorActivatedEvts) == 2 {
-			break
-		}
-	}
-	require.Len(t, prefillSectorActivatedEvts, 2)
+	// construct ActorEvents from subscription channels for just the sector-activated events
 	var sectorActivatedEvts []*types.ActorEvent
 	for _, evt := range eventsFromMessages {
 		for _, entry := range evt.Entries {
@@ -439,10 +433,42 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			}
 		}
 	}
+	require.Len(t, sectorActivatedEvts, 2) // sanity check
+
+	t.Logf("Inspecting only sector-activated events list from real-time SubscribeActorEvents")
+	var subscribedSectorActivatedEvts []*types.ActorEvent
+	for evt := range sectorActivatedEvtsChan {
+		subscribedSectorActivatedEvts = append(subscribedSectorActivatedEvts, evt)
+		if len(subscribedSectorActivatedEvts) == 2 {
+			break
+		}
+	}
 	// compare events from messages and receipts with events from subscription channel
-	require.Equal(t, sectorActivatedEvts, prefillSectorActivatedEvts)
+	require.Equal(t, sectorActivatedEvts, subscribedSectorActivatedEvts)
+
+	// same thing but use historical event fetching to see the same list
+	t.Logf("Inspecting only sector-activated events list from historical SubscribeActorEvents")
+	sectorActivatedEvtsChan, err = miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+		Fields: map[string][]types.ActorEventBlock{
+			"$type": {
+				{Codec: 0x51, Value: sectorActivatedCbor},
+			},
+		},
+		FromHeight: epochPtr(0),
+	})
+	require.NoError(t, err)
+	subscribedSectorActivatedEvts = subscribedSectorActivatedEvts[:0]
+	for evt := range sectorActivatedEvtsChan {
+		subscribedSectorActivatedEvts = append(subscribedSectorActivatedEvts, evt)
+		if len(subscribedSectorActivatedEvts) == 2 {
+			break
+		}
+	}
+	// compare events from messages and receipts with events from subscription channel
+	require.Equal(t, sectorActivatedEvts, subscribedSectorActivatedEvts)
 
 	// check that our `ToHeight` filter works as expected
+	t.Logf("Inspecting only initial list of events SubscribeActorEvents with ToHeight")
 	var initialEvents []*types.ActorEvent
 	for evt := range initialEventsChan {
 		initialEvents = append(initialEvents, evt)
@@ -451,6 +477,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.Equal(t, eventsFromMessages[0:5], initialEvents)
 
 	// construct ActorEvents from subscription channel for all actor events
+	t.Logf("Inspecting full events list from historical SubscribeActorEvents")
 	allEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
 		FromHeight: epochPtr(0),
 	})
@@ -464,9 +491,15 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	}
 	// compare events from messages and receipts with events from subscription channel
 	require.Equal(t, eventsFromMessages, prefillEvts)
+	t.Logf("All done comparing events")
+
+	// NOTE: There is a delay in finishing this test because the SubscribeActorEvents
+	// with the ToHeight (initialEventsChan) has to wait at least a full actual epoch before
+	// realising that there's no more events for that filter. itests run with a different block
+	// speed than the ActorEventHandler is aware of.
 }
 
-func buildClaimsFromEvents(ctx context.Context, t *testing.T, eventsFromMessages []*types.ActorEvent, node v1api.FullNode) []*verifregtypes9.Claim {
+func buildClaimsFromMessages(ctx context.Context, t *testing.T, eventsFromMessages []*types.ActorEvent, node v1api.FullNode) []*verifregtypes9.Claim {
 	claimKeyCbor := stringToEventKey(t, "claim")
 	claims := make([]*verifregtypes9.Claim, 0)
 	for _, event := range eventsFromMessages {

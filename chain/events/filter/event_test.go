@@ -86,13 +86,13 @@ func TestEventFilterCollectEvents(t *testing.T) {
 
 	testCases := []struct {
 		name   string
-		filter *EventFilter
+		filter *eventFilter
 		te     *TipSetEvents
 		want   []*CollectedEvent
 	}{
 		{
 			name: "nomatch tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14001,
 				maxHeight: -1,
 			},
@@ -101,7 +101,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch tipset max height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: 13999,
 			},
@@ -110,7 +110,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14000,
 				maxHeight: -1,
 			},
@@ -119,7 +119,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match tipset cid",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				tipsetCid: cid14000,
@@ -129,7 +129,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a2},
@@ -139,7 +139,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a1},
@@ -149,7 +149,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match one entry",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -163,7 +163,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match one entry with alternate values",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -179,7 +179,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -194,7 +194,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry by missing key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -208,7 +208,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match one entry with multiple keys",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -225,7 +225,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -242,7 +242,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one mismatching value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
@@ -259,7 +259,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch one entry with one unindexed key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{

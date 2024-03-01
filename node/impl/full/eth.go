@@ -1321,7 +1321,7 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 	return minHeight, maxHeight, nil
 }
 
-func (e *EthEventHandler) installEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*filter.EventFilter, error) {
+func (e *EthEventHandler) installEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (filter.EventFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -1464,7 +1464,7 @@ func (e *EthEventHandler) EthUninstallFilter(ctx context.Context, id ethtypes.Et
 
 func (e *EthEventHandler) uninstallFilter(ctx context.Context, f filter.Filter) error {
 	switch f.(type) {
-	case *filter.EventFilter:
+	case filter.EventFilter:
 		err := e.EventFilterManager.Remove(ctx, f.ID())
 		if err != nil && !errors.Is(err, filter.ErrFilterNotFound) {
 			return err
