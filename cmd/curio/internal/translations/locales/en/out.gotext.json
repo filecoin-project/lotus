@@ -30,23 +30,50 @@
             "fuzzy": true
         },
         {
+            "id": "Lotus-Miner to Curio Migration.",
+            "message": "Lotus-Miner to Curio Migration.",
+            "translation": "Lotus-Miner to Curio Migration.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Try the web interface with  for further guided improvements.",
+            "message": "Try the web interface with  for further guided improvements.",
+            "translation": "Try the web interface with  for further guided improvements.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "__layersgui",
+                    "string": "%[1]v",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"--layers=gui\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "You can now migrate your market node ({Boost}), if applicable.",
+            "message": "You can now migrate your market node ({Boost}), if applicable.",
+            "translation": "You can now migrate your market node ({Boost}), if applicable.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Boost",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"Boost\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
             "id": "Migrating config.toml to database.",
             "message": "Migrating config.toml to database.",
             "translation": "Migrating config.toml to database.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
-            "message": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
-            "translation": "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
-            "message": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
-            "translation": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -68,37 +95,96 @@
             "fuzzy": true
         },
         {
-            "id": "TODO FINISH THIS FUNCTION",
-            "message": "TODO FINISH THIS FUNCTION",
-            "translation": "TODO FINISH THIS FUNCTION",
+            "id": "cannot read API: {Error}. Aborting Migration",
+            "message": "cannot read API: {Error}. Aborting Migration",
+            "translation": "cannot read API: {Error}. Aborting Migration",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error saving config to layer: {Error}. Aborting Migration",
+            "message": "Error saving config to layer: {Error}. Aborting Migration",
+            "translation": "Error saving config to layer: {Error}. Aborting Migration",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.",
+            "message": "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.",
+            "translation": "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "To bring you the best SP tooling...",
-            "message": "To bring you the best SP tooling...",
-            "translation": "To bring you the best SP tooling...",
+            "id": "Select what you want to share with the Curio team.",
+            "message": "Select what you want to share with the Curio team.",
+            "translation": "Select what you want to share with the Curio team.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Share with the Curio team your interest in Curio for this Miner ID.",
-            "message": "Share with the Curio team your interest in Curio for this Miner ID.",
-            "translation": "Share with the Curio team your interest in Curio for this Miner ID.",
+            "id": "Individual Data: Miner ID, Curio version, net ({Mainnet} or {Testnet}). Signed.",
+            "message": "Individual Data: Miner ID, Curio version, net ({Mainnet} or {Testnet}). Signed.",
+            "translation": "Individual Data: Miner ID, Curio version, net ({Mainnet} or {Testnet}). Signed.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Mainnet",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"mainnet\""
+                },
+                {
+                    "id": "Testnet",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "\"testnet\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Aggregate-Anonymous: version, net, and Miner power (bucketed).",
+            "message": "Aggregate-Anonymous: version, net, and Miner power (bucketed).",
+            "translation": "Aggregate-Anonymous: version, net, and Miner power (bucketed).",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
-            "message": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
-            "translation": "Hit return to tell http://CurioStorage.org that you've migrated to Curio.",
+            "id": "Hint: I am someone running Curio on net.",
+            "message": "Hint: I am someone running Curio on net.",
+            "translation": "Hint: I am someone running Curio on net.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Press return to continue",
-            "message": "Press return to continue",
-            "translation": "Press return to continue",
+            "id": "Nothing.",
+            "message": "Nothing.",
+            "translation": "Nothing.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -117,48 +203,6 @@
                     "expr": "err.Error()"
                 }
             ],
-            "fuzzy": true
-        },
-        {
-            "id": "We want to build what you're using.",
-            "message": "We want to build what you're using.",
-            "translation": "We want to build what you're using.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Select what you want to share with the Curio team.",
-            "message": "Select what you want to share with the Curio team.",
-            "translation": "Select what you want to share with the Curio team.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
-            "message": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
-            "translation": "Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
-            "message": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
-            "translation": "Aggregate-Anonymous: Miner power (bucketed), version, and net.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Hint: I am someone running Curio on [test or main].",
-            "message": "Hint: I am someone running Curio on [test or main].",
-            "translation": "Hint: I am someone running Curio on [test or main].",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Nothing.",
-            "message": "Nothing.",
-            "translation": "Nothing.",
-            "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
@@ -247,9 +291,51 @@
             "fuzzy": true
         },
         {
-            "id": "The following configuration layers have been created for you: base, post, gui, seal.",
-            "message": "The following configuration layers have been created for you: base, post, gui, seal.",
-            "translation": "The following configuration layers have been created for you: base, post, gui, seal.",
+            "id": "Error sending message: {Error}",
+            "message": "Error sending message: {Error}",
+            "translation": "Error sending message: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error sending message: Status {Status}, Message:",
+            "message": "Error sending message: Status {Status}, Message:",
+            "translation": "Error sending message: Status {Status}, Message:",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Status",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "resp.Status"
+                },
+                {
+                    "id": "Stringb",
+                    "string": "%[2]v",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "string(b)"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Message sent.",
+            "message": "Message sent.",
+            "translation": "Message sent.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -261,66 +347,168 @@
             "fuzzy": true
         },
         {
-            "id": "Edit configuration layers with the command:",
-            "message": "Edit configuration layers with the command:",
-            "translation": "Edit configuration layers with the command:",
+            "id": "The '{Base}' layer stores common configuration. All curio instances can include it in their {__layers} argument.",
+            "message": "The '{Base}' layer stores common configuration. All curio instances can include it in their {__layers} argument.",
+            "translation": "The '{Base}' layer stores common configuration. All curio instances can include it in their {__layers} argument.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Base",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"base\""
+                },
+                {
+                    "id": "__layers",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "\"--layers\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "You can add other layers for per-machine configuration changes.",
+            "message": "You can add other layers for per-machine configuration changes.",
+            "translation": "You can add other layers for per-machine configuration changes.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "curio config edit \u003clayername\u003e",
-            "message": "curio config edit \u003clayername\u003e",
-            "translation": "curio config edit \u003clayername\u003e",
+            "id": "Join {Fil_curio_help} in Filecoin {Slack} for help.",
+            "message": "Join {Fil_curio_help} in Filecoin {Slack} for help.",
+            "translation": "Join {Fil_curio_help} in Filecoin {Slack} for help.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Fil_curio_help",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"#fil-curio-help\""
+                },
+                {
+                    "id": "Slack",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "\"Slack\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Join {Fil_curio_dev} in Filecoin {Slack} to follow development and feedback!",
+            "message": "Join {Fil_curio_dev} in Filecoin {Slack} to follow development and feedback!",
+            "translation": "Join {Fil_curio_dev} in Filecoin {Slack} to follow development and feedback!",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Fil_curio_dev",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"#fil-curio-dev\""
+                },
+                {
+                    "id": "Slack",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "\"Slack\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Want PoST redundancy? Run many Curio instances with the '{Post}' layer.",
+            "message": "Want PoST redundancy? Run many Curio instances with the '{Post}' layer.",
+            "translation": "Want PoST redundancy? Run many Curio instances with the '{Post}' layer.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Post",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"post\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Point your browser to your web GUI to complete setup with {Boost} and advanced featues.",
+            "message": "Point your browser to your web GUI to complete setup with {Boost} and advanced featues.",
+            "translation": "Point your browser to your web GUI to complete setup with {Boost} and advanced featues.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Boost",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"Boost\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
+            "message": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
+            "translation": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
-            "message": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
-            "translation": "The 'base' layer should store common configuration. You likely want all curio to include it in their --layers argument.",
+            "id": "Please start {Lotus_miner} now that database credentials are in {Toml}.",
+            "message": "Please start {Lotus_miner} now that database credentials are in {Toml}.",
+            "translation": "Please start {Lotus_miner} now that database credentials are in {Toml}.",
             "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Lotus_miner",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"lotus-miner\""
+                },
+                {
+                    "id": "Toml",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "\"config.toml\""
+                }
+            ],
             "fuzzy": true
         },
         {
-            "id": "Make other layers for per-machine changes.",
-            "message": "Make other layers for per-machine changes.",
-            "translation": "Make other layers for per-machine changes.",
+            "id": "Waiting for {Lotus_miner} to write sectors into Yugabyte.",
+            "message": "Waiting for {Lotus_miner} to write sectors into Yugabyte.",
+            "translation": "Waiting for {Lotus_miner} to write sectors into Yugabyte.",
             "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Join #fil-curio-users in Filecoin slack for help.",
-            "message": "Join #fil-curio-users in Filecoin slack for help.",
-            "translation": "Join #fil-curio-users in Filecoin slack for help.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "TODO FINISH THIS FUNCTION.",
-            "message": "TODO FINISH THIS FUNCTION.",
-            "translation": "TODO FINISH THIS FUNCTION.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
-            "message": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
-            "translation": "Want PoST redundancy? Run many Curio instances with the 'post' layer.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
-            "message": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
-            "translation": "Point your browser to your web GUI to complete setup with Boost and advanced featues.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Waiting for lotus-miner to write sectors into Yugabyte.",
-            "message": "Waiting for lotus-miner to write sectors into Yugabyte.",
-            "translation": "Waiting for lotus-miner to write sectors into Yugabyte.",
-            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Lotus_miner",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"lotus-miner\""
+                }
+            ],
             "fuzzy": true
         },
         {
@@ -341,16 +529,43 @@
             "fuzzy": true
         },
         {
-            "id": "The sectors are in the database. The database is ready for Curio.",
-            "message": "The sectors are in the database. The database is ready for Curio.",
-            "translation": "The sectors are in the database. The database is ready for Curio.",
+            "id": "The sectors are in the database. The database is ready for {Curio}.",
+            "message": "The sectors are in the database. The database is ready for {Curio}.",
+            "translation": "The sectors are in the database. The database is ready for {Curio}.",
             "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Curio",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"Curio\""
+                }
+            ],
             "fuzzy": true
         },
         {
-            "id": "Now shut down lotus-miner and move the systems to Curio.",
-            "message": "Now shut down lotus-miner and move the systems to Curio.",
-            "translation": "Now shut down lotus-miner and move the systems to Curio.",
+            "id": "Now shut down lotus-miner and move the systems to {Curio}.",
+            "message": "Now shut down lotus-miner and move the systems to {Curio}.",
+            "translation": "Now shut down lotus-miner and move the systems to {Curio}.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Curio",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"Curio\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Press return to continue",
+            "message": "Press return to continue",
+            "translation": "Press return to continue",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -574,10 +789,20 @@
             "fuzzy": true
         },
         {
-            "id": "Press return to update config.toml with Yugabyte info. Backup the file now.",
-            "message": "Press return to update config.toml with Yugabyte info. Backup the file now.",
-            "translation": "Press return to update config.toml with Yugabyte info. Backup the file now.",
+            "id": "Press return to update {Toml} with Yugabyte info. Backup the file now.",
+            "message": "Press return to update {Toml} with Yugabyte info. Backup the file now.",
+            "translation": "Press return to update {Toml} with Yugabyte info. Backup the file now.",
             "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Toml",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"config.toml\""
+                }
+            ],
             "fuzzy": true
         },
         {
@@ -629,9 +854,9 @@
             "fuzzy": true
         },
         {
-            "id": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
-            "message": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
-            "translation": "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "id": "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "message": "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
+            "translation": "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -650,10 +875,20 @@
             "fuzzy": true
         },
         {
-            "id": "Enter the path to the configuration directory used by lotus-miner",
-            "message": "Enter the path to the configuration directory used by lotus-miner",
-            "translation": "Enter the path to the configuration directory used by lotus-miner",
+            "id": "Enter the path to the configuration directory used by {Lotus_miner}",
+            "message": "Enter the path to the configuration directory used by {Lotus_miner}",
+            "translation": "Enter the path to the configuration directory used by {Lotus_miner}",
             "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Lotus_miner",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"lotus-miner\""
+                }
+            ],
             "fuzzy": true
         },
         {
@@ -688,9 +923,9 @@
             "fuzzy": true
         },
         {
-            "id": "Completed Step: {Step}",
-            "message": "Completed Step: {Step}",
-            "translation": "Completed Step: {Step}",
+            "id": "Step Complete: {Step}",
+            "message": "Step Complete: {Step}",
+            "translation": "Step Complete: {Step}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -712,6 +947,38 @@
             "fuzzy": true
         },
         {
+            "id": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+            "message": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+            "translation": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Base",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"base\""
+                },
+                {
+                    "id": "MinerAddresses0",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "\"mig-\" + curioCfg.Addresses[0].MinerAddresses[0]"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Configuration 'base' was created to include this miner's address and its wallet setup.",
+            "message": "Configuration 'base' was created to include this miner's address and its wallet setup.",
+            "translation": "Configuration 'base' was created to include this miner's address and its wallet setup.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
             "id": "Layer {LayerName} created.",
             "message": "Layer {LayerName} created.",
             "translation": "Layer {LayerName} created.",
@@ -729,16 +996,16 @@
             "fuzzy": true
         },
         {
-            "id": "To work with the config:",
-            "message": "To work with the config:",
-            "translation": "To work with the config:",
+            "id": "To work with the config: \\n",
+            "message": "To work with the config: \\n",
+            "translation": "To work with the config: \\n",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "To run Curio: in its own machine or cgroup without other files, use the command:",
-            "message": "To run Curio: in its own machine or cgroup without other files, use the command:",
-            "translation": "To run Curio: in its own machine or cgroup without other files, use the command:",
+            "id": "To run Curio: With machine or cgroup isolation, use the command (with example layer selection):",
+            "message": "To run Curio: With machine or cgroup isolation, use the command (with example layer selection):",
+            "translation": "To run Curio: With machine or cgroup isolation, use the command (with example layer selection):",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         }

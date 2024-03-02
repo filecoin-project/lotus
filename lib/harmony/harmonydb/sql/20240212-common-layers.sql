@@ -36,5 +36,5 @@ INSERT INTO harmony_config (title, config) VALUES
   EnableSealSDR = true
   EnableSendCommitMsg = true
   EnableMoveStorage = true
-  '),
+  ')
   ON CONFLICT (title) DO NOTHING; -- SPs may have these names defined already.

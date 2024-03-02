@@ -11,6 +11,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"math/bits"
 	"net/http"
 	"os"
@@ -38,6 +40,7 @@ import (
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var GuidedsetupCmd = &cli.Command{
@@ -106,8 +109,6 @@ var (
 		Background(lipgloss.Color("#f8f9fa"))
 )
 
-type migrationStep func(*MigrationData)
-
 func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func(style lipgloss.Style, key message.Reference, a ...interface{})) {
 	lang, err := language.Parse(os.Getenv("LANG")[:2])
 	if err != nil {
@@ -130,13 +131,16 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 		}
 }
 
+type migrationStep func(*MigrationData)
+
 var migrationSteps = []migrationStep{
 	readMinerConfig, // Tells them to be on the miner machine
 	yugabyteConnect, // Miner is updated
-	verifySectors,   // Verify the sectors are in the database
 	configToDB,      // work on base configuration migration.
+	verifySectors,   // Verify the sectors are in the database
 	doc,
 	oneLastThing,
+	complete,
 }
 
 type MigrationData struct {
@@ -145,71 +149,62 @@ type MigrationData struct {
 	selectTemplates *promptui.SelectTemplates
 	MinerConfigPath string
 	MinerConfig     *config.StorageMiner
-	*harmonydb.DB
-	MinerID address.Address
+	DB              *harmonydb.DB
+	MinerID         address.Address
 }
 
+func complete(d *MigrationData) {
+	stepCompleted(d, d.T("Lotus-Miner to Curio Migration."))
+	d.say(plain, "Try the web interface with  for further guided improvements.\n", "--layers=gui")
+	d.say(plain, "You can now migrate your market node (%s), if applicable.\n", "Boost")
+}
 func configToDB(d *MigrationData) {
 	d.say(section, "Migrating config.toml to database.\n")
-	d.say(plain, "Curio run 1 instance per machine. Multiple machines cooperate through YugabyteDB.\n")
-	d.say(plain, "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.\n")
 
 	type rawConfig struct {
 		Raw   []byte `db:"config"`
 		Title string
 	}
 	var configBytes []rawConfig
-	err := d.Select(context.Background(), &configBytes, `SELECT config, title FROM harmony_config `)
+	err := d.DB.Select(context.Background(), &configBytes, `SELECT config, title FROM harmony_config `)
 	if err != nil {
 		d.say(notice, "Error reading from database: %s. Aborting Migration.\n", err.Error())
 		os.Exit(1)
 	}
 
-	// SaveCredsToDB
-	// 1. replace 'base' if not around with mig
-	// 2. if base is already around, add the miner ID to the list with all the other goodies mig+MINERID
-	// 3. If there's a base, diff it with the miner's config.toml and show the diff.
-	// TODO watch what gets printed so we don't give advice to use "mig-??"
-
-	//configs := lo.SliceToMap(configBytes, func(t rawConfig) (string, bool) {
-	// TODO use new config reader
-	//})
-	// NEEDS multiaddress PR committed to interpret configs correctly.
-
-	//TODO clean-up shared.go to be multilingual and use it.
-	// TODO	d.say(plain, "This lotus-miner services the Miner ID: %s\n", "TODO MinerID")
-
-	// This will be added to the new/existing base layer along with its specific wallet rules.
-	// (if existing): Here's the diff of this miner's config.toml and the db's base layer.
-	//      To edit, use the interactive editor by doing ....  after setup completes.
-	// (if new): Writing the base layer.
-
-	// commit the new base layer, also commit a miner-id-named layer.
-	d.say(plain, "TODO FINISH THIS FUNCTION\n")
-}
-
-// bucket returns the nearest power of 2 (rounded down) for the given power.
-func bucket(power *api.MinerPower) uint64 {
-	return 1 << bits.LeadingZeros64(power.TotalPower.QualityAdjPower.Uint64())
-}
-
-func oneLastThing(d *MigrationData) {
-	d.say(section, "To bring you the best SP tooling...")
-	d.say(plain, "Share with the Curio team your interest in Curio for this Miner ID.\n")
-	d.say(plain, "Hit return to tell http://CurioStorage.org that you've migrated to Curio.\n")
-	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
+	dir, _ := path.Split(d.MinerConfigPath)
+	// Populate API Key
+	_, header, err := cliutil.GetRawAPI(nil, repo.FullNode, "v0")
 	if err != nil {
-		d.say(notice, "Aborting remaining steps.\n", err.Error())
+		d.say(plain, "cannot read API: %s. Aborting Migration", err.Error())
 		os.Exit(1)
 	}
 
-	d.say(section, "We want to build what you're using.")
+	err = SaveConfigToLayer(dir, "", false, header)
+	if err != nil {
+		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
+		os.Exit(1)
+	}
+}
+
+// bucket returns the power's 4 highest bits (rounded down).
+func bucket(power *api.MinerPower) uint64 {
+	rawQAP := power.TotalPower.QualityAdjPower.Uint64()
+	leadingDigit := 64 - bits.LeadingZeros64(rawQAP)
+	if leadingDigit < 4 {
+		return 0
+	}
+	return rawQAP >> (uint64(leadingDigit) - 4) << (uint64(leadingDigit - 4))
+}
+
+func oneLastThing(d *MigrationData) {
+	d.say(section, "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.")
 	i, _, err := (&promptui.Select{
 		Label: d.T("Select what you want to share with the Curio team."),
 		Items: []string{
-			d.T("Individual Data: Miner ID, Curio version, net (mainnet/testnet). Signed."),
-			d.T("Aggregate-Anonymous: Miner power (bucketed), version, and net."),
-			d.T("Hint: I am someone running Curio on [test or main]."),
+			d.T("Individual Data: Miner ID, Curio version, net (%s or %s). Signed.", "mainnet", "testnet"),
+			d.T("Aggregate-Anonymous: version, net, and Miner power (bucketed)."),
+			d.T("Hint: I am someone running Curio on net."),
 			d.T("Nothing.")},
 		Templates: d.selectTemplates,
 	}).Run()
@@ -235,7 +230,7 @@ func oneLastThing(d *MigrationData) {
 			}
 			msgMap["version"] = build.BuildVersion
 			msgMap["net"] = build.BuildType
-			msgMap["power"] = map[int]any{1: power, 2: bucket(power)}
+			msgMap["power"] = map[int]uint64{1: power.MinerPower.QualityAdjPower.Uint64(), 2: bucket(power)}
 
 			if i < 1 { // Sign it
 				msgMap["miner_id"] = d.MinerID
@@ -262,27 +257,36 @@ func oneLastThing(d *MigrationData) {
 			d.say(notice, "Error marshalling message: %s\n", err.Error())
 			os.Exit(1)
 		}
-		// TODO ensure this endpoint is up and running.
-		http.DefaultClient.Post("https://curiostorage.org/api/v1/usage", "application/json", bytes.NewReader(msg))
+
+		resp, err := http.DefaultClient.Post("https://curiostorage.org/cgi-bin/savedata.php", "application/json", bytes.NewReader(msg))
+		if err != nil {
+			d.say(notice, "Error sending message: %s\n", err.Error())
+		}
+		if resp != nil {
+			defer resp.Body.Close()
+			if resp.StatusCode != 200 {
+				b, err := io.ReadAll(resp.Body)
+				if err == nil {
+					d.say(notice, "Error sending message: Status %s, Message: \n", resp.Status, string(b))
+				}
+			} else {
+				stepCompleted(d, d.T("Message sent."))
+			}
+		}
 	}
 }
 
 func doc(d *MigrationData) {
-	d.say(plain, "The following configuration layers have been created for you: base, post, gui, seal.")
 	d.say(plain, "Documentation: \n")
-	d.say(plain, "Edit configuration layers with the command: \n")
-	d.say(plain, "curio config edit <layername>\n\n")
-	d.say(plain, "The 'base' layer stores common configuration. All curio instances can include it in their --layers argument.\n")
+	d.say(plain, "The '%s' layer stores common configuration. All curio instances can include it in their %s argument.\n", "base", "--layers")
 	d.say(plain, "You can add other layers for per-machine configuration changes.\n")
 
-	d.say(plain, "Join #fil-curio-help in Filecoin slack for help.\n")
-	d.say(plain, "Join #fil-curio-dev in Filecoin slack to follow development and feedback!\n")
-	d.say(plain, "TODO FINISH THIS FUNCTION.\n")
-	// TODO !!
-	// show the command to start the web interface & the command to start the main Curio instance.
-	//    This is where Boost configuration can be completed.
-	d.say(plain, "Want PoST redundancy? Run many Curio instances with the 'post' layer.\n")
-	d.say(plain, "Point your browser to your web GUI to complete setup with Boost and advanced featues.\n")
+	d.say(plain, "Join %s in Filecoin %s for help.\n", "#fil-curio-help", "Slack")
+	d.say(plain, "Join %s in Filecoin %s to follow development and feedback!\n", "#fil-curio-dev", "Slack")
+
+	d.say(plain, "Want PoST redundancy? Run many Curio instances with the '%s' layer.\n", "post")
+	d.say(plain, "Point your browser to your web GUI to complete setup with %s and advanced featues.\n", "Boost")
+	d.say(plain, "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.\n")
 
 	fmt.Println()
 }
@@ -290,7 +294,8 @@ func doc(d *MigrationData) {
 func verifySectors(d *MigrationData) {
 	var i []int
 	var lastError string
-	d.say(section, "Waiting for lotus-miner to write sectors into Yugabyte.")
+	d.say(section, "Please start %s now that database credentials are in %s.\n", "lotus-miner", "config.toml")
+	d.say(notice, "Waiting for %s to write sectors into Yugabyte.\n", "lotus-miner")
 	for {
 		err := d.DB.Select(context.Background(), &i, "SELECT count(*) FROM sector_location")
 		if err != nil {
@@ -304,10 +309,10 @@ func verifySectors(d *MigrationData) {
 			break
 		}
 		fmt.Print(".")
-		time.Sleep(time.Second)
+		time.Sleep(5 * time.Second)
 	}
-	d.say(plain, "The sectors are in the database. The database is ready for Curio.\n")
-	d.say(notice, "Now shut down lotus-miner and move the systems to Curio.\n")
+	d.say(plain, "The sectors are in the database. The database is ready for %s.\n", "Curio")
+	d.say(notice, "Now shut down lotus-miner and move the systems to %s.\n", "Curio")
 
 	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
@@ -387,7 +392,7 @@ yugabyteFor:
 			d.say(notice, "Error encoding config.toml: %s\n", err.Error())
 			os.Exit(1)
 		}
-		_, _ = (&promptui.Prompt{Label: d.T("Press return to update config.toml with Yugabyte info. Backup the file now.")}).Run()
+		_, _ = (&promptui.Prompt{Label: d.T("Press return to update %s with Yugabyte info. Backup the file now.", "config.toml")}).Run()
 		stat, err := os.Stat(path.Join(d.MinerConfigPath, "config.toml"))
 		if err != nil {
 			d.say(notice, "Error reading filemode of config.toml: %s\n", err.Error())
@@ -405,7 +410,7 @@ yugabyteFor:
 }
 
 func readMinerConfig(d *MigrationData) {
-	d.say(plain, "To Start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
+	d.say(plain, "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
 	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
 		d.say(notice, "Aborting migration.\n")
@@ -446,7 +451,7 @@ func readMinerConfig(d *MigrationData) {
 	if selected == "Other" {
 	minerPathEntry:
 		str, err := (&promptui.Prompt{
-			Label: d.T("Enter the path to the configuration directory used by lotus-miner"),
+			Label: d.T("Enter the path to the configuration directory used by %s", "lotus-miner"),
 		}).Run()
 		if err != nil {
 			d.say(notice, "No path provided, abandoning migration \n")
@@ -465,5 +470,5 @@ func readMinerConfig(d *MigrationData) {
 }
 func stepCompleted(d *MigrationData, step string) {
 	fmt.Print(green.Render("✔ "))
-	d.say(plain, "Completed Step: %s\n\n", step)
+	d.say(plain, "Step Complete: %s\n\n", step)
 }

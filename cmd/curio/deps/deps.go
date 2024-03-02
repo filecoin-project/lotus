@@ -63,7 +63,7 @@ func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 		if err != nil {
 			return nil, err
 		}
-		if c, ok := cfg.(*config.StorageMiner); !ok {
+		if c, ok := cfg.(*config.StorageMiner); ok {
 			return harmonydb.NewFromConfig(c.HarmonyDB)
 		}
 		return nil, errors.New("not a miner config")
@@ -109,7 +109,7 @@ func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 		}
 		return db, nil
 	}
-	log.Error("No db connection string found. User CLI args or env var: set CURIO_DB=postgres://user:pass@host:port/dbname")
+	log.Error("No db connection string found. User CLI args or env var: set CURIO_DB=postgres://USER:PASSWORD@HOST:PORT/DATABASE")
 	return fromCLI() //in-case it's not about bad config.
 }
 

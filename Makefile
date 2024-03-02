@@ -103,8 +103,8 @@ curio: $(BUILD_DEPS)
 .PHONY: curio
 BINS+=curio
 
-curio2k: GOFLAGS+=-tags=2k
-curio2k: curio
+cu2k: GOFLAGS+=-tags=2k
+cu2k: curio
 
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker

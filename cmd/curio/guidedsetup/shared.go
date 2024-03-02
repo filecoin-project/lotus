@@ -166,6 +166,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 			}
 			say(plain, "Configuration 'base' was updated to include this miner's address and its wallet setup.")
 		}
+		say(plain, "Compare the configurations %s to %s. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.", "base", "mig-"+curioCfg.Addresses[0].MinerAddresses[0])
 	skipWritingToBase:
 	} else if layerName == "" {
 		cfg, err := deps.GetDefaultConfig(true)
@@ -177,6 +178,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		if err != nil {
 			return err
 		}
+		say(notice, "Configuration 'base' was created to include this miner's address and its wallet setup.")
 	}
 
 	if layerName == "" { // only make mig if base exists and we are different. // compare to base.
@@ -200,10 +202,10 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 	}
 
 	dbSettings := getDBSettings(*smCfg)
-	say(plain, `To work with the config:`)
-	say(code, `curio `+dbSettings+` config edit `+layerName)
-	say(plain, `To run Curio: in its own machine or cgroup without other files, use the command:`)
-	say(code, `curio `+dbSettings+` run --layer=`+layerName+`,post`)
+	say(plain, `To work with the config: \n`)
+	code.Render(`curio ` + dbSettings + ` config edit base\n`)
+	say(plain, `To run Curio: With machine or cgroup isolation, use the command (with example layer selection):`)
+	code.Render(`curio ` + dbSettings + ` run --layer=post`)
 	return nil
 }
 
