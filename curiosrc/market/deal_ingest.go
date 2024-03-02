@@ -1,4 +1,4 @@
-package lpmarket
+package market
 
 import (
 	"context"
@@ -17,8 +17,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/curiosrc/seal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/provider/lpseal"
 )
 
 type Ingester interface {
@@ -72,7 +72,7 @@ func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address
 		return api.SectorOffset{}, xerrors.Errorf("getting miner ID: %w", err)
 	}
 
-	num, err := lpseal.AllocateSectorNumbers(ctx, p.api, p.db, maddr, 1, func(tx *harmonydb.Tx, numbers []abi.SectorNumber) (bool, error) {
+	num, err := seal.AllocateSectorNumbers(ctx, p.api, p.db, maddr, 1, func(tx *harmonydb.Tx, numbers []abi.SectorNumber) (bool, error) {
 		if len(numbers) != 1 {
 			return false, xerrors.Errorf("expected one sector number")
 		}

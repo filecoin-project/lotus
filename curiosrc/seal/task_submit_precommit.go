@@ -1,4 +1,4 @@
-package lpseal
+package seal
 
 import (
 	"bytes"
@@ -16,11 +16,11 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/curiosrc/message"
+	"github.com/filecoin-project/lotus/curiosrc/multictladdr"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/filecoin-project/lotus/provider/lpmessage"
-	"github.com/filecoin-project/lotus/provider/multictladdr"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
@@ -34,13 +34,13 @@ type SubmitPrecommitTask struct {
 	sp     *SealPoller
 	db     *harmonydb.DB
 	api    SubmitPrecommitTaskApi
-	sender *lpmessage.Sender
+	sender *message.Sender
 	as     *multictladdr.MultiAddressSelector
 
 	maxFee types.FIL
 }
 
-func NewSubmitPrecommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitPrecommitTaskApi, sender *lpmessage.Sender, as *multictladdr.MultiAddressSelector, maxFee types.FIL) *SubmitPrecommitTask {
+func NewSubmitPrecommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitPrecommitTaskApi, sender *message.Sender, as *multictladdr.MultiAddressSelector, maxFee types.FIL) *SubmitPrecommitTask {
 	return &SubmitPrecommitTask{
 		sp:     sp,
 		db:     db,

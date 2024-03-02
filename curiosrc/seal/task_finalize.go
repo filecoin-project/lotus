@@ -1,4 +1,4 @@
-package lpseal
+package seal
 
 import (
 	"context"
@@ -7,21 +7,21 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type FinalizeTask struct {
 	max int
 	sp  *SealPoller
-	sc  *lpffi.SealCalls
+	sc  *ffi.SealCalls
 	db  *harmonydb.DB
 }
 
-func NewFinalizeTask(max int, sp *SealPoller, sc *lpffi.SealCalls, db *harmonydb.DB) *FinalizeTask {
+func NewFinalizeTask(max int, sp *SealPoller, sc *ffi.SealCalls, db *harmonydb.DB) *FinalizeTask {
 	return &FinalizeTask{
 		max: max,
 		sp:  sp,
@@ -86,7 +86,7 @@ func (f *FinalizeTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.T
 		StorageID    string             `db:"storage_id"`
 	}
 
-	if 4 != storiface.FTCache {
+	if storiface.FTCache != 4 {
 		panic("storiface.FTCache != 4")
 	}
 

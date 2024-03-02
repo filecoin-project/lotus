@@ -291,12 +291,12 @@ var configEditCmd = &cli.Command{
 		}
 
 		if cctx.IsSet("source") && source != layer && !cctx.Bool("no-interpret-source") {
-			lp := config.DefaultLotusProvider()
+			lp := config.DefaultCurioConfig()
 			if _, err := toml.Decode(sourceConfig, lp); err != nil {
 				return xerrors.Errorf("parsing source config: %w", err)
 			}
 
-			cb, err := config.ConfigUpdate(lp, config.DefaultLotusProvider(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+			cb, err := config.ConfigUpdate(lp, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 			if err != nil {
 				return xerrors.Errorf("interpreting source config: %w", err)
 			}
@@ -354,9 +354,18 @@ var configEditCmd = &cli.Command{
 	},
 }
 
+func getDefaultConfig(comment bool) (string, error) {
+	c := config.DefaultCurioConfig()
+	cb, err := config.ConfigUpdate(c, nil, config.Commented(comment), config.DefaultKeepUncommented(), config.NoEnv())
+	if err != nil {
+		return "", err
+	}
+	return string(cb), nil
+}
+
 func diff(sourceConf, newConf string) (string, error) {
-	lpSrc := config.DefaultLotusProvider()
-	lpNew := config.DefaultLotusProvider()
+	lpSrc := config.DefaultCurioConfig()
+	lpNew := config.DefaultCurioConfig()
 
 	_, err := toml.Decode(sourceConf, lpSrc)
 	if err != nil {

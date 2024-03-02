@@ -377,7 +377,7 @@ func GetDepsCLI(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 		return nil, err
 	}
 
-	full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
+	full, fullCloser, err := cliutil.GetFullNodeAPIV1Curio(cctx, cfg.Apis.ChainApiInfo)
 	if err != nil {
 		return nil, err
 	}

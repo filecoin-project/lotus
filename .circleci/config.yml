@@ -379,7 +379,6 @@ jobs:
           at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
-      - run: go install golang.org/x/text/cmd/gotext
       - run: make gen
       - run: git --no-pager diff && git --no-pager diff --quiet
       - run: make docsgen-cli
@@ -1019,7 +1018,7 @@ workflows:
           requires:
             - build
           suite: utest-unit-rest
-          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./provider/... ./tools/..."
+          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./curiosrc/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
           resource_class: 2xlarge
       - test:
           name: test-unit-storage

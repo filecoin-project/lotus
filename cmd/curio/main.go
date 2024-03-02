@@ -49,6 +49,7 @@ func main() {
 		testCmd,
 		webCmd,
 		guidedsetup.GuidedsetupCmd,
+		configMigrateCmd,
 		sealCmd,
 	}
 

@@ -1,4 +1,4 @@
-package lpseal
+package seal
 
 import (
 	"io"

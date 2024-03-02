@@ -1,6 +1,6 @@
 SHELL=/usr/bin/env bash
 
-all: doupdate knowns
+lang: doupdate knowns
 
 doupdate:
 	@echo "Updating translations"

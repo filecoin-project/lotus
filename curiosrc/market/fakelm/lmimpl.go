@@ -20,9 +20,9 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/curiosrc/market"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/provider/lpmarket"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -37,12 +37,12 @@ type LMRPCProvider struct {
 
 	ssize abi.SectorSize
 
-	pi        lpmarket.Ingester
+	pi        market.Ingester
 	db        *harmonydb.DB
 	confLayer string
 }
 
-func NewLMRPCProvider(si paths.SectorIndex, full api.FullNode, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi lpmarket.Ingester, db *harmonydb.DB, confLayer string) *LMRPCProvider {
+func NewLMRPCProvider(si paths.SectorIndex, full api.FullNode, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi market.Ingester, db *harmonydb.DB, confLayer string) *LMRPCProvider {
 	return &LMRPCProvider{
 		si:        si,
 		full:      full,
@@ -343,7 +343,7 @@ func (l *LMRPCProvider) AuthNew(ctx context.Context, perms []auth.Permission) ([
 		return nil, xerrors.Errorf("no harmony config found")
 	}
 
-	lp := config.DefaultLotusProvider()
+	lp := config.DefaultCurioConfig()
 	if _, err := toml.Decode(cs[0].Config, lp); err != nil {
 		return nil, xerrors.Errorf("decode harmony config: %w", err)
 	}

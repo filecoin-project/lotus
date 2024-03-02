@@ -1,4 +1,4 @@
-package lpseal
+package seal
 
 import (
 	"context"
@@ -13,10 +13,10 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -24,12 +24,12 @@ import (
 type TreesTask struct {
 	sp *SealPoller
 	db *harmonydb.DB
-	sc *lpffi.SealCalls
+	sc *ffi.SealCalls
 
 	max int
 }
 
-func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *lpffi.SealCalls, maxTrees int) *TreesTask {
+func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *ffi.SealCalls, maxTrees int) *TreesTask {
 	return &TreesTask{
 		sp: sp,
 		db: db,

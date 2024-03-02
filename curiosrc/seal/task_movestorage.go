@@ -1,4 +1,4 @@
-package lpseal
+package seal
 
 import (
 	"context"
@@ -7,22 +7,22 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type MoveStorageTask struct {
 	sp *SealPoller
-	sc *lpffi.SealCalls
+	sc *ffi.SealCalls
 	db *harmonydb.DB
 
 	max int
 }
 
-func NewMoveStorageTask(sp *SealPoller, sc *lpffi.SealCalls, db *harmonydb.DB, max int) *MoveStorageTask {
+func NewMoveStorageTask(sp *SealPoller, sc *ffi.SealCalls, db *harmonydb.DB, max int) *MoveStorageTask {
 	return &MoveStorageTask{
 		max: max,
 		sp:  sp,

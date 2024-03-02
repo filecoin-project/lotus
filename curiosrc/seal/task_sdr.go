@@ -1,4 +1,4 @@
-package lpseal
+package seal
 
 import (
 	"bytes"
@@ -16,10 +16,10 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -35,12 +35,12 @@ type SDRTask struct {
 	db  *harmonydb.DB
 	sp  *SealPoller
 
-	sc *lpffi.SealCalls
+	sc *ffi.SealCalls
 
 	max int
 }
 
-func NewSDRTask(api SDRAPI, db *harmonydb.DB, sp *SealPoller, sc *lpffi.SealCalls, maxSDR int) *SDRTask {
+func NewSDRTask(api SDRAPI, db *harmonydb.DB, sp *SealPoller, sc *ffi.SealCalls, maxSDR int) *SDRTask {
 	return &SDRTask{
 		api: api,
 		db:  db,
@@ -223,16 +223,16 @@ func (s *SDRTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	s.sp.pollers[pollerSDR].Set(taskFunc)
 }
 
-func (s *SDRTask) taskToSector(id harmonytask.TaskID) (lpffi.SectorRef, error) {
-	var refs []lpffi.SectorRef
+func (s *SDRTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
+	var refs []ffi.SectorRef
 
 	err := s.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_sdr = $1`, id)
 	if err != nil {
-		return lpffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
+		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
 	}
 
 	if len(refs) != 1 {
-		return lpffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
+		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
 	}
 
 	return refs[0], nil

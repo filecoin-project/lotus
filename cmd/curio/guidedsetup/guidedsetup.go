@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
 	"math/bits"
 	"net/http"
 	"os"

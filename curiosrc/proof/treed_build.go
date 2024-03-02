@@ -1,4 +1,4 @@
-package lpproof
+package proof
 
 import (
 	"io"

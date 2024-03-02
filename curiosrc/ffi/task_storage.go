@@ -1,4 +1,4 @@
-package lpffi
+package ffi
 
 import (
 	"context"

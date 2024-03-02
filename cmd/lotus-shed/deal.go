@@ -34,13 +34,13 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	cumarket "github.com/filecoin-project/lotus/curiosrc/market"
+	"github.com/filecoin-project/lotus/curiosrc/market/fakelm"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/lib/nullreader"
 	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/provider/lpmarket"
-	"github.com/filecoin-project/lotus/provider/lpmarket/fakelm"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -88,7 +88,7 @@ var lpUtilStartDealCmd = &cli.Command{
 		}
 
 		// open rpc
-		var rpc api.LotusProviderStruct
+		var rpc api.CurioStruct
 		closer2, err := jsonrpc.NewMergeClient(ctx, cctx.String("provider-rpc"), "Filecoin", []interface{}{&rpc.Internal}, nil)
 		if err != nil {
 			return xerrors.Errorf("open rpc: %w", err)
@@ -368,7 +368,7 @@ var lpBoostProxyCmd = &cli.Command{
 
 		defer closer()
 
-		pin := lpmarket.NewPieceIngester(db, full)
+		pin := cumarket.NewPieceIngester(db, full)
 
 		si := paths.NewDBIndex(nil, db)
 

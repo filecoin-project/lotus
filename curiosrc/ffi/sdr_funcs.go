@@ -1,4 +1,4 @@
-package lpffi
+package ffi
 
 import (
 	"context"
@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	proof2 "github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/curiosrc/proof"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"github.com/filecoin-project/lotus/provider/lpproof"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -151,7 +151,7 @@ func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size
 	}
 	defer releaseSector()
 
-	return lpproof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
+	return proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
 }
 
 func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid) (cid.Cid, cid.Cid, error) {

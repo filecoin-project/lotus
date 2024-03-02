@@ -1,4 +1,4 @@
-package lpseal
+package seal
 
 import (
 	"bytes"
@@ -12,10 +12,10 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/filecoin-project/lotus/provider/lpffi"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -28,12 +28,12 @@ type PoRepTask struct {
 	db  *harmonydb.DB
 	api PoRepAPI
 	sp  *SealPoller
-	sc  *lpffi.SealCalls
+	sc  *ffi.SealCalls
 
 	max int
 }
 
-func NewPoRepTask(db *harmonydb.DB, api PoRepAPI, sp *SealPoller, sc *lpffi.SealCalls, maxPoRep int) *PoRepTask {
+func NewPoRepTask(db *harmonydb.DB, api PoRepAPI, sp *SealPoller, sc *ffi.SealCalls, maxPoRep int) *PoRepTask {
 	return &PoRepTask{
 		db:  db,
 		api: api,

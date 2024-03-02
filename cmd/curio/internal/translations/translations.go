@@ -11,4 +11,4 @@
 // FUTURE Reliability: automate this with an openAPI call when translate fields turn up blank.
 package translations
 
-//go:generate make all
+//go:generate make lang
