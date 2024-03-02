@@ -124,7 +124,7 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker 
+build: lotus lotus-miner lotus-worker lotus-provider
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
@@ -246,7 +246,9 @@ install-daemon-service: install-daemon
 	install -C -m 0644 ./scripts/lotus-daemon.service /etc/systemd/system/lotus-daemon.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
+	@echo "lotus-daemon service installed."
+	@echo "To start the service, run: 'sudo systemctl start lotus-daemon'"
+	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-daemon'"
 
 install-miner-service: install-miner install-daemon-service
 	mkdir -p /etc/systemd/system
@@ -254,7 +256,9 @@ install-miner-service: install-miner install-daemon-service
 	install -C -m 0644 ./scripts/lotus-miner.service /etc/systemd/system/lotus-miner.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
+	@echo "lotus-miner service installed."
+	@echo "To start the service, run: 'sudo systemctl start lotus-miner'"
+	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-miner'"
 
 install-curio-service: install-curio install-daemon-service
 	mkdir -p /etc/systemd/system
@@ -302,6 +306,10 @@ install-completions:
 	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
 	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
+
+unittests:
+	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests)
+.PHONY: unittests
 
 clean:
 	rm -rf $(CLEAN) $(BINS)

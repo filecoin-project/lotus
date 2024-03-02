@@ -3,78 +3,9 @@
     <title>Curio Cluster Overview</title>
     <script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
     <script type="module" src="chain-connectivity.js"></script>
+    <link rel="stylesheet" href="main.css">
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
     <style>
-        html, body {
-            background: #0f0f0f;
-            color: #ffffff;
-            padding: 0;
-            margin: 0;
-
-            font-family: monospace;
-        }
-
-        table td, table th {
-            font-size: 13px;
-        }
-
-        .app-head {
-            width: 100%;
-        }
-        .head-left {
-            display: inline-block;
-        }
-        .head-right {
-            display: inline-block;
-            float: right;
-        }
-
-        table {
-            border-collapse: collapse;
-        }
-
-        table td, table th {
-            border-left: 1px solid #f0f0f0;
-            padding: 1px 5px;
-        }
-
-        table tr td:first-child, table tr th:first-child {
-            border-left: none;
-        }
-
-        a:link {
-            color: #cfc;
-        }
-
-        a:visited {
-            color: #dfa;
-        }
-
-        a:hover {
-            color: #af7;
-        }
-
-        .success {
-            color: green;
-        }
-        .warning {
-            color: yellow;
-        }
-        .error {
-            color: red;
-        }
-
-        .dash-tile {
-            display: flex;
-            flex-direction: column;
-            padding: 0.75rem;
-            background: #3f3f3f;
-
-            & b {
-                padding-bottom: 0.5rem;
-                color: deeppink;
-            }
-        }
-
         .deadline-box {
             display: grid;
             grid-template-columns: repeat(16, auto);
@@ -122,22 +53,6 @@
     </div>
     <hr>
     <div class="info-block">
-        <h2>Actor Summary</h2>
-        <table>
-            <thead>
-            <tr>
-                <th>Address</th>
-                <th>Config Layers</th>
-                <th>QaP</th>
-                <th>Deadlines</th>
-            </tr>
-            </thead>
-            <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
-            </tbody>
-        </table>
-    </div>
-    <hr>
-    <div class="info-block">
         <h2>Cluster Machines</h2>
         <table>
             <thead>
@@ -154,6 +69,43 @@
     </div>
     <hr>
     <div class="info-block">
+        <h2><a href="/pipeline_porep.html">PoRep Pipeline</a></h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Address</th>
+                <th>SDR</th>
+                <th>Trees</th>
+                <th>Precommit Msg</th>
+                <th>Wait Seed</th>
+                <th>PoRep</th>
+                <th>Commit Msg</th>
+                <th>Done</th>
+                <th>Failed</th>
+            </tr>
+            </thead>
+            <tbody hx-get="/hapi/simpleinfo/pipeline-porep" hx-trigger="load,every 5s">
+            </tbody>
+        </table>
+    </div>
+    <hr>
+    <div class="info-block">
+        <h2>Actor Summary</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Address</th>
+                <th>Config Layers</th>
+                <th>QaP</th>
+                <th>Deadlines</th>
+            </tr>
+            </thead>
+            <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
+            </tbody>
+        </table>
+    </div>
+    <hr>
+    <div class="info-block">
         <h2>Recently Finished Tasks</h2>
         <table>
             <thead>
@@ -163,12 +115,13 @@
                 <th>Executor</th>
                 <th>Posted</th>
                 <th>Start</th>
-                <th>End</th>
+                <th>Queued</th>
+                <th>Took</th>
                 <th>Outcome</th>
                 <th>Message</th>
             </tr>
             </thead>
-            <tbody hx-get="/hapi/simpleinfo/taskhistory" hx-trigger="load, every 5s">
+            <tbody hx-get="/hapi/simpleinfo/taskhistory" hx-trigger="load, every 2s">
             </tbody>
         </table>
     </div>
@@ -178,13 +131,13 @@
         <table>
             <thead>
             <tr>
-                <th>Task</th>
+                <th style="min-width: 128px">Task</th>
                 <th>ID</th>
                 <th>Posted</th>
                 <th>Owner</th>
             </tr>
             </thead>
-            <tbody hx-get="/hapi/simpleinfo/tasks" hx-trigger="load,every 5s">
+            <tbody hx-get="/hapi/simpleinfo/tasks" hx-trigger="load,every 1s">
             </tbody>
         </table>
     </div>

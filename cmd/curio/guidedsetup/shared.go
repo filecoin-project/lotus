@@ -27,6 +27,12 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+const (
+	FlagMinerRepo = "miner-repo"
+)
+
+const FlagMinerRepoDeprecation = "storagerepo"
+
 func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header http.Header) (err error) {
 	_, say := SetupLanguage()
 	ctx := context.Background()
@@ -77,7 +83,8 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		return fmt.Errorf("could not read config.toml: %w", err)
 	}
 	var curioCfg config.CurioConfig
-	_, err = toml.Decode(string(buf), &curioCfg)
+	_, err = deps.LoadConfigWithUpgrades(string(buf), &curioCfg)
+
 	if err != nil {
 		return fmt.Errorf("could not decode toml: %w", err)
 	}

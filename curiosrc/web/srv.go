@@ -39,8 +39,6 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 	}
 	api.Routes(mx.PathPrefix("/api").Subrouter(), deps)
 
-	basePath := basePath
-
 	var static fs.FS = static
 	if webDev {
 		basePath = "cmd/curio/web/static"

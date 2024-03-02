@@ -65,9 +65,6 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
             <td>${item.Version}</td>
         </tr>
         `)}
-        <tr>
-            <td colspan="4">Data incoming...</td>
-        </tr>
     </tbody>
   </table>`
 });

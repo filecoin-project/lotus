@@ -1,0 +1,70 @@
+html, body {
+    background: #0f0f0f;
+    color: #ffffff;
+    padding: 0;
+    margin: 0;
+
+    font-family: 'Hack', monospace;
+}
+
+table td, table th {
+    font-size: 13px;
+}
+
+.app-head {
+    width: 100%;
+}
+.head-left {
+    display: inline-block;
+}
+.head-right {
+    display: inline-block;
+    float: right;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+table td, table th {
+    border-left: 1px solid #f0f0f0;
+    padding: 1px 5px;
+}
+
+table tr td:first-child, table tr th:first-child {
+    border-left: none;
+}
+
+a:link {
+    color: #cfc;
+}
+
+a:visited {
+    color: #dfa;
+}
+
+a:hover {
+    color: #af7;
+}
+
+.success {
+    color: greenyellow;
+}
+.warning {
+    color: yellow;
+}
+.error {
+    color: red;
+}
+
+.dash-tile {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    background: #3f3f3f;
+
+    & b {
+        padding-bottom: 0.5rem;
+        color: deeppink;
+    }
+}

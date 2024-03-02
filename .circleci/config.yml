@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -164,7 +164,7 @@ jobs:
         default: unit
         description: Test suite name to report to CircleCI.
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
         environment:
           LOTUS_HARMONYDB_HOSTS: yugabyte
       - image: yugabytedb/yugabyte:2.18.0.0-b65
@@ -218,7 +218,7 @@ jobs:
           test with. If empty (the default) the commit defined by the git
           submodule is used.
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
     resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
@@ -407,7 +407,7 @@ jobs:
         description: |
           Arguments to pass to golangci-lint
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
     resource_class: medium+
     steps:
       - install-ubuntu-deps
@@ -1019,7 +1019,7 @@ workflows:
           requires:
             - build
           suite: utest-unit-rest
-          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
+          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./provider/... ./tools/..."
           resource_class: 2xlarge
       - test:
           name: test-unit-storage

@@ -36,7 +36,7 @@ type DB struct {
 	schema    string
 	hostnames []string
 	BTFPOnce  sync.Once
-	BTFP      atomic.Uintptr
+	BTFP      atomic.Uintptr // BeginTransactionFramePointer
 }
 
 var logger = logging.Logger("harmonydb")

@@ -10,12 +10,15 @@ VERSION:
    1.25.3-dev
 
 COMMANDS:
+   cli           Execute cli commands
    run           Start a Curio process
    stop          Stop a running Curio process
    config        Manage node config by layers. The layer 'base' will always be applied. 
    test          Utility functions for testing
    web           Start Curio web interface
-   guided-setup  Run the guided setup for migrating from lotus-miner to curio
+   guided-setup  Run the guided setup for migrating from lotus-miner to Curio
+   from-miner    Express a database config (for curio) from an existing miner.
+   seal          Manage the sealing pipeline
    version       Print version
    help, h       Shows a list of commands or help for one command
    DEVELOPER:
@@ -25,16 +28,37 @@ COMMANDS:
      fetch-params  Fetch proving parameters
 
 GLOBAL OPTIONS:
-   --color              use color in display output (default: depends on output being a TTY)
-   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
-   --db-name value      (default: "yugabyte") [$CURIO_DB_NAME, $CURIO_HARMONYDB_NAME]
-   --db-user value      (default: "yugabyte") [$CURIO_DB_USER, $CURIO_HARMONYDB_USERNAME]
-   --db-password value  (default: "yugabyte") [$CURIO_DB_PASSWORD, $CURIO_HARMONYDB_PASSWORD]
-   --layers value       (default: "base") [$CURIO_LAYERS, $CURIO_CONFIG_LAYERS]
-   --repo-path value    (default: "~/.curio") [$CURIO_REPO_PATH]
-   --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h           show help
-   --version, -v        print the version
+   --color                            use color in display output (default: depends on output being a TTY)
+   --db-host value                    Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
+   --db-name value                    (default: "yugabyte") [$CURIO_DB_NAME, $CURIO_HARMONYDB_NAME]
+   --db-user value                    (default: "yugabyte") [$CURIO_DB_USER, $CURIO_HARMONYDB_USERNAME]
+   --db-password value                (default: "yugabyte") [$CURIO_DB_PASSWORD, $CURIO_HARMONYDB_PASSWORD]
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base") [$CURIO_LAYERS, $CURIO_CONFIG_LAYERS]
+   --repo-path value                  (default: "~/.curio") [$CURIO_REPO_PATH]
+   --vv                               enables very verbose mode, useful for debugging the CLI (default: false)
+   --help, -h                         show help
+   --version, -v                      print the version
+```
+
+## curio cli
+```
+NAME:
+   curio cli - Execute cli commands
+
+USAGE:
+   curio cli command [command options] [arguments...]
+
+COMMANDS:
+   storage  manage sector storage
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --machine value  machine host:port (lotus-provider run --listen address)
+   --help, -h       show help
+```
+
+### curio cli storage
+```
 ```
 
 ## curio run
@@ -46,13 +70,12 @@ USAGE:
    curio run [command options] [arguments...]
 
 OPTIONS:
-   --listen value                     host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
-   --nosync                           don't check full-node sync status (default: false)
-   --manage-fdlimit                   manage open file limit (default: true)
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
-   --storage-json value               path to json file containing storage config (default: "~/.curio/storage.json")
-   --journal value                    path to journal files (default: "~/.curio/")
-   --help, -h                         show help
+   --listen value        host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
+   --nosync              don't check full-node sync status (default: false)
+   --manage-fdlimit      manage open file limit (default: true)
+   --storage-json value  path to json file containing storage config (default: "~/.curio/storage.json")
+   --journal value       path to journal files (default: "~/.curio/")
+   --help, -h            show help
 ```
 
 ## curio stop
@@ -82,7 +105,9 @@ COMMANDS:
    list, ls                         List config layers you can get.
    interpret, view, stacked, stack  Interpret stacked config layers by this version of curio, with system-generated comments.
    remove, rm, del, delete          Remove a named config layer.
+   edit                             edit a config layer
    from-miner                       Express a database config (for curio) from an existing miner.
+   new-cluster                      Create new coniguration for a new cluster
    help, h                          Shows a list of commands or help for one command
 
 OPTIONS:
@@ -164,13 +189,30 @@ OPTIONS:
    --help, -h  show help
 ```
 
+### curio config edit
+```
+NAME:
+   curio config edit - edit a config layer
+
+USAGE:
+   curio config edit [command options] [layer name]
+
+OPTIONS:
+   --editor value         editor to use (default: "vim") [$EDITOR]
+   --source value         source config layer (default: <edited layer>)
+   --allow-owerwrite      allow overwrite of existing layer if source is a different layer (default: false)
+   --no-source-diff       save the whole config into the layer, not just the diff (default: false)
+   --no-interpret-source  do not interpret source layer (default: true if --source is set)
+   --help, -h             show help
+```
+
 ### curio config from-miner
 ```
 NAME:
-   curio config from-miner - Express a database config (for curio) from an existing miner.
+   curio from-miner - Express a database config (for curio) from an existing miner.
 
 USAGE:
-   curio config from-miner [command options] [arguments...]
+   curio from-miner [command options] [arguments...]
 
 DESCRIPTION:
    Express a database config (for curio) from an existing miner.
@@ -180,6 +222,18 @@ OPTIONS:
    --to-layer value, -t value               The layer name for this data push. 'base' is recommended for single-miner setup.
    --overwrite, -o                          Use this with --to-layer to replace an existing layer (default: false)
    --help, -h                               show help
+```
+
+### curio config new-cluster
+```
+NAME:
+   curio config new-cluster - Create new coniguration for a new cluster
+
+USAGE:
+   curio config new-cluster [command options] [SP actor address...]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ## curio test
@@ -244,9 +298,8 @@ USAGE:
    curio test window-post task [command options] [arguments...]
 
 OPTIONS:
-   --deadline value                   deadline to compute WindowPoSt for  (default: 0)
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
-   --help, -h                         show help
+   --deadline value  deadline to compute WindowPoSt for  (default: 0)
+   --help, -h        show help
 ```
 
 ## curio web
@@ -262,22 +315,72 @@ DESCRIPTION:
      This creates the 'web' layer if it does not exist, then calls run with that layer.
 
 OPTIONS:
-   --listen value                     Address to listen on (default: "127.0.0.1:4701")
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base. Web will be added (default: "base")
-   --nosync                           don't check full-node sync status (default: false)
-   --help, -h                         show help
+   --listen value  Address to listen on (default: "127.0.0.1:4701")
+   --nosync        don't check full-node sync status (default: false)
+   --help, -h      show help
 ```
 
 ## curio guided-setup
 ```
 NAME:
-   curio guided-setup - Run the guided setup for migrating from lotus-miner to curio
+   curio guided-setup - Run the guided setup for migrating from lotus-miner to Curio
 
 USAGE:
    curio guided-setup [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help
+```
+
+## curio from-miner
+```
+NAME:
+   curio from-miner - Express a database config (for curio) from an existing miner.
+
+USAGE:
+   curio from-miner [command options] [arguments...]
+
+DESCRIPTION:
+   Express a database config (for curio) from an existing miner.
+
+OPTIONS:
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --to-layer value, -t value               The layer name for this data push. 'base' is recommended for single-miner setup.
+   --overwrite, -o                          Use this with --to-layer to replace an existing layer (default: false)
+   --help, -h                               show help
+```
+
+## curio seal
+```
+NAME:
+   curio seal - Manage the sealing pipeline
+
+USAGE:
+   curio seal command [command options] [arguments...]
+
+COMMANDS:
+   start    Start new sealing operations manually
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### curio seal start
+```
+NAME:
+   curio seal start - Start new sealing operations manually
+
+USAGE:
+   curio seal start [command options] [arguments...]
+
+OPTIONS:
+   --actor value  Specify actor address to start sealing sectors for
+   --now          Start sealing sectors for all actors now (not on schedule) (default: false)
+   --cc           Start sealing new CC sectors (default: false)
+   --count value  Number of sectors to start (default: 1)
+   --synthetic    Use synthetic PoRep (default: false)
+   --help, -h     show help
 ```
 
 ## curio version

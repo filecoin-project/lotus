@@ -37,13 +37,13 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 	f(miner)
 }
 
-func (t *task1) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *task1) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	if !stillOwned() {
 		return false, errors.New("Why not still owned?")
 	}
 	t.myPersonalTableLock.Lock()
 	defer t.myPersonalTableLock.Unlock()
-	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[tID]))
+	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[taskID]))
 	return true, nil
 }
 func (t *task1) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
@@ -104,8 +104,8 @@ type passthru struct {
 	adder     func(add harmonytask.AddTaskFunc)
 }
 
-func (t *passthru) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
-	return t.do(tID, stillOwned)
+func (t *passthru) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+	return t.do(taskID, stillOwned)
 }
 func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	return t.canAccept(list, e)

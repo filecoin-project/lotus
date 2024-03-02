@@ -58,18 +58,13 @@ var wdPostTaskCmd = &cli.Command{
 			Usage: "deadline to compute WindowPoSt for ",
 			Value: 0,
 		},
-		&cli.StringSliceFlag{
-			Name:  "layers",
-			Usage: "list of layers to be interpreted (atop defaults). Default: base",
-			Value: cli.NewStringSlice("base"),
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
 
 		deps, err := deps.GetDeps(ctx, cctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("get config: %w", err)
 		}
 
 		ts, err := deps.Full.ChainHead(ctx)
@@ -87,42 +82,35 @@ var wdPostTaskCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("cannot get miner id %w", err)
 		}
-		var id int64
+		var taskId int64
 
-		retryDelay := time.Millisecond * 10
-	retryAddTask:
 		_, err = deps.DB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
-			err = tx.QueryRow(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123) RETURNING id`).Scan(&id)
+			err = tx.QueryRow(`INSERT INTO harmony_task (name, posted_time, added_by) VALUES ('WdPost', CURRENT_TIMESTAMP, 123) RETURNING id`).Scan(&taskId)
 			if err != nil {
 				log.Error("inserting harmony_task: ", err)
 				return false, xerrors.Errorf("inserting harmony_task: %w", err)
 			}
 			_, err = tx.Exec(`INSERT INTO wdpost_partition_tasks 
 			(task_id, sp_id, proving_period_start, deadline_index, partition_index) VALUES ($1, $2, $3, $4, $5)`,
-				id, maddr, ht, cctx.Uint64("deadline"), 0)
+				taskId, maddr, ht, cctx.Uint64("deadline"), 0)
 			if err != nil {
 				log.Error("inserting wdpost_partition_tasks: ", err)
 				return false, xerrors.Errorf("inserting wdpost_partition_tasks: %w", err)
 			}
-			_, err = tx.Exec("INSERT INTO harmony_test (task_id) VALUES ($1)", id)
+			_, err = tx.Exec("INSERT INTO harmony_test (task_id) VALUES ($1)", taskId)
 			if err != nil {
 				return false, xerrors.Errorf("inserting into harmony_tests: %w", err)
 			}
 			return true, nil
-		})
+		}, harmonydb.OptionRetry())
 		if err != nil {
-			if harmonydb.IsErrSerialization(err) {
-				time.Sleep(retryDelay)
-				retryDelay *= 2
-				goto retryAddTask
-			}
 			return xerrors.Errorf("writing SQL transaction: %w", err)
 		}
-		fmt.Printf("Inserted task %v. Waiting for success ", id)
+		fmt.Printf("Inserted task %v. Waiting for success ", taskId)
 		var result sql.NullString
 		for {
 			time.Sleep(time.Second)
-			err = deps.DB.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, id).Scan(&result)
+			err = deps.DB.QueryRow(ctx, `SELECT result FROM harmony_test WHERE task_id=$1`, taskId).Scan(&result)
 			if err != nil {
 				return xerrors.Errorf("reading result from harmony_test: %w", err)
 			}
@@ -131,6 +119,7 @@ var wdPostTaskCmd = &cli.Command{
 			}
 			fmt.Print(".")
 		}
+		fmt.Println()
 		log.Infof("Result: %s", result.String)
 		return nil
 	},

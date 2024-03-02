@@ -390,7 +390,7 @@ func (s *Sender) Send(ctx context.Context, msg *types.Message, mss *api.MessageS
 		break
 	}
 
-	log.Infow("sent message", "cid", sigCid, "task_id", taskAdder, "send_error", sendErr, "poll_loops", pollLoops)
+	log.Infow("sent message", "cid", sigCid, "task_id", sendTaskID, "send_error", sendErr, "poll_loops", pollLoops)
 
 	return sigCid, sendErr
 }

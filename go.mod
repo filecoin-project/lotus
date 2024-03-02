@@ -1,6 +1,6 @@
 module github.com/filecoin-project/lotus
 
-go 1.20
+go 1.21
 
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
@@ -12,6 +12,7 @@ require (
 	github.com/DataDog/zstd v1.4.5
 	github.com/GeertJohan/go.rice v1.0.3
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
+	github.com/KarpelesLab/reflink v1.0.1
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
@@ -38,6 +39,7 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
+	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7
 	github.com/filecoin-project/go-fil-commcid v0.1.0
@@ -119,6 +121,7 @@ require (
 	github.com/mattn/go-isatty v0.0.19
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
+	github.com/minio/sha256-simd v1.0.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.1.0
 	github.com/multiformats/go-multiaddr v0.12.1
@@ -128,7 +131,6 @@ require (
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.0.7
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
-	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pkg/errors v0.9.1
 	github.com/polydawn/refmt v0.89.0
 	github.com/prometheus/client_golang v1.16.0
@@ -142,10 +144,10 @@ require (
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20230923211252-36a87e1ba72f
-	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
+	github.com/zondax/ledger-filecoin-go v0.11.1
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.16.0
@@ -197,7 +199,6 @@ require (
 	github.com/etclabscore/go-jsonschema-walk v0.0.6 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
-	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837 // indirect
 	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
@@ -280,7 +281,6 @@ require (
 	github.com/miekg/dns v1.1.55 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
-	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
@@ -292,6 +292,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
+	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
@@ -318,8 +319,8 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	github.com/zondax/hid v0.9.1 // indirect
-	github.com/zondax/ledger-go v0.12.1 // indirect
+	github.com/zondax/hid v0.9.2 // indirect
+	github.com/zondax/ledger-go v0.14.3 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v0.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
@@ -336,6 +337,10 @@ require (
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
+
+// https://github.com/magik6k/reflink/commit/cff5a40f3eeca17f44fc95a57ff3878e5ac761dc
+// https://github.com/KarpelesLab/reflink/pull/2
+replace github.com/KarpelesLab/reflink => github.com/magik6k/reflink v1.0.2-patch1
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 

@@ -66,13 +66,13 @@ func (s *CurioChainSched) Run(ctx context.Context) {
 			}
 
 			gotCur = false
-			log.Info("restarting window post scheduler")
+			log.Info("restarting chain scheduler")
 		}
 
 		select {
 		case changes, ok := <-notifs:
 			if !ok {
-				log.Warn("window post scheduler notifs channel closed")
+				log.Warn("chain notifs channel closed")
 				notifs = nil
 				continue
 			}
@@ -124,7 +124,7 @@ func (s *CurioChainSched) Run(ctx context.Context) {
 
 func (s *CurioChainSched) update(ctx context.Context, revert, apply *types.TipSet) {
 	if apply == nil {
-		log.Error("no new tipset in window post CurioChainSched.update")
+		log.Error("no new tipset in CurioChainSched.update")
 		return
 	}
 
