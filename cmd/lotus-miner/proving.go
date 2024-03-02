@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -237,10 +238,15 @@ var provingDeadlinesCmd = &cli.Command{
 			return xerrors.Errorf("getting deadlines: %w", err)
 		}
 
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
 		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
+		_, _ = fmt.Fprintln(tw, "deadline\topen\tpartitions\tsectors (faults)\tproven partitions")
 
 		for dlIdx, deadline := range deadlines {
 			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
@@ -291,11 +297,25 @@ var provingDeadlinesCmd = &cli.Command{
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, partitionCount, sectors, faults, provenPartitions, cur)
+
+			_, _ = fmt.Fprintf(tw, "%d\t%s\t%d\t%d (%d)\t%d%s\n", dlIdx, deadlineOpenTime(head, uint64(dlIdx), di),
+				partitionCount, sectors, faults, provenPartitions, cur)
 		}
 
 		return tw.Flush()
 	},
+}
+
+func deadlineOpenTime(ts *types.TipSet, dlIdx uint64, di *dline.Info) string {
+	// 30 minutes a deadline
+	thirtyMinutes := uint64(30 * 60)
+	gapIdx := dlIdx - di.Index
+	gapHeight := thirtyMinutes / build.BlockDelaySecs * gapIdx
+
+	openHeight := di.Open + abi.ChainEpoch(gapHeight)
+	genesisBlockTimestamp := ts.Blocks()[0].Timestamp - uint64(ts.Height())*build.BlockDelaySecs
+
+	return time.Unix(int64(genesisBlockTimestamp+build.BlockDelaySecs*uint64(openHeight)), 0).Format("15:04:05")
 }
 
 var provingDeadlineInfoCmd = &cli.Command{
@@ -353,12 +373,18 @@ var provingDeadlineInfoCmd = &cli.Command{
 			return xerrors.Errorf("getting partitions for deadline %d: %w", dlIdx, err)
 		}
 
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
 		provenPartitions, err := deadlines[dlIdx].PostSubmissions.Count()
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("Deadline Index:           %d\n", dlIdx)
+		fmt.Printf("Deadline Open:            %s\n", deadlineOpenTime(head, dlIdx, di))
 		fmt.Printf("Partitions:               %d\n", len(partitions))
 		fmt.Printf("Proven Partitions:        %d\n", provenPartitions)
 		fmt.Printf("Current:                  %t\n\n", di.Index == dlIdx)
