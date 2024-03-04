@@ -379,7 +379,7 @@ var filplusListClaimsCmd = &cli.Command{
 		)
 
 		for claimId, claim := range claimsMap {
-			if ts.Height() > claim.TermMax || !cctx.IsSet("expired") {
+			if ts.Height() > claim.TermMax+claim.TermStart || !cctx.IsSet("expired") {
 				tw.Write(map[string]interface{}{
 					"ID":        claimId,
 					"Provider":  claim.Provider,
