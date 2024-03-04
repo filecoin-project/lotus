@@ -2,10 +2,15 @@
 package itests
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
 
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	"github.com/ipld/go-ipld-prime/node/basicnode"
+	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-bitfield"
@@ -13,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/lib/must"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
@@ -164,4 +170,31 @@ loop:
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 	require.Equal(t, types.NewInt(uint64(ssz)*uint64(nSectors-1)), p.MinerPower.RawBytePower)
+
+	// check "sector-terminated" actor event
+	var epochZero abi.ChainEpoch
+	allEvents, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
+		FromHeight: &epochZero,
+	})
+	require.NoError(t, err)
+	for _, key := range []string{"sector-precommitted", "sector-activated", "sector-terminated"} {
+		var found bool
+		keyBytes := must.One(ipld.Encode(basicnode.NewString(key), dagcbor.Encode))
+		for _, event := range allEvents {
+			for _, e := range event.Entries {
+				if e.Key == "$type" && bytes.Equal(e.Value, keyBytes) {
+					found = true
+					if key == "sector-terminated" {
+						expectedEntries := []types.EventEntry{
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: keyBytes},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(toTerminate)), dagcbor.Encode))},
+						}
+						require.ElementsMatch(t, expectedEntries, event.Entries)
+					}
+					break
+				}
+			}
+		}
+		require.True(t, found, "expected to find event %s", key)
+	}
 }
