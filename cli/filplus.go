@@ -375,21 +375,23 @@ var filplusListClaimsCmd = &cli.Command{
 			tablewriter.Col("TermMin"),
 			tablewriter.Col("TermMax"),
 			tablewriter.Col("TermStart"),
+			tablewriter.Col("Expiration"),
 			tablewriter.Col("Sector"),
 		)
 
 		for claimId, claim := range claimsMap {
 			if ts.Height() > claim.TermMax || !cctx.IsSet("expired") {
 				tw.Write(map[string]interface{}{
-					"ID":        claimId,
-					"Provider":  claim.Provider,
-					"Client":    claim.Client,
-					"Data":      claim.Data,
-					"Size":      claim.Size,
-					"TermMin":   claim.TermMin,
-					"TermMax":   claim.TermMax,
-					"TermStart": claim.TermStart,
-					"Sector":    claim.Sector,
+					"ID":         claimId,
+					"Provider":   claim.Provider,
+					"Client":     claim.Client,
+					"Data":       claim.Data,
+					"Size":       claim.Size,
+					"TermMin":    claim.TermMin,
+					"TermMax":    claim.TermMax,
+					"TermStart":  claim.TermStart,
+					"Expiration": claim.TermStart + claim.TermMax,
+					"Sector":     claim.Sector,
 				})
 			}
 		}
