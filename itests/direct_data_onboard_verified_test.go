@@ -233,6 +233,20 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	}
 
 	{
+		allocationEvents := filterEvents(eventsFromMessages, "allocation-removed")
+		require.Len(t, allocationEvents, 1)
+
+		// manual removal of the bogus allocation
+		expectedEntries := []types.EventEntry{
+			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: must.One(ipld.Encode(basicnode.NewString("allocation-removed"), dagcbor.Encode))},
+			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(int64(allocationId)-1), dagcbor.Encode))},
+			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
+			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
+		}
+		require.ElementsMatch(t, expectedEntries, allocationEvents[0].Entries)
+	}
+
+	{
 		claimEvents := filterEvents(eventsFromMessages, "claim")
 		require.Len(t, claimEvents, 1)
 
