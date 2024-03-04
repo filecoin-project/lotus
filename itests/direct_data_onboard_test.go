@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -133,7 +132,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	rootKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
-	verifier1Key, err := key.GenerateKey(types.KTSecp256k1)
+	verifierKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	verifiedClientKey, err := key.GenerateKey(types.KTBLS)
@@ -144,7 +143,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(),
 		kit.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
-		kit.Account(verifier1Key, abi.NewTokenAmount(bal.Int64())),
+		kit.Account(verifierKey, abi.NewTokenAmount(bal.Int64())),
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
 	)
 
@@ -186,6 +185,10 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 
 	client.WaitForSectorActive(ctx, t, snum, maddr)
 
+	/* --- Setup verified registry and client and allocate datacap to client */
+
+	verifiedClientAddr := ddoVerifiedSetupVerifiedClient(ctx, t, client, rootKey, verifierKey, verifiedClientKey)
+
 	/* --- Prepare piece for onboarding --- */
 
 	pieceSize := abi.PaddedPieceSize(2048).Unpadded()
@@ -195,104 +198,9 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	dc, err := miner.ComputeDataCid(ctx, pieceSize, bytes.NewReader(pieceData))
 	require.NoError(t, err)
 
-	/* --- Setup verified registry and client allocator --- */
-
-	// get VRH
-	vrh, err := client.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
-	fmt.Println(vrh.String())
-	require.NoError(t, err)
-
-	// import the root key.
-	rootAddr, err := client.WalletImport(ctx, &rootKey.KeyInfo)
-	require.NoError(t, err)
-
-	// import the verifiers' keys.
-	verifier1Addr, err := client.WalletImport(ctx, &verifier1Key.KeyInfo)
-	require.NoError(t, err)
-
-	// import the verified client's key.
-	verifiedClientAddr, err := client.WalletImport(ctx, &verifiedClientKey.KeyInfo)
-	require.NoError(t, err)
-
-	// make the 2 verifiers
-
-	mkVerifier(ctx, t, client.FullNode.(*api.FullNodeStruct), rootAddr, verifier1Addr)
-
-	// assign datacap to a client
-	initialDatacap := big.NewInt(10000)
-
-	params, err := actors.SerializeParams(&verifregtypes13.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: initialDatacap})
-	require.NoError(t, err)
-
-	msg := &types.Message{
-		From:   verifier1Addr,
-		To:     verifreg.Address,
-		Method: verifreg.Methods.AddVerifiedClient,
-		Params: params,
-		Value:  big.Zero(),
-	}
-
-	sm, err := client.MpoolPushMessage(ctx, msg, nil)
-	require.NoError(t, err)
-
-	res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.EqualValues(t, 0, res.Receipt.ExitCode)
-
 	/* --- Allocate datacap for the piece by the verified client --- */
 
-	allocationRequest := verifregtypes13.AllocationRequest{
-		Provider:   abi.ActorID(minerId),
-		Data:       dc.PieceCID,
-		Size:       dc.Size,
-		TermMin:    verifregtypes13.MinimumVerifiedAllocationTerm,
-		TermMax:    verifregtypes13.MaximumVerifiedAllocationTerm,
-		Expiration: verifregtypes13.MaximumVerifiedAllocationExpiration,
-	}
-
-	allocationRequests := verifregtypes13.AllocationRequests{
-		Allocations: []verifregtypes13.AllocationRequest{allocationRequest},
-	}
-
-	receiverParams, err := actors.SerializeParams(&allocationRequests)
-	require.NoError(t, err)
-
-	transferParams, err := actors.SerializeParams(&datacap2.TransferParams{
-		To:           builtin.VerifiedRegistryActorAddr,
-		Amount:       big.Mul(big.NewInt(int64(dc.Size)), builtin.TokenPrecision),
-		OperatorData: receiverParams,
-	})
-	require.NoError(t, err)
-
-	msg = &types.Message{
-		To:     builtin.DatacapActorAddr,
-		From:   verifiedClientAddr,
-		Method: datacap.Methods.TransferExported,
-		Params: transferParams,
-		Value:  big.Zero(),
-	}
-
-	sm, err = client.MpoolPushMessage(ctx, msg, nil)
-	require.NoError(t, err)
-
-	res, err = client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.EqualValues(t, 0, res.Receipt.ExitCode)
-
-	// check that we have an allocation
-	allocations, err := client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
-	require.NoError(t, err)
-	require.Len(t, allocations, 1) // allocation waiting to be claimed
-
-	var allocationId verifregtypes13.AllocationId
-	var clientId abi.ActorID
-	for key, value := range allocations {
-		allocationId = verifregtypes13.AllocationId(key)
-		clientId = value.Client
-		break
-	}
-
-	/* --- Onboard the piece --- */
+	clientId, allocationId := ddoVerifiedSetupAllocations(ctx, t, client, minerId, dc, verifiedClientAddr)
 
 	head, err := client.ChainHead(ctx)
 	require.NoError(t, err)
@@ -304,57 +212,36 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	so, err := miner.SectorAddPieceToAny(ctx, pieceSize, bytes.NewReader(pieceData), piece.PieceDealInfo{
-		PublishCid:   nil,
-		DealID:       0,
-		DealProposal: nil,
-		DealSchedule: piece.DealSchedule{
-			StartEpoch: head.Height() + 2880*2,
-			EndEpoch:   head.Height() + 2880*400,
-		},
-		KeepUnsealed: true,
-		PieceActivationManifest: &minertypes.PieceActivationManifest{
-			CID:                   dc.PieceCID,
-			Size:                  dc.Size,
-			VerifiedAllocationKey: &minertypes13.VerifiedAllocationKey{Client: clientId, ID: allocationId},
-			Notify:                nil,
-		},
-	})
+	/* --- Onboard the piece --- */
+
+	so, si := ddoVerifiedOnboardPiece(ctx, t, miner, clientId, allocationId, dc, pieceData)
+
+	// check that we have one allocation because the real allocation has been claimed by the miner for the piece
+	allocations, err := client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
+	require.Len(t, allocations, 1) // allocation has been claimed, leaving the bogus one
 
-	// wait for sector to commit
-	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{
-		so.Sector: {},
-	})
+	ddoVerifiedRemoveAllocations(ctx, t, client, verifiedClientAddr, clientId)
 
-	/* --- Verify that the piece has been onboarded --- */
-
-	si, err := miner.SectorsStatus(ctx, so.Sector, true)
-	require.NoError(t, err)
-	require.Equal(t, dc.PieceCID, *si.CommD)
-
-	require.Equal(t, si.DealWeight, big.Zero())
-	require.Equal(t, si.VerifiedDealWeight, big.Mul(big.NewInt(int64(dc.Size)), big.NewInt(int64(si.Expiration-si.Activation))))
-
-	// check that we have no more allocations because the allocation has been claimed by the miner for the piece
+	// check that we have no more allocations
 	allocations, err = client.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
-	require.Len(t, allocations, 0) // allocation has been claimed
+	require.Len(t, allocations, 0)
 
 	/* --- Tests for ActorEvents --- */
 
 	// construct ActorEvents from messages and receipts
-	eventsFromMessages := buildActorEventsFromMessages(ctx, t, miner.FullNode)
+	eventsFromMessages := ddoVerifiedBuildActorEventsFromMessages(ctx, t, miner.FullNode)
 	fmt.Println("Events from message receipts:")
-	printEvents(ctx, t, miner.FullNode, eventsFromMessages)
+	printEvents(t, eventsFromMessages)
 
-	require.GreaterOrEqual(t, len(eventsFromMessages), 8) // allow for additional events in the future
+	require.GreaterOrEqual(t, len(eventsFromMessages), 9) // allow for additional events in the future
 	// check for precisely these events
 	for key, count := range map[string]int{
 		"sector-precommitted": 2, // first to begin mining, second to onboard the piece
 		"sector-activated":    2, // first to begin mining, second to onboard the piece
 		"verifier-balance":    2, // first to setup the verifier, second to allocate datacap to the verified client
-		"allocation":          1, // verified client allocates datacap to the miner
+		"allocation":          2, // verified client allocates datacap to the miner
 		"claim":               1, // miner claims the allocation for the piece
 	} {
 		keyBytes := stringToEventKey(t, key)
@@ -372,7 +259,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 
 	// verify that we can trace a datacap allocation through to a claim with the events, since this
 	// information is not completely available from the state tree
-	claims := buildClaimsFromMessages(ctx, t, eventsFromMessages, miner.FullNode)
+	claims := ddoVerifiedBuildClaimsFromMessages(ctx, t, eventsFromMessages, miner.FullNode)
 	for _, claim := range claims {
 		p, err := address.NewIDAddress(uint64(claim.Provider))
 		require.NoError(t, err)
@@ -401,7 +288,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	})
 	require.NoError(t, err)
 	fmt.Println("Events from GetActorEvents:")
-	printEvents(ctx, t, miner.FullNode, allEvtsFromGetAPI)
+	printEvents(t, allEvtsFromGetAPI)
 	// compare events from messages and receipts with events from GetActorEvents API
 	require.Equal(t, eventsFromMessages, allEvtsFromGetAPI)
 
@@ -473,8 +360,8 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	for evt := range initialEventsChan {
 		initialEvents = append(initialEvents, evt)
 	}
-	// sector-precommitted, sector-activated, verifier-balance, verifier-balance, allocation
-	require.Equal(t, eventsFromMessages[0:5], initialEvents)
+	// sector-precommitted, sector-activated, verifier-balance, verifier-balance, allocation, allocation
+	require.Equal(t, eventsFromMessages[0:6], initialEvents)
 
 	// construct ActorEvents from subscription channel for all actor events
 	t.Logf("Inspecting full events list from historical SubscribeActorEvents")
@@ -499,7 +386,143 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	// speed than the ActorEventHandler is aware of.
 }
 
-func buildClaimsFromMessages(ctx context.Context, t *testing.T, eventsFromMessages []*types.ActorEvent, node v1api.FullNode) []*verifregtypes9.Claim {
+func ddoVerifiedSetupAllocations(
+	ctx context.Context,
+	t *testing.T,
+	node v1api.FullNode,
+	minerId uint64,
+	dc abi.PieceInfo,
+	verifiedClientAddr address.Address,
+) (clientId abi.ActorID, allocationId verifregtypes13.AllocationId) {
+
+	head, err := node.ChainHead(ctx)
+	require.NoError(t, err)
+
+	// design this one to expire so we can observe allocation-removed
+	expiringAllocationHeight := head.Height() + 100
+	allocationRequestBork := verifregtypes13.AllocationRequest{
+		Provider:   abi.ActorID(minerId),
+		Data:       cid.MustParse("baga6ea4seaaqa"),
+		Size:       dc.Size,
+		TermMin:    verifregtypes13.MinimumVerifiedAllocationTerm,
+		TermMax:    verifregtypes13.MaximumVerifiedAllocationTerm,
+		Expiration: expiringAllocationHeight,
+	}
+	allocationRequest := verifregtypes13.AllocationRequest{
+		Provider:   abi.ActorID(minerId),
+		Data:       dc.PieceCID,
+		Size:       dc.Size,
+		TermMin:    verifregtypes13.MinimumVerifiedAllocationTerm,
+		TermMax:    verifregtypes13.MaximumVerifiedAllocationTerm,
+		Expiration: verifregtypes13.MaximumVerifiedAllocationExpiration,
+	}
+
+	allocationRequests := verifregtypes13.AllocationRequests{
+		Allocations: []verifregtypes13.AllocationRequest{allocationRequestBork, allocationRequest},
+	}
+
+	receiverParams, aerr := actors.SerializeParams(&allocationRequests)
+	require.NoError(t, aerr)
+
+	transferParams, aerr := actors.SerializeParams(&datacap2.TransferParams{
+		To:           builtin.VerifiedRegistryActorAddr,
+		Amount:       big.Mul(big.NewInt(int64(dc.Size*2)), builtin.TokenPrecision),
+		OperatorData: receiverParams,
+	})
+	require.NoError(t, aerr)
+
+	msg := &types.Message{
+		To:     builtin.DatacapActorAddr,
+		From:   verifiedClientAddr,
+		Method: datacap.Methods.TransferExported,
+		Params: transferParams,
+		Value:  big.Zero(),
+	}
+
+	sm, err := node.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err := node.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	// check that we have an allocation
+	allocations, err := node.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Len(t, allocations, 2) // allocation waiting to be claimed
+
+	for key, value := range allocations {
+		if value.Data == dc.PieceCID {
+			allocationId = verifregtypes13.AllocationId(key)
+			clientId = value.Client
+			break
+		}
+	}
+	require.NotEqual(t, verifregtypes13.AllocationId(0), allocationId) // found it in there
+	return clientId, allocationId
+}
+
+func ddoVerifiedOnboardPiece(ctx context.Context, t *testing.T, miner *kit.TestMiner, clientId abi.ActorID, allocationId verifregtypes13.AllocationId, dc abi.PieceInfo, pieceData []byte) (lapi.SectorOffset, lapi.SectorInfo) {
+	head, err := miner.FullNode.ChainHead(ctx)
+	require.NoError(t, err)
+
+	so, err := miner.SectorAddPieceToAny(ctx, dc.Size.Unpadded(), bytes.NewReader(pieceData), piece.PieceDealInfo{
+		PublishCid:   nil,
+		DealID:       0,
+		DealProposal: nil,
+		DealSchedule: piece.DealSchedule{
+			StartEpoch: head.Height() + 2880*2,
+			EndEpoch:   head.Height() + 2880*400,
+		},
+		KeepUnsealed: true,
+		PieceActivationManifest: &minertypes.PieceActivationManifest{
+			CID:                   dc.PieceCID,
+			Size:                  dc.Size,
+			VerifiedAllocationKey: &minertypes13.VerifiedAllocationKey{Client: clientId, ID: allocationId},
+			Notify:                nil,
+		},
+	})
+	require.NoError(t, err)
+
+	// wait for sector to commit
+	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{
+		so.Sector: {},
+	})
+
+	// Verify that the piece has been onboarded
+
+	si, err := miner.SectorsStatus(ctx, so.Sector, true)
+	require.NoError(t, err)
+	require.Equal(t, dc.PieceCID, *si.CommD)
+
+	require.Equal(t, si.DealWeight, big.Zero())
+	require.Equal(t, si.VerifiedDealWeight, big.Mul(big.NewInt(int64(dc.Size)), big.NewInt(int64(si.Expiration-si.Activation))))
+
+	return so, si
+}
+
+func ddoVerifiedRemoveAllocations(ctx context.Context, t *testing.T, node v1api.FullNode, verifiedClientAddr address.Address, clientId abi.ActorID) {
+	// trigger an allocation removal
+	removalParams, aerr := actors.SerializeParams(&verifregtypes13.RemoveExpiredAllocationsParams{Client: clientId})
+	require.NoError(t, aerr)
+
+	msg := &types.Message{
+		To:     builtin.VerifiedRegistryActorAddr,
+		From:   verifiedClientAddr,
+		Method: verifreg.Methods.RemoveExpiredAllocations,
+		Params: removalParams,
+		Value:  big.Zero(),
+	}
+
+	sm, err := node.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err := node.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+}
+
+func ddoVerifiedBuildClaimsFromMessages(ctx context.Context, t *testing.T, eventsFromMessages []*types.ActorEvent, node v1api.FullNode) []*verifregtypes9.Claim {
 	claimKeyCbor := stringToEventKey(t, "claim")
 	claims := make([]*verifregtypes9.Claim, 0)
 	for _, event := range eventsFromMessages {
@@ -530,7 +553,7 @@ func buildClaimsFromMessages(ctx context.Context, t *testing.T, eventsFromMessag
 	return claims
 }
 
-func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.FullNode) []*types.ActorEvent {
+func ddoVerifiedBuildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.FullNode) []*types.ActorEvent {
 	actorEvents := make([]*types.ActorEvent, 0)
 
 	head, err := node.ChainHead(ctx)
@@ -577,7 +600,7 @@ func buildActorEventsFromMessages(ctx context.Context, t *testing.T, node v1api.
 	return actorEvents
 }
 
-func printEvents(ctx context.Context, t *testing.T, node v1api.FullNode, events []*types.ActorEvent) {
+func printEvents(t *testing.T, events []*types.ActorEvent) {
 	for _, event := range events {
 		entryStrings := []string{
 			fmt.Sprintf("height=%d", event.Height),
@@ -615,9 +638,21 @@ func eventValueToDagJson(t *testing.T, codec uint64, data []byte) string {
 	}
 }
 
-func mkVerifier(ctx context.Context, t *testing.T, api *api.FullNodeStruct, rootAddr address.Address, addr address.Address) {
+func ddoVerifiedSetupVerifiedClient(ctx context.Context, t *testing.T, client *kit.TestFullNode, rootKey *key.Key, verifierKey *key.Key, verifiedClientKey *key.Key) address.Address {
+	// import the root key.
+	rootAddr, err := client.WalletImport(ctx, &rootKey.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verifiers' keys.
+	verifierAddr, err := client.WalletImport(ctx, &verifierKey.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verified client's key.
+	verifiedClientAddr, err := client.WalletImport(ctx, &verifiedClientKey.KeyInfo)
+	require.NoError(t, err)
+
 	allowance := big.NewInt(100000000000)
-	params, aerr := actors.SerializeParams(&verifregtypes13.AddVerifierParams{Address: addr, Allowance: allowance})
+	params, aerr := actors.SerializeParams(&verifregtypes13.AddVerifierParams{Address: verifierAddr, Allowance: allowance})
 	require.NoError(t, aerr)
 
 	msg := &types.Message{
@@ -628,16 +663,39 @@ func mkVerifier(ctx context.Context, t *testing.T, api *api.FullNodeStruct, root
 		Value:  big.Zero(),
 	}
 
-	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	sm, err := client.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err, "AddVerifier failed")
 
-	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err := client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
-	verifierAllowance, err := api.StateVerifierStatus(ctx, addr, types.EmptyTSK)
+	verifierAllowance, err := client.StateVerifierStatus(ctx, verifierAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, allowance, *verifierAllowance)
+
+	// assign datacap to a client
+	initialDatacap := big.NewInt(10000)
+
+	params, aerr = actors.SerializeParams(&verifregtypes13.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: initialDatacap})
+	require.NoError(t, aerr)
+
+	msg = &types.Message{
+		From:   verifierAddr,
+		To:     verifreg.Address,
+		Method: verifreg.Methods.AddVerifiedClient,
+		Params: params,
+		Value:  big.Zero(),
+	}
+
+	sm, err = client.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err = client.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	return verifiedClientAddr
 }
 
 func makeMarketDealProposal(t *testing.T, client *kit.TestFullNode, miner *kit.TestMiner, data cid.Cid, ps abi.PaddedPieceSize, start, end abi.ChainEpoch) market2.ClientDealProposal {
