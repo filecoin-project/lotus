@@ -246,9 +246,6 @@ func TestGetActorEvents(t *testing.T) {
 }
 
 func TestSubscribeActorEvents(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	const (
 		seed                 = 984651320
 		maxFilterHeightRange = 100
@@ -279,13 +276,12 @@ func TestSubscribeActorEvents(t *testing.T) {
 		{"1.5 block speed", blockDelay * 3 / 2, false, -1},
 		{"twice block speed", blockDelay * 2, false, -1},
 	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			req := require.New(t)
-
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
 
 			mockClock.Set(time.Now())
 			mockFilterManager := newMockEventFilterManager(t)
@@ -326,7 +322,10 @@ func TestSubscribeActorEvents(t *testing.T) {
 			// Ticker to simulate both time and the chain advancing, including emitting events at
 			// the right time directly to the filter.
 
+			var wg sync.WaitGroup
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				for thisHeight := int64(currentHeight); ctx.Err() == nil; thisHeight++ {
 					ts, err := types.NewTipSet([]*types.BlockHeader{newBlockHeader(minerAddr, thisHeight)})
 					req.NoError(err)
@@ -334,9 +333,9 @@ func TestSubscribeActorEvents(t *testing.T) {
 
 					var eventsThisEpoch []*filter.CollectedEvent
 					if thisHeight <= finishHeight {
-						eventsThisEpoch = allEvents[(thisHeight-filterStartHeight)*eventsPerEpoch : (thisHeight-filterStartHeight+1)*eventsPerEpoch]
+						eventsThisEpoch = allEvents[(thisHeight-filterStartHeight)*eventsPerEpoch : (thisHeight-filterStartHeight+2)*eventsPerEpoch]
 					}
-					for i := 0; i < eventsPerEpoch; i++ {
+					for i := 0; i < eventsPerEpoch && ctx.Err() == nil; i++ {
 						if len(eventsThisEpoch) > 0 {
 							mockFilter.sendEventToChannel(eventsThisEpoch[0])
 							eventsThisEpoch = eventsThisEpoch[1:]
@@ -406,14 +405,14 @@ func TestSubscribeActorEvents(t *testing.T) {
 			// cleanup
 			mockFilter.requireClearSubChannelCalledEventually(500 * time.Millisecond)
 			mockFilterManager.requireRemovedEventually(mockFilter.ID(), 500*time.Millisecond)
+			cancel()
+			wg.Wait() // wait for the chain to stop advancing
 		})
 	}
 }
 
 func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 	// Similar to TestSubscribeActorEvents but we set an explicit end that caps out at the current height
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 	const (
 		seed                 = 984651320
 		maxFilterHeightRange = 100
@@ -439,6 +438,8 @@ func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 		{"1.5 block speed", 1.5, false},
 		{"twice block speed", 2, false},
 	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -446,7 +447,7 @@ func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 
 			mockClock.Set(time.Now())
 			mockFilterManager := newMockEventFilterManager(t)
-			allEvents := makeCollectedEvents(t, rng, filterStartHeight, eventsPerEpoch, currentHeight-1)
+			allEvents := makeCollectedEvents(t, rng, filterStartHeight, eventsPerEpoch, currentHeight)
 			mockFilter := newMockFilter(ctx, t, rng, allEvents)
 			mockFilterManager.expectInstall(abi.ChainEpoch(0), abi.ChainEpoch(currentHeight), cid.Undef, nil, nil, false, mockFilter)
 
@@ -464,11 +465,10 @@ func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 
 			// assume we can cleanly pick up all historical events in one go
 		receiveLoop:
-			for len(gotEvents) < len(allEvents) && ctx.Err() == nil {
+			for ctx.Err() == nil {
 				select {
 				case e, ok := <-eventChan:
-					if tc.expectComplete || ok {
-						req.True(ok)
+					if ok {
 						gotEvents = append(gotEvents, e)
 						mockClock.Add(time.Duration(float64(blockDelay) * tc.blockTimeToComplete / float64(len(allEvents))))
 						// no need to advance the chain, we're also testing that's not necessary

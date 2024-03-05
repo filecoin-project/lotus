@@ -41,7 +41,7 @@ type eventFilter struct {
 	minHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	maxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
 	tipsetCid cid.Cid
-	addresses []address.Address // list of f4 actor addresses that are extpected to emit the event
+	addresses []address.Address // list of actor addresses that are extpected to emit the event
 
 	keysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
 	maxResults    int                                // maximum number of results to collect, 0 is unlimited
@@ -56,7 +56,7 @@ var _ Filter = (*eventFilter)(nil)
 
 type CollectedEvent struct {
 	Entries     []types.EventEntry
-	EmitterAddr address.Address // f4 address of emitter
+	EmitterAddr address.Address // address of emitter
 	EventIdx    int             // index of the event within the list of emitted events
 	Reverted    bool
 	Height      abi.ChainEpoch

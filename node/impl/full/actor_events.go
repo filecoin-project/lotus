@@ -232,6 +232,11 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 
 	out := make(chan *types.ActorEvent)
 
+	// When we start sending real-time events, we want to make sure that we don't fall behind more
+	// than one epoch's worth of events (approximately). Capture this value now, before we send
+	// historical events to allow for a little bit of slack in the historical event sending.
+	minBacklogHeight := a.chain.GetHeaviestTipSet().Height() - 1
+
 	go func() {
 		defer func() {
 			// tell the caller we're done
@@ -241,11 +246,6 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 				log.Warnf("failed to remove filter: %s", err)
 			}
 		}()
-
-		// When we start sending real-time events, we want to make sure that we don't fall behind more
-		// than one epoch's worth of events (approximately). Capture this value now, before we send
-		// historical events to allow for a little bit of slack in the historical event sending.
-		minBacklogHeight := a.chain.GetHeaviestTipSet().Height() - 1
 
 		// Handle any historical events that our filter may have picked up -----------------------------
 
@@ -270,7 +270,7 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 
 		// for the case where we have a MaxHeight set, we don't get a signal from the filter when we
 		// reach that height, so we need to check it ourselves, do it now but also in the loop
-		if params.MaxHeight > 0 && a.chain.GetHeaviestTipSet().Height() > params.MaxHeight {
+		if params.MaxHeight > 0 && minBacklogHeight+1 >= params.MaxHeight {
 			return
 		}
 
