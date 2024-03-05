@@ -2,6 +2,29 @@
 
 # UNRELEASED
 
+## New features
+
+### GetActorEvents and SubscribeActorEvents
+
+[FIP-0049](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md) introduced _Actor Events_ that can be emitted by user programmed actors. [FIP-0083](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0083.md) introduces new events emitted by the builtin Verified Registry, Miner and Market Actors. These new events for builtin actors are being activated with network version 22 to coincide with _Direct Data Onboarding_ as defined in [FIP-0076](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md) which introduces additional flexibility for data onboarding. Sector, Deal and DataCap lifecycles can be tracked with these events, providing visibility and options for programmatic responses to changes in state.
+
+Actor events are available on message receipts, but can now be retrieved from a node using the new `GetActorEvents` and `SubscribeActorEvents` methods. These methods allow for querying and subscribing to actor events, respectively. They depend on the Lotus node both collecting events (with `Fevm.Events.RealTimeFilterAPI` and `Fevm.Events.HistoricFilterAPI`) and being enabled with the new configuration option `Events.EnableActorEventsAPI`. Note that a Lotus node can only respond to requests for historic events that it retains in its event store.
+
+Both `GetActorEvents` and `SubscribeActorEvents` take a filter parameter which can optionally filter events on:
+
+* `Addresses` of the actor(s) emitting the event
+* Specific `Fields` within the event
+* `FromHeight` and `ToHeight` to filter events by block height
+* `TipSetKey` to restrict events contained within a specific tipset
+
+`GetActorEvents` provides a one-time query for actor events, while `SubscribeActorEvents` provides a long-lived connection (via websockets) to the Lotus node, allowing for real-time updates on actor events. The subscription can be cancelled by the client at any time.
+
+### GetAllClaims and GetAllAlocations
+
+2 new methods have benn added to the Lotus API called `GetAllAllocations` and `GetAllClaims` which lists all the available allocations and claims available in the actor state.
+
+See [FIP-0045](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0045.md) for background on claims and allocations.
+
 ## Improvements
 
 ### Tracing API
@@ -49,10 +72,8 @@ Replace the `CodeCid` field in the message trace (added in 1.23.4) with an `Invo
 ```
 This means the trace now contains an accurate "snapshot" of the actor at the time of the call, information that may not be present in the final state-tree (e.g., due to reverts). This will hopefully improve the performance and accuracy of indexing services.
 
-### Lotus API
-2 new methods have benn added to the Lotus API called `GetAllAllocations` and `GetAllClaims` which lists all the available allocations and claims available in the actor state.
-
 ### Lotus CLI
+
 The `filplus` commands used for listing allocations and claims have been updated. If no argument is provided to the either command, they will list out all the allocations and claims in the verified registry actor.
 The output list columns have been modified to `AllocationID` and `ClaimID` instead of ID. 
 
