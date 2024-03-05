@@ -278,14 +278,15 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 			FromHeight: &epochZero,
 		})
 		require.NoError(t, err)
-		for _, key := range []string{"deal-published", "sector-precommitted", "sector-activated"} {
+		for _, key := range []string{"deal-published", "deal-activated", "sector-precommitted", "sector-activated"} {
 			var found bool
 			keyBytes := must.One(ipld.Encode(basicnode.NewString(key), dagcbor.Encode))
 			for _, event := range allEvents {
 				for _, e := range event.Entries {
 					if e.Key == "$type" && bytes.Equal(e.Value, keyBytes) {
 						found = true
-						if key == "deal-published" {
+						switch key {
+						case "deal-published", "deal-activated":
 							expectedEntries := []types.EventEntry{
 								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: keyBytes},
 								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(2), dagcbor.Encode))},
