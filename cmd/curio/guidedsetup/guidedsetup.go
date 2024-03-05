@@ -323,7 +323,11 @@ func verifySectors(d *MigrationData) {
 
 func yugabyteConnect(d *MigrationData) {
 	harmonycfg := d.MinerConfig.HarmonyDB //copy the config to a local variable
-yugabyteFor:
+	var err error
+	d.DB, err = harmonydb.NewFromConfig(harmonycfg)
+	if err == nil {
+		goto yugabyteConnected
+	}
 	for {
 		i, _, err := (&promptui.Select{
 			Label: d.T("Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)"),
@@ -379,10 +383,11 @@ yugabyteFor:
 				d.say(notice, "Error connecting to Yugabyte database: %s\n", err.Error())
 				continue
 			}
-			break yugabyteFor
+			goto yugabyteConnected
 		}
 	}
 
+yugabyteConnected:
 	d.say(plain, "Connected to Yugabyte. Schema is current.\n")
 	if !reflect.DeepEqual(harmonycfg, d.MinerConfig.HarmonyDB) {
 		d.MinerConfig.HarmonyDB = harmonycfg
@@ -410,11 +415,7 @@ yugabyteFor:
 
 func readMinerConfig(d *MigrationData) {
 	d.say(plain, "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
-	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
-	if err != nil {
-		d.say(notice, "Aborting migration.\n")
-		os.Exit(1)
-	}
+
 	verifyPath := func(dir string) (*config.StorageMiner, error) {
 		cfg := config.DefaultStorageMiner()
 		_, err := toml.DecodeFile(path.Join(dir, "config.toml"), &cfg)
@@ -422,6 +423,9 @@ func readMinerConfig(d *MigrationData) {
 	}
 
 	dirs := map[string]*config.StorageMiner{"~/.lotusminer": nil, "~/.lotus-miner-local-net": nil}
+	if v := os.Getenv("LOTUS_MINER_PATH"); v != "" {
+		dirs[v] = nil
+	}
 	for dir := range dirs {
 		cfg, err := verifyPath(dir)
 		if err != nil {
