@@ -18,4 +18,4 @@
 // FUTURE Reliability: OpenAPI automation.
 package translations
 
-//go:generate updateLang.sh
+//go:generate ./updateLang.sh
