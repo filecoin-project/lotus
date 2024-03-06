@@ -687,6 +687,9 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	if params.BlkCount > 1024 {
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}
+	if len(*params.RewardPercentiles) >= 100 {
+		return ethtypes.EthFeeHistory{}, fmt.Errorf("Length cannot be greater than 100")
+	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
 		rewardPercentiles = append(rewardPercentiles, *params.RewardPercentiles...)
