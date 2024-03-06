@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+
+	"github.com/samber/lo"
 )
 
 func main() {
@@ -43,7 +45,7 @@ func handleKnowns(pathStart string) {
 		fmt.Println("cannot open "+path.Join(pathStart, "messages.gotext.json")+":", err)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var msgData Dataformat
 	err = json.NewDecoder(f).Decode(&msgData)
@@ -57,16 +59,10 @@ func handleKnowns(pathStart string) {
 		knowns[msg.ID] = msg.Translation
 	}
 
-	var doneMessages []TMsg
-	var toTranslate []TMsg
-	for _, msg := range outData.Messages {
-		if k, ok := knowns[msg.ID]; ok {
-			msg.Translation = k
-			doneMessages = append(doneMessages, msg)
-		} else {
-			toTranslate = append(toTranslate, msg)
-		}
-	}
+	toTranslate := lo.Filter(outData.Messages, func(msg TMsg, _ int) bool {
+		_, ok := knowns[msg.ID]
+		return !ok
+	})
 
 	outData.Messages = toTranslate // drop the "done" messages
 	var outJSON bytes.Buffer

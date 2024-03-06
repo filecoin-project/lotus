@@ -145,7 +145,10 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		// append addresses
 		var baseCfg config.CurioConfig
 		var baseText string
-		db.QueryRow(ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
+		err = db.QueryRow(ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
+		if err != nil {
+			return xerrors.Errorf("Cannot load base config: %w", err)
+		}
 		_, err := deps.LoadConfigWithUpgrades(baseText, &baseCfg)
 		if err != nil {
 			return xerrors.Errorf("Cannot load base config: %w", err)

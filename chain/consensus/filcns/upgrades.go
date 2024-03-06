@@ -1695,14 +1695,14 @@ func upgradeActorsV10Common(
 
 	if stateRoot.Version != types.StateTreeVersion4 {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 4 for actors v9 upgrade, got %d",
+			"expected state root version 4 for actors v10 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
 
 	manifest, ok := actors.GetManifest(actorstypes.Version10)
 	if !ok {
-		return cid.Undef, xerrors.Errorf("no manifest CID for v9 upgrade")
+		return cid.Undef, xerrors.Errorf("no manifest CID for v10 upgrade")
 	}
 
 	// Perform the migration

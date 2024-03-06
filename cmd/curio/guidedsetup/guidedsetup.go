@@ -120,7 +120,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 	if _, ok := have[lang.String()]; !ok {
 		lang = language.English
 		notice.Copy().AlignHorizontal(lipgloss.Right).
-			Render("$LANG unsupported. Avaiable: " + strings.Join(lo.Keys(have), ", "))
+			Render("$LANG unsupported. Available: " + strings.Join(lo.Keys(have), ", "))
 	}
 	return func(key message.Reference, a ...interface{}) string {
 			return message.NewPrinter(lang).Sprintf(key, a...)
@@ -262,7 +262,7 @@ func oneLastThing(d *MigrationData) {
 			d.say(notice, "Error sending message: %s\n", err.Error())
 		}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != 200 {
 				b, err := io.ReadAll(resp.Body)
 				if err == nil {

@@ -6,6 +6,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/curiosrc/seal"
 	"github.com/filecoin-project/lotus/curiosrc/winning"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/node/modules"
 )
 
 var log = logging.Logger("curio/deps")
@@ -37,6 +39,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 
 	chainSched := chainsched.New(full)
 
+	var needProofParams bool
+
 	///////////////////////////////////////////////////////////////////////
 	///// Task Selection
 	///////////////////////////////////////////////////////////////////////
@@ -52,11 +56,13 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 				return nil, err
 			}
 			activeTasks = append(activeTasks, wdPostTask, wdPoStSubmitTask, derlareRecoverTask)
+			needProofParams = true
 		}
 
 		if cfg.Subsystems.EnableWinningPost {
 			winPoStTask := winning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
 			activeTasks = append(activeTasks, winPoStTask)
+			needProofParams = true
 		}
 	}
 
@@ -95,6 +101,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		if cfg.Subsystems.EnablePoRepProof {
 			porepTask := seal.NewPoRepTask(db, full, sp, slr, cfg.Subsystems.PoRepProofMaxTasks)
 			activeTasks = append(activeTasks, porepTask)
+			needProofParams = true
 		}
 		if cfg.Subsystems.EnableMoveStorage {
 			moveStorageTask := seal.NewMoveStorageTask(sp, slr, db, cfg.Subsystems.MoveStorageMaxTasks)
@@ -105,6 +112,15 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, commitTask)
 		}
 	}
+
+	if needProofParams {
+		for spt := range dependencies.ProofTypes {
+			if err := modules.GetParams(true)(spt); err != nil {
+				return nil, xerrors.Errorf("getting params: %w", err)
+			}
+		}
+	}
+
 	log.Infow("This lotus_provider instance handles",
 		"miner_addresses", maddrs,
 		"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
