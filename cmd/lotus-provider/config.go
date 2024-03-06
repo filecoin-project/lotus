@@ -22,7 +22,7 @@ import (
 
 var configCmd = &cli.Command{
 	Name:  "config",
-	Usage: "Manage node config by layers. The layer 'base' will always be applied to a new Curio instance. ",
+	Usage: "Manage node config by layers. The layer 'base' will always be applied at Curio start-up.",
 	Subcommands: []*cli.Command{
 		configDefaultCmd,
 		configSetCmd,

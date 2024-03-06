@@ -124,11 +124,6 @@ func main() {
 				Hidden:  true,
 				Value:   "5433",
 			},
-			&cli.StringSliceFlag{
-				Name:    "layers",
-				EnvVars: []string{"CURIO_CONFIG_LAYERS"},
-				Usage:   "list of layers to be interpreted (atop defaults). Default: base",
-			},
 			&cli.StringFlag{
 				Name:    deps.FlagRepoPath,
 				EnvVars: []string{"LOTUS_REPO_PATH"},

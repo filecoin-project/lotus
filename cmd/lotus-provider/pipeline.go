@@ -52,6 +52,10 @@ var sealStartCmd = &cli.Command{
 			Usage: "Use synthetic PoRep",
 			Value: false, // todo implement synthetic
 		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("now") {
