@@ -60,6 +60,10 @@ var runCmd = &cli.Command{
 			Usage: "path to journal files",
 			Value: "~/.curio/",
 		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base",
+		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
 		SetupCloseHandler()
@@ -153,6 +157,10 @@ var webCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
+		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

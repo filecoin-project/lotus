@@ -25,7 +25,7 @@ import (
 
 var configNewCmd = &cli.Command{
 	Name:      "new-cluster",
-	Usage:     "Create new coniguration for a new cluster",
+	Usage:     "Create new configuration for a new cluster",
 	ArgsUsage: "[SP actor address...]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{

@@ -13,7 +13,7 @@ COMMANDS:
    cli           Execute cli commands
    run           Start a Curio process
    stop          Stop a running Curio process
-   config        Manage node config by layers. The layer 'base' will always be applied. 
+   config        Manage node config by layers. The layer 'base' will always be applied at Curio start-up.
    test          Utility functions for testing
    web           Start Curio web interface
    guided-setup  Run the guided setup for migrating from lotus-miner to Curio
@@ -28,16 +28,15 @@ COMMANDS:
      fetch-params  Fetch proving parameters
 
 GLOBAL OPTIONS:
-   --color                            use color in display output (default: depends on output being a TTY)
-   --db-host value                    Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
-   --db-name value                    (default: "yugabyte") [$CURIO_DB_NAME, $CURIO_HARMONYDB_NAME]
-   --db-user value                    (default: "yugabyte") [$CURIO_DB_USER, $CURIO_HARMONYDB_USERNAME]
-   --db-password value                (default: "yugabyte") [$CURIO_DB_PASSWORD, $CURIO_HARMONYDB_PASSWORD]
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base") [$CURIO_LAYERS, $CURIO_CONFIG_LAYERS]
-   --repo-path value                  (default: "~/.curio") [$CURIO_REPO_PATH]
-   --vv                               enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h                         show help
-   --version, -v                      print the version
+   --color              use color in display output (default: depends on output being a TTY)
+   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
+   --db-name value      (default: "yugabyte") [$CURIO_DB_NAME, $CURIO_HARMONYDB_NAME]
+   --db-user value      (default: "yugabyte") [$CURIO_DB_USER, $CURIO_HARMONYDB_USERNAME]
+   --db-password value  (default: "yugabyte") [$CURIO_DB_PASSWORD, $CURIO_HARMONYDB_PASSWORD]
+   --repo-path value    (default: "~/.curio") [$CURIO_REPO_PATH]
+   --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
+   --help, -h           show help
+   --version, -v        print the version
 ```
 
 ## curio cli
@@ -70,12 +69,13 @@ USAGE:
    curio run [command options] [arguments...]
 
 OPTIONS:
-   --listen value        host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
-   --nosync              don't check full-node sync status (default: false)
-   --manage-fdlimit      manage open file limit (default: true)
-   --storage-json value  path to json file containing storage config (default: "~/.curio/storage.json")
-   --journal value       path to journal files (default: "~/.curio/")
-   --help, -h            show help
+   --listen value                     host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
+   --nosync                           don't check full-node sync status (default: false)
+   --manage-fdlimit                   manage open file limit (default: true)
+   --storage-json value               path to json file containing storage config (default: "~/.curio/storage.json")
+   --journal value                    path to journal files (default: "~/.curio/")
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## curio stop
@@ -93,7 +93,7 @@ OPTIONS:
 ## curio config
 ```
 NAME:
-   curio config - Manage node config by layers. The layer 'base' will always be applied. 
+   curio config - Manage node config by layers. The layer 'base' will always be applied at Curio start-up.
 
 USAGE:
    curio config command [command options] [arguments...]
@@ -102,12 +102,12 @@ COMMANDS:
    default, defaults                Print default node config
    set, add, update, create         Set a config layer or the base by providing a filename or stdin.
    get, cat, show                   Get a config layer by name. You may want to pipe the output to a file, or use 'less'
-   list, ls                         List config layers you can get.
+   list, ls                         List config layers present in the DB.
    interpret, view, stacked, stack  Interpret stacked config layers by this version of curio, with system-generated comments.
    remove, rm, del, delete          Remove a named config layer.
    edit                             edit a config layer
    from-miner                       Express a database config (for curio) from an existing miner.
-   new-cluster                      Create new coniguration for a new cluster
+   new-cluster                      Create new configuration for a new cluster
    help, h                          Shows a list of commands or help for one command
 
 OPTIONS:
@@ -155,7 +155,7 @@ OPTIONS:
 ### curio config list
 ```
 NAME:
-   curio config list - List config layers you can get.
+   curio config list - List config layers present in the DB.
 
 USAGE:
    curio config list [command options] [arguments...]
@@ -173,7 +173,7 @@ USAGE:
    curio config interpret [command options] a list of layers to be interpreted as the final config
 
 OPTIONS:
-   --layers value [ --layers value ]  comma or space separated list of layers to be interpreted (default: "base")
+   --layers value [ --layers value ]  comma or space separated list of layers to be interpreted (base is always applied)
    --help, -h                         show help
 ```
 
@@ -200,7 +200,7 @@ USAGE:
 OPTIONS:
    --editor value         editor to use (default: "vim") [$EDITOR]
    --source value         source config layer (default: <edited layer>)
-   --allow-owerwrite      allow overwrite of existing layer if source is a different layer (default: false)
+   --allow-overwrite      allow overwrite of existing layer if source is a different layer (default: false)
    --no-source-diff       save the whole config into the layer, not just the diff (default: false)
    --no-interpret-source  do not interpret source layer (default: true if --source is set)
    --help, -h             show help
@@ -227,7 +227,7 @@ OPTIONS:
 ### curio config new-cluster
 ```
 NAME:
-   curio config new-cluster - Create new coniguration for a new cluster
+   curio config new-cluster - Create new configuration for a new cluster
 
 USAGE:
    curio config new-cluster [command options] [SP actor address...]
@@ -283,7 +283,7 @@ DESCRIPTION:
 
 OPTIONS:
    --deadline value                   deadline to compute WindowPoSt for  (default: 0)
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
    --storage-json value               path to json file containing storage config (default: "~/.curio/storage.json")
    --partition value                  partition to compute WindowPoSt for (default: 0)
    --help, -h                         show help
@@ -298,8 +298,9 @@ USAGE:
    curio test window-post task [command options] [arguments...]
 
 OPTIONS:
-   --deadline value  deadline to compute WindowPoSt for  (default: 0)
-   --help, -h        show help
+   --deadline value                   deadline to compute WindowPoSt for  (default: 0)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## curio web
@@ -315,9 +316,10 @@ DESCRIPTION:
      This creates the 'web' layer if it does not exist, then calls run with that layer.
 
 OPTIONS:
-   --listen value  Address to listen on (default: "127.0.0.1:4701")
-   --nosync        don't check full-node sync status (default: false)
-   --help, -h      show help
+   --listen value                     Address to listen on (default: "127.0.0.1:4701")
+   --nosync                           don't check full-node sync status (default: false)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## curio guided-setup
@@ -375,12 +377,13 @@ USAGE:
    curio seal start [command options] [arguments...]
 
 OPTIONS:
-   --actor value  Specify actor address to start sealing sectors for
-   --now          Start sealing sectors for all actors now (not on schedule) (default: false)
-   --cc           Start sealing new CC sectors (default: false)
-   --count value  Number of sectors to start (default: 1)
-   --synthetic    Use synthetic PoRep (default: false)
-   --help, -h     show help
+   --actor value                      Specify actor address to start sealing sectors for
+   --now                              Start sealing sectors for all actors now (not on schedule) (default: false)
+   --cc                               Start sealing new CC sectors (default: false)
+   --count value                      Number of sectors to start (default: 1)
+   --synthetic                        Use synthetic PoRep (default: false)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## curio version

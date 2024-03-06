@@ -126,13 +126,6 @@ func main() {
 				Hidden:  true,
 				Value:   "5433",
 			},
-			&cli.StringSliceFlag{
-				Name: "layers",
-
-				EnvVars: []string{"CURIO_LAYERS", "CURIO_CONFIG_LAYERS"},
-				Usage:   "list of layers to be interpreted (atop defaults). Default: base",
-				Value:   cli.NewStringSlice("base"),
-			},
 			&cli.StringFlag{
 				Name:    deps.FlagRepoPath,
 				EnvVars: []string{"CURIO_REPO_PATH"},
