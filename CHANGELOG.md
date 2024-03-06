@@ -6,9 +6,9 @@
 
 ## Improvements
 
-# v1.26.0-rc1 / 2024-03-05
+# v1.26.0-rc2 / 2024-03-0y
 
-This is the first release candidate of the upcoming MANDATORY Lotus v1.26.0 release, which will deliver the Filecoin network version 22, codenamed Dragon 🐉.
+This is a release candidate of the upcoming MANDATORY Lotus v1.26.0 release, which will deliver the Filecoin network version 22, codenamed Dragon 🐉.
 
 **This release candidate sets the calibration network to upgrade at epoch 1427974, which is 2024-03-11T14:00:00Z**
 This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
