@@ -54,6 +54,10 @@ var wdPostTaskCmd = &cli.Command{
 			Usage: "deadline to compute WindowPoSt for ",
 			Value: 0,
 		},
+		&cli.StringSliceFlag{
+			Name:  "layers",
+			Usage: "list of layers to be interpreted (atop defaults). Default: base",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
@@ -140,7 +144,6 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 		&cli.StringSliceFlag{
 			Name:  "layers",
 			Usage: "list of layers to be interpreted (atop defaults). Default: base",
-			Value: cli.NewStringSlice("base"),
 		},
 		&cli.StringFlag{
 			Name:  "storage-json",

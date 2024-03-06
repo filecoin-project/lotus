@@ -289,7 +289,7 @@ func LoadConfigWithUpgrades(text string, lp *config.LotusProviderConfig) (toml.M
 func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
 	lp := config.DefaultLotusProvider()
 	have := []string{}
-	layers := cctx.StringSlice("layers")
+	layers := append([]string{"base"}, cctx.StringSlice("layers")...) // Always stack on top of "base" layer
 	for _, layer := range layers {
 		text := ""
 		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)

@@ -22,7 +22,7 @@ import (
 
 var configCmd = &cli.Command{
 	Name:  "config",
-	Usage: "Manage node config by layers. The layer 'base' will always be applied. ",
+	Usage: "Manage node config by layers. The layer 'base' will always be applied at Curio start-up.",
 	Subcommands: []*cli.Command{
 		configDefaultCmd,
 		configSetCmd,
@@ -168,7 +168,7 @@ func getConfig(db *harmonydb.DB, layer string) (string, error) {
 var configListCmd = &cli.Command{
 	Name:    "list",
 	Aliases: []string{"ls"},
-	Usage:   "List config layers you can get.",
+	Usage:   "List config layers present in the DB.",
 	Flags:   []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		db, err := deps.MakeDB(cctx)
@@ -221,8 +221,7 @@ var configViewCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:     "layers",
-			Usage:    "comma or space separated list of layers to be interpreted",
-			Value:    cli.NewStringSlice("base"),
+			Usage:    "comma or space separated list of layers to be interpreted (base is always applied)",
 			Required: true,
 		},
 	},
@@ -261,7 +260,7 @@ var configEditCmd = &cli.Command{
 			DefaultText: "<edited layer>",
 		},
 		&cli.BoolFlag{
-			Name:  "allow-owerwrite",
+			Name:  "allow-overwrite",
 			Usage: "allow overwrite of existing layer if source is a different layer",
 		},
 		&cli.BoolFlag{

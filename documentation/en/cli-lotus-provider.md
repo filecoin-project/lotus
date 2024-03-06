@@ -13,7 +13,7 @@ COMMANDS:
    cli      Execute cli commands
    run      Start a lotus provider process
    stop     Stop a running lotus provider
-   config   Manage node config by layers. The layer 'base' will always be applied. 
+   config   Manage node config by layers. The layer 'base' will always be applied at Curio start-up.
    test     Utility functions for testing
    web      Start lotus provider web interface
    seal     Manage the sealing pipeline
@@ -26,16 +26,15 @@ COMMANDS:
      fetch-params  Fetch proving parameters
 
 GLOBAL OPTIONS:
-   --color                            use color in display output (default: depends on output being a TTY)
-   --db-host value                    Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$LOTUS_DB_HOST]
-   --db-name value                    (default: "yugabyte") [$LOTUS_DB_NAME, $LOTUS_HARMONYDB_HOSTS]
-   --db-user value                    (default: "yugabyte") [$LOTUS_DB_USER, $LOTUS_HARMONYDB_USERNAME]
-   --db-password value                (default: "yugabyte") [$LOTUS_DB_PASSWORD, $LOTUS_HARMONYDB_PASSWORD]
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base") [$CURIO_LAYERS]
-   --repo-path value                  (default: "~/.lotusprovider") [$LOTUS_REPO_PATH]
-   --vv                               enables very verbose mode, useful for debugging the CLI (default: false)
-   --help, -h                         show help
-   --version, -v                      print the version
+   --color              use color in display output (default: depends on output being a TTY)
+   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$LOTUS_DB_HOST]
+   --db-name value      (default: "yugabyte") [$LOTUS_DB_NAME, $LOTUS_HARMONYDB_HOSTS]
+   --db-user value      (default: "yugabyte") [$LOTUS_DB_USER, $LOTUS_HARMONYDB_USERNAME]
+   --db-password value  (default: "yugabyte") [$LOTUS_DB_PASSWORD, $LOTUS_HARMONYDB_PASSWORD]
+   --repo-path value    (default: "~/.lotusprovider") [$LOTUS_REPO_PATH]
+   --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
+   --help, -h           show help
+   --version, -v        print the version
 ```
 
 ## lotus-provider cli
@@ -68,12 +67,13 @@ USAGE:
    lotus-provider run [command options] [arguments...]
 
 OPTIONS:
-   --listen value        host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
-   --nosync              don't check full-node sync status (default: false)
-   --manage-fdlimit      manage open file limit (default: true)
-   --storage-json value  path to json file containing storage config (default: "~/.lotus-provider/storage.json")
-   --journal value       path to journal files (default: "~/.lotus-provider/")
-   --help, -h            show help
+   --listen value                     host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
+   --nosync                           don't check full-node sync status (default: false)
+   --manage-fdlimit                   manage open file limit (default: true)
+   --storage-json value               path to json file containing storage config (default: "~/.lotus-provider/storage.json")
+   --journal value                    path to journal files (default: "~/.lotus-provider/")
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## lotus-provider stop
@@ -91,7 +91,7 @@ OPTIONS:
 ## lotus-provider config
 ```
 NAME:
-   lotus-provider config - Manage node config by layers. The layer 'base' will always be applied. 
+   lotus-provider config - Manage node config by layers. The layer 'base' will always be applied at Curio start-up.
 
 USAGE:
    lotus-provider config command [command options] [arguments...]
@@ -100,12 +100,12 @@ COMMANDS:
    default, defaults                Print default node config
    set, add, update, create         Set a config layer or the base by providing a filename or stdin.
    get, cat, show                   Get a config layer by name. You may want to pipe the output to a file, or use 'less'
-   list, ls                         List config layers you can get.
+   list, ls                         List config layers present in the DB.
    interpret, view, stacked, stack  Interpret stacked config layers by this version of lotus-provider, with system-generated comments.
    remove, rm, del, delete          Remove a named config layer.
    edit                             edit a config layer
    from-miner                       Express a database config (for lotus-provider) from an existing miner.
-   new-cluster                      Create new coniguration for a new cluster
+   new-cluster                      Create new configuration for a new cluster
    help, h                          Shows a list of commands or help for one command
 
 OPTIONS:
@@ -153,7 +153,7 @@ OPTIONS:
 ### lotus-provider config list
 ```
 NAME:
-   lotus-provider config list - List config layers you can get.
+   lotus-provider config list - List config layers present in the DB.
 
 USAGE:
    lotus-provider config list [command options] [arguments...]
@@ -171,7 +171,7 @@ USAGE:
    lotus-provider config interpret [command options] a list of layers to be interpreted as the final config
 
 OPTIONS:
-   --layers value [ --layers value ]  comma or space separated list of layers to be interpreted (default: "base")
+   --layers value [ --layers value ]  comma or space separated list of layers to be interpreted (base is always applied)
    --help, -h                         show help
 ```
 
@@ -198,7 +198,7 @@ USAGE:
 OPTIONS:
    --editor value         editor to use (default: "vim") [$EDITOR]
    --source value         source config layer (default: <edited layer>)
-   --allow-owerwrite      allow overwrite of existing layer if source is a different layer (default: false)
+   --allow-overwrite      allow overwrite of existing layer if source is a different layer (default: false)
    --no-source-diff       save the whole config into the layer, not just the diff (default: false)
    --no-interpret-source  do not interpret source layer (default: true if --source is set)
    --help, -h             show help
@@ -225,7 +225,7 @@ OPTIONS:
 ### lotus-provider config new-cluster
 ```
 NAME:
-   lotus-provider config new-cluster - Create new coniguration for a new cluster
+   lotus-provider config new-cluster - Create new configuration for a new cluster
 
 USAGE:
    lotus-provider config new-cluster [command options] [SP actor address...]
@@ -281,7 +281,7 @@ DESCRIPTION:
 
 OPTIONS:
    --deadline value                   deadline to compute WindowPoSt for  (default: 0)
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base (default: "base")
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
    --storage-json value               path to json file containing storage config (default: "~/.lotus-provider/storage.json")
    --partition value                  partition to compute WindowPoSt for (default: 0)
    --help, -h                         show help
@@ -296,8 +296,9 @@ USAGE:
    lotus-provider test window-post task [command options] [arguments...]
 
 OPTIONS:
-   --deadline value  deadline to compute WindowPoSt for  (default: 0)
-   --help, -h        show help
+   --deadline value                   deadline to compute WindowPoSt for  (default: 0)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## lotus-provider web
@@ -313,9 +314,10 @@ DESCRIPTION:
      This creates the 'web' layer if it does not exist, then calls run with that layer.
 
 OPTIONS:
-   --listen value  Address to listen on (default: "127.0.0.1:4701")
-   --nosync        don't check full-node sync status (default: false)
-   --help, -h      show help
+   --listen value                     Address to listen on (default: "127.0.0.1:4701")
+   --nosync                           don't check full-node sync status (default: false)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## lotus-provider seal
@@ -343,12 +345,13 @@ USAGE:
    lotus-provider seal start [command options] [arguments...]
 
 OPTIONS:
-   --actor value  Specify actor address to start sealing sectors for
-   --now          Start sealing sectors for all actors now (not on schedule) (default: false)
-   --cc           Start sealing new CC sectors (default: false)
-   --count value  Number of sectors to start (default: 1)
-   --synthetic    Use synthetic PoRep (default: false)
-   --help, -h     show help
+   --actor value                      Specify actor address to start sealing sectors for
+   --now                              Start sealing sectors for all actors now (not on schedule) (default: false)
+   --cc                               Start sealing new CC sectors (default: false)
+   --count value                      Number of sectors to start (default: 1)
+   --synthetic                        Use synthetic PoRep (default: false)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
 ```
 
 ## lotus-provider version
