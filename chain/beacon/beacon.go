@@ -89,11 +89,15 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 		return xerrors.Errorf("expected final beacon entry in block to be at round %d, got %d", maxRound, last.Round)
 	}
 
-	// Verify that all other entries' rounds are as expected for the epochs in between parentEpoch and h.Height
-	for i, e := range h.BeaconEntries {
-		correctRound := currBeacon.MaxBeaconRoundForEpoch(nv, parentEpoch+abi.ChainEpoch(i)+1)
-		if e.Round != correctRound {
-			return xerrors.Errorf("unexpected beacon round %d, expected %d for epoch %d", e.Round, correctRound, parentEpoch+abi.ChainEpoch(i))
+	// If the beacon is UNchained, verify that the block only includes the rounds we want for the epochs in between parentEpoch and h.Height
+	// For chained beacons, you must have all the rounds forming a valid chain with prevEntry, so we can skip this step
+	if !currBeacon.IsChained() {
+		// Verify that all other entries' rounds are as expected for the epochs in between parentEpoch and h.Height
+		for i, e := range h.BeaconEntries {
+			correctRound := currBeacon.MaxBeaconRoundForEpoch(nv, parentEpoch+abi.ChainEpoch(i)+1)
+			if e.Round != correctRound {
+				return xerrors.Errorf("unexpected beacon round %d, expected %d for epoch %d", e.Round, correctRound, parentEpoch+abi.ChainEpoch(i))
+			}
 		}
 	}
 
