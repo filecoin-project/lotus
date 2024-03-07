@@ -13,5 +13,5 @@ type DrandConfig struct {
 	Servers       []string
 	Relays        []string
 	ChainInfoJSON string
-	IsChained     bool
+	IsChained     bool // Prior to Drand quicknet, beacons form a chain, post quicknet they do not (FIP-0063)
 }
