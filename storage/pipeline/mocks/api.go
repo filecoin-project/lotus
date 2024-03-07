@@ -8,6 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
+
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -18,11 +21,10 @@ import (
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
+
 	api "github.com/filecoin-project/lotus/api"
 	miner1 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
 )
 
 // MockSealingAPI is a mock of SealingAPI interface.

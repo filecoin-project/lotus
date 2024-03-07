@@ -8,11 +8,13 @@ import (
 	context "context"
 	reflect "reflect"
 
-	abi "github.com/filecoin-project/go-state-types/abi"
-	fsutil "github.com/filecoin-project/lotus/storage/sealer/fsutil"
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
+
+	abi "github.com/filecoin-project/go-state-types/abi"
+
+	fsutil "github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // MockStore is a mock of Store interface.
