@@ -307,15 +307,13 @@ var provingDeadlinesCmd = &cli.Command{
 }
 
 func deadlineOpenTime(ts *types.TipSet, dlIdx uint64, di *dline.Info) string {
-	// 30 minutes a deadline
-	thirtyMinutes := uint64(30 * 60)
 	gapIdx := dlIdx - di.Index
-	gapHeight := thirtyMinutes / build.BlockDelaySecs * gapIdx
+	gapHeight := uint64(di.WPoStProvingPeriod) / di.WPoStPeriodDeadlines * gapIdx
 
 	openHeight := di.Open + abi.ChainEpoch(gapHeight)
-	genesisBlockTimestamp := ts.Blocks()[0].Timestamp - uint64(ts.Height())*build.BlockDelaySecs
+	genesisBlockTimestamp := ts.MinTimestamp() - uint64(ts.Height())*build.BlockDelaySecs
 
-	return time.Unix(int64(genesisBlockTimestamp+build.BlockDelaySecs*uint64(openHeight)), 0).Format("15:04:05")
+	return time.Unix(int64(genesisBlockTimestamp+build.BlockDelaySecs*uint64(openHeight)), 0).Format(time.TimeOnly)
 }
 
 var provingDeadlineInfoCmd = &cli.Command{
