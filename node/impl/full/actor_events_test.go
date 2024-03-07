@@ -609,7 +609,7 @@ func (m *mockFilter) TakeCollectedEvents(context.Context) []*filter.CollectedEve
 	return e
 }
 
-func (m *mockFilter) CollectEvents(context.Context, *filter.TipSetEvents, bool, filter.AddressResolver) error {
+func (m *mockFilter) CollectEvents(context.Context, *filter.TipSetEvents, bool, filter.ActorResolver, filter.AddressResolver) error {
 	m.t.Fatalf("unexpected call to CollectEvents")
 	return nil
 }
