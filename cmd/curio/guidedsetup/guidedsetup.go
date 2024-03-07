@@ -109,18 +109,32 @@ var (
 )
 
 func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func(style lipgloss.Style, key message.Reference, a ...interface{})) {
-	lang, err := language.Parse(os.Getenv("LANG")[:2])
+	langText := "en"
+	problem := false
+	if len(os.Getenv("LANG")) > 1 {
+		langText = os.Getenv("LANG")[:2]
+	} else {
+		problem = true
+	}
+
+	lang, err := language.Parse(langText)
 	if err != nil {
 		lang = language.English
-		fmt.Println("Error parsing language, defaulting to English. Please reach out to the Curio team if you would like to have additional language support.")
+		problem = true
+		fmt.Println("Error parsing language")
+		os.Setenv("LANG", "en-US") // for later users of this function
 	}
 
 	langs := message.DefaultCatalog.Languages()
 	have := lo.SliceToMap(langs, func(t language.Tag) (string, bool) { return t.String(), true })
 	if _, ok := have[lang.String()]; !ok {
 		lang = language.English
+		problem = true
+	}
+	if problem {
 		notice.Copy().AlignHorizontal(lipgloss.Right).
-			Render("$LANG unsupported. Available: " + strings.Join(lo.Keys(have), ", "))
+			Render("$LANG=" + langText + " unsupported. Available: " + strings.Join(lo.Keys(have), ", "))
+		fmt.Println("Defaulting to English. Please reach out to the Curio team if you would like to have additional language support.")
 	}
 	return func(key message.Reference, a ...interface{}) string {
 			return message.NewPrinter(lang).Sprintf(key, a...)
@@ -322,9 +336,12 @@ func verifySectors(d *MigrationData) {
 }
 
 func yugabyteConnect(d *MigrationData) {
-	harmonycfg := d.MinerConfig.HarmonyDB //copy the config to a local variable
+	harmonyCfg := config.DefaultStorageMiner().HarmonyDB //copy the config to a local variable
+	if d.MinerConfig != nil {
+		harmonyCfg = d.MinerConfig.HarmonyDB //copy the config to a local variable
+	}
 	var err error
-	d.DB, err = harmonydb.NewFromConfig(harmonycfg)
+	d.DB, err = harmonydb.NewFromConfig(harmonyCfg)
 	if err == nil {
 		goto yugabyteConnected
 	}
@@ -332,11 +349,11 @@ func yugabyteConnect(d *MigrationData) {
 		i, _, err := (&promptui.Select{
 			Label: d.T("Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)"),
 			Items: []string{
-				d.T("Host: %s", strings.Join(harmonycfg.Hosts, ",")),
-				d.T("Port: %s", harmonycfg.Port),
-				d.T("Username: %s", harmonycfg.Username),
-				d.T("Password: %s", harmonycfg.Password),
-				d.T("Database: %s", harmonycfg.Database),
+				d.T("Host: %s", strings.Join(harmonyCfg.Hosts, ",")),
+				d.T("Port: %s", harmonyCfg.Port),
+				d.T("Username: %s", harmonyCfg.Username),
+				d.T("Password: %s", harmonyCfg.Password),
+				d.T("Database: %s", harmonyCfg.Database),
 				d.T("Continue to connect and update schema.")},
 			Size:      6,
 			Templates: d.selectTemplates,
@@ -354,7 +371,7 @@ func yugabyteConnect(d *MigrationData) {
 				d.say(notice, "No host provided\n")
 				continue
 			}
-			harmonycfg.Hosts = strings.Split(host, ",")
+			harmonyCfg.Hosts = strings.Split(host, ",")
 		case 1, 2, 3, 4:
 			val, err := (&promptui.Prompt{
 				Label: d.T("Enter the Yugabyte database %s", []string{"port", "username", "password", "database"}[i-1]),
@@ -365,17 +382,17 @@ func yugabyteConnect(d *MigrationData) {
 			}
 			switch i {
 			case 1:
-				harmonycfg.Port = val
+				harmonyCfg.Port = val
 			case 2:
-				harmonycfg.Username = val
+				harmonyCfg.Username = val
 			case 3:
-				harmonycfg.Password = val
+				harmonyCfg.Password = val
 			case 4:
-				harmonycfg.Database = val
+				harmonyCfg.Database = val
 			}
 			continue
 		case 5:
-			d.DB, err = harmonydb.NewFromConfig(harmonycfg)
+			d.DB, err = harmonydb.NewFromConfig(harmonyCfg)
 			if err != nil {
 				if err.Error() == "^C" {
 					os.Exit(1)
@@ -389,8 +406,8 @@ func yugabyteConnect(d *MigrationData) {
 
 yugabyteConnected:
 	d.say(plain, "Connected to Yugabyte. Schema is current.\n")
-	if !reflect.DeepEqual(harmonycfg, d.MinerConfig.HarmonyDB) {
-		d.MinerConfig.HarmonyDB = harmonycfg
+	if !reflect.DeepEqual(harmonyCfg, d.MinerConfig.HarmonyDB) {
+		d.MinerConfig.HarmonyDB = harmonyCfg
 		buf, err := config.ConfigUpdate(d.MinerConfig, config.DefaultStorageMiner())
 		if err != nil {
 			d.say(notice, "Error encoding config.toml: %s\n", err.Error())
@@ -416,6 +433,13 @@ yugabyteConnected:
 func readMinerConfig(d *MigrationData) {
 	d.say(plain, "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
 
+	if os.Getenv("FULLNODE_API_CONFIG") == "" {
+		d.say(notice, "FULLNODE_API_CONFIG is not set. Aborting migration.\n")
+		d.say(plain, "Set the environment variable and run again. Expected format: %s\n",
+			"<"+d.T("api_token")+">:/ip4/<"+d.T("lotus_daemon_ip")+">/tcp/<"+d.T("lotus_daemon_port")+">/http")
+		os.Exit(1)
+
+	}
 	verifyPath := func(dir string) (*config.StorageMiner, error) {
 		cfg := config.DefaultStorageMiner()
 		_, err := toml.DecodeFile(path.Join(dir, "config.toml"), &cfg)
