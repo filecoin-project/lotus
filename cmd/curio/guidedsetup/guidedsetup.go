@@ -134,7 +134,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 		problem = true
 	}
 	if problem {
-		os.Setenv("LANG", "en-US") // for later users of this function
+		_ = os.Setenv("LANG", "en-US") // for later users of this function
 		notice.Copy().AlignHorizontal(lipgloss.Right).
 			Render("$LANG=" + langText + " unsupported. Available: " + strings.Join(lo.Keys(have), ", "))
 		fmt.Println("Defaulting to English. Please reach out to the Curio team if you would like to have additional language support.")
@@ -505,9 +505,21 @@ func readMinerConfig(d *MigrationData) {
 		d.MinerConfig = cfg
 	}
 
-	// repo do or ERROR THAT MINER IS RUNNING
-	// Populate API Key
-	var err error
+	// Try to lock Miner repo to verify that lotus-miner is not running
+	r, err := repo.NewFS(d.MinerConfigPath)
+	if err != nil {
+		d.say(plain, "Could not create repo from directory: %s. Aborting migration\n", err.Error())
+		os.Exit(1)
+	}
+	lr, err := r.Lock(repo.StorageMiner)
+	if err != nil {
+		d.say(plain, "Could not lock miner repo. Your miner must be stopped: %s\n Aborting migration\n", err.Error())
+		os.Exit(1)
+	}
+	defer func() {
+		_ = lr.Close()
+	}()
+
 	_, d.Header, err = cliutil.GetRawAPI(nil, repo.FullNode, "v0")
 	if err != nil {
 		d.say(plain, "cannot read API: %s. Aborting Migration. Is your miner running?", err.Error())
