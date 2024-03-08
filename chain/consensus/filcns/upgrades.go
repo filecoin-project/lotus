@@ -78,7 +78,7 @@ func init() {
 			return
 		}
 		// use value from environment
-		log.Infof("migration worker cound set from %s (%d)", EnvMigrationMaxWorkerCount, mwc)
+		log.Infof("migration worker count set from %s (%d)", EnvMigrationMaxWorkerCount, mwc)
 		MigrationMaxWorkerCount = int(mwc)
 		return
 	}
