@@ -65,7 +65,7 @@ var DefaultNodeOpts = nodeOpts{
 			// test defaults
 
 			cfg.Fevm.EnableEthRPC = true
-			cfg.Fevm.Events.MaxFilterHeightRange = math.MaxInt64
+			cfg.Events.MaxFilterHeightRange = math.MaxInt64
 			cfg.Events.EnableActorEventsAPI = true
 			return nil
 		},

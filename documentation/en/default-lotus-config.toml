@@ -337,67 +337,66 @@
   # env var: LOTUS_FEVM_ETHTXHASHMAPPINGLIFETIMEDAYS
   #EthTxHashMappingLifetimeDays = 0
 
-  [Fevm.Events]
-    # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-    # The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-    #
-    # type: bool
-    # env var: LOTUS_FEVM_EVENTS_DISABLEREALTIMEFILTERAPI
-    #DisableRealTimeFilterAPI = false
-
-    # DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
-    # that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-    # The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-    #
-    # type: bool
-    # env var: LOTUS_FEVM_EVENTS_DISABLEHISTORICFILTERAPI
-    #DisableHistoricFilterAPI = false
-
-    # FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
-    # this time become eligible for automatic deletion.
-    #
-    # type: Duration
-    # env var: LOTUS_FEVM_EVENTS_FILTERTTL
-    #FilterTTL = "24h0m0s"
-
-    # MaxFilters specifies the maximum number of filters that may exist at any one time.
-    #
-    # type: int
-    # env var: LOTUS_FEVM_EVENTS_MAXFILTERS
-    #MaxFilters = 100
-
-    # MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
-    #
-    # type: int
-    # env var: LOTUS_FEVM_EVENTS_MAXFILTERRESULTS
-    #MaxFilterResults = 10000
-
-    # MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-    # the entire chain)
-    #
-    # type: uint64
-    # env var: LOTUS_FEVM_EVENTS_MAXFILTERHEIGHTRANGE
-    #MaxFilterHeightRange = 2880
-
-    # DatabasePath is the full path to a sqlite database that will be used to index actor events to
-    # support the historic filter APIs. If the database does not exist it will be created. The directory containing
-    # the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-    # relative to the CWD (current working directory).
-    #
-    # type: string
-    # env var: LOTUS_FEVM_EVENTS_DATABASEPATH
-    #DatabasePath = ""
-
 
 [Events]
+  # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+  # The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+  #
+  # type: bool
+  # env var: LOTUS_EVENTS_DISABLEREALTIMEFILTERAPI
+  #DisableRealTimeFilterAPI = false
+
+  # DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+  # that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+  # The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+  #
+  # type: bool
+  # env var: LOTUS_EVENTS_DISABLEHISTORICFILTERAPI
+  #DisableHistoricFilterAPI = false
+
   # EnableActorEventsAPI enables the Actor events API that enables clients to consume events
   # emitted by (smart contracts + built-in Actors).
   # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-  # disabled by setting their respective Disable* options in Fevm.Events.
+  # disabled by setting their respective Disable* options.
   #
   # type: bool
   # env var: LOTUS_EVENTS_ENABLEACTOREVENTSAPI
   #EnableActorEventsAPI = false
+
+  # FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+  # this time become eligible for automatic deletion.
+  #
+  # type: Duration
+  # env var: LOTUS_EVENTS_FILTERTTL
+  #FilterTTL = "24h0m0s"
+
+  # MaxFilters specifies the maximum number of filters that may exist at any one time.
+  #
+  # type: int
+  # env var: LOTUS_EVENTS_MAXFILTERS
+  #MaxFilters = 100
+
+  # MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+  #
+  # type: int
+  # env var: LOTUS_EVENTS_MAXFILTERRESULTS
+  #MaxFilterResults = 10000
+
+  # MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+  # the entire chain)
+  #
+  # type: uint64
+  # env var: LOTUS_EVENTS_MAXFILTERHEIGHTRANGE
+  #MaxFilterHeightRange = 2880
+
+  # DatabasePath is the full path to a sqlite database that will be used to index actor events to
+  # support the historic filter APIs. If the database does not exist it will be created. The directory containing
+  # the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+  # relative to the CWD (current working directory).
+  #
+  # type: string
+  # env var: LOTUS_EVENTS_DATABASEPATH
+  #DatabasePath = ""
 
 
 [Index]
