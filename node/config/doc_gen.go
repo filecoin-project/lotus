@@ -357,13 +357,13 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
-	"Events": {
+	"EventsConfig": {
 		{
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
 
 			Comment: `DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
+The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
 		},
 		{
 			Name: "DisableHistoricFilterAPI",
@@ -371,7 +371,16 @@ The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but
 
 			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
+The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "EnableActorEventsAPI",
+			Type: "bool",
+
+			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+emitted by (smart contracts + built-in Actors).
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+disabled by setting their respective Disable* options.`,
 		},
 		{
 			Name: "FilterTTL",
@@ -407,17 +416,6 @@ the entire chain)`,
 support the historic filter APIs. If the database does not exist it will be created. The directory containing
 the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
 relative to the CWD (current working directory).`,
-		},
-	},
-	"EventsConfig": {
-		{
-			Name: "EnableActorEventsAPI",
-			Type: "bool",
-
-			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
-emitted by (smart contracts + built-in Actors).
-This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-disabled by setting their respective Disable* options in Fevm.Events.`,
 		},
 	},
 	"FaultReporterConfig": {
@@ -474,7 +472,7 @@ Set to 0 to keep all mappings`,
 		},
 		{
 			Name: "Events",
-			Type: "Events",
+			Type: "DeprecatedEvents",
 
 			Comment: ``,
 		},
