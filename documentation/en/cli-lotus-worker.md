@@ -7,8 +7,8 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.25.3-dev
-
+   1.26.0-rc2
+   
 COMMANDS:
    run        Start lotus worker
    stop       Stop a running lotus worker

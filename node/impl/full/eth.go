@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -134,7 +135,7 @@ type EthModule struct {
 
 var _ EthModuleAPI = (*EthModule)(nil)
 
-type EthEvent struct {
+type EthEventHandler struct {
 	Chain                *store.ChainStore
 	EventFilterManager   *filter.EventFilterManager
 	TipSetFilterManager  *filter.TipSetFilterManager
@@ -145,7 +146,7 @@ type EthEvent struct {
 	SubscribtionCtx      context.Context
 }
 
-var _ EthEventAPI = (*EthEvent)(nil)
+var _ EthEventAPI = (*EthEventHandler)(nil)
 
 type EthAPI struct {
 	fx.In
@@ -1198,7 +1199,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 	return ethtypes.EthBytes{}, nil
 }
 
-func (e *EthEvent) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
+func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -1215,7 +1216,7 @@ func (e *EthEvent) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilte
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
 }
 
-func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
+func (e *EthEventHandler) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	if e.FilterStore == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -1237,7 +1238,7 @@ func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilte
 	return nil, xerrors.Errorf("unknown filter type")
 }
 
-func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
+func (e *EthEventHandler) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	if e.FilterStore == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -1255,7 +1256,65 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID
 	return nil, xerrors.Errorf("wrong filter type")
 }
 
-func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*filter.EventFilter, error) {
+// parseBlockRange is similar to actor event's parseHeightRange but with slightly different semantics
+//
+// * "block" instead of "height"
+// * strings that can have "latest" and "earliest" and nil
+// * hex strings for actual heights
+func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
+	if fromBlock == nil || *fromBlock == "latest" || len(*fromBlock) == 0 {
+		minHeight = heaviest
+	} else if *fromBlock == "earliest" {
+		minHeight = 0
+	} else {
+		if !strings.HasPrefix(*fromBlock, "0x") {
+			return 0, 0, xerrors.Errorf("FromBlock is not a hex")
+		}
+		epoch, err := ethtypes.EthUint64FromHex(*fromBlock)
+		if err != nil {
+			return 0, 0, xerrors.Errorf("invalid epoch")
+		}
+		minHeight = abi.ChainEpoch(epoch)
+	}
+
+	if toBlock == nil || *toBlock == "latest" || len(*toBlock) == 0 {
+		// here latest means the latest at the time
+		maxHeight = -1
+	} else if *toBlock == "earliest" {
+		maxHeight = 0
+	} else {
+		if !strings.HasPrefix(*toBlock, "0x") {
+			return 0, 0, xerrors.Errorf("ToBlock is not a hex")
+		}
+		epoch, err := ethtypes.EthUint64FromHex(*toBlock)
+		if err != nil {
+			return 0, 0, xerrors.Errorf("invalid epoch")
+		}
+		maxHeight = abi.ChainEpoch(epoch)
+	}
+
+	// Validate height ranges are within limits set by node operator
+	if minHeight == -1 && maxHeight > 0 {
+		// Here the client is looking for events between the head and some future height
+		if maxHeight-heaviest > maxRange {
+			return 0, 0, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", maxRange)
+		}
+	} else if minHeight >= 0 && maxHeight == -1 {
+		// Here the client is looking for events between some time in the past and the current head
+		if heaviest-minHeight > maxRange {
+			return 0, 0, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", maxRange)
+		}
+	} else if minHeight >= 0 && maxHeight >= 0 {
+		if minHeight > maxHeight {
+			return 0, 0, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+		} else if maxHeight-minHeight > maxRange {
+			return 0, 0, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", maxRange)
+		}
+	}
+	return minHeight, maxHeight, nil
+}
+
+func (e *EthEventHandler) installEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (filter.EventFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -1271,64 +1330,11 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 
 		tipsetCid = filterSpec.BlockHash.ToCid()
 	} else {
-		if filterSpec.FromBlock == nil || *filterSpec.FromBlock == "latest" {
-			ts := e.Chain.GetHeaviestTipSet()
-			minHeight = ts.Height()
-		} else if *filterSpec.FromBlock == "earliest" {
-			minHeight = 0
-		} else if *filterSpec.FromBlock == "pending" {
-			return nil, api.ErrNotSupported
-		} else {
-			if !strings.HasPrefix(*filterSpec.FromBlock, "0x") {
-				return nil, xerrors.Errorf("FromBlock is not a hex")
-			}
-			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.FromBlock)
-			if err != nil {
-				return nil, xerrors.Errorf("invalid epoch")
-			}
-			minHeight = abi.ChainEpoch(epoch)
+		var err error
+		minHeight, maxHeight, err = parseBlockRange(e.Chain.GetHeaviestTipSet().Height(), filterSpec.FromBlock, filterSpec.ToBlock, e.MaxFilterHeightRange)
+		if err != nil {
+			return nil, err
 		}
-
-		if filterSpec.ToBlock == nil || *filterSpec.ToBlock == "latest" {
-			// here latest means the latest at the time
-			maxHeight = -1
-		} else if *filterSpec.ToBlock == "earliest" {
-			maxHeight = 0
-		} else if *filterSpec.ToBlock == "pending" {
-			return nil, api.ErrNotSupported
-		} else {
-			if !strings.HasPrefix(*filterSpec.ToBlock, "0x") {
-				return nil, xerrors.Errorf("ToBlock is not a hex")
-			}
-			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.ToBlock)
-			if err != nil {
-				return nil, xerrors.Errorf("invalid epoch")
-			}
-			maxHeight = abi.ChainEpoch(epoch)
-		}
-
-		// Validate height ranges are within limits set by node operator
-		if minHeight == -1 && maxHeight > 0 {
-			// Here the client is looking for events between the head and some future height
-			ts := e.Chain.GetHeaviestTipSet()
-			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", e.MaxFilterHeightRange)
-			}
-		} else if minHeight >= 0 && maxHeight == -1 {
-			// Here the client is looking for events between some time in the past and the current head
-			ts := e.Chain.GetHeaviestTipSet()
-			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", e.MaxFilterHeightRange)
-			}
-
-		} else if minHeight >= 0 && maxHeight >= 0 {
-			if minHeight > maxHeight {
-				return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
-			} else if maxHeight-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", e.MaxFilterHeightRange)
-			}
-		}
-
 	}
 
 	// Convert all addresses to filecoin f4 addresses
@@ -1345,10 +1351,23 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		return nil, err
 	}
 
-	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
+	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keysToKeysWithCodec(keys), true)
 }
 
-func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
+func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
+	keysWithCodec := make(map[string][]types.ActorEventBlock)
+	for k, v := range keys {
+		for _, vv := range v {
+			keysWithCodec[k] = append(keysWithCodec[k], types.ActorEventBlock{
+				Codec: uint64(multicodec.Raw), // FEVM smart contract events are always encoded with the `raw` Codec.
+				Value: vv,
+			})
+		}
+	}
+	return keysWithCodec
+}
+
+func (e *EthEventHandler) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
 	if e.FilterStore == nil || e.EventFilterManager == nil {
 		return ethtypes.EthFilterID{}, api.ErrNotSupported
 	}
@@ -1370,7 +1389,7 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFil
 	return ethtypes.EthFilterID(f.ID()), nil
 }
 
-func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error) {
+func (e *EthEventHandler) EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error) {
 	if e.FilterStore == nil || e.TipSetFilterManager == nil {
 		return ethtypes.EthFilterID{}, api.ErrNotSupported
 	}
@@ -1393,7 +1412,7 @@ func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID,
 	return ethtypes.EthFilterID(f.ID()), nil
 }
 
-func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error) {
+func (e *EthEventHandler) EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error) {
 	if e.FilterStore == nil || e.MemPoolFilterManager == nil {
 		return ethtypes.EthFilterID{}, api.ErrNotSupported
 	}
@@ -1416,7 +1435,7 @@ func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (ethtypes
 	return ethtypes.EthFilterID(f.ID()), nil
 }
 
-func (e *EthEvent) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error) {
+func (e *EthEventHandler) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error) {
 	if e.FilterStore == nil {
 		return false, api.ErrNotSupported
 	}
@@ -1436,9 +1455,9 @@ func (e *EthEvent) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilter
 	return true, nil
 }
 
-func (e *EthEvent) uninstallFilter(ctx context.Context, f filter.Filter) error {
+func (e *EthEventHandler) uninstallFilter(ctx context.Context, f filter.Filter) error {
 	switch f.(type) {
-	case *filter.EventFilter:
+	case filter.EventFilter:
 		err := e.EventFilterManager.Remove(ctx, f.ID())
 		if err != nil && !errors.Is(err, filter.ErrFilterNotFound) {
 			return err
@@ -1466,7 +1485,7 @@ const (
 	EthSubscribeEventTypePendingTransactions = "newPendingTransactions"
 )
 
-func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
+func (e *EthEventHandler) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
 	params, err := jsonrpc.DecodeParams[ethtypes.EthSubscribeParams](p)
 	if err != nil {
 		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("decoding params: %w", err)
@@ -1519,7 +1538,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethty
 			}
 		}
 
-		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keys)
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keysToKeysWithCodec(keys), true)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
@@ -1542,7 +1561,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethty
 	return sub.id, nil
 }
 
-func (e *EthEvent) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) {
+func (e *EthEventHandler) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) {
 	if e.SubManager == nil {
 		return false, api.ErrNotSupported
 	}
@@ -1556,7 +1575,7 @@ func (e *EthEvent) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscripti
 }
 
 // GC runs a garbage collection loop, deleting filters that have not been used within the ttl window
-func (e *EthEvent) GC(ctx context.Context, ttl time.Duration) {
+func (e *EthEventHandler) GC(ctx context.Context, ttl time.Duration) {
 	if e.FilterStore == nil {
 		return
 	}

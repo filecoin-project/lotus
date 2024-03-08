@@ -242,7 +242,7 @@ func (sp *StatePredicates) DealStateChangedForIDs(dealIds []abi.DealID) DiffDeal
 			}
 
 			existenceChanged := oldFound != newFound
-			valueChanged := (oldFound && newFound) && *oldDeal != *newDeal
+			valueChanged := (oldFound && newFound) && !oldDeal.Equals(newDeal)
 			if existenceChanged || valueChanged {
 				changedDeals[dealID] = market.DealStateChange{ID: dealID, From: oldDeal, To: newDeal}
 			}
