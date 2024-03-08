@@ -48,7 +48,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 	}
 
 	if !ok {
-		return fmt.Errorf("repo not initialized")
+		return fmt.Errorf("repo not initialized at: %s", minerRepoPath)
 	}
 
 	lr, err := r.LockRO(repo.StorageMiner)
