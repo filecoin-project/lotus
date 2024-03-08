@@ -471,8 +471,12 @@ func readMinerConfig(d *MigrationData) {
 			}
 			selected = "Other"
 		} else {
-			d.MinerConfigPath = str
-			d.MinerConfig = dirs[str]
+			if str == d.T("Other") {
+				selected = "Other"
+			} else {
+				d.MinerConfigPath = str
+				d.MinerConfig = dirs[str]
+			}
 		}
 	}
 	if selected == "Other" {
