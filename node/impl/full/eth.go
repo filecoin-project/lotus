@@ -689,7 +689,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
-		if len(*params.RewardPercentiles) >= 100 {
+		if len(*params.RewardPercentiles) > 100 {
 			return ethtypes.EthFeeHistory{}, fmt.Errorf("Length cannot be greater than 100")
 		}
 		rewardPercentiles = append(rewardPercentiles, *params.RewardPercentiles...)
