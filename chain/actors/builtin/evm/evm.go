@@ -29,18 +29,6 @@ const (
 	ErrSelfdestructFailed
 )
 
-// See https://github.com/filecoin-project/builtin-actors/blob/6e781444cee5965278c46ef4ffe1fb1970f18d7d/actors/evm/src/lib.rs#L35-L42
-const (
-	ErrReverted exitcode.ExitCode = iota + 33 // EVM exit codes start at 33
-	ErrInvalidInstruction
-	ErrUndefinedInstruction
-	ErrStackUnderflow
-	ErrStackOverflow
-	ErrIllegalMemoryAccess
-	ErrBadJumpdest
-	ErrSelfdestructFailed
-)
-
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != manifest.EvmKey {

@@ -8,7 +8,7 @@ USAGE:
 
 VERSION:
    1.26.0-rc2
-   
+
 COMMANDS:
    run        Start lotus worker
    stop       Stop a running lotus worker
