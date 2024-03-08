@@ -94,13 +94,13 @@ var (
 	green = lipgloss.NewStyle().
 		Align(lipgloss.Left).
 		Foreground(lipgloss.Color("#00FF00")).
-		Background(lipgloss.Color("black"))
+		Background(lipgloss.Color("#000000"))
 
 	plain = lipgloss.NewStyle().Align(lipgloss.Left)
 
 	section = lipgloss.NewStyle().
 		Align(lipgloss.Left).
-		Foreground(lipgloss.Color("black")).
+		Foreground(lipgloss.Color("#000000")).
 		Background(lipgloss.Color("#FFFFFF")).
 		Underline(true)
 
