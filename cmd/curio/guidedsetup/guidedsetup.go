@@ -125,7 +125,6 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 		lang = language.English
 		problem = true
 		fmt.Println("Error parsing language")
-		os.Setenv("LANG", "en-US") // for later users of this function
 	}
 
 	langs := message.DefaultCatalog.Languages()
@@ -135,6 +134,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 		problem = true
 	}
 	if problem {
+		os.Setenv("LANG", "en-US") // for later users of this function
 		notice.Copy().AlignHorizontal(lipgloss.Right).
 			Render("$LANG=" + langText + " unsupported. Available: " + strings.Join(lo.Keys(have), ", "))
 		fmt.Println("Defaulting to English. Please reach out to the Curio team if you would like to have additional language support.")
