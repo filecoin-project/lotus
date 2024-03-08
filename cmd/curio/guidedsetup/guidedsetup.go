@@ -505,9 +505,18 @@ func readMinerConfig(d *MigrationData) {
 		d.MinerConfig = cfg
 	}
 
-	// repo do or ERROR THAT MINER IS RUNNING
-	// Populate API Key
-	var err error
+	// Try to lock Miner repo to verify that lotus-miner is not running
+	r, err := repo.NewFS(d.MinerConfigPath)
+	if err != nil {
+		d.say(plain, "Could not create repo from directory: %s. Aborting migration\n", err.Error())
+		os.Exit(1)
+	}
+	_, err = r.Lock(repo.StorageMiner)
+	if err != nil {
+		d.say(plain, "Could not lock miner repo. Your miner must be stopped: %s\n Aborting migration\n", err.Error())
+		os.Exit(1)
+	}
+
 	_, d.Header, err = cliutil.GetRawAPI(nil, repo.FullNode, "v0")
 	if err != nil {
 		d.say(plain, "cannot read API: %s. Aborting Migration. Is your miner running?", err.Error())
