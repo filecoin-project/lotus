@@ -165,7 +165,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 	}
 
 	if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
-		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
+		return xerrors.Errorf("parent weight different: %s (header) != %s (computed)",
 			b.Header.ParentWeight, pweight)
 	}
 
