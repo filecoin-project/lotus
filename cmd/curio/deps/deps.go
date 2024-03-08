@@ -19,6 +19,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -331,11 +332,14 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 	return nil
 }
 
-var oldAddresses = regexp.MustCompile("(?i)^\\[addresses\\]$")
-
 func LoadConfigWithUpgrades(text string, curioConfig *config.CurioConfig) (toml.MetaData, error) {
 	// allow migration from old config format that was limited to 1 wallet setup.
-	newText := oldAddresses.ReplaceAllString(text, "[[addresses]]")
+	newText := strings.Join(lo.Map(strings.Split(text, "\n"), func(line string, _ int) string {
+		if strings.EqualFold(line, "[addresses]") {
+			return "[[addresses]]"
+		}
+		return line
+	}), "\n")
 	meta, err := toml.Decode(newText, &curioConfig)
 	return meta, err
 }
