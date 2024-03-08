@@ -307,7 +307,7 @@ func verifySectors(d *MigrationData) {
 	d.say(notice, "Waiting for %s to write sectors into Yugabyte.\n", "lotus-miner")
 	for {
 		err := d.DB.Select(context.Background(), &i, `
-			SELECT count(*) FROM sector_location WHERE `)
+			SELECT count(*) FROM sector_location WHERE miner_id=\1`, d.MinerID.String())
 		if err != nil {
 			if err.Error() != lastError {
 				d.say(notice, "Error verifying sectors: %s\n", err.Error())
