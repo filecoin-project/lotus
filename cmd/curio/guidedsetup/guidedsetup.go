@@ -412,7 +412,11 @@ yugabyteConnected:
 			d.say(notice, "Error encoding config.toml: %s\n", err.Error())
 			os.Exit(1)
 		}
-		_, _ = (&promptui.Prompt{Label: d.T("Press return to update %s with Yugabyte info. Backup the file now.", "config.toml")}).Run()
+		_, err = (&promptui.Prompt{
+			Label: d.T("Press return to update %s with Yugabyte info. Backup the file now.", "config.toml")}).Run()
+		if err != nil {
+			os.Exit(1)
+		}
 		stat, err := os.Stat(path.Join(d.MinerConfigPath, "config.toml"))
 		if err != nil {
 			d.say(notice, "Error reading filemode of config.toml: %s\n", err.Error())
