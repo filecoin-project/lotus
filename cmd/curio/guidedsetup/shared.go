@@ -212,7 +212,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 	}
 
 	dbSettings := getDBSettings(*smCfg)
-	say(plain, `To work with the config: \n`)
+	say(plain, "To work with the config: \n")
 	code.Render(`curio ` + dbSettings + ` config edit base\n`)
 	say(plain, `To run Curio: With machine or cgroup isolation, use the command (with example layer selection):`)
 	code.Render(`curio ` + dbSettings + ` run --layer=post`)

@@ -167,6 +167,7 @@ type MigrationData struct {
 	MinerConfig     *config.StorageMiner
 	DB              *harmonydb.DB
 	MinerID         address.Address
+	Header          http.Header
 }
 
 func complete(d *MigrationData) {
@@ -187,14 +188,8 @@ func configToDB(d *MigrationData) {
 		d.say(notice, "Error reading from database: %s. Aborting Migration.\n", err.Error())
 		os.Exit(1)
 	}
-	// Populate API Key
-	_, header, err := cliutil.GetRawAPI(nil, repo.FullNode, "v0")
-	if err != nil {
-		d.say(plain, "cannot read API: %s. Aborting Migration", err.Error())
-		os.Exit(1)
-	}
 
-	err = SaveConfigToLayer(d.MinerConfigPath, "", false, header)
+	err = SaveConfigToLayer(d.MinerConfigPath, "", false, d.Header)
 	if err != nil {
 		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
 		os.Exit(1)
@@ -308,10 +303,11 @@ func doc(d *MigrationData) {
 func verifySectors(d *MigrationData) {
 	var i []int
 	var lastError string
-	d.say(section, "Please start %s now that database credentials are in %s.\n", "lotus-miner", "config.toml")
+	d.say(section, "Please start (or restart) %s now that database credentials are in %s.\n", "lotus-miner", "config.toml")
 	d.say(notice, "Waiting for %s to write sectors into Yugabyte.\n", "lotus-miner")
 	for {
-		err := d.DB.Select(context.Background(), &i, "SELECT count(*) FROM sector_location")
+		err := d.DB.Select(context.Background(), &i, `
+			SELECT count(*) FROM sector_location WHERE `)
 		if err != nil {
 			if err.Error() != lastError {
 				d.say(notice, "Error verifying sectors: %s\n", err.Error())
@@ -409,6 +405,8 @@ yugabyteConnected:
 	d.say(plain, "Connected to Yugabyte. Schema is current.\n")
 	if !reflect.DeepEqual(harmonyCfg, d.MinerConfig.HarmonyDB) {
 		d.MinerConfig.HarmonyDB = harmonyCfg
+		d.MinerConfig.Subsystems.EnableSectorIndexDB = true
+		d.say(plain, "Enabling Sector Indexing in the database.\n")
 		buf, err := config.ConfigUpdate(d.MinerConfig, config.DefaultStorageMiner())
 		if err != nil {
 			d.say(notice, "Error encoding config.toml: %s\n", err.Error())
@@ -420,6 +418,7 @@ yugabyteConnected:
 			d.say(notice, "Error reading filemode of config.toml: %s\n", err.Error())
 			os.Exit(1)
 		}
+
 		filemode := stat.Mode()
 		err = os.WriteFile(path.Join(d.MinerConfigPath, "config.toml"), buf, filemode)
 		if err != nil {
@@ -500,6 +499,15 @@ func readMinerConfig(d *MigrationData) {
 		}
 		d.MinerConfigPath = str
 		d.MinerConfig = cfg
+	}
+
+	// repo do or ERROR THAT MINER IS RUNNING
+	// Populate API Key
+	var err error
+	_, d.Header, err = cliutil.GetRawAPI(nil, repo.FullNode, "v0")
+	if err != nil {
+		d.say(plain, "cannot read API: %s. Aborting Migration. Is your miner running?", err.Error())
+		os.Exit(1)
 	}
 
 	stepCompleted(d, d.T("Read Miner Config"))
