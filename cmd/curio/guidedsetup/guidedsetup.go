@@ -186,8 +186,6 @@ func configToDB(d *MigrationData) {
 		d.say(notice, "Error reading from database: %s. Aborting Migration.\n", err.Error())
 		os.Exit(1)
 	}
-
-	dir, _ := path.Split(d.MinerConfigPath)
 	// Populate API Key
 	_, header, err := cliutil.GetRawAPI(nil, repo.FullNode, "v0")
 	if err != nil {
@@ -195,7 +193,7 @@ func configToDB(d *MigrationData) {
 		os.Exit(1)
 	}
 
-	err = SaveConfigToLayer(dir, "", false, header)
+	err = SaveConfigToLayer(d.MinerConfigPath, "", false, header)
 	if err != nil {
 		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
 		os.Exit(1)
