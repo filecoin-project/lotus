@@ -88,11 +88,13 @@ var (
 	notice = lipgloss.NewStyle().
 		Align(lipgloss.Left).
 		Bold(true).
-		Background(lipgloss.Color("#FFFF00")).MarginBottom(1)
+		Foreground(lipgloss.Color("#CCCCCC")).
+		Background(lipgloss.Color("#333300")).MarginBottom(1)
 
 	green = lipgloss.NewStyle().
 		Align(lipgloss.Left).
-		Foreground(lipgloss.Color("#00FF00"))
+		Foreground(lipgloss.Color("#00FF00")).
+		Background(lipgloss.Color("black"))
 
 	plain = lipgloss.NewStyle().Align(lipgloss.Left)
 
@@ -433,8 +435,8 @@ yugabyteConnected:
 func readMinerConfig(d *MigrationData) {
 	d.say(plain, "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
 
-	if os.Getenv("FULLNODE_API_CONFIG") == "" {
-		d.say(notice, "FULLNODE_API_CONFIG is not set. Aborting migration.\n")
+	if os.Getenv("FULLNODE_API_INFO") == "" {
+		d.say(notice, "FULLNODE_API_INFO is not set. Aborting migration.\n")
 		d.say(plain, "Set the environment variable and run again. Expected format: %s\n",
 			"<"+d.T("api_token")+">:/ip4/<"+d.T("lotus_daemon_ip")+">/tcp/<"+d.T("lotus_daemon_port")+">/http")
 		os.Exit(1)
