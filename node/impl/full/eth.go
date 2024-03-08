@@ -40,7 +40,7 @@ import (
 )
 
 var ErrUnsupported = errors.New("unsupported method")
-var RewardPercentileArrayLimit = 100
+var RewardPercentileArrayLimit int = 100
 
 type EthModuleAPI interface {
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
