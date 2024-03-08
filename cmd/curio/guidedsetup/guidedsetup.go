@@ -25,6 +25,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/manifoldco/promptui"
+	"github.com/mitchellh/go-homedir"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/text/language"
@@ -442,7 +443,11 @@ func readMinerConfig(d *MigrationData) {
 	}
 	verifyPath := func(dir string) (*config.StorageMiner, error) {
 		cfg := config.DefaultStorageMiner()
-		_, err := toml.DecodeFile(path.Join(dir, "config.toml"), &cfg)
+		dir, err := homedir.Expand(dir)
+		if err != nil {
+			return nil, err
+		}
+		_, err = toml.DecodeFile(path.Join(dir, "config.toml"), &cfg)
 		return cfg, err
 	}
 
@@ -458,7 +463,7 @@ func readMinerConfig(d *MigrationData) {
 		dirs[dir] = cfg
 	}
 
-	var selected string
+	var otherPath bool
 	if len(dirs) > 0 {
 		_, str, err := (&promptui.Select{
 			Label:     d.T("Select the location of your lotus-miner config directory?"),
@@ -469,17 +474,17 @@ func readMinerConfig(d *MigrationData) {
 			if err.Error() == "^C" {
 				os.Exit(1)
 			}
-			selected = "Other"
+			otherPath = true
 		} else {
 			if str == d.T("Other") {
-				selected = "Other"
+				otherPath = true
 			} else {
 				d.MinerConfigPath = str
 				d.MinerConfig = dirs[str]
 			}
 		}
 	}
-	if selected == "Other" {
+	if otherPath {
 	minerPathEntry:
 		str, err := (&promptui.Prompt{
 			Label: d.T("Enter the path to the configuration directory used by %s", "lotus-miner"),
