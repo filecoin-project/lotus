@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func fullNodeDefault() (interface{}, error) { return DefaultFullNode(), nil }
@@ -137,4 +138,78 @@ func TestFailToFallbackToDefault(t *testing.T) {
 	nonExistantFileName := dir + "/notarealfile"
 	_, err = FromFile(nonExistantFileName, SetDefault(fullNodeDefault), SetCanFallbackOnDefault(NoDefaultForSplitstoreTransition))
 	assert.Error(t, err)
+}
+
+func TestPrintDeprecated(t *testing.T) {
+	type ChildCfg struct {
+		Field    string `moved:"Bang"`
+		NewField string
+	}
+	type Old struct {
+		Thing1 int `moved:"New.Thing1"`
+		Thing2 int `moved:"New.Thing2"`
+	}
+	type New struct {
+		Thing1 int
+		Thing2 int
+	}
+	type ParentCfg struct {
+		Child ChildCfg
+		Old   Old
+		New   New
+		Foo   int
+		Baz   string `moved:"Child.NewField"`
+		Boom  int    `moved:"Foo"`
+		Bang  string
+	}
+
+	t.Run("warning output", func(t *testing.T) {
+		cfg := `
+		Baz = "baz"
+		Foo = 100
+		[Child]
+		Field = "bip"
+		NewField = "bop"
+	`
+
+		warningWriter := bytes.NewBuffer(nil)
+
+		v, err := FromReader(bytes.NewReader([]byte(cfg)), &ParentCfg{Boom: 200, Bang: "300"}, SetWarningWriter(warningWriter))
+
+		require.NoError(t, err)
+		require.Equal(t, &ParentCfg{
+			Child: ChildCfg{
+				Field:    "bip",
+				NewField: "bop",
+			},
+			Baz:  "baz",
+			Foo:  100,
+			Boom: 200,
+			Bang: "bip",
+		}, v)
+		require.Regexp(t, `\WChild\.Field\W.+use 'Bang' instead`, warningWriter.String())
+		require.Regexp(t, `\WBaz\W.+use 'Child\.NewField' instead`, warningWriter.String())
+		require.NotContains(t, warningWriter.String(), "don't use this at all")
+		require.NotContains(t, warningWriter.String(), "Boom")
+	})
+
+	defaultNew := New{Thing1: 42, Thing2: 800}
+	testCases := []struct {
+		name     string
+		cfg      string
+		expected New
+	}{
+		{"simple", ``, defaultNew},
+		{"set new", "[New]\nThing1 = 101\nThing2 = 102\n", New{Thing1: 101, Thing2: 102}},
+		// should move old to new fields if new isn't set
+		{"set old", "[Old]\nThing1 = 101\nThing2 = 102\n", New{Thing1: 101, Thing2: 102}},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			v, err := FromReader(bytes.NewReader([]byte(tc.cfg)), &ParentCfg{New: defaultNew})
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, v.(*ParentCfg).New)
+		})
+	}
 }
