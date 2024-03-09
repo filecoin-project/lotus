@@ -40,6 +40,7 @@ import (
 )
 
 var ErrUnsupported = errors.New("unsupported method")
+
 const maxEthFeeHistoryRewardPercentiles = 100
 
 type EthModuleAPI interface {
