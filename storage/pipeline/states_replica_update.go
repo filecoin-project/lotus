@@ -82,15 +82,10 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 }
 
 func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
-
 	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
-	}
-
-	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api); err != nil {
-		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
 	sl, err := m.Api.StateSectorPartition(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
@@ -304,6 +299,16 @@ func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector Secto
 }
 
 func (m *Sealing) handleFinalizeReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
+	ts, err := m.Api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handleFinalizeReplicaUpdate: api error, not proceeding: %+v", err)
+		return nil
+	}
+
+	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api, m.verif); err != nil {
+		return ctx.Send(SectorRetryReplicaUpdate{})
+	}
+
 	cfg, err := m.getConfig()
 	if err != nil {
 		return xerrors.Errorf("getting sealing config: %w", err)

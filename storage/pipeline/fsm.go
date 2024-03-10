@@ -192,6 +192,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FinalizeReplicaUpdate: planOne(
 		on(SectorFinalized{}, SubmitReplicaUpdate),
 		on(SectorFinalizeFailed{}, FinalizeReplicaUpdateFailed),
+		on(SectorRetryReplicaUpdate{}, UpdateReplica),
 	),
 	SubmitReplicaUpdate: planOne(
 		on(SectorReplicaUpdateSubmitted{}, ReplicaUpdateWait),

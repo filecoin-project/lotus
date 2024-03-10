@@ -235,7 +235,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 		return nil
 	}
 
-	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api); err != nil {
+	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api, m.verif); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleSubmitReplicaUpdateFailed: api error, not proceeding: %+v", err)
