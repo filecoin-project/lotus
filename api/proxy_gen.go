@@ -807,6 +807,8 @@ type GatewayMethods struct {
 
 	StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) ``
 
+	StateMinerDeadlines func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) ``
+
 	StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerInfo, error) ``
 
 	StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) ``
@@ -5123,6 +5125,17 @@ func (s *GatewayStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID
 
 func (s *GatewayStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
+	if s.Internal.StateMinerDeadlines == nil {
+		return *new([]Deadline), ErrNotSupported
+	}
+	return s.Internal.StateMinerDeadlines(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
+	return *new([]Deadline), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerInfo, error) {
