@@ -129,22 +129,6 @@
 
 
 [Client]
-  # type: bool
-  # env var: LOTUS_CLIENT_USEIPFS
-  #UseIpfs = false
-
-  # type: bool
-  # env var: LOTUS_CLIENT_IPFSONLINEMODE
-  #IpfsOnlineMode = false
-
-  # type: string
-  # env var: LOTUS_CLIENT_IPFSMADDR
-  #IpfsMAddr = ""
-
-  # type: bool
-  # env var: LOTUS_CLIENT_IPFSUSEFORRETRIEVAL
-  #IpfsUseForRetrieval = false
-
   # The maximum number of simultaneous data transfers between the client
   # and storage providers for storage deals
   #
