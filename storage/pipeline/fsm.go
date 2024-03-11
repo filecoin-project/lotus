@@ -127,8 +127,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	Committing: planCommitting,
 	CommitFinalize: planOne(
-		on(SectorFinalized{}, SubmitCommit),
-		on(SectorFinalizedAvailable{}, SubmitCommit),
+		on(SectorFinalized{}, SubmitCommitAggregate),
+		on(SectorFinalizedAvailable{}, SubmitCommitAggregate),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
 	),
 	SubmitCommit: planOne(
