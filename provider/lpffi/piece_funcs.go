@@ -69,3 +69,7 @@ func (sb *SealCalls) WritePiece(ctx context.Context, pieceID storiface.PieceNumb
 func (sb *SealCalls) PieceReader(ctx context.Context, id storiface.PieceNumber) (io.ReadCloser, error) {
 	return sb.sectors.storage.ReaderSeq(ctx, id.Ref(), storiface.FTPiece)
 }
+
+func (sb *SealCalls) RemovePiece(ctx context.Context, id storiface.PieceNumber) error {
+	return sb.sectors.storage.Remove(ctx, id.Ref().ID, storiface.FTPiece, true, nil)
+}

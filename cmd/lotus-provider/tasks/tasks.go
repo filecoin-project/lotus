@@ -75,7 +75,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		// Piece handling
 		if cfg.Subsystems.EnableParkPiece {
 			parkPieceTask := lppiece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
-			activeTasks = append(activeTasks, parkPieceTask)
+			cleanupPieceTask := lppiece.NewCleanupPieceTask(db, must.One(slrLazy.Val()), 0)
+			activeTasks = append(activeTasks, parkPieceTask, cleanupPieceTask)
 		}
 	}
 
