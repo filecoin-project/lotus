@@ -25,15 +25,15 @@
 
 ## Background
 
-Actor events are a fire-and-forget mechanism for actors in Filecoin to signal events that occur during execution of their methods to external observers. The events themselves are not stored on chain, but are emitted by the actor and may be stored in a node's event store. They are intended to be used by tooling and applications that need to observe and react to events that occur within the chain.
+Actor events are a fire-and-forget mechanism for actors in Filecoin to signal events that occur during execution of their methods to external observers. Actor events are intended to be used by tooling and applications that need to observe and react to events that occur within the chain. The events themselves are not stored in chain state, although a root CID for an array (AMT) of all events emitted for a single message is recorded on message receipts, which are themselves referenced as an array (AMT) in the `ParentMessageReceipts` in each `BlockHeader` of a tipset. A node may optionally retain historical events for querying, but this is not guaranteed and not essential as it does not affect the chain state.
 
-The FEVM already has this capability and these events for builtin actors have been added to support a range of new features, starting at network version 22 with a focus on some information gaps for consumers of data onboarding metrics due to the introduction of Direct Data Onboarding (DDO), plus some additional events related to data onboarding, deal lifecycles, sector lifecycles, and DataCap activity. Additional events are expected to be added in the future to support other features and use cases.
+The FVM already has this capability and new events for builtin actors have been added to support a range of new features, starting at network version 22 with a focus on some information gaps for consumers of data onboarding activity insight due to the introduction of [Direct Data Onboarding (DDO)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md), plus some additional events related to data onboarding, deal lifecycles, sector lifecycles, and DataCap activity. Additional events are expected to be added in the future to support other features and use cases.
 
-Builtin actor events share basic similarities to the existing events emitted by the FEVM, but are structured differently to reflect Filecoin-specific concerns. There are also new APIs in Lotus to support querying for these events that bear some similarities to the existing FEVM `Eth*` APIs for querying events but are unique to builtin actors.
+Builtin actor events share basic similarities to the existing events emitted by user-programmed actors in FVM, but each have a specific schema that reflects their specific concerns. They also all use CBOR encoding for their values. There are also new APIs in Lotus to support querying for these events that bear some similarities to the existing FEVM `Eth*` APIs for querying events but are unique to builtin actors.
 
 ## ActorEvent structure
 
-Introduced in [FIP-0049](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md), events use a structured logging style of composition, containing a list of entries that define properties of the event. The log entries are described below as `EventEntry` and have the same schema for FEVM and builtin actor events. `ActorEvent` is specifically for representing builtin actor events and includes the list of entries, the actor that emitted the event, and some metadata about the event.
+Introduced in [FIP-0049](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md), events use a structured logging style of composition, containing a list of entries that define properties of the event. The log entries are described below as `EventEntry` and have the same schema for user-programmed and builtin actor events. `ActorEvent` is specifically for representing builtin actor events and includes the list of entries, the actor that emitted the event, and some metadata about the event.
 
 ```ipldsch
 type ActorEvent struct {
@@ -72,10 +72,8 @@ The structured logging style of composition should be seen in contrast to an alt
 
 Two Lotus APIs are provided that can be used to obtain direct access to events stored on the node being queried (a node may not have all historical events stored and available for query):
 
-_TODO: update links_
-
-- **[`GetActorEvents`](https://github.com/filecoin-project/lotus/blob/feat/built-in-actor-events-api/documentation/en/api-v1-unstable-methods.md#GetActorEvents)** will return all available historical actor events that match a given *filter* argument.
-- **[`SubscribeActorEvents`](https://github.com/filecoin-project/lotus/blob/feat/built-in-actor-events-api/documentation/en/api-v1-unstable-methods.md#SubscribeActorEvents)** will return a long-lived stream providing all available actor events that match a given *filter* argument as they are generated. Optionally also providing a list of historical events. This API is available via websocket from the Lotus API RPC.
+- **[`GetActorEvents`](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-v1-unstable-methods.md#GetActorEvents)** will return all available historical actor events that match a given *filter* argument.
+- **[`SubscribeActorEvents`](https://github.com/filecoin-project/lotus/blob/master/documentation/en/api-v1-unstable-methods.md#SubscribeActorEvents)** will return a long-lived stream providing all available actor events that match a given *filter* argument as they are generated. Optionally also providing a list of historical events. This API is available via websocket from the Lotus API RPC.
 
 Both APIs take an `EventFilter`  as an argument to determine which events to return. This event filter optionally comprises the following:
 
