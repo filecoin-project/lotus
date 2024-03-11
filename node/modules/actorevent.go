@@ -164,9 +164,13 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 
 func ActorEventHandler(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.ActorEventHandler, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.ActorEventHandler, error) {
-
 		if !cfg.EnableActorEventsAPI || cfg.DisableRealTimeFilterAPI {
-			fm = nil
+			return full.NewActorEventHandler(
+				cs,
+				nil, // no EventFilterManager disables API calls
+				time.Duration(build.BlockDelaySecs)*time.Second,
+				abi.ChainEpoch(cfg.MaxFilterHeightRange),
+			), nil
 		}
 
 		return full.NewActorEventHandler(
