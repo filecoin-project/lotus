@@ -674,7 +674,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			}
 		case SectorCommitted: // the normal case
 			e.apply(state)
-			state.State = SubmitCommit
+			state.State = SubmitCommitAggregate
 		case SectorProofReady: // early finalize
 			e.apply(state)
 			state.State = CommitFinalize
