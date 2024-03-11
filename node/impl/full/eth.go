@@ -42,6 +42,8 @@ import (
 
 var ErrUnsupported = errors.New("unsupported method")
 
+const maxEthFeeHistoryRewardPercentiles = 100
+
 type EthModuleAPI interface {
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
 	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error)
@@ -698,6 +700,9 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
+		if len(*params.RewardPercentiles) > maxEthFeeHistoryRewardPercentiles {
+			return ethtypes.EthFeeHistory{}, errors.New("length of the reward percentile array cannot be greater than 100")
+		}
 		rewardPercentiles = append(rewardPercentiles, *params.RewardPercentiles...)
 	}
 	for i, rp := range rewardPercentiles {
