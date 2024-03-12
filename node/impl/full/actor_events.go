@@ -296,14 +296,15 @@ func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter 
 				return false
 			}
 
-			buffer = append(buffer, &types.ActorEvent{
+			ae := types.ActorEvent{
 				Entries:   ce.Entries,
 				Emitter:   ce.EmitterAddr,
 				Reverted:  ce.Reverted,
 				Height:    ce.Height,
 				TipSetKey: ce.TipSetKey,
 				MsgCid:    ce.MsgCid,
-			})
+			}.AsCompactEncoded()
+			buffer = append(buffer, &ae)
 			return true
 		}
 
@@ -362,14 +363,15 @@ func getCollected(ctx context.Context, f filter.EventFilter) []*types.ActorEvent
 	var out []*types.ActorEvent
 
 	for _, e := range ces {
-		out = append(out, &types.ActorEvent{
+		ae := types.ActorEvent{
 			Entries:   e.Entries,
 			Emitter:   e.EmitterAddr,
 			Reverted:  e.Reverted,
 			Height:    e.Height,
 			TipSetKey: e.TipSetKey,
 			MsgCid:    e.MsgCid,
-		})
+		}.AsCompactEncoded()
+		out = append(out, &ae)
 	}
 
 	return out

@@ -3,12 +3,17 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime/datamodel"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -192,3 +197,62 @@ func decodeKey(encoded []byte) ([]cid.Cid, error) {
 
 var _ typegen.CBORMarshaler = &TipSetKey{}
 var _ typegen.CBORUnmarshaler = &TipSetKey{}
+
+// TipSetKeyAsLinksListBindnodeOption Used in conjunction
+// github.com/ipld/go-ipld-prime/node/bindnode when you want to refer to a TipSetKey and have it
+// encoded as a list of links, as in the JSON representation above rather than as a byte string as
+// in the CBOR representation above.
+//
+// This option lets you represent a TipSetKey field as an Any in a schema, and it will map directly
+// on to a TipSetKey in the corresponding concrete Go types.
+var TipSetKeyAsLinksListBindnodeOption = bindnode.TypedAnyConverter(&TipSetKey{}, tipsetKeyAsLinksListFromAny, tipsetKeyAsLinksListToAny)
+
+func tipsetKeyAsLinksListFromAny(n datamodel.Node) (interface{}, error) {
+	if n.Kind() != datamodel.Kind_List {
+		return nil, errors.New("expected list representation")
+	}
+	cids := make([]cid.Cid, 0)
+	itr := n.ListIterator()
+	for !itr.Done() {
+		_, v, err := itr.Next()
+		if err != nil {
+			return nil, err
+		}
+		if v.Kind() != datamodel.Kind_Link {
+			return nil, errors.New("expected link")
+		}
+		l, err := v.AsLink()
+		if err != nil {
+			return nil, err
+		}
+		if cl, ok := l.(cidlink.Link); ok {
+			cids = append(cids, cl.Cid)
+		} else {
+			return nil, errors.New("expected CID link")
+		}
+	}
+	return &TipSetKey{value: string(encodeKey(cids))}, nil
+
+}
+
+func tipsetKeyAsLinksListToAny(iface interface{}) (datamodel.Node, error) {
+	tsk, ok := iface.(*TipSetKey)
+	if !ok {
+		return nil, fmt.Errorf("expected *Address value")
+	}
+	cids := tsk.Cids()
+	nb := basicnode.Prototype.List.NewBuilder()
+	la, err := nb.BeginList(int64(len(cids)))
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range cids {
+		if err := la.AssembleValue().AssignLink(cidlink.Link{Cid: c}); err != nil {
+			return nil, err
+		}
+	}
+	if err := la.Finish(); err != nil {
+		return nil, err
+	}
+	return nb.Build(), nil
+}

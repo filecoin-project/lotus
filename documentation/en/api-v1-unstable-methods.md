@@ -3426,17 +3426,20 @@ Response:
 ```json
 [
   {
+    "emitter": "f01234",
     "entries": [
       {
+        "Codec": 42,
         "Flags": 7,
         "Key": "string value",
-        "Codec": 42,
         "Value": "Ynl0ZSBhcnJheQ=="
       }
     ],
-    "emitter": "f01234",
-    "reverted": true,
     "height": 10101,
+    "msgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "reverted": true,
     "tipsetKey": [
       {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -3444,10 +3447,7 @@ Response:
       {
         "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
       }
-    ],
-    "msgCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
+    ]
   }
 ]
 ```
@@ -8874,17 +8874,20 @@ Inputs:
 Response:
 ```json
 {
+  "emitter": "f01234",
   "entries": [
     {
+      "Codec": 42,
       "Flags": 7,
       "Key": "string value",
-      "Codec": 42,
       "Value": "Ynl0ZSBhcnJheQ=="
     }
   ],
-  "emitter": "f01234",
-  "reverted": true,
   "height": 10101,
+  "msgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "reverted": true,
   "tipsetKey": [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -8892,10 +8895,7 @@ Response:
     {
       "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
     }
-  ],
-  "msgCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
+  ]
 }
 ```
 

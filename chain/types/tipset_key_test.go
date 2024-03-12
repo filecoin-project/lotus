@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
+	"github.com/ipld/go-ipld-prime/node/bindnode"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,4 +95,66 @@ func verifyJSON(t *testing.T, expected string, k TipSetKey) {
 	err = json.Unmarshal(bytes, &rehydrated)
 	require.NoError(t, err)
 	assert.Equal(t, k, rehydrated)
+}
+
+// Test that our go-ipld-prime bindnode option works with TipSetKey as an Any in the schema but
+// properly typed in the Go type. In this form we expect it to match the JSON style encoding, but
+// we could use an alternate encoder (dag-cbor) and get the same form: a list of links. This is
+// distinct from the natural CBOR form of TipSetKey which is just a byte string, which we don't
+// (yet) have a bindnode option for (but could).
+
+var ipldSchema string = `
+type TSKHolder struct {
+	K1 String
+	TSK Any
+	K2 String
+}
+`
+
+type testTSKHolder struct {
+	K1  string
+	TSK TipSetKey
+	K2  string
+}
+
+func TestBindnodeTipSetKey(t *testing.T) {
+	req := require.New(t)
+
+	cb := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}
+	c1, _ := cb.Sum([]byte("a"))
+	c2, _ := cb.Sum([]byte("b"))
+	c3, _ := cb.Sum([]byte("c"))
+	tsk := NewTipSetKey(c1, c2, c3)
+
+	typeSystem, err := ipld.LoadSchemaBytes([]byte(ipldSchema))
+	req.NoError(err, "should load a properly encoded schema")
+	schemaType := typeSystem.TypeByName("TSKHolder")
+	req.NotNil(schemaType, "should have the expected type")
+	proto := bindnode.Prototype((*testTSKHolder)(nil), schemaType, TipSetKeyAsLinksListBindnodeOption)
+	nd := bindnode.Wrap(&testTSKHolder{
+		K1:  "before",
+		TSK: tsk,
+		K2:  "after",
+	}, schemaType, TipSetKeyAsLinksListBindnodeOption)
+	jsonBytes, err := ipld.Encode(nd, dagjson.Encode)
+	req.NoError(err, "should encode to JSON with ipld-prime")
+
+	// plain json unmarshal, make sure we're compatible
+	var holder testTSKHolder
+	err = json.Unmarshal(jsonBytes, &holder)
+	req.NoError(err, "should decode with encoding/json")
+	req.Equal("before", holder.K1)
+	req.Equal("after", holder.K2)
+	req.Equal(tsk, holder.TSK)
+
+	// decode with ipld-prime
+	decoded, err := ipld.DecodeUsingPrototype(jsonBytes, dagjson.Decode, proto)
+	req.NoError(err, "should decode with ipld-prime")
+	tskPtr := bindnode.Unwrap(decoded)
+	req.NotNil(tskPtr, "should have a non-nil value")
+	holder2, ok := tskPtr.(*testTSKHolder)
+	req.True(ok, "should unwrap to the correct go type")
+	req.Equal("before", holder2.K1)
+	req.Equal("after", holder2.K2)
+	req.Equal(tsk, holder2.TSK)
 }
