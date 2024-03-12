@@ -427,7 +427,7 @@ var filplusListClaimsCmd = &cli.Command{
 			var claimList []map[string]interface{}
 
 			for key, val := range claims {
-				if tsHeight > val.TermMax || !expired {
+				if tsHeight > val.TermStart+val.TermMax || !expired {
 					claim := map[string]interface{}{
 						claimID:  key,
 						provider: val.Provider,
