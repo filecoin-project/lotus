@@ -2,15 +2,16 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-cmp/cmp"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/xerrors"
 )
@@ -266,18 +267,47 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 	}
 
 	// sanity-check that the updated config parses the same way as the current one
+
 	if cfgDef != nil {
 		cfgUpdated, err := FromReader(strings.NewReader(nodeStr), cfgDef)
 		if err != nil {
 			return nil, xerrors.Errorf("parsing updated config: %w", err)
 		}
 
-		if !reflect.DeepEqual(cfgCur, cfgUpdated) {
-			return nil, xerrors.Errorf("updated config didn't match current config")
+		if res := cmp.Equal(cfgCur, cfgUpdated,
+			cmp.Comparer(nilIsEmpty[string]),
+			cmp.Comparer(zeroFilIsEmptyString)); !res {
+
+			var j = json.NewEncoder(os.Stderr)
+			j.SetIndent("", "  ")
+			j.Encode(cfgCur)
+			j.Encode(cfgUpdated)
+			diff := cmp.Diff(cfgCur, cfgUpdated,
+				cmp.Comparer(nilIsEmpty[string]),
+				cmp.Comparer(zeroFilIsEmptyString),
+			)
+			return nil, xerrors.Errorf("updated config didn't match current config:\n%s", diff)
 		}
 	}
 
 	return []byte(nodeStr), nil
+}
+
+func zeroFilIsEmptyString(a, b string) bool {
+	if a == "" && b == "0 FIL" {
+		return true
+	}
+	if b == "" && a == "0 FIL" {
+		return true
+	}
+	return a == b
+}
+
+func nilIsEmpty[T any](a, b []T) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	return cmp.Equal(a, b)
 }
 
 func ConfigComment(t interface{}) ([]byte, error) {

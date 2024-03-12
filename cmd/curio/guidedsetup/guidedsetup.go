@@ -15,6 +15,7 @@ import (
 	"math/bits"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"reflect"
@@ -32,8 +33,11 @@ import (
 	"golang.org/x/text/message"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
@@ -60,9 +64,13 @@ var GuidedsetupCmd = &cli.Command{
 			selectTemplates: &promptui.SelectTemplates{
 				Help: T("Use the arrow keys to navigate: ↓ ↑ → ← "),
 			},
+			cctx: cctx,
 		}
 		for _, step := range migrationSteps {
 			step(&migrationData)
+		}
+		for _, closer := range migrationData.closers {
+			closer()
 		}
 		return nil
 	},
@@ -167,7 +175,9 @@ type MigrationData struct {
 	MinerConfig     *config.StorageMiner
 	DB              *harmonydb.DB
 	MinerID         address.Address
-	Header          http.Header
+	full            v0api.FullNode
+	cctx            *cli.Context
+	closers         []jsonrpc.ClientCloser
 }
 
 func complete(d *MigrationData) {
@@ -189,7 +199,58 @@ func configToDB(d *MigrationData) {
 		os.Exit(1)
 	}
 
-	err = SaveConfigToLayer(d.MinerConfigPath, "", false, d.Header)
+	if os.Getenv("FULLNODE_API_INFO") == "" {
+		for _, binName := range []string{"lotus", "./lotus"} {
+			cmd := exec.Command(binName, "net", "listen")
+			b := bytes.NewBuffer(nil)
+			cmd.Stdout = b
+			if err := cmd.Run(); err != nil {
+				continue
+			}
+			for _, addr := range strings.Split(b.String(), "\n") {
+				os.Setenv("FULLNODE_API_INFO", addr)
+				break
+			}
+		}
+	}
+	{
+		var closer jsonrpc.ClientCloser
+
+		d.full, closer, err = cliutil.GetFullNodeAPI(d.cctx)
+		if err != nil {
+			ainfos, err2 := cliutil.GetAPIInfoFromRepoPath(os.Getenv("LOTUS_PATH"), repo.FullNode)
+			if err2 != nil {
+				d.say(notice, "Error connecting to lotus node: %s %s\n", err.Error(), err2.Error())
+				os.Exit(1)
+			}
+			// TODO connect to apiinfo
+			for _, ainfo := range ainfos {
+				addr, err := ainfo.DialArgs("v0")
+				if err != nil {
+					continue
+				}
+				d.full, closer, err = client.NewFullNodeRPCV0(context.Background(), addr, ainfo.AuthHeader())
+				if err == nil {
+					break
+				}
+			}
+		}
+		d.closers = append(d.closers, closer)
+	}
+	ainfo, err := cliutil.GetAPIInfo(d.cctx, repo.FullNode)
+	if err != nil {
+		d.say(notice, "could not get API info for FullNode: %w", err)
+		os.Exit(1)
+	}
+	token, err := d.full.AuthNew(context.Background(), api.AllPermissions)
+	if err != nil {
+		d.say(notice, "Error getting token: %s\n", err.Error())
+		os.Exit(1)
+	}
+
+	chainApiInfo := fmt.Sprintf("%s:%s", string(token), ainfo.Addr)
+
+	err = SaveConfigToLayer(d.MinerConfigPath, "", false, chainApiInfo)
 	if err != nil {
 		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
 		os.Exit(1)
@@ -226,13 +287,8 @@ func oneLastThing(d *MigrationData) {
 			"chain": build.BuildTypeString(),
 		}
 		if i < 2 {
-			api, closer, err := cliutil.GetFullNodeAPI(nil)
-			if err != nil {
-				d.say(notice, "Error connecting to lotus node: %s\n", err.Error())
-				os.Exit(1)
-			}
-			defer closer()
-			power, err := api.StateMinerPower(context.Background(), d.MinerID, types.EmptyTSK)
+
+			power, err := d.full.StateMinerPower(context.Background(), d.MinerID, types.EmptyTSK)
 			if err != nil {
 				d.say(notice, "Error getting miner power: %s\n", err.Error())
 				os.Exit(1)
@@ -248,12 +304,12 @@ func oneLastThing(d *MigrationData) {
 					d.say(notice, "Error marshalling message: %s\n", err.Error())
 					os.Exit(1)
 				}
-				mi, err := api.StateMinerInfo(context.Background(), d.MinerID, types.EmptyTSK)
+				mi, err := d.full.StateMinerInfo(context.Background(), d.MinerID, types.EmptyTSK)
 				if err != nil {
 					d.say(notice, "Error getting miner info: %s\n", err.Error())
 					os.Exit(1)
 				}
-				sig, err := api.WalletSign(context.Background(), mi.Worker, msg)
+				sig, err := d.full.WalletSign(context.Background(), mi.Worker, msg)
 				if err != nil {
 					d.say(notice, "Error signing message: %s\n", err.Error())
 					os.Exit(1)
@@ -305,9 +361,16 @@ func verifySectors(d *MigrationData) {
 	var lastError string
 	d.say(section, "Please start (or restart) %s now that database credentials are in %s.\n", "lotus-miner", "config.toml")
 	d.say(notice, "Waiting for %s to write sectors into Yugabyte.\n", "lotus-miner")
+
+	mid, err := address.IDFromAddress(d.MinerID)
+	if err != nil {
+		d.say(notice, "Error interpreting miner ID: %s\n", err.Error())
+		os.Exit(1)
+	}
+
 	for {
 		err := d.DB.Select(context.Background(), &i, `
-			SELECT count(*) FROM sector_location WHERE miner_id=$1`, d.MinerID.String())
+			SELECT count(*) FROM sector_location WHERE miner_id=$1`, mid)
 		if err != nil {
 			if err.Error() != lastError {
 				d.say(notice, "Error verifying sectors: %s\n", err.Error())
@@ -324,7 +387,7 @@ func verifySectors(d *MigrationData) {
 	d.say(plain, "The sectors are in the database. The database is ready for %s.\n", "Curio")
 	d.say(notice, "Now shut down lotus-miner and move the systems to %s.\n", "Curio")
 
-	_, err := (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
+	_, err = (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
 		d.say(notice, "Aborting migration.\n")
 		os.Exit(1)
@@ -437,13 +500,6 @@ yugabyteConnected:
 func readMinerConfig(d *MigrationData) {
 	d.say(plain, "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
 
-	if os.Getenv("FULLNODE_API_INFO") == "" {
-		d.say(notice, "FULLNODE_API_INFO is not set. Aborting migration.\n")
-		d.say(plain, "Set the environment variable and run again. Expected format: %s\n",
-			"<"+d.T("api_token")+">:/ip4/<"+d.T("lotus_daemon_ip")+">/tcp/<"+d.T("lotus_daemon_port")+">/http")
-		os.Exit(1)
-
-	}
 	verifyPath := func(dir string) (*config.StorageMiner, error) {
 		cfg := config.DefaultStorageMiner()
 		dir, err := homedir.Expand(dir)
@@ -519,12 +575,6 @@ func readMinerConfig(d *MigrationData) {
 	defer func() {
 		_ = lr.Close()
 	}()
-
-	_, d.Header, err = cliutil.GetRawAPI(nil, repo.FullNode, "v0")
-	if err != nil {
-		d.say(plain, "cannot read API: %s. Aborting Migration. Is your miner running?", err.Error())
-		os.Exit(1)
-	}
 
 	stepCompleted(d, d.T("Read Miner Config"))
 }

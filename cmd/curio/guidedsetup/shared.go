@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -14,12 +13,10 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
 	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -33,7 +30,7 @@ const (
 
 const FlagMinerRepoDeprecation = "storagerepo"
 
-func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header http.Header) (err error) {
+func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApiInfo string) (err error) {
 	_, say := SetupLanguage()
 	ctx := context.Background()
 
@@ -108,11 +105,17 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		return xerrors.Errorf("parsing miner actor address: %w", err)
 	}
 
+	orNil := func(s []string) []string {
+		if len(s) == 0 {
+			return nil
+		}
+		return s
+	}
 	curioCfg.Addresses = []config.CurioAddresses{{
 		MinerAddresses:        []string{addr.String()},
-		PreCommitControl:      smCfg.Addresses.PreCommitControl,
-		CommitControl:         smCfg.Addresses.CommitControl,
-		TerminateControl:      smCfg.Addresses.TerminateControl,
+		PreCommitControl:      orNil(smCfg.Addresses.PreCommitControl),
+		CommitControl:         orNil(smCfg.Addresses.CommitControl),
+		TerminateControl:      orNil(smCfg.Addresses.TerminateControl),
 		DisableOwnerFallback:  smCfg.Addresses.DisableOwnerFallback,
 		DisableWorkerFallback: smCfg.Addresses.DisableWorkerFallback,
 	}}
@@ -128,13 +131,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 
 	curioCfg.Apis.StorageRPCSecret = base64.StdEncoding.EncodeToString(js.PrivateKey)
 
-	ainfo, err := cliutil.GetAPIInfo(&cli.Context{}, repo.FullNode)
-	if err != nil {
-		return xerrors.Errorf(`could not get API info for FullNode: %w
-		Set the environment variable to the value of "lotus auth api-info --perm=admin"`, err)
-	}
-	curioCfg.Apis.ChainApiInfo = []string{header.Get("Authorization")[7:] + ":" + ainfo.Addr}
-
+	curioCfg.Apis.ChainApiInfo = append(curioCfg.Apis.ChainApiInfo, chainApiInfo)
 	// Express as configTOML
 	configTOML := &bytes.Buffer{}
 	if err = toml.NewEncoder(configTOML).Encode(curioCfg); err != nil {
@@ -161,6 +158,12 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, header h
 		// write to base
 		{
 			baseCfg.Addresses = append(baseCfg.Addresses, curioCfg.Addresses[0])
+			baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
+				return len(a.MinerAddresses) > 0
+			})
+
+			// TODO set to 0 anything nil in baseCfg.Fees !!!!!!!!!!!!!!!!
+
 			cb, err := config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 			if err != nil {
 				return xerrors.Errorf("cannot interpret config: %w", err)

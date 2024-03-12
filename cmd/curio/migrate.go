@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/curio/guidedsetup"
@@ -58,6 +59,13 @@ func fromMiner(cctx *cli.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("cannot read API: %w", err)
 	}
-	err = guidedsetup.SaveConfigToLayer(minerRepoPath, layerName, overwrite, header)
+
+	ainfo, err := cliutil.GetAPIInfo(&cli.Context{}, repo.FullNode)
+	if err != nil {
+		return xerrors.Errorf(`could not get API info for FullNode: %w
+		Set the environment variable to the value of "lotus auth api-info --perm=admin"`, err)
+	}
+	chainApiInfo := header.Get("Authorization")[7:] + ":" + ainfo.Addr
+	err = guidedsetup.SaveConfigToLayer(minerRepoPath, layerName, overwrite, chainApiInfo)
 	return err
 }
