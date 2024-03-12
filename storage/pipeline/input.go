@@ -957,20 +957,30 @@ func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showO
 		return api.SectorInfo{}, err
 	}
 
+	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return api.SectorInfo{}, xerrors.Errorf("getting network version: %w", err)
+	}
+
 	deals := make([]abi.DealID, len(info.Pieces))
 	pieces := make([]api.SectorPiece, len(info.Pieces))
 	for i, piece := range info.Pieces {
-		// todo make this work with DDO deals in some reasonable way
-
 		pieces[i].Piece = piece.Piece()
-		if !piece.HasDealInfo() || piece.Impl().PublishCid == nil {
+
+		if !piece.HasDealInfo() {
 			continue
 		}
 
-		pdi := piece.DealInfo().Impl() // copy
+		pdi := piece.Impl()
+		if pdi.Valid(nv) != nil {
+			continue
+		}
+
 		pieces[i].DealInfo = &pdi
 
-		deals[i] = piece.DealInfo().Impl().DealID
+		if pdi.PublishCid != nil {
+			deals[i] = pdi.DealID
+		}
 	}
 
 	log := make([]api.SectorLog, len(info.Log))
