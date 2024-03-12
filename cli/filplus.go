@@ -11,11 +11,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/chzyer/readline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -1087,36 +1087,24 @@ var filplusExtendClaimCmd = &cli.Command{
 		}
 
 		// wait for msgs to get mined into a block
-		var wg sync.WaitGroup
-		wg.Add(len(smsgs))
-		results := make(chan error, len(smsgs))
+		eg := errgroup.Group{}
+		eg.SetLimit(10)
 		for _, msg := range smsgs {
 			m := msg
-			go func() {
-				defer wg.Done()
+			eg.Go(func() error {
 				wait, err := api.StateWaitMsg(ctx, m.Cid(), uint64(cctx.Int("confidence")))
 				if err != nil {
-					results <- xerrors.Errorf("Timeout waiting for message to land on chain %s", wait.Message)
-					return
+					return fmt.Errorf("timeout waiting for message to land on chain %s", wait.Message)
+
 				}
 
 				if wait.Receipt.ExitCode.IsError() {
-					results <- fmt.Errorf("failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode)
-					return
+					return fmt.Errorf("failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode)
 				}
-				results <- nil
-			}()
+				return nil
+			})
 		}
-
-		wg.Wait()
-		close(results)
-
-		for res := range results {
-			if res != nil {
-				fmt.Println("Failed to execute the message %w", res)
-			}
-		}
-		return nil
+		return eg.Wait()
 	},
 }
 
