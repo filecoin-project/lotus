@@ -127,8 +127,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	Committing: planCommitting,
 	CommitFinalize: planOne(
-		on(SectorFinalized{}, SubmitCommit),
-		on(SectorFinalizedAvailable{}, SubmitCommit),
+		on(SectorFinalized{}, SubmitCommitAggregate),
+		on(SectorFinalizedAvailable{}, SubmitCommitAggregate),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
 	),
 	SubmitCommit: planOne(
@@ -674,7 +674,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			}
 		case SectorCommitted: // the normal case
 			e.apply(state)
-			state.State = SubmitCommit
+			state.State = SubmitCommitAggregate
 		case SectorProofReady: // early finalize
 			e.apply(state)
 			state.State = CommitFinalize

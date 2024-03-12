@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin"
 	miner2 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	verifreg13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -740,89 +739,10 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo) error {
-	// TODO: Deprecate this path, always go through batcher, just respect the AggregateCommits config in there
-
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting config: %w", err)
-	}
-
-	if cfg.AggregateCommits {
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), types.EmptyTSK)
-		if err != nil {
-			return xerrors.Errorf("getting network version: %w", err)
-		}
-
-		if nv >= network.Version13 {
-			return ctx.Send(SectorSubmitCommitAggregate{})
-		}
-	}
-
-	ts, err := m.Api.ChainHead(ctx.Context())
-	if err != nil {
-		log.Errorf("handleSubmitCommit: api error, not proceeding: %+v", err)
-		return nil
-	}
-
-	if err := m.checkCommit(ctx.Context(), sector, sector.Proof, ts.Key()); err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
-	}
-
-	enc := new(bytes.Buffer)
-	params := &miner.ProveCommitSectorParams{
-		SectorNumber: sector.SectorNumber,
-		Proof:        sector.Proof,
-	}
-
-	if err := params.MarshalCBOR(enc); err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", err)})
-	}
-
-	mi, err := m.Api.StateMinerInfo(ctx.Context(), m.maddr, ts.Key())
-	if err != nil {
-		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
-		return nil
-	}
-
-	pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
-	if err != nil {
-		return xerrors.Errorf("getting precommit info: %w", err)
-	}
-	if pci == nil {
-		return ctx.Send(SectorCommitFailed{error: xerrors.Errorf("precommit info not found on chain")})
-	}
-
-	collateral, err := m.Api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, pci.Info, ts.Key())
-	if err != nil {
-		return xerrors.Errorf("getting initial pledge collateral: %w", err)
-	}
-
-	collateral = big.Sub(collateral, pci.PreCommitDeposit)
-	if collateral.LessThan(big.Zero()) {
-		collateral = big.Zero()
-	}
-
-	collateral, err = collateralSendAmount(ctx.Context(), m.Api, m.maddr, cfg, collateral)
-	if err != nil {
-		return err
-	}
-
-	goodFunds := big.Add(collateral, big.Int(m.feeCfg.MaxCommitGasFee))
-
-	from, _, err := m.addrSel.AddressFor(ctx.Context(), m.Api, mi, api.CommitAddr, goodFunds, collateral)
-	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("no good address to send commit message from: %w", err)})
-	}
-
-	// TODO: check seed / ticket / deals are up to date
-	mcid, err := sendMsg(ctx.Context(), m.Api, from, m.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
-	if err != nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
-	}
-
-	return ctx.Send(SectorCommitSubmitted{
-		Message: mcid,
-	})
+	// like precommit this is a deprecated state, but we keep it around for
+	// existing state machines
+	// todo: drop after nv21
+	return ctx.Send(SectorSubmitCommitAggregate{})
 }
 
 // processPieces returns either:
