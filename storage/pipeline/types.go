@@ -289,10 +289,18 @@ func (sp *SafeSectorPiece) handleDealInfo(params handleDealInfoParams) error {
 // SectorPiece Proxy
 
 func (sp *SafeSectorPiece) Impl() piece.PieceDealInfo {
+	if !sp.HasDealInfo() {
+		return piece.PieceDealInfo{}
+	}
+
 	return sp.real.DealInfo.Impl()
 }
 
 func (sp *SafeSectorPiece) String() string {
+	if !sp.HasDealInfo() {
+		return "<no deal info>"
+	}
+
 	return sp.real.DealInfo.String()
 }
 
@@ -305,21 +313,41 @@ func (sp *SafeSectorPiece) Valid(nv network.Version) error {
 }
 
 func (sp *SafeSectorPiece) StartEpoch() (abi.ChainEpoch, error) {
+	if !sp.HasDealInfo() {
+		return 0, xerrors.Errorf("no deal info")
+	}
+
 	return sp.real.DealInfo.StartEpoch()
 }
 
 func (sp *SafeSectorPiece) EndEpoch() (abi.ChainEpoch, error) {
+	if !sp.HasDealInfo() {
+		return 0, xerrors.Errorf("no deal info")
+	}
+
 	return sp.real.DealInfo.EndEpoch()
 }
 
 func (sp *SafeSectorPiece) PieceCID() cid.Cid {
+	if !sp.HasDealInfo() {
+		return sp.real.Piece.PieceCID
+	}
+
 	return sp.real.DealInfo.PieceCID()
 }
 
 func (sp *SafeSectorPiece) KeepUnsealedRequested() bool {
+	if !sp.HasDealInfo() {
+		return false
+	}
+
 	return sp.real.DealInfo.KeepUnsealedRequested()
 }
 
 func (sp *SafeSectorPiece) GetAllocation(ctx context.Context, aapi piece.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+	if !sp.HasDealInfo() {
+		return nil, xerrors.Errorf("no deal info")
+	}
+
 	return sp.real.DealInfo.GetAllocation(ctx, aapi, tsk)
 }
