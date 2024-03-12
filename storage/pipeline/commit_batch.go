@@ -331,6 +331,9 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		return nil, err
 	}
 
+	// sort sectors by number
+	sort.Slice(sectors, func(i, j int) bool { return sectors[i] < sectors[j] })
+
 	total := len(sectors)
 
 	res := sealiface.CommitBatchRes{
@@ -370,10 +373,6 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	if len(infos) == 0 {
 		return nil, nil
 	}
-
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].Number < infos[j].Number
-	})
 
 	proofs := make([][]byte, 0, total)
 	for _, info := range infos {
@@ -450,7 +449,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed: %s", err)
+		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
 		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
@@ -474,7 +473,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 	res.Msg = &mcid
 
-	log.Infow("Sent ProveCommitSectors2 message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
+	log.Infow("Sent ProveCommitSectors3 message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
 
 	return []sealiface.CommitBatchRes{res}, nil
 }
@@ -591,7 +590,7 @@ func (b *CommitBatcher) processBatchV1(cfg sealiface.Config, sectors []abi.Secto
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed: %s", err)
+		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
 		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
