@@ -40,7 +40,7 @@ func TestPledgeSectors(t *testing.T) {
 		defer cancel()
 
 		_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 		miner.PledgeSectors(ctx, nSectors, 0, nil)
 	}
@@ -77,7 +77,7 @@ func TestPledgeBatching(t *testing.T) {
 				sc.AggregateAboveBaseFee = types.FIL(big.Zero())
 			}
 		}))
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
