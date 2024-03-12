@@ -933,6 +933,7 @@ workflows:
             - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
+          resource_class: 2xlarge
           get-params: true
           
       - test:
