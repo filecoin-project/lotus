@@ -332,7 +332,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 	return nil
 }
 
-func LoadConfigWithUpgrades(text string, curioConfig *config.CurioConfig) (toml.MetaData, error) {
+func LoadConfigWithUpgrades(text string, curioConfigWithDefaults *config.CurioConfig) (toml.MetaData, error) {
 	// allow migration from old config format that was limited to 1 wallet setup.
 	newText := strings.Join(lo.Map(strings.Split(text, "\n"), func(line string, _ int) string {
 		if strings.EqualFold(line, "[addresses]") {
@@ -340,7 +340,18 @@ func LoadConfigWithUpgrades(text string, curioConfig *config.CurioConfig) (toml.
 		}
 		return line
 	}), "\n")
-	meta, err := toml.Decode(newText, &curioConfig)
+	meta, err := toml.Decode(newText, &curioConfigWithDefaults)
+	for i := range curioConfigWithDefaults.Addresses {
+		if curioConfigWithDefaults.Addresses[i].PreCommitControl == nil {
+			curioConfigWithDefaults.Addresses[i].PreCommitControl = []string{}
+		}
+		if curioConfigWithDefaults.Addresses[i].CommitControl == nil {
+			curioConfigWithDefaults.Addresses[i].CommitControl = []string{}
+		}
+		if curioConfigWithDefaults.Addresses[i].TerminateControl == nil {
+			curioConfigWithDefaults.Addresses[i].TerminateControl = []string{}
+		}
+	}
 	return meta, err
 }
 func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.CurioConfig, error) {

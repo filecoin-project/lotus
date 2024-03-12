@@ -43,6 +43,7 @@ import (
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -54,7 +55,7 @@ var GuidedsetupCmd = &cli.Command{
 		T, say := SetupLanguage()
 		setupCtrlC(say)
 
-		say(header, "This interactive tool migrates lotus-miner to Curio in 5 minutes.\n")
+		say(header, "This interactive tool migrates lotus-miner to Curio in 5 minutes.")
 		say(notice, "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.")
 
 		// Run the migration steps
@@ -182,11 +183,11 @@ type MigrationData struct {
 
 func complete(d *MigrationData) {
 	stepCompleted(d, d.T("Lotus-Miner to Curio Migration."))
-	d.say(plain, "Try the web interface with  for further guided improvements.\n", "--layers=gui")
-	d.say(plain, "You can now migrate your market node (%s), if applicable.\n", "Boost")
+	d.say(plain, "Try the web interface with %s for further guided improvements.", "--layers=gui")
+	d.say(plain, "You can now migrate your market node (%s), if applicable.", "Boost")
 }
 func configToDB(d *MigrationData) {
-	d.say(section, "Migrating config.toml to database.\n")
+	d.say(section, "Migrating config.toml to database.")
 
 	type rawConfig struct {
 		Raw   []byte `db:"config"`
@@ -195,7 +196,7 @@ func configToDB(d *MigrationData) {
 	var configBytes []rawConfig
 	err := d.DB.Select(context.Background(), &configBytes, `SELECT config, title FROM harmony_config `)
 	if err != nil {
-		d.say(notice, "Error reading from database: %s. Aborting Migration.\n", err.Error())
+		d.say(notice, "Error reading from database: %s. Aborting Migration.", err.Error())
 		os.Exit(1)
 	}
 
@@ -218,12 +219,16 @@ func configToDB(d *MigrationData) {
 
 		d.full, closer, err = cliutil.GetFullNodeAPI(d.cctx)
 		if err != nil {
-			ainfos, err2 := cliutil.GetAPIInfoFromRepoPath(os.Getenv("LOTUS_PATH"), repo.FullNode)
+			path := os.Getenv("LOTUS_PATH")
+			if path == "" {
+				path = must.One(homedir.Expand("~/.lotus"))
+			}
+			ainfos, err2 := cliutil.GetAPIInfoFromRepoPath(path, repo.FullNode)
 			if err2 != nil {
-				d.say(notice, "Error connecting to lotus node: %s %s\n", err.Error(), err2.Error())
+				d.say(notice, "Error connecting to lotus node: %s %s", err.Error(), err2.Error())
 				os.Exit(1)
 			}
-			// TODO connect to apiinfo
+			// connect to apiinfo
 			for _, ainfo := range ainfos {
 				addr, err := ainfo.DialArgs("v0")
 				if err != nil {
@@ -244,13 +249,13 @@ func configToDB(d *MigrationData) {
 	}
 	token, err := d.full.AuthNew(context.Background(), api.AllPermissions)
 	if err != nil {
-		d.say(notice, "Error getting token: %s\n", err.Error())
+		d.say(notice, "Error getting token: %s", err.Error())
 		os.Exit(1)
 	}
 
 	chainApiInfo := fmt.Sprintf("%s:%s", string(token), ainfo.Addr)
 
-	err = SaveConfigToLayer(d.MinerConfigPath, "", false, chainApiInfo)
+	d.MinerID, err = SaveConfigToLayer(d.MinerConfigPath, "", false, chainApiInfo)
 	if err != nil {
 		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
 		os.Exit(1)
@@ -279,7 +284,7 @@ func oneLastThing(d *MigrationData) {
 		Templates: d.selectTemplates,
 	}).Run()
 	if err != nil {
-		d.say(notice, "Aborting remaining steps.\n", err.Error())
+		d.say(notice, "Aborting remaining steps.", err.Error())
 		os.Exit(1)
 	}
 	if i < 3 {
@@ -290,7 +295,7 @@ func oneLastThing(d *MigrationData) {
 
 			power, err := d.full.StateMinerPower(context.Background(), d.MinerID, types.EmptyTSK)
 			if err != nil {
-				d.say(notice, "Error getting miner power: %s\n", err.Error())
+				d.say(notice, "Error getting miner power: %s", err.Error())
 				os.Exit(1)
 			}
 			msgMap["version"] = build.BuildVersion
@@ -301,17 +306,17 @@ func oneLastThing(d *MigrationData) {
 				msgMap["miner_id"] = d.MinerID
 				msg, err := json.Marshal(msgMap)
 				if err != nil {
-					d.say(notice, "Error marshalling message: %s\n", err.Error())
+					d.say(notice, "Error marshalling message: %s", err.Error())
 					os.Exit(1)
 				}
 				mi, err := d.full.StateMinerInfo(context.Background(), d.MinerID, types.EmptyTSK)
 				if err != nil {
-					d.say(notice, "Error getting miner info: %s\n", err.Error())
+					d.say(notice, "Error getting miner info: %s", err.Error())
 					os.Exit(1)
 				}
 				sig, err := d.full.WalletSign(context.Background(), mi.Worker, msg)
 				if err != nil {
-					d.say(notice, "Error signing message: %s\n", err.Error())
+					d.say(notice, "Error signing message: %s", err.Error())
 					os.Exit(1)
 				}
 				msgMap["signature"] = base64.StdEncoding.EncodeToString(sig.Data)
@@ -319,20 +324,20 @@ func oneLastThing(d *MigrationData) {
 		}
 		msg, err := json.Marshal(msgMap)
 		if err != nil {
-			d.say(notice, "Error marshalling message: %s\n", err.Error())
+			d.say(notice, "Error marshalling message: %s", err.Error())
 			os.Exit(1)
 		}
 
 		resp, err := http.DefaultClient.Post("https://curiostorage.org/cgi-bin/savedata.php", "application/json", bytes.NewReader(msg))
 		if err != nil {
-			d.say(notice, "Error sending message: %s\n", err.Error())
+			d.say(notice, "Error sending message: %s", err.Error())
 		}
 		if resp != nil {
 			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != 200 {
 				b, err := io.ReadAll(resp.Body)
 				if err == nil {
-					d.say(notice, "Error sending message: Status %s, Message: \n", resp.Status, string(b))
+					d.say(notice, "Error sending message: Status %s, Message: ", resp.Status, string(b))
 				}
 			} else {
 				stepCompleted(d, d.T("Message sent."))
@@ -342,29 +347,27 @@ func oneLastThing(d *MigrationData) {
 }
 
 func doc(d *MigrationData) {
-	d.say(plain, "Documentation: \n")
-	d.say(plain, "The '%s' layer stores common configuration. All curio instances can include it in their %s argument.\n", "base", "--layers")
-	d.say(plain, "You can add other layers for per-machine configuration changes.\n")
+	d.say(plain, "Documentation: ")
+	d.say(plain, "The '%s' layer stores common configuration. All curio instances can include it in their %s argument.", "base", "--layers")
+	d.say(plain, "You can add other layers for per-machine configuration changes.")
 
-	d.say(plain, "Join %s in Filecoin %s for help.\n", "#fil-curio-help", "Slack")
-	d.say(plain, "Join %s in Filecoin %s to follow development and feedback!\n", "#fil-curio-dev", "Slack")
+	d.say(plain, "Filecoin %s channels: %s and %s", "Slack", "#fil-curio-help", "#fil-curio-dev")
 
-	d.say(plain, "Want PoST redundancy? Run many Curio instances with the '%s' layer.\n", "post")
-	d.say(plain, "Point your browser to your web GUI to complete setup with %s and advanced featues.\n", "Boost")
-	d.say(plain, "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.\n")
-
-	fmt.Println()
+	d.say(plain, "Start multiple Curio instances with the '%s' layer to redundancy.", "post")
+	d.say(plain, "Point your browser to your web GUI to complete setup with %s and advanced featues.", "Boost")
+	d.say(plain, "One database can serve multiple miner IDs: Run a migration for each lotus-miner.")
 }
 
 func verifySectors(d *MigrationData) {
 	var i []int
 	var lastError string
-	d.say(section, "Please start (or restart) %s now that database credentials are in %s.\n", "lotus-miner", "config.toml")
-	d.say(notice, "Waiting for %s to write sectors into Yugabyte.\n", "lotus-miner")
+	fmt.Println()
+	d.say(section, "Please start (or restart) %s now that database credentials are in %s.", "lotus-miner", "config.toml")
+	d.say(notice, "Waiting for %s to write sectors into Yugabyte.", "lotus-miner")
 
 	mid, err := address.IDFromAddress(d.MinerID)
 	if err != nil {
-		d.say(notice, "Error interpreting miner ID: %s\n", err.Error())
+		d.say(notice, "Error interpreting miner ID: %s: ID: %s", err.Error(), d.MinerID.String())
 		os.Exit(1)
 	}
 
@@ -373,7 +376,7 @@ func verifySectors(d *MigrationData) {
 			SELECT count(*) FROM sector_location WHERE miner_id=$1`, mid)
 		if err != nil {
 			if err.Error() != lastError {
-				d.say(notice, "Error verifying sectors: %s\n", err.Error())
+				d.say(notice, "Error verifying sectors: %s", err.Error())
 				lastError = err.Error()
 			}
 			continue
@@ -384,15 +387,15 @@ func verifySectors(d *MigrationData) {
 		fmt.Print(".")
 		time.Sleep(5 * time.Second)
 	}
-	d.say(plain, "The sectors are in the database. The database is ready for %s.\n", "Curio")
-	d.say(notice, "Now shut down lotus-miner and move the systems to %s.\n", "Curio")
+	d.say(plain, "The sectors are in the database. The database is ready for %s.", "Curio")
+	d.say(notice, "Now shut down lotus-miner and move the systems to %s.", "Curio")
 
 	_, err = (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
-		d.say(notice, "Aborting migration.\n")
+		d.say(notice, "Aborting migration.")
 		os.Exit(1)
 	}
-	stepCompleted(d, d.T("Sectors verified. %d sector locations found.\n", i))
+	stepCompleted(d, d.T("Sectors verified. %d sector locations found.", i))
 }
 
 func yugabyteConnect(d *MigrationData) {
@@ -419,7 +422,7 @@ func yugabyteConnect(d *MigrationData) {
 			Templates: d.selectTemplates,
 		}).Run()
 		if err != nil {
-			d.say(notice, "Database config error occurred, abandoning migration: %s \n", err.Error())
+			d.say(notice, "Database config error occurred, abandoning migration: %s ", err.Error())
 			os.Exit(1)
 		}
 		switch i {
@@ -428,7 +431,7 @@ func yugabyteConnect(d *MigrationData) {
 				Label: d.T("Enter the Yugabyte database host(s)"),
 			}).Run()
 			if err != nil {
-				d.say(notice, "No host provided\n")
+				d.say(notice, "No host provided")
 				continue
 			}
 			harmonyCfg.Hosts = strings.Split(host, ",")
@@ -437,7 +440,7 @@ func yugabyteConnect(d *MigrationData) {
 				Label: d.T("Enter the Yugabyte database %s", []string{"port", "username", "password", "database"}[i-1]),
 			}).Run()
 			if err != nil {
-				d.say(notice, "No value provided\n")
+				d.say(notice, "No value provided")
 				continue
 			}
 			switch i {
@@ -457,7 +460,7 @@ func yugabyteConnect(d *MigrationData) {
 				if err.Error() == "^C" {
 					os.Exit(1)
 				}
-				d.say(notice, "Error connecting to Yugabyte database: %s\n", err.Error())
+				d.say(notice, "Error connecting to Yugabyte database: %s", err.Error())
 				continue
 			}
 			goto yugabyteConnected
@@ -465,14 +468,15 @@ func yugabyteConnect(d *MigrationData) {
 	}
 
 yugabyteConnected:
-	d.say(plain, "Connected to Yugabyte. Schema is current.\n")
-	if !reflect.DeepEqual(harmonyCfg, d.MinerConfig.HarmonyDB) {
+	d.say(plain, "Connected to Yugabyte. Schema is current.")
+	if !reflect.DeepEqual(harmonyCfg, d.MinerConfig.HarmonyDB) || !d.MinerConfig.Subsystems.EnableSectorIndexDB {
 		d.MinerConfig.HarmonyDB = harmonyCfg
 		d.MinerConfig.Subsystems.EnableSectorIndexDB = true
-		d.say(plain, "Enabling Sector Indexing in the database.\n")
+
+		d.say(plain, "Enabling Sector Indexing in the database.")
 		buf, err := config.ConfigUpdate(d.MinerConfig, config.DefaultStorageMiner())
 		if err != nil {
-			d.say(notice, "Error encoding config.toml: %s\n", err.Error())
+			d.say(notice, "Error encoding config.toml: %s", err.Error())
 			os.Exit(1)
 		}
 		_, err = (&promptui.Prompt{
@@ -480,25 +484,30 @@ yugabyteConnected:
 		if err != nil {
 			os.Exit(1)
 		}
-		stat, err := os.Stat(path.Join(d.MinerConfigPath, "config.toml"))
+		p, err := homedir.Expand(d.MinerConfigPath)
 		if err != nil {
-			d.say(notice, "Error reading filemode of config.toml: %s\n", err.Error())
+			d.say(notice, "Error expanding path: %s", err.Error())
+			os.Exit(1)
+		}
+		stat, err := os.Stat(path.Join(p, "config.toml"))
+		if err != nil {
+			d.say(notice, "Error reading filemode of config.toml: %s", err.Error())
 			os.Exit(1)
 		}
 
 		filemode := stat.Mode()
-		err = os.WriteFile(path.Join(d.MinerConfigPath, "config.toml"), buf, filemode)
+		err = os.WriteFile(path.Join(p, "config.toml"), buf, filemode)
 		if err != nil {
-			d.say(notice, "Error writing config.toml: %s\n", err.Error())
+			d.say(notice, "Error writing config.toml: %s", err.Error())
 			os.Exit(1)
 		}
-		d.say(section, "Restart Lotus Miner. \n")
+		d.say(section, "Restart Lotus Miner. ")
 	}
 	stepCompleted(d, d.T("Connected to Yugabyte"))
 }
 
 func readMinerConfig(d *MigrationData) {
-	d.say(plain, "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.\n")
+	d.say(plain, "To start, ensure your sealing pipeline is drained and shut-down lotus-miner.")
 
 	verifyPath := func(dir string) (*config.StorageMiner, error) {
 		cfg := config.DefaultStorageMiner()
@@ -549,12 +558,12 @@ func readMinerConfig(d *MigrationData) {
 			Label: d.T("Enter the path to the configuration directory used by %s", "lotus-miner"),
 		}).Run()
 		if err != nil {
-			d.say(notice, "No path provided, abandoning migration \n")
+			d.say(notice, "No path provided, abandoning migration ")
 			os.Exit(1)
 		}
 		cfg, err := verifyPath(str)
 		if err != nil {
-			d.say(notice, "Cannot read the config.toml file in the provided directory, Error: %s\n", err.Error())
+			d.say(notice, "Cannot read the config.toml file in the provided directory, Error: %s", err.Error())
 			goto minerPathEntry
 		}
 		d.MinerConfigPath = str
@@ -562,23 +571,23 @@ func readMinerConfig(d *MigrationData) {
 	}
 
 	// Try to lock Miner repo to verify that lotus-miner is not running
-	r, err := repo.NewFS(d.MinerConfigPath)
-	if err != nil {
-		d.say(plain, "Could not create repo from directory: %s. Aborting migration\n", err.Error())
-		os.Exit(1)
-	}
-	lr, err := r.Lock(repo.StorageMiner)
-	if err != nil {
-		d.say(plain, "Could not lock miner repo. Your miner must be stopped: %s\n Aborting migration\n", err.Error())
-		os.Exit(1)
-	}
-	defer func() {
+	{
+		r, err := repo.NewFS(d.MinerConfigPath)
+		if err != nil {
+			d.say(plain, "Could not create repo from directory: %s. Aborting migration", err.Error())
+			os.Exit(1)
+		}
+		lr, err := r.Lock(repo.StorageMiner)
+		if err != nil {
+			d.say(plain, "Could not lock miner repo. Your miner must be stopped: %s\n Aborting migration", err.Error())
+			os.Exit(1)
+		}
 		_ = lr.Close()
-	}()
+	}
 
 	stepCompleted(d, d.T("Read Miner Config"))
 }
 func stepCompleted(d *MigrationData, step string) {
 	fmt.Print(green.Render("✔ "))
-	d.say(plain, "Step Complete: %s\n\n", step)
+	d.say(plain, "Step Complete: %s\n", step)
 }

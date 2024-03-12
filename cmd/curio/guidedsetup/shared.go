@@ -30,46 +30,51 @@ const (
 
 const FlagMinerRepoDeprecation = "storagerepo"
 
-func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApiInfo string) (err error) {
+func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApiInfo string) (minerAddress address.Address, err error) {
 	_, say := SetupLanguage()
 	ctx := context.Background()
 
 	r, err := repo.NewFS(minerRepoPath)
 	if err != nil {
-		return err
+		return minerAddress, err
 	}
 
 	ok, err := r.Exists()
 	if err != nil {
-		return err
+		return minerAddress, err
 	}
 
 	if !ok {
-		return fmt.Errorf("repo not initialized at: %s", minerRepoPath)
+		return minerAddress, fmt.Errorf("repo not initialized at: %s", minerRepoPath)
 	}
 
 	lr, err := r.LockRO(repo.StorageMiner)
 	if err != nil {
-		return fmt.Errorf("locking repo: %w", err)
+		return minerAddress, fmt.Errorf("locking repo: %w", err)
 	}
-	defer func() { _ = lr.Close() }()
+	defer func() {
+		err = lr.Close()
+		if err != nil {
+			fmt.Println("error closing repo: ", err)
+		}
+	}()
 
 	cfgNode, err := lr.Config()
 	if err != nil {
-		return fmt.Errorf("getting node config: %w", err)
+		return minerAddress, fmt.Errorf("getting node config: %w", err)
 	}
 	smCfg := cfgNode.(*config.StorageMiner)
 
 	db, err := harmonydb.NewFromConfig(smCfg.HarmonyDB)
 	if err != nil {
-		return fmt.Errorf("could not reach the database. Ensure the Miner config toml's HarmonyDB entry"+
+		return minerAddress, fmt.Errorf("could not reach the database. Ensure the Miner config toml's HarmonyDB entry"+
 			" is setup to reach Yugabyte correctly: %w", err)
 	}
 
 	var titles []string
 	err = db.Select(ctx, &titles, `SELECT title FROM harmony_config WHERE LENGTH(config) > 0`)
 	if err != nil {
-		return fmt.Errorf("miner cannot reach the db. Ensure the config toml's HarmonyDB entry"+
+		return minerAddress, fmt.Errorf("miner cannot reach the db. Ensure the config toml's HarmonyDB entry"+
 			" is setup to reach Yugabyte correctly: %s", err.Error())
 	}
 
@@ -77,56 +82,54 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 
 	buf, err := os.ReadFile(path.Join(lr.Path(), "config.toml"))
 	if err != nil {
-		return fmt.Errorf("could not read config.toml: %w", err)
+		return minerAddress, fmt.Errorf("could not read config.toml: %w", err)
 	}
-	var curioCfg config.CurioConfig
-	_, err = deps.LoadConfigWithUpgrades(string(buf), &curioCfg)
+	curioCfg := config.DefaultCurioConfig()
+
+	ensureEmptyArrays(curioCfg)
+	_, err = deps.LoadConfigWithUpgrades(string(buf), curioCfg)
 
 	if err != nil {
-		return fmt.Errorf("could not decode toml: %w", err)
+		return minerAddress, fmt.Errorf("could not decode toml: %w", err)
 	}
 
 	// Populate Miner Address
 	mmeta, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
-		return xerrors.Errorf("opening miner metadata datastore: %w", err)
+		return minerAddress, xerrors.Errorf("opening miner metadata datastore: %w", err)
 	}
 	defer func() {
-		_ = mmeta.Close()
+		// _ = mmeta.Close()
 	}()
 
 	maddrBytes, err := mmeta.Get(ctx, datastore.NewKey("miner-address"))
 	if err != nil {
-		return xerrors.Errorf("getting miner address datastore entry: %w", err)
+		return minerAddress, xerrors.Errorf("getting miner address datastore entry: %w", err)
 	}
 
 	addr, err := address.NewFromBytes(maddrBytes)
 	if err != nil {
-		return xerrors.Errorf("parsing miner actor address: %w", err)
+		return minerAddress, xerrors.Errorf("parsing miner actor address: %w", err)
 	}
 
-	orNil := func(s []string) []string {
-		if len(s) == 0 {
-			return nil
-		}
-		return s
-	}
+	minerAddress = addr
+
 	curioCfg.Addresses = []config.CurioAddresses{{
 		MinerAddresses:        []string{addr.String()},
-		PreCommitControl:      orNil(smCfg.Addresses.PreCommitControl),
-		CommitControl:         orNil(smCfg.Addresses.CommitControl),
-		TerminateControl:      orNil(smCfg.Addresses.TerminateControl),
+		PreCommitControl:      smCfg.Addresses.PreCommitControl,
+		CommitControl:         smCfg.Addresses.CommitControl,
+		TerminateControl:      smCfg.Addresses.TerminateControl,
 		DisableOwnerFallback:  smCfg.Addresses.DisableOwnerFallback,
 		DisableWorkerFallback: smCfg.Addresses.DisableWorkerFallback,
 	}}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
-		return xerrors.Errorf("keystore err: %w", err)
+		return minerAddress, xerrors.Errorf("keystore err: %w", err)
 	}
 	js, err := ks.Get(modules.JWTSecretName)
 	if err != nil {
-		return xerrors.Errorf("error getting JWTSecretName: %w", err)
+		return minerAddress, xerrors.Errorf("error getting JWTSecretName: %w", err)
 	}
 
 	curioCfg.Apis.StorageRPCSecret = base64.StdEncoding.EncodeToString(js.PrivateKey)
@@ -135,20 +138,21 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 	// Express as configTOML
 	configTOML := &bytes.Buffer{}
 	if err = toml.NewEncoder(configTOML).Encode(curioCfg); err != nil {
-		return err
+		return minerAddress, err
 	}
 
 	if lo.Contains(titles, "base") {
 		// append addresses
-		var baseCfg config.CurioConfig
+		var baseCfg = config.DefaultCurioConfig()
 		var baseText string
 		err = db.QueryRow(ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
 		if err != nil {
-			return xerrors.Errorf("Cannot load base config: %w", err)
+			return minerAddress, xerrors.Errorf("Cannot load base config: %w", err)
 		}
-		_, err := deps.LoadConfigWithUpgrades(baseText, &baseCfg)
+		ensureEmptyArrays(baseCfg)
+		_, err := deps.LoadConfigWithUpgrades(baseText, baseCfg)
 		if err != nil {
-			return xerrors.Errorf("Cannot load base config: %w", err)
+			return minerAddress, xerrors.Errorf("Cannot load base config: %w", err)
 		}
 		for _, addr := range baseCfg.Addresses {
 			if lo.Contains(addr.MinerAddresses, curioCfg.Addresses[0].MinerAddresses[0]) {
@@ -162,20 +166,13 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 				return len(a.MinerAddresses) > 0
 			})
 
-			// TODO set to 0 anything nil in baseCfg.Fees !!!!!!!!!!!!!!!!
-
 			cb, err := config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 			if err != nil {
-				return xerrors.Errorf("cannot interpret config: %w", err)
+				return minerAddress, xerrors.Errorf("cannot interpret config: %w", err)
 			}
-			var buf bytes.Buffer
-			err = toml.NewEncoder(&buf).Encode(cb)
+			_, err = db.Exec(ctx, "UPDATE harmony_config SET config=$1 WHERE title='base'", string(cb))
 			if err != nil {
-				return xerrors.Errorf("cannot encode config: %w", err)
-			}
-			_, err = db.Exec(ctx, "UPDATE harmony_config SET config=$1 WHERE title='base'", buf.String())
-			if err != nil {
-				return xerrors.Errorf("cannot update base config: %w", err)
+				return minerAddress, xerrors.Errorf("cannot update base config: %w", err)
 			}
 			say(plain, "Configuration 'base' was updated to include this miner's address and its wallet setup.")
 		}
@@ -184,42 +181,44 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 	} else if layerName == "" {
 		cfg, err := deps.GetDefaultConfig(true)
 		if err != nil {
-			return xerrors.Errorf("Cannot get default config: %w", err)
+			return minerAddress, xerrors.Errorf("Cannot get default config: %w", err)
 		}
-		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', $1)", cfg)
+		_, err = db.Exec(ctx, `INSERT INTO harmony_config (title, config) VALUES ('base', $1)
+		 ON CONFLICT(title) DO UPDATE SET config=EXCLUDED.config`, cfg)
 
 		if err != nil {
-			return err
+			return minerAddress, xerrors.Errorf("Cannot insert base config: %w", err)
 		}
 		say(notice, "Configuration 'base' was created to include this miner's address and its wallet setup.")
 	}
 
 	if layerName == "" { // only make mig if base exists and we are different. // compare to base.
 		layerName = fmt.Sprintf("mig-%s", curioCfg.Addresses[0].MinerAddresses[0])
+		overwrite = true
 	} else {
 		if lo.Contains(titles, layerName) && !overwrite {
-			return errors.New("the overwrite flag is needed to replace existing layer: " + layerName)
+			return minerAddress, errors.New("the overwrite flag is needed to replace existing layer: " + layerName)
 		}
 	}
-	say(plain, "Layer %s created. ", layerName)
 	if overwrite {
 		_, err := db.Exec(ctx, "DELETE FROM harmony_config WHERE title=$1", layerName)
 		if err != nil {
-			return err
+			return minerAddress, xerrors.Errorf("Cannot delete existing layer: %w", err)
 		}
 	}
 
 	_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ($1, $2)", layerName, configTOML.String())
 	if err != nil {
-		return err
+		return minerAddress, xerrors.Errorf("Cannot insert layer after layer created message: %w", err)
 	}
+	say(plain, "Layer %s created. ", layerName)
 
 	dbSettings := getDBSettings(*smCfg)
-	say(plain, "To work with the config: \n")
-	fmt.Println(code.Render(`curio ` + dbSettings + ` config edit base\n`))
+	say(plain, "To work with the config: ")
+	fmt.Println(code.Render(`curio ` + dbSettings + ` config edit base`))
 	say(plain, `To run Curio: With machine or cgroup isolation, use the command (with example layer selection):`)
 	fmt.Println(code.Render(`curio ` + dbSettings + ` run --layer=post`))
-	return nil
+	return minerAddress, nil
 }
 
 func getDBSettings(smCfg config.StorageMiner) string {
@@ -241,4 +240,25 @@ func getDBSettings(smCfg config.StorageMiner) string {
 		dbSettings += ` --db-name="` + smCfg.HarmonyDB.Database + `"`
 	}
 	return dbSettings
+}
+
+func ensureEmptyArrays(cfg *config.CurioConfig) {
+	if cfg.Addresses == nil {
+		cfg.Addresses = []config.CurioAddresses{}
+	} else {
+		for i := range cfg.Addresses {
+			if cfg.Addresses[i].PreCommitControl == nil {
+				cfg.Addresses[i].PreCommitControl = []string{}
+			}
+			if cfg.Addresses[i].CommitControl == nil {
+				cfg.Addresses[i].CommitControl = []string{}
+			}
+			if cfg.Addresses[i].TerminateControl == nil {
+				cfg.Addresses[i].TerminateControl = []string{}
+			}
+		}
+	}
+	if cfg.Apis.ChainApiInfo == nil {
+		cfg.Apis.ChainApiInfo = []string{}
+	}
 }

@@ -615,6 +615,90 @@
             "translation": "Curio를 실행하려면: 기계 또는 cgroup 격리를 사용하여 다음 명령을 사용하세요 (예제 레이어 선택과 함께):",
             "message": "To run Curio: With machine or cgroup isolation, use the command (with example layer selection):",
             "placeholder": null
-        }
+        },
+        {
+            "id": "Try the web interface with {__layersgui} for further guided improvements.",
+            "translation": "더 많은 안내를 위해 {__layersgui}를 사용하여 웹 인터페이스를 시도하세요.",
+            "message": "Try the web interface with {__layersgui} for further guided improvements.",
+            "placeholder": null
+            },
+            {
+            "id": "Error connecting to lotus node: {Error} {Error_1}",
+            "translation": "lotus 노드에 연결하는 중 오류 발생: {Error} {Error_1}",
+            "message": "Error connecting to lotus node: {Error} {Error_1}",
+            "placeholder": null
+            },
+            {
+            "id": "could not get API info for FullNode: {Err}",
+            "translation": "FullNode의 API 정보를 가져올 수 없습니다: {Err}",
+            "message": "could not get API info for FullNode: {Err}",
+            "placeholder": null
+            },
+            {
+            "id": "Error getting token: {Error}",
+            "translation": "토큰을 가져오는 중 오류 발생: {Error}",
+            "message": "Error getting token: {Error}",
+            "placeholder": null
+            },
+            {
+            "id": "Filecoin {Slack} channels: {Fil_curio_help} and {Fil_curio_dev}",
+            "translation": "Filecoin {Slack} 채널: {Fil_curio_help} 및 {Fil_curio_dev}",
+            "message": "Filecoin {Slack} channels: {Fil_curio_help} and {Fil_curio_dev}",
+            "placeholder": null
+            },
+            {
+            "id": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
+            "translation": "'{Post}' 레이어로 여러 Curio 인스턴스를 시작하여 중복성을 확보하세요.",
+            "message": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
+            "placeholder": null
+            },
+            {
+            "id": "One database can serve multiple miner IDs: Run a migration for each lotus-miner.",
+            "translation": "한 개의 데이터베이스는 여러 광부 ID를 제공할 수 있습니다: 각 lotus-miner에 대해 마이그레이션을 실행하세요.",
+            "message": "One database can serve multiple miner IDs: Run a migration for each lotus-miner.",
+            "placeholder": null
+            },
+            {
+            "id": "Please start (or restart) {Lotus_miner} now that database credentials are in {Toml}.",
+            "translation": "데이터베이스 자격 증명이 {Toml}에 입력되었으므로 지금 {Lotus_miner}을 시작하거나 다시 시작하세요.",
+            "message": "Please start (or restart) {Lotus_miner} now that database credentials are in {Toml}.",
+            "placeholder": null
+            },
+            {
+            "id": "Error interpreting miner ID: {Error}: ID: {String}",
+            "translation": "광부 ID를 해석하는 중 오류 발생: {Error}: ID: {String}",
+            "message": "Error interpreting miner ID: {Error}: ID: {String}",
+            "placeholder": null
+            },
+            {
+            "id": "Enabling Sector Indexing in the database.",
+            "translation": "데이터베이스에서 Sector Indexing을 활성화합니다.",
+            "message": "Enabling Sector Indexing in the database.",
+            "placeholder": null
+            },
+            {
+            "id": "Error expanding path: {Error}",
+            "translation": "경로를 확장하는 중 오류 발생: {Error}",
+            "message": "Error expanding path: {Error}",
+            "placeholder": null
+            },
+            {
+            "id": "Could not create repo from directory: {Error}. Aborting migration",
+            "translation": "디렉토리에서 저장소를 생성할 수 없습니다: {Error}. 마이그레이션을 중단합니다.",
+            "message": "Could not create repo from directory: {Error}. Aborting migration",
+            "placeholder": null
+            },
+            {
+            "id": "Could not lock miner repo. Your miner must be stopped: {Error}\n Aborting migration",
+            "translation": "광부 저장소를 잠금 해제할 수 없습니다. 귀하의 광부를 중지해야 합니다: {Error}\n 마이그레이션을 중단합니다.",
+            "message": "Could not lock miner repo. Your miner must be stopped: {Error}\n Aborting migration",
+            "placeholder": null
+            },
+            {
+            "id": "To work with the config:",
+            "translation": "구성 파일을 사용하려면:",
+            "message": "To work with the config:",
+            "placeholder": null
+            }
     ]
 }

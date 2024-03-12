@@ -37,14 +37,14 @@
             "fuzzy": true
         },
         {
-            "id": "Try the web interface with  for further guided improvements.",
-            "message": "Try the web interface with  for further guided improvements.",
-            "translation": "Try the web interface with  for further guided improvements.",
+            "id": "Try the web interface with {__layersgui} for further guided improvements.",
+            "message": "Try the web interface with {__layersgui} for further guided improvements.",
+            "translation": "Try the web interface with {__layersgui} for further guided improvements.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
                     "id": "__layersgui",
-                    "string": "%[1]v",
+                    "string": "%[1]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
@@ -95,9 +95,51 @@
             "fuzzy": true
         },
         {
-            "id": "cannot read API: {Error}. Aborting Migration",
-            "message": "cannot read API: {Error}. Aborting Migration",
-            "translation": "cannot read API: {Error}. Aborting Migration",
+            "id": "Error connecting to lotus node: {Error} {Error_1}",
+            "message": "Error connecting to lotus node: {Error} {Error_1}",
+            "translation": "Error connecting to lotus node: {Error} {Error_1}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                },
+                {
+                    "id": "Error_1",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "err2.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "could not get API info for FullNode: {Err}",
+            "message": "could not get API info for FullNode: {Err}",
+            "translation": "could not get API info for FullNode: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]w",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error getting token: {Error}",
+            "message": "Error getting token: {Error}",
+            "translation": "Error getting token: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -197,23 +239,6 @@
                 {
                     "id": "Error",
                     "string": "%[1]v",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Error connecting to lotus node: {Error}",
-            "message": "Error connecting to lotus node: {Error}",
-            "translation": "Error connecting to lotus node: {Error}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
@@ -379,59 +404,42 @@
             "fuzzy": true
         },
         {
-            "id": "Join {Fil_curio_help} in Filecoin {Slack} for help.",
-            "message": "Join {Fil_curio_help} in Filecoin {Slack} for help.",
-            "translation": "Join {Fil_curio_help} in Filecoin {Slack} for help.",
+            "id": "Filecoin {Slack} channels: {Fil_curio_help} and {Fil_curio_dev}",
+            "message": "Filecoin {Slack} channels: {Fil_curio_help} and {Fil_curio_dev}",
+            "translation": "Filecoin {Slack} channels: {Fil_curio_help} and {Fil_curio_dev}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
-                    "id": "Fil_curio_help",
+                    "id": "Slack",
                     "string": "%[1]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
+                    "expr": "\"Slack\""
+                },
+                {
+                    "id": "Fil_curio_help",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
                     "expr": "\"#fil-curio-help\""
                 },
                 {
-                    "id": "Slack",
-                    "string": "%[2]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 2,
-                    "expr": "\"Slack\""
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Join {Fil_curio_dev} in Filecoin {Slack} to follow development and feedback!",
-            "message": "Join {Fil_curio_dev} in Filecoin {Slack} to follow development and feedback!",
-            "translation": "Join {Fil_curio_dev} in Filecoin {Slack} to follow development and feedback!",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
                     "id": "Fil_curio_dev",
-                    "string": "%[1]s",
+                    "string": "%[3]s",
                     "type": "string",
                     "underlyingType": "string",
-                    "argNum": 1,
+                    "argNum": 3,
                     "expr": "\"#fil-curio-dev\""
-                },
-                {
-                    "id": "Slack",
-                    "string": "%[2]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 2,
-                    "expr": "\"Slack\""
                 }
             ],
             "fuzzy": true
         },
         {
-            "id": "Want PoST redundancy? Run many Curio instances with the '{Post}' layer.",
-            "message": "Want PoST redundancy? Run many Curio instances with the '{Post}' layer.",
-            "translation": "Want PoST redundancy? Run many Curio instances with the '{Post}' layer.",
+            "id": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
+            "message": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
+            "translation": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -463,16 +471,16 @@
             "fuzzy": true
         },
         {
-            "id": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
-            "message": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
-            "translation": "For SPs with multiple Miner IDs, run 1 migration per lotus-miner all to the same 1 database. The cluster will serve all Miner IDs.",
+            "id": "One database can serve multiple miner IDs: Run a migration for each lotus-miner.",
+            "message": "One database can serve multiple miner IDs: Run a migration for each lotus-miner.",
+            "translation": "One database can serve multiple miner IDs: Run a migration for each lotus-miner.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Please start {Lotus_miner} now that database credentials are in {Toml}.",
-            "message": "Please start {Lotus_miner} now that database credentials are in {Toml}.",
-            "translation": "Please start {Lotus_miner} now that database credentials are in {Toml}.",
+            "id": "Please start (or restart) {Lotus_miner} now that database credentials are in {Toml}.",
+            "message": "Please start (or restart) {Lotus_miner} now that database credentials are in {Toml}.",
+            "translation": "Please start (or restart) {Lotus_miner} now that database credentials are in {Toml}.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -507,6 +515,31 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "\"lotus-miner\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error interpreting miner ID: {Error}: ID: {String}",
+            "message": "Error interpreting miner ID: {Error}: ID: {String}",
+            "translation": "Error interpreting miner ID: {Error}: ID: {String}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                },
+                {
+                    "id": "String",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "d.MinerID.String()"
                 }
             ],
             "fuzzy": true
@@ -612,7 +645,7 @@
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "strings.Join(harmonycfg.Hosts, \",\")"
+                    "expr": "strings.Join(harmonyCfg.Hosts, \",\")"
                 }
             ],
             "fuzzy": true
@@ -629,7 +662,7 @@
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "harmonycfg.Port"
+                    "expr": "harmonyCfg.Port"
                 }
             ],
             "fuzzy": true
@@ -646,7 +679,7 @@
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "harmonycfg.Username"
+                    "expr": "harmonyCfg.Username"
                 }
             ],
             "fuzzy": true
@@ -663,7 +696,7 @@
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "harmonycfg.Password"
+                    "expr": "harmonyCfg.Password"
                 }
             ],
             "fuzzy": true
@@ -680,7 +713,7 @@
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "harmonycfg.Database"
+                    "expr": "harmonyCfg.Database"
                 }
             ],
             "fuzzy": true
@@ -772,6 +805,13 @@
             "fuzzy": true
         },
         {
+            "id": "Enabling Sector Indexing in the database.",
+            "message": "Enabling Sector Indexing in the database.",
+            "translation": "Enabling Sector Indexing in the database.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
             "id": "Error encoding config.toml: {Error}",
             "message": "Error encoding config.toml: {Error}",
             "translation": "Error encoding config.toml: {Error}",
@@ -801,6 +841,23 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "\"config.toml\""
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error expanding path: {Error}",
+            "message": "Error expanding path: {Error}",
+            "translation": "Error expanding path: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
                 }
             ],
             "fuzzy": true
@@ -916,6 +973,40 @@
             "fuzzy": true
         },
         {
+            "id": "Could not create repo from directory: {Error}. Aborting migration",
+            "message": "Could not create repo from directory: {Error}. Aborting migration",
+            "translation": "Could not create repo from directory: {Error}. Aborting migration",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Could not lock miner repo. Your miner must be stopped: {Error}\n Aborting migration",
+            "message": "Could not lock miner repo. Your miner must be stopped: {Error}\n Aborting migration",
+            "translation": "Could not lock miner repo. Your miner must be stopped: {Error}\n Aborting migration",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
             "id": "Read Miner Config",
             "message": "Read Miner Config",
             "translation": "Read Miner Config",
@@ -996,9 +1087,9 @@
             "fuzzy": true
         },
         {
-            "id": "To work with the config: \\n",
-            "message": "To work with the config: \\n",
-            "translation": "To work with the config: \\n",
+            "id": "To work with the config:",
+            "message": "To work with the config:",
+            "translation": "To work with the config:",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },

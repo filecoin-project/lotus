@@ -66,6 +66,6 @@ func fromMiner(cctx *cli.Context) (err error) {
 		Set the environment variable to the value of "lotus auth api-info --perm=admin"`, err)
 	}
 	chainApiInfo := header.Get("Authorization")[7:] + ":" + ainfo.Addr
-	err = guidedsetup.SaveConfigToLayer(minerRepoPath, layerName, overwrite, chainApiInfo)
+	_, err = guidedsetup.SaveConfigToLayer(minerRepoPath, layerName, overwrite, chainApiInfo)
 	return err
 }
