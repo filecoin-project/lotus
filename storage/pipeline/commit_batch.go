@@ -450,7 +450,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed: %s", err)
+		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
 		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
@@ -591,7 +591,7 @@ func (b *CommitBatcher) processBatchV1(cfg sealiface.Config, sectors []abi.Secto
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed: %s", err)
+		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
 		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}

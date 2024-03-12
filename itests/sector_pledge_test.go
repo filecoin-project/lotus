@@ -4,6 +4,7 @@ package itests
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/big"
 	"strings"
 	"testing"
 	"time"
@@ -65,11 +66,17 @@ func TestPledgeBatching(t *testing.T) {
 	//stm: @SECTOR_PRE_COMMIT_FLUSH_001, @SECTOR_COMMIT_FLUSH_001
 	blockTime := 50 * time.Millisecond
 
-	runTest := func(t *testing.T, nSectors int) {
+	runTest := func(t *testing.T, nSectors int, aggregate bool) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+		kit.QuietMiningLogs()
+
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(!aggregate), kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+			if aggregate {
+				sc.AggregateAboveBaseFee = types.FIL(big.Zero())
+			}
+		}))
 		ens.InterconnectAll().BeginMining(blockTime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
@@ -114,7 +121,10 @@ func TestPledgeBatching(t *testing.T) {
 	}
 
 	t.Run("100", func(t *testing.T) {
-		runTest(t, 100)
+		runTest(t, 100, false)
+	})
+	t.Run("10-agg", func(t *testing.T) {
+		runTest(t, 10, true)
 	})
 }
 
