@@ -19,7 +19,8 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandMainnet,
+	0:                    DrandMainnet,
+	UpgradePhoenixHeight: DrandQuicknet,
 }
 
 const GenesisNetworkVersion = network.Version0
@@ -87,6 +88,12 @@ const UpgradeWatermelonFixHeight = 1070494
 
 // 2023-11-21T13:00:00Z
 const UpgradeWatermelonFix2Height = 1108174
+
+// 2024-03-11T14:00:00Z
+const UpgradeDragonHeight = 1427974
+
+// This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
+const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

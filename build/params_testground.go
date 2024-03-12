@@ -112,9 +112,12 @@ var (
 	UpgradeWatermelonHeight     abi.ChainEpoch = -23
 	UpgradeWatermelonFixHeight  abi.ChainEpoch = -24
 	UpgradeWatermelonFix2Height abi.ChainEpoch = -25
+	UpgradeDragonHeight         abi.ChainEpoch = -26
+	UpgradePhoenixHeight        abi.ChainEpoch = -27
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-		0: DrandMainnet,
+		0:                    DrandMainnet,
+		UpgradePhoenixHeight: DrandQuicknet,
 	}
 
 	GenesisNetworkVersion = network.Version0

@@ -153,7 +153,7 @@ type dealStates9 struct {
 	adt.Array
 }
 
-func (s *dealStates9) Get(dealID abi.DealID) (*DealState, bool, error) {
+func (s *dealStates9) Get(dealID abi.DealID) (DealState, bool, error) {
 	var deal9 market9.DealState
 	found, err := s.Array.Get(uint64(dealID), &deal9)
 	if err != nil {
@@ -163,7 +163,7 @@ func (s *dealStates9) Get(dealID abi.DealID) (*DealState, bool, error) {
 		return nil, false, nil
 	}
 	deal := fromV9DealState(deal9)
-	return &deal, true, nil
+	return deal, true, nil
 }
 
 func (s *dealStates9) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
@@ -173,30 +173,57 @@ func (s *dealStates9) ForEach(cb func(dealID abi.DealID, ds DealState) error) er
 	})
 }
 
-func (s *dealStates9) decode(val *cbg.Deferred) (*DealState, error) {
+func (s *dealStates9) decode(val *cbg.Deferred) (DealState, error) {
 	var ds9 market9.DealState
 	if err := ds9.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
 	ds := fromV9DealState(ds9)
-	return &ds, nil
+	return ds, nil
 }
 
 func (s *dealStates9) array() adt.Array {
 	return s.Array
 }
 
-func fromV9DealState(v9 market9.DealState) DealState {
-	ret := DealState{
-		SectorStartEpoch: v9.SectorStartEpoch,
-		LastUpdatedEpoch: v9.LastUpdatedEpoch,
-		SlashEpoch:       v9.SlashEpoch,
-		VerifiedClaim:    0,
+type dealStateV9 struct {
+	ds9 market9.DealState
+}
+
+func (d dealStateV9) SectorStartEpoch() abi.ChainEpoch {
+	return d.ds9.SectorStartEpoch
+}
+
+func (d dealStateV9) LastUpdatedEpoch() abi.ChainEpoch {
+	return d.ds9.LastUpdatedEpoch
+}
+
+func (d dealStateV9) SlashEpoch() abi.ChainEpoch {
+	return d.ds9.SlashEpoch
+}
+
+func (d dealStateV9) Equals(other DealState) bool {
+	if ov9, ok := other.(dealStateV9); ok {
+		return d.ds9 == ov9.ds9
 	}
 
-	ret.VerifiedClaim = verifregtypes.AllocationId(v9.VerifiedClaim)
+	if d.SectorStartEpoch() != other.SectorStartEpoch() {
+		return false
+	}
+	if d.LastUpdatedEpoch() != other.LastUpdatedEpoch() {
+		return false
+	}
+	if d.SlashEpoch() != other.SlashEpoch() {
+		return false
+	}
 
-	return ret
+	return true
+}
+
+var _ DealState = (*dealStateV9)(nil)
+
+func fromV9DealState(v9 market9.DealState) DealState {
+	return dealStateV9{v9}
 }
 
 type dealProposals9 struct {

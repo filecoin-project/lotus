@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin12 "github.com/filecoin-project/go-state-types/builtin"
+	builtin13 "github.com/filecoin-project/go-state-types/builtin"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -25,8 +25,8 @@ import (
 )
 
 var (
-	Address = builtin12.VerifiedRegistryActorAddr
-	Methods = builtin12.MethodsVerifiedRegistry
+	Address = builtin13.VerifiedRegistryActorAddr
+	Methods = builtin13.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -51,6 +51,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version12:
 			return load12(store, act.Head)
+
+		case actorstypes.Version13:
+			return load13(store, act.Head)
 
 		}
 	}
@@ -122,6 +125,9 @@ func MakeState(store adt.Store, av actorstypes.Version, rootKeyAddress address.A
 	case actorstypes.Version12:
 		return make12(store, rootKeyAddress)
 
+	case actorstypes.Version13:
+		return make13(store, rootKeyAddress)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -141,8 +147,10 @@ type State interface {
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 	GetAllocation(clientIdAddr address.Address, allocationId AllocationId) (*Allocation, bool, error)
 	GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error)
+	GetAllAllocations() (map[AllocationId]Allocation, error)
 	GetClaim(providerIdAddr address.Address, claimId ClaimId) (*Claim, bool, error)
 	GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error)
+	GetAllClaims() (map[ClaimId]Claim, error)
 	GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error)
 	GetState() interface{}
 }
@@ -161,6 +169,7 @@ func AllCodes() []cid.Cid {
 		(&state10{}).Code(),
 		(&state11{}).Code(),
 		(&state12{}).Code(),
+		(&state13{}).Code(),
 	}
 }
 

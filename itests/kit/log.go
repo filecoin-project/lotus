@@ -23,6 +23,7 @@ func QuietMiningLogs() {
 	_ = logging.SetLogLevel("rpc", "ERROR")
 	_ = logging.SetLogLevel("consensus-common", "ERROR")
 	_ = logging.SetLogLevel("dht/RtRefreshManager", "ERROR")
+	_ = logging.SetLogLevel("consensus-common", "WARN")
 }
 
 func QuietAllLogsExcept(names ...string) {

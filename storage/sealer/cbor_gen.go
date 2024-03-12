@@ -33,7 +33,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ID (storiface.CallID) (struct)
-	if len("ID") > cbg.MaxLength {
+	if len("ID") > 8192 {
 		return xerrors.Errorf("Value in field \"ID\" was too long")
 	}
 
@@ -49,7 +49,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.State (sealer.CallState) (uint64)
-	if len("State") > cbg.MaxLength {
+	if len("State") > 8192 {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
 
@@ -65,7 +65,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Result (sealer.ManyBytes) (struct)
-	if len("Result") > cbg.MaxLength {
+	if len("Result") > 8192 {
 		return xerrors.Errorf("Value in field \"Result\" was too long")
 	}
 
@@ -81,7 +81,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RetType (sealer.ReturnType) (string)
-	if len("RetType") > cbg.MaxLength {
+	if len("RetType") > 8192 {
 		return xerrors.Errorf("Value in field \"RetType\" was too long")
 	}
 
@@ -92,7 +92,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.RetType) > cbg.MaxLength {
+	if len(t.RetType) > 8192 {
 		return xerrors.Errorf("Value in field t.RetType was too long")
 	}
 
@@ -134,7 +134,7 @@ func (t *Call) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -192,7 +192,7 @@ func (t *Call) UnmarshalCBOR(r io.Reader) (err error) {
 		case "RetType":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -221,7 +221,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ID (sealer.WorkID) (struct)
-	if len("ID") > cbg.MaxLength {
+	if len("ID") > 8192 {
 		return xerrors.Errorf("Value in field \"ID\" was too long")
 	}
 
@@ -237,7 +237,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Status (sealer.WorkStatus) (string)
-	if len("Status") > cbg.MaxLength {
+	if len("Status") > 8192 {
 		return xerrors.Errorf("Value in field \"Status\" was too long")
 	}
 
@@ -248,7 +248,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Status) > cbg.MaxLength {
+	if len(t.Status) > 8192 {
 		return xerrors.Errorf("Value in field t.Status was too long")
 	}
 
@@ -260,7 +260,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.StartTime (int64) (int64)
-	if len("StartTime") > cbg.MaxLength {
+	if len("StartTime") > 8192 {
 		return xerrors.Errorf("Value in field \"StartTime\" was too long")
 	}
 
@@ -282,7 +282,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.WorkError (string) (string)
-	if len("WorkError") > cbg.MaxLength {
+	if len("WorkError") > 8192 {
 		return xerrors.Errorf("Value in field \"WorkError\" was too long")
 	}
 
@@ -293,7 +293,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.WorkError) > cbg.MaxLength {
+	if len(t.WorkError) > 8192 {
 		return xerrors.Errorf("Value in field t.WorkError was too long")
 	}
 
@@ -305,7 +305,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.WorkerCall (storiface.CallID) (struct)
-	if len("WorkerCall") > cbg.MaxLength {
+	if len("WorkerCall") > 8192 {
 		return xerrors.Errorf("Value in field \"WorkerCall\" was too long")
 	}
 
@@ -321,7 +321,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.WorkerHostname (string) (string)
-	if len("WorkerHostname") > cbg.MaxLength {
+	if len("WorkerHostname") > 8192 {
 		return xerrors.Errorf("Value in field \"WorkerHostname\" was too long")
 	}
 
@@ -332,7 +332,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.WorkerHostname) > cbg.MaxLength {
+	if len(t.WorkerHostname) > 8192 {
 		return xerrors.Errorf("Value in field t.WorkerHostname was too long")
 	}
 
@@ -374,7 +374,7 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -397,7 +397,7 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Status":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -408,10 +408,10 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) (err error) {
 		case "StartTime":
 			{
 				maj, extra, err := cr.ReadHeader()
-				var extraI int64
 				if err != nil {
 					return err
 				}
+				var extraI int64
 				switch maj {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
@@ -434,7 +434,7 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) (err error) {
 		case "WorkError":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -455,7 +455,7 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) (err error) {
 		case "WorkerHostname":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -484,7 +484,7 @@ func (t *WorkID) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Method (sealtasks.TaskType) (string)
-	if len("Method") > cbg.MaxLength {
+	if len("Method") > 8192 {
 		return xerrors.Errorf("Value in field \"Method\" was too long")
 	}
 
@@ -495,7 +495,7 @@ func (t *WorkID) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Method) > cbg.MaxLength {
+	if len(t.Method) > 8192 {
 		return xerrors.Errorf("Value in field t.Method was too long")
 	}
 
@@ -507,7 +507,7 @@ func (t *WorkID) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Params (string) (string)
-	if len("Params") > cbg.MaxLength {
+	if len("Params") > 8192 {
 		return xerrors.Errorf("Value in field \"Params\" was too long")
 	}
 
@@ -518,7 +518,7 @@ func (t *WorkID) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Params) > cbg.MaxLength {
+	if len(t.Params) > 8192 {
 		return xerrors.Errorf("Value in field t.Params was too long")
 	}
 
@@ -560,7 +560,7 @@ func (t *WorkID) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -573,7 +573,7 @@ func (t *WorkID) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Method":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -584,7 +584,7 @@ func (t *WorkID) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Params":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
