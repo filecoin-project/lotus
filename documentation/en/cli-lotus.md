@@ -1332,7 +1332,7 @@ NAME:
    lotus filplus extend-claim - extend claim expiration (TermMax)
 
 USAGE:
-   lotus filplus extend-claim [command options] <provider address>
+   lotus filplus extend-claim [command options] <claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...
 
 OPTIONS:
    --term-max value, --tmax value  The maximum period for which a provider can earn quality-adjusted power for the piece (epochs).
