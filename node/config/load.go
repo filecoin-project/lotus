@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -275,10 +274,6 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 		}
 
 		if !reflect.DeepEqual(cfgCur, cfgUpdated) {
-			var j = json.NewEncoder(os.Stderr)
-			j.SetIndent("", "  ")
-			j.Encode(cfgCur)
-			j.Encode(cfgUpdated)
 			return nil, xerrors.Errorf("updated config didn't match current config:\n")
 		}
 	}
