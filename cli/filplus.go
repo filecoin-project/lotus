@@ -937,9 +937,8 @@ var filplusExtendClaimCmd = &cli.Command{
 	Usage: "extend claim expiration (TermMax)",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
-			Name: "term-max",
-			Usage: "The maximum period for which a provider can earn quality-adjusted power for the piece (epochs).\n" +
-				"Default is 5 years.",
+			Name:    "term-max",
+			Usage:   "The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years.",
 			Aliases: []string{"tmax"},
 			Value:   verifregtypes9.MaximumVerifiedAllocationTerm,
 		},
@@ -1057,7 +1056,7 @@ var filplusExtendClaimCmd = &cli.Command{
 		if len(miners) == 1 && cctx.Args().Len() > 0 && !all {
 			for _, arg := range cctx.Args().Slice() {
 				detail := strings.Split(arg, "=")
-				if len(detail) == 1 {
+				if len(detail) > 1 {
 					return fmt.Errorf("incorrect argument format %s. Must provide only claim IDs with single miner ID", detail)
 				}
 
@@ -1136,7 +1135,12 @@ type provInfo struct {
 // 7. Extend specified claims for a miner ID with different client address (2 messages)
 // 8. Extend specific claims for specific miner ID with different client address (2 messages)
 func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verifregtypes9.ClaimId]provInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool) ([]*types.Message, error) {
-	w, err := address.IDFromAddress(wallet)
+
+	ac, err := api.StateLookupID(ctx, wallet, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+	w, err := address.IDFromAddress(ac)
 	if err != nil {
 		return nil, fmt.Errorf("converting wallet address to ID: %w", err)
 	}
@@ -1167,7 +1171,9 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 			if err != nil {
 				return nil, fmt.Errorf("getting claims for miner %s: %w", maddr, err)
 			}
-			for claimID, claim := range claims {
+			for cID, c := range claims {
+				claimID := cID
+				claim := c
 				if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 					// If client is not same - needs to burn datacap
 					if claim.Client != wid {
@@ -1204,7 +1210,12 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 			return nil, fmt.Errorf("getting claims for miner %s: %w", maddr, err)
 		}
 
-		for claimID, claim := range claims {
+		for cID := range pcm {
+			claimID := cID
+			claim, ok := claims[claimID]
+			if !ok {
+				return nil, fmt.Errorf("claim %d not found for provider %s", claimID, miners[0])
+			}
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 				// If client is not same - needs to burn datacap
 				if claim.Client != wid {
@@ -1226,22 +1237,14 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 	}
 
 	if len(miners) == 0 && len(pcm) > 0 {
-		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
-		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
-		if err != nil {
-			return nil, fmt.Errorf("could not get the verified registry actor state: %w", err)
-		}
-
-		verifregState, err := verifreg.Load(store, verifregActor)
-		if err != nil {
-			return nil, fmt.Errorf("could not load the verified registry actor state: %w", err)
-		}
-		for c, prov := range pcm {
-			claim, ok, err := verifregState.GetClaim(prov.addr, c)
+		for cID, p := range pcm {
+			prov := p
+			c := cID
+			claim, err := api.StateGetClaim(ctx, prov.addr, c, types.EmptyTSK)
 			if err != nil {
 				return nil, fmt.Errorf("could not load the claim %d: %w", c, err)
 			}
-			if !ok {
+			if claim == nil {
 				return nil, fmt.Errorf("claim %d not found in the actor state", c)
 			}
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
@@ -1327,9 +1330,8 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 			Value:  big.Zero(),
 		}
 
-		fmt.Printf("Some if the specified allocation have a different client address and will require %d Datacap to extend\n", rDataCap.Int)
-
-		if assumeYes {
+		if !assumeYes {
+			fmt.Printf("Some if the specified allocation have a different client address and will require %d Datacap to extend\n", rDataCap.Int)
 			var yes bool
 			yes, err = confirm(ctx)
 			if err != nil {

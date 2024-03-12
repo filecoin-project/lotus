@@ -1335,8 +1335,7 @@ USAGE:
    lotus filplus extend-claim [command options] <claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...
 
 OPTIONS:
-   --term-max value, --tmax value  The maximum period for which a provider can earn quality-adjusted power for the piece (epochs).
-      Default is 5 years. (default: 5256000)
+   --term-max value, --tmax value                                                                               The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years. (default: 5256000)
    --client value                                                                                               the client address that will used to send the message
    --all                                                                                                        automatically extend TermMax of all claims for specified miner[s] to --term-max (default: 5 years from claim start epoch) (default: false)
    --miner value, -m value, --provider value, -p value [ --miner value, -m value, --provider value, -p value ]  storage provider address[es]
