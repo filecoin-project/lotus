@@ -1327,6 +1327,8 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 			Value:  big.Zero(),
 		}
 
+		fmt.Printf("Some if the specified allocation have a different client address and will require %d Datacap to extend\n", rDataCap.Int)
+
 		if assumeYes {
 			var yes bool
 			yes, err = confirm(ctx)
