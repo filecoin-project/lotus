@@ -209,7 +209,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return nil, xerrors.Errorf("getting config: %w", err)
 	}
 
-	if notif && total < cfg.MaxCommitBatch {
+	if notif && total < cfg.MaxCommitBatch && cfg.AggregateCommits {
 		return nil, nil
 	}
 
@@ -233,7 +233,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return false
 	}
 
-	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut()
+	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut() || !cfg.AggregateCommits
 
 	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
 		if ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.AggregateAboveBaseFee) {
@@ -444,7 +444,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
 		res.Error = err.Error()
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectors2Params: %w", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectors3Params: %w", err)
 	}
 
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
