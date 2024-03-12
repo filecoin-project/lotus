@@ -34,12 +34,16 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	for _, piece := range sector.Pieces {
 		used += piece.Piece().Size.Unpadded()
 
+		if !piece.HasDealInfo() {
+			continue
+		}
+
 		endEpoch, err := piece.EndEpoch()
 		if err != nil {
 			return xerrors.Errorf("piece.EndEpoch: %w", err)
 		}
 
-		if piece.HasDealInfo() && endEpoch > lastDealEnd {
+		if endEpoch > lastDealEnd {
 			lastDealEnd = endEpoch
 		}
 	}
