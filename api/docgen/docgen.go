@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
@@ -433,6 +434,28 @@ func init() {
 		FromHeight: epochPtr(1010),
 		ToHeight:   epochPtr(1020),
 	})
+
+	ae := types.ActorEvent{
+		Emitter: must.One(address.NewIDAddress(1234)),
+		Entries: []types.EventEntry{
+			{
+				Codec: 81,
+				Flags: 3,
+				Key:   "$type",
+				Value: []byte("jallocation"),
+			},
+			{
+				Codec: 81,
+				Flags: 3,
+				Key:   "client",
+				Value: []byte("\x19\x03\xf3"),
+			},
+		},
+		Height:    abi.ChainEpoch(101010),
+		MsgCid:    cid.MustParse("bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"),
+		TipSetKey: types.NewTipSetKey(cid.MustParse("bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"), cid.MustParse("bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve")),
+	}.AsCompactEncoded()
+	addExample(&ae)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

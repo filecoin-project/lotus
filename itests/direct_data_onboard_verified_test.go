@@ -588,14 +588,15 @@ func ddoVerifiedBuildActorEventsFromMessages(ctx context.Context, t *testing.T, 
 					addr, err := address.NewIDAddress(uint64(evt.Emitter))
 					require.NoError(t, err)
 
-					actorEvents = append(actorEvents, &types.ActorEvent{
+					ae := types.ActorEvent{
 						Entries:   evt.Entries,
 						Emitter:   addr,
 						Reverted:  false,
 						Height:    ts.Height(),
 						TipSetKey: ts.Key(),
 						MsgCid:    m.Cid,
-					})
+					}.AsCompactEncoded()
+					actorEvents = append(actorEvents, &ae)
 				}
 			}
 		}

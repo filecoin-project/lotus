@@ -32,4 +32,7 @@ type EventEntry struct {
 	Value []byte
 }
 
+// TODO: implement EventEntry#UnmarshalJSON and EventEntry#MarshalJSON to allow for both compact and
+// non-compact forms as per ActorEvent#UnmarshalJSON and ActorEvent#MarshalJSON
+
 type FilterID [32]byte // compatible with EthHash

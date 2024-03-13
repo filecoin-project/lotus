@@ -732,14 +732,15 @@ func epochPtr(i int) *abi.ChainEpoch {
 func collectedToActorEvents(collected []*filter.CollectedEvent) []*types.ActorEvent {
 	var out []*types.ActorEvent
 	for _, c := range collected {
-		out = append(out, &types.ActorEvent{
+		ae := types.ActorEvent{
 			Entries:   c.Entries,
 			Emitter:   c.EmitterAddr,
 			Reverted:  c.Reverted,
 			Height:    c.Height,
 			TipSetKey: c.TipSetKey,
 			MsgCid:    c.MsgCid,
-		})
+		}.AsCompactEncoded()
+		out = append(out, &ae)
 	}
 	return out
 }

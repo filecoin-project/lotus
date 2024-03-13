@@ -16,6 +16,10 @@ import (
 
 func TestJSONMarshalling(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(0))
+	emitter := randomF4Addr(t, rng)
+	tskCid := randomCid(t, rng)
+	msgCid := randomCid(t, rng)
+
 	t.Run("actor event with entries",
 		testJsonMarshalling(
 			ActorEvent{
@@ -23,7 +27,7 @@ func TestJSONMarshalling(t *testing.T) {
 					{
 						Key:   "key1",
 						Codec: 0x51,
-						Value: []byte("value1"),
+						Value: []byte("fvalue1"),
 					},
 					{
 						Key:   "key2",
@@ -31,13 +35,40 @@ func TestJSONMarshalling(t *testing.T) {
 						Value: []byte("value2"),
 					},
 				},
-				Emitter:   randomF4Addr(t, rng),
+				Emitter:   emitter,
 				Reverted:  false,
 				Height:    1001,
-				TipSetKey: NewTipSetKey(randomCid(t, rng)),
-				MsgCid:    randomCid(t, rng),
+				TipSetKey: NewTipSetKey(tskCid),
+				MsgCid:    msgCid,
 			},
-			`{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"dmFsdWUx"},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetKey":[{"/":"bafkqacx3dag26sfht3qlcdi"}],"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}`,
+			`{"entries":[{"Flags":0,"Key":"key1","Codec":81,"Value":"ZnZhbHVlMQ=="},{"Flags":0,"Key":"key2","Codec":82,"Value":"dmFsdWUy"}],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetKey":[{"/":"bafkqacx3dag26sfht3qlcdi"}],"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}`,
+		),
+	)
+
+	t.Run("actor event with entries as compact form ",
+		testJsonMarshalling(
+			ActorEvent{
+				Entries: []EventEntry{
+					{
+						// this should get decoded as a string: "value1" in our compact form and
+						// round-tripped back to this encoded form
+						Key:   "key1",
+						Codec: 0x51,
+						Value: []byte("fvalue1"),
+					},
+					{
+						Key:   "key2",
+						Codec: 0x52,
+						Value: []byte("value2"),
+					},
+				},
+				Emitter:   emitter,
+				Reverted:  false,
+				Height:    1001,
+				TipSetKey: NewTipSetKey(tskCid),
+				MsgCid:    msgCid,
+			}.AsCompactEncoded(),
+			`{"entries":[[0,81,"key1","value1"],[0,82,"key2",{"/":{"bytes":"dmFsdWUy"}}]],"emitter":"f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","reverted":false,"height":1001,"tipsetKey":[{"/":"bafkqacx3dag26sfht3qlcdi"}],"msgCid":{"/":"bafkqacrziziykd6uuf4islq"}}`,
 		),
 	)
 
@@ -52,7 +83,7 @@ func TestJSONMarshalling(t *testing.T) {
 					"key1": {
 						{
 							Codec: 0x51,
-							Value: []byte("value1"),
+							Value: []byte("fvalue1"),
 						},
 					},
 					"key2": {
@@ -66,7 +97,7 @@ func TestJSONMarshalling(t *testing.T) {
 				ToHeight:   heightOf(100),
 				TipSetKey:  randomTipSetKey(t, rng),
 			},
-			`{"addresses":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"dmFsdWUx"}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromHeight":0,"toHeight":100,"tipsetKey":[{"/":"bafkqacxcqxwocuiukv4aq5i"}]}`,
+			`{"addresses":["f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua","f410fagkp3qx2f76maqot74jaiw3tzbxe76k76zrkl3xifk67isrnbn2sll3yua"],"fields":{"key1":[{"codec":81,"value":"ZnZhbHVlMQ=="}],"key2":[{"codec":82,"value":"dmFsdWUy"}]},"fromHeight":0,"toHeight":100,"tipsetKey":[{"/":"bafkqacxcqxwocuiukv4aq5i"}]}`,
 		),
 	)
 	t.Run("actor event block",
