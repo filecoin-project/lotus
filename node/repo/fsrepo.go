@@ -185,28 +185,28 @@ func (worker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated [
 	return "WORKER_API_INFO", nil, nil
 }
 
-type provider struct{}
+type curio struct{}
 
-var Provider provider
+var Curio curio
 
-func (provider) Type() string {
-	return "Provider"
+func (curio) Type() string {
+	return "Curio"
 }
 
-func (provider) Config() interface{} {
+func (curio) Config() interface{} {
 	return &struct{}{}
 }
 
-func (provider) APIFlags() []string {
-	return []string{"provider-api-url"}
+func (curio) APIFlags() []string {
+	return []string{"curio-api-url"}
 }
 
-func (provider) RepoFlags() []string {
-	return []string{"provider-repo"}
+func (curio) RepoFlags() []string {
+	return []string{"curio-repo"}
 }
 
-func (provider) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
-	return "PROVIDER_API_INFO", nil, nil
+func (curio) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "CURIO_API_INFO", nil, nil
 }
 
 var Wallet wallet

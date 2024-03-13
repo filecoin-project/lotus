@@ -76,42 +76,8 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 		if path == "" {
 			continue
 		}
-
-		p, err := homedir.Expand(path)
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
-		}
-
-		r, err := repo.NewFS(p)
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
-		}
-
-		exists, err := r.Exists()
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
-		}
-
-		if !exists {
-			return []APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
-		}
-
-		ma, err := r.APIEndpoint()
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
-		}
-
-		token, err := r.APIToken()
-		if err != nil {
-			log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
-		}
-
-		return []APIInfo{{
-			Addr:  ma.String(),
-			Token: token,
-		}}, nil
+		return GetAPIInfoFromRepoPath(path, t)
 	}
-
 	for _, env := range fallbacksEnvs {
 		env, ok := os.LookupEnv(env)
 		if ok {
@@ -120,6 +86,42 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 	}
 
 	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v. Try setting environment variable: %s", t.Type(), primaryEnv)
+}
+
+func GetAPIInfoFromRepoPath(path string, t repo.RepoType) ([]APIInfo, error) {
+	p, err := homedir.Expand(path)
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", path, err)
+	}
+
+	r, err := repo.NewFS(p)
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+	}
+
+	exists, err := r.Exists()
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
+	}
+
+	if !exists {
+		return []APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
+	}
+
+	ma, err := r.APIEndpoint()
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+	}
+
+	token, err := r.APIToken()
+	if err != nil {
+		log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
+	}
+
+	return []APIInfo{{
+		Addr:  ma.String(),
+		Token: token,
+	}}, nil
 }
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
@@ -168,7 +170,7 @@ func GetRawAPIMultiV2(ctx *cli.Context, ainfoCfg []string, version string) ([]Ht
 	var httpHeads []HttpHead
 
 	if len(ainfoCfg) == 0 {
-		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './lotus-provider config get base >/tmp/base.toml' \nthen adding   \n[APIs] \n ChainApiInfo = [\" result_from lotus auth api-info --perm=admin \"]\n  and updating it with './lotus-provider config set /tmp/base.toml'")
+		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './curio config get base >/tmp/base.toml' \nthen adding   \n[APIs] \n ChainApiInfo = [\" result_from lotus auth api-info --perm=admin \"]\n  and updating it with './curio config set /tmp/base.toml'")
 	}
 	for _, i := range ainfoCfg {
 		ainfo := ParseApiInfo(i)
@@ -415,7 +417,7 @@ func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNo
 	return &v1API, finalCloser, nil
 }
 
-func GetFullNodeAPIV1LotusProvider(ctx *cli.Context, ainfoCfg []string, opts ...GetFullNodeOption) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPIV1Curio(ctx *cli.Context, ainfoCfg []string, opts ...GetFullNodeOption) (v1api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
 		return tn.(v1api.FullNode), func() {}, nil
 	}
