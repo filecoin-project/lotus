@@ -3428,18 +3428,24 @@ Response:
   {
     "emitter": "f01234",
     "entries": [
-      {
-        "Codec": 42,
-        "Flags": 7,
-        "Key": "string value",
-        "Value": "Ynl0ZSBhcnJheQ=="
-      }
+      [
+        3,
+        81,
+        "$type",
+        "allocation"
+      ],
+      [
+        3,
+        81,
+        "client",
+        1011
+      ]
     ],
-    "height": 10101,
+    "height": 101010,
     "msgCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "reverted": true,
+    "reverted": false,
     "tipsetKey": [
       {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -8876,18 +8882,24 @@ Response:
 {
   "emitter": "f01234",
   "entries": [
-    {
-      "Codec": 42,
-      "Flags": 7,
-      "Key": "string value",
-      "Value": "Ynl0ZSBhcnJheQ=="
-    }
+    [
+      3,
+      81,
+      "$type",
+      "allocation"
+    ],
+    [
+      3,
+      81,
+      "client",
+      1011
+    ]
   ],
-  "height": 10101,
+  "height": 101010,
   "msgCid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "reverted": true,
+  "reverted": false,
   "tipsetKey": [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
