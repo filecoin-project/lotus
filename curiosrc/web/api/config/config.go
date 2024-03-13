@@ -11,9 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/invopop/jsonschema"
 
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/web/api/apihelper"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/provider/lpweb/api/apihelper"
 )
 
 type cfg struct {
@@ -29,7 +29,7 @@ func Routes(r *mux.Router, deps *deps.Deps) {
 	r.Methods("POST").Path("/layers/{layer}").HandlerFunc(c.setLayer)
 }
 func getSch(w http.ResponseWriter, r *http.Request) {
-	sch := jsonschema.Reflect(config.LotusProviderConfig{})
+	sch := jsonschema.Reflect(config.CurioConfig{})
 
 	// add comments
 	for k, doc := range config.Doc {
