@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
@@ -31,10 +33,11 @@ import (
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/provider"
-	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/provider/multictladdr"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -95,11 +98,13 @@ type Deps struct {
 	Full       api.FullNode
 	Verif      storiface.Verifier
 	LW         *sealer.LocalWorker
-	As         *ctladdr.AddressSelector
-	Maddrs     []dtypes.MinerAddress
+	As         *multictladdr.MultiAddressSelector
+	Maddrs     map[dtypes.MinerAddress]bool
+	ProofTypes map[abi.RegisteredSealProof]bool
 	Stor       *paths.Remote
 	Si         *paths.DBIndex
 	LocalStore *paths.Local
+	LocalPaths *paths.BasicLocalStorage
 	ListenAddr string
 }
 
@@ -140,7 +145,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		// The config feeds into task runners & their helpers
 		deps.Cfg, err = GetConfig(cctx, deps.DB)
 		if err != nil {
-			return err
+			return xerrors.Errorf("populate config: %w", err)
 		}
 	}
 
@@ -151,7 +156,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 	}
 
 	if deps.As == nil {
-		deps.As, err = provider.AddressSelector(&deps.Cfg.Addresses)()
+		deps.As, err = provider.AddressSelector(deps.Cfg.Addresses)()
 		if err != nil {
 			return err
 		}
@@ -192,7 +197,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}()
 	}
 
-	bls := &paths.BasicLocalStorage{
+	deps.LocalPaths = &paths.BasicLocalStorage{
 		PathToJSON: cctx.String("storage-json"),
 	}
 
@@ -211,7 +216,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}
 	}
 	if deps.LocalStore == nil {
-		deps.LocalStore, err = paths.NewLocal(ctx, bls, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
+		deps.LocalStore, err = paths.NewLocal(ctx, deps.LocalPaths, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -233,25 +238,58 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
 		//  maybe with a lotus-provider specific abstraction. LocalWorker does persistent call tracking which we probably
 		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
-		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
+		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{
+			MaxParallelChallengeReads: deps.Cfg.Proving.ParallelCheckLimit,
+		}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
+	}
+	if deps.Maddrs == nil {
+		deps.Maddrs = map[dtypes.MinerAddress]bool{}
 	}
 	if len(deps.Maddrs) == 0 {
-		for _, s := range deps.Cfg.Addresses.MinerAddresses {
-			addr, err := address.NewFromString(s)
+		for _, s := range deps.Cfg.Addresses {
+			for _, s := range s.MinerAddresses {
+				addr, err := address.NewFromString(s)
+				if err != nil {
+					return err
+				}
+				deps.Maddrs[dtypes.MinerAddress(addr)] = true
+			}
+		}
+	}
+
+	if deps.ProofTypes == nil {
+		deps.ProofTypes = map[abi.RegisteredSealProof]bool{}
+	}
+	if len(deps.ProofTypes) == 0 {
+		for maddr := range deps.Maddrs {
+			spt, err := modules.SealProofType(maddr, deps.Full)
 			if err != nil {
 				return err
 			}
-			deps.Maddrs = append(deps.Maddrs, dtypes.MinerAddress(addr))
+			deps.ProofTypes[spt] = true
 		}
 	}
-	fmt.Println("last line of populate")
+
 	return nil
 }
 
+var oldAddresses = regexp.MustCompile("(?i)^\\[addresses\\]$")
+
+func LoadConfigWithUpgrades(text string, lp *config.LotusProviderConfig) (toml.MetaData, error) {
+	// allow migration from old config format that was limited to 1 wallet setup.
+	newText := oldAddresses.ReplaceAllString(text, "[[addresses]]")
+
+	if text != newText {
+		log.Warnw("Upgraded config!", "old", text, "new", newText)
+	}
+
+	meta, err := toml.Decode(newText, &lp)
+	return meta, err
+}
 func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
 	lp := config.DefaultLotusProvider()
 	have := []string{}
-	layers := cctx.StringSlice("layers")
+	layers := append([]string{"base"}, cctx.StringSlice("layers")...) // Always stack on top of "base" layer
 	for _, layer := range layers {
 		text := ""
 		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
@@ -265,9 +303,10 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 			}
 			return nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
 		}
-		meta, err := toml.Decode(text, &lp)
+
+		meta, err := LoadConfigWithUpgrades(text, lp)
 		if err != nil {
-			return nil, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
+			return lp, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
 		}
 		for _, k := range meta.Keys() {
 			have = append(have, strings.Join(k, " "))
@@ -279,4 +318,33 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 	// 3rd-parties can dynamically include config requirements and we can
 	// validate the config. Because of layering, we must validate @ startup.
 	return lp, nil
+}
+
+func GetDepsCLI(ctx context.Context, cctx *cli.Context) (*Deps, error) {
+	db, err := MakeDB(cctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := GetConfig(cctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	full, fullCloser, err := cliutil.GetFullNodeAPIV1LotusProvider(cctx, cfg.Apis.ChainApiInfo)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		select {
+		case <-ctx.Done():
+			fullCloser()
+		}
+	}()
+
+	return &Deps{
+		Cfg:  cfg,
+		DB:   db,
+		Full: full,
+	}, nil
 }

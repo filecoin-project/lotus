@@ -42,7 +42,7 @@ type WinPostTask struct {
 	verifier storiface.Verifier
 
 	api    WinPostAPI
-	actors []dtypes.MinerAddress
+	actors map[dtypes.MinerAddress]bool
 
 	mineTF promise.Promise[harmonytask.AddTaskFunc]
 }
@@ -70,7 +70,7 @@ type ProverWinningPoSt interface {
 	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, error)
 }
 
-func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors []dtypes.MinerAddress) *WinPostTask {
+func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
 	t := &WinPostTask{
 		max:      max,
 		db:       db,
@@ -107,13 +107,13 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	// First query to fetch from mining_tasks
 	err = t.db.QueryRow(ctx, `SELECT sp_id, epoch, base_compute_time FROM mining_tasks WHERE task_id = $1`, taskID).Scan(&details.SpID, &details.Epoch, &details.CompTime)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("query mining base info fail: %w", err)
 	}
 
 	// Second query to fetch from mining_base_block
 	rows, err := t.db.Query(ctx, `SELECT block_cid FROM mining_base_block WHERE task_id = $1`, taskID)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("query mining base blocks fail: %w", err)
 	}
 	defer rows.Close()
 
@@ -126,7 +126,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	}
 
 	if err := rows.Err(); err != nil {
-		return false, err
+		return false, xerrors.Errorf("query mining base blocks fail (rows.Err): %w", err)
 	}
 
 	// construct base
@@ -178,7 +178,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	})
 
 	// MAKE A MINING ATTEMPT!!
-	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()))
+	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()), "null-rounds", base.AddRounds)
 
 	mbi, err := t.api.MinerGetBaseInfo(ctx, maddr, round, base.TipSet.Key())
 	if err != nil {
@@ -225,6 +225,8 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 			return persistNoWin()
 		}
 	}
+
+	log.Infow("WinPostTask won election", "tipset", types.LogCids(base.TipSet.Cids()), "miner", maddr, "round", round, "eproof", eproof)
 
 	// winning PoSt
 	var wpostProof []prooftypes.PoStProof
@@ -277,6 +279,8 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		}
 	}
 
+	log.Infow("WinPostTask winning PoSt computed", "tipset", types.LogCids(base.TipSet.Cids()), "miner", maddr, "round", round, "proofs", wpostProof)
+
 	ticket, err := t.computeTicket(ctx, maddr, &rbase, round, base.TipSet.MinTicket(), mbi)
 	if err != nil {
 		return false, xerrors.Errorf("scratching ticket failed: %w", err)
@@ -287,6 +291,8 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	if err != nil {
 		return false, xerrors.Errorf("failed to select messages for block: %w", err)
 	}
+
+	log.Infow("WinPostTask selected messages", "tipset", types.LogCids(base.TipSet.Cids()), "miner", maddr, "round", round, "messages", len(msgs))
 
 	// equivocation handling
 	{
@@ -358,6 +364,8 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		}
 	}
 
+	log.Infow("WinPostTask base ready", "tipset", types.LogCids(base.TipSet.Cids()), "miner", maddr, "round", round, "ticket", ticket)
+
 	// block construction
 	var blockMsg *types.BlockMsg
 	{
@@ -379,6 +387,8 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 		}
 	}
 
+	log.Infow("WinPostTask block ready", "tipset", types.LogCids(base.TipSet.Cids()), "miner", maddr, "round", round, "block", blockMsg.Header.Cid(), "timestamp", blockMsg.Header.Timestamp)
+
 	// persist in db
 	{
 		bhjson, err := json.Marshal(blockMsg.Header)
@@ -396,11 +406,13 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 
 	// wait until block timestamp
 	{
+		log.Infow("WinPostTask waiting for block timestamp", "tipset", types.LogCids(base.TipSet.Cids()), "miner", maddr, "round", round, "block", blockMsg.Header.Cid(), "until", time.Unix(int64(blockMsg.Header.Timestamp), 0))
 		time.Sleep(time.Until(time.Unix(int64(blockMsg.Header.Timestamp), 0)))
 	}
 
 	// submit block!!
 	{
+		log.Infow("WinPostTask submitting block", "tipset", types.LogCids(base.TipSet.Cids()), "miner", maddr, "round", round, "block", blockMsg.Header.Cid())
 		if err := t.api.SyncSubmitBlock(ctx, blockMsg); err != nil {
 			return false, xerrors.Errorf("failed to submit block: %w", err)
 		}
@@ -489,7 +501,7 @@ func (mb MiningBase) baseTime() time.Time {
 }
 
 func (mb MiningBase) afterPropDelay() time.Time {
-	return mb.baseTime().Add(randTimeOffset(time.Second))
+	return mb.baseTime().Add(time.Duration(build.PropagationDelaySecs) * time.Second).Add(randTimeOffset(time.Second))
 }
 
 func (t *WinPostTask) mineBasic(ctx context.Context) {
@@ -572,7 +584,7 @@ func (t *WinPostTask) mineBasic(ctx context.Context) {
 
 		baseEpoch := workBase.TipSet.Height()
 
-		for _, act := range t.actors {
+		for act := range t.actors {
 			spID, err := address.IDFromAddress(address.Address(act))
 			if err != nil {
 				log.Errorf("failed to get spID from address %s: %s", act, err)

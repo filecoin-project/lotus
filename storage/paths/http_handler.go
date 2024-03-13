@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -55,6 +56,7 @@ func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	mux.HandleFunc("/remote/stat/{id}", handler.remoteStatFs).Methods("GET")
 	mux.HandleFunc("/remote/vanilla/single", handler.generateSingleVanillaProof).Methods("POST")
+	mux.HandleFunc("/remote/vanilla/porep", handler.generatePoRepVanillaProof).Methods("POST")
 	mux.HandleFunc("/remote/{type}/{id}/{spt}/allocated/{offset}/{size}", handler.remoteGetAllocated).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteGetSector).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteDeleteSector).Methods("DELETE")
@@ -303,6 +305,31 @@ func (handler *FetchHandler) generateSingleVanillaProof(w http.ResponseWriter, r
 	}
 
 	vanilla, err := handler.Local.GenerateSingleVanillaProof(r.Context(), params.Miner, params.Sector, params.ProofType)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(vanilla))
+}
+
+type PoRepVanillaParams struct {
+	Sector   storiface.SectorRef
+	Sealed   cid.Cid
+	Unsealed cid.Cid
+	Ticket   abi.SealRandomness
+	Seed     abi.InteractiveSealRandomness
+}
+
+func (handler *FetchHandler) generatePoRepVanillaProof(w http.ResponseWriter, r *http.Request) {
+	var params PoRepVanillaParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	vanilla, err := handler.Local.GeneratePoRepVanillaProof(r.Context(), params.Sector, params.Sealed, params.Unsealed, params.Ticket, params.Seed)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return

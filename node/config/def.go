@@ -118,6 +118,9 @@ func DefaultFullNode() *FullNode {
 				MaxFilterHeightRange:     2880, // conservative limit of one day
 			},
 		},
+		Events: EventsConfig{
+			EnableActorEventsAPI: false,
+		},
 	}
 }
 
@@ -349,11 +352,12 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			MaxWindowPoStGasFee: types.MustParseFIL("5"),
 			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
 		},
-		Addresses: LotusProviderAddresses{
+		Addresses: []LotusProviderAddresses{{
 			PreCommitControl: []string{},
 			CommitControl:    []string{},
 			TerminateControl: []string{},
-		},
+			MinerAddresses:   []string{},
+		}},
 		Proving: ProvingConfig{
 			ParallelCheckLimit:    32,
 			PartitionCheckTimeout: Duration(20 * time.Minute),

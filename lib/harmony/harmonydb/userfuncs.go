@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgerrcode"
@@ -129,6 +130,25 @@ func (db *DB) usedInTransaction() bool {
 	return lo.Contains(framePtrs, db.BTFP.Load())         // Unsafe read @ beginTx overlap, but 'return false' is correct there.
 }
 
+type TransactionOptions struct {
+	RetrySerializationError            bool
+	InitialSerializationErrorRetryWait time.Duration
+}
+
+type TransactionOption func(*TransactionOptions)
+
+func OptionRetry() TransactionOption {
+	return func(o *TransactionOptions) {
+		o.RetrySerializationError = true
+	}
+}
+
+func OptionSerialRetryTime(d time.Duration) TransactionOption {
+	return func(o *TransactionOptions) {
+		o.InitialSerializationErrorRetryWait = d
+	}
+}
+
 // BeginTransaction is how you can access transactions using this library.
 // The entire transaction happens in the function passed in.
 // The return must be true or a rollback will occur.
@@ -137,7 +157,7 @@ func (db *DB) usedInTransaction() bool {
 //	when there is a DB serialization error.
 //
 //go:noinline
-func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, err error)) (didCommit bool, retErr error) {
+func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, err error), opt ...TransactionOption) (didCommit bool, retErr error) {
 	db.BTFPOnce.Do(func() {
 		fp := make([]uintptr, 20)
 		runtime.Callers(1, fp)
@@ -146,6 +166,28 @@ func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, er
 	if db.usedInTransaction() {
 		return false, errTx
 	}
+
+	opts := TransactionOptions{
+		RetrySerializationError:            false,
+		InitialSerializationErrorRetryWait: 10 * time.Millisecond,
+	}
+
+	for _, o := range opt {
+		o(&opts)
+	}
+
+retry:
+	comm, err := db.transactionInner(ctx, f)
+	if err != nil && opts.RetrySerializationError && IsErrSerialization(err) {
+		time.Sleep(opts.InitialSerializationErrorRetryWait)
+		opts.InitialSerializationErrorRetryWait *= 2
+		goto retry
+	}
+
+	return comm, err
+}
+
+func (db *DB) transactionInner(ctx context.Context, f func(*Tx) (commit bool, err error)) (didCommit bool, retErr error) {
 	tx, err := db.pgx.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return false, err

@@ -11,6 +11,8 @@ import (
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -20,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
@@ -47,6 +50,39 @@ func (f *fakeChain) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey
 	return build.TestNetworkVersion, nil
 }
 
+func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.TipSet {
+	dummyCid, _ := cid.Parse("bafkqaaa")
+
+	var ts, err = types.NewTipSet([]*types.BlockHeader{
+		{
+			Height: h,
+			Miner:  builtin.SystemActorAddr,
+
+			Parents: []cid.Cid{},
+
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
+
+			ParentStateRoot:       dummyCid,
+			Messages:              dummyCid,
+			ParentMessageReceipts: dummyCid,
+
+			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
+
+			ParentBaseFee: basefee,
+		},
+	})
+	if t != nil {
+		require.NoError(t, err)
+	}
+
+	return ts
+}
+
+func makeTs(t *testing.T, h abi.ChainEpoch) *types.TipSet {
+	return makeBFTs(t, big.NewInt(0), h)
+}
+
 func (f *fakeChain) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return makeTs(nil, f.h), nil
 }
@@ -56,6 +92,10 @@ func fakePieceCid(t *testing.T) cid.Cid {
 	fakePieceCid, err := commcid.ReplicaCommitmentV1ToCID(comm[:])
 	require.NoError(t, err)
 	return fakePieceCid
+}
+
+func cidPtr(c cid.Cid) *cid.Cid {
+	return &c
 }
 
 func TestBasicPolicyEmptySector(t *testing.T) {
@@ -97,33 +137,35 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 2)
 	longestDealEpochEnd := abi.ChainEpoch(547300)
-	pieces := []api.SectorPiece{
-		{
+	pieces := []pipeline.SafeSectorPiece{
+		pipeline.SafePiece(api.SectorPiece{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
 				PieceCID: fakePieceCid(t),
 			},
-			DealInfo: &api.PieceDealInfo{
-				DealID: abi.DealID(42),
-				DealSchedule: api.DealSchedule{
+			DealInfo: &piece.PieceDealInfo{
+				PublishCid: cidPtr(fakePieceCid(t)), // pretend this is a valid builtin-market deal
+				DealID:     abi.DealID(42),
+				DealSchedule: piece.DealSchedule{
 					StartEpoch: abi.ChainEpoch(70),
 					EndEpoch:   abi.ChainEpoch(547275),
 				},
 			},
-		},
-		{
+		}),
+		pipeline.SafePiece(api.SectorPiece{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
 				PieceCID: fakePieceCid(t),
 			},
-			DealInfo: &api.PieceDealInfo{
-				DealID: abi.DealID(43),
-				DealSchedule: api.DealSchedule{
+			DealInfo: &piece.PieceDealInfo{
+				PublishCid: cidPtr(fakePieceCid(t)), // pretend this is a valid builtin-market deal
+				DealID:     abi.DealID(43),
+				DealSchedule: piece.DealSchedule{
 					StartEpoch: abi.ChainEpoch(80),
 					EndEpoch:   longestDealEpochEnd,
 				},
 			},
-		},
+		}),
 	}
 
 	exp, err := policy.Expiration(context.Background(), pieces...)
@@ -138,20 +180,21 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []api.SectorPiece{
-		{
+	pieces := []pipeline.SafeSectorPiece{
+		pipeline.SafePiece(api.SectorPiece{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
 				PieceCID: fakePieceCid(t),
 			},
-			DealInfo: &api.PieceDealInfo{
-				DealID: abi.DealID(44),
-				DealSchedule: api.DealSchedule{
+			DealInfo: &piece.PieceDealInfo{
+				PublishCid: cidPtr(fakePieceCid(t)), // pretend this is a valid builtin-market deal
+				DealID:     abi.DealID(44),
+				DealSchedule: piece.DealSchedule{
 					StartEpoch: abi.ChainEpoch(1),
 					EndEpoch:   abi.ChainEpoch(10),
 				},
 			},
-		},
+		}),
 	}
 
 	exp, err := pcp.Expiration(context.Background(), pieces...)
@@ -170,27 +213,28 @@ func TestMissingDealIsIgnored(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []api.SectorPiece{
-		{
+	pieces := []pipeline.SafeSectorPiece{
+		pipeline.SafePiece(api.SectorPiece{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
 				PieceCID: fakePieceCid(t),
 			},
-			DealInfo: &api.PieceDealInfo{
-				DealID: abi.DealID(44),
-				DealSchedule: api.DealSchedule{
+			DealInfo: &piece.PieceDealInfo{
+				PublishCid: cidPtr(fakePieceCid(t)), // pretend this is a valid builtin-market deal
+				DealID:     abi.DealID(44),
+				DealSchedule: piece.DealSchedule{
 					StartEpoch: abi.ChainEpoch(1),
 					EndEpoch:   abi.ChainEpoch(547300),
 				},
 			},
-		},
-		{
+		}),
+		pipeline.SafePiece(api.SectorPiece{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
 				PieceCID: fakePieceCid(t),
 			},
 			DealInfo: nil,
-		},
+		}),
 	}
 
 	exp, err := policy.Expiration(context.Background(), pieces...)

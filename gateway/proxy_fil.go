@@ -437,6 +437,20 @@ func (gw *Node) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64
 	return gw.target.StateWaitMsg(ctx, msg, confidence, limit, allowReplaced)
 }
 
+func (gw *Node) GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.GetActorEvents(ctx, filter)
+}
+
+func (gw *Node) SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.SubscribeActorEvents(ctx, filter)
+}
+
 func (gw *Node) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err

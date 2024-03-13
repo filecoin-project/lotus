@@ -22,7 +22,7 @@ type heightHandler struct {
 }
 
 type heightEvents struct {
-	api          EventAPI
+	api          EventHelperAPI
 	gcConfidence abi.ChainEpoch
 
 	lk                        sync.Mutex
@@ -31,7 +31,7 @@ type heightEvents struct {
 	lastGc                    abi.ChainEpoch //nolint:structcheck
 }
 
-func newHeightEvents(api EventAPI, obs *observer, gcConfidence abi.ChainEpoch) *heightEvents {
+func newHeightEvents(api EventHelperAPI, obs *observer, gcConfidence abi.ChainEpoch) *heightEvents {
 	he := &heightEvents{
 		api:            api,
 		gcConfidence:   gcConfidence,

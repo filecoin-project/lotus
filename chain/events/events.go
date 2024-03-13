@@ -28,7 +28,7 @@ type TipSetObserver interface {
 	Revert(ctx context.Context, from, to *types.TipSet) error
 }
 
-type EventAPI interface {
+type EventHelperAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
@@ -47,7 +47,7 @@ type Events struct {
 	*hcEvents
 }
 
-func newEventsWithGCConfidence(ctx context.Context, api EventAPI, gcConfidence abi.ChainEpoch) (*Events, error) {
+func newEventsWithGCConfidence(ctx context.Context, api EventHelperAPI, gcConfidence abi.ChainEpoch) (*Events, error) {
 	cache := newCache(api, gcConfidence)
 
 	ob := newObserver(cache, gcConfidence)
@@ -61,7 +61,7 @@ func newEventsWithGCConfidence(ctx context.Context, api EventAPI, gcConfidence a
 	return &Events{ob, he, headChange}, nil
 }
 
-func NewEvents(ctx context.Context, api EventAPI) (*Events, error) {
+func NewEvents(ctx context.Context, api EventHelperAPI) (*Events, error) {
 	gcConfidence := 2 * build.ForkLengthThreshold
 	return newEventsWithGCConfidence(ctx, api, gcConfidence)
 }

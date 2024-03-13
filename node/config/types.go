@@ -27,6 +27,7 @@ type FullNode struct {
 	Fees          FeeConfig
 	Chainstore    Chainstore
 	Fevm          FevmConfig
+	Events        EventsConfig
 	Index         IndexConfig
 	FaultReporter FaultReporterConfig
 }
@@ -68,8 +69,10 @@ type StorageMiner struct {
 type LotusProviderConfig struct {
 	Subsystems ProviderSubsystemsConfig
 
-	Fees      LotusProviderFees
-	Addresses LotusProviderAddresses
+	Fees LotusProviderFees
+
+	// Addresses of wallets per MinerAddress (one of the fields).
+	Addresses []LotusProviderAddresses
 	Proving   ProvingConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
@@ -91,12 +94,108 @@ type JournalConfig struct {
 }
 
 type ProviderSubsystemsConfig struct {
-	EnableWindowPost    bool
-	WindowPostMaxTasks  int
+	// EnableWindowPost enables window post to be executed on this lotus-provider instance. Each machine in the cluster
+	// with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
+	// machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
+	// will allow for parallel processing of partitions.
+	//
+	// It is possible to have instances handling both WindowPoSt and WinningPoSt, which can provide redundancy without
+	// the need for additional machines. In setups like this it is generally recommended to run
+	// partitionsPerDeadline+1 machines.
+	EnableWindowPost   bool
+	WindowPostMaxTasks int
+
+	// EnableWinningPost enables winning post to be executed on this lotus-provider instance.
+	// Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
+	// It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
+	// documentation.
 	EnableWinningPost   bool
 	WinningPostMaxTasks int
 
+	// EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
+	// creating 11 layer files in sector cache directory.
+	//
+	// SDR is the first task in the sealing pipeline. It's inputs are just the hash of the
+	// unsealed data (CommD), sector number, miner id, and the seal proof type.
+	// It's outputs are the 11 layer files in the sector cache directory.
+	//
+	// In lotus-miner this was run as part of PreCommit1.
+	EnableSealSDR bool
+
+	// The maximum amount of SDR tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine.
+	SealSDRMaxTasks int
+
+	// EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
+	// This task handles encoding of unsealed data into last sdr layer and building
+	// of TreeR, TreeC and TreeD.
+	//
+	// This task runs after SDR
+	// TreeD is first computed with optional input of unsealed data
+	// TreeR is computed from replica, which is first computed as field
+	//   addition of the last SDR layer and the bottom layer of TreeD (which is the unsealed data)
+	// TreeC is computed from the 11 SDR layers
+	// The 3 trees will later be used to compute the PoRep proof.
+	//
+	// In case of SyntheticPoRep challenges for PoRep will be pre-generated at this step, and trees and layers
+	// will be dropped. SyntheticPoRep works by pre-generating a very large set of challenges (~30GiB on disk)
+	// then using a small subset of them for the actual PoRep computation. This allows for significant scratch space
+	// saving between PreCommit and PoRep generation at the expense of more computation (generating challenges in this step)
+	//
+	// In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
+	// Note that nodes with SDRTrees enabled will also answer to Finalize tasks,
+	// which just remove unneeded tree data after PoRep is computed.
+	EnableSealSDRTrees bool
+
+	// The maximum amount of SealSDRTrees tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine.
+	SealSDRTreesMaxTasks int
+
+	// FinalizeMaxTasks is the maximum amount of finalize tasks that can run simultaneously.
+	// The finalize task is enabled on all machines which also handle SDRTrees tasks. Finalize ALWAYS runs on whichever
+	// machine holds sector cache files, as it removes unneeded tree data after PoRep is computed.
+	// Finalize will run in parallel with the SubmitCommitMsg task.
+	FinalizeMaxTasks int
+
+	// EnableSendPrecommitMsg enables the sending of precommit messages to the chain
+	// from this lotus-provider instance.
+	// This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message
+	EnableSendPrecommitMsg bool
+
+	// EnablePoRepProof enables the computation of the porep proof
+	//
+	// This task runs after interactive-porep seed becomes available, which happens 150 epochs (75min) after the
+	// precommit message lands on chain. This task should run on a machine with a GPU. Vanilla PoRep proofs are
+	// requested from the machine which holds sector cache files which most likely is the machine which ran the SDRTrees
+	// task.
+	//
+	// In lotus-miner this was Commit1 / Commit2
+	EnablePoRepProof bool
+
+	// The maximum amount of PoRepProof tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine.
+	PoRepProofMaxTasks int
+
+	// EnableSendCommitMsg enables the sending of commit messages to the chain
+	// from this lotus-provider instance.
+	EnableSendCommitMsg bool
+
+	// EnableMoveStorage enables the move-into-long-term-storage task to run on this lotus-provider instance.
+	// This tasks should only be enabled on nodes with long-term storage.
+	//
+	// The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
+	// SDRTrees machine into long-term storage. This task runs after the Finalize task.
+	EnableMoveStorage bool
+
+	// The maximum amount of MoveStorage tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine. It is recommended that this value is set to a number which
+	// uses all available network (or disk) bandwidth on the machine without causing bottlenecks.
+	MoveStorageMaxTasks int
+
+	// EnableWebGui enables the web GUI on this lotus-provider instance. The UI has minimal local overhead, but it should
+	// only need to be run on a single machine in the cluster.
 	EnableWebGui bool
+
 	// The address that should listen for Web GUI requests.
 	GuiAddress string
 }
@@ -490,6 +589,15 @@ type SealingConfig struct {
 
 	// UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.
 	UseSyntheticPoRep bool
+
+	// Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).
+	RequireActivationSuccess bool
+	// Whether to abort if any piece activation notification returns a non-zero exit code (newly sealed sectors, only with ProveCommitSectors3).
+	RequireActivationSuccessUpdate bool
+	// Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).
+	RequireNotificationSuccess bool
+	// Whether to abort if any piece activation notification returns a non-zero exit code (updating sectors, only with ProveReplicaUpdates3).
+	RequireNotificationSuccessUpdate bool
 }
 
 type SealerConfig struct {
@@ -761,14 +869,13 @@ type FevmConfig struct {
 }
 
 type Events struct {
-	// EnableEthRPC enables APIs that
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool
 
 	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableHistoricFilterAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
@@ -797,6 +904,14 @@ type Events struct {
 	// Set upper bound on index size
 }
 
+type EventsConfig struct {
+	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+	// emitted by (smart contracts + built-in Actors).
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+	// disabled by setting their respective Disable* options in Fevm.Events.
+	EnableActorEventsAPI bool
+}
+
 type IndexConfig struct {
 	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
@@ -820,6 +935,7 @@ type HarmonyDB struct {
 	// The port to find Yugabyte. Blank for default.
 	Port string
 }
+
 type FaultReporterConfig struct {
 	// EnableConsensusFaultReporter controls whether the node will monitor and
 	// report consensus faults. When enabled, the node will watch for malicious

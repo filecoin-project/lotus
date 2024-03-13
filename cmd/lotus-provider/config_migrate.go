@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -36,7 +37,7 @@ var configMigrateCmd = &cli.Command{
 			Aliases: []string{FlagMinerRepoDeprecation},
 			EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
 			Value:   "~/.lotusminer",
-			Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
+			Usage:   "Miner repo path",
 		},
 		&cli.StringFlag{
 			Name:    "repo",
@@ -123,8 +124,8 @@ func fromMiner(cctx *cli.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("could not read config.toml: %w", err)
 	}
-	var lpCfg config.LotusProviderConfig
-	_, err = toml.Decode(string(buf), &lpCfg)
+	lpCfg := config.DefaultLotusProvider()
+	_, err = deps.LoadConfigWithUpgrades(string(buf), lpCfg)
 	if err != nil {
 		return fmt.Errorf("could not decode toml: %w", err)
 	}
@@ -148,7 +149,9 @@ func fromMiner(cctx *cli.Context) (err error) {
 		return xerrors.Errorf("parsing miner actor address: %w", err)
 	}
 
-	lpCfg.Addresses.MinerAddresses = []string{addr.String()}
+	lpCfg.Addresses = []config.LotusProviderAddresses{{
+		MinerAddresses: []string{addr.String()},
+	}}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
@@ -174,11 +177,15 @@ func fromMiner(cctx *cli.Context) (err error) {
 	}
 	lpCfg.Apis.ChainApiInfo = []string{header.Get("Authorization")[7:] + ":" + ainfo.Addr}
 
-	// Enable WindowPoSt
-	lpCfg.Subsystems.EnableWindowPost = true
-	msg += "\nBefore running lotus-provider, ensure any miner/worker answering of WindowPost is disabled by " +
+	// WindowPoSt message
+	msg += "\n!! Before running lotus-provider with Window PoSt enabled, ensure any miner/worker answering of WindowPost is disabled by " +
 		"(on Miner) " + configColor("DisableBuiltinWindowPoSt=true") + " and (on Workers) not enabling windowpost on CLI or via " +
 		"environment variable " + configColor("LOTUS_WORKER_WINDOWPOST") + "."
+
+	// WinningPoSt message
+	msg += "\n!! Before running lotus-provider with Winning PoSt enabled, ensure any miner/worker answering of WinningPost is disabled by " +
+		"(on Miner) " + configColor("DisableBuiltinWinningPoSt=true") + " and (on Workers) not enabling winningpost on CLI or via " +
+		"environment variable " + configColor("LOTUS_WORKER_WINNINGPOST") + "."
 
 	// Express as configTOML
 	configTOML := &bytes.Buffer{}

@@ -31,7 +31,7 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ID (uuid.UUID) (array)
-	if len("ID") > cbg.MaxLength {
+	if len("ID") > 8192 {
 		return xerrors.Errorf("Value in field \"ID\" was too long")
 	}
 
@@ -42,7 +42,7 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.ID) > cbg.ByteArrayMaxLen {
+	if len(t.ID) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.ID was too long")
 	}
 
@@ -55,7 +55,7 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Sector (abi.SectorID) (struct)
-	if len("Sector") > cbg.MaxLength {
+	if len("Sector") > 8192 {
 		return xerrors.Errorf("Value in field \"Sector\" was too long")
 	}
 
@@ -101,7 +101,7 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -118,19 +118,17 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.ByteArrayMaxLen {
+			if extra > 2097152 {
 				return fmt.Errorf("t.ID: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
 			}
-
 			if extra != 16 {
 				return fmt.Errorf("expected array to have 16 elements")
 			}
 
 			t.ID = [16]uint8{}
-
 			if _, err := io.ReadFull(cr, t.ID[:]); err != nil {
 				return err
 			}
@@ -166,7 +164,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Key (string) (string)
-	if len("Key") > cbg.MaxLength {
+	if len("Key") > 8192 {
 		return xerrors.Errorf("Value in field \"Key\" was too long")
 	}
 
@@ -177,7 +175,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Key) > cbg.MaxLength {
+	if len(t.Key) > 8192 {
 		return xerrors.Errorf("Value in field t.Key was too long")
 	}
 
@@ -189,7 +187,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Value (string) (string)
-	if len("Value") > cbg.MaxLength {
+	if len("Value") > 8192 {
 		return xerrors.Errorf("Value in field \"Value\" was too long")
 	}
 
@@ -200,7 +198,7 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Value) > cbg.MaxLength {
+	if len(t.Value) > 8192 {
 		return xerrors.Errorf("Value in field t.Value was too long")
 	}
 
@@ -242,7 +240,7 @@ func (t *SecDataHttpHeader) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -255,7 +253,7 @@ func (t *SecDataHttpHeader) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Key":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -266,7 +264,7 @@ func (t *SecDataHttpHeader) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Value":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -295,7 +293,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.URL (string) (string)
-	if len("URL") > cbg.MaxLength {
+	if len("URL") > 8192 {
 		return xerrors.Errorf("Value in field \"URL\" was too long")
 	}
 
@@ -306,7 +304,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.URL) > cbg.MaxLength {
+	if len(t.URL) > 8192 {
 		return xerrors.Errorf("Value in field t.URL was too long")
 	}
 
@@ -318,7 +316,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Local (bool) (bool)
-	if len("Local") > cbg.MaxLength {
+	if len("Local") > 8192 {
 		return xerrors.Errorf("Value in field \"Local\" was too long")
 	}
 
@@ -334,7 +332,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Headers ([]storiface.SecDataHttpHeader) (slice)
-	if len("Headers") > cbg.MaxLength {
+	if len("Headers") > 8192 {
 		return xerrors.Errorf("Value in field \"Headers\" was too long")
 	}
 
@@ -345,7 +343,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Headers) > cbg.MaxLength {
+	if len(t.Headers) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Headers was too long")
 	}
 
@@ -356,6 +354,7 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -389,7 +388,7 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -402,7 +401,7 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 		case "URL":
 
 			{
-				sval, err := cbg.ReadString(cr)
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
 				if err != nil {
 					return err
 				}
@@ -435,7 +434,7 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > 8192 {
 				return fmt.Errorf("t.Headers: array too large (%d)", extra)
 			}
 
@@ -463,6 +462,7 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 						}
 
 					}
+
 				}
 			}
 

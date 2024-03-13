@@ -13,6 +13,7 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
 func TestSectorInfoSerialization(t *testing.T) {
@@ -23,9 +24,9 @@ func TestSectorInfoSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dealInfo := api.PieceDealInfo{
+	dealInfo := piece.PieceDealInfo{
 		DealID: d,
-		DealSchedule: api.DealSchedule{
+		DealSchedule: piece.DealSchedule{
 			StartEpoch: 0,
 			EndEpoch:   100,
 		},
@@ -43,13 +44,13 @@ func TestSectorInfoSerialization(t *testing.T) {
 	si := &SectorInfo{
 		State:        "stateful",
 		SectorNumber: 234,
-		Pieces: []api.SectorPiece{{
+		Pieces: []SafeSectorPiece{{real: api.SectorPiece{
 			Piece: abi.PieceInfo{
 				Size:     5,
 				PieceCID: dummyCid,
 			},
 			DealInfo: &dealInfo,
-		}},
+		}}},
 		CommD:            &dummyCid,
 		CommR:            nil,
 		Proof:            nil,
@@ -77,8 +78,8 @@ func TestSectorInfoSerialization(t *testing.T) {
 	assert.Equal(t, si.State, si2.State)
 	assert.Equal(t, si.SectorNumber, si2.SectorNumber)
 
-	assert.Equal(t, si.Pieces[0].DealInfo.DealID, si2.Pieces[0].DealInfo.DealID)
-	assert.Equal(t, si.Pieces[0].DealInfo.DealProposal.PieceCID, si2.Pieces[0].DealInfo.DealProposal.PieceCID)
+	assert.Equal(t, si.Pieces[0].Impl().DealID, si2.Pieces[0].Impl().DealID)
+	assert.Equal(t, si.Pieces[0].Impl().DealProposal.PieceCID, si2.Pieces[0].Impl().DealProposal.PieceCID)
 	assert.Equal(t, *si.CommD, *si2.CommD)
 	assert.DeepEqual(t, si.TicketValue, si2.TicketValue)
 	assert.Equal(t, si.TicketEpoch, si2.TicketEpoch)

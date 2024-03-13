@@ -129,6 +129,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
+	// TODO: Optimization: See https://github.com/filecoin-project/lotus/issues/11597
 	prevBeacon, err := filec.store.GetLatestBeaconEntry(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
@@ -149,7 +150,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
 	}
 	if h.Timestamp > now {
-		log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
+		log.Warnf("Got block from the future, but within threshold (%d > %d)", h.Timestamp, now)
 	}
 
 	minerCheck := async.Err(func() error {
@@ -165,7 +166,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 	}
 
 	if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
-		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
+		return xerrors.Errorf("parent weight different: %s (header) != %s (computed)",
 			b.Header.ParentWeight, pweight)
 	}
 

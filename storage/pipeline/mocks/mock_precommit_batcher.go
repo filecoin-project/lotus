@@ -103,6 +103,21 @@ func (mr *MockPreCommitBatcherApiMockRecorder) StateAccountKey(arg0, arg1, arg2 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAccountKey", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateAccountKey), arg0, arg1, arg2)
 }
 
+// StateGetAllocation mocks base method.
+func (m *MockPreCommitBatcherApi) StateGetAllocation(arg0 context.Context, arg1 address.Address, arg2 verifreg.AllocationId, arg3 types.TipSetKey) (*verifreg.Allocation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocation", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*verifreg.Allocation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocation indicates an expected call of StateGetAllocation.
+func (mr *MockPreCommitBatcherApiMockRecorder) StateGetAllocation(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocation", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateGetAllocation), arg0, arg1, arg2, arg3)
+}
+
 // StateGetAllocationForPendingDeal mocks base method.
 func (m *MockPreCommitBatcherApi) StateGetAllocationForPendingDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*verifreg.Allocation, error) {
 	m.ctrl.T.Helper()

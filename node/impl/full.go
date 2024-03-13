@@ -35,6 +35,7 @@ type FullNodeAPI struct {
 	full.WalletAPI
 	full.SyncAPI
 	full.EthAPI
+	full.ActorEventsAPI
 
 	DS          dtypes.MetadataDS
 	NetworkName dtypes.NetworkName

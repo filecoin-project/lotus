@@ -382,26 +382,12 @@ func parseEthRevert(ret []byte) string {
 //  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
+//
+// If the actor doesn't exist in the state-tree but we have its ID, we use a masked ID address. It could have been deleted.
 func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAddress, error) {
-	// BLOCK A: We are trying to get an actual Ethereum address from an f410 address.
 	// Attempt to convert directly, if it's an f4 address.
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
 	if err == nil && !ethAddr.IsMaskedID() {
-		return ethAddr, nil
-	}
-
-	// Lookup on the target actor and try to get an f410 address.
-	if actor, err := st.GetActor(addr); err != nil {
-		return ethtypes.EthAddress{}, err
-	} else if actor.Address != nil {
-		if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
-			return ethAddr, nil
-		}
-	}
-
-	// BLOCK B: We gave up on getting an actual Ethereum address and are falling back to a Masked ID address.
-	// Check if we already have an ID addr, and use it if possible.
-	if err == nil && ethAddr.IsMaskedID() {
 		return ethAddr, nil
 	}
 
@@ -410,6 +396,21 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
+
+	// Lookup on the target actor and try to get an f410 address.
+	if actor, err := st.GetActor(idAddr); errors.Is(err, types.ErrActorNotFound) {
+		// Not found -> use a masked ID address
+	} else if err != nil {
+		// Any other error -> fail.
+		return ethtypes.EthAddress{}, err
+	} else if actor.Address == nil {
+		// No delegated address -> use masked ID address.
+	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+		// Conversable into an eth address, use it.
+		return ethAddr, nil
+	}
+
+	// Otherwise, use the masked address.
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
@@ -654,7 +655,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, events []types.Event, cs *store.ChainStore, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -695,7 +696,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
 	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
-	ts, err := cs.GetTipSetFromKey(ctx, lookup.TipSet)
+	ts, err := ca.Chain.GetTipSetFromKey(ctx, lookup.TipSet)
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
 	}
@@ -706,7 +707,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	// The tx is located in the parent tipset
-	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
+	parentTs, err := ca.Chain.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
 	}
@@ -729,6 +730,24 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
 		receipt.ContractAddress = &addr
+	}
+
+	var events []types.Event
+	if rct := lookup.Receipt; rct.EventsRoot != nil {
+		events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+		if err != nil {
+			// Fore-recompute, we must have enabled the Event APIs after computing this
+			// tipset.
+			if _, _, err := sa.StateManager.RecomputeTipSetState(ctx, ts); err != nil {
+
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+			// Try again
+			events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+		}
 	}
 
 	if len(events) > 0 {

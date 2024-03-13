@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -164,7 +164,7 @@ jobs:
         default: unit
         description: Test suite name to report to CircleCI.
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
         environment:
           LOTUS_HARMONYDB_HOSTS: yugabyte
       - image: yugabytedb/yugabyte:2.18.0.0-b65
@@ -218,7 +218,7 @@ jobs:
           test with. If empty (the default) the commit defined by the git
           submodule is used.
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
     resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
@@ -392,14 +392,8 @@ jobs:
       - attach_workspace:
           at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
-      - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
-      - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
-      - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
       - run: make docsgen
-      - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
-      - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
-      - run: zcat build/openrpc/worker.json.gz | jq > ../post-openrpc-worker
-      - run: diff ../pre-openrpc-full ../post-openrpc-full && diff ../pre-openrpc-miner ../post-openrpc-miner && diff ../pre-openrpc-worker ../post-openrpc-worker && git --no-pager diff && git --no-pager diff --quiet
+      - run: git --no-pager diff && git --no-pager diff --quiet
 
   lint-all:
     description: |
@@ -412,7 +406,7 @@ jobs:
         description: |
           Arguments to pass to golangci-lint
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
     resource_class: medium+
     steps:
       - install-ubuntu-deps
@@ -663,6 +657,18 @@ workflows:
             - build
           suite: itest-decode_params
           target: "./itests/decode_params_test.go"
+      - test:
+          name: test-itest-direct_data_onboard
+          requires:
+            - build
+          suite: itest-direct_data_onboard
+          target: "./itests/direct_data_onboard_test.go"
+      - test:
+          name: test-itest-direct_data_onboard_verified
+          requires:
+            - build
+          suite: itest-direct_data_onboard_verified
+          target: "./itests/direct_data_onboard_verified_test.go"
       - test:
           name: test-itest-dup_mpool_messages
           requires:
@@ -927,6 +933,7 @@ workflows:
             - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
+          resource_class: 2xlarge
           get-params: true
           
       - test:
@@ -1024,7 +1031,7 @@ workflows:
           requires:
             - build
           suite: utest-unit-rest
-          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
+          target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./provider/... ./tools/..."
           resource_class: 2xlarge
       - test:
           name: test-unit-storage

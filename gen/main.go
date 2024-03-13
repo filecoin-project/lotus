@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -38,6 +39,7 @@ func main() {
 		types.EventEntry{},
 		// Tracing
 		types.GasTrace{},
+		types.ActorTrace{},
 		types.MessageTrace{},
 		types.ReturnTrace{},
 		types.ExecutionTrace{},
@@ -63,9 +65,7 @@ func main() {
 		api.SealedRefs{},
 		api.SealTicket{},
 		api.SealSeed{},
-		api.PieceDealInfo{},
 		api.SectorPiece{},
-		api.DealSchedule{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -104,6 +104,15 @@ func main() {
 		storiface.CallID{},
 		storiface.SecDataHttpHeader{},
 		storiface.SectorLocation{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteMapEncodersToFile("./storage/pipeline/piece/cbor_gen.go", "piece",
+		piece.PieceDealInfo{},
+		piece.DealSchedule{},
 	)
 	if err != nil {
 		fmt.Println(err)

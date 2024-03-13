@@ -11,6 +11,7 @@ import (
 
 func getGPUDevices() float64 { // GPU boolean
 	gpus, err := ffi.GetGPUDevices()
+	logger.Infow("GPUs", "list", gpus)
 	if err != nil {
 		logger.Errorf("getting gpu devices failed: %+v", err)
 	}

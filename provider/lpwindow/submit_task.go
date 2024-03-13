@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/provider/chainsched"
 	"github.com/filecoin-project/lotus/provider/lpmessage"
-	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/provider/multictladdr"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
@@ -47,12 +47,12 @@ type WdPostSubmitTask struct {
 	api    WdPoStSubmitTaskApi
 
 	maxWindowPoStGasFee types.FIL
-	as                  *ctladdr.AddressSelector
+	as                  *multictladdr.MultiAddressSelector
 
 	submitPoStTF promise.Promise[harmonytask.AddTaskFunc]
 }
 
-func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sender, db *harmonydb.DB, api WdPoStSubmitTaskApi, maxWindowPoStGasFee types.FIL, as *ctladdr.AddressSelector) (*WdPostSubmitTask, error) {
+func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sender, db *harmonydb.DB, api WdPoStSubmitTaskApi, maxWindowPoStGasFee types.FIL, as *multictladdr.MultiAddressSelector) (*WdPostSubmitTask, error) {
 	res := &WdPostSubmitTask{
 		sender: send,
 		db:     db,
@@ -62,8 +62,10 @@ func NewWdPostSubmitTask(pcs *chainsched.ProviderChainSched, send *lpmessage.Sen
 		as:                  as,
 	}
 
-	if err := pcs.AddHandler(res.processHeadChange); err != nil {
-		return nil, err
+	if pcs != nil {
+		if err := pcs.AddHandler(res.processHeadChange); err != nil {
+			return nil, err
+		}
 	}
 
 	return res, nil
@@ -248,7 +250,7 @@ type MsgPrepAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
-func preparePoStMessage(w MsgPrepAPI, as *ctladdr.AddressSelector, maddr address.Address, msg *types.Message, maxFee abi.TokenAmount) (*types.Message, *api.MessageSendSpec, error) {
+func preparePoStMessage(w MsgPrepAPI, as *multictladdr.MultiAddressSelector, maddr address.Address, msg *types.Message, maxFee abi.TokenAmount) (*types.Message, *api.MessageSendSpec, error) {
 	mi, err := w.StateMinerInfo(context.Background(), maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("error getting miner info: %w", err)
@@ -292,7 +294,7 @@ func preparePoStMessage(w MsgPrepAPI, as *ctladdr.AddressSelector, maddr address
 	goodFunds := big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value)
 	minFunds := big.Min(big.Add(minGasFeeMsg.RequiredFunds(), minGasFeeMsg.Value), goodFunds)
 
-	from, _, err := as.AddressFor(context.Background(), w, mi, api.PoStAddr, goodFunds, minFunds)
+	from, _, err := as.AddressFor(context.Background(), w, maddr, mi, api.PoStAddr, goodFunds, minFunds)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("error getting address: %w", err)
 	}

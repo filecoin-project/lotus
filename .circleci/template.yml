@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -392,14 +392,8 @@ jobs:
       - attach_workspace:
           at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
-      - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
-      - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
-      - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
       - run: make docsgen
-      - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
-      - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
-      - run: zcat build/openrpc/worker.json.gz | jq > ../post-openrpc-worker
-      - run: diff ../pre-openrpc-full ../post-openrpc-full && diff ../pre-openrpc-miner ../post-openrpc-miner && diff ../pre-openrpc-worker ../post-openrpc-worker && git --no-pager diff && git --no-pager diff --quiet
+      - run: git --no-pager diff && git --no-pager diff --quiet
 
   lint-all:
     description: |
@@ -551,7 +545,7 @@ workflows:
             - build
           suite: itest-[[ $name ]]
           target: "./itests/[[ $file ]]"
-          [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
+          [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config") (eq $name "sector_pledge")]]
           resource_class: 2xlarge
           [[- end]]
           [[- if or (eq $name "wdpost") (eq $name "sector_pledge")]]

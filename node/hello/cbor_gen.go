@@ -35,7 +35,7 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.HeaviestTipSet ([]cid.Cid) (slice)
-	if len(t.HeaviestTipSet) > cbg.MaxLength {
+	if len(t.HeaviestTipSet) > 8192 {
 		return xerrors.Errorf("Slice value in field t.HeaviestTipSet was too long")
 	}
 
@@ -105,7 +105,7 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.HeaviestTipSet: array too large (%d)", extra)
 	}
 
@@ -136,16 +136,16 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 				t.HeaviestTipSet[i] = c
 
 			}
+
 		}
 	}
-
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -223,6 +223,7 @@ func (t *LatencyMessage) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -252,10 +253,10 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.TArrival (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -277,10 +278,10 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.TSent (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
