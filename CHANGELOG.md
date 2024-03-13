@@ -6,12 +6,12 @@
 
 ## Improvements
 
-# v1.26.0-rc2 / 2024-03-0y
+# v1.26.0-rc3 / 2024-03-13
 
-This is a release candidate of the upcoming MANDATORY Lotus v1.26.0 release, which will deliver the Filecoin network version 22, codenamed Dragon 🐉.
+This is the third release candidate of the upcoming MANDATORY Lotus v1.26.0 release, which will deliver the Filecoin network version 22, codenamed Dragon 🐉. This third release candidate brings in multiple storage provider fixes, and cleanups for issues encountered during testing in the Calibration network.
 
-**This release candidate sets the calibration network to upgrade at epoch 1427974, which is 2024-03-11T14:00:00Z**
-This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
+**This release candidate only has the calibration network to upgrade set, which happened at epoch 1427974, 2024-03-11T14:00:00Z. This release does NOT set the mainnet upgrade epoch, which will be updated in the final release.**
+
 The Filecoin network version 22 delivers the following FIPs:
 
 - [FIP-0063: Switching to new Drand mainnet network](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0063.md)
@@ -68,6 +68,14 @@ For certain node operators, such as full archival nodes or systems that need to 
 - feat: events: Add Lotus APIs to consume smart contract and built-in actor events ([filecoin-project/lotus#11618](https://github.com/filecoin-project/lotus/pull/11618))
 
 ## Improvements
+- fix: commit batch: Always go through commit batcher ([filecoin-project/lotus#11704](https://github.com/filecoin-project/lotus/pull/11704))
+- sealing pipeline: Fix panic on padding pieces in WaitDeals ([filecoin-project/lotus#11708](https://github.com/filecoin-project/lotus/pull/11708))
+- sealing pipeline: Output DDO pieces in SectorStatus ([filecoin-project/lotus#11709](https://github.com/filecoin-project/lotus/pull/11709))
+- sealing pipeline: Fix failing ProveCommit3 aggregate ([filecoin-project/lotus#11710](https://github.com/filecoin-project/lotus/pull/11710))
+- fix: beacon: validate drand change at nv16 correctly ([filecoin-project/lotus#11690](https://github.com/filecoin-project/lotus/pull/11690))
+- fix: events: properly disable actor events API via cfg ([filecoin-project/lotus#11701](https://github.com/filecoin-project/lotus/pull/11701))
+- fix: events: Enable event storage config for Actor events as well ([filecoin-project/lotus#11712](https://github.com/filecoin-project/lotus/pull/11712))
+
 
 ## Tracing API
 
@@ -203,6 +211,9 @@ OPTIONS:
 - fix: add UpgradePhoenixHeight to StateGetNetworkParams (#11648) ([filecoin-project/lotus#11648](https://github.com/filecoin-project/lotus/pull/11648))
 - feat: drand quicknet: allow scheduling drand quicknet upgrade before nv22 on 2k devnet ([filecoin-project/lotus#11667]https://github.com/filecoin-project/lotus/pull/11667)
 - chore: backport #11632 to release/v1.26.0 ([filecoin-project/lotus#11667](https://github.com/filecoin-project/lotus/pull/11667))
+- release: bump to v1.26.0-rc2 ([filecoin-project/lotus#11691](https://github.com/filecoin-project/lotus/pull/11691))
+- Docs: Drand: document the meaning of "IsChained ([filecoin-project/lotus#11692](https://github.com/filecoin-project/lotus/pull/11692))
+- chore: remove old calibnet bootstrappers ([filecoin-project/lotus#11702](https://github.com/filecoin-project/lotus/pull/11702))
 
 # v1.25.2 / 2024-01-11 
 
