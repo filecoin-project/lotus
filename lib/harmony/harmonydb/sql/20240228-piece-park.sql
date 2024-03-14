@@ -2,7 +2,7 @@ create table parked_pieces (
     id bigserial primary key,
     created_at timestamp default current_timestamp,
 
-    piece_cid text not null unique constraint parked_pieces_piece_cid_key,
+    piece_cid text not null,
     piece_padded_size bigint not null,
     piece_raw_size text not null,
 
@@ -11,7 +11,8 @@ create table parked_pieces (
 
     cleanup_task_id bigint default null,
 
-    foreign key (task_id) references harmony_task (id) on delete set null
+    foreign key (task_id) references harmony_task (id) on delete set null,
+    unique (piece_cid)
 );
 
 /*
