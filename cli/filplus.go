@@ -1088,9 +1088,9 @@ var filplusExtendClaimCmd = &cli.Command{
 		eg := errgroup.Group{}
 		eg.SetLimit(10)
 		for _, msg := range smsgs {
-			m := msg
+			msg := msg
 			eg.Go(func() error {
-				wait, err := api.StateWaitMsg(ctx, m.Cid(), uint64(cctx.Int("confidence")))
+				wait, err := api.StateWaitMsg(ctx, msg.Cid(), uint64(cctx.Int("confidence")))
 				if err != nil {
 					return xerrors.Errorf("timeout waiting for message to land on chain %s", wait.Message)
 
