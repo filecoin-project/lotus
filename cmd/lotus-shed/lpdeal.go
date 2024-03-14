@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"net"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/mitchellh/go-homedir"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
@@ -475,7 +475,7 @@ var lpBoostProxyCmd = &cli.Command{
 				err = tx.QueryRow(`SELECT id FROM parked_pieces WHERE piece_cid = $1`, deal.DealProposal.PieceCID.String()).Scan(&pieceID)
 
 				if err != nil {
-					if err == sql.ErrNoRows {
+					if err == pgx.ErrNoRows {
 						// Piece does not exist, attempt to insert
 						err = tx.QueryRow(`
 							INSERT INTO parked_pieces (piece_cid, piece_padded_size, piece_raw_size)

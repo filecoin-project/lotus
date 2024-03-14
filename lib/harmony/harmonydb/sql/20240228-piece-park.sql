@@ -12,6 +12,7 @@ create table parked_pieces (
     cleanup_task_id bigint default null,
 
     foreign key (task_id) references harmony_task (id) on delete set null,
+    foreign key (cleanup_task_id) references harmony_task (id) on delete set null,
     unique (piece_cid)
 );
 

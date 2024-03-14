@@ -76,7 +76,7 @@ func (c *CleanupPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	// select by cleanup_task_id
 	var pieceID int64
 
-	err = c.db.QueryRow(ctx, "SELECT piece_id FROM parked_pieces WHERE cleanup_task_id = $1", taskID).Scan(&pieceID)
+	err = c.db.QueryRow(ctx, "SELECT id FROM parked_pieces WHERE cleanup_task_id = $1", taskID).Scan(&pieceID)
 	if err != nil {
 		return false, xerrors.Errorf("query parked_piece: %w", err)
 	}
