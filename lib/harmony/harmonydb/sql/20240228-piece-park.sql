@@ -4,7 +4,7 @@ create table parked_pieces (
 
     piece_cid text not null,
     piece_padded_size bigint not null,
-    piece_raw_size text not null,
+    piece_raw_size bigint not null,
 
     complete boolean not null default false,
     task_id bigint default null,
