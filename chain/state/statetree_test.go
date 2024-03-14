@@ -97,7 +97,7 @@ func TestResolveCache(t *testing.T) {
 	nonId := address.NewForTestGetter()()
 	id, _ := address.NewIDAddress(1000)
 
-	st.lookupIDFun = func(a address.Address) (address.Address, error) {
+	st.LookupIDFun = func(a address.Address) (address.Address, error) {
 		if a == nonId {
 			return id, nil
 		}

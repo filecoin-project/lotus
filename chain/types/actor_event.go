@@ -31,7 +31,7 @@ type ActorEventFilter struct {
 	// last finalized tipset.
 	// NOTE: In a future upgrade, this will be strict when set and will result in an error if a filter
 	// cannot be fulfilled by the depth of history available in the node. Currently, the node will
-	// nott return an error, but will return starting from the epoch it has data for.
+	// not return an error, but will return starting from the epoch it has data for.
 	FromHeight *abi.ChainEpoch `json:"fromHeight,omitempty"`
 
 	// The height of the latest tipset to include in the query. If empty, the query ends at the
@@ -47,9 +47,7 @@ type ActorEvent struct {
 	// Event entries in log form.
 	Entries []EventEntry `json:"entries"`
 
-	// Filecoin address of the actor that emitted this event.
-	// NOTE: In a future upgrade, this will change to always be an ID address. Currently this will be
-	// either the f4 address, or ID address if an f4 is not available for this actor.
+	// Emitter is the ID address of the actor that emitted this event.
 	Emitter address.Address `json:"emitter"`
 
 	// Reverted is set to true if the message that produced this event was reverted because of a network re-org

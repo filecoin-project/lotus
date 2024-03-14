@@ -10,6 +10,7 @@ import (
 	"github.com/zyedidia/generic/queue"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/chain/events/filter"
@@ -112,11 +113,22 @@ func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent
 			continue
 		}
 
-		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(ev.EmitterAddr)
+		emitterAddr, err := address.NewIDAddress(uint64(ev.Emitter))
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("emitter to addr: %w", err)
 		}
 
+		actor, err := sa.StateGetActor(ctx, emitterAddr, ev.TipSetKey)
+		if err != nil {
+			return nil, xerrors.Errorf("state get actor: %w", err)
+		}
+		if actor == nil && actor.Address == nil {
+			return nil, xerrors.New("state get actor: nil")
+		}
+		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
+		if err != nil {
+			return nil, xerrors.Errorf("eth addr from fil: %w", err)
+		}
 		log.TransactionHash, err = ethTxHashFromMessageCid(ctx, ev.MsgCid, sa)
 		if err != nil {
 			return nil, err

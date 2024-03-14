@@ -8,7 +8,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/build"
@@ -17,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -99,6 +97,14 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, chainapi full.ChainAPI) (*filter.EventFilterManager, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
+		const (
+			// TODO: Consider introducing configuration parameters for constants below.
+			resolverCacheSize      = 1024
+			resolverCacheExpiry    = time.Minute
+			resolverCacheNilTipSet = false
+		)
+		actorResolver := filter.NewCachedActorResolver(sm.LookupActorID, resolverCacheSize, resolverCacheExpiry, resolverCacheNilTipSet)
+
 		// Enable indexing of actor events
 		var eventIndex *filter.EventIndex
 		if !cfg.DisableHistoricFilterAPI {
@@ -127,24 +133,9 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 		}
 
 		fm := &filter.EventFilterManager{
-			ChainStore: cs,
-			EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
-			// TODO:
-			// We don't need this address resolution anymore once https://github.com/filecoin-project/lotus/issues/11594 lands
-			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-				idAddr, err := address.NewIDAddress(uint64(emitter))
-				if err != nil {
-					return address.Undef, false
-				}
-
-				actor, err := sm.LoadActor(ctx, idAddr, ts)
-				if err != nil || actor.Address == nil {
-					return idAddr, true
-				}
-
-				return *actor.Address, true
-			},
-
+			ChainStore:       cs,
+			EventIndex:       eventIndex, // will be nil unless EnableHistoricFilterAPI is true
+			ActorResolver:    actorResolver,
 			MaxFilterResults: cfg.MaxFilterResults,
 		}
 

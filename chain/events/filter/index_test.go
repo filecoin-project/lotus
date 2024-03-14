@@ -50,17 +50,17 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	cid14000, err := events14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
-	noCollectedEvents := []*CollectedEvent{}
+	var noCollectedEvents []*CollectedEvent
 	oneCollectedEvent := []*CollectedEvent{
 		{
-			Entries:     ev1.Entries,
-			EmitterAddr: a1,
-			EventIdx:    0,
-			Reverted:    false,
-			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
-			MsgIdx:      0,
-			MsgCid:      em.msg.Cid(),
+			Entries:   ev1.Entries,
+			Emitter:   a1ID,
+			EventIdx:  0,
+			Reverted:  false,
+			Height:    14000,
+			TipSetKey: events14000.msgTs.Key(),
+			MsgIdx:    0,
+			MsgCid:    em.msg.Cid(),
 		},
 	}
 
@@ -76,7 +76,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
-	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), events14000, false); err != nil {
 		require.NoError(t, err, "collect events")
 	}
 
@@ -89,8 +89,9 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		{
 			name: "nomatch tipset min height",
 			filter: &eventFilter{
-				minHeight: 14001,
-				maxHeight: -1,
+				minHeight:     14001,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -98,8 +99,9 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		{
 			name: "nomatch tipset max height",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: 13999,
+				minHeight:     -1,
+				maxHeight:     13999,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -107,8 +109,9 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		{
 			name: "match tipset min height",
 			filter: &eventFilter{
-				minHeight: 14000,
-				maxHeight: -1,
+				minHeight:     14000,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -116,9 +119,10 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		{
 			name: "match tipset cid",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				tipsetCid: cid14000,
+				minHeight:     -1,
+				maxHeight:     -1,
+				tipsetCid:     cid14000,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -126,9 +130,10 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		{
 			name: "nomatch address",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a2},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a2},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -136,9 +141,10 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 		{
 			name: "match address",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a1},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a1},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -153,6 +159,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -169,6 +176,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -184,6 +192,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("propose"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -198,6 +207,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -215,6 +225,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -232,6 +243,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -249,6 +261,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("addr2"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -263,6 +276,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 						[]byte("2988181"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -290,10 +304,12 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	a1ID := abi.ActorID(1)
 	a2ID := abi.ActorID(2)
+	a3ID := abi.ActorID(3)
 
 	addrMap := addressMap{}
 	addrMap.add(a1ID, a1)
 	addrMap.add(a2ID, a2)
+	addrMap.add(a3ID, a3)
 
 	ev1 := fakeEvent(
 		a1ID,
@@ -340,48 +356,48 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	noCollectedEvents := []*CollectedEvent{}
 	oneCollectedEvent := []*CollectedEvent{
 		{
-			Entries:     ev1.Entries,
-			EmitterAddr: a1,
-			EventIdx:    0,
-			Reverted:    false,
-			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
-			MsgIdx:      0,
-			MsgCid:      em.msg.Cid(),
+			Entries:   ev1.Entries,
+			Emitter:   a1ID,
+			EventIdx:  0,
+			Reverted:  false,
+			Height:    14000,
+			TipSetKey: events14000.msgTs.Key(),
+			MsgIdx:    0,
+			MsgCid:    em.msg.Cid(),
 		},
 	}
 	twoCollectedEvent := []*CollectedEvent{
 		{
-			Entries:     ev1.Entries,
-			EmitterAddr: a1,
-			EventIdx:    0,
-			Reverted:    false,
-			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
-			MsgIdx:      0,
-			MsgCid:      em.msg.Cid(),
+			Entries:   ev1.Entries,
+			Emitter:   a1ID,
+			EventIdx:  0,
+			Reverted:  false,
+			Height:    14000,
+			TipSetKey: events14000.msgTs.Key(),
+			MsgIdx:    0,
+			MsgCid:    em.msg.Cid(),
 		},
 		{
-			Entries:     ev2.Entries,
-			EmitterAddr: a2,
-			EventIdx:    0,
-			Reverted:    true,
-			Height:      14000,
-			TipSetKey:   revertedEvents14000.msgTs.Key(),
-			MsgIdx:      0,
-			MsgCid:      revertedEm.msg.Cid(),
+			Entries:   ev2.Entries,
+			Emitter:   a2ID,
+			EventIdx:  0,
+			Reverted:  true,
+			Height:    14000,
+			TipSetKey: revertedEvents14000.msgTs.Key(),
+			MsgIdx:    0,
+			MsgCid:    revertedEm.msg.Cid(),
 		},
 	}
 	oneCollectedRevertedEvent := []*CollectedEvent{
 		{
-			Entries:     ev2.Entries,
-			EmitterAddr: a2,
-			EventIdx:    0,
-			Reverted:    true,
-			Height:      14000,
-			TipSetKey:   revertedEvents14000.msgTs.Key(),
-			MsgIdx:      0,
-			MsgCid:      revertedEm.msg.Cid(),
+			Entries:   ev2.Entries,
+			Emitter:   a2ID,
+			EventIdx:  0,
+			Reverted:  true,
+			Height:    14000,
+			TipSetKey: revertedEvents14000.msgTs.Key(),
+			MsgIdx:    0,
+			MsgCid:    revertedEm.msg.Cid(),
 		},
 	}
 
@@ -397,13 +413,13 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
-	if err := ei.CollectEvents(context.Background(), revertedEvents14000, false, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), revertedEvents14000, false); err != nil {
 		require.NoError(t, err, "collect reverted events")
 	}
-	if err := ei.CollectEvents(context.Background(), revertedEvents14000, true, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), revertedEvents14000, true); err != nil {
 		require.NoError(t, err, "revert reverted events")
 	}
-	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
+	if err := ei.CollectEvents(context.Background(), events14000, false); err != nil {
 		require.NoError(t, err, "collect events")
 	}
 
@@ -416,8 +432,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "nomatch tipset min height",
 			filter: &eventFilter{
-				minHeight: 14001,
-				maxHeight: -1,
+				minHeight:     14001,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -425,8 +442,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "nomatch tipset max height",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: 13999,
+				minHeight:     -1,
+				maxHeight:     13999,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -434,8 +452,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match tipset min height",
 			filter: &eventFilter{
-				minHeight: 14000,
-				maxHeight: -1,
+				minHeight:     14000,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: twoCollectedEvent,
@@ -443,9 +462,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match tipset cid",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				tipsetCid: cid14000,
+				minHeight:     -1,
+				maxHeight:     -1,
+				tipsetCid:     cid14000,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -453,9 +473,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match tipset cid",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				tipsetCid: reveredCID14000,
+				minHeight:     -1,
+				maxHeight:     -1,
+				tipsetCid:     reveredCID14000,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   revertedEvents14000,
 			want: oneCollectedRevertedEvent,
@@ -463,9 +484,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "nomatch address",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a3},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a3},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -473,19 +495,23 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match address 2",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a2},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a2},
+				actorResolver: addrMap.ResolveActor,
 			},
-			te:   revertedEvents14000,
-			want: oneCollectedRevertedEvent,
+			te: revertedEvents14000,
+			// Prefilling events should explicitly exclude reverted events, since
+			// we cannot confidently infer that the emitter ID matches the filter.
+			want: noCollectedEvents,
 		},
 		{
 			name: "match address 1",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a1},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a1},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -500,6 +526,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: twoCollectedEvent,
@@ -516,6 +543,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: twoCollectedEvent,
@@ -531,6 +559,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("propose"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -545,6 +574,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -562,6 +592,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -579,6 +610,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr2"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   revertedEvents14000,
 			want: oneCollectedRevertedEvent,
@@ -596,6 +628,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -613,6 +646,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr3"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -627,6 +661,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("2988181"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -641,6 +676,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("2988182"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -656,8 +692,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "nomatch tipset min height",
 			filter: &eventFilter{
-				minHeight: 14001,
-				maxHeight: -1,
+				minHeight:     14001,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -665,8 +702,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "nomatch tipset max height",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: 13999,
+				minHeight:     -1,
+				maxHeight:     13999,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -674,8 +712,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match tipset min height",
 			filter: &eventFilter{
-				minHeight: 14000,
-				maxHeight: -1,
+				minHeight:     14000,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -683,9 +722,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match tipset cid",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				tipsetCid: cid14000,
+				minHeight:     -1,
+				maxHeight:     -1,
+				tipsetCid:     cid14000,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -693,9 +733,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match tipset cid but reverted",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				tipsetCid: reveredCID14000,
+				minHeight:     -1,
+				maxHeight:     -1,
+				tipsetCid:     reveredCID14000,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   revertedEvents14000,
 			want: noCollectedEvents,
@@ -703,9 +744,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "nomatch address",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a3},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a3},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -713,9 +755,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "nomatch address 2 but reverted",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a2},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a2},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   revertedEvents14000,
 			want: noCollectedEvents,
@@ -723,9 +766,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		{
 			name: "match address",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a1},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a1},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -740,6 +784,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -756,6 +801,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -771,6 +817,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("propose"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -785,6 +832,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -802,6 +850,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -819,6 +868,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -836,6 +886,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr2"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -853,6 +904,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("addr3"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -867,6 +919,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 						[]byte("2988181"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,

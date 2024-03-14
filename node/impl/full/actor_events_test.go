@@ -237,7 +237,7 @@ func TestGetActorEventsRaw(t *testing.T) {
 				req.Contains(err.Error(), tc.expectErr)
 			} else {
 				req.NoError(err)
-				expectedEvents := collectedToActorEvents(collectedEvents)
+				expectedEvents := collectedToActorEvents(t, collectedEvents)
 				req.Equal(expectedEvents, gotEvents)
 				efm.requireRemoved(filter.ID())
 			}
@@ -314,7 +314,7 @@ func TestSubscribeActorEventsRaw(t *testing.T) {
 					t.Fatalf("timed out waiting for event")
 				}
 			}
-			req.Equal(collectedToActorEvents(historicalEvents), gotEvents)
+			req.Equal(collectedToActorEvents(t, historicalEvents), gotEvents)
 
 			mockClock.Add(blockDelay)
 			nextReceiveTime := mockClock.Now()
@@ -389,7 +389,7 @@ func TestSubscribeActorEventsRaw(t *testing.T) {
 					// sanity check that we got what we expected this epoch
 					req.Len(newEvents, eventsPerEpoch)
 					epochEvents := allEvents[(thisHeight)*eventsPerEpoch : (thisHeight+1)*eventsPerEpoch]
-					req.Equal(collectedToActorEvents(epochEvents), newEvents)
+					req.Equal(collectedToActorEvents(t, epochEvents), newEvents)
 					gotEvents = append(gotEvents, newEvents...)
 				}
 			}
@@ -397,7 +397,7 @@ func TestSubscribeActorEventsRaw(t *testing.T) {
 			req.Equal(tc.expectComplete, !prematureEnd, "expected to complete")
 			if tc.expectComplete {
 				req.Len(gotEvents, len(allEvents))
-				req.Equal(collectedToActorEvents(allEvents), gotEvents)
+				req.Equal(collectedToActorEvents(t, allEvents), gotEvents)
 			} else {
 				req.NotEqual(len(gotEvents), len(allEvents))
 			}
@@ -481,7 +481,7 @@ func TestSubscribeActorEventsRaw_OnlyHistorical(t *testing.T) {
 				}
 			}
 			if tc.expectComplete {
-				req.Equal(collectedToActorEvents(allEvents), gotEvents)
+				req.Equal(collectedToActorEvents(t, allEvents), gotEvents)
 			} else {
 				req.NotEqual(len(gotEvents), len(allEvents))
 			}
@@ -609,7 +609,7 @@ func (m *mockFilter) TakeCollectedEvents(context.Context) []*filter.CollectedEve
 	return e
 }
 
-func (m *mockFilter) CollectEvents(context.Context, *filter.TipSetEvents, bool, filter.AddressResolver) error {
+func (m *mockFilter) CollectEvents(context.Context, *filter.TipSetEvents, bool) error {
 	m.t.Fatalf("unexpected call to CollectEvents")
 	return nil
 }
@@ -729,12 +729,15 @@ func epochPtr(i int) *abi.ChainEpoch {
 	return &e
 }
 
-func collectedToActorEvents(collected []*filter.CollectedEvent) []*types.ActorEvent {
+func collectedToActorEvents(t *testing.T, collected []*filter.CollectedEvent) []*types.ActorEvent {
+	t.Helper()
 	var out []*types.ActorEvent
 	for _, c := range collected {
+		emitter, err := address.NewIDAddress(uint64(c.Emitter))
+		require.NoError(t, err)
 		out = append(out, &types.ActorEvent{
 			Entries:   c.Entries,
-			Emitter:   c.EmitterAddr,
+			Emitter:   emitter,
 			Reverted:  c.Reverted,
 			Height:    c.Height,
 			TipSetKey: c.TipSetKey,
@@ -755,25 +758,24 @@ func makeCollectedEvents(t *testing.T, rng *pseudo.Rand, eventStartHeight, event
 }
 
 func makeCollectedEvent(t *testing.T, rng *pseudo.Rand, tsKey types.TipSetKey, height abi.ChainEpoch) *filter.CollectedEvent {
-	addr, err := address.NewIDAddress(uint64(rng.Int63()))
-	require.NoError(t, err)
-
+	t.Helper()
 	return &filter.CollectedEvent{
 		Entries: []types.EventEntry{
 			{Flags: 0x01, Key: "k1", Codec: cid.Raw, Value: []byte("v1")},
 			{Flags: 0x01, Key: "k2", Codec: cid.Raw, Value: []byte("v2")},
 		},
-		EmitterAddr: addr,
-		EventIdx:    0,
-		Reverted:    false,
-		Height:      height,
-		TipSetKey:   tsKey,
-		MsgIdx:      0,
-		MsgCid:      testCid,
+		Emitter:   abi.ActorID(rng.Int63()),
+		EventIdx:  0,
+		Reverted:  false,
+		Height:    height,
+		TipSetKey: tsKey,
+		MsgIdx:    0,
+		MsgCid:    testCid,
 	}
 }
 
 func mkCid(t *testing.T, s string) cid.Cid {
+	t.Helper()
 	h, err := multihash.Sum([]byte(s), multihash.SHA2_256, -1)
 	require.NoError(t, err)
 	return cid.NewCidV1(cid.Raw, h)

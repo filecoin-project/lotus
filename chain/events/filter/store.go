@@ -15,7 +15,7 @@ import (
 type Filter interface {
 	ID() types.FilterID
 	LastTaken() time.Time
-	SetSubChannel(chan<- interface{})
+	SetSubChannel(chan<- any)
 	ClearSubChannel()
 }
 
