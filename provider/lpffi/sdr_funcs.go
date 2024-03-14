@@ -69,7 +69,7 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 	if taskID != nil {
 		resv, ok = l.storageReservations.Load(*taskID)
 	}
-	if ok {
+	if ok && resv != nil {
 		if resv.Alloc != allocate || resv.Existing != existing {
 			// this should never happen, only when task definition is wrong
 			return storiface.SectorPaths{}, nil, xerrors.Errorf("storage reservation type mismatch")
@@ -78,6 +78,7 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 		log.Debugw("using existing storage reservation", "task", taskID, "sector", sector, "existing", existing, "allocate", allocate)
 
 		paths = resv.Paths
+		storageIDs = resv.PathIDs
 		releaseStorage = resv.Release
 	} else {
 		var err error
