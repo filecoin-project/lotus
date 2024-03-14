@@ -975,27 +975,27 @@ var filplusExtendClaimCmd = &cli.Command{
 
 		// No miner IDs and no arguments
 		if len(miners) == 0 && cctx.Args().Len() == 0 {
-			return fmt.Errorf("must specify at least one miner ID or argument[s]")
+			return xerrors.Errorf("must specify at least one miner ID or argument[s]")
 		}
 
 		// Single Miner with no claimID and no --all flag
 		if len(miners) == 1 && cctx.Args().Len() == 0 && !all {
-			return fmt.Errorf("must specify either --all flag or claim IDs to extend in argument")
+			return xerrors.Errorf("must specify either --all flag or claim IDs to extend in argument")
 		}
 
 		// Multiple Miner with claimIDs
 		if len(miners) > 1 && cctx.Args().Len() > 0 {
-			return fmt.Errorf("either specify multiple miner IDs or multiple arguments")
+			return xerrors.Errorf("either specify multiple miner IDs or multiple arguments")
 		}
 
 		// Multiple Miner with no claimID and no --all flag
 		if len(miners) > 1 && cctx.Args().Len() == 0 && !all {
-			return fmt.Errorf("must specify --all flag with multiple miner IDs")
+			return xerrors.Errorf("must specify --all flag with multiple miner IDs")
 		}
 
 		// Tmax can't be more than policy max
 		if tmax > verifregtypes9.MaximumVerifiedAllocationTerm {
-			return fmt.Errorf("specified term-max %d is larger than %d maximum allowed by verified regirty actor policy", tmax, verifregtypes9.MaximumVerifiedAllocationTerm)
+			return xerrors.Errorf("specified term-max %d is larger than %d maximum allowed by verified regirty actor policy", tmax, verifregtypes9.MaximumVerifiedAllocationTerm)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1017,12 +1017,12 @@ var filplusExtendClaimCmd = &cli.Command{
 			for _, arg := range cctx.Args().Slice() {
 				detail := strings.Split(arg, "=")
 				if len(detail) > 2 {
-					return fmt.Errorf("incorrect argument format: %s", detail)
+					return xerrors.Errorf("incorrect argument format: %s", detail)
 				}
 
 				n, err := strconv.ParseInt(detail[1], 10, 64)
 				if err != nil {
-					return fmt.Errorf("failed to parse the claim ID for %s for argument %s: %w", detail[0], detail, err)
+					return xerrors.Errorf("failed to parse the claim ID for %s for argument %s: %w", detail[0], detail, err)
 				}
 
 				maddr, err := address.NewFromString(detail[0])
@@ -1055,12 +1055,12 @@ var filplusExtendClaimCmd = &cli.Command{
 			for _, arg := range cctx.Args().Slice() {
 				detail := strings.Split(arg, "=")
 				if len(detail) > 1 {
-					return fmt.Errorf("incorrect argument format %s. Must provide only claim IDs with single miner ID", detail)
+					return xerrors.Errorf("incorrect argument format %s. Must provide only claim IDs with single miner ID", detail)
 				}
 
 				n, err := strconv.ParseInt(detail[0], 10, 64)
 				if err != nil {
-					return fmt.Errorf("failed to parse the claim ID for %s for argument %s: %w", detail[0], detail, err)
+					return xerrors.Errorf("failed to parse the claim ID for %s for argument %s: %w", detail[0], detail, err)
 				}
 
 				claimMap[verifregtypes9.ClaimId(n)] = provInfo{}
@@ -1092,12 +1092,12 @@ var filplusExtendClaimCmd = &cli.Command{
 			eg.Go(func() error {
 				wait, err := api.StateWaitMsg(ctx, m.Cid(), uint64(cctx.Int("confidence")))
 				if err != nil {
-					return fmt.Errorf("timeout waiting for message to land on chain %s", wait.Message)
+					return xerrors.Errorf("timeout waiting for message to land on chain %s", wait.Message)
 
 				}
 
 				if wait.Receipt.ExitCode.IsError() {
-					return fmt.Errorf("failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode)
+					return xerrors.Errorf("failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode)
 				}
 				return nil
 			})
@@ -1128,7 +1128,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 	}
 	w, err := address.IDFromAddress(ac)
 	if err != nil {
-		return nil, fmt.Errorf("converting wallet address to ID: %w", err)
+		return nil, xerrors.Errorf("converting wallet address to ID: %w", err)
 	}
 
 	wid := abi.ActorID(w)
@@ -1147,15 +1147,15 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 		for _, id := range miners {
 			maddr, err := address.NewFromString(id)
 			if err != nil {
-				return nil, fmt.Errorf("parsing miner %s: %w", id, err)
+				return nil, xerrors.Errorf("parsing miner %s: %w", id, err)
 			}
 			mid, err := address.IDFromAddress(maddr)
 			if err != nil {
-				return nil, fmt.Errorf("converting miner address to miner ID: %w", err)
+				return nil, xerrors.Errorf("converting miner address to miner ID: %w", err)
 			}
 			claims, err := api.StateGetClaims(ctx, maddr, types.EmptyTSK)
 			if err != nil {
-				return nil, fmt.Errorf("getting claims for miner %s: %w", maddr, err)
+				return nil, xerrors.Errorf("getting claims for miner %s: %w", maddr, err)
 			}
 			for cID, c := range claims {
 				claimID := cID
@@ -1185,22 +1185,22 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 	if len(miners) == 1 && len(pcm) > 0 {
 		maddr, err := address.NewFromString(miners[0])
 		if err != nil {
-			return nil, fmt.Errorf("parsing miner %s: %w", miners[0], err)
+			return nil, xerrors.Errorf("parsing miner %s: %w", miners[0], err)
 		}
 		mid, err := address.IDFromAddress(maddr)
 		if err != nil {
-			return nil, fmt.Errorf("converting miner address to miner ID: %w", err)
+			return nil, xerrors.Errorf("converting miner address to miner ID: %w", err)
 		}
 		claims, err := api.StateGetClaims(ctx, maddr, types.EmptyTSK)
 		if err != nil {
-			return nil, fmt.Errorf("getting claims for miner %s: %w", maddr, err)
+			return nil, xerrors.Errorf("getting claims for miner %s: %w", maddr, err)
 		}
 
 		for cID := range pcm {
 			claimID := cID
 			claim, ok := claims[claimID]
 			if !ok {
-				return nil, fmt.Errorf("claim %d not found for provider %s", claimID, miners[0])
+				return nil, xerrors.Errorf("claim %d not found for provider %s", claimID, miners[0])
 			}
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 				// If client is not same - needs to burn datacap
@@ -1228,10 +1228,10 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 			c := cID
 			claim, err := api.StateGetClaim(ctx, prov.addr, c, types.EmptyTSK)
 			if err != nil {
-				return nil, fmt.Errorf("could not load the claim %d: %w", c, err)
+				return nil, xerrors.Errorf("could not load the claim %d: %w", c, err)
 			}
 			if claim == nil {
-				return nil, fmt.Errorf("claim %d not found in the actor state", c)
+				return nil, xerrors.Errorf("claim %d not found in the actor state", c)
 			}
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 				// If client is not same - needs to burn datacap
@@ -1261,7 +1261,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 		})
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to searialise the parameters: %w", err)
+			return nil, xerrors.Errorf("failed to searialise the parameters: %w", err)
 		}
 
 		oclaimMsg := &types.Message{
@@ -1282,12 +1282,12 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 		}
 
 		if aDataCap == nil {
-			return nil, fmt.Errorf("wallet %s does not have any datacap", wallet)
+			return nil, xerrors.Errorf("wallet %s does not have any datacap", wallet)
 		}
 
 		// Check that we have enough data cap to make the allocation
 		if rDataCap.GreaterThan(big.NewInt(aDataCap.Int64())) {
-			return nil, fmt.Errorf("requested datacap %s is greater then the available datacap %s", rDataCap, aDataCap)
+			return nil, xerrors.Errorf("requested datacap %s is greater then the available datacap %s", rDataCap, aDataCap)
 		}
 
 		ncparams, err := actors.SerializeParams(&verifregtypes9.AllocationRequests{
@@ -1295,7 +1295,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 		})
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to searialise the parameters: %w", err)
+			return nil, xerrors.Errorf("failed to searialise the parameters: %w", err)
 		}
 
 		transferParams, err := actors.SerializeParams(&datacap2.TransferParams{
@@ -1305,7 +1305,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 		})
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize transfer parameters: %w", err)
+			return nil, xerrors.Errorf("failed to serialize transfer parameters: %w", err)
 		}
 
 		nclaimMsg := &types.Message{
@@ -1332,7 +1332,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 				Prompt:  "{{ . }} ",
 				Valid:   "{{ . | green }} ",
 				Invalid: "{{ . | red }} ",
-				Success: "{{ . | bold }} ",
+				Success: "{{ . | cyan | bold }} ",
 			}
 
 			prompt := promptui.Prompt{
