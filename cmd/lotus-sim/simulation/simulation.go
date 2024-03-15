@@ -117,7 +117,7 @@ func (sim *Simulation) saveConfig() error {
 
 var simulationPrefix = datastore.NewKey("/simulation")
 
-// key returns the the key in the form /simulation/<subkey>/<simulation-name>. For example,
+// key returns the key in the form /simulation/<subkey>/<simulation-name>. For example,
 // /simulation/head/default.
 func (sim *Simulation) key(subkey string) datastore.Key {
 	return simulationPrefix.ChildString(subkey).ChildString(sim.name)
