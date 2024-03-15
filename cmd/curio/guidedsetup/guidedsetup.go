@@ -240,7 +240,8 @@ type uploadType int
 
 const uploadTypeIndividual uploadType = 0
 const uploadTypeAggregate uploadType = 1
-const uploadTypeHint uploadType = 2
+
+// const uploadTypeHint uploadType = 2
 const uploadTypeNothing uploadType = 3
 
 func oneLastThing(d *MigrationData) {
@@ -470,7 +471,7 @@ yugabyteConnected:
 			d.say(notice, "Error reading filemode of config.toml: %s", err.Error())
 			os.Exit(1)
 		}
-		fBackup, err := os.CreateTemp("d.MinerConfigPath", "config-backup-*.toml")
+		fBackup, err := os.CreateTemp(p, "config-backup-*.toml")
 		if err != nil {
 			d.say(notice, "Error creating backup file: %s", err.Error())
 			os.Exit(1)
