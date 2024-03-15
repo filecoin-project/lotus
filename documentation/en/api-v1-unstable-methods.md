@@ -115,6 +115,8 @@
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
   * [GasEstimateGasPremium](#GasEstimateGasPremium)
   * [GasEstimateMessageGas](#GasEstimateMessageGas)
+* [Get](#Get)
+  * [GetActorEvents](#GetActorEvents)
 * [I](#I)
   * [ID](#ID)
 * [Log](#Log)
@@ -227,8 +229,11 @@
   * [StateDecodeParams](#StateDecodeParams)
   * [StateEncodeParams](#StateEncodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetAllAllocations](#StateGetAllAllocations)
+  * [StateGetAllClaims](#StateGetAllClaims)
   * [StateGetAllocation](#StateGetAllocation)
   * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
+  * [StateGetAllocationIdForPendingDeal](#StateGetAllocationIdForPendingDeal)
   * [StateGetAllocations](#StateGetAllocations)
   * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetClaim](#StateGetClaim)
@@ -276,6 +281,8 @@
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
+* [Subscribe](#Subscribe)
+  * [SubscribeActorEvents](#SubscribeActorEvents)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -3376,6 +3383,72 @@ Response:
 }
 ```
 
+## Get
+
+
+### GetActorEvents
+GetActorEvents returns all user-programmed and built-in actor events that match the given
+filter.
+This is a request/response API.
+Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
+configuration options and also the amount of historical data available in the node.
+
+This is an EXPERIMENTAL API and may be subject to change.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "addresses": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGRhdGE="
+        }
+      ]
+    },
+    "fromHeight": 1010,
+    "toHeight": 1020
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "emitter": "f01234",
+    "reverted": true,
+    "height": 10101,
+    "tipsetKey": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      {
+        "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+      }
+    ],
+    "msgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
+```
+
 ## I
 
 
@@ -6225,7 +6298,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  22
 ]
 ```
 
@@ -6240,7 +6313,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  22
 ]
 ```
 
@@ -6857,6 +6930,50 @@ Response:
 }
 ```
 
+### StateGetAllAllocations
+StateGetAllAllocations returns the all the allocations available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
+### StateGetAllClaims
+StateGetAllClaims returns the all the claims available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
 ### StateGetAllocation
 StateGetAllocation returns the allocation for a given address and allocation ID.
 
@@ -6930,6 +7047,29 @@ Response:
   "Expiration": 10101
 }
 ```
+
+### StateGetAllocationIdForPendingDeal
+StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `0`
 
 ### StateGetAllocations
 StateGetAllocations returns the all the allocations for a given client.
@@ -7081,7 +7221,9 @@ Response:
     "UpgradeHyggeHeight": 10101,
     "UpgradeLightningHeight": 10101,
     "UpgradeThunderHeight": 10101,
-    "UpgradeWatermelonHeight": 10101
+    "UpgradeWatermelonHeight": 10101,
+    "UpgradeDragonHeight": 10101,
+    "UpgradePhoenixHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -7388,8 +7530,7 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 }
@@ -7467,8 +7608,7 @@ Response:
   "State": {
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101,
-    "VerifiedClaim": 0
+    "SlashEpoch": 10101
   }
 }
 ```
@@ -8061,7 +8201,7 @@ Inputs:
 ]
 ```
 
-Response: `21`
+Response: `22`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -8655,6 +8795,77 @@ Response:
     }
   ],
   "Height": 10101
+}
+```
+
+## Subscribe
+
+
+### SubscribeActorEvents
+SubscribeActorEvents returns a long-lived stream of all user-programmed and built-in actor
+events that match the given filter.
+Events that match the given filter are written to the stream in real-time as they are emitted
+from the FVM.
+The response stream is closed when the client disconnects, when a ToHeight is specified and is
+reached, or if there is an error while writing an event to the stream.
+This API also allows clients to read all historical events matching the given filter before any
+real-time events are written to the response stream if the filter specifies an earlier
+FromHeight.
+Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
+configuration options and also the amount of historical data available in the node.
+
+Note: this API is only available via websocket connections.
+This is an EXPERIMENTAL API and may be subject to change.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "addresses": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGRhdGE="
+        }
+      ]
+    },
+    "fromHeight": 1010,
+    "toHeight": 1020
+  }
+]
+```
+
+Response:
+```json
+{
+  "entries": [
+    {
+      "Flags": 7,
+      "Key": "string value",
+      "Codec": 42,
+      "Value": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "emitter": "f01234",
+  "reverted": true,
+  "height": 10101,
+  "tipsetKey": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  "msgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 

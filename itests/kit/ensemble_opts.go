@@ -35,7 +35,13 @@ var DefaultEnsembleOpts = ensembleOpts{
 }
 
 // MockProofs activates mock proofs for the entire ensemble.
-func MockProofs() EnsembleOpt {
+func MockProofs(e ...bool) EnsembleOpt {
+	if len(e) > 0 && !e[0] {
+		return func(opts *ensembleOpts) error {
+			return nil
+		}
+	}
+
 	return func(opts *ensembleOpts) error {
 		opts.mockProofs = true
 		// since we're using mock proofs, we don't need to download

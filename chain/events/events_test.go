@@ -358,7 +358,7 @@ func (fcs *fakeCS) advance(rev, app, drop int, msgs map[int]cid.Cid, nulls ...in
 	fcs.sub(nil, nil)
 }
 
-var _ EventAPI = &fakeCS{}
+var _ EventHelperAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	//stm: @EVENTS_HEIGHT_CHAIN_AT_001, @EVENTS_HEIGHT_REVERT_001

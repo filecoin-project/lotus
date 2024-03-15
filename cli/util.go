@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/fatih/color"
@@ -36,4 +38,14 @@ func parseTipSet(ctx context.Context, api v0api.FullNode, vals []string) (*types
 	}
 
 	return types.NewTipSet(headers)
+}
+
+func PrintJson(obj interface{}) error {
+	resJson, err := json.MarshalIndent(obj, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshalling json: %w", err)
+	}
+
+	fmt.Println(string(resJson))
+	return nil
 }

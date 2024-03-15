@@ -80,21 +80,21 @@ func TestGetCurrentDealInfo(t *testing.T) {
 	}
 	successDeal := &api.MarketDeal{
 		Proposal: proposal,
-		State: market.DealState{
+		State: api.MarketDealState{
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
 		},
 	}
 	earlierDeal := &api.MarketDeal{
 		Proposal: otherProposal,
-		State: market.DealState{
+		State: api.MarketDealState{
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
 		},
 	}
 	anotherDeal := &api.MarketDeal{
 		Proposal: anotherProposal,
-		State: market.DealState{
+		State: api.MarketDealState{
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
 		},

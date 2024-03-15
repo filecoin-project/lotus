@@ -137,7 +137,7 @@ func (sw *schedWorker) handleWorker() {
 			}
 
 			// wait for more tasks to be assigned by the main scheduler or for the worker
-			// to finish precessing a task
+			// to finish processing a task
 			update, pokeSched, ok := sw.waitForUpdates()
 			if !ok {
 				return

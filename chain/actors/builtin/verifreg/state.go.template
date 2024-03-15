@@ -145,6 +145,21 @@ func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[Allocati
 {{end}}
 }
 
+func (s *state{{.v}}) GetAllAllocations() (map[AllocationId]Allocation, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	v{{.v}}Map, err := s.State.GetAllAllocations(s.store)
+
+	retMap := make(map[AllocationId]Allocation, len(v{{.v}}Map))
+	for k, v := range v{{.v}}Map {
+		retMap[AllocationId(k)] = Allocation(v)
+	}
+
+	return retMap, err
+{{end}}
+}
+
 func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
@@ -159,6 +174,22 @@ func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[ClaimId]Cla
     return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
 	v{{.v}}Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[ClaimId]Claim, len(v{{.v}}Map))
+	for k, v := range v{{.v}}Map {
+		retMap[ClaimId(k)] = Claim(v)
+	}
+
+	return retMap, err
+
+{{end}}
+}
+
+func (s *state{{.v}}) GetAllClaims() (map[ClaimId]Claim, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	v{{.v}}Map, err := s.State.GetAllClaims(s.store)
 
 	retMap := make(map[ClaimId]Claim, len(v{{.v}}Map))
 	for k, v := range v{{.v}}Map {

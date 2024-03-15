@@ -55,6 +55,7 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/paths"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -327,21 +328,21 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []lapi.SectorPiece{
-				{
+			Pieces: []pipeline.SafeSectorPiece{
+				pipeline.SafePiece(lapi.SectorPiece{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
-					DealInfo: &lapi.PieceDealInfo{
+					DealInfo: &piece.PieceDealInfo{
 						DealID:       dealID,
 						DealProposal: &sector.Deal,
-						DealSchedule: lapi.DealSchedule{
+						DealSchedule: piece.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,
 						},
 					},
-				},
+				}),
 			},
 			CommD:            &commD,
 			CommR:            &commR,

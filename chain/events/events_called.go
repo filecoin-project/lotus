@@ -69,7 +69,7 @@ type queuedEvent struct {
 // Manages chain head change events, which may be forward (new tipset added to
 // chain) or backward (chain branch discarded in favour of heavier branch)
 type hcEvents struct {
-	cs EventAPI
+	cs EventHelperAPI
 
 	lk     sync.Mutex
 	lastTs *types.TipSet
@@ -94,7 +94,7 @@ type hcEvents struct {
 	watcherEvents
 }
 
-func newHCEvents(api EventAPI, obs *observer) *hcEvents {
+func newHCEvents(api EventHelperAPI, obs *observer) *hcEvents {
 	e := &hcEvents{
 		cs:          api,
 		confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
@@ -326,14 +326,14 @@ type headChangeAPI interface {
 
 // watcherEvents watches for a state change
 type watcherEvents struct {
-	cs    EventAPI
+	cs    EventHelperAPI
 	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID]StateMatchFunc
 }
 
-func newWatcherEvents(hcAPI headChangeAPI, cs EventAPI) watcherEvents {
+func newWatcherEvents(hcAPI headChangeAPI, cs EventHelperAPI) watcherEvents {
 	return watcherEvents{
 		cs:       cs,
 		hcAPI:    hcAPI,
@@ -426,14 +426,14 @@ func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler,
 
 // messageEvents watches for message calls to actors
 type messageEvents struct {
-	cs    EventAPI
+	cs    EventHelperAPI
 	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID]MsgMatchFunc
 }
 
-func newMessageEvents(hcAPI headChangeAPI, cs EventAPI) messageEvents {
+func newMessageEvents(hcAPI headChangeAPI, cs EventHelperAPI) messageEvents {
 	return messageEvents{
 		cs:       cs,
 		hcAPI:    hcAPI,

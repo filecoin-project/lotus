@@ -357,7 +357,7 @@ func (sm *syncManager) selectInitialSyncTarget() (*types.TipSet, error) {
 	return buckets.Heaviest(), nil
 }
 
-// adds a tipset to the potential sync targets; returns true if there is a a tipset to work on.
+// adds a tipset to the potential sync targets; returns true if there is a tipset to work on.
 // this could be either a restart, eg because there is no currently scheduled sync work or a worker
 // failed or a potential fork.
 func (sm *syncManager) addSyncTarget(ts *types.TipSet) (*types.TipSet, bool, error) {

@@ -762,7 +762,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		}
 		out[strconv.FormatInt(int64(dealID), 10)] = &api.MarketDeal{
 			Proposal: d,
-			State:    *s,
+			State:    api.MakeDealState(s),
 		}
 		return nil
 	}); err != nil {
@@ -779,18 +779,27 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
-func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+func (a *StateAPI) StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return verifreg.NoAllocationID, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	st, err := a.StateManager.GetMarketState(ctx, ts)
 	if err != nil {
-		return nil, err
+		return verifreg.NoAllocationID, err
 	}
 
 	allocationId, err := st.GetAllocationIdForPendingDeal(dealId)
+	if err != nil {
+		return verifreg.NoAllocationID, err
+	}
+
+	return allocationId, nil
+}
+
+func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+	allocationId, err := a.StateGetAllocationIdForPendingDeal(ctx, dealId, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -857,6 +866,25 @@ func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.A
 	return allocations, nil
 }
 
+func (a *StateAPI) StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := a.StateManager.GetVerifregState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading verifreg state: %w", err)
+	}
+
+	allocations, err := st.GetAllAllocations()
+	if err != nil {
+		return nil, xerrors.Errorf("getting all allocations: %w", err)
+	}
+
+	return allocations, nil
+}
+
 func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifreg.ClaimId, tsk types.TipSetKey) (*verifreg.Claim, error) {
 	idAddr, err := a.StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
@@ -903,6 +931,25 @@ func (a *StateAPI) StateGetClaims(ctx context.Context, providerAddr address.Addr
 	claims, err := st.GetClaims(idAddr)
 	if err != nil {
 		return nil, xerrors.Errorf("getting claims: %w", err)
+	}
+
+	return claims, nil
+}
+
+func (a *StateAPI) StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := a.StateManager.GetVerifregState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading verifreg state: %w", err)
+	}
+
+	claims, err := st.GetAllClaims()
+	if err != nil {
+		return nil, xerrors.Errorf("getting all claims: %w", err)
 	}
 
 	return claims, nil
@@ -1914,6 +1961,8 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeLightningHeight:   build.UpgradeLightningHeight,
 			UpgradeThunderHeight:     build.UpgradeThunderHeight,
 			UpgradeWatermelonHeight:  build.UpgradeWatermelonHeight,
+			UpgradeDragonHeight:      build.UpgradeDragonHeight,
+			UpgradePhoenixHeight:     build.UpgradePhoenixHeight,
 		},
 	}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"golang.org/x/xerrors"
@@ -16,6 +17,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/must"
+	"github.com/filecoin-project/lotus/lib/result"
 )
 
 var (
@@ -39,9 +42,18 @@ type Provider interface {
 	IsLite() bool
 }
 
+type actorCacheKey struct {
+	types.TipSetKey
+	address.Address
+}
+
+var nonceCacheSize = 128
+
 type mpoolProvider struct {
 	sm *stmgr.StateManager
 	ps *pubsub.PubSub
+
+	liteActorCache *lru.Cache[actorCacheKey, result.Result[*types.Actor]]
 
 	lite MpoolNonceAPI
 }
@@ -53,17 +65,30 @@ func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 }
 
 func NewProviderLite(sm *stmgr.StateManager, ps *pubsub.PubSub, noncer MpoolNonceAPI) Provider {
-	return &mpoolProvider{sm: sm, ps: ps, lite: noncer}
+	return &mpoolProvider{
+		sm:             sm,
+		ps:             ps,
+		lite:           noncer,
+		liteActorCache: must.One(lru.New[actorCacheKey, result.Result[*types.Actor]](nonceCacheSize)),
+	}
 }
 
 func (mpp *mpoolProvider) IsLite() bool {
 	return mpp.lite != nil
 }
 
-func (mpp *mpoolProvider) getActorLite(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (mpp *mpoolProvider) getActorLite(addr address.Address, ts *types.TipSet) (act *types.Actor, err error) {
 	if !mpp.IsLite() {
 		return nil, errors.New("should not use getActorLite on non lite Provider")
 	}
+
+	if c, ok := mpp.liteActorCache.Get(actorCacheKey{ts.Key(), addr}); ok {
+		return c.Unwrap()
+	}
+
+	defer func() {
+		mpp.liteActorCache.Add(actorCacheKey{ts.Key(), addr}, result.Wrap(act, err))
+	}()
 
 	n, err := mpp.lite.GetNonce(context.TODO(), addr, ts.Key())
 	if err != nil {

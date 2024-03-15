@@ -240,7 +240,8 @@ type uploadType int
 
 const uploadTypeIndividual uploadType = 0
 const uploadTypeAggregate uploadType = 1
-const uploadTypeHint uploadType = 2
+
+// const uploadTypeHint uploadType = 2
 const uploadTypeNothing uploadType = 3
 
 func oneLastThing(d *MigrationData) {

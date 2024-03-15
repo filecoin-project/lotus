@@ -175,7 +175,7 @@ type dealStates{{.v}} struct {
 	adt.Array
 }
 
-func (s *dealStates{{.v}}) Get(dealID abi.DealID) (*DealState, bool, error) {
+func (s *dealStates{{.v}}) Get(dealID abi.DealID) (DealState, bool, error) {
 	var deal{{.v}} market{{.v}}.DealState
 	found, err := s.Array.Get(uint64(dealID), &deal{{.v}})
 	if err != nil {
@@ -185,7 +185,7 @@ func (s *dealStates{{.v}}) Get(dealID abi.DealID) (*DealState, bool, error) {
 		return nil, false, nil
 	}
 	deal := fromV{{.v}}DealState(deal{{.v}})
-	return &deal, true, nil
+	return deal, true, nil
 }
 
 func (s *dealStates{{.v}}) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
@@ -195,31 +195,57 @@ func (s *dealStates{{.v}}) ForEach(cb func(dealID abi.DealID, ds DealState) erro
 	})
 }
 
-func (s *dealStates{{.v}}) decode(val *cbg.Deferred) (*DealState, error) {
+func (s *dealStates{{.v}}) decode(val *cbg.Deferred) (DealState, error) {
 	var ds{{.v}} market{{.v}}.DealState
 	if err := ds{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
 	ds := fromV{{.v}}DealState(ds{{.v}})
-	return &ds, nil
+	return ds, nil
 }
 
 func (s *dealStates{{.v}}) array() adt.Array {
 	return s.Array
 }
 
-func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-    ret := DealState{
-        SectorStartEpoch: v{{.v}}.SectorStartEpoch,
-        LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
-        SlashEpoch: v{{.v}}.SlashEpoch,
-        VerifiedClaim: 0,
-    }
-    {{if (ge .v 9)}}
-        ret.VerifiedClaim = verifregtypes.AllocationId(v{{.v}}.VerifiedClaim)
-    {{end}}
+type dealStateV{{.v}} struct {
+	ds{{.v}} market{{.v}}.DealState
+}
 
-    return ret
+func (d dealStateV{{.v}}) SectorStartEpoch() abi.ChainEpoch {
+	return d.ds{{.v}}.SectorStartEpoch
+}
+
+func (d dealStateV{{.v}}) LastUpdatedEpoch() abi.ChainEpoch {
+	return d.ds{{.v}}.LastUpdatedEpoch
+}
+
+func (d dealStateV{{.v}}) SlashEpoch() abi.ChainEpoch {
+	return d.ds{{.v}}.SlashEpoch
+}
+
+func (d dealStateV{{.v}}) Equals(other DealState) bool {
+	if ov{{.v}}, ok := other.(dealStateV{{.v}}); ok {
+		return d.ds{{.v}} == ov{{.v}}.ds{{.v}}
+	}
+
+	if d.SectorStartEpoch() != other.SectorStartEpoch() {
+		return false
+	}
+	if d.LastUpdatedEpoch() != other.LastUpdatedEpoch() {
+		return false
+	}
+	if d.SlashEpoch() != other.SlashEpoch() {
+		return false
+	}
+
+	return true
+}
+
+var _ DealState = (*dealStateV{{.v}})(nil)
+
+func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
+    return dealStateV{{.v}}{v{{.v}}}
 }
 
 type dealProposals{{.v}} struct {
