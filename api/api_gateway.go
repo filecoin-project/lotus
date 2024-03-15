@@ -132,4 +132,5 @@ type Gateway interface {
 
 	GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)
 	SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error)
+	ChainGetEvents(context.Context, cid.Cid) ([]types.Event, error)
 }
