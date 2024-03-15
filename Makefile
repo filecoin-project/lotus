@@ -332,7 +332,7 @@ actors-code-gen:
 	$(GOCC) fmt ./...
 
 actors-gen: actors-code-gen 
-	./scripts/fiximports
+	$(GOCC) run ./scripts/fiximports
 .PHONY: actors-gen
 
 bundle-gen:
@@ -392,10 +392,10 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
 fiximports:
-	./scripts/fiximports
+	$(GOCC) run ./scripts/fiximports
 
 gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci
-	./scripts/fiximports
+	$(GOCC) run ./scripts/fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
 .PHONY: gen
 

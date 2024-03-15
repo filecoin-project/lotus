@@ -88,7 +88,7 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 }
 
 type SectorPieceAdded struct {
-	NewPieces []api.SectorPiece
+	NewPieces []SafeSectorPiece
 }
 
 func (evt SectorPieceAdded) apply(state *SectorInfo) {
@@ -114,9 +114,11 @@ type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
 func (evt SectorPacked) apply(state *SectorInfo) {
 	for idx := range evt.FillerPieces {
-		state.Pieces = append(state.Pieces, api.SectorPiece{
-			Piece:    evt.FillerPieces[idx],
-			DealInfo: nil, // filler pieces don't have deals associated with them
+		state.Pieces = append(state.Pieces, SafeSectorPiece{
+			real: api.SectorPiece{
+				Piece:    evt.FillerPieces[idx],
+				DealInfo: nil, // filler pieces don't have deals associated with them
+			},
 		})
 	}
 }
@@ -419,7 +421,8 @@ type SectorUpdateDealIDs struct {
 
 func (evt SectorUpdateDealIDs) apply(state *SectorInfo) {
 	for i, id := range evt.Updates {
-		state.Pieces[i].DealInfo.DealID = id
+		// NOTE: all update deals are builtin-market deals
+		state.Pieces[i].real.DealInfo.DealID = id
 	}
 }
 

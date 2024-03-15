@@ -35,7 +35,7 @@ func (t *Request) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Head ([]cid.Cid) (slice)
-	if len(t.Head) > cbg.MaxLength {
+	if len(t.Head) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Head was too long")
 	}
 
@@ -95,7 +95,7 @@ func (t *Request) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Head: array too large (%d)", extra)
 	}
 
@@ -126,9 +126,9 @@ func (t *Request) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Head[i] = c
 
 			}
+
 		}
 	}
-
 	// t.Length (uint64) (uint64)
 
 	{
@@ -181,7 +181,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ErrorMessage (string) (string)
-	if len(t.ErrorMessage) > cbg.MaxLength {
+	if len(t.ErrorMessage) > 8192 {
 		return xerrors.Errorf("Value in field t.ErrorMessage was too long")
 	}
 
@@ -193,7 +193,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Chain ([]*exchange.BSTipSet) (slice)
-	if len(t.Chain) > cbg.MaxLength {
+	if len(t.Chain) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Chain was too long")
 	}
 
@@ -204,6 +204,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -248,7 +249,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.ErrorMessage (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -262,7 +263,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Chain: array too large (%d)", extra)
 	}
 
@@ -300,9 +301,9 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -332,10 +333,11 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.BlsIncludes ([]exchange.messageIndices) (slice)
-	if len(t.BlsIncludes) > cbg.MaxLength {
+	if len(t.BlsIncludes) > 8192 {
 		return xerrors.Errorf("Slice value in field t.BlsIncludes was too long")
 	}
 
@@ -346,6 +348,7 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Secpk ([]*types.SignedMessage) (slice)
@@ -360,10 +363,11 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.SecpkIncludes ([]exchange.messageIndices) (slice)
-	if len(t.SecpkIncludes) > cbg.MaxLength {
+	if len(t.SecpkIncludes) > 8192 {
 		return xerrors.Errorf("Slice value in field t.SecpkIncludes was too long")
 	}
 
@@ -374,6 +378,7 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -446,9 +451,9 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.BlsIncludes ([]exchange.messageIndices) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -456,7 +461,7 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.BlsIncludes: array too large (%d)", extra)
 	}
 
@@ -484,9 +489,9 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Secpk ([]*types.SignedMessage) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -532,9 +537,9 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.SecpkIncludes ([]exchange.messageIndices) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -542,7 +547,7 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.SecpkIncludes: array too large (%d)", extra)
 	}
 
@@ -570,9 +575,9 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -591,7 +596,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Blocks ([]*types.BlockHeader) (slice)
-	if len(t.Blocks) > cbg.MaxLength {
+	if len(t.Blocks) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Blocks was too long")
 	}
 
@@ -602,6 +607,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Messages (exchange.CompactedMessages) (struct)
@@ -641,7 +647,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Blocks: array too large (%d)", extra)
 	}
 
@@ -679,9 +685,9 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Messages (exchange.CompactedMessages) (struct)
 
 	{

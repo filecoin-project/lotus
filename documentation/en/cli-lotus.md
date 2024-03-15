@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.25.3-dev
+   1.27.0-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1188,8 +1188,8 @@ COMMANDS:
    check-client-datacap           check verified client remaining bytes
    check-notary-datacap           check a notary's remaining bytes
    sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
-   list-allocations               List allocations made by client
-   list-claims                    List claims made by provider
+   list-allocations               List allocations available in verified registry actor or made by a client if specified
+   list-claims                    List claims available in verified registry actor or made by provider if specified
    remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
    help, h                        Shows a list of commands or help for one command
@@ -1275,20 +1275,21 @@ OPTIONS:
 ### lotus filplus list-allocations
 ```
 NAME:
-   lotus filplus list-allocations - List allocations made by client
+   lotus filplus list-allocations - List allocations available in verified registry actor or made by a client if specified
 
 USAGE:
    lotus filplus list-allocations [command options] clientAddress
 
 OPTIONS:
    --expired   list only expired allocations (default: false)
+   --json      output results in json format (default: false)
    --help, -h  show help
 ```
 
 ### lotus filplus list-claims
 ```
 NAME:
-   lotus filplus list-claims - List claims made by provider
+   lotus filplus list-claims - List claims available in verified registry actor or made by provider if specified
 
 USAGE:
    lotus filplus list-claims [command options] providerAddress

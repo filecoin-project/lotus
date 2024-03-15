@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
@@ -188,3 +189,17 @@ func (e *EthModuleDummy) EthTraceReplayBlockTransactions(ctx context.Context, bl
 
 var _ EthModuleAPI = &EthModuleDummy{}
 var _ EthEventAPI = &EthModuleDummy{}
+
+var ErrActorEventModuleDisabled = errors.New("module disabled, enable with Events.EnableActorEventsAPI")
+
+type ActorEventDummy struct{}
+
+func (a *ActorEventDummy) GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	return nil, ErrActorEventModuleDisabled
+}
+
+func (a *ActorEventDummy) SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	return nil, ErrActorEventModuleDisabled
+}
+
+var _ ActorEventAPI = &ActorEventDummy{}

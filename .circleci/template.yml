@@ -545,7 +545,7 @@ workflows:
             - build
           suite: itest-[[ $name ]]
           target: "./itests/[[ $file ]]"
-          [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
+          [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config") (eq $name "sector_pledge")]]
           resource_class: 2xlarge
           [[- end]]
           [[- if or (eq $name "wdpost") (eq $name "sector_pledge")]]

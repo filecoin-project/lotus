@@ -100,7 +100,7 @@ type ExecuteTipsetParams struct {
 // ExecuteTipset executes the supplied tipset on top of the state represented
 // by the preroot CID.
 //
-// This method returns the the receipts root, the poststate root, and the VM
+// This method returns the receipts root, the poststate root, and the VM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params ExecuteTipsetParams) (*ExecuteTipsetResult, error) {

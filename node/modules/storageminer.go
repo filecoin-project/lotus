@@ -1023,6 +1023,11 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
 				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
 				UseSyntheticPoRep:                      cfg.UseSyntheticPoRep,
+
+				RequireActivationSuccess:         cfg.RequireActivationSuccess,
+				RequireActivationSuccessUpdate:   cfg.RequireActivationSuccessUpdate,
+				RequireNotificationSuccess:       cfg.RequireNotificationSuccess,
+				RequireNotificationSuccessUpdate: cfg.RequireNotificationSuccessUpdate,
 			}
 			c.SetSealingConfig(newCfg)
 		})
@@ -1068,6 +1073,11 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		TerminateBatchMin:  sealingCfg.TerminateBatchMin,
 		TerminateBatchWait: time.Duration(sealingCfg.TerminateBatchWait),
 		UseSyntheticPoRep:  sealingCfg.UseSyntheticPoRep,
+
+		RequireActivationSuccess:         sealingCfg.RequireActivationSuccess,
+		RequireActivationSuccessUpdate:   sealingCfg.RequireActivationSuccessUpdate,
+		RequireNotificationSuccess:       sealingCfg.RequireNotificationSuccess,
+		RequireNotificationSuccessUpdate: sealingCfg.RequireNotificationSuccessUpdate,
 	}
 }
 

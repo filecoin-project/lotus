@@ -182,7 +182,15 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 		if err == nil {
 			if ok {
 				log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
-				return migCid, nil
+				foundMigratedRoot, err := sm.ChainStore().StateBlockstore().Has(ctx, migCid)
+				if err != nil {
+					log.Errorw("failed to check whether previous migration result is present", "err", err)
+				} else if !foundMigratedRoot {
+					log.Errorw("cached migration result not found in blockstore, running migration again")
+					u.migrationResultCache.Delete(ctx, root)
+				} else {
+					return migCid, nil
+				}
 			}
 		} else if !errors.Is(err, datastore.ErrNotFound) {
 			log.Errorw("failed to lookup previous migration result", "err", err)
@@ -200,10 +208,6 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 			log.Errorw("FAILED migration", "height", height, "from", root, "error", err)
 			return cid.Undef, err
 		}
-		// Yes, we update the cache, even for the final upgrade epoch. Why? Reverts. This
-		// can save us a _lot_ of time because very few actors will have changed if we
-		// do a small revert then need to re-run the migration.
-		u.cache.Update(tmpCache)
 		log.Warnw("COMPLETED migration",
 			"height", height,
 			"from", root,

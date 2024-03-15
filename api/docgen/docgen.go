@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -41,6 +40,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -404,6 +404,32 @@ func init() {
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
+
+	addExample(&miner.PieceActivationManifest{
+		CID:                   c,
+		Size:                  2032,
+		VerifiedAllocationKey: nil,
+		Notify:                nil,
+	})
+
+	addExample(&types.ActorEventBlock{
+		Codec: 0x51,
+		Value: []byte("ddata"),
+	})
+
+	addExample(&types.ActorEventFilter{
+		Addresses: []address.Address{addr},
+		Fields: map[string][]types.ActorEventBlock{
+			"abc": {
+				{
+					Codec: 0x51,
+					Value: []byte("ddata"),
+				},
+			},
+		},
+		FromHeight: epochPtr(1010),
+		ToHeight:   epochPtr(1020),
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -507,6 +533,11 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 	}
 
 	return ns.Interface()
+}
+
+func epochPtr(ei int64) *abi.ChainEpoch {
+	ep := abi.ChainEpoch(ei)
+	return &ep
 }
 
 type Visitor struct {

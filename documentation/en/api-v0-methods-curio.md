@@ -70,6 +70,14 @@ Inputs:
       "StartEpoch": 10101,
       "EndEpoch": 10101
     },
+    "PieceActivationManifest": {
+      "CID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Size": 2032,
+      "VerifiedAllocationKey": null,
+      "Notify": null
+    },
     "KeepUnsealed": true
   },
   9,

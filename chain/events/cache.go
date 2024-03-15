@@ -26,7 +26,7 @@ type cache struct {
 	uncachedAPI
 }
 
-func newCache(api EventAPI, gcConfidence abi.ChainEpoch) *cache {
+func newCache(api EventHelperAPI, gcConfidence abi.ChainEpoch) *cache {
 	return &cache{
 		newTSCache(api, gcConfidence),
 		newMessageCache(api),

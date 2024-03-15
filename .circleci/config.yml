@@ -658,6 +658,18 @@ workflows:
           suite: itest-decode_params
           target: "./itests/decode_params_test.go"
       - test:
+          name: test-itest-direct_data_onboard
+          requires:
+            - build
+          suite: itest-direct_data_onboard
+          target: "./itests/direct_data_onboard_test.go"
+      - test:
+          name: test-itest-direct_data_onboard_verified
+          requires:
+            - build
+          suite: itest-direct_data_onboard_verified
+          target: "./itests/direct_data_onboard_verified_test.go"
+      - test:
           name: test-itest-dup_mpool_messages
           requires:
             - build
@@ -921,6 +933,7 @@ workflows:
             - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
+          resource_class: 2xlarge
           get-params: true
           
       - test:

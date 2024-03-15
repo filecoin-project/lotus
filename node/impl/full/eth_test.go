@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -10,11 +11,86 @@ import (
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+func TestParseBlockRange(t *testing.T) {
+	pstring := func(s string) *string { return &s }
+
+	tcs := map[string]struct {
+		heaviest abi.ChainEpoch
+		from     *string
+		to       *string
+		maxRange abi.ChainEpoch
+		minOut   abi.ChainEpoch
+		maxOut   abi.ChainEpoch
+		errStr   string
+	}{
+		"fails when both are specified and range is greater than max allowed range": {
+			heaviest: 100,
+			from:     pstring("0x100"),
+			to:       pstring("0x200"),
+			maxRange: 10,
+			minOut:   0,
+			maxOut:   0,
+			errStr:   "too large",
+		},
+		"fails when min is specified and range is greater than max allowed range": {
+			heaviest: 500,
+			from:     pstring("0x10"),
+			to:       pstring("latest"),
+			maxRange: 10,
+			minOut:   0,
+			maxOut:   0,
+			errStr:   "too far in the past",
+		},
+		"fails when max is specified and range is greater than max allowed range": {
+			heaviest: 500,
+			from:     pstring("earliest"),
+			to:       pstring("0x10000"),
+			maxRange: 10,
+			minOut:   0,
+			maxOut:   0,
+			errStr:   "too large",
+		},
+		"works when range is valid": {
+			heaviest: 500,
+			from:     pstring("earliest"),
+			to:       pstring("latest"),
+			maxRange: 1000,
+			minOut:   0,
+			maxOut:   -1,
+		},
+		"works when range is valid and specified": {
+			heaviest: 500,
+			from:     pstring("0x10"),
+			to:       pstring("0x30"),
+			maxRange: 1000,
+			minOut:   16,
+			maxOut:   48,
+		},
+	}
+
+	for name, tc := range tcs {
+		tc2 := tc
+		t.Run(name, func(t *testing.T) {
+			min, max, err := parseBlockRange(tc2.heaviest, tc2.from, tc2.to, tc2.maxRange)
+			require.Equal(t, tc2.minOut, min)
+			require.Equal(t, tc2.maxOut, max)
+			if tc2.errStr != "" {
+				fmt.Println(err)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc2.errStr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
 
 func TestEthLogFromEvent(t *testing.T) {
 	// basic empty

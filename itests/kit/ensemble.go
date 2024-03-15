@@ -1099,14 +1099,14 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []api.SectorPiece{
-				{
+			Pieces: []pipeline.SafeSectorPiece{
+				pipeline.SafePiece(api.SectorPiece{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
 					DealInfo: nil, // todo: likely possible to get, but not really that useful
-				},
+				}),
 			},
 			CommD: &commD,
 			CommR: &commR,

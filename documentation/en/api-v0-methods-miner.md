@@ -475,7 +475,7 @@ Inputs:
   ],
   "Bw==",
   10101,
-  21
+  22
 ]
 ```
 
@@ -826,8 +826,7 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 ]
@@ -1426,8 +1425,7 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 ]
@@ -2910,6 +2908,14 @@ Inputs:
       "StartEpoch": 10101,
       "EndEpoch": 10101
     },
+    "PieceActivationManifest": {
+      "CID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Size": 2032,
+      "VerifiedAllocationKey": null,
+      "Notify": null
+    },
     "KeepUnsealed": true
   }
 ]
@@ -3211,6 +3217,14 @@ Inputs:
           "DealSchedule": {
             "StartEpoch": 10101,
             "EndEpoch": 10101
+          },
+          "PieceActivationManifest": {
+            "CID": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 2032,
+            "VerifiedAllocationKey": null,
+            "Notify": null
           },
           "KeepUnsealed": true
         }
@@ -3555,6 +3569,14 @@ Response:
         "DealSchedule": {
           "StartEpoch": 10101,
           "EndEpoch": 10101
+        },
+        "PieceActivationManifest": {
+          "CID": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          },
+          "Size": 2032,
+          "VerifiedAllocationKey": null,
+          "Notify": null
         },
         "KeepUnsealed": true
       }
