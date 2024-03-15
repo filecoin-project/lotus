@@ -655,6 +655,8 @@ type GatewayMethods struct {
 
 	ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
+	ChainGetEvents func(p0 context.Context, p1 cid.Cid) ([]types.Event, error) ``
+
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
 
 	ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
@@ -4284,6 +4286,17 @@ func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*
 
 func (s *GatewayStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	if s.Internal.ChainGetEvents == nil {
+		return *new([]types.Event), ErrNotSupported
+	}
+	return s.Internal.ChainGetEvents(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	return *new([]types.Event), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
