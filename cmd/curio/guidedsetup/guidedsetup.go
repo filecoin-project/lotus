@@ -470,7 +470,7 @@ yugabyteConnected:
 			d.say(notice, "Error reading filemode of config.toml: %s", err.Error())
 			os.Exit(1)
 		}
-		fBackup, err := os.CreateTemp("d.MinerConfigPath", "config-backup-*.toml")
+		fBackup, err := os.CreateTemp(p, "config-backup-*.toml")
 		if err != nil {
 			d.say(notice, "Error creating backup file: %s", err.Error())
 			os.Exit(1)

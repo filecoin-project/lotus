@@ -36,6 +36,9 @@ build/paramfetch.sh
 /darwin
 /linux
 *.snap
+curio
+devgen.car
+localnet.json
 
 *-fuzz.zip
 /chain/types/work_msg/

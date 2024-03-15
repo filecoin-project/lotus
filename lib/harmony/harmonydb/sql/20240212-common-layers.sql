@@ -2,7 +2,7 @@ INSERT INTO harmony_config (title, config) VALUES
   ('post', '
   [Subsystems]
   EnableWindowPost = true
-  Enablewinningpost = true
+  EnableWinningPost = true
   '),
 
   ('gui', '
