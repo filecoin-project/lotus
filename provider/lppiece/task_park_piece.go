@@ -175,6 +175,8 @@ func (p *ParkPieceTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.
 }
 
 func (p *ParkPieceTask) TypeDetails() harmonytask.TaskTypeDetails {
+	const maxSizePiece = 64 << 30
+
 	return harmonytask.TaskTypeDetails{
 		Max:  p.max,
 		Name: "ParkPiece",
@@ -182,10 +184,33 @@ func (p *ParkPieceTask) TypeDetails() harmonytask.TaskTypeDetails {
 			Cpu:     1,
 			Gpu:     0,
 			Ram:     64 << 20,
-			Storage: nil, // TODO
+			Storage: p.sc.Storage(p.taskToRef, storiface.FTPiece, storiface.FTNone, maxSizePiece, storiface.PathSealing),
 		},
 		MaxFailures: 10,
 	}
+}
+
+func (p *ParkPieceTask) taskToRef(id harmonytask.TaskID) (lpffi.SectorRef, error) {
+	var pieceIDs []struct {
+		ID storiface.PieceNumber `db:"id"`
+	}
+
+	err := p.db.Select(context.Background(), &pieceIDs, `SELECT id FROM parked_pieces WHERE task_id = $1`, id)
+	if err != nil {
+		return lpffi.SectorRef{}, xerrors.Errorf("getting piece id: %w", err)
+	}
+
+	if len(pieceIDs) != 1 {
+		return lpffi.SectorRef{}, xerrors.Errorf("expected 1 piece id, got %d", len(pieceIDs))
+	}
+
+	pref := pieceIDs[0].ID.Ref()
+
+	return lpffi.SectorRef{
+		SpID:         int64(pref.ID.Miner),
+		SectorNumber: int64(pref.ID.Number),
+		RegSealProof: pref.ProofType,
+	}, nil
 }
 
 func (p *ParkPieceTask) Adder(taskFunc harmonytask.AddTaskFunc) {

@@ -747,6 +747,8 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 	return nil, nil
 }
 
+// ReaderSeq creates a simple sequential reader for a file. Does not work for
+// file types which are a directory (e.g. FTCache).
 func (r *Remote) ReaderSeq(ctx context.Context, s storiface.SectorRef, ft storiface.SectorFileType) (io.ReadCloser, error) {
 	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
