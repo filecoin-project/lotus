@@ -37,6 +37,7 @@ build/paramfetch.sh
 /linux
 *.snap
 curio
+devgen.car
 localnet.json
 
 *-fuzz.zip
