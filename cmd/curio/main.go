@@ -25,7 +25,7 @@ import (
 
 var log = logging.Logger("main")
 
-func SetupCloseHandler() {
+func setupCloseHandler() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -86,6 +86,10 @@ func main() {
 		Usage:                "Filecoin decentralized storage network provider",
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
+		Before: func(c *cli.Context) error {
+			setupCloseHandler()
+			return nil
+		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				// examined in the Before above
@@ -134,9 +138,6 @@ func main() {
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: append(local, lcli.CommonCommands...),
-		Before: func(c *cli.Context) error {
-			return nil
-		},
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				p, err := homedir.Expand(c.String(FlagMinerRepo))

@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	curio "github.com/filecoin-project/lotus/curiosrc"
 	"github.com/filecoin-project/lotus/curiosrc/multictladdr"
 	"github.com/filecoin-project/lotus/journal"
@@ -91,18 +90,28 @@ func MakeDB(cctx *cli.Context) (*harmonydb.DB, error) {
 	}
 	fromEnv := func() (*harmonydb.DB, error) {
 		// #3 Try env
-		sqlurlRegexp := `://(?P<username>[^:]+):(?P<password>[^@]+)@(?P<host>[^:]+):(?P<port>[^/]+)/(?P<dbname>.+)$`
-		ss := regexp.MustCompile(sqlurlRegexp).FindStringSubmatch(os.Getenv("CURIO_DB"))
-		if len(ss) == 0 {
+		u, err := url.Parse(os.Getenv("CURIO_DB"))
+		if err != nil {
 			return nil, errors.New("no db connection string found in CURIO_DB env")
 		}
-		return harmonydb.NewFromConfig(config.HarmonyDB{
-			Username: ss[1],
-			Password: ss[2],
-			Hosts:    []string{ss[3]},
-			Port:     ss[4],
-			Database: ss[5],
-		})
+		cfg := config.DefaultStorageMiner().HarmonyDB
+		if u.User.Username() != "" {
+			cfg.Username = u.User.Username()
+		}
+		if p, ok := u.User.Password(); ok && p != "" {
+			cfg.Password = p
+		}
+		if u.Hostname() != "" {
+			cfg.Hosts = []string{u.Hostname()}
+		}
+		if u.Port() != "" {
+			cfg.Port = u.Port()
+		}
+		if strings.TrimPrefix(u.Path, "/") != "" {
+			cfg.Database = strings.TrimPrefix(u.Path, "/")
+		}
+
+		return harmonydb.NewFromConfig(cfg)
 	}
 
 	for _, f := range []func() (*harmonydb.DB, error){fromCLI, fromMinerEnv, fromMiner, fromEnv} {
@@ -245,7 +254,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		if v := os.Getenv("FULLNODE_API_INFO"); v != "" {
 			cfgApiInfo = []string{v}
 		}
-		deps.Full, fullCloser, err = cliutil.GetFullNodeAPIV1Curio(cctx, cfgApiInfo)
+		deps.Full, fullCloser, err = getFullNodeAPIV1Curio(cctx, cfgApiInfo)
 		if err != nil {
 			return err
 		}
@@ -408,7 +417,7 @@ func GetDepsCLI(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 		return nil, err
 	}
 
-	full, fullCloser, err := cliutil.GetFullNodeAPIV1Curio(cctx, cfg.Apis.ChainApiInfo)
+	full, fullCloser, err := getFullNodeAPIV1Curio(cctx, cfg.Apis.ChainApiInfo)
 	if err != nil {
 		return nil, err
 	}

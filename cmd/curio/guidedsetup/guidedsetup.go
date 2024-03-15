@@ -15,7 +15,6 @@ import (
 	"math/bits"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path"
 	"reflect"
@@ -36,21 +35,30 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+// URL to upload user-selected fields to help direct developer's focus.
+const DeveloperFocusRequestURL = "https://curiostorage.org/cgi-bin/savedata.php"
+
 var GuidedsetupCmd = &cli.Command{
 	Name:  "guided-setup",
 	Usage: "Run the guided setup for migrating from lotus-miner to Curio",
+	Flags: []cli.Flag{
+		&cli.StringFlag{ // for cliutil.GetFullNodeAPI
+			Name:    "repo",
+			EnvVars: []string{"LOTUS_PATH"},
+			Hidden:  true,
+			Value:   "~/.lotus",
+		},
+	},
 	Action: func(cctx *cli.Context) (err error) {
 		T, say := SetupLanguage()
 		setupCtrlC(say)
@@ -187,60 +195,17 @@ func complete(d *MigrationData) {
 	d.say(plain, "You can now migrate your market node (%s), if applicable.", "Boost")
 }
 func configToDB(d *MigrationData) {
-	d.say(section, "Migrating config.toml to database.")
+	d.say(section, "Migrating lotus-miner config.toml to Curio in-database configuration.")
 
-	type rawConfig struct {
-		Raw   []byte `db:"config"`
-		Title string
-	}
-	var configBytes []rawConfig
-	err := d.DB.Select(context.Background(), &configBytes, `SELECT config, title FROM harmony_config `)
-	if err != nil {
-		d.say(notice, "Error reading from database: %s. Aborting Migration.", err.Error())
-		os.Exit(1)
-	}
-
-	if os.Getenv("FULLNODE_API_INFO") == "" {
-		for _, binName := range []string{"lotus", "./lotus"} {
-			cmd := exec.Command(binName, "net", "listen")
-			b := bytes.NewBuffer(nil)
-			cmd.Stdout = b
-			if err := cmd.Run(); err != nil {
-				continue
-			}
-			for _, addr := range strings.Split(b.String(), "\n") {
-				os.Setenv("FULLNODE_API_INFO", addr)
-				break
-			}
-		}
-	}
 	{
 		var closer jsonrpc.ClientCloser
-
+		var err error
 		d.full, closer, err = cliutil.GetFullNodeAPI(d.cctx)
-		if err != nil {
-			path := os.Getenv("LOTUS_PATH")
-			if path == "" {
-				path = must.One(homedir.Expand("~/.lotus"))
-			}
-			ainfos, err2 := cliutil.GetAPIInfoFromRepoPath(path, repo.FullNode)
-			if err2 != nil {
-				d.say(notice, "Error connecting to lotus node: %s %s", err.Error(), err2.Error())
-				os.Exit(1)
-			}
-			// connect to apiinfo
-			for _, ainfo := range ainfos {
-				addr, err := ainfo.DialArgs("v0")
-				if err != nil {
-					continue
-				}
-				d.full, closer, err = client.NewFullNodeRPCV0(context.Background(), addr, ainfo.AuthHeader())
-				if err == nil {
-					break
-				}
-			}
-		}
 		d.closers = append(d.closers, closer)
+		if err != nil {
+			d.say(notice, "Error getting API: %s", err.Error())
+			os.Exit(1)
+		}
 	}
 	ainfo, err := cliutil.GetAPIInfo(d.cctx, repo.FullNode)
 	if err != nil {
@@ -265,34 +230,42 @@ func configToDB(d *MigrationData) {
 // bucket returns the power's 4 highest bits (rounded down).
 func bucket(power *api.MinerPower) uint64 {
 	rawQAP := power.TotalPower.QualityAdjPower.Uint64()
-	leadingDigit := 64 - bits.LeadingZeros64(rawQAP)
-	if leadingDigit < 4 {
-		return 0
-	}
-	return rawQAP >> (uint64(leadingDigit) - 4) << (uint64(leadingDigit - 4))
+	magnitude := lo.Max([]int{bits.Len64(rawQAP), 5})
+
+	// shifting erases resolution so we cannot distinguish SPs of similar scales.
+	return rawQAP >> (uint64(magnitude) - 4) << (uint64(magnitude - 4))
 }
 
+type uploadType int
+
+const uploadTypeIndividual uploadType = 0
+const uploadTypeAggregate uploadType = 1
+const uploadTypeHint uploadType = 2
+const uploadTypeNothing uploadType = 3
+
 func oneLastThing(d *MigrationData) {
-	d.say(section, "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.")
+	d.say(section, "The Curio team wants to improve the software you use. Tell the team you're using `%s`.", "curio")
 	i, _, err := (&promptui.Select{
 		Label: d.T("Select what you want to share with the Curio team."),
 		Items: []string{
-			d.T("Individual Data: Miner ID, Curio version, net (%s or %s). Signed.", "mainnet", "testnet"),
-			d.T("Aggregate-Anonymous: version, net, and Miner power (bucketed)."),
-			d.T("Hint: I am someone running Curio on net."),
+			d.T("Individual Data: Miner ID, Curio version, chain (%s or %s). Signed.", "mainnet", "calibration"),
+			d.T("Aggregate-Anonymous: version, chain, and Miner power (bucketed)."),
+			d.T("Hint: I am someone running Curio on whichever chain."),
 			d.T("Nothing.")},
 		Templates: d.selectTemplates,
 	}).Run()
+	preference := uploadType(i)
 	if err != nil {
 		d.say(notice, "Aborting remaining steps.", err.Error())
 		os.Exit(1)
 	}
-	if i < 3 {
+	if preference != uploadTypeNothing {
 		msgMap := map[string]any{
-			"chain": build.BuildTypeString(),
+			"domain": "curio-newuser",
+			"net":    build.BuildTypeString(),
 		}
-		if i < 2 {
-
+		if preference == uploadTypeIndividual || preference == uploadTypeAggregate {
+			// articles of incorporation
 			power, err := d.full.StateMinerPower(context.Background(), d.MinerID, types.EmptyTSK)
 			if err != nil {
 				d.say(notice, "Error getting miner power: %s", err.Error())
@@ -300,9 +273,11 @@ func oneLastThing(d *MigrationData) {
 			}
 			msgMap["version"] = build.BuildVersion
 			msgMap["net"] = build.BuildType
-			msgMap["power"] = map[int]uint64{1: power.MinerPower.QualityAdjPower.Uint64(), 2: bucket(power)}
+			msgMap["power"] = map[uploadType]uint64{
+				uploadTypeIndividual: power.MinerPower.QualityAdjPower.Uint64(),
+				uploadTypeAggregate:  bucket(power)}[preference]
 
-			if i < 1 { // Sign it
+			if preference == uploadTypeIndividual { // Sign it
 				msgMap["miner_id"] = d.MinerID
 				msg, err := json.Marshal(msgMap)
 				if err != nil {
@@ -328,7 +303,7 @@ func oneLastThing(d *MigrationData) {
 			os.Exit(1)
 		}
 
-		resp, err := http.DefaultClient.Post("https://curiostorage.org/cgi-bin/savedata.php", "application/json", bytes.NewReader(msg))
+		resp, err := http.DefaultClient.Post(DeveloperFocusRequestURL, "application/json", bytes.NewReader(msg))
 		if err != nil {
 			d.say(notice, "Error sending message: %s", err.Error())
 		}
@@ -354,7 +329,7 @@ func doc(d *MigrationData) {
 	d.say(plain, "Filecoin %s channels: %s and %s", "Slack", "#fil-curio-help", "#fil-curio-dev")
 
 	d.say(plain, "Start multiple Curio instances with the '%s' layer to redundancy.", "post")
-	d.say(plain, "Point your browser to your web GUI to complete setup with %s and advanced featues.", "Boost")
+	//d.say(plain, "Point your browser to your web GUI to complete setup with %s and advanced featues.", "Boost")
 	d.say(plain, "One database can serve multiple miner IDs: Run a migration for each lotus-miner.")
 }
 
@@ -480,7 +455,7 @@ yugabyteConnected:
 			os.Exit(1)
 		}
 		_, err = (&promptui.Prompt{
-			Label: d.T("Press return to update %s with Yugabyte info. Backup the file now.", "config.toml")}).Run()
+			Label: d.T("Press return to update %s with Yugabyte info. A Backup file will be written to that folder before changes are made.", "config.toml")}).Run()
 		if err != nil {
 			os.Exit(1)
 		}
@@ -489,9 +464,30 @@ yugabyteConnected:
 			d.say(notice, "Error expanding path: %s", err.Error())
 			os.Exit(1)
 		}
-		stat, err := os.Stat(path.Join(p, "config.toml"))
+		tomlPath := path.Join(p, "config.toml")
+		stat, err := os.Stat(tomlPath)
 		if err != nil {
 			d.say(notice, "Error reading filemode of config.toml: %s", err.Error())
+			os.Exit(1)
+		}
+		fBackup, err := os.CreateTemp("d.MinerConfigPath", "config-backup-*.toml")
+		if err != nil {
+			d.say(notice, "Error creating backup file: %s", err.Error())
+			os.Exit(1)
+		}
+		fBackupContents, err := os.ReadFile(tomlPath)
+		if err != nil {
+			d.say(notice, "Error reading config.toml: %s", err.Error())
+			os.Exit(1)
+		}
+		_, err = fBackup.Write(fBackupContents)
+		if err != nil {
+			d.say(notice, "Error writing backup file: %s", err.Error())
+			os.Exit(1)
+		}
+		err = fBackup.Close()
+		if err != nil {
+			d.say(notice, "Error closing backup file: %s", err.Error())
 			os.Exit(1)
 		}
 

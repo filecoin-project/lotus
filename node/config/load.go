@@ -274,7 +274,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 		}
 
 		if !reflect.DeepEqual(cfgCur, cfgUpdated) {
-			return nil, xerrors.Errorf("updated config didn't match current config:\n")
+			return nil, xerrors.Errorf("updated config didn't match current config:")
 		}
 	}
 

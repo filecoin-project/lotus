@@ -66,7 +66,6 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
-		SetupCloseHandler()
 		defer func() {
 			if err != nil {
 				if err, ok := err.(stackTracer); ok {
@@ -164,8 +163,6 @@ var webCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		SetupCloseHandler()
-
 		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err

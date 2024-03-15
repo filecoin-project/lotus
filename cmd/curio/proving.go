@@ -28,7 +28,6 @@ var testCmd = &cli.Command{
 		wdPostCmd,
 	},
 	Before: func(cctx *cli.Context) error {
-		SetupCloseHandler()
 		return nil
 	},
 }
