@@ -441,12 +441,22 @@ func (gw *Node) GetActorEvents(ctx context.Context, filter *types.ActorEventFilt
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
+	if filter != nil && filter.FromHeight != nil {
+		if err := gw.checkTipSetHeight(ctx, *filter.FromHeight, types.EmptyTSK); err != nil {
+			return nil, err
+		}
+	}
 	return gw.target.GetActorEvents(ctx, filter)
 }
 
 func (gw *Node) SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
+	}
+	if filter != nil && filter.FromHeight != nil {
+		if err := gw.checkTipSetHeight(ctx, *filter.FromHeight, types.EmptyTSK); err != nil {
+			return nil, err
+		}
 	}
 	return gw.target.SubscribeActorEvents(ctx, filter)
 }
