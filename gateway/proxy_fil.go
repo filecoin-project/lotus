@@ -461,6 +461,13 @@ func (gw *Node) SubscribeActorEvents(ctx context.Context, filter *types.ActorEve
 	return gw.target.SubscribeActorEvents(ctx, filter)
 }
 
+func (gw *Node) ChainGetEvents(ctx context.Context, eventsRoot cid.Cid) ([]types.Event, error) {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.ChainGetEvents(ctx, eventsRoot)
+}
+
 func (gw *Node) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
