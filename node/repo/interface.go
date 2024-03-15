@@ -28,7 +28,7 @@ const (
 var (
 	ErrNoAPIEndpoint     = errors.New("API not running (no endpoint)")
 	ErrNoAPIToken        = errors.New("API token not set")
-	ErrRepoAlreadyLocked = errors.New("repo is already locked (lotus daemon already running)")
+	ErrRepoAlreadyLocked = errors.New("repo is already locked (process is already running)")
 	ErrClosedRepo        = errors.New("repo is no longer open")
 
 	// ErrInvalidBlockstoreDomain is returned by LockedRepo#Blockstore() when
