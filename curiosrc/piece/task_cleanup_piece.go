@@ -2,11 +2,11 @@ package piece
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"time"
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
