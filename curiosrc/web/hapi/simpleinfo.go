@@ -35,6 +35,8 @@ type actorInfo struct {
 
 	ActorBalance, ActorAvailable, WorkerBalance string
 
+	Win1, Win7, Win30 int64
+
 	Deadlines []actorDeadline
 }
 

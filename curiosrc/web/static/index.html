@@ -60,6 +60,7 @@
                 <th>Host</th>
                 <th>ID</th>
                 <th>Last Contact</th>
+                <th>Tasks (24h)</th>
             </tr>
             </thead>
             <tbody hx-get="/hapi/simpleinfo/machines" hx-trigger="load,every 5s">
@@ -100,6 +101,7 @@
                 <th>Balance</th>
                 <th>Available</th>
                 <th>Worker</th>
+                <th>Wins</th>
             </tr>
             </thead>
             <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
