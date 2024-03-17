@@ -10,6 +10,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -38,6 +41,8 @@ func (a *app) updateActor(ctx context.Context) error {
 	a.rpcInfoLk.Lock()
 	api := a.workingApi
 	a.rpcInfoLk.Unlock()
+
+	stor := store.ActorStore(ctx, blockstore.NewReadCachedBlockstore(blockstore.NewAPIBlockstore(a.workingApi), ChainBlockCache))
 
 	if api == nil {
 		log.Warnw("no working api yet")
@@ -74,6 +79,16 @@ func (a *app) updateActor(ctx context.Context) error {
 		dls, err := api.StateMinerDeadlines(ctx, addr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting deadlines: %w", err)
+		}
+
+		mact, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting actor: %w", err)
+		}
+
+		mas, err := miner.Load(stor, mact)
+		if err != nil {
+			return err
 		}
 
 		outDls := []actorDeadline{}
@@ -127,12 +142,31 @@ func (a *app) updateActor(ctx context.Context) error {
 
 		outDls[pd.Index].Current = true
 
+		avail, err := mas.AvailableBalance(mact.Balance)
+		if err != nil {
+			return xerrors.Errorf("getting available balance: %w", err)
+		}
+
+		mi, err := mas.Info()
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		wbal, err := api.WalletBalance(ctx, mi.Worker)
+		if err != nil {
+			return xerrors.Errorf("getting worker balance: %w", err)
+		}
+
 		actorInfos = append(actorInfos, actorInfo{
 			Address:              addr.String(),
 			CLayers:              cnames,
 			QualityAdjustedPower: types.DeciStr(p.MinerPower.QualityAdjPower),
 			RawBytePower:         types.DeciStr(p.MinerPower.RawBytePower),
 			Deadlines:            outDls,
+
+			ActorBalance:   types.FIL(mact.Balance).Short(),
+			ActorAvailable: types.FIL(avail).Short(),
+			WorkerBalance:  types.FIL(wbal).Short(),
 		})
 	}
 

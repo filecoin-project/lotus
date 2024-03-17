@@ -33,6 +33,8 @@ type actorInfo struct {
 	QualityAdjustedPower string
 	RawBytePower         string
 
+	ActorBalance, ActorAvailable, WorkerBalance string
+
 	Deadlines []actorDeadline
 }
 
