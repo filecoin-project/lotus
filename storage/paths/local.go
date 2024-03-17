@@ -476,14 +476,18 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 	var out storiface.SectorPaths
 	var storageIDs storiface.SectorPaths
 
+	// First find existing files
 	for _, fileType := range storiface.PathTypes {
-		if fileType&existing == 0 {
+		// also try to find existing sectors if we're allocating
+		if fileType&(existing|allocate) == 0 {
 			continue
 		}
 
 		si, err := st.index.StorageFindSector(ctx, sid.ID, fileType, ssize, false)
 		if err != nil {
-			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
+			if fileType&existing != 0 {
+				log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
+			}
 			continue
 		}
 
@@ -501,11 +505,13 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 			storiface.SetPathByType(&out, fileType, spath)
 			storiface.SetPathByType(&storageIDs, fileType, string(info.ID))
 
-			existing ^= fileType
+			existing = existing.Unset(fileType)
+			allocate = allocate.Unset(fileType)
 			break
 		}
 	}
 
+	// Then allocate for allocation requests
 	for _, fileType := range storiface.PathTypes {
 		if fileType&allocate == 0 {
 			continue

@@ -174,6 +174,10 @@ func (t SectorFileType) SubAllowed(allowTypes []string, denyTypes []string) Sect
 	return t & denyMask
 }
 
+func (t SectorFileType) Unset(toUnset SectorFileType) SectorFileType {
+	return t &^ toUnset
+}
+
 func (t SectorFileType) AnyAllowed(allowTypes []string, denyTypes []string) bool {
 	return t.SubAllowed(allowTypes, denyTypes) != t
 }
