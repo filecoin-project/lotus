@@ -131,7 +131,7 @@ func getResources() (res Resources, err error) {
 			}
 		}
 		if found > 1 {
-			logger.Warn("lotus-provider's defaults are for running alone. Use task maximums or CGroups.")
+			logger.Warn("curio's defaults are for running alone. Use task maximums or CGroups.")
 		}
 	}
 

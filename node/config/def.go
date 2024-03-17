@@ -329,12 +329,12 @@ const (
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
 
-func DefaultLotusProvider() *LotusProviderConfig {
-	return &LotusProviderConfig{
-		Subsystems: ProviderSubsystemsConfig{
+func DefaultCurioConfig() *CurioConfig {
+	return &CurioConfig{
+		Subsystems: CurioSubsystemsConfig{
 			GuiAddress: ":4701",
 		},
-		Fees: LotusProviderFees{
+		Fees: CurioFees{
 			DefaultMaxFee:      DefaultDefaultMaxFee,
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
 			MaxCommitGasFee:    types.MustParseFIL("0.05"),
@@ -352,7 +352,7 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			MaxWindowPoStGasFee: types.MustParseFIL("5"),
 			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
 		},
-		Addresses: []LotusProviderAddresses{{
+		Addresses: []CurioAddresses{{
 			PreCommitControl: []string{},
 			CommitControl:    []string{},
 			TerminateControl: []string{},
