@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -107,10 +108,18 @@ func (a *app) executeTemplate(w http.ResponseWriter, name string, data interface
 	}
 }
 
+type machineRecentTask struct {
+	TaskName string
+	Success  int64
+	Fail     int64
+}
+
 type machineSummary struct {
 	Address      string
 	ID           int64
 	SinceContact string
+
+	RecentTasks []*machineRecentTask
 }
 
 type taskSummary struct {
@@ -133,7 +142,47 @@ type taskHistorySummary struct {
 }
 
 func (a *app) clusterMachineSummary(ctx context.Context) ([]machineSummary, error) {
-	rows, err := a.db.Query(ctx, "SELECT id, host_and_port, last_contact FROM harmony_machines")
+	// First get task summary for tasks completed in the last 24 hours
+	// NOTE: This query uses harmony_task_history_work_index, task history may get big
+	tsrows, err := a.db.Query(ctx, `SELECT hist.completed_by_host_and_port, hist.name, hist.result, count(1) FROM harmony_task_history hist
+	    WHERE hist.work_end > now() - INTERVAL '1 day'
+	    GROUP BY hist.completed_by_host_and_port, hist.name, hist.result
+	    ORDER BY completed_by_host_and_port ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer tsrows.Close()
+
+	// Map of machine -> task -> recent task
+	taskSummaries := map[string]map[string]*machineRecentTask{}
+
+	for tsrows.Next() {
+		var taskName string
+		var result bool
+		var count int64
+		var machine string
+
+		if err := tsrows.Scan(&machine, &taskName, &result, &count); err != nil {
+			return nil, err
+		}
+
+		if _, ok := taskSummaries[machine]; !ok {
+			taskSummaries[machine] = map[string]*machineRecentTask{}
+		}
+
+		if _, ok := taskSummaries[machine][taskName]; !ok {
+			taskSummaries[machine][taskName] = &machineRecentTask{TaskName: taskName}
+		}
+
+		if result {
+			taskSummaries[machine][taskName].Success = count
+		} else {
+			taskSummaries[machine][taskName].Fail = count
+		}
+	}
+
+	// Then machine summary
+	rows, err := a.db.Query(ctx, "SELECT id, host_and_port, last_contact FROM harmony_machines order by host_and_port asc")
 	if err != nil {
 		return nil, err // Handle error
 	}
@@ -149,6 +198,16 @@ func (a *app) clusterMachineSummary(ctx context.Context) ([]machineSummary, erro
 		}
 
 		m.SinceContact = time.Since(lastContact).Round(time.Second).String()
+
+		// Add recent tasks
+		if ts, ok := taskSummaries[m.Address]; ok {
+			for _, t := range ts {
+				m.RecentTasks = append(m.RecentTasks, t)
+			}
+			sort.Slice(m.RecentTasks, func(i, j int) bool {
+				return m.RecentTasks[i].TaskName < m.RecentTasks[j].TaskName
+			})
+		}
 
 		summaries = append(summaries, m)
 	}
