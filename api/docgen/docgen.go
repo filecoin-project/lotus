@@ -414,6 +414,25 @@ func init() {
 		VerifiedAllocationKey: nil,
 		Notify:                nil,
 	})
+
+	addExample(&types.ActorEventBlock{
+		Codec: 0x51,
+		Value: []byte("ddata"),
+	})
+
+	addExample(&types.ActorEventFilter{
+		Addresses: []address.Address{addr},
+		Fields: map[string][]types.ActorEventBlock{
+			"abc": {
+				{
+					Codec: 0x51,
+					Value: []byte("ddata"),
+				},
+			},
+		},
+		FromHeight: epochPtr(1010),
+		ToHeight:   epochPtr(1020),
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -517,6 +536,11 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 	}
 
 	return ns.Interface()
+}
+
+func epochPtr(ei int64) *abi.ChainEpoch {
+	ep := abi.ChainEpoch(ei)
+	return &ep
 }
 
 type Visitor struct {

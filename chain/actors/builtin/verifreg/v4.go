@@ -107,6 +107,12 @@ func (s *state4) GetAllocations(clientIdAddr address.Address) (map[AllocationId]
 
 }
 
+func (s *state4) GetAllAllocations() (map[AllocationId]Allocation, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v4")
+
+}
+
 func (s *state4) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v4")
@@ -114,6 +120,12 @@ func (s *state4) GetClaim(providerIdAddr address.Address, claimId verifreg9.Clai
 }
 
 func (s *state4) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v4")
+
+}
+
+func (s *state4) GetAllClaims() (map[ClaimId]Claim, error) {
 
 	return nil, xerrors.Errorf("unsupported in actors v4")
 

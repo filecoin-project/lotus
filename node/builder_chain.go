@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -155,6 +156,7 @@ var ChainNode = Options(
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
 		Override(new(full.EthEventAPI), From(new(api.Gateway))),
+		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
 	),
 
 	// Full node API / service startup
@@ -223,7 +225,7 @@ func ConfigFullNode(c interface{}) Option {
 		// If the Eth JSON-RPC is enabled, enable storing events at the ChainStore.
 		// This is the case even if real-time and historic filtering are disabled,
 		// as it enables us to serve logs in eth_getTransactionReceipt.
-		If(cfg.Fevm.EnableEthRPC, Override(StoreEventsKey, modules.EnableStoringEvents)),
+		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI, Override(StoreEventsKey, modules.EnableStoringEvents)),
 
 		Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
 
@@ -263,17 +265,27 @@ func ConfigFullNode(c interface{}) Option {
 		),
 
 		// Actor event filtering support
-		Override(new(events.EventAPI), From(new(modules.EventAPI))),
+		Override(new(events.EventHelperAPI), From(new(modules.EventHelperAPI))),
+		Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Events)),
 
 		// in lite-mode Eth api is provided by gateway
 		ApplyIf(isFullNode,
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
-				Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm)),
+				Override(new(full.EthEventAPI), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+			),
+		),
+
+		ApplyIf(isFullNode,
+			If(cfg.Events.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), modules.ActorEventHandler(cfg.Events)),
+			),
+			If(!cfg.Events.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), &full.ActorEventDummy{}),
 			),
 		),
 

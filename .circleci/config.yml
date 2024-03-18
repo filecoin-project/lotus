@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.20.7
+      - image: cimg/go:1.21.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -164,7 +164,7 @@ jobs:
         default: unit
         description: Test suite name to report to CircleCI.
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
         environment:
           LOTUS_HARMONYDB_HOSTS: yugabyte
       - image: yugabytedb/yugabyte:2.18.0.0-b65
@@ -218,7 +218,7 @@ jobs:
           test with. If empty (the default) the commit defined by the git
           submodule is used.
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
     resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
@@ -412,7 +412,7 @@ jobs:
         description: |
           Arguments to pass to golangci-lint
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.21
     resource_class: medium+
     steps:
       - install-ubuntu-deps
@@ -669,6 +669,12 @@ workflows:
             - build
           suite: itest-direct_data_onboard
           target: "./itests/direct_data_onboard_test.go"
+      - test:
+          name: test-itest-direct_data_onboard_verified
+          requires:
+            - build
+          suite: itest-direct_data_onboard_verified
+          target: "./itests/direct_data_onboard_verified_test.go"
       - test:
           name: test-itest-dup_mpool_messages
           requires:
@@ -939,6 +945,7 @@ workflows:
             - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
+          resource_class: 2xlarge
           get-params: true
           
       - test:

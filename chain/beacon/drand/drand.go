@@ -37,7 +37,8 @@ var log = logging.Logger("drand")
 //
 // The root trust for the Drand chain is configured from build.DrandChain.
 type DrandBeacon struct {
-	client dclient.Client
+	isChained bool
+	client    dclient.Client
 
 	pubkey kyber.Point
 
@@ -50,6 +51,13 @@ type DrandBeacon struct {
 	scheme       *dcrypto.Scheme
 
 	localCache *lru.Cache[uint64, *types.BeaconEntry]
+}
+
+// IsChained tells us whether this particular beacon operates in "chained mode". Prior to Drand
+// quicknet, beacons form a chain. After the introduction of quicknet, they do not, so we need to
+// change how we interact with beacon entries. (See FIP-0063)
+func (db *DrandBeacon) IsChained() bool {
+	return db.isChained
 }
 
 // DrandHTTPClient interface overrides the user agent used by drand
@@ -117,6 +125,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 	}
 
 	db := &DrandBeacon{
+		isChained:  config.IsChained,
 		client:     client,
 		localCache: lc,
 	}

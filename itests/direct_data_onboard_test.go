@@ -4,12 +4,18 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	"github.com/ipld/go-ipld-prime/node/basicnode"
+	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/nonffi"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -100,43 +106,6 @@ func TestOnboardRawPiece(t *testing.T) {
 	si, err := miner.SectorsStatus(ctx, so.Sector, false)
 	require.NoError(t, err)
 	require.Equal(t, dc.PieceCID, *si.CommD)
-}
-
-func makeMarketDealProposal(t *testing.T, client *kit.TestFullNode, miner *kit.TestMiner, data cid.Cid, ps abi.PaddedPieceSize, start, end abi.ChainEpoch) market2.ClientDealProposal {
-	ca, err := client.WalletDefaultAddress(context.Background())
-	require.NoError(t, err)
-
-	ma, err := miner.ActorAddress(context.Background())
-	require.NoError(t, err)
-
-	dp := market2.DealProposal{
-		PieceCID:             data,
-		PieceSize:            ps,
-		VerifiedDeal:         false,
-		Client:               ca,
-		Provider:             ma,
-		Label:                must.One(market2.NewLabelFromString("wat")),
-		StartEpoch:           start,
-		EndEpoch:             end,
-		StoragePricePerEpoch: big.Zero(),
-		ProviderCollateral:   abi.TokenAmount{}, // below
-		ClientCollateral:     big.Zero(),
-	}
-
-	cb, err := client.StateDealProviderCollateralBounds(context.Background(), dp.PieceSize, dp.VerifiedDeal, types.EmptyTSK)
-	require.NoError(t, err)
-	dp.ProviderCollateral = big.Div(big.Mul(cb.Min, big.NewInt(2)), big.NewInt(2))
-
-	buf, err := cborutil.Dump(&dp)
-	require.NoError(t, err)
-	sig, err := client.WalletSign(context.Background(), ca, buf)
-	require.NoError(t, err)
-
-	return market2.ClientDealProposal{
-		Proposal:        dp,
-		ClientSignature: *sig,
-	}
-
 }
 
 func TestOnboardMixedMarketDDO(t *testing.T) {
@@ -278,6 +247,61 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotEqual(t, -1, ds.State.SectorStartEpoch)
+
+	{
+		deals, err := client.StateMarketDeals(ctx, types.EmptyTSK)
+		require.NoError(t, err)
+		for id, deal := range deals {
+			fmt.Println("Deal", id, deal.Proposal.PieceCID, deal.Proposal.PieceSize, deal.Proposal.Client, deal.Proposal.Provider)
+		}
+
+		// check actor events, verify deal-published is as expected
+		minerIdAddr, err := client.StateLookupID(ctx, maddr, types.EmptyTSK)
+		require.NoError(t, err)
+		minerId, err := address.IDFromAddress(minerIdAddr)
+		require.NoError(t, err)
+		caddr, err := client.WalletDefaultAddress(context.Background())
+		require.NoError(t, err)
+		clientIdAddr, err := client.StateLookupID(ctx, caddr, types.EmptyTSK)
+		require.NoError(t, err)
+		clientId, err := address.IDFromAddress(clientIdAddr)
+		require.NoError(t, err)
+
+		fmt.Println("minerId", minerId, "clientId", clientId)
+		for _, piece := range pieces {
+			fmt.Println("piece", piece.PieceCID, piece.Size)
+		}
+
+		// check "deal-published" actor event
+		var epochZero abi.ChainEpoch
+		allEvents, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
+			FromHeight: &epochZero,
+		})
+		require.NoError(t, err)
+		for _, key := range []string{"deal-published", "deal-activated", "sector-precommitted", "sector-activated"} {
+			var found bool
+			keyBytes := must.One(ipld.Encode(basicnode.NewString(key), dagcbor.Encode))
+			for _, event := range allEvents {
+				for _, e := range event.Entries {
+					if e.Key == "$type" && bytes.Equal(e.Value, keyBytes) {
+						found = true
+						switch key {
+						case "deal-published", "deal-activated":
+							expectedEntries := []types.EventEntry{
+								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: keyBytes},
+								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(2), dagcbor.Encode))},
+								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
+								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
+							}
+							require.ElementsMatch(t, expectedEntries, event.Entries)
+						}
+						break
+					}
+				}
+			}
+			require.True(t, found, "expected to find event %s", key)
+		}
+	}
 }
 
 func TestOnboardRawPieceSnap(t *testing.T) {
@@ -344,4 +368,41 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 	}
 
 	miner.WaitSectorsProving(ctx, toCheck)
+}
+
+func makeMarketDealProposal(t *testing.T, client *kit.TestFullNode, miner *kit.TestMiner, data cid.Cid, ps abi.PaddedPieceSize, start, end abi.ChainEpoch) market2.ClientDealProposal {
+	ca, err := client.WalletDefaultAddress(context.Background())
+	require.NoError(t, err)
+
+	ma, err := miner.ActorAddress(context.Background())
+	require.NoError(t, err)
+
+	dp := market2.DealProposal{
+		PieceCID:             data,
+		PieceSize:            ps,
+		VerifiedDeal:         false,
+		Client:               ca,
+		Provider:             ma,
+		Label:                must.One(market2.NewLabelFromString("wat")),
+		StartEpoch:           start,
+		EndEpoch:             end,
+		StoragePricePerEpoch: big.Zero(),
+		ProviderCollateral:   abi.TokenAmount{}, // below
+		ClientCollateral:     big.Zero(),
+	}
+
+	cb, err := client.StateDealProviderCollateralBounds(context.Background(), dp.PieceSize, dp.VerifiedDeal, types.EmptyTSK)
+	require.NoError(t, err)
+	dp.ProviderCollateral = big.Div(big.Mul(cb.Min, big.NewInt(2)), big.NewInt(2))
+
+	buf, err := cborutil.Dump(&dp)
+	require.NoError(t, err)
+	sig, err := client.WalletSign(context.Background(), ca, buf)
+	require.NoError(t, err)
+
+	return market2.ClientDealProposal{
+		Proposal:        dp,
+		ClientSignature: *sig,
+	}
+
 }

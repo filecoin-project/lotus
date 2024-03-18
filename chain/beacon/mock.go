@@ -20,6 +20,10 @@ type mockBeacon struct {
 	interval time.Duration
 }
 
+func (mb *mockBeacon) IsChained() bool {
+	return true
+}
+
 func NewMockBeacon(interval time.Duration) RandomBeacon {
 	mb := &mockBeacon{interval: interval}
 
