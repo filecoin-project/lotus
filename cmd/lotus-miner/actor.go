@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -22,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -33,6 +30,7 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/spcli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -41,7 +39,7 @@ var actorCmd = &cli.Command{
 	Usage: "manipulate the miner actor",
 	Subcommands: []*cli.Command{
 		actorSetAddrsCmd,
-		actorWithdrawCmd,
+		spcli.ActorWithdrawCmd(LMActorGetter),
 		actorRepayDebtCmd,
 		actorSetPeeridCmd,
 		actorSetOwnerCmd,
@@ -237,90 +235,6 @@ var actorSetPeeridCmd = &cli.Command{
 		fmt.Printf("Requested peerid change in message %s\n", smsg.Cid())
 		return nil
 
-	},
-}
-
-var actorWithdrawCmd = &cli.Command{
-	Name:      "withdraw",
-	Usage:     "withdraw available balance to beneficiary",
-	ArgsUsage: "[amount (FIL)]",
-	Flags: []cli.Flag{
-		&cli.IntFlag{
-			Name:  "confidence",
-			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
-		},
-		&cli.BoolFlag{
-			Name:  "beneficiary",
-			Usage: "send withdraw message from the beneficiary address",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		amount := abi.NewTokenAmount(0)
-
-		if cctx.Args().Present() {
-			f, err := types.ParseFIL(cctx.Args().First())
-			if err != nil {
-				return xerrors.Errorf("parsing 'amount' argument: %w", err)
-			}
-
-			amount = abi.TokenAmount(f)
-		}
-
-		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer acloser()
-
-		ctx := lcli.ReqContext(cctx)
-
-		var res cid.Cid
-		if cctx.IsSet("beneficiary") {
-			res, err = minerApi.BeneficiaryWithdrawBalance(ctx, amount)
-		} else {
-			res, err = minerApi.ActorWithdrawBalance(ctx, amount)
-		}
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Requested withdrawal in message %s\nwaiting for it to be included in a block..\n", res)
-
-		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")))
-		if err != nil {
-			return xerrors.Errorf("Timeout waiting for withdrawal message %s", res)
-		}
-
-		if wait.Receipt.ExitCode.IsError() {
-			return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
-		}
-
-		nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
-		if err != nil {
-			return err
-		}
-
-		if nv >= network.Version14 {
-			var withdrawn abi.TokenAmount
-			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
-				return err
-			}
-
-			fmt.Printf("Successfully withdrew %s \n", types.FIL(withdrawn))
-			if withdrawn.LessThan(amount) {
-				fmt.Printf("Note that this is less than the requested amount of %s\n", types.FIL(amount))
-			}
-		}
-
-		return nil
 	},
 }
 

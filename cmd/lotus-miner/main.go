@@ -197,3 +197,13 @@ func setHidden(cmd *cli.Command) *cli.Command {
 	cmd.Hidden = true
 	return cmd
 }
+
+func LMActorGetter(cctx *cli.Context) (address.Address, error) {
+	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	if err != nil {
+		return address.Undef, err
+	}
+	defer closer()
+
+	return minerApi.ActorAddress(cctx.Context)
+}

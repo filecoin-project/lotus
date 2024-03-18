@@ -3,17 +3,26 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/urfave/cli/v2"
 	"os"
 	"os/signal"
+
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 var log = logging.Logger("sptool")
 
 func main() {
-	local := []*cli.Command{}
+	local := []*cli.Command{
+		actorCmd,
+		//sectorsCmd,
+		//provingCmd,
+		//proposalsCmd,
+	}
 
 	app := &cli.App{
 		Name:     "sptool",
@@ -30,6 +39,11 @@ func main() {
 			&cli.StringFlag{
 				Name:  "log-level",
 				Value: "info",
+			},
+			&cli.StringFlag{
+				Name:     "actor",
+				Required: true,
+				Usage:    "miner actor to manage",
 			},
 		},
 		Before: func(cctx *cli.Context) error {
@@ -56,4 +70,12 @@ func main() {
 		return
 	}
 
+}
+
+func SPTActorGetter(cctx *cli.Context) (address.Address, error) {
+	addr, err := address.NewFromString(cctx.String("actor"))
+	if err != nil {
+		return address.Undef, fmt.Errorf("parsing address: %w", err)
+	}
+	return addr, nil
 }
