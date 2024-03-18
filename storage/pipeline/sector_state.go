@@ -94,7 +94,7 @@ const (
 	CommitFinalizeFailed SectorState = "CommitFinalizeFailed"
 
 	// single commit
-	SubmitCommit SectorState = "SubmitCommit" // send commit message to the chain
+	SubmitCommit SectorState = "SubmitCommit" // send commit message to the chain (deprecated)
 	CommitWait   SectorState = "CommitWait"   // wait for the commit message to land on chain
 
 	SubmitCommitAggregate SectorState = "SubmitCommitAggregate"

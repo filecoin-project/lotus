@@ -209,7 +209,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return nil, xerrors.Errorf("getting config: %w", err)
 	}
 
-	if notif && total < cfg.MaxCommitBatch {
+	if notif && total < cfg.MaxCommitBatch && cfg.AggregateCommits {
 		return nil, nil
 	}
 
@@ -233,7 +233,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		return false
 	}
 
-	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut()
+	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut() || !cfg.AggregateCommits
 
 	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
 		if ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.AggregateAboveBaseFee) {
@@ -331,6 +331,9 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		return nil, err
 	}
 
+	// sort sectors by number
+	sort.Slice(sectors, func(i, j int) bool { return sectors[i] < sectors[j] })
+
 	total := len(sectors)
 
 	res := sealiface.CommitBatchRes{
@@ -370,10 +373,6 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	if len(infos) == 0 {
 		return nil, nil
 	}
-
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].Number < infos[j].Number
-	})
 
 	proofs := make([][]byte, 0, total)
 	for _, info := range infos {
@@ -444,13 +443,13 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
 		res.Error = err.Error()
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectors2Params: %w", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectors3Params: %w", err)
 	}
 
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed: %s", err)
+		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
 		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
@@ -474,7 +473,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 	res.Msg = &mcid
 
-	log.Infow("Sent ProveCommitSectors2 message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
+	log.Infow("Sent ProveCommitSectors3 message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
 
 	return []sealiface.CommitBatchRes{res}, nil
 }
@@ -591,7 +590,7 @@ func (b *CommitBatcher) processBatchV1(cfg sealiface.Config, sectors []abi.Secto
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed: %s", err)
+		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
 		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
@@ -842,7 +841,7 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	}
 	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		log.Errorf("unsupported network vrsion: %s", err)
+		log.Errorf("unsupported network version: %s", err)
 		return time.Now(), err
 	}
 	mpcd, err := policy.GetMaxProveCommitDuration(av, si.SectorType)

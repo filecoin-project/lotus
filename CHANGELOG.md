@@ -3691,7 +3691,7 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 - Config for deal publishing control addresses ([filecoin-project/lotus#6697](https://github.com/filecoin-project/lotus/pull/6697))
   - Set `DealPublishControl` to set the wallet used for sending `PublishStorageDeals` messages, instructions [here](https://lotus.filecoin.io/storage-providers/operate/addresses/#control-addresses).
 - Config UX improvements ([filecoin-project/lotus#6848](https://github.com/filecoin-project/lotus/pull/6848))
-  - You can now preview the the default and updated node config by running `lotus/lotus-miner config default/updated`
+  - You can now preview the default and updated node config by running `lotus/lotus-miner config default/updated`
 
 ## New Features
 - ⭐️⭐️⭐️ Support standalone miner-market process ([filecoin-project/lotus#6356](https://github.com/filecoin-project/lotus/pull/6356))
@@ -5138,7 +5138,7 @@ This consensus-breaking release of Lotus upgrades the actors version to v2.0.0. 
 
 #### Mining
 
-- Increased ExpectedSealDuration and and WaitDealsDelay (https://github.com/filecoin-project/lotus/pull/3743)
+- Increased ExpectedSealDuration and WaitDealsDelay (https://github.com/filecoin-project/lotus/pull/3743)
 - Miner backup/restore commands (https://github.com/filecoin-project/lotus/pull/4133)
 - lotus-miner: add more help text to storage / attach (https://github.com/filecoin-project/lotus/pull/3961)
 - Reject deals that are > 7 days in the future in the BasicDealFilter (https://github.com/filecoin-project/lotus/pull/4173)
