@@ -11,7 +11,7 @@ module.exports = async ({core, exec}) => {
   const testPaths = stdout.split('\n');
   const groups = testPaths.reduce((acc, testPath) => {
     const name = path.basename(testPath, '_test.go');
-    const root = path.parse(testPath.split('/')[1]);
+    const root = testPath.split('/')[1];
     switch (root) {
       case 'itests':
         const group = `itest-${name})}`;
