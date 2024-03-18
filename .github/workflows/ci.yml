@@ -98,3 +98,149 @@ jobs:
       - uses: ./.github/actions/install-go
       - run: go mod tidy -v
       - run: git diff --exit-code
+  discover:
+    name: Discover
+    runs-on: ubuntu-latest
+    outputs:
+      tests: ${{ steps.tests.outputs.tests }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - id: paths
+        run: ls **/*_test.go | jq -R | jq -sc | xargs -I{} echo "paths={}" | tee -a "$GITHUB_OUTPUT"
+      - id: tests
+        uses: actions/github-script@v7
+        env:
+          TEST_PATHS: ${{ steps.paths.outputs.paths }}
+        with:
+          script: |
+            const path = require('path');
+            const testPaths = JSON.parse(process.env.TEST_PATHS);
+            const groups = testPaths.reduce((acc, testPath) => {
+              const name = path.basename(p, '_test.go');
+              const parsedTestPath = path.parse(testPath);
+              switch (parsedTestPath.root) {
+                case 'itests':
+                  const group = `itest-${parsedTestPath.name.replace(/_test$/, '')}`;
+                  acc[group] = {
+                    paths: [testPath];
+                  };
+                  if (['worker', 'deals_concurrent', 'wdpost_worker_config', 'sector_pledge'].includes(name)) {
+                    acc[group].runner = ['self-hosted', 'linux', 'x64', '2xlarge'];
+                  }
+                  if (['wdpost', 'sector_pledge'].includes(name)) {
+                    acc[group].params = true;
+                  }
+                  break;
+                case 'node':
+                  acc['unit-node'].paths.push(testPath);
+                  break;
+                case 'storage':
+                case 'extern':
+                  acc['unit-storage'].paths.push(testPath);
+                  break;
+                case 'cli':
+                case 'cmd':
+                case 'api':
+                  acc['unit-cli'].paths.push(testPath);
+                  break;
+                default:
+                  acc['unit-rest'].paths.push(testPath);
+                  break;
+              }
+              return acc;
+            }, {
+              'multicore-sdr': {
+                paths: ['storage/sealer/ffiwrapper/sealer_test.go'],
+                flags: '-run TestMulticoreSDR',
+                env: {
+                  GO_TEST_FLAGS: '-run=TestMulticoreSDR',
+                  TEST_RUSTPROOFS_LOGS: 1
+                }
+              },
+              'conformance': {
+                paths: ['conformance/corpus_test.go'],
+                env: {
+                  GO_TEST_FLAGS: '-run=TestConformance',
+                  SKIP_CONFORMANCE: 0
+                },
+                params: true,
+                statediff: true
+                format: 'pkgname-and-test-fails'
+              },
+              'unit-node': {
+                paths: []
+              },
+              'unit-storage': {
+                paths: [],
+                params: true
+              },
+              'unit-cli': {
+                paths: [],
+                params: true,
+                runner: ['self-hosted', 'linux', 'x64', '2xlarge']
+              },
+              'unit-rest': {
+                paths: [],
+                runner: ['self-hosted', 'linux', 'x64', '2xlarge']
+              }
+            });
+            const matrix = Object.entries(groups).map(([name, group]) => {
+              return {
+                name,
+                ...group
+              };
+            });
+            core.info(JSON.stringify(matrix, null, 2));
+            core.setOutput('tests', JSON.stringify(matrix));
+  test:
+    needs: [discover]
+    name: Test (${{ matrix.name }})
+    runs-on: ubuntu-latest # TODO: ${{ matrix.runner || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.tests) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-ubuntu-deps
+      - uses: ./.github/actions/install-go
+      - run: make deps
+      - if: ${{ matrix.params }}
+        uses: ./.github/actions/install-params
+      - if: ${{ matrix.yugabyte }}
+        uses: ./.github/actions/install-yugabyte
+      - if: ${{ matrix.statediff }}
+        uses: ./.github/actions/install-statediff
+      - id: reports
+        run: mktemp -d | xargs -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+      # TODO: Track coverage (used to be tracked for conformance)
+      - env:
+          NAME: ${{ matrix.name }}
+          LOTUS_SRC_DIR: ${{ github.workspace }}
+          LOTUS_HARMONYDB_HOSTS: localhost
+          REPORTS_PATH: ${{ steps.reports.outputs.path }}
+          SKIP_CONFORMANCE: ${{ matrix.env.SKIP_CONFORMANCE || 1 }}
+          TEST_RUSTPROOFS_LOGS: ${{ matrix.env.TEST_RUSTPROOFS_LOGS || 0 }}
+          GO_TEST_FLAGS: ${{ matrix.env.GO_TEST_FLAGS || '' }}
+          FORMAT: ${{ matrix.format || 'standard-verbose' }}
+          PACKAGES: ${{ join(' ', matrix.paths) }}
+        run: |
+          env
+          gotestsum \
+            --format "$FORMAT" \
+            --junitfile "$REPORTS_PATH/$NAME.xml" \
+            --jsonfile "$REPORTS_PATH/$NAME.json" \
+            --packages="$PACKAGES" \
+            -- $GO_TEST_FLAGS
+      - if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
+        continue-on-error: true

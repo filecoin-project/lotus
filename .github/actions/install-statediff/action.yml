@@ -1,0 +1,18 @@
+name: Install Statediff
+description: Install Statediff for Filecoin Lotus
+
+runs:
+  using: composite
+  steps:
+    - id: statediff
+      run: mktemp -d | xargs -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+      shell: bash
+    - uses: actions/checkout@v4
+      with:
+        repository: filecoin-project/statediff
+        path: ${{ steps.statediff.outputs.path }}
+    - env:
+        STATEDIFF_PATH: ${{ steps.statediff.outputs.path }}
+      run: go install $STATEDIFF_PATH/cmd/statediff
+      shell: bash
+      continue-on-error: true
