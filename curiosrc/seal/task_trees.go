@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -88,6 +90,15 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	var dataReader io.Reader
 	var unpaddedData bool
 
+	var closers []io.Closer
+	defer func() {
+		for _, c := range closers {
+			if err := c.Close(); err != nil {
+				log.Errorw("error closing piece reader", "error", err)
+			}
+		}
+	}()
+
 	if len(pieces) > 0 {
 		pieceInfos := make([]abi.PieceInfo, len(pieces))
 		pieceReaders := make([]io.Reader, len(pieces))
@@ -106,10 +117,49 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 			// make pieceReader
 			if p.DataUrl != nil {
-				pieceReaders[i], _ = padreader.New(&UrlPieceReader{
-					Url:     *p.DataUrl,
-					RawSize: *p.DataRawSize,
-				}, uint64(*p.DataRawSize))
+				dataUrl := *p.DataUrl
+
+				goUrl, err := url.Parse(dataUrl)
+				if err != nil {
+					return false, xerrors.Errorf("parsing data URL: %w", err)
+				}
+
+				if goUrl.Scheme == "pieceref" {
+					// url is to a piece reference
+
+					refNum, err := strconv.ParseInt(goUrl.Opaque, 10, 64)
+					if err != nil {
+						return false, xerrors.Errorf("parsing piece reference number: %w", err)
+					}
+
+					// get pieceID
+					var pieceID []struct {
+						PieceID storiface.PieceNumber `db:"piece_id"`
+					}
+					err = t.db.Select(ctx, &pieceID, `SELECT piece_id FROM parked_piece_refs WHERE ref_id = $1`, refNum)
+					if err != nil {
+						return false, xerrors.Errorf("getting pieceID: %w", err)
+					}
+
+					if len(pieceID) != 1 {
+						return false, xerrors.Errorf("expected 1 pieceID, got %d", len(pieceID))
+					}
+
+					pr, err := t.sc.PieceReader(ctx, pieceID[0].PieceID)
+					if err != nil {
+						return false, xerrors.Errorf("getting piece reader: %w", err)
+					}
+
+					closers = append(closers, pr)
+
+					pieceReaders[i], _ = padreader.New(pr, uint64(*p.DataRawSize))
+				} else {
+					pieceReaders[i], _ = padreader.New(&UrlPieceReader{
+						Url:     dataUrl,
+						RawSize: *p.DataRawSize,
+					}, uint64(*p.DataRawSize))
+				}
+
 			} else { // padding piece (w/o fr32 padding, added in TreeD)
 				pieceReaders[i] = nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded())
 			}
@@ -200,6 +250,7 @@ type UrlPieceReader struct {
 	RawSize int64 // the exact number of bytes read, if we read more or less that's an error
 
 	readSoFar int64
+	closed    bool
 	active    io.ReadCloser // auto-closed on EOF
 }
 
@@ -239,6 +290,7 @@ func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
 	// If EOF is reached, close the reader
 	if err == io.EOF {
 		cerr := u.active.Close()
+		u.closed = true
 		if cerr != nil {
 			log.Errorf("error closing http piece reader: %s", cerr)
 		}
@@ -251,6 +303,15 @@ func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
 	}
 
 	return n, err
+}
+
+func (u *UrlPieceReader) Close() error {
+	if !u.closed {
+		u.closed = true
+		return u.active.Close()
+	}
+
+	return nil
 }
 
 var _ harmonytask.TaskInterface = &TreesTask{}

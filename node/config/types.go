@@ -112,6 +112,14 @@ type CurioSubsystemsConfig struct {
 	EnableWinningPost   bool
 	WinningPostMaxTasks int
 
+	// EnableParkPiece enables the "piece parking" task to run on this node. This task is responsible for fetching
+	// pieces from the network and storing them in the storage subsystem until sectors are sealed. This task is
+	// only applicable when integrating with boost, and should be enabled on nodes which will hold deal data
+	// from boost until sectors containing the related pieces have the TreeD/TreeR constructed.
+	// Note that future Curio implementations will have a separate task type for fetching pieces from the internet.
+	EnableParkPiece   bool
+	ParkPieceMaxTasks int
+
 	// EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
 	// creating 11 layer files in sector cache directory.
 	//

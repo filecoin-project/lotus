@@ -13,9 +13,12 @@ import (
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/curiosrc/message"
+	"github.com/filecoin-project/lotus/curiosrc/piece"
 	"github.com/filecoin-project/lotus/curiosrc/seal"
 	"github.com/filecoin-project/lotus/curiosrc/winning"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/lib/lazy"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/modules"
 )
 
@@ -66,6 +69,19 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
+	slrLazy := lazy.MakeLazy(func() (*ffi.SealCalls, error) {
+		return ffi.NewSealCalls(stor, lstor, si), nil
+	})
+
+	{
+		// Piece handling
+		if cfg.Subsystems.EnableParkPiece {
+			parkPieceTask := piece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
+			cleanupPieceTask := piece.NewCleanupPieceTask(db, must.One(slrLazy.Val()), 0)
+			activeTasks = append(activeTasks, parkPieceTask, cleanupPieceTask)
+		}
+	}
+
 	hasAnySealingTask := cfg.Subsystems.EnableSealSDR ||
 		cfg.Subsystems.EnableSealSDRTrees ||
 		cfg.Subsystems.EnableSendPrecommitMsg ||
@@ -81,7 +97,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			sp = seal.NewPoller(db, full)
 			go sp.RunPoller(ctx)
 
-			slr = ffi.NewSealCalls(stor, lstor, si)
+			slr = must.One(slrLazy.Val())
 		}
 
 		// NOTE: Tasks with the LEAST priority are at the top

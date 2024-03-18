@@ -9,12 +9,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/curiosrc/message"
 	"github.com/filecoin-project/lotus/curiosrc/multictladdr"
@@ -27,6 +30,7 @@ import (
 type SubmitPrecommitTaskApi interface {
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 	ctladdr.NodeApi
 }
 
@@ -134,6 +138,23 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 				params.Sectors[0].DealIDs = append(params.Sectors[0].DealIDs, abi.DealID(p.F05DealID))
 			}
 		}
+	}
+
+	nv, err := s.api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return false, xerrors.Errorf("getting network version: %w", err)
+	}
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return false, xerrors.Errorf("failed to get actors version: %w", err)
+	}
+	msd, err := policy.GetMaxProveCommitDuration(av, sectorParams.RegSealProof)
+	if err != nil {
+		return false, xerrors.Errorf("failed to get max prove commit duration: %w", err)
+	}
+
+	if minExpiration := sectorParams.TicketEpoch + policy.MaxPreCommitRandomnessLookback + msd + miner.MinSectorExpiration; params.Sectors[0].Expiration < minExpiration {
+		params.Sectors[0].Expiration = minExpiration
 	}
 
 	var pbuf bytes.Buffer

@@ -9,16 +9,22 @@ import (
 )
 
 const (
+	// "regular" sectors
 	FTUnsealed SectorFileType = 1 << iota
 	FTSealed
 	FTCache
+
+	// snap
 	FTUpdate
 	FTUpdateCache
+
+	// Piece Park
+	FTPiece
 
 	FileTypes = iota
 )
 
-var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache, FTUpdate, FTUpdateCache}
+var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache, FTUpdate, FTUpdateCache, FTPiece}
 
 const (
 	FTNone SectorFileType = 0
@@ -39,6 +45,7 @@ var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
 	FTUpdate:      FSOverheadDen,
 	FTUpdateCache: FSOverheadDen*2 + 1,
 	FTCache:       141, // 11 layers + D(2x ssize) + C + R'
+	FTPiece:       FSOverheadDen,
 }
 
 // sector size * disk / fs overhead.  FSOverheadDen is like the unit of sector size
@@ -49,6 +56,7 @@ var FsOverheadFinalized = map[SectorFileType]int{
 	FTUpdate:      FSOverheadDen,
 	FTUpdateCache: 1,
 	FTCache:       1,
+	FTPiece:       FSOverheadDen,
 }
 
 type SectorFileType int
@@ -65,6 +73,8 @@ func TypeFromString(s string) (SectorFileType, error) {
 		return FTUpdate, nil
 	case "update-cache":
 		return FTUpdateCache, nil
+	case "piece":
+		return FTPiece, nil
 	default:
 		return 0, xerrors.Errorf("unknown sector file type '%s'", s)
 	}
@@ -82,6 +92,8 @@ func (t SectorFileType) String() string {
 		return "update"
 	case FTUpdateCache:
 		return "update-cache"
+	case FTPiece:
+		return "piece"
 	default:
 		return fmt.Sprintf("<unknown %d %v>", t, (t & ((1 << FileTypes) - 1)).Strings())
 	}
@@ -206,6 +218,7 @@ type SectorPaths struct {
 	Cache       string
 	Update      string
 	UpdateCache string
+	Piece       string
 }
 
 func ParseSectorID(baseName string) (abi.SectorID, error) {
@@ -242,6 +255,8 @@ func PathByType(sps SectorPaths, fileType SectorFileType) string {
 		return sps.Update
 	case FTUpdateCache:
 		return sps.UpdateCache
+	case FTPiece:
+		return sps.Piece
 	}
 
 	panic("requested unknown path type")
@@ -259,5 +274,7 @@ func SetPathByType(sps *SectorPaths, fileType SectorFileType, p string) {
 		sps.Update = p
 	case FTUpdateCache:
 		sps.UpdateCache = p
+	case FTPiece:
+		sps.Piece = p
 	}
 }
