@@ -167,7 +167,7 @@ jobs:
                   SKIP_CONFORMANCE: 0
                 },
                 params: true,
-                statediff: true
+                statediff: true,
                 format: 'pkgname-and-test-fails'
               },
               'unit-node': {
