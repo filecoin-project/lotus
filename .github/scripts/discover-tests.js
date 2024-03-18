@@ -1,7 +1,7 @@
 module.exports = async ({core, exec}) => {
   const path = require('path');
   let stdout = '';
-  await exec.exec('find', ['*', '-name', '*_test.go'], {
+  await exec.exec('find', ['.', '-name', '*_test.go'], {
     listeners: {
       stdout: (data) => {
         stdout += data.toString();
@@ -11,7 +11,7 @@ module.exports = async ({core, exec}) => {
   const testPaths = stdout.split('\n');
   const groups = testPaths.reduce((acc, testPath) => {
     const name = path.basename(testPath, '_test.go');
-    const parsedTestPath = path.parse(testPath);
+    const parsedTestPath = path.parse(testPath.slice(2));
     switch (parsedTestPath.root) {
       case 'itests':
         const group = `itest-${parsedTestPath.name.replace(/_test$/, '')}`;
