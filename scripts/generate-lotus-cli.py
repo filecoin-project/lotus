@@ -56,3 +56,4 @@ if __name__ == "__main__":
     generate_lotus_cli('lotus-miner')
     generate_lotus_cli('lotus-worker')
     generate_lotus_cli('curio')
+    generate_lotus_cli('sptool')
