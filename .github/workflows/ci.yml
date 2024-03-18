@@ -108,93 +108,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - id: paths
-        run: ls **/*_test.go | jq -R | jq -jsc | xargs -0 -I{} echo "paths={}" | tee -a "$GITHUB_OUTPUT"
       - id: tests
         uses: actions/github-script@v7
-        env:
-          TEST_PATHS: '${{ steps.paths.outputs.paths }}'
         with:
           script: |
-            const path = require('path');
-            const testPaths = JSON.parse(process.env.TEST_PATHS);
-            const groups = testPaths.reduce((acc, testPath) => {
-              const name = path.basename(p, '_test.go');
-              const parsedTestPath = path.parse(testPath);
-              switch (parsedTestPath.root) {
-                case 'itests':
-                  const group = `itest-${parsedTestPath.name.replace(/_test$/, '')}`;
-                  acc[group] = {
-                    paths: [testPath]
-                  };
-                  if (['worker', 'deals_concurrent', 'wdpost_worker_config', 'sector_pledge'].includes(name)) {
-                    acc[group].runner = ['self-hosted', 'linux', 'x64', '2xlarge'];
-                  }
-                  if (['wdpost', 'sector_pledge'].includes(name)) {
-                    acc[group].params = true;
-                  }
-                  break;
-                case 'node':
-                  acc['unit-node'].paths.push(testPath);
-                  break;
-                case 'storage':
-                case 'extern':
-                  acc['unit-storage'].paths.push(testPath);
-                  break;
-                case 'cli':
-                case 'cmd':
-                case 'api':
-                  acc['unit-cli'].paths.push(testPath);
-                  break;
-                default:
-                  acc['unit-rest'].paths.push(testPath);
-                  break;
-              }
-              return acc;
-            }, {
-              'multicore-sdr': {
-                paths: ['storage/sealer/ffiwrapper/sealer_test.go'],
-                flags: '-run TestMulticoreSDR',
-                env: {
-                  GO_TEST_FLAGS: '-run=TestMulticoreSDR',
-                  TEST_RUSTPROOFS_LOGS: 1
-                }
-              },
-              'conformance': {
-                paths: ['conformance/corpus_test.go'],
-                env: {
-                  GO_TEST_FLAGS: '-run=TestConformance',
-                  SKIP_CONFORMANCE: 0
-                },
-                params: true,
-                statediff: true,
-                format: 'pkgname-and-test-fails'
-              },
-              'unit-node': {
-                paths: []
-              },
-              'unit-storage': {
-                paths: [],
-                params: true
-              },
-              'unit-cli': {
-                paths: [],
-                params: true,
-                runner: ['self-hosted', 'linux', 'x64', '2xlarge']
-              },
-              'unit-rest': {
-                paths: [],
-                runner: ['self-hosted', 'linux', 'x64', '2xlarge']
-              }
-            });
-            const matrix = Object.entries(groups).map(([name, group]) => {
-              return {
-                name,
-                ...group
-              };
-            });
-            core.info(JSON.stringify(matrix, null, 2));
-            core.setOutput('tests', JSON.stringify(matrix));
+            const script = require('./.github/scripts/discover-tests.js');
+            await script({core, exec});
   test:
     needs: [discover]
     name: Test (${{ matrix.name }})
