@@ -42,7 +42,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:     "actor",
-				Required: true,
+				Required: os.Getenv("LOTUS_DOCS_GENERATION") != "1",
 				Usage:    "miner actor to manage",
 			},
 		},
