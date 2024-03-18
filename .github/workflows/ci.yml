@@ -109,11 +109,11 @@ jobs:
         with:
           submodules: 'recursive'
       - id: paths
-        run: ls **/*_test.go | jq -R | jq -sc | xargs -I{} echo "paths='{}'" | tee -a "$GITHUB_OUTPUT"
+        run: ls **/*_test.go | jq -R | jq -sc | xargs -I{} echo "paths={}" | tee -a "$GITHUB_OUTPUT"
       - id: tests
         uses: actions/github-script@v7
         env:
-          TEST_PATHS: ${{ steps.paths.outputs.paths }}
+          TEST_PATHS: '${{ steps.paths.outputs.paths }}'
         with:
           script: |
             const path = require('path');
