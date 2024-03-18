@@ -125,7 +125,7 @@ jobs:
                 case 'itests':
                   const group = `itest-${parsedTestPath.name.replace(/_test$/, '')}`;
                   acc[group] = {
-                    paths: [testPath];
+                    paths: [testPath]
                   };
                   if (['worker', 'deals_concurrent', 'wdpost_worker_config', 'sector_pledge'].includes(name)) {
                     acc[group].runner = ['self-hosted', 'linux', 'x64', '2xlarge'];
