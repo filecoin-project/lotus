@@ -1,7 +1,7 @@
 module.exports = async ({core, exec}) => {
   const path = require('path');
   let stdout = '';
-  await exec.exec('ls', ['**/*_test.go'], {
+  await exec.exec('find', ['*', '-name', '*_test.go'], {
     listeners: {
       stdout: (data) => {
         stdout += data.toString();
