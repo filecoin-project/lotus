@@ -1,13 +1,14 @@
 module.exports = async ({core, exec}) => {
   const path = require('path');
-  const testPaths = []
+  let stdout = '';
   await exec.exec('find', ['.', '-name', '*_test.go'], {
     listeners: {
       stdout: (data) => {
-        testPaths.push(...data.split('\n'));
+        stdout += data.toString();
       }
     }
-  })
+  });
+  const testPaths = stdout.split('\n');
   const groups = testPaths.reduce((acc, testPath) => {
     const name = path.basename(testPath, '_test.go');
     const parsedTestPath = path.parse(testPath);
