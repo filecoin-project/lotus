@@ -41,9 +41,9 @@ jobs:
               "format": "standard-verbose",
               "needs_params": false,
               "needs_statediff": false,
-              "needs_yugabytedb": false,
+              "needs_yugabytedb": false
             }
-          GROUPS: |
+          BASE: |
             [
               {
                 "name": "multicore-sdr",
@@ -99,7 +99,7 @@ jobs:
                 "needs_params": true
               }
             ]
-        run: go run ./.github/scripts/extend-test-groups.go -defaults "$DEFAULTS" -groups "$GROUPS" -output "$GITHUB_OUTPUT"
+        run: go run ./.github/scripts/extend-test-groups.go -defaults "$DEFAULTS" -groups "$BASE" -output "$GITHUB_OUTPUT"
   fetch:
     name: Fetch Proof Prameters
     runs-on: ubuntu-latest
@@ -161,6 +161,8 @@ jobs:
       - if: steps.modules.outputs.cache-hit != 'true'
         run: go install gotest.tools/gotestsum@latest
       - if: steps.modules.outputs.cache-hit != 'true'
+        run: make deps
+      - if: steps.modules.outputs.cache-hit != 'true'
         run: go test -run none ./...
       - if: steps.modules.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -206,9 +208,9 @@ jobs:
           LOTUS_SRC_DIR: ${{ github.workspace }}
           LOTUS_HARMONYDB_HOSTS: 127.0.0.1
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          SKIP_CONFORMANCE: ${{ matrix.skip_conformance || 1 }}
-          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || 0 }}
-          FORMAT: ${{ matrix.format || 'standard-verbose' }}
+          SKIP_CONFORMANCE: ${{ matrix.skip_conformance }}
+          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs }}
+          FORMAT: ${{ matrix.format }}
           PACKAGES: ${{ join(matrix.packages, ' ') }}
         run: |
           gotestsum \
@@ -216,7 +218,7 @@ jobs:
             --junitfile "$REPORTS_PATH/$NAME.xml" \
             --jsonfile "$REPORTS_PATH/$NAME.json" \
             --packages="$PACKAGES" \
-            -- ${{ matrix.go_test_flags || '' }}
+            -- ${{ matrix.go_test_flags }}
       - if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
