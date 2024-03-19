@@ -79,7 +79,7 @@ func main() {
 			}
 
 			if rootDir == "itests" {
-				g["packages"] = []string{path}
+				g["packages"] = []string{fmt.Sprintf("./%s", path)}
 			} else {
 				packagesOpt := g["packages"]
 				if packagesOpt == nil {
@@ -90,8 +90,9 @@ func main() {
 					panic(fmt.Errorf("error parsing packages: %v", packagesOpt))
 					return nil
 				}
-				if !slices.Contains(packages, fmt.Sprintf("%s/...", rootDir)) {
-					packages = append(packages, fmt.Sprintf("%s/...", rootDir))
+				p := fmt.Sprintf("./%s/...", rootDir)
+				if !slices.Contains(packages, p) {
+					packages = append(packages, p)
 					sort.Strings(packages)
 					g["packages"] = packages
 				}
