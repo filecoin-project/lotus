@@ -7,6 +7,7 @@ runs:
     - uses: actions/setup-go@v5
       with:
         go-version: stable
+        cache: false
     - id: go-mod
       uses: ipdxco/unified-github-workflows/.github/actions/read-go-mod@main
     - uses: actions/setup-go@v5

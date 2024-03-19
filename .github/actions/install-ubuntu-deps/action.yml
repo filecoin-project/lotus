@@ -6,5 +6,5 @@ runs:
   steps:
     - run: |
         sudo apt-get update -y
-        sudo apt-get install -y ocl-icd-opencl-dev libhwloc-dev
+        sudo apt-get install -y ocl-icd-opencl-dev libhwloc-dev pkg-config
       shell: bash
