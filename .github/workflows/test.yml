@@ -1,4 +1,4 @@
-name: Check
+name: Test
 
 on:
   pull_request:
@@ -13,92 +13,11 @@ defaults:
   run:
     shell: bash
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # build:
-  #   name: Build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: 'recursive'
-  #     - uses: ./.github/actions/install-ubuntu-deps
-  #     - uses: ./.github/actions/install-go
-  #     - run: make deps lotus
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: lotus
-  #         path: |
-  #           .lotus
-  #           lotus
-  #           extern/filecoin-ffi/.install-filcrypto
-  #           extern/filecoin-ffi/filcrypto.h
-  #           extern/filecoin-ffi/filcrypto.pc
-  #           extern/filecoin-ffi/libfilcrypto.a
-  # check-docsgen:
-  #   name: Check (docs-check)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: 'recursive'
-  #     - uses: ./.github/actions/install-ubuntu-deps
-  #     - uses: ./.github/actions/install-go
-  #     - run: go install golang.org/x/tools/cmd/goimports
-  #     - run: make deps
-  #     - run: make docsgen
-  #     - run: git diff --exit-code
-  # check-gen:
-  #   needs: [build]
-  #   name: Check (gen-check)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: 'recursive'
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: lotus
-  #         path: .
-  #     - uses: ./.github/actions/install-ubuntu-deps
-  #     - uses: ./.github/actions/install-go
-  #     - run: go install golang.org/x/tools/cmd/goimports
-  #     - run: go install github.com/hannahhoward/cbor-gen-for
-  #     - run: make gen
-  #     - run: git diff --exit-code
-  #     - run: make docsgen-cli
-  #     - run: git diff --exit-code
-  # check-lint:
-  #   name: Check (lint-all)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: 'recursive'
-  #     - uses: ./.github/actions/install-ubuntu-deps
-  #     - uses: ./.github/actions/install-go
-  #     - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-  #     - run: make deps
-  #     - run: golangci-lint run -v --timeout 10m --concurrency 4
-  # check-fmt:
-  #   name: Check (gofmt)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: 'recursive'
-  #     - uses: ./.github/actions/install-go
-  #     - run: go fmt ./...
-  #     - run: git diff --exit-code
-  # check-mod-tidy:
-  #   name: Check (mod-tidy-check)
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: 'recursive'
-  #     - uses: ./.github/actions/install-go
-  #     - run: go mod tidy -v
-  #     - run: git diff --exit-code
   discover:
     name: Discover Test Groups
     runs-on: ubuntu-latest
@@ -131,15 +50,7 @@ jobs:
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "skip": false
               }, {
-                "name": "itest-deals_concurrent",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false
-              }, {
                 "name": "itest-sector_import_full",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false
-              }, {
-                "name": "itest-eth_deploy",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "skip": false
               }, {
@@ -201,8 +112,7 @@ jobs:
       - if: ${{ matrix.needs_yugabyte }}
         uses: ./.github/actions/start-yugabyte
         timeout-minutes: 3
-      - if: ${{ matrix.needs_statediff }}
-        uses: ./.github/actions/install-statediff
+      # TODO: Install statediff (used to be used for conformance)
       - id: reports
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
       # TODO: Track coverage (used to be tracked for conformance)
