@@ -71,14 +71,14 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	/* --- Setup subscription channels for ActorEvents --- */
 
 	// subscribe only to miner's actor events
-	minerEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+	minerEvtsChan, err := miner.FullNode.SubscribeActorEventsRaw(ctx, &types.ActorEventFilter{
 		Addresses: []address.Address{miner.ActorAddr},
 	})
 	require.NoError(t, err)
 
 	// subscribe only to sector-activated events
 	sectorActivatedCbor := must.One(ipld.Encode(basicnode.NewString("sector-activated"), dagcbor.Encode))
-	sectorActivatedEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+	sectorActivatedEvtsChan, err := miner.FullNode.SubscribeActorEventsRaw(ctx, &types.ActorEventFilter{
 		Fields: map[string][]types.ActorEventBlock{
 			"$type": {
 				{Codec: uint64(multicodec.Cbor), Value: sectorActivatedCbor},
@@ -127,7 +127,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.NoError(t, err)
 
 	// subscribe to actor events up until the current head
-	initialEventsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+	initialEventsChan, err := miner.FullNode.SubscribeActorEventsRaw(ctx, &types.ActorEventFilter{
 		FromHeight: epochPtr(0),
 		ToHeight:   epochPtr(int64(head.Height())),
 	})
@@ -284,19 +284,19 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 		},
 	}, claims)
 
-	// construct ActorEvents from GetActorEvents API
-	t.Logf("Inspecting full events list from GetActorEvents")
-	allEvtsFromGetAPI, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
+	// construct ActorEvents from GetActorEventsRaw API
+	t.Logf("Inspecting full events list from GetActorEventsRaw")
+	allEvtsFromGetAPI, err := miner.FullNode.GetActorEventsRaw(ctx, &types.ActorEventFilter{
 		FromHeight: epochPtr(0),
 	})
 	require.NoError(t, err)
-	fmt.Println("Events from GetActorEvents:")
+	fmt.Println("Events from GetActorEventsRaw:")
 	printEvents(t, allEvtsFromGetAPI)
-	// compare events from messages and receipts with events from GetActorEvents API
+	// compare events from messages and receipts with events from GetActorEventsRaw API
 	require.Equal(t, eventsFromMessages, allEvtsFromGetAPI)
 
 	// construct ActorEvents from subscription channel for just the miner actor
-	t.Logf("Inspecting only miner's events list from SubscribeActorEvents")
+	t.Logf("Inspecting only miner's events list from SubscribeActorEventsRaw")
 	var subMinerEvts []*types.ActorEvent
 	for evt := range minerEvtsChan {
 		subMinerEvts = append(subMinerEvts, evt)
@@ -325,7 +325,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	}
 	require.Len(t, sectorActivatedEvts, 2) // sanity check
 
-	t.Logf("Inspecting only sector-activated events list from real-time SubscribeActorEvents")
+	t.Logf("Inspecting only sector-activated events list from real-time SubscribeActorEventsRaw")
 	var subscribedSectorActivatedEvts []*types.ActorEvent
 	for evt := range sectorActivatedEvtsChan {
 		subscribedSectorActivatedEvts = append(subscribedSectorActivatedEvts, evt)
@@ -337,8 +337,8 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.Equal(t, sectorActivatedEvts, subscribedSectorActivatedEvts)
 
 	// same thing but use historical event fetching to see the same list
-	t.Logf("Inspecting only sector-activated events list from historical SubscribeActorEvents")
-	sectorActivatedEvtsChan, err = miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+	t.Logf("Inspecting only sector-activated events list from historical SubscribeActorEventsRaw")
+	sectorActivatedEvtsChan, err = miner.FullNode.SubscribeActorEventsRaw(ctx, &types.ActorEventFilter{
 		Fields: map[string][]types.ActorEventBlock{
 			"$type": {
 				{Codec: uint64(multicodec.Cbor), Value: sectorActivatedCbor},
@@ -358,7 +358,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.Equal(t, sectorActivatedEvts, subscribedSectorActivatedEvts)
 
 	// check that our `ToHeight` filter works as expected
-	t.Logf("Inspecting only initial list of events SubscribeActorEvents with ToHeight")
+	t.Logf("Inspecting only initial list of events SubscribeActorEventsRaw with ToHeight")
 	var initialEvents []*types.ActorEvent
 	for evt := range initialEventsChan {
 		initialEvents = append(initialEvents, evt)
@@ -367,8 +367,8 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.Equal(t, eventsFromMessages[0:6], initialEvents)
 
 	// construct ActorEvents from subscription channel for all actor events
-	t.Logf("Inspecting full events list from historical SubscribeActorEvents")
-	allEvtsChan, err := miner.FullNode.SubscribeActorEvents(ctx, &types.ActorEventFilter{
+	t.Logf("Inspecting full events list from historical SubscribeActorEventsRaw")
+	allEvtsChan, err := miner.FullNode.SubscribeActorEventsRaw(ctx, &types.ActorEventFilter{
 		FromHeight: epochPtr(0),
 	})
 	require.NoError(t, err)
@@ -383,7 +383,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	require.Equal(t, eventsFromMessages, prefillEvts)
 	t.Logf("All done comparing events")
 
-	// NOTE: There is a delay in finishing this test because the SubscribeActorEvents
+	// NOTE: There is a delay in finishing this test because the SubscribeActorEventsRaw
 	// with the ToHeight (initialEventsChan) has to wait at least a full actual epoch before
 	// realising that there's no more events for that filter. itests run with a different block
 	// speed than the ActorEventHandler is aware of.
