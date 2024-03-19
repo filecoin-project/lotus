@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/lotus/api"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v2"
@@ -999,7 +1000,7 @@ var filplusExtendClaimCmd = &cli.Command{
 			return xerrors.Errorf("specified term-max %d is larger than %d maximum allowed by verified regirty actor policy", tmax, verifregtypes13.MaximumVerifiedAllocationTerm)
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return xerrors.Errorf("failed to get full node api: %s", err)
 		}
@@ -1011,7 +1012,7 @@ var filplusExtendClaimCmd = &cli.Command{
 			return err
 		}
 
-		claimMap := make(map[verifregtypes13.ClaimId]provInfo)
+		claimMap := make(map[verifregtypes13.ClaimId]ProvInfo)
 
 		// If no miners and arguments are present
 		if len(miners) == 0 && cctx.Args().Len() > 0 {
@@ -1042,9 +1043,9 @@ var filplusExtendClaimCmd = &cli.Command{
 					return err
 				}
 
-				pi := provInfo{
-					addr: maddr,
-					id:   abi.ActorID(mid),
+				pi := ProvInfo{
+					Addr: maddr,
+					ID:   abi.ActorID(mid),
 				}
 
 				claimMap[verifregtypes13.ClaimId(n)] = pi
@@ -1064,7 +1065,7 @@ var filplusExtendClaimCmd = &cli.Command{
 					return xerrors.Errorf("failed to parse the claim ID for %s for argument %s: %s", detail[0], detail, err)
 				}
 
-				claimMap[verifregtypes13.ClaimId(n)] = provInfo{}
+				claimMap[verifregtypes13.ClaimId(n)] = ProvInfo{}
 			}
 		}
 
@@ -1091,7 +1092,7 @@ var filplusExtendClaimCmd = &cli.Command{
 		for _, msg := range smsgs {
 			msg := msg
 			eg.Go(func() error {
-				wait, err := api.StateWaitMsg(ctx, msg.Cid(), uint64(cctx.Int("confidence")))
+				wait, err := api.StateWaitMsg(ctx, msg.Cid(), uint64(cctx.Int("confidence")), 2000, true)
 				if err != nil {
 					return xerrors.Errorf("timeout waiting for message to land on chain %s", wait.Message)
 
@@ -1107,9 +1108,9 @@ var filplusExtendClaimCmd = &cli.Command{
 	},
 }
 
-type provInfo struct {
-	addr address.Address
-	id   abi.ActorID
+type ProvInfo struct {
+	Addr address.Address
+	ID   abi.ActorID
 }
 
 // CreateExtendClaimMsg creates extend message[s] based on the following conditions
@@ -1121,7 +1122,7 @@ type provInfo struct {
 // 6. Extend all claims for multiple miner IDs with different client address (2 messages)
 // 7. Extend specified claims for a miner ID with different client address (2 messages)
 // 8. Extend specific claims for specific miner ID with different client address (2 messages)
-func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verifregtypes13.ClaimId]provInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool) ([]*types.Message, error) {
+func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifregtypes13.ClaimId]ProvInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool) ([]*types.Message, error) {
 
 	ac, err := api.StateLookupID(ctx, wallet, types.EmptyTSK)
 	if err != nil {
@@ -1227,7 +1228,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 		for claimID, prov := range pcm {
 			prov := prov
 			claimID := claimID
-			claim, err := api.StateGetClaim(ctx, prov.addr, verifregtypes9.ClaimId(claimID), types.EmptyTSK)
+			claim, err := api.StateGetClaim(ctx, prov.Addr, verifregtypes9.ClaimId(claimID), types.EmptyTSK)
 			if err != nil {
 				return nil, xerrors.Errorf("could not load the claim %d: %s", claimID, err)
 			}
@@ -1239,7 +1240,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 				if claim.Client != wid {
 					newClaims = append(newClaims, verifregtypes13.ClaimExtensionRequest{
 						Claim:    claimID,
-						Provider: prov.id,
+						Provider: prov.ID,
 						TermMax:  tmax,
 					})
 					rDataCap.Add(big.NewInt(int64(claim.Size)).Int, rDataCap.Int)
@@ -1248,7 +1249,7 @@ func CreateExtendClaimMsg(ctx context.Context, api v0api.FullNode, pcm map[verif
 				terms = append(terms, verifregtypes13.ClaimTerm{
 					ClaimId:  claimID,
 					TermMax:  tmax,
-					Provider: prov.id,
+					Provider: prov.ID,
 				})
 			}
 		}
