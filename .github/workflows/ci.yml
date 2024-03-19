@@ -132,7 +132,8 @@ jobs:
                 "needs_yugabyte": true
               }, {
                 "name": "itest-deals_concurrent",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "go_test_flags": "-timeout 20m"
               }, {
                 "name": "itest-wdpost_worker_config",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"]
