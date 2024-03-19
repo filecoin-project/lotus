@@ -150,7 +150,7 @@ jobs:
                 "name": "itest-sector_pledge",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "skip": false,
-                "needs_params": true,
+                "needs_params": true
               }, {
                 "name": "itest-wdpost",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
@@ -179,7 +179,7 @@ jobs:
                 "name": "unit-rest"
               }
             ]
-        run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT"
+        run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT" -skip true
   test:
     needs: [discover]
     name: Test (${{ matrix.name }})
