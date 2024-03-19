@@ -6,7 +6,5 @@ runs:
   steps:
     - run: docker run --rm --name yugabyte -d -p 5433:5433 yugabytedb/yugabyte:2.18.0.0-b65 bin/yugabyted start --daemon=false
       shell: bash
-    - run: docker exec -it yugabyte bin/yugabyted status
-      shell: bash
-    - run: while ! docker exec -it yugabyte bin/yugabyted status; do sleep 1; done
+    - run: while ! docker exec yugabyte bin/yugabyted status; do sleep 1; done
       shell: bash

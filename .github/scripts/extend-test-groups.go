@@ -70,7 +70,7 @@ func main() {
 
 			name := "unit-rest"
 			if rootDir == "itests" {
-				name = "itests-" + strings.TrimSuffix(info.Name(), "_test.go")
+				name = "itest-" + strings.TrimSuffix(info.Name(), "_test.go")
 			}
 
 			g, ok := groupsByName[name]
