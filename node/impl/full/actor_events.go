@@ -18,8 +18,8 @@ import (
 )
 
 type ActorEventAPI interface {
-	GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)
-	SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error)
+	GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)
+	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error)
 }
 
 var (
@@ -89,7 +89,7 @@ func NewActorEventHandlerWithClock(
 	}
 }
 
-func (a *ActorEventHandler) GetActorEvents(ctx context.Context, evtFilter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+func (a *ActorEventHandler) GetActorEventsRaw(ctx context.Context, evtFilter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	if a.eventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -200,7 +200,7 @@ func parseHeightRange(heaviest abi.ChainEpoch, fromHeight, toHeight *abi.ChainEp
 	return minHeight, maxHeight, nil
 }
 
-func (a *ActorEventHandler) SubscribeActorEvents(ctx context.Context, evtFilter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if a.eventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
