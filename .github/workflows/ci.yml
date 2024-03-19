@@ -132,10 +132,10 @@ jobs:
                 "needs_yugabyte": true
               }, {
                 "name": "itest-deals_concurrent",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
               }, {
                 "name": "itest-wdpost_worker_config",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
               }, {
                 "name": "itest-sector_pledge",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
