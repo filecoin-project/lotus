@@ -161,7 +161,7 @@ jobs:
       - if: steps.modules.outputs.cache-hit != 'true'
         run: go install gotest.tools/gotestsum@latest
       - if: steps.modules.outputs.cache-hit != 'true'
-        run: go test -run none -mod=readonly -i ./...
+        run: go test -run none ./...
       - if: steps.modules.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:

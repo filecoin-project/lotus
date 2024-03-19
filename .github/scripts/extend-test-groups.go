@@ -31,7 +31,7 @@ func main() {
 	}
 
 	var groups []group
-	err := json.Unmarshal([]byte(groupsConfig), &groups)
+	err = json.Unmarshal([]byte(groupsConfig), &groups)
 	if err != nil {
 		panic(fmt.Errorf("error parsing groups configuration: %v", err))
 	}
