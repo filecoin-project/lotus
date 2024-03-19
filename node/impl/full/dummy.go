@@ -194,11 +194,11 @@ var ErrActorEventModuleDisabled = errors.New("module disabled, enable with Fevm.
 
 type ActorEventDummy struct{}
 
-func (a *ActorEventDummy) GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+func (a *ActorEventDummy) GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	return nil, ErrActorEventModuleDisabled
 }
 
-func (a *ActorEventDummy) SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (a *ActorEventDummy) SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	return nil, ErrActorEventModuleDisabled
 }
 

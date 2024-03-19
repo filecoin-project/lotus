@@ -116,7 +116,7 @@
   * [GasEstimateGasPremium](#GasEstimateGasPremium)
   * [GasEstimateMessageGas](#GasEstimateMessageGas)
 * [Get](#Get)
-  * [GetActorEvents](#GetActorEvents)
+  * [GetActorEventsRaw](#GetActorEventsRaw)
 * [I](#I)
   * [ID](#ID)
 * [Log](#Log)
@@ -285,7 +285,7 @@
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
 * [Subscribe](#Subscribe)
-  * [SubscribeActorEvents](#SubscribeActorEvents)
+  * [SubscribeActorEventsRaw](#SubscribeActorEventsRaw)
 * [Sync](#Sync)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
@@ -3389,8 +3389,8 @@ Response:
 ## Get
 
 
-### GetActorEvents
-GetActorEvents returns all user-programmed and built-in actor events that match the given
+### GetActorEventsRaw
+GetActorEventsRaw returns all user-programmed and built-in actor events that match the given
 filter.
 This is a request/response API.
 Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
@@ -8831,8 +8831,8 @@ Response:
 ## Subscribe
 
 
-### SubscribeActorEvents
-SubscribeActorEvents returns a long-lived stream of all user-programmed and built-in actor
+### SubscribeActorEventsRaw
+SubscribeActorEventsRaw returns a long-lived stream of all user-programmed and built-in actor
 events that match the given filter.
 Events that match the given filter are written to the stream in real-time as they are emitted
 from the FVM.
