@@ -48,15 +48,18 @@ jobs:
               }, {
                 "name": "itest-worker",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false
+                "skip": false,
+                "needs_params": true
               }, {
                 "name": "itest-sector_import_full",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false
+                "skip": false,
+                "needs_params": true
               }, {
                 "name": "itest-sector_import_simple",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false
+                "skip": false,
+                "needs_params": true
               }, {
                 "name": "itest-sector_pledge",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
