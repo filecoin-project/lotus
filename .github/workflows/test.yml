@@ -131,46 +131,8 @@ jobs:
         with:
           key: ${{ steps.cache.outputs.key }}
           path: ${{ steps.cache.outputs.path }}
-  cache:
-    name: Cache Go Modules
-    runs-on: ubuntu-latest
-    outputs:
-      key: ${{ steps.cache.outputs.key }}
-      path: ${{ steps.cache.outputs.path }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-      - uses: ./.github/actions/install-ubuntu-deps
-      - uses: ./.github/actions/install-go
-      - id: cache
-        env:
-          KEY: ${{ github.workflow }}-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        run: |
-          echo "key=$KEY" | tee -a $GITHUB_OUTPUT
-          echo "path<<EOF" | tee -a $GITHUB_OUTPUT
-          echo "$(go env GOPATH)/pkg/mod" | tee -a $GITHUB_OUTPUT
-          echo "$(go env GOCACHE)" | tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
-      - id: modules
-        uses: actions/cache/restore@v4
-        with:
-          key: ${{ steps.cache.outputs.key }}
-          path: ${{ steps.cache.outputs.path }}
-          lookup-only: true
-      - if: steps.modules.outputs.cache-hit != 'true'
-        run: go install gotest.tools/gotestsum@latest
-      - if: steps.modules.outputs.cache-hit != 'true'
-        run: make deps
-      - if: steps.modules.outputs.cache-hit != 'true'
-        run: go test -run none ./...
-      - if: steps.modules.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ steps.cache.outputs.key }}
-          path: ${{ steps.cache.outputs.path }}
   test:
-    needs: [discover, cache, fetch]
+    needs: [discover, fetch]
     name: Test (${{ matrix.name }})
     runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
     strategy:
@@ -183,11 +145,6 @@ jobs:
           submodules: 'recursive'
       - uses: ./.github/actions/install-ubuntu-deps
       - uses: ./.github/actions/install-go
-      - uses: actions/cache/restore@v4
-        with:
-          key: ${{ needs.cache.outputs.key }}
-          path: ${{ needs.cache.outputs.path }}
-          fail-on-cache-miss: true
       - run: go install gotest.tools/gotestsum@latest
       - run: make deps
       - if: ${{ matrix.needs_params }}
