@@ -26,7 +26,7 @@ func main() {
 		panic(fmt.Errorf("error parsing default groups configuration: %v", err))
 	}
 
-	coveredPackages := []string{}
+	coveredRootDirs := []string{}
 	groupsByName := make(map[string]group)
 	for _, g := range defaultGroups {
 		name, ok := g["name"].(string)
@@ -46,9 +46,10 @@ func main() {
 					panic(fmt.Errorf("error parsing package: %v", p))
 				}
 				ps = append(ps, p)
+				p = strings.TrimPrefix(p, "./")
 				p = strings.TrimSuffix(p, "/...")
-				if !slices.Contains(coveredPackages, p) {
-					coveredPackages = append(coveredPackages, p)
+				if !slices.Contains(coveredRootDirs, p) {
+					coveredRootDirs = append(coveredRootDirs, p)
 				}
 			}
 			g["packages"] = ps
@@ -64,7 +65,7 @@ func main() {
 			dir := filepath.Dir(path)
 			rootDir := strings.Split(dir, string(os.PathSeparator))[0]
 
-			if slices.Contains(coveredPackages, rootDir) {
+			if slices.Contains(coveredRootDirs, rootDir) {
 				return nil
 			}
 
