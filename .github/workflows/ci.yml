@@ -128,17 +128,17 @@ jobs:
                 "needs_statediff": true
               }, {
                 "name": "itest-worker",
-                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "needs_yugabyte": true
               }, {
                 "name": "itest-deals_concurrent",
-                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
               }, {
                 "name": "itest-wdpost_worker_config",
-                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
               }, {
                 "name": "itest-sector_pledge",
-                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "needs_params": true,
                 "needs_yugabyte": true
               }, {
@@ -172,11 +172,11 @@ jobs:
               }, {
                 "name": "unit-cli",
                 "packages": ["cli/...", "cmd/...", "api/..."],
-                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "needs_params": true
               }, {
                 "name": "unit-rest",
-                "runner": ['self-hosted', 'linux', 'x64', '2xlarge']
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
               }
             ]
         run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT"

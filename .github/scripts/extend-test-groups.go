@@ -23,8 +23,7 @@ func main() {
 	var defaultGroups []group
 	err := json.Unmarshal([]byte(defaultGroupsConfig), &defaultGroups)
 	if err != nil {
-		fmt.Printf("Error parsing default groups configuration: %v\n", err)
-		return
+		panic(fmt.Errorf("error parsing default groups configuration: %v", err))
 	}
 
 	coveredPackages := []string{}
@@ -32,20 +31,17 @@ func main() {
 	for _, g := range defaultGroups {
 		nameOpt, ok := g["name"]
 		if !ok {
-			fmt.Printf("Error parsing group name: %v\n", g)
-			return
+			panic(fmt.Errorf("error parsing group name: %v", g))
 		}
 		name, ok := nameOpt.(string)
 		if !ok {
-			fmt.Printf("Error parsing group name: %v\n", nameOpt)
-			return
+			panic(fmt.Errorf("error parsing group name: %v", nameOpt))
 		}
 		packagesOpt, ok := g["packages"]
 		if ok {
 			packages, ok := packagesOpt.([]string)
 			if !ok {
-				fmt.Printf("Error parsing packages: %v\n", packagesOpt)
-				return
+				panic(fmt.Errorf("error parsing packages: %v", packagesOpt))
 			}
 			for _, p := range packages {
 				if !slices.Contains(coveredPackages, strings.TrimSuffix(p, "/...")) {
@@ -87,7 +83,7 @@ func main() {
 				}
 				packages, ok := packagesOpt.([]string)
 				if !ok {
-					fmt.Printf("Error parsing packages: %v\n", packagesOpt)
+					panic(fmt.Errorf("error parsing packages: %v", packagesOpt))
 					return nil
 				}
 				if !slices.Contains(packages, fmt.Sprintf("%s/...", rootDir)) {
@@ -102,8 +98,7 @@ func main() {
 	})
 
 	if err != nil {
-		fmt.Printf("Error walking through files: %v\n", err)
-		return
+		panic(fmt.Errorf("error walking through files: %v", err))
 	}
 
 	groups := []group{}
@@ -114,8 +109,7 @@ func main() {
 
 	jsonRepresentation, err := json.MarshalIndent(groups, "", "  ")
 	if err != nil {
-		fmt.Printf("Error generating JSON: %v\n", err)
-		return
+		panic(fmt.Errorf("error generating JSON: %v", err))
 	}
 
 	fmt.Println(string(jsonRepresentation))
@@ -123,18 +117,15 @@ func main() {
 	if outputFileName != "" {
 		f, err := os.OpenFile(outputFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Printf("Error opening the file: %v\n", err)
-			return
+			panic(fmt.Errorf("error opening the file: %v", err))
 		}
 		_, err = f.Write([]byte(fmt.Sprintf("groups=%s\n", jsonRepresentation)))
 		if err != nil {
-			fmt.Printf("Error writing to file: %v\n", err)
-			return
+			panic(fmt.Errorf("error writing to file: %v", err))
 		}
 		err = f.Close()
 		if err != nil {
-			fmt.Printf("Error closing the file: %v\n", err)
-			return
+			panic(fmt.Errorf("error closing the file: %v", err))
 		}
 	}
 }
