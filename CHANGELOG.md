@@ -19,6 +19,10 @@ The Filecoin network version 22 delivers the following FIPs:
 - [FIP-0076: Direct data onboarding](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md)
 - [FIP-0083: Add built-in Actor events in the Verified Registry, Miner and Market Actors](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0083.md)
 
+## ☢️ Upgrade Warnings ☢️
+
+- This release requires a minimum Go version of v1.21 or higher to successfully build Lotus.
+
 ## v13 Builtin Actor Bundle
 
 The actor bundles for the **calibration network** can be checked as follows:
