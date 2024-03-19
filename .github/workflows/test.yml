@@ -34,7 +34,7 @@ jobs:
             {
               "name": "",
               "packages": [],
-              "runner": ["self-hosted", "linux", "x64", "large"],
+              "runner": ["self-hosted", "linux", "x64", "xlarge"],
               "go_test_flags": "",
               "skip_conformance": "1",
               "test_rustproofs_logs": "0",
@@ -65,11 +65,9 @@ jobs:
                 "needs_params": true
               }, {
                 "name": "itest-sector_import_full",
-                "runner": ["self-hosted", "linux", "x64", "xlarge"],
                 "needs_params": true
               }, {
                 "name": "itest-sector_import_simple",
-                "runner": ["self-hosted", "linux", "x64", "xlarge"],
                 "needs_params": true
               }, {
                 "name": "itest-sector_pledge",

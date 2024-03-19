@@ -6,7 +6,6 @@ on:
     branches:
       - master
       - release/*
-      - circleci-gha-tests
   workflow_dispatch:
 
 defaults:
