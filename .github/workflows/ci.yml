@@ -115,12 +115,12 @@ jobs:
             [
               {
                 "name": "multicore-sdr",
-                "packages": ["./storage/sealer/ffiwrapper/sealer_test.go"],
+                "packages": ["./storage/sealer/ffiwrapper"],
                 "go_test_flags": "-run=TestMulticoreSDR",
                 "test_rustproofs_logs": "1"
               }, {
                 "name": "conformance",
-                "packages": ["./conformance/corpus_test.go"],
+                "packages": ["./conformance"],
                 "go_test_flags": "-run=TestConformance",
                 "skip_conformance": "0",
                 "format": "pkgname-and-test-fails",
