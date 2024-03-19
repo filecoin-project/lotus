@@ -123,7 +123,7 @@ func main() {
 		if err != nil {
 			panic(fmt.Errorf("error opening the file: %v", err))
 		}
-		_, err = f.Write([]byte(fmt.Sprintf("groups=%s\n", jsonRepresentation)))
+		_, err = f.Write([]byte(fmt.Sprintf("groups<<EOF\n%s\nEOF\n", jsonRepresentation)))
 		if err != nil {
 			panic(fmt.Errorf("error writing to file: %v", err))
 		}
