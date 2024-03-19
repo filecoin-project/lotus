@@ -131,7 +131,7 @@ func TestParseHeightRange(t *testing.T) {
 	}
 }
 
-func TestGetActorEvents(t *testing.T) {
+func TestGetActorEventsRaw(t *testing.T) {
 	ctx := context.Background()
 	req := require.New(t)
 
@@ -231,7 +231,7 @@ func TestGetActorEvents(t *testing.T) {
 
 			handler := NewActorEventHandler(chain, efm, 50*time.Millisecond, maxFilterHeightRange)
 
-			gotEvents, err := handler.GetActorEvents(ctx, tc.filter)
+			gotEvents, err := handler.GetActorEventsRaw(ctx, tc.filter)
 			if tc.expectErr != "" {
 				req.Error(err)
 				req.Contains(err.Error(), tc.expectErr)
@@ -245,7 +245,7 @@ func TestGetActorEvents(t *testing.T) {
 	}
 }
 
-func TestSubscribeActorEvents(t *testing.T) {
+func TestSubscribeActorEventsRaw(t *testing.T) {
 	const (
 		seed                 = 984651320
 		maxFilterHeightRange = 100
@@ -300,7 +300,7 @@ func TestSubscribeActorEvents(t *testing.T) {
 			if tc.endEpoch >= 0 {
 				aef.ToHeight = epochPtr(tc.endEpoch)
 			}
-			eventChan, err := handler.SubscribeActorEvents(ctx, aef)
+			eventChan, err := handler.SubscribeActorEventsRaw(ctx, aef)
 			req.NoError(err)
 
 			// assume we can cleanly pick up all historical events in one go
@@ -411,8 +411,8 @@ func TestSubscribeActorEvents(t *testing.T) {
 	}
 }
 
-func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
-	// Similar to TestSubscribeActorEvents but we set an explicit end that caps out at the current height
+func TestSubscribeActorEventsRaw_OnlyHistorical(t *testing.T) {
+	// Similar to TestSubscribeActorEventsRaw but we set an explicit end that caps out at the current height
 	const (
 		seed                 = 984651320
 		maxFilterHeightRange = 100
@@ -458,7 +458,7 @@ func TestSubscribeActorEvents_OnlyHistorical(t *testing.T) {
 			handler := NewActorEventHandlerWithClock(mockChain, mockFilterManager, blockDelay, maxFilterHeightRange, mockClock)
 
 			aef := &types.ActorEventFilter{FromHeight: epochPtr(0), ToHeight: epochPtr(currentHeight)}
-			eventChan, err := handler.SubscribeActorEvents(ctx, aef)
+			eventChan, err := handler.SubscribeActorEventsRaw(ctx, aef)
 			req.NoError(err)
 
 			var gotEvents []*types.ActorEvent
