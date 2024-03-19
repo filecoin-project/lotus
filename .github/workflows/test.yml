@@ -54,7 +54,7 @@ jobs:
                 "packages": ["./conformance"],
                 "go_test_flags": "-run=TestConformance",
                 "skip_conformance": "0",
-                "format": "pkgname-and-test-fails",
+                "format": "pkgname-and-test-fails"
               }, {
                 "name": "itest-worker",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
