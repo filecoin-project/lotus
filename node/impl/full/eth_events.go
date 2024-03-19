@@ -39,9 +39,9 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 	// Topics must be non-nil, even if empty. So we might as well pre-allocate for 4 (the max).
 	topics = make([]ethtypes.EthHash, 0, 4)
 	for _, entry := range entries {
-		// Drop events with non-raw topics to avoid mistakes.
+		// Drop events with non-raw topics. Built-in actors emit CBOR, and anything else would be
+		// invalid anyway.
 		if entry.Codec != cid.Raw {
-			log.Warnw("did not expect an event entry with a non-raw codec", "codec", entry.Codec, "key", entry.Key)
 			return nil, nil, false
 		}
 		// Check if the key is t1..t4
