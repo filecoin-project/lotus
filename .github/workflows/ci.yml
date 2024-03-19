@@ -128,54 +128,47 @@ jobs:
                 "needs_statediff": true
               }, {
                 "name": "itest-worker",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "needs_yugabyte": true
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
               }, {
                 "name": "itest-deals_concurrent",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "go_test_flags": "-timeout 20m"
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
               }, {
-                "name": "itest-wdpost_worker_config",
+                "name": "itest-sector_import_full",
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+              }, {
+                "name": "itest-eth_deploy",
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+              }, {
+                "name": "itest-sector_import_simple",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"]
               }, {
                 "name": "itest-sector_pledge",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "needs_params": true,
-                "needs_yugabyte": true
-              }, {
-                "name": "itest-harmonytask",
-                "needs_yugabyte": true
-              }, {
-                "name": "itest-sector_import_full",
-                "needs_yugabyte": true
               }, {
                 "name": "itest-wdpost",
-                "needs_params": true,
-                "needs_yugabyte": true
-              }, {
-                "name": "itest-eth_deploy",
-                "needs_yugabyte": true
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "needs_params": true
               }, {
                 "name": "itest-harmonydb",
                 "needs_yugabyte": true
               }, {
-                "name": "itest-sector_import_simple",
+                "name": "itest-harmonytask",
                 "needs_yugabyte": true
               }, {
                 "name": "unit-node",
                 "packages": ["./node/..."]
               }, {
                 "name": "unit-storage",
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "packages": ["./storage/...", "./extern/..."],
                 "needs_params": true
               }, {
                 "name": "unit-cli",
                 "packages": ["./cli/...", "./cmd/...", "./api/..."],
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "needs_params": true
               }, {
-                "name": "unit-rest",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+                "name": "unit-rest"
               }
             ]
         run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT"
