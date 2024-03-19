@@ -15,22 +15,30 @@ type group map[string]interface{}
 
 func main() {
 	var outputFileName string
-	var defaultGroupsConfig string
+	var defaultGroupConfig string
+	var groupsConfig string
 	var skip bool
 	flag.StringVar(&outputFileName, "output", "", "Output file name to write the matrix")
-	flag.StringVar(&defaultGroupsConfig, "config", "[]", "Default groups configuration")
+	flag.StringVar(&defaultGroupConfig, "defaults", "{}", "Default group configuration")
+	flag.StringVar(&groupsConfig, "groups", "[]", "Groups configuration")
 	flag.BoolVar(&skip, "skip", false, "Skip groups by default")
 	flag.Parse()
 
-	var defaultGroups []group
-	err := json.Unmarshal([]byte(defaultGroupsConfig), &defaultGroups)
+	var defaultGroup group
+	err := json.Unmarshal([]byte(defaultGroupConfig), &defaultGroup)
 	if err != nil {
-		panic(fmt.Errorf("error parsing default groups configuration: %v", err))
+		panic(fmt.Errorf("error parsing default group configuration: %v", err))
+	}
+
+	var groups []group
+	err := json.Unmarshal([]byte(groupsConfig), &groups)
+	if err != nil {
+		panic(fmt.Errorf("error parsing groups configuration: %v", err))
 	}
 
 	coveredRootDirs := []string{}
 	groupsByName := make(map[string]group)
-	for _, g := range defaultGroups {
+	for _, g := range groups {
 		name, ok := g["name"].(string)
 		if !ok {
 			panic(fmt.Errorf("error parsing group name: %v", g))
@@ -109,9 +117,15 @@ func main() {
 		panic(fmt.Errorf("error walking through files: %v", err))
 	}
 
-	groups := []group{}
+	groups = []group{}
 	for name, group := range groupsByName {
 		group["name"] = name
+		// Iterate over keys of the default group and set them if they are not set in the group
+		for k, v := range defaultGroup {
+			if _, ok := group[k]; !ok {
+				group[k] = v
+			}
+		}
 		s, ok := group["skip"].(bool)
 		if !skip || (ok && !s) {
 			groups = append(groups, group)
