@@ -94,7 +94,7 @@ jobs:
   test:
     needs: [discover]
     name: Test (${{ matrix.name }})
-    runs-on: ubuntu-latest # TODO: ${{ matrix.runner || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:

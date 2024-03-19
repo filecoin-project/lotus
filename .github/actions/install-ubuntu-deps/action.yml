@@ -5,7 +5,6 @@ runs:
   using: composite
   steps:
     - run: |
-        sudo apt install curl ca-certificates gnupg
         sudo apt-get update
         sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
       shell: bash
