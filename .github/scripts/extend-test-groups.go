@@ -29,25 +29,29 @@ func main() {
 	coveredPackages := []string{}
 	groupsByName := make(map[string]group)
 	for _, g := range defaultGroups {
-		nameOpt, ok := g["name"]
+		name, ok := g["name"].(string)
 		if !ok {
 			panic(fmt.Errorf("error parsing group name: %v", g))
 		}
-		name, ok := nameOpt.(string)
-		if !ok {
-			panic(fmt.Errorf("error parsing group name: %v", nameOpt))
-		}
 		packagesOpt, ok := g["packages"]
 		if ok {
-			packages, ok := packagesOpt.([]string)
+			packages, ok := packagesOpt.([]interface{})
 			if !ok {
 				panic(fmt.Errorf("error parsing packages: %v", packagesOpt))
 			}
+			ps := []string{}
 			for _, p := range packages {
-				if !slices.Contains(coveredPackages, strings.TrimSuffix(p, "/...")) {
-					coveredPackages = append(coveredPackages, strings.TrimSuffix(p, "/..."))
+				p, ok := p.(string)
+				if !ok {
+					panic(fmt.Errorf("error parsing package: %v", p))
+				}
+				ps = append(ps, p)
+				p = strings.TrimSuffix(p, "/...")
+				if !slices.Contains(coveredPackages, p) {
+					coveredPackages = append(coveredPackages, p)
 				}
 			}
+			g["packages"] = ps
 		}
 		groupsByName[name] = g
 	}
