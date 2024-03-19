@@ -48,27 +48,22 @@ jobs:
               }, {
                 "name": "itest-worker",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false,
                 "needs_params": true
               }, {
                 "name": "itest-sector_import_full",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false,
+                "runner": ["self-hosted", "linux", "x64", "xlarge"],
                 "needs_params": true
               }, {
                 "name": "itest-sector_import_simple",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false,
+                "runner": ["self-hosted", "linux", "x64", "xlarge"],
                 "needs_params": true
               }, {
                 "name": "itest-sector_pledge",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false,
+                "runner": ["self-hosted", "linux", "x64", "4xlarge"],
                 "needs_params": true
               }, {
                 "name": "itest-wdpost",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false,
+                "runner": ["self-hosted", "linux", "x64", "4xlarge"],
                 "needs_params": true
               }, {
                 "name": "itest-harmonydb",
@@ -82,18 +77,15 @@ jobs:
               }, {
                 "name": "unit-storage",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "skip": false,
                 "packages": ["./storage/...", "./extern/..."],
                 "needs_params": true
               }, {
                 "name": "unit-cli",
                 "packages": ["./cli/...", "./cmd/...", "./api/..."],
                 "needs_params": true
-              }, {
-                "name": "unit-rest"
               }
             ]
-        run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT" -skip true
+        run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT"
   fetch:
     name: Fetch Proof Prameters
     runs-on: ubuntu-latest
