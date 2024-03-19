@@ -57,13 +57,13 @@ jobs:
                 "format": "pkgname-and-test-fails"
               }, {
                 "name": "itest-worker",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
               }, {
                 "name": "itest-sector_pledge",
-                "runner": ["self-hosted", "linux", "x64", "4xlarge"],
+                "runner": ["self-hosted", "linux", "x64", "4xlarge"]
               }, {
                 "name": "itest-wdpost",
-                "runner": ["self-hosted", "linux", "x64", "4xlarge"],
+                "runner": ["self-hosted", "linux", "x64", "4xlarge"]
               }, {
                 "name": "itest-harmonydb",
                 "needs_yugabytedb": true
@@ -76,10 +76,10 @@ jobs:
               }, {
                 "name": "unit-storage",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "packages": ["./storage/...", "./extern/..."],
+                "packages": ["./storage/...", "./extern/..."]
               }, {
                 "name": "unit-cli",
-                "packages": ["./cli/...", "./cmd/...", "./api/..."],
+                "packages": ["./cli/...", "./cmd/...", "./api/..."]
               }
             ]
         run: go run ./.github/scripts/extend-test-groups.go -defaults "$DEFAULTS" -groups "$BASE" -output "$GITHUB_OUTPUT"
