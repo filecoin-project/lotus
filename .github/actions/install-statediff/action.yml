@@ -7,12 +7,12 @@ runs:
     - id: statediff
       run: mktemp -d | xargs -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
       shell: bash
-    - uses: actions/checkout@v4
-      with:
-        repository: filecoin-project/statediff
-        path: ${{ steps.statediff.outputs.path }}
     - env:
         STATEDIFF_PATH: ${{ steps.statediff.outputs.path }}
-      run: go install $STATEDIFF_PATH/cmd/statediff
+      run: |
+        git clone https://github.com/filecoin-project/statediff.git $STATEDIFF_PATH
+        pushd $STATEDIFF_PATH
+        go install ./cmd/statediff
+        popd
       shell: bash
       continue-on-error: true

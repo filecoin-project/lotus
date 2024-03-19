@@ -100,20 +100,86 @@ jobs:
   #     - run: go mod tidy -v
   #     - run: git diff --exit-code
   discover:
-    name: Discover
+    name: Discover Test Groups
     runs-on: ubuntu-latest
     outputs:
-      tests: ${{ steps.tests.outputs.tests }}
+      groups: ${{ steps.test.outputs.groups }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - id: tests
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const script = require('./.github/scripts/discover-tests.js');
-            await script({core, exec});
+      - uses: ./.github/actions/install-go
+      - id: test
+        env:
+          CONFIG: |
+            [
+              {
+                "name": "multicore-sdr",
+                "packages": ["storage/sealer/ffiwrapper/sealer_test.go"],
+                "go_test_flags": "-run=TestMulticoreSDR",
+                "test_rustproofs_logs": "1"
+              }, {
+                "name": "conformance",
+                "packages": ["conformance/corpus_test.go"],
+                "go_test_flags": "-run=TestConformance",
+                "skip_conformance": "0",
+                "format": "pkgname-and-test-fails",
+                "needs_params": true,
+                "needs_statediff": true
+              }, {
+                "name": "itest-worker",
+                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "needs_yugabyte": true
+              }, {
+                "name": "itest-deals_concurrent",
+                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+              }, {
+                "name": "itest-wdpost_worker_config",
+                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+              }, {
+                "name": "itest-sector_pledge",
+                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "needs_params": true,
+                "needs_yugabyte": true
+              }, {
+                "name": "itest-harmonytask",
+                "needs_yugabyte": true
+              }, {
+                "name": "itest-sector_import_full",
+                "needs_yugabyte": true
+              }, {
+                "name": "itest-wdpost",
+                "needs_yugabyte": true
+              }, {
+                "name": "itest-eth_deploy",
+                "needs_yugabyte": true
+              }, {
+                "name": "itest-harmonydb",
+                "needs_yugabyte": true
+              }, {
+                "name": "itest-sector_import_simple",
+                "needs_yugabyte": true
+              }, {
+                "name": "wdpost",
+                "needs_params": true
+              }, {
+                "name": "unit-node",
+                "packages": ["node/..."]
+              }, {
+                "name": "unit-storage",
+                "packages": ["storage/...", "extern/..."],
+                "needs_params": true
+              }, {
+                "name": "unit-cli",
+                "packages": ["cli/...", "cmd/...", "api/..."],
+                "runner": ['self-hosted', 'linux', 'x64', '2xlarge'],
+                "needs_params": true
+              }, {
+                "name": "unit-rest",
+                "runner": ['self-hosted', 'linux', 'x64', '2xlarge']
+              }
+            ]
+        run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT"
   test:
     needs: [discover]
     name: Test (${{ matrix.name }})
@@ -121,35 +187,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.discover.outputs.tests) }}
+        include: ${{ fromJson(needs.discover.outputs.groups) }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - uses: ./.github/actions/install-ubuntu-deps
       - uses: ./.github/actions/install-go
+      - run: go install gotest.tools/gotestsum@latest
       - run: make deps
-      - if: ${{ matrix.params }}
-        uses: ./.github/actions/install-params
-      - if: ${{ matrix.yugabyte }}
-        uses: ./.github/actions/install-yugabyte
-      - if: ${{ matrix.statediff }}
+      - if: ${{ matrix.needs_params }}
+        uses: ./.github/actions/fetch-params
+      - if: ${{ matrix.needs_yugabyte }}
+        uses: ./.github/actions/start-yugabyte
+      - if: ${{ matrix.needs_statediff }}
         uses: ./.github/actions/install-statediff
       - id: reports
-        run: mktemp -d | xargs -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
       # TODO: Track coverage (used to be tracked for conformance)
       - env:
           NAME: ${{ matrix.name }}
           LOTUS_SRC_DIR: ${{ github.workspace }}
           LOTUS_HARMONYDB_HOSTS: localhost
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          SKIP_CONFORMANCE: ${{ matrix.env.SKIP_CONFORMANCE || 1 }}
-          TEST_RUSTPROOFS_LOGS: ${{ matrix.env.TEST_RUSTPROOFS_LOGS || 0 }}
-          GO_TEST_FLAGS: ${{ matrix.env.GO_TEST_FLAGS || '' }}
+          SKIP_CONFORMANCE: ${{ matrix.skip_conformance || 1 }}
+          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || 0 }}
+          GO_TEST_FLAGS: ${{ matrix.go_test_flags || '' }}
           FORMAT: ${{ matrix.format || 'standard-verbose' }}
-          PACKAGES: ${{ join(' ', matrix.paths) }}
+          PACKAGES: ${{ join(matrix.packages, ' ') }}
         run: |
-          env
           gotestsum \
             --format "$FORMAT" \
             --junitfile "$REPORTS_PATH/$NAME.xml" \

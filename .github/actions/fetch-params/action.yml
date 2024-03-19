@@ -1,5 +1,5 @@
-name: Install Parameters
-description: Install Proof Parameters for Filecoin Lotus
+name: Fetch Params
+description: Fetch Proof Parameters for Filecoin Lotus
 
 runs:
   using: composite
