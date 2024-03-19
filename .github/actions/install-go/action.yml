@@ -13,3 +13,4 @@ runs:
     - uses: actions/setup-go@v5
       with:
         go-version: ${{ fromJSON(steps.go-mod.outputs.json).Go }}.x
+        cache: false

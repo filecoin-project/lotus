@@ -6,6 +6,7 @@ on:
     branches:
       - master
       - release/*
+      - circleci-gha-tests
   workflow_dispatch:
 
 defaults:
@@ -26,4 +27,12 @@ jobs:
           submodules: 'recursive'
       - uses: ./.github/actions/install-ubuntu-deps
       - uses: ./.github/actions/install-go
+      - uses: actions/cache@v4
+        with:
+          key: ${{ github.workflow }}-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          restore-keys: |
+            ${{ github.workflow }}-${{ runner.os }}-go-
       - run: make deps lotus

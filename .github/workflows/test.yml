@@ -72,10 +72,10 @@ jobs:
                 "needs_params": true
               }, {
                 "name": "itest-harmonydb",
-                "needs_yugabyte": true
+                "needs_yugabytedb": true
               }, {
                 "name": "itest-harmonytask",
-                "needs_yugabyte": true
+                "needs_yugabytedb": true
               }, {
                 "name": "unit-node",
                 "packages": ["./node/..."]
@@ -94,10 +94,79 @@ jobs:
               }
             ]
         run: go run ./.github/scripts/extend-test-groups.go -config "$CONFIG" -output "$GITHUB_OUTPUT" -skip true
+  fetch:
+    name: Fetch Proof Prameters
+    runs-on: ubuntu-latest
+    outputs:
+      key: ${{ steps.cache.outputs.key }}
+      path: ${{ steps.cache.outputs.path }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-ubuntu-deps
+      - uses: ./.github/actions/install-go
+      - id: cache
+        run: |
+          echo "key=v26-2k-lotus-params" | tee -a $GITHUB_OUTPUT
+          echo "path=/var/tmp/filecoin-proof-parameters/" | tee -a $GITHUB_OUTPUT
+      - id: params
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.cache.outputs.key }}
+          path: ${{ steps.cache.outputs.path }}
+          lookup-only: true
+      - if: steps.params.outputs.cache-hit != 'true'
+        run: make lotus
+        shell: bash
+      - if: steps.params.outputs.cache-hit != 'true'
+        run: ./lotus fetch-params 2048
+        shell: bash
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.cache.outputs.key }}
+          path: ${{ steps.cache.outputs.path }}
+  cache:
+    name: Cache Go Modules
+    runs-on: ubuntu-latest
+    outputs:
+      key: ${{ steps.cache.outputs.key }}
+      path: ${{ steps.cache.outputs.path }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-ubuntu-deps
+      - uses: ./.github/actions/install-go
+      - id: cache
+        env:
+          KEY: ${{ github.workflow }}-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        run: |
+          echo "key=$KEY" | tee -a $GITHUB_OUTPUT
+          echo "path<<EOF" | tee -a $GITHUB_OUTPUT
+          echo "~/.cache/go-build" | tee -a $GITHUB_OUTPUT
+          echo "~/go/pkg/mod" | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+      - id: go
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.cache.outputs.key }}
+          path: ${{ steps.cache.outputs.path }}
+          lookup-only: true
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: go install gotest.tools/gotestsum@latest
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: go mod download
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.cache.outputs.key }}
+          path: ${{ steps.cache.outputs.path }}
   test:
-    needs: [discover]
+    needs: [discover, fetch, cache]
     name: Test (${{ matrix.name }})
-    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -108,12 +177,21 @@ jobs:
           submodules: 'recursive'
       - uses: ./.github/actions/install-ubuntu-deps
       - uses: ./.github/actions/install-go
+      - uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.cache.outputs.key }}
+          path: ${{ needs.cache.outputs.path }}
+          fail-on-cache-miss: true
       - run: go install gotest.tools/gotestsum@latest
       - run: make deps
       - if: ${{ matrix.needs_params }}
-        uses: ./.github/actions/fetch-params
-      - if: ${{ matrix.needs_yugabyte }}
-        uses: ./.github/actions/start-yugabyte
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.fetch.outputs.key }}
+          path: ${{ needs.fetch.outputs.path }}
+          fail-on-cache-miss: true
+      - if: ${{ matrix.needs_yugabytedb }}
+        uses: ./.github/actions/start-yugabytedb
         timeout-minutes: 3
       # TODO: Install statediff (used to be used for conformance)
       - id: reports

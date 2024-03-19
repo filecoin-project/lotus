@@ -1,4 +1,4 @@
-name: Start Yugabyte DB
+name: Start YugabyteDB
 description: Install Yugabyte Database for Filecoin Lotus
 
 runs:
