@@ -39,8 +39,6 @@ jobs:
               "skip_conformance": "1",
               "test_rustproofs_logs": "0",
               "format": "standard-verbose",
-              "needs_params": false,
-              "needs_statediff": false,
               "needs_yugabytedb": false
             }
           BASE: |
@@ -57,26 +55,15 @@ jobs:
                 "go_test_flags": "-run=TestConformance",
                 "skip_conformance": "0",
                 "format": "pkgname-and-test-fails",
-                "needs_params": true,
-                "needs_statediff": true
               }, {
                 "name": "itest-worker",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "needs_params": true
-              }, {
-                "name": "itest-sector_import_full",
-                "needs_params": true
-              }, {
-                "name": "itest-sector_import_simple",
-                "needs_params": true
               }, {
                 "name": "itest-sector_pledge",
                 "runner": ["self-hosted", "linux", "x64", "4xlarge"],
-                "needs_params": true
               }, {
                 "name": "itest-wdpost",
                 "runner": ["self-hosted", "linux", "x64", "4xlarge"],
-                "needs_params": true
               }, {
                 "name": "itest-harmonydb",
                 "needs_yugabytedb": true
@@ -90,11 +77,9 @@ jobs:
                 "name": "unit-storage",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
                 "packages": ["./storage/...", "./extern/..."],
-                "needs_params": true
               }, {
                 "name": "unit-cli",
                 "packages": ["./cli/...", "./cmd/...", "./api/..."],
-                "needs_params": true
               }
             ]
         run: go run ./.github/scripts/extend-test-groups.go -defaults "$DEFAULTS" -groups "$BASE" -output "$GITHUB_OUTPUT"
@@ -145,8 +130,7 @@ jobs:
       - uses: ./.github/actions/install-go
       - run: go install gotest.tools/gotestsum@latest
       - run: make deps
-      - if: ${{ matrix.needs_params }}
-        uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v4
         with:
           key: ${{ needs.fetch.outputs.key }}
           path: ${{ needs.fetch.outputs.path }}
