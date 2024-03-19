@@ -1626,19 +1626,19 @@ func (mr *MockFullNodeMockRecorder) GasEstimateMessageGas(arg0, arg1, arg2, arg3
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GasEstimateMessageGas", reflect.TypeOf((*MockFullNode)(nil).GasEstimateMessageGas), arg0, arg1, arg2, arg3)
 }
 
-// GetActorEvents mocks base method.
-func (m *MockFullNode) GetActorEvents(arg0 context.Context, arg1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+// GetActorEventsRaw mocks base method.
+func (m *MockFullNode) GetActorEventsRaw(arg0 context.Context, arg1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetActorEvents", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetActorEventsRaw", arg0, arg1)
 	ret0, _ := ret[0].([]*types.ActorEvent)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetActorEvents indicates an expected call of GetActorEvents.
-func (mr *MockFullNodeMockRecorder) GetActorEvents(arg0, arg1 interface{}) *gomock.Call {
+// GetActorEventsRaw indicates an expected call of GetActorEventsRaw.
+func (mr *MockFullNodeMockRecorder) GetActorEventsRaw(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActorEvents", reflect.TypeOf((*MockFullNode)(nil).GetActorEvents), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActorEventsRaw", reflect.TypeOf((*MockFullNode)(nil).GetActorEventsRaw), arg0, arg1)
 }
 
 // ID mocks base method.
@@ -3983,19 +3983,19 @@ func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
 }
 
-// SubscribeActorEvents mocks base method.
-func (m *MockFullNode) SubscribeActorEvents(arg0 context.Context, arg1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+// SubscribeActorEventsRaw mocks base method.
+func (m *MockFullNode) SubscribeActorEventsRaw(arg0 context.Context, arg1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeActorEvents", arg0, arg1)
+	ret := m.ctrl.Call(m, "SubscribeActorEventsRaw", arg0, arg1)
 	ret0, _ := ret[0].(<-chan *types.ActorEvent)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SubscribeActorEvents indicates an expected call of SubscribeActorEvents.
-func (mr *MockFullNodeMockRecorder) SubscribeActorEvents(arg0, arg1 interface{}) *gomock.Call {
+// SubscribeActorEventsRaw indicates an expected call of SubscribeActorEventsRaw.
+func (mr *MockFullNodeMockRecorder) SubscribeActorEventsRaw(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeActorEvents", reflect.TypeOf((*MockFullNode)(nil).SubscribeActorEvents), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeActorEventsRaw", reflect.TypeOf((*MockFullNode)(nil).SubscribeActorEventsRaw), arg0, arg1)
 }
 
 // SyncCheckBad mocks base method.
