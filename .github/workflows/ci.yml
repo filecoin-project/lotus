@@ -128,26 +128,33 @@ jobs:
                 "needs_statediff": true
               }, {
                 "name": "itest-worker",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false
               }, {
                 "name": "itest-deals_concurrent",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false
               }, {
                 "name": "itest-sector_import_full",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false
               }, {
                 "name": "itest-eth_deploy",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false
               }, {
                 "name": "itest-sector_import_simple",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
+                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false
               }, {
                 "name": "itest-sector_pledge",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false,
                 "needs_params": true,
               }, {
                 "name": "itest-wdpost",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false,
                 "needs_params": true
               }, {
                 "name": "itest-harmonydb",
@@ -161,6 +168,7 @@ jobs:
               }, {
                 "name": "unit-storage",
                 "runner": ["self-hosted", "linux", "x64", "2xlarge"],
+                "skip": false,
                 "packages": ["./storage/...", "./extern/..."],
                 "needs_params": true
               }, {

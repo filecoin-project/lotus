@@ -16,8 +16,10 @@ type group map[string]interface{}
 func main() {
 	var outputFileName string
 	var defaultGroupsConfig string
+	var skip bool
 	flag.StringVar(&outputFileName, "output", "", "Output file name to write the matrix")
 	flag.StringVar(&defaultGroupsConfig, "config", "[]", "Default groups configuration")
+	flag.BoolVar(&skip, "skip", false, "Skip groups by default")
 	flag.Parse()
 
 	var defaultGroups []group
@@ -110,7 +112,10 @@ func main() {
 	groups := []group{}
 	for name, group := range groupsByName {
 		group["name"] = name
-		groups = append(groups, group)
+		s, ok := group["skip"].(bool)
+		if !skip || (ok && !s) {
+			groups = append(groups, group)
+		}
 	}
 
 	jsonRepresentation, err := json.MarshalIndent(groups, "", "  ")
