@@ -121,6 +121,10 @@ func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent
 		if err != nil {
 			return nil, err
 		}
+		if log.TransactionHash == ethtypes.EmptyEthHash {
+			// We've garbage collected the message, ignore the events and continue.
+			continue
+		}
 		c, err := ev.TipSetKey.Cid()
 		if err != nil {
 			return nil, err
