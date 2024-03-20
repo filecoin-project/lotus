@@ -77,7 +77,7 @@ jobs:
               "itest-eth_balance": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_bytecode": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_config": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_conformance": ["self-hosted", "linux", "x64", "large"]
+              "itest-eth_conformance": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_fee_history": ["self-hosted", "linux", "x64", "large"],
               "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
               "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
@@ -103,7 +103,7 @@ jobs:
               "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
               "multicore-sdr": ["self-hosted", "linux", "x64", "large"],
               "unit-node": ["self-hosted", "linux", "x64", "large"],
-              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
+              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
             }
           # A list of test groups that require YugabyteDB to be running
           yugabytedb: |
