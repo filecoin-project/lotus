@@ -1,0 +1,266 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/*
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    name: Discover Test Groups
+    runs-on: ubuntu-latest
+    outputs:
+      groups: ${{ steps.test.outputs.groups }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - id: test
+        env:
+          # Unit test groups other than unit-rest
+          utests: |
+            [
+              {"name": "unit-cli", "packages": ["./cli/...", "./cmd/...", "./api/..."]},
+              {"name": "unit-storage", "packages": ["./storage/...", "./extern/..."]},
+              {"name": "unit-node", "packages": ["./node/..."]}
+            ]
+          # Other tests that require special configuration
+          otests: |
+            [
+              {
+                "name": "multicore-sdr",
+                "packages": ["./storage/sealer/ffiwrapper"],
+                "go_test_flags": "-run=TestMulticoreSDR",
+                "test_rustproofs_logs": "1"
+              }, {
+                "name": "conformance",
+                "packages": ["./conformance"],
+                "go_test_flags": "-run=TestConformance",
+                "skip_conformance": "0"
+              }
+            ]
+          # Mapping from test group names to custom runner labels
+          # NOTE:
+          # - It is OK if the mapping contains non-existent test groups;
+          #   The tests default to running on the default runners.
+          # - We use large, and xlarge self-hosted runners as inexpensive replacement for the default runners;
+          #   This is to free up the default runners for other workflows;
+          #   On a current plan, we can use up to 60 concurrent hosted runners.
+          # - We use 2xlarge, and 4xlarge self-hosted runners for resource-intensive tests;
+          #   This reduces the overall execution time of the workflow.
+          runners: |
+            {
+              "itest-batch_deal": ["self-hosted", "linux", "x64", "large"],
+              "itest-deadlines": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-deals_anycid": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_concurrent": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-deals_invalid_utf8_label": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_max_staging_deals": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_publish": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_remote_retrieval": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-decode_params": ["self-hosted", "linux", "x64", "large"],
+              "itest-dup_mpool_messages": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_account_abstraction": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_balance": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_bytecode": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_config": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_conformance": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_deploy": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_fee_history": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_transactions": ["self-hosted", "linux", "x64", "large"],
+              "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
+              "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
+              "itest-gateway": ["self-hosted", "linux", "x64", "large"],
+              "itest-gateway": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "large"],
+              "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "large"],
+              "itest-mempool": ["self-hosted", "linux", "x64", "large"],
+              "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "large"],
+              "itest-msgindex": ["self-hosted", "linux", "x64", "large"],
+              "itest-multisig": ["self-hosted", "linux", "x64", "large"],
+              "itest-nonce": ["self-hosted", "linux", "x64", "large"],
+              "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "large"],
+              "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "large"],
+              "itest-sector_import_full": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_import_simple": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "large"],
+              "itest-sector_numassign": ["self-hosted", "linux", "x64", "large"],
+              "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-self_sent_txn": ["self-hosted", "linux", "x64", "large"],
+              "itest-splitstore": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-verifreg": ["self-hosted", "linux", "x64", "large"],
+              "itest-wdpost_config": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost_no_miner_storage": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
+              "multicore-sdr": ["self-hosted", "linux", "x64", "large"],
+              "unit-cli": ["self-hosted", "linux", "x64", "xlarge"],
+              "unit-node": ["self-hosted", "linux", "x64", "xlarge"],
+              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
+            }
+          # A list of test groups that require YugabyteDB to be running
+          yugabytedb: |
+            ["itest-harmonydb", "itest-harmonytask"]
+          # A list of test groups that require Proof Parameters to be fetched
+          parameters: |
+            [
+              "conformance",
+              "itest-api",
+              "itest-deals_offline",
+              "itest-deals_padding",
+              "itest-deals_partial_retrieval_dm-level",
+              "itest-deals_pricing",
+              "itest-deals",
+              "itest-direct_data_onboard_verified",
+              "itest-direct_data_onboard",
+              "itest-net",
+              "itest-path_detach_redeclare",
+              "itest-path_type_filters",
+              "itest-sealing_resources",
+              "itest-sector_finalize_early",
+              "itest-sector_import_full",
+              "itest-sector_import_simple",
+              "itest-sector_pledge",
+              "itest-sector_unseal",
+              "itest-wdpost_no_miner_storage",
+              "itest-wdpost_worker_config",
+              "itest-worker_upgrade",
+              "itest-worker",
+              "multicore-sdr",
+              "unit-cli",
+              "unit-storage"
+            ]
+        run: |
+          # Create a list of integration test groups
+          itests="$(
+            find ./itests -name "*_test.go" | \
+              jq -R '{
+                "name": "itest-\(. | split("/") | .[2] | sub("_test.go$";""))",
+                "packages": [.]
+              }' | jq -s
+            )"
+
+          # Create a list of packages that are covered by the integration and unit tests
+          packages="$(jq -n --argjson utests "$utests" '$utests | map(.packages) | flatten | . + ["./itests/..."]')"
+
+          # Create a new group for the unit tests that are not yet covered
+          rest="$(
+            find . -name "*_test.go" | cut -d/ -f2 | sort | uniq | \
+              jq -R '"./\(.)/..."' | \
+              jq -s --argjson p "$packages" '{"name": "unit-rest", "packages": (. - $p)}'
+          )"
+
+          # Combine the groups for integration tests, unit tests, the new unit-rest group, and the other tests
+          groups="$(jq -n --argjson i "$itests" --argjson u "$utests" --argjson r "$rest" --argjson o "$otests" '$i + $u + [$r] + $o')"
+
+          # Apply custom runner labels to the groups
+          groups="$(jq -n --argjson g "$groups" --argjson r "$runners" '$g | map(. + {"runner": (.name as $n | $r | .[$n]) })')"
+
+          # Apply the needs_yugabytedb flag to the groups
+          groups="$(jq -n --argjson g "$groups" --argjson y "$yugabytedb" '$g | map(. + {"needs_yugabytedb": ([.name] | inside($y)) })')"
+
+          # Apply the needs_parameters flag to the groups
+          groups="$(jq -n --argjson g "$groups" --argjson p "$parameters" '$g | map(. + {"needs_parameters": ([.name] | inside($p)) })')"
+
+          # Output the groups
+          echo "groups=$groups"
+          echo "groups=$(jq -nc --argjson g "$groups" '$g')" >> $GITHUB_OUTPUT
+  fetch:
+    name: Fetch Proof Parameters
+    runs-on: ubuntu-latest
+    outputs:
+      key: ${{ steps.cache.outputs.key }}
+      path: ${{ steps.cache.outputs.path }}
+    steps:
+      - id: cache
+        run: |
+          echo "key=v26-2k-lotus-params" | tee -a $GITHUB_OUTPUT
+          echo "path=/var/tmp/filecoin-proof-parameters/" | tee -a $GITHUB_OUTPUT
+      - id: params
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.cache.outputs.key }}
+          path: ${{ steps.cache.outputs.path }}
+          lookup-only: true
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-ubuntu-deps
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-go
+      - if: steps.params.outputs.cache-hit != 'true'
+        run: make lotus
+      - if: steps.params.outputs.cache-hit != 'true'
+        run: ./lotus fetch-params 2048
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.cache.outputs.key }}
+          path: ${{ steps.cache.outputs.path }}
+  test:
+    needs: [discover, fetch]
+    name: Test (${{ matrix.name }})
+    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.groups) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-ubuntu-deps
+      - uses: ./.github/actions/install-go
+      - run: go install gotest.tools/gotestsum@latest
+      - run: make deps
+      - if: ${{ matrix.needs_parameters }}
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.fetch.outputs.key }}
+          path: ${{ needs.fetch.outputs.path }}
+          fail-on-cache-miss: true
+      - if: ${{ matrix.needs_yugabytedb }}
+        uses: ./.github/actions/start-yugabytedb
+        timeout-minutes: 3
+      # TODO: Install statediff (used to be used for conformance)
+      - id: reports
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+      # TODO: Track coverage (used to be tracked for conformance)
+      - env:
+          NAME: ${{ matrix.name }}
+          LOTUS_SRC_DIR: ${{ github.workspace }}
+          LOTUS_HARMONYDB_HOSTS: 127.0.0.1
+          REPORTS_PATH: ${{ steps.reports.outputs.path }}
+          SKIP_CONFORMANCE: ${{ matrix.skip_conformance || '1' }}
+          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || '0' }}
+          FORMAT: ${{ matrix.format || 'standard-verbose' }}
+          PACKAGES: ${{ join(matrix.packages, ' ') }}
+        run: |
+          gotestsum \
+            --format "$FORMAT" \
+            --junitfile "$REPORTS_PATH/$NAME.xml" \
+            --jsonfile "$REPORTS_PATH/$NAME.json" \
+            --packages="$PACKAGES" \
+            -- ${{ matrix.go_test_flags || '' }}
+      - if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
+        continue-on-error: true
