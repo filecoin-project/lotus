@@ -77,6 +77,9 @@ const UpgradeWatermelonFixHeight = -100
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFix2Height = -101
 
+// This fix upgrade only ran on calibrationnet
+const UpgradeCalibrationDragonFixHeight = -102
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0:                    DrandMainnet,
 	UpgradePhoenixHeight: DrandQuicknet,

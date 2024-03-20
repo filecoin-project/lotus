@@ -112,6 +112,9 @@ const UpgradeWatermelonFixHeight = -1
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFix2Height = -2
 
+// This fix upgrade only ran on calibrationnet
+const UpgradeCalibrationDragonFixHeight = -3
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
