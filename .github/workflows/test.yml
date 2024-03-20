@@ -27,25 +27,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - uses: ./.github/actions/install-go
       - id: test
         env:
-          DEFAULTS: |
-            {
-              "name": "",
-              "packages": [],
-              "runner": ["self-hosted", "linux", "x64", "xlarge"],
-              "go_test_flags": "",
-              "skip_conformance": "1",
-              "test_rustproofs_logs": "0",
-              "format": "standard-verbose",
-              "needs_yugabytedb": false
-            }
-          BASE: |
+          # Unit test groups other than unit-rest
+          utests: |
+            [
+              {"name": "unit-cli", "packages": ["./cli/...", "./cmd/...", "./api/..."]},
+              {"name": "unit-storage", "packages": ["./storage/...", "./extern/..."]},
+              {"name": "unit-node", "packages": ["./node/..."]}
+            ]
+          # Other tests that require special configuration
+          otests: |
             [
               {
                 "name": "multicore-sdr",
-                "runner": "ubuntu-latest",
                 "packages": ["./storage/sealer/ffiwrapper"],
                 "go_test_flags": "-run=TestMulticoreSDR",
                 "test_rustproofs_logs": "1"
@@ -53,36 +48,52 @@ jobs:
                 "name": "conformance",
                 "packages": ["./conformance"],
                 "go_test_flags": "-run=TestConformance",
-                "skip_conformance": "0",
-                "format": "pkgname-and-test-fails"
-              }, {
-                "name": "itest-worker",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"]
-              }, {
-                "name": "itest-sector_pledge",
-                "runner": ["self-hosted", "linux", "x64", "4xlarge"]
-              }, {
-                "name": "itest-wdpost",
-                "runner": ["self-hosted", "linux", "x64", "4xlarge"]
-              }, {
-                "name": "itest-harmonydb",
-                "needs_yugabytedb": true
-              }, {
-                "name": "itest-harmonytask",
-                "needs_yugabytedb": true
-              }, {
-                "name": "unit-node",
-                "packages": ["./node/..."]
-              }, {
-                "name": "unit-storage",
-                "runner": ["self-hosted", "linux", "x64", "2xlarge"],
-                "packages": ["./storage/...", "./extern/..."]
-              }, {
-                "name": "unit-cli",
-                "packages": ["./cli/...", "./cmd/...", "./api/..."]
+                "skip_conformance": "0"
               }
             ]
-        run: go run ./.github/scripts/extend-test-groups.go -defaults "$DEFAULTS" -groups "$BASE" -output "$GITHUB_OUTPUT"
+          # Mapping from test group names to custom runner labels
+          runners: |
+            {
+              "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-wdpost": ["self-hosted", "linux", "x64", "4xlarge"],
+              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
+            }
+          # A list of test groups that require YugabyteDB to be running
+          yugabytedb: |
+            ["itest-harmonydb", "itest-harmonytask"]
+        run: |
+          # Create a list of integration test groups
+          itests="$(
+            find ./itests -name "*_test.go" | \
+              jq -R '{
+                "name": "itest-\(. | split("/") | .[2] | sub("_test.go$";""))",
+                "packages": [.]
+              }' | jq -s
+            )"
+
+          # Create a list of packages that are covered by the integration and unit tests
+          packages="$(jq -n 'env.utests | fromjson | map(.packages) | flatten | . + ["./itests/..."]')"
+
+          # Create a new group for the unit tests that are not yet covered
+          urest="$(
+            find . -name "*_test.go" | cut -d/ -f2 | sort | uniq | \
+              jq -R '"./\(.)/..."' | \
+              jq -s '{"name": "unit-rest", "packages": (. - (env.packages | fromjson))}'
+          )"
+
+          # Combine the groups for integration tests, unit tests, the new unit-rest group, and the other tests
+          groups="$(jq -n '(env.itests | fromjson) + (env.utests | fromjson) + [env.urest | fromjson] + (env.otests | fromjson)')"
+
+          # Apply custom runner labels to the groups
+          groups="$(jq -n 'env.groups | fromjson | map(. + {"runner": (.name as $name | env.runners | fromjson | .[$name]) })')"
+
+          # Apply the needs_yugabytedb flag to the groups
+          groups="$(jq -n 'env.groups | fromjson | map(. + {"needs_yugabytedb": ([.name] | inside(env.yugabytedb | fromjson)) })')"
+
+          # Output the groups
+          echo "groups=$groups"
+          echo "groups=$(jq -nc 'env.groups | fromjson')" >> $GITHUB_OUTPUT
   fetch:
     name: Fetch Proof Prameters
     runs-on: ubuntu-latest
@@ -90,11 +101,6 @@ jobs:
       key: ${{ steps.cache.outputs.key }}
       path: ${{ steps.cache.outputs.path }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-      - uses: ./.github/actions/install-ubuntu-deps
-      - uses: ./.github/actions/install-go
       - id: cache
         run: |
           echo "key=v26-2k-lotus-params" | tee -a $GITHUB_OUTPUT
@@ -105,6 +111,14 @@ jobs:
           key: ${{ steps.cache.outputs.key }}
           path: ${{ steps.cache.outputs.path }}
           lookup-only: true
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-ubuntu-deps
+      - if: steps.params.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-go
       - if: steps.params.outputs.cache-hit != 'true'
         run: make lotus
       - if: steps.params.outputs.cache-hit != 'true'
@@ -147,9 +161,9 @@ jobs:
           LOTUS_SRC_DIR: ${{ github.workspace }}
           LOTUS_HARMONYDB_HOSTS: 127.0.0.1
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
-          SKIP_CONFORMANCE: ${{ matrix.skip_conformance }}
-          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs }}
-          FORMAT: ${{ matrix.format }}
+          SKIP_CONFORMANCE: ${{ matrix.skip_conformance || '1' }}
+          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || '0' }}
+          FORMAT: ${{ matrix.format || 'standard-verbose' }}
           PACKAGES: ${{ join(matrix.packages, ' ') }}
         run: |
           gotestsum \
@@ -157,7 +171,7 @@ jobs:
             --junitfile "$REPORTS_PATH/$NAME.xml" \
             --jsonfile "$REPORTS_PATH/$NAME.json" \
             --packages="$PACKAGES" \
-            -- ${{ matrix.go_test_flags }}
+            -- ${{ matrix.go_test_flags || '' }}
       - if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
