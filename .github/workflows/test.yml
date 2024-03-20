@@ -83,7 +83,6 @@ jobs:
               "itest-eth_transactions": ["self-hosted", "linux", "x64", "large"],
               "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
               "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
-              "itest-gateway": ["self-hosted", "linux", "x64", "large"],
               "itest-gateway": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "large"],
               "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "large"],
