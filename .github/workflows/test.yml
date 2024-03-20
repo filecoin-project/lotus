@@ -51,68 +51,84 @@ jobs:
               }
             ]
           # Mapping from test group names to custom runner labels
-          # NOTE:
-          # - It is OK if the mapping contains non-existent test groups;
-          #   The tests default to running on the default runners.
-          # - We use large, and xlarge self-hosted runners as inexpensive replacement for the default runners;
-          #   This is to free up the default runners for other workflows;
-          #   On a current plan, we can use up to 60 concurrent hosted runners.
-          # - We use 2xlarge, and 4xlarge self-hosted runners for resource-intensive tests;
-          #   This reduces the overall execution time of the workflow.
+          # The jobs default to running on the default hosted runners (4 CPU, 16 RAM).
+          # We use self-hosted xlarge (4 CPU, 8 RAM; and large - 2 CPU, 4 RAM) runners
+          #   to extend the available runner capacity (60 default hosted runners).
+          # We use self-hosted 4xlarge (16 CPU, 32 RAM; and 2xlarge - 8 CPU, 16 RAM) self-hosted
+          #   to support resource intensive jobs.
+          # In CircleCI, the jobs defaulted to running on medium+ runners (3 CPU, 6 RAM).
+          # The following jobs were scheduled to run on 2xlarge runners (16 CPU, 32 RAM):
+          # - itest-deals_concurrent (✅)
+          # - itest-sector_pledge (✅)
+          # - itest-wdpost_worker_config (❌)
+          # - itest-worker (✅)
+          # - unit-cli (❌)
+          # - unit-rest (❌)
           runners: |
             {
-              "itest-batch_deal": ["self-hosted", "linux", "x64", "large"],
-              "itest-deadlines": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-deals_anycid": ["self-hosted", "linux", "x64", "large"],
-              "itest-deals_concurrent": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-deals_invalid_utf8_label": ["self-hosted", "linux", "x64", "large"],
-              "itest-deals_max_staging_deals": ["self-hosted", "linux", "x64", "large"],
-              "itest-deals_publish": ["self-hosted", "linux", "x64", "large"],
-              "itest-deals_remote_retrieval": ["self-hosted", "linux", "x64", "large"],
-              "itest-deals": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-decode_params": ["self-hosted", "linux", "x64", "large"],
-              "itest-dup_mpool_messages": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_account_abstraction": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_balance": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_bytecode": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_config": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_conformance": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_deploy": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_fee_history": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_transactions": ["self-hosted", "linux", "x64", "large"],
-              "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
-              "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
-              "itest-gateway": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "large"],
-              "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "large"],
-              "itest-mempool": ["self-hosted", "linux", "x64", "large"],
-              "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "large"],
-              "itest-msgindex": ["self-hosted", "linux", "x64", "large"],
-              "itest-multisig": ["self-hosted", "linux", "x64", "large"],
-              "itest-nonce": ["self-hosted", "linux", "x64", "large"],
-              "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "large"],
-              "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "large"],
-              "itest-sector_import_full": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-sector_import_simple": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "large"],
-              "itest-sector_numassign": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-self_sent_txn": ["self-hosted", "linux", "x64", "large"],
-              "itest-splitstore": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-verifreg": ["self-hosted", "linux", "x64", "large"],
-              "itest-wdpost_config": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-wdpost_no_miner_storage": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-wdpost": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
-              "multicore-sdr": ["self-hosted", "linux", "x64", "large"],
-              "unit-cli": ["self-hosted", "linux", "x64", "xlarge"],
-              "unit-node": ["self-hosted", "linux", "x64", "xlarge"],
-              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
+              "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
+
+              "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-sector_import_simple": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
+              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
+
+              "itest-batch_deal": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-cli": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_512mb": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_anycid": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_invalid_utf8_label": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_max_staging_deals": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_partial_retrieval": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_publish": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_remote_retrieval": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-decode_params": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-dup_mpool_messages": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_account_abstraction": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_api": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_balance": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_bytecode": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_config": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_conformance": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_deploy": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_fee_history": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_transactions": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-fevm_address": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-fevm_events": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-gas_estimation": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-msgindex": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-multisig": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-net": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-nonce": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-path_detach_redeclare": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_numassign": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-self_sent_txn": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-verifreg": ["self-hosted", "linux", "x64", "xlarge"],
+              "multicore-sdr": ["self-hosted", "linux", "x64", "xlarge"],
+              "unit-node": ["self-hosted", "linux", "x64", "xlarge"]
             }
           # A list of test groups that require YugabyteDB to be running
+          # In CircleCI, all jobs had yugabytedb running as a sidecar.
           yugabytedb: |
             ["itest-harmonydb", "itest-harmonytask"]
           # A list of test groups that require Proof Parameters to be fetched
+          # In CircleCI, only the following jobs had get-params set:
+          # - unit-cli (✅)
+          # - unit-storage (✅)
+          # - itest-sector_pledge (✅)
+          # - itest-wdpost (✅)
           parameters: |
             [
               "conformance",
@@ -135,6 +151,7 @@ jobs:
               "itest-sector_unseal",
               "itest-wdpost_no_miner_storage",
               "itest-wdpost_worker_config",
+              "itest-wdpost",
               "itest-worker_upgrade",
               "itest-worker",
               "multicore-sdr",
@@ -225,7 +242,9 @@ jobs:
       - uses: ./.github/actions/install-ubuntu-deps
       - uses: ./.github/actions/install-go
       - run: go install gotest.tools/gotestsum@latest
-      - run: make deps
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make deps
       - if: ${{ matrix.needs_parameters }}
         uses: actions/cache/restore@v4
         with:
