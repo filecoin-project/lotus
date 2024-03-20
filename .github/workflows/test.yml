@@ -78,8 +78,9 @@ jobs:
               "itest-eth_bytecode": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_config": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_conformance": ["self-hosted", "linux", "x64", "large"],
-              "itest-eth_deploy": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_deploy": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_fee_history": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_transactions": ["self-hosted", "linux", "x64", "large"],
               "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
               "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
               "itest-gateway": ["self-hosted", "linux", "x64", "large"],
@@ -139,6 +140,7 @@ jobs:
               "itest-worker_upgrade",
               "itest-worker",
               "multicore-sdr",
+              "unit-cli",
               "unit-storage"
             ]
         run: |
