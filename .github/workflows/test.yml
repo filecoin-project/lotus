@@ -52,18 +52,58 @@ jobs:
               }
             ]
           # Mapping from test group names to custom runner labels
+          # NOTE:
+          # - It is OK if the mapping contains non-existent test groups;
+          #   The tests default to running on the default runners.
+          # - We use large self-hosted runners as inexpensive replacement for the default runners;
+          #   This is to free up the default runners for other workflows;
+          #   On a current plan, we can use up to 60 concurrent hosted runners.
+          # - We use xlarge, 2xlarge, and 4xlarge self-hosted runners for resource-intensive tests;
+          #   This reduces the overall execution time of the workflow.
           runners: |
             {
+              "itest-batch_deal": ["self-hosted", "linux", "x64", "large"],
               "itest-deadlines": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-deals": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-deals_anycid": ["self-hosted", "linux", "x64", "large"],
               "itest-deals_concurrent": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-sector_pledge": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-deals_invalid_utf8_label": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_max_staging_deals": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_publish": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals_remote_retrieval": ["self-hosted", "linux", "x64", "large"],
+              "itest-deals": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-decode_params": ["self-hosted", "linux", "x64", "large"],
+              "itest-dup_mpool_messages": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_account_abstraction": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_balance": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_bytecode": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_config": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_conformance": ["self-hosted", "linux", "x64", "large"]
+              "itest-eth_fee_history": ["self-hosted", "linux", "x64", "large"],
+              "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
+              "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
+              "itest-gateway": ["self-hosted", "linux", "x64", "large"],
+              "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "large"],
+              "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "large"],
+              "itest-mempool": ["self-hosted", "linux", "x64", "large"],
+              "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "large"],
+              "itest-msgindex": ["self-hosted", "linux", "x64", "large"],
+              "itest-multisig": ["self-hosted", "linux", "x64", "large"],
+              "itest-nonce": ["self-hosted", "linux", "x64", "large"],
+              "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "large"],
+              "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "large"],
+              "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "large"],
+              "itest-sector_numassign": ["self-hosted", "linux", "x64", "large"],
+              "itest-sector_pledge": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-self_sent_txn": ["self-hosted", "linux", "x64", "large"],
               "itest-splitstore": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-verifreg": ["self-hosted", "linux", "x64", "large"],
               "itest-wdpost_config": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-wdpost_no_miner_storage": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
-              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
+              "multicore-sdr": ["self-hosted", "linux", "x64", "large"],
+              "unit-node": ["self-hosted", "linux", "x64", "large"],
+              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
             }
           # A list of test groups that require YugabyteDB to be running
           yugabytedb: |
@@ -166,7 +206,7 @@ jobs:
   test:
     needs: [discover, fetch]
     name: Test (${{ matrix.name }})
-    runs-on: ${{ github.repository == 'filecoin-project/lotus' && (matrix.runner || fromJson('["self-hosted", "linux", "x64", "large"]')) || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
