@@ -6,6 +6,7 @@ on:
     branches:
       - master
       - release/*
+      - ipdx-gha-build
   workflow_dispatch:
 
 defaults:
