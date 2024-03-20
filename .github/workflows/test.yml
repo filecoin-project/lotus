@@ -96,7 +96,7 @@ jobs:
               "itest-sector_import_simple": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "large"],
               "itest-sector_numassign": ["self-hosted", "linux", "x64", "large"],
-              "itest-sector_pledge": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_pledge": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-self_sent_txn": ["self-hosted", "linux", "x64", "large"],
               "itest-splitstore": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-verifreg": ["self-hosted", "linux", "x64", "large"],
@@ -106,6 +106,7 @@ jobs:
               "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
               "multicore-sdr": ["self-hosted", "linux", "x64", "large"],
               "unit-node": ["self-hosted", "linux", "x64", "large"],
+              "unit-cli": ["self-hosted", "linux", "x64", "2xlarge"],
               "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
             }
           # A list of test groups that require YugabyteDB to be running
