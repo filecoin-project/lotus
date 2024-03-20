@@ -54,9 +54,15 @@ jobs:
           # Mapping from test group names to custom runner labels
           runners: |
             {
+              "itest-deadlines": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-deals": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-deals_concurrent": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-sector_pledge": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-splitstore": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost_config": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost_no_miner_storage": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-wdpost": ["self-hosted", "linux", "x64", "4xlarge"],
               "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
             }
           # A list of test groups that require YugabyteDB to be running
@@ -160,7 +166,7 @@ jobs:
   test:
     needs: [discover, fetch]
     name: Test (${{ matrix.name }})
-    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'filecoin-project/lotus' && (matrix.runner || fromJson('["self-hosted", "linux", "x64", "large"]')) || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
