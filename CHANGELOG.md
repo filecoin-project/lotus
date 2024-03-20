@@ -3,6 +3,7 @@
 # UNRELEASED
 
 ## New features
+- feat: CLI: add claim-extend cli (#11711) ([filecoin-project/lotus#11711](https://github.com/filecoin-project/lotus/pull/11711))
 
 ## Improvements
 
