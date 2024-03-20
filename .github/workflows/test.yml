@@ -6,7 +6,6 @@ on:
     branches:
       - master
       - release/*
-      - ipdx-gha-test
   workflow_dispatch:
 
 defaults:
