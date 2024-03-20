@@ -78,6 +78,7 @@ jobs:
               "itest-eth_bytecode": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_config": ["self-hosted", "linux", "x64", "large"],
               "itest-eth_conformance": ["self-hosted", "linux", "x64", "large"],
+              "itest-eth_deploy": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-eth_fee_history": ["self-hosted", "linux", "x64", "large"],
               "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
               "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
@@ -96,7 +97,7 @@ jobs:
               "itest-sector_import_simple": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "large"],
               "itest-sector_numassign": ["self-hosted", "linux", "x64", "large"],
-              "itest-sector_pledge": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-self_sent_txn": ["self-hosted", "linux", "x64", "large"],
               "itest-splitstore": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-verifreg": ["self-hosted", "linux", "x64", "large"],
@@ -105,8 +106,8 @@ jobs:
               "itest-wdpost": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "2xlarge"],
               "multicore-sdr": ["self-hosted", "linux", "x64", "large"],
-              "unit-node": ["self-hosted", "linux", "x64", "large"],
-              "unit-cli": ["self-hosted", "linux", "x64", "2xlarge"],
+              "unit-cli": ["self-hosted", "linux", "x64", "xlarge"],
+              "unit-node": ["self-hosted", "linux", "x64", "xlarge"],
               "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"]
             }
           # A list of test groups that require YugabyteDB to be running
