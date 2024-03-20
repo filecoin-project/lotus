@@ -263,6 +263,7 @@ func (db *DB) upgrade() error {
 	if len(dir) == 0 {
 		logger.Error("No sql files found.")
 	}
+	last := ""
 	for _, e := range dir {
 		name := e.Name()
 		if !strings.HasSuffix(name, ".sql") {
@@ -272,6 +273,9 @@ func (db *DB) upgrade() error {
 		if landed[name[:8]] {
 			logger.Debug("DB Schema " + name + " already applied.")
 			continue
+		}
+		if last[:8] == name[:8] {
+			return xerrors.Errorf("Two files have the same date prefix: " + last + " and " + name)
 		}
 		file, err := fs.ReadFile("sql/" + name)
 		if err != nil {
@@ -296,6 +300,7 @@ func (db *DB) upgrade() error {
 			logger.Error("Cannot update base: " + err.Error())
 			return xerrors.Errorf("cannot insert into base: %w", err)
 		}
+		last = name
 	}
 	return nil
 }
