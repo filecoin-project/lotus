@@ -369,7 +369,7 @@ func (sp *StatePredicates) OnMinerPreCommitChange() DiffMinerActorStateFunc {
 // DiffPaymentChannelStateFunc is function that compares two states for the payment channel
 type DiffPaymentChannelStateFunc func(ctx context.Context, oldState paych.State, newState paych.State) (changed bool, user UserData, err error)
 
-// OnPaymentChannelActorChanged calls diffPaymentChannelState when the state changes for the the payment channel actor
+// OnPaymentChannelActorChanged calls diffPaymentChannelState when the state changes for the payment channel actor
 func (sp *StatePredicates) OnPaymentChannelActorChanged(paychAddr address.Address, diffPaymentChannelState DiffPaymentChannelStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(paychAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
 		oldState, err := paych.Load(adt.WrapStore(ctx, sp.cst), oldActorState)

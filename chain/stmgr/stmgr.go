@@ -113,6 +113,10 @@ func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCi
 	return nil
 }
 
+func (m *migrationResultCache) Delete(ctx context.Context, root cid.Cid) {
+	_ = m.ds.Delete(ctx, m.keyForMigration(root))
+}
+
 type Executor interface {
 	NewActorRegistry() *vm.ActorRegistry
 	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor, vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error)

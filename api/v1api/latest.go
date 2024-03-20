@@ -13,4 +13,4 @@ func PermissionedFullAPI(a FullNode) FullNode {
 	return api.PermissionedFullAPI(a)
 }
 
-type LotusProviderStruct = api.LotusProviderStruct
+type CurioStruct = api.CurioStruct
