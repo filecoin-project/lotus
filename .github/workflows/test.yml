@@ -82,6 +82,7 @@ jobs:
               "itest-fevm_events": ["self-hosted", "linux", "x64", "large"],
               "itest-gas_estimation": ["self-hosted", "linux", "x64", "large"],
               "itest-gateway": ["self-hosted", "linux", "x64", "large"],
+              "itest-gateway": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "large"],
               "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "large"],
               "itest-mempool": ["self-hosted", "linux", "x64", "large"],
@@ -91,6 +92,8 @@ jobs:
               "itest-nonce": ["self-hosted", "linux", "x64", "large"],
               "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "large"],
               "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "large"],
+              "itest-sector_import_full": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_import_simple": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "large"],
               "itest-sector_numassign": ["self-hosted", "linux", "x64", "large"],
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "xlarge"],
@@ -111,6 +114,7 @@ jobs:
           # A list of test groups that require Proof Parameters to be fetched
           parameters: |
             [
+              "conformance",
               "itest-api",
               "itest-deals_offline",
               "itest-deals_padding",
@@ -126,6 +130,7 @@ jobs:
               "itest-sector_finalize_early",
               "itest-sector_import_full",
               "itest-sector_import_simple",
+              "itest-sector_pledge",
               "itest-sector_unseal",
               "itest-wdpost_no_miner_storage",
               "itest-wdpost_worker_config",
