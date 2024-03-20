@@ -73,27 +73,27 @@ jobs:
             )"
 
           # Create a list of packages that are covered by the integration and unit tests
-          packages="$(jq -n 'env.utests | fromjson | map(.packages) | flatten | . + ["./itests/..."]')"
+          packages="$(jq -n --argjson utests "$utests" '$utests | map(.packages) | flatten | . + ["./itests/..."]')"
 
           # Create a new group for the unit tests that are not yet covered
-          urest="$(
+          rest="$(
             find . -name "*_test.go" | cut -d/ -f2 | sort | uniq | \
               jq -R '"./\(.)/..."' | \
-              jq -s '{"name": "unit-rest", "packages": (. - (env.packages | fromjson))}'
+              jq -s --argjson p "$packages" '{"name": "unit-rest", "packages": (. - $p)}'
           )"
 
           # Combine the groups for integration tests, unit tests, the new unit-rest group, and the other tests
-          groups="$(jq -n '(env.itests | fromjson) + (env.utests | fromjson) + [env.urest | fromjson] + (env.otests | fromjson)')"
+          groups="$(jq -n --argjson i "$itests" --argjson u "$utests" --argjson r "$rest" --argjson o "$otests" '$i + $u + [$r] + $o')"
 
           # Apply custom runner labels to the groups
-          groups="$(jq -n 'env.groups | fromjson | map(. + {"runner": (.name as $name | env.runners | fromjson | .[$name]) })')"
+          groups="$(jq -n --argjson g "$groups" --argjson r "$runners" '$g | map(. + {"runner": (.name as $n | $r | .[$n]) })')"
 
           # Apply the needs_yugabytedb flag to the groups
-          groups="$(jq -n 'env.groups | fromjson | map(. + {"needs_yugabytedb": ([.name] | inside(env.yugabytedb | fromjson)) })')"
+          groups="$(jq -n --argjson g "$groups" --argjson y "$yugabytedb" '$g | map(. + {"needs_yugabytedb": ([.name] | inside($y)) })')"
 
           # Output the groups
           echo "groups=$groups"
-          echo "groups=$(jq -nc 'env.groups | fromjson')" >> $GITHUB_OUTPUT
+          echo "groups=$(jq -nc --argjson g "$groups" '$g')" >> $GITHUB_OUTPUT
   fetch:
     name: Fetch Proof Prameters
     runs-on: ubuntu-latest
