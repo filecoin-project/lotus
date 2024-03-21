@@ -1,20 +1,31 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
+	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/filecoin-project/go-hamt-ipld/v3"
 	"github.com/filecoin-project/go-state-types/abi"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -24,6 +35,8 @@ var diffCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		diffStateTrees,
 		diffMinerStates,
+		diffHAMTs,
+		diffAMTs,
 	},
 }
 
@@ -64,7 +77,9 @@ var diffMinerStates = &cli.Command{
 			return err
 		}
 
-		defer lkrepo.Close() //nolint:errcheck
+		defer func(lkrepo repo.LockedRepo) {
+			_ = lkrepo.Close()
+		}(lkrepo)
 
 		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
@@ -255,6 +270,250 @@ var diffStateTrees = &cli.Command{
 			}
 			fmt.Println()
 		}
+		return nil
+	},
+}
+
+var diffHAMTs = &cli.Command{
+	Name:      "hamts",
+	Usage:     "diff two HAMTs",
+	ArgsUsage: "<hamt-a> <hamt-b>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "car-file",
+			Usage: "write a car file with two hamts (use lotus-shed export-car)",
+		},
+		&cli.IntFlag{
+			Name:  "bitwidth",
+			Usage: "bitwidth of the HAMT",
+			Value: 5,
+		},
+		&cli.StringFlag{
+			Name:  "key-type",
+			Usage: "type of the key",
+			Value: "uint",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		var bs blockstore.Blockstore = blockstore.NewMemorySync()
+
+		if cctx.IsSet("car-file") {
+			f, err := os.Open(cctx.String("car-file"))
+			if err != nil {
+				return err
+			}
+			defer func(f *os.File) {
+				_ = f.Close()
+			}(f)
+
+			cr, err := car.NewCarReader(f)
+			if err != nil {
+				return err
+			}
+
+			for {
+				blk, err := cr.Next()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					return err
+				}
+
+				if err := bs.Put(cctx.Context, blk); err != nil {
+					return err
+				}
+			}
+		} else {
+			// use running node
+			api, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("connect to full node: %w", err)
+			}
+			defer closer()
+
+			bs = blockstore.NewAPIBlockstore(api)
+		}
+
+		cidA, err := cid.Parse(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		cidB, err := cid.Parse(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		cst := cbor.NewCborStore(bs)
+
+		var keyParser func(k string) (interface{}, error)
+		switch cctx.String("key-type") {
+		case "uint":
+			keyParser = func(k string) (interface{}, error) {
+				return abi.ParseUIntKey(k)
+			}
+		case "actor":
+			keyParser = func(k string) (interface{}, error) {
+				return address.NewFromBytes([]byte(k))
+			}
+		default:
+			return fmt.Errorf("unknown key type: %s", cctx.String("key-type"))
+		}
+
+		diffs, err := hamt.Diff(cctx.Context, cst, cst, cidA, cidB, hamt.UseTreeBitWidth(cctx.Int("bitwidth")))
+		if err != nil {
+			return err
+		}
+
+		for _, d := range diffs {
+			switch d.Type {
+			case hamt.Add:
+				color.Green("+ Add %v", must.One(keyParser(d.Key)))
+			case hamt.Remove:
+				color.Red("- Remove %v", must.One(keyParser(d.Key)))
+			case hamt.Modify:
+				color.Yellow("~ Modify %v", must.One(keyParser(d.Key)))
+			}
+		}
+
+		return nil
+	},
+}
+
+var diffAMTs = &cli.Command{
+	Name:      "amts",
+	Usage:     "diff two AMTs",
+	ArgsUsage: "<amt-a> <amt-b>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "car-file",
+			Usage: "write a car file with two amts (use lotus-shed export-car)",
+		},
+		&cli.UintFlag{
+			Name:  "bitwidth",
+			Usage: "bitwidth of the AMT",
+			Value: 5,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		var bs blockstore.Blockstore = blockstore.NewMemorySync()
+
+		if cctx.IsSet("car-file") {
+			f, err := os.Open(cctx.String("car-file"))
+			if err != nil {
+				return err
+			}
+			defer func(f *os.File) {
+				_ = f.Close()
+			}(f)
+
+			cr, err := car.NewCarReader(f)
+			if err != nil {
+				return err
+			}
+
+			for {
+				blk, err := cr.Next()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					return err
+				}
+
+				if err := bs.Put(cctx.Context, blk); err != nil {
+					return err
+				}
+			}
+		} else {
+			// use running node
+			api, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("connect to full node: %w", err)
+			}
+			defer closer()
+
+			bs = blockstore.NewAPIBlockstore(api)
+		}
+
+		cidA, err := cid.Parse(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		cidB, err := cid.Parse(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		cst := cbor.NewCborStore(bs)
+
+		diffs, err := amt.Diff(cctx.Context, cst, cst, cidA, cidB, amt.UseTreeBitWidth(cctx.Uint("bitwidth")))
+		if err != nil {
+			return err
+		}
+
+		for _, d := range diffs {
+			switch d.Type {
+			case amt.Add:
+				color.Green("+ Add %v", d.Key)
+			case amt.Remove:
+				color.Red("- Remove %v", d.Key)
+			case amt.Modify:
+				color.Yellow("~ Modify %v", d.Key)
+
+				var vb, va interface{}
+				err := cbor.DecodeInto(d.Before.Raw, &vb)
+				if err != nil {
+					return err
+				}
+				err = cbor.DecodeInto(d.After.Raw, &va)
+				if err != nil {
+					return err
+				}
+
+				vjsonb, err := json.MarshalIndent(vb, " ", "  ")
+				if err != nil {
+					return err
+				}
+				vjsona, err := json.MarshalIndent(va, " ", "  ")
+				if err != nil {
+					return err
+				}
+
+				linesb := bytes.Split(vjsonb, []byte("\n")) // -
+				linesa := bytes.Split(vjsona, []byte("\n")) // +
+
+				maxLen := len(linesb)
+				if len(linesa) > maxLen {
+					maxLen = len(linesa)
+				}
+
+				for i := 0; i < maxLen; i++ {
+					// Check if 'linesb' has run out of lines but 'linesa' hasn't
+					if i >= len(linesb) && i < len(linesa) {
+						color.Green("+ %s\n", linesa[i])
+						continue
+					}
+					// Check if 'linesa' has run out of lines but 'linesb' hasn't
+					if i >= len(linesa) && i < len(linesb) {
+						color.Red("- %s\n", linesb[i])
+						continue
+					}
+					// Compare lines if both slices have lines at index i
+					if !bytes.Equal(linesb[i], linesa[i]) {
+						color.Red("- %s\n", linesb[i])
+						color.Green("+ %s\n", linesa[i])
+					} else {
+						// Print the line if it is the same in both slices
+						fmt.Printf("  %s\n", linesb[i])
+					}
+				}
+
+			}
+		}
+
 		return nil
 	},
 }
