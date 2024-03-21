@@ -821,7 +821,6 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	require.NotNil(t, msgs)
 	require.Len(t, msgs, 1)
 
-	// MpoolBatchPushMessage method will take care of gas estimation and funds check
 	smsg, err := client.MpoolPushMessage(ctx, msgs[0], nil)
 	require.NoError(t, err)
 
@@ -856,5 +855,6 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	newclaim, err = client.StateGetClaim(ctx, miner.ActorAddr, verifreg.ClaimId(allocationId), types.EmptyTSK)
 	require.NoError(t, err)
 	require.NotNil(t, newclaim)
-	require.EqualValues(t, newclaim.TermMax, verifregtypes13.MaximumVerifiedAllocationTerm)
+	// New TermMax should be more than 5 years
+	require.Greater(t, int(newclaim.TermMax), verifregtypes13.MaximumVerifiedAllocationTerm)
 }
