@@ -103,7 +103,7 @@ const UpgradeWatermelonHeight = 3469380
 var UpgradeDragonHeight = abi.ChainEpoch(3817920)
 
 // This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
-// 2024-04-02T15:00:00Z
+// 2024-04-11T15:00:00Z
 var UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
 // This fix upgrade only ran on calibrationnet
