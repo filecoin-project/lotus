@@ -224,7 +224,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load state-tree root %q: %w", stRoot, err)
 	}
 
-	block := ethtypes.NewEthBlock(len(msgs) > 0)
+	block := ethtypes.NewEthBlock(len(msgs) > 0, len(ts.Blocks()))
 
 	gasUsed := int64(0)
 	for i, msg := range msgs {
