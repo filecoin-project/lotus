@@ -7,7 +7,7 @@ USAGE:
    lotus-provider [global options] command [command options] [arguments...]
 
 VERSION:
-   1.26.0-rc3
+   1.26.0
 
 COMMANDS:
    run      Start a lotus provider process
