@@ -934,7 +934,11 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 
 var filplusExtendClaimCmd = &cli.Command{
 	Name:  "extend-claim",
-	Usage: "extend claim expiration (TermMax)",
+	Usage: "extends claim expiration (TermMax)",
+	UsageText: `Extends claim expiration (TermMax).
+If the client is original client then claim can be extended to Maximum 5 years and no Datacap is required.
+If the client id different then claim can be extended up to Maximum 5 years from now and Datacap is required.
+`,
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:    "term-max",
@@ -1162,17 +1166,22 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			for claimID, claim := range claims {
 				claimID := claimID
 				claim := claim
-				if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
-					// If client is not same - needs to burn datacap
-					if claim.Client != wid {
+				// If the client is not the original client - burn datacap
+				if claim.Client != wid {
+					// The new duration should be greater than the original deal duration and claim should not already be expired
+					if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
 						newClaims = append(newClaims, verifregtypes13.ClaimExtensionRequest{
 							Claim:    verifregtypes13.ClaimId(claimID),
 							Provider: abi.ActorID(mid),
-							TermMax:  tmax,
+							TermMax:  head.Height() + tmax - claim.TermStart,
 						})
 						rDataCap.Add(big.NewInt(int64(claim.Size)).Int, rDataCap.Int)
-						continue
 					}
+					// If new duration shorter than the original duration then do nothing
+					continue
+				}
+				// For original client, compare duration(TermMax) and claim should be already be expired
+				if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 					terms = append(terms, verifregtypes13.ClaimTerm{
 						ClaimId:  verifregtypes13.ClaimId(claimID),
 						TermMax:  tmax,
@@ -1204,17 +1213,22 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			if !ok {
 				return nil, xerrors.Errorf("claim %d not found for provider %s", claimID, miners[0])
 			}
-			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
-				// If client is not same - needs to burn datacap
-				if claim.Client != wid {
+			// If the client is not the original client - burn datacap
+			if claim.Client != wid {
+				// The new duration should be greater than the original deal duration and claim should not already be expired
+				if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
 					newClaims = append(newClaims, verifregtypes13.ClaimExtensionRequest{
 						Claim:    claimID,
 						Provider: abi.ActorID(mid),
-						TermMax:  tmax,
+						TermMax:  head.Height() + tmax - claim.TermStart,
 					})
 					rDataCap.Add(big.NewInt(int64(claim.Size)).Int, rDataCap.Int)
-					continue
 				}
+				// If new duration shorter than the original duration then do nothing
+				continue
+			}
+			// For original client, compare duration(TermMax) and claim should be already be expired
+			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 				terms = append(terms, verifregtypes13.ClaimTerm{
 					ClaimId:  claimID,
 					TermMax:  tmax,
@@ -1235,17 +1249,22 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			if claim == nil {
 				return nil, xerrors.Errorf("claim %d not found in the actor state", claimID)
 			}
-			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
-				// If client is not same - needs to burn datacap
-				if claim.Client != wid {
+			// If the client is not the original client - burn datacap
+			if claim.Client != wid {
+				// The new duration should be greater than the original deal duration and claim should not already be expired
+				if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
 					newClaims = append(newClaims, verifregtypes13.ClaimExtensionRequest{
 						Claim:    claimID,
 						Provider: prov.ID,
-						TermMax:  tmax,
+						TermMax:  head.Height() + tmax - claim.TermStart,
 					})
 					rDataCap.Add(big.NewInt(int64(claim.Size)).Int, rDataCap.Int)
-					continue
 				}
+				// If new duration shorter than the original duration then do nothing
+				continue
+			}
+			// For original client, compare duration(TermMax) and claim should be already be expired
+			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 				terms = append(terms, verifregtypes13.ClaimTerm{
 					ClaimId:  claimID,
 					TermMax:  tmax,

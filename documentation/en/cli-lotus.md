@@ -1192,7 +1192,7 @@ COMMANDS:
    list-claims                    List claims available in verified registry actor or made by provider if specified
    remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
-   extend-claim                   extend claim expiration (TermMax)
+   extend-claim                   extends claim expiration (TermMax)
    help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1329,10 +1329,13 @@ OPTIONS:
 ### lotus filplus extend-claim
 ```
 NAME:
-   lotus filplus extend-claim - extend claim expiration (TermMax)
+   lotus filplus extend-claim - extends claim expiration (TermMax)
 
 USAGE:
-   lotus filplus extend-claim [command options] <claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...
+   Extends claim expiration (TermMax).
+   If the client is original client then claim can be extended to Maximum 5 years and no Datacap is required.
+   If the client id different then claim can be extended up to Maximum 5 years from now and Datacap is required.
+
 
 OPTIONS:
    --term-max value, --tmax value                                                                               The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years. (default: 5256000)
