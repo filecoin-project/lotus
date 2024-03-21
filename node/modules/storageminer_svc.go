@@ -15,11 +15,11 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/curiosrc/market"
-	"github.com/filecoin-project/lotus/curiosrc/market/fakelm"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/provider/lpmarket"
+	"github.com/filecoin-project/lotus/provider/lpmarket/fakelm"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -69,7 +69,7 @@ func connectHarmony(apiInfo string, fapi v1api.FullNode, mctx helpers.MetricsCtx
 		return nil, xerrors.Errorf("parsing miner address: %w", err)
 	}
 
-	pin := market.NewPieceIngester(db, fapi)
+	pin := lpmarket.NewPieceIngester(db, fapi)
 
 	si := paths.NewDBIndex(nil, db)
 

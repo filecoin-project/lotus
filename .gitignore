@@ -6,7 +6,7 @@
 /lotus-chainwatch
 /lotus-shed
 /lotus-sim
-/curio
+/lotus-provider
 /lotus-townhall
 /lotus-fountain
 /lotus-stats
@@ -36,9 +36,6 @@ build/paramfetch.sh
 /darwin
 /linux
 *.snap
-curio
-devgen.car
-localnet.json
 
 *-fuzz.zip
 /chain/types/work_msg/

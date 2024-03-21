@@ -747,48 +747,6 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 	return nil, nil
 }
 
-// ReaderSeq creates a simple sequential reader for a file. Does not work for
-// file types which are a directory (e.g. FTCache).
-func (r *Remote) ReaderSeq(ctx context.Context, s storiface.SectorRef, ft storiface.SectorFileType) (io.ReadCloser, error) {
-	paths, _, err := r.local.AcquireSector(ctx, s, ft, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
-	if err != nil {
-		return nil, xerrors.Errorf("acquire local: %w", err)
-	}
-
-	path := storiface.PathByType(paths, ft)
-	if path != "" {
-		return os.Open(path)
-	}
-
-	si, err := r.index.StorageFindSector(ctx, s.ID, ft, 0, false)
-	if err != nil {
-		log.Debugf("Reader, did not find file on any of the workers %s (%s)", path, ft.String())
-		return nil, err
-	}
-
-	if len(si) == 0 {
-		return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
-	}
-
-	sort.Slice(si, func(i, j int) bool {
-		return si[i].Weight > si[j].Weight
-	})
-
-	for _, info := range si {
-		for _, url := range info.URLs {
-			rd, err := r.readRemote(ctx, url, 0, 0)
-			if err != nil {
-				log.Warnw("reading from remote", "url", url, "error", err)
-				continue
-			}
-
-			return rd, err
-		}
-	}
-
-	return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
-}
-
 func (r *Remote) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
 	log.Warnf("reserve called on remote store, sectorID: %v", sid.ID)
 	return func() {

@@ -841,7 +841,7 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	}
 	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		log.Errorf("unsupported network version: %s", err)
+		log.Errorf("unsupported network vrsion: %s", err)
 		return time.Now(), err
 	}
 	mpcd, err := policy.GetMaxProveCommitDuration(av, si.SectorType)

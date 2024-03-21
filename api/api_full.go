@@ -906,16 +906,16 @@ type FullNode interface {
 
 	// Actor events
 
-	// GetActorEventsRaw returns all user-programmed and built-in actor events that match the given
+	// GetActorEvents returns all user-programmed and built-in actor events that match the given
 	// filter.
 	// This is a request/response API.
 	// Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
 	// configuration options and also the amount of historical data available in the node.
 	//
 	// This is an EXPERIMENTAL API and may be subject to change.
-	GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) //perm:read
+	GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) //perm:read
 
-	// SubscribeActorEventsRaw returns a long-lived stream of all user-programmed and built-in actor
+	// SubscribeActorEvents returns a long-lived stream of all user-programmed and built-in actor
 	// events that match the given filter.
 	// Events that match the given filter are written to the stream in real-time as they are emitted
 	// from the FVM.
@@ -929,7 +929,7 @@ type FullNode interface {
 	//
 	// Note: this API is only available via websocket connections.
 	// This is an EXPERIMENTAL API and may be subject to change.
-	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
+	SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
 }
 
 // reverse interface to the client, called after EthSubscribe

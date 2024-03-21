@@ -20,17 +20,6 @@ type SectorRef struct {
 
 var NoSectorRef = SectorRef{}
 
-// PieceNumber is a reference to a piece in the storage system; mapping between
-// pieces in the storage system and piece CIDs is maintained by the storage index
-type PieceNumber uint64
-
-func (pn PieceNumber) Ref() SectorRef {
-	return SectorRef{
-		ID:        abi.SectorID{Miner: 0, Number: abi.SectorNumber(pn)},
-		ProofType: abi.RegisteredSealProof_StackedDrg64GiBV1, // This only cares about TreeD which is the same for all sizes
-	}
-}
-
 type ProverPoSt interface {
 	GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error)
 	GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, ppt abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error)

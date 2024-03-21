@@ -66,13 +66,13 @@ type StorageMiner struct {
 	HarmonyDB HarmonyDB
 }
 
-type CurioConfig struct {
-	Subsystems CurioSubsystemsConfig
+type LotusProviderConfig struct {
+	Subsystems ProviderSubsystemsConfig
 
-	Fees CurioFees
+	Fees LotusProviderFees
 
 	// Addresses of wallets per MinerAddress (one of the fields).
-	Addresses []CurioAddresses
+	Addresses []LotusProviderAddresses
 	Proving   ProvingConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
@@ -93,7 +93,7 @@ type JournalConfig struct {
 	DisabledEvents string
 }
 
-type CurioSubsystemsConfig struct {
+type ProviderSubsystemsConfig struct {
 	// EnableWindowPost enables window post to be executed on this lotus-provider instance. Each machine in the cluster
 	// with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
 	// machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
@@ -111,14 +111,6 @@ type CurioSubsystemsConfig struct {
 	// documentation.
 	EnableWinningPost   bool
 	WinningPostMaxTasks int
-
-	// EnableParkPiece enables the "piece parking" task to run on this node. This task is responsible for fetching
-	// pieces from the network and storing them in the storage subsystem until sectors are sealed. This task is
-	// only applicable when integrating with boost, and should be enabled on nodes which will hold deal data
-	// from boost until sectors containing the related pieces have the TreeD/TreeR constructed.
-	// Note that future Curio implementations will have a separate task type for fetching pieces from the internet.
-	EnableParkPiece   bool
-	ParkPieceMaxTasks int
 
 	// EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
 	// creating 11 layer files in sector cache directory.
@@ -671,7 +663,7 @@ type MinerFeeConfig struct {
 	MaximizeWindowPoStFeeCap bool
 }
 
-type CurioFees struct {
+type LotusProviderFees struct {
 	DefaultMaxFee      types.FIL
 	MaxPreCommitGasFee types.FIL
 	MaxCommitGasFee    types.FIL
@@ -703,7 +695,7 @@ type MinerAddressConfig struct {
 	DisableWorkerFallback bool
 }
 
-type CurioAddresses struct {
+type LotusProviderAddresses struct {
 	// Addresses to send PreCommit messages from
 	PreCommitControl []string
 	// Addresses to send Commit messages from

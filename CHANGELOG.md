@@ -3,7 +3,6 @@
 # UNRELEASED
 
 ## New features
-- feat: CLI: add claim-extend cli (#11711) ([filecoin-project/lotus#11711](https://github.com/filecoin-project/lotus/pull/11711))
 
 ## Improvements
 
@@ -133,22 +132,20 @@ Additionally, Filecoin is not Ethereum no matter how much we try to provide API/
 
 [handlefilecoinmethod]: https://fips.filecoin.io/FIPS/fip-0054.html#handlefilecoinmethod-general-handler-for-method-numbers--1024
 
-### GetActorEventsRaw and SubscribeActorEventsRaw
+### GetActorEvents and SubscribeActorEvents
 
 [FIP-0049](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md) introduced _Actor Events_ that can be emitted by user programmed actors. [FIP-0083](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0083.md) introduces new events emitted by the builtin Verified Registry, Miner and Market Actors. These new events for builtin actors are being activated with network version 22 to coincide with _Direct Data Onboarding_ as defined in [FIP-0076](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md) which introduces additional flexibility for data onboarding. Sector, Deal and DataCap lifecycles can be tracked with these events, providing visibility and options for programmatic responses to changes in state.
 
-Actor events are available on message receipts, but can now be retrieved from a node using the new `GetActorEventsRaw` and `SubscribeActorEventsRaw` methods. These methods allow for querying and subscribing to actor events, respectively. They depend on the Lotus node both collecting events (with `Fevm.Events.RealTimeFilterAPI` and `Fevm.Events.HistoricFilterAPI`) and being enabled with the new configuration option `Events.EnableActorEventsAPI`. Note that a Lotus node can only respond to requests for historic events that it retains in its event store.
+Actor events are available on message receipts, but can now be retrieved from a node using the new `GetActorEvents` and `SubscribeActorEvents` methods. These methods allow for querying and subscribing to actor events, respectively. They depend on the Lotus node both collecting events (with `Fevm.Events.RealTimeFilterAPI` and `Fevm.Events.HistoricFilterAPI`) and being enabled with the new configuration option `Events.EnableActorEventsAPI`. Note that a Lotus node can only respond to requests for historic events that it retains in its event store.
 
-Both `GetActorEventsRaw` and `SubscribeActorEventsRaw` take a filter parameter which can optionally filter events on:
+Both `GetActorEvents` and `SubscribeActorEvents` take a filter parameter which can optionally filter events on:
 
 * `Addresses` of the actor(s) emitting the event
 * Specific `Fields` within the event
 * `FromHeight` and `ToHeight` to filter events by block height
 * `TipSetKey` to restrict events contained within a specific tipset
 
-`GetActorEventsRaw` provides a one-time query for actor events, while `SubscribeActorEventsRaw` provides a long-lived connection (via websockets) to the Lotus node, allowing for real-time updates on actor events. The subscription can be cancelled by the client at any time.
-
-A future Lotus release may include `GetActorEvents` and `SubscribeActorEvents` methods which will provide a more user-friendly interface to actor events, including deserialization of event data.
+`GetActorEvents` provides a one-time query for actor events, while `SubscribeActorEvents` provides a long-lived connection (via websockets) to the Lotus node, allowing for real-time updates on actor events. The subscription can be cancelled by the client at any time.
 
 ### GetAllClaims and GetAllAlocations
 Additionally the methods `GetAllAllocations` and `GetAllClaims` has been added to the Lotus API. These methods lists all the available allocations and claims available in the actor state.
@@ -3694,7 +3691,7 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 - Config for deal publishing control addresses ([filecoin-project/lotus#6697](https://github.com/filecoin-project/lotus/pull/6697))
   - Set `DealPublishControl` to set the wallet used for sending `PublishStorageDeals` messages, instructions [here](https://lotus.filecoin.io/storage-providers/operate/addresses/#control-addresses).
 - Config UX improvements ([filecoin-project/lotus#6848](https://github.com/filecoin-project/lotus/pull/6848))
-  - You can now preview the default and updated node config by running `lotus/lotus-miner config default/updated`
+  - You can now preview the the default and updated node config by running `lotus/lotus-miner config default/updated`
 
 ## New Features
 - ⭐️⭐️⭐️ Support standalone miner-market process ([filecoin-project/lotus#6356](https://github.com/filecoin-project/lotus/pull/6356))
@@ -5141,7 +5138,7 @@ This consensus-breaking release of Lotus upgrades the actors version to v2.0.0. 
 
 #### Mining
 
-- Increased ExpectedSealDuration and WaitDealsDelay (https://github.com/filecoin-project/lotus/pull/3743)
+- Increased ExpectedSealDuration and and WaitDealsDelay (https://github.com/filecoin-project/lotus/pull/3743)
 - Miner backup/restore commands (https://github.com/filecoin-project/lotus/pull/4133)
 - lotus-miner: add more help text to storage / attach (https://github.com/filecoin-project/lotus/pull/3961)
 - Reject deals that are > 7 days in the future in the BasicDealFilter (https://github.com/filecoin-project/lotus/pull/4173)

@@ -1,3 +1,6 @@
 # Reference
 # https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-on-github/about-code-owners
 
+# Global owners
+# Ensure maintainers team is a requested reviewer for non-draft PRs
+*                       @jennijuju @Stebalien @snadrus @aarshkshah1992 @magik6k @zenground0 @arajasek @rjan90 @masih @rvagg

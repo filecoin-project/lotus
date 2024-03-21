@@ -15,9 +15,9 @@ import (
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 )
 
-// NewCurioRpc creates a new http jsonrpc client.
-func NewCurioRpc(ctx context.Context, addr string, requestHeader http.Header) (api.Curio, jsonrpc.ClientCloser, error) {
-	var res v1api.CurioStruct
+// NewProviderRpc creates a new http jsonrpc client.
+func NewProviderRpc(ctx context.Context, addr string, requestHeader http.Header) (api.LotusProvider, jsonrpc.ClientCloser, error) {
+	var res v1api.LotusProviderStruct
 
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))

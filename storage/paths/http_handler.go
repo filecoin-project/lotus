@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -339,5 +340,18 @@ func (handler *FetchHandler) generatePoRepVanillaProof(w http.ResponseWriter, r 
 }
 
 func FileTypeFromString(t string) (storiface.SectorFileType, error) {
-	return storiface.TypeFromString(t)
+	switch t {
+	case storiface.FTUnsealed.String():
+		return storiface.FTUnsealed, nil
+	case storiface.FTSealed.String():
+		return storiface.FTSealed, nil
+	case storiface.FTCache.String():
+		return storiface.FTCache, nil
+	case storiface.FTUpdate.String():
+		return storiface.FTUpdate, nil
+	case storiface.FTUpdateCache.String():
+		return storiface.FTUpdateCache, nil
+	default:
+		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
+	}
 }

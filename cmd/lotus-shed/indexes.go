@@ -72,7 +72,7 @@ var backfillEventsCmd = &cli.Command{
 		}
 		if cctx.IsSet("from") {
 			// we need to fetch the tipset after the epoch being specified since we will need to advance currTs
-			currTs, err = api.ChainGetTipSetAfterHeight(ctx, abi.ChainEpoch(cctx.Int("from")+1), currTs.Key())
+			currTs, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Int("from")+1), currTs.Key())
 			if err != nil {
 				return err
 			}
