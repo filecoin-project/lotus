@@ -970,6 +970,11 @@ If the client id different then claim can be extended up to Maximum 5 years from
 			Usage: "number of block confirmations to wait for",
 			Value: int(build.MessageConfidence),
 		},
+		&cli.IntFlag{
+			Name:  "batch-size",
+			Usage: "number of extend requests per batch. If set incorrectly, this will lead to out of gas error",
+			Value: 1000,
+		},
 	},
 	ArgsUsage: "<claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...",
 	Action: func(cctx *cli.Context) error {
@@ -1073,7 +1078,7 @@ If the client id different then claim can be extended up to Maximum 5 years from
 			}
 		}
 
-		msgs, err := CreateExtendClaimMsg(ctx, api, claimMap, miners, clientAddr, abi.ChainEpoch(tmax), all, cctx.Bool("assume-yes"))
+		msgs, err := CreateExtendClaimMsg(ctx, api, claimMap, miners, clientAddr, abi.ChainEpoch(tmax), all, cctx.Bool("assume-yes"), cctx.Int("batch-size"))
 		if err != nil {
 			return err
 		}
@@ -1126,7 +1131,7 @@ type ProvInfo struct {
 // 6. Extend all claims for multiple miner IDs with different client address (2 messages)
 // 7. Extend specified claims for a miner ID with different client address (2 messages)
 // 8. Extend specific claims for specific miner ID with different client address (2 messages)
-func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifregtypes13.ClaimId]ProvInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool) ([]*types.Message, error) {
+func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifregtypes13.ClaimId]ProvInfo, miners []string, wallet address.Address, tmax abi.ChainEpoch, all, assumeYes bool, batchSize int) ([]*types.Message, error) {
 
 	ac, err := api.StateLookupID(ctx, wallet, types.EmptyTSK)
 	if err != nil {
@@ -1276,7 +1281,6 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 
 	var msgs []*types.Message
 
-	const batchSize = 1000
 	for i := 0; i < len(terms); i += batchSize {
 		batchEnd := i + batchSize
 		if batchEnd > len(terms) {
