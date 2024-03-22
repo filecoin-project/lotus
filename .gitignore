@@ -37,6 +37,7 @@ build/paramfetch.sh
 /linux
 *.snap
 curio
+sptool
 devgen.car
 localnet.json
 

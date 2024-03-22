@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/cli/spcli"
 )
 
 var log = logging.Logger("sptool")
@@ -19,9 +20,10 @@ var log = logging.Logger("sptool")
 func main() {
 	local := []*cli.Command{
 		actorCmd,
+		spcli.InfoCmd(SPTActorGetter),
 		//sectorsCmd,
 		//provingCmd,
-		//proposalsCmd,
+		//multiSigCmd,
 	}
 
 	app := &cli.App{
@@ -44,6 +46,7 @@ func main() {
 				Name:     "actor",
 				Required: os.Getenv("LOTUS_DOCS_GENERATION") != "1",
 				Usage:    "miner actor to manage",
+				EnvVars:  []string{"SP_ADDRESS"},
 			},
 		},
 		Before: func(cctx *cli.Context) error {
