@@ -105,7 +105,7 @@ var serviceCmd = &cli.Command{
 			if es.Contains(MarketsService) {
 				log.Info("Configuring miner actor")
 
-				if err := configureStorageMiner(ctx, api, maddr, peerid, big.Zero()); err != nil {
+				if err := configureStorageMiner(ctx, api, maddr, peerid, big.Zero(), cctx.Uint64("confidence")); err != nil {
 					return err
 				}
 			}

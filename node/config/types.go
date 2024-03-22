@@ -26,7 +26,6 @@ type FullNode struct {
 	Wallet        Wallet
 	Fees          FeeConfig
 	Chainstore    Chainstore
-	Cluster       UserRaftConfig
 	Fevm          FevmConfig
 	Events        EventsConfig
 	Index         IndexConfig
@@ -67,11 +66,13 @@ type StorageMiner struct {
 	HarmonyDB HarmonyDB
 }
 
-type LotusProviderConfig struct {
-	Subsystems ProviderSubsystemsConfig
+type CurioConfig struct {
+	Subsystems CurioSubsystemsConfig
 
-	Fees      LotusProviderFees
-	Addresses LotusProviderAddresses
+	Fees CurioFees
+
+	// Addresses of wallets per MinerAddress (one of the fields).
+	Addresses []CurioAddresses
 	Proving   ProvingConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
@@ -92,11 +93,119 @@ type JournalConfig struct {
 	DisabledEvents string
 }
 
-type ProviderSubsystemsConfig struct {
-	EnableWindowPost    bool
-	WindowPostMaxTasks  int
+type CurioSubsystemsConfig struct {
+	// EnableWindowPost enables window post to be executed on this lotus-provider instance. Each machine in the cluster
+	// with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
+	// machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
+	// will allow for parallel processing of partitions.
+	//
+	// It is possible to have instances handling both WindowPoSt and WinningPoSt, which can provide redundancy without
+	// the need for additional machines. In setups like this it is generally recommended to run
+	// partitionsPerDeadline+1 machines.
+	EnableWindowPost   bool
+	WindowPostMaxTasks int
+
+	// EnableWinningPost enables winning post to be executed on this lotus-provider instance.
+	// Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
+	// It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
+	// documentation.
 	EnableWinningPost   bool
 	WinningPostMaxTasks int
+
+	// EnableParkPiece enables the "piece parking" task to run on this node. This task is responsible for fetching
+	// pieces from the network and storing them in the storage subsystem until sectors are sealed. This task is
+	// only applicable when integrating with boost, and should be enabled on nodes which will hold deal data
+	// from boost until sectors containing the related pieces have the TreeD/TreeR constructed.
+	// Note that future Curio implementations will have a separate task type for fetching pieces from the internet.
+	EnableParkPiece   bool
+	ParkPieceMaxTasks int
+
+	// EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
+	// creating 11 layer files in sector cache directory.
+	//
+	// SDR is the first task in the sealing pipeline. It's inputs are just the hash of the
+	// unsealed data (CommD), sector number, miner id, and the seal proof type.
+	// It's outputs are the 11 layer files in the sector cache directory.
+	//
+	// In lotus-miner this was run as part of PreCommit1.
+	EnableSealSDR bool
+
+	// The maximum amount of SDR tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine.
+	SealSDRMaxTasks int
+
+	// EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
+	// This task handles encoding of unsealed data into last sdr layer and building
+	// of TreeR, TreeC and TreeD.
+	//
+	// This task runs after SDR
+	// TreeD is first computed with optional input of unsealed data
+	// TreeR is computed from replica, which is first computed as field
+	//   addition of the last SDR layer and the bottom layer of TreeD (which is the unsealed data)
+	// TreeC is computed from the 11 SDR layers
+	// The 3 trees will later be used to compute the PoRep proof.
+	//
+	// In case of SyntheticPoRep challenges for PoRep will be pre-generated at this step, and trees and layers
+	// will be dropped. SyntheticPoRep works by pre-generating a very large set of challenges (~30GiB on disk)
+	// then using a small subset of them for the actual PoRep computation. This allows for significant scratch space
+	// saving between PreCommit and PoRep generation at the expense of more computation (generating challenges in this step)
+	//
+	// In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
+	// Note that nodes with SDRTrees enabled will also answer to Finalize tasks,
+	// which just remove unneeded tree data after PoRep is computed.
+	EnableSealSDRTrees bool
+
+	// The maximum amount of SealSDRTrees tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine.
+	SealSDRTreesMaxTasks int
+
+	// FinalizeMaxTasks is the maximum amount of finalize tasks that can run simultaneously.
+	// The finalize task is enabled on all machines which also handle SDRTrees tasks. Finalize ALWAYS runs on whichever
+	// machine holds sector cache files, as it removes unneeded tree data after PoRep is computed.
+	// Finalize will run in parallel with the SubmitCommitMsg task.
+	FinalizeMaxTasks int
+
+	// EnableSendPrecommitMsg enables the sending of precommit messages to the chain
+	// from this lotus-provider instance.
+	// This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message
+	EnableSendPrecommitMsg bool
+
+	// EnablePoRepProof enables the computation of the porep proof
+	//
+	// This task runs after interactive-porep seed becomes available, which happens 150 epochs (75min) after the
+	// precommit message lands on chain. This task should run on a machine with a GPU. Vanilla PoRep proofs are
+	// requested from the machine which holds sector cache files which most likely is the machine which ran the SDRTrees
+	// task.
+	//
+	// In lotus-miner this was Commit1 / Commit2
+	EnablePoRepProof bool
+
+	// The maximum amount of PoRepProof tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine.
+	PoRepProofMaxTasks int
+
+	// EnableSendCommitMsg enables the sending of commit messages to the chain
+	// from this lotus-provider instance.
+	EnableSendCommitMsg bool
+
+	// EnableMoveStorage enables the move-into-long-term-storage task to run on this lotus-provider instance.
+	// This tasks should only be enabled on nodes with long-term storage.
+	//
+	// The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
+	// SDRTrees machine into long-term storage. This task runs after the Finalize task.
+	EnableMoveStorage bool
+
+	// The maximum amount of MoveStorage tasks that can run simultaneously. Note that the maximum number of tasks will
+	// also be bounded by resources available on the machine. It is recommended that this value is set to a number which
+	// uses all available network (or disk) bandwidth on the machine without causing bottlenecks.
+	MoveStorageMaxTasks int
+
+	// EnableWebGui enables the web GUI on this lotus-provider instance. The UI has minimal local overhead, but it should
+	// only need to be run on a single machine in the cluster.
+	EnableWebGui bool
+
+	// The address that should listen for Web GUI requests.
+	GuiAddress string
 }
 
 type DAGStoreConfig struct {
@@ -562,7 +671,7 @@ type MinerFeeConfig struct {
 	MaximizeWindowPoStFeeCap bool
 }
 
-type LotusProviderFees struct {
+type CurioFees struct {
 	DefaultMaxFee      types.FIL
 	MaxPreCommitGasFee types.FIL
 	MaxCommitGasFee    types.FIL
@@ -594,7 +703,7 @@ type MinerAddressConfig struct {
 	DisableWorkerFallback bool
 }
 
-type LotusProviderAddresses struct {
+type CurioAddresses struct {
 	// Addresses to send PreCommit messages from
 	PreCommitControl []string
 	// Addresses to send Commit messages from
@@ -755,33 +864,6 @@ type FeeConfig struct {
 	DefaultMaxFee types.FIL
 }
 
-type UserRaftConfig struct {
-	// EXPERIMENTAL. config to enabled node cluster with raft consensus
-	ClusterModeEnabled bool
-	// A folder to store Raft's data.
-	DataFolder string
-	// InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
-	// peers (with no prior state). It is ignored when Raft was already
-	// initialized or when starting in staging mode.
-	InitPeersetMultiAddr []string
-	// LeaderTimeout specifies how long to wait for a leader before
-	// failing an operation.
-	WaitForLeaderTimeout Duration
-	// NetworkTimeout specifies how long before a Raft network
-	// operation is timed out
-	NetworkTimeout Duration
-	// CommitRetries specifies how many times we retry a failed commit until
-	// we give up.
-	CommitRetries int
-	// How long to wait between retries
-	CommitRetryDelay Duration
-	// BackupsRotate specifies the maximum number of Raft's DataFolder
-	// copies that we keep as backups (renaming) after cleanup.
-	BackupsRotate int
-	// Tracing enables propagation of contexts across binary boundaries.
-	Tracing bool
-}
-
 type FevmConfig struct {
 	// EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
@@ -857,6 +939,14 @@ type EventsConfig struct {
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
 	// Set upper bound on index size
+}
+
+type EventsConfig struct {
+	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+	// emitted by (smart contracts + built-in Actors).
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+	// disabled by setting their respective Disable* options in Fevm.Events.
+	EnableActorEventsAPI bool
 }
 
 type IndexConfig struct {

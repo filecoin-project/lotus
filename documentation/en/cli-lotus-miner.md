@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.26.0
+   1.27.0-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -66,6 +66,7 @@ OPTIONS:
    --no-local-storage                                         don't use storageminer repo for sector storage (default: false)
    --gas-premium value                                        set gas premium for initialization messages in AttoFIL (default: "0")
    --from value                                               select which address to send actor creation message from
+   --confidence value                                         number of block confirmations to wait for (default: 5)
    --help, -h                                                 show help
 ```
 

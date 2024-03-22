@@ -64,7 +64,7 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 func CreatePartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*PartialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644) // nolint
 	if err != nil {
-		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
+		return nil, xerrors.Errorf("opening partial file '%s': %w", path, err)
 	}
 
 	err = func() error {
@@ -99,18 +99,40 @@ func CreatePartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*PartialF
 func OpenPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*PartialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR, 0644) // nolint
 	if err != nil {
-		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
+		return nil, xerrors.Errorf("opening partial file '%s': %w", path, err)
+	}
+
+	st, err := f.Stat()
+	if err != nil {
+		return nil, xerrors.Errorf("stat '%s': %w", path, err)
+	}
+	if st.Size() < int64(maxPieceSize) {
+		return nil, xerrors.Errorf("sector file '%s' was smaller than the sector size %d < %d", path, st.Size(), maxPieceSize)
+	}
+	if st.Size() == int64(maxPieceSize) {
+		log.Debugw("no partial file trailer, assuming fully allocated", "path", path)
+
+		allAlloc := &rlepluslazy.RunSliceIterator{Runs: []rlepluslazy.Run{{Val: true, Len: uint64(maxPieceSize)}}}
+		enc, err := rlepluslazy.EncodeRuns(allAlloc, []byte{})
+		if err != nil {
+			return nil, xerrors.Errorf("encoding full allocation: %w", err)
+		}
+
+		rle, err := rlepluslazy.FromBuf(enc)
+		if err != nil {
+			return nil, xerrors.Errorf("decoding full allocation: %w", err)
+		}
+
+		return &PartialFile{
+			maxPiece:  maxPieceSize,
+			path:      path,
+			allocated: rle,
+			file:      f,
+		}, nil
 	}
 
 	var rle rlepluslazy.RLE
 	err = func() error {
-		st, err := f.Stat()
-		if err != nil {
-			return xerrors.Errorf("stat '%s': %w", path, err)
-		}
-		if st.Size() < int64(maxPieceSize) {
-			return xerrors.Errorf("sector file '%s' was smaller than the sector size %d < %d", path, st.Size(), maxPieceSize)
-		}
 		// read trailer
 		var tlen [4]byte
 		_, err = f.ReadAt(tlen[:], st.Size()-int64(len(tlen)))

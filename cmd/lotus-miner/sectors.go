@@ -2290,7 +2290,7 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		if len(parts) <= 0 {
 			return fmt.Errorf("must include at least one partition to compact")
 		}
-		fmt.Printf("compacting %d paritions\n", len(parts))
+		fmt.Printf("compacting %d partitions\n", len(parts))
 
 		var makeMsgForPartitions func(partitionsBf bitfield.BitField) ([]*types.Message, error)
 		makeMsgForPartitions = func(partitionsBf bitfield.BitField) ([]*types.Message, error) {

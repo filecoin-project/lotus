@@ -92,6 +92,7 @@ func main() {
 		mismatchesCmd,
 		blockCmd,
 		adlCmd,
+		lpUtilCmd,
 	}
 
 	app := &cli.App{

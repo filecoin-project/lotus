@@ -203,7 +203,6 @@ func (db *DrandBeacon) VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte)
 	}
 
 	db.cacheValue(entry)
-
 	return nil
 }
 

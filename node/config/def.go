@@ -106,7 +106,6 @@ func DefaultFullNode() *FullNode {
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},
 		},
-		Cluster: *DefaultUserRaftConfig(),
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
@@ -119,6 +118,9 @@ func DefaultFullNode() *FullNode {
 			MaxFilters:               100,
 			MaxFilterResults:         10000,
 			MaxFilterHeightRange:     2880, // conservative limit of one day
+		},
+		Events: EventsConfig{
+			EnableActorEventsAPI: false,
 		},
 	}
 }
@@ -328,32 +330,12 @@ const (
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
 
-var (
-	DefaultDataSubFolder        = "raft"
-	DefaultWaitForLeaderTimeout = 15 * time.Second
-	DefaultCommitRetries        = 1
-	DefaultNetworkTimeout       = 100 * time.Second
-	DefaultCommitRetryDelay     = 200 * time.Millisecond
-	DefaultBackupsRotate        = 6
-)
-
-func DefaultUserRaftConfig() *UserRaftConfig {
-	var cfg UserRaftConfig
-	cfg.DataFolder = "" // empty so it gets omitted
-	cfg.InitPeersetMultiAddr = []string{}
-	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
-	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
-	cfg.CommitRetries = DefaultCommitRetries
-	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
-	cfg.BackupsRotate = DefaultBackupsRotate
-
-	return &cfg
-}
-
-func DefaultLotusProvider() *LotusProviderConfig {
-	return &LotusProviderConfig{
-		Subsystems: ProviderSubsystemsConfig{},
-		Fees: LotusProviderFees{
+func DefaultCurioConfig() *CurioConfig {
+	return &CurioConfig{
+		Subsystems: CurioSubsystemsConfig{
+			GuiAddress: ":4701",
+		},
+		Fees: CurioFees{
 			DefaultMaxFee:      DefaultDefaultMaxFee,
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
 			MaxCommitGasFee:    types.MustParseFIL("0.05"),
@@ -371,11 +353,12 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			MaxWindowPoStGasFee: types.MustParseFIL("5"),
 			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
 		},
-		Addresses: LotusProviderAddresses{
+		Addresses: []CurioAddresses{{
 			PreCommitControl: []string{},
 			CommitControl:    []string{},
 			TerminateControl: []string{},
-		},
+			MinerAddresses:   []string{},
+		}},
 		Proving: ProvingConfig{
 			ParallelCheckLimit:    32,
 			PartitionCheckTimeout: Duration(20 * time.Minute),

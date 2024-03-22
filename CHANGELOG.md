@@ -29,6 +29,7 @@ The Filecoin network version 22 delivers the following FIPs:
 lotus state actor-cids --network-version=22
 Network Version: 22
 Actor Version: 13
+
 Manifest CID: bafy2bzacecdhvfmtirtojwhw2tyciu4jkbpsbk5g53oe24br27oy62sn4dc4e
 
 Actor             CID  
@@ -67,6 +68,8 @@ For certain node operators, such as full archival nodes or systems that need to 
 - feat: sealing: Support nv22 DDO features in the sealing pipeline (#11226) ([filecoin-project/lotus#11226](https://github.com/filecoin-project/lotus/pull/11226))
 - feat: implement FIP-0063 ([filecoin-project/lotus#11572](https://github.com/filecoin-project/lotus/pull/11572))
 - feat: events: Add Lotus APIs to consume smart contract and built-in actor events ([filecoin-project/lotus#11618](https://github.com/filecoin-project/lotus/pull/11618))
+
+## Improvements
 
 ## Tracing API
 
@@ -402,8 +405,6 @@ This patch release allows for up to 10k messages per block. Additionally, it int
 
 ## Improvements
 - fix: exchange: allow up to 10k messages per block ([filecoin-project/lotus#11506](https://github.com/filecoin-project/lotus/pull/11506))
-
->>>>>>> releases
 
 # v 1.25.0 / 2023-11-22
 
@@ -3707,7 +3708,7 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 - Config for deal publishing control addresses ([filecoin-project/lotus#6697](https://github.com/filecoin-project/lotus/pull/6697))
   - Set `DealPublishControl` to set the wallet used for sending `PublishStorageDeals` messages, instructions [here](https://lotus.filecoin.io/storage-providers/operate/addresses/#control-addresses).
 - Config UX improvements ([filecoin-project/lotus#6848](https://github.com/filecoin-project/lotus/pull/6848))
-  - You can now preview the the default and updated node config by running `lotus/lotus-miner config default/updated`
+  - You can now preview the default and updated node config by running `lotus/lotus-miner config default/updated`
 
 ## New Features
 - ⭐️⭐️⭐️ Support standalone miner-market process ([filecoin-project/lotus#6356](https://github.com/filecoin-project/lotus/pull/6356))
@@ -5154,7 +5155,7 @@ This consensus-breaking release of Lotus upgrades the actors version to v2.0.0. 
 
 #### Mining
 
-- Increased ExpectedSealDuration and and WaitDealsDelay (https://github.com/filecoin-project/lotus/pull/3743)
+- Increased ExpectedSealDuration and WaitDealsDelay (https://github.com/filecoin-project/lotus/pull/3743)
 - Miner backup/restore commands (https://github.com/filecoin-project/lotus/pull/4133)
 - lotus-miner: add more help text to storage / attach (https://github.com/filecoin-project/lotus/pull/3961)
 - Reject deals that are > 7 days in the future in the BasicDealFilter (https://github.com/filecoin-project/lotus/pull/4173)
