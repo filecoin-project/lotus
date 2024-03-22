@@ -80,6 +80,23 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 		paths = resv.Paths
 		storageIDs = resv.PathIDs
 		releaseStorage = resv.Release
+
+		if len(existing.AllSet()) > 0 {
+			// there are some "existing" files in the reservation. Some of them may need fetching, so call l.storage.AcquireSector
+			// (which unlike in the reservation code will be called on the paths.Remote instance) to ensure that the files are
+			// present locally. Note that we do not care about 'allocate' reqeuests, those files don't exist, and are just
+			// proposed paths with a reservation of space.
+
+			_, checkPathIDs, err := l.storage.AcquireSector(ctx, sector, existing, storiface.FTNone, sealing, storiface.AcquireMove, storiface.AcquireInto(storiface.PathsWithIDs{Paths: paths, IDs: storageIDs}))
+			if err != nil {
+				return storiface.SectorPaths{}, nil, xerrors.Errorf("acquire reserved existing files: %w", err)
+			}
+
+			// assert that checkPathIDs is the same as storageIDs
+			if storageIDs.Subset(existing) != checkPathIDs.Subset(existing) {
+				return storiface.SectorPaths{}, nil, xerrors.Errorf("acquire reserved existing files: pathIDs mismatch %#v != %#v", storageIDs, checkPathIDs)
+			}
+		}
 	} else {
 		var err error
 		paths, storageIDs, err = l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
@@ -143,10 +160,7 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 }
 
 func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, error) {
-	maybeUns := storiface.FTNone
-	// todo sectors with data
-
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, maybeUns, storiface.PathSealing)
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
