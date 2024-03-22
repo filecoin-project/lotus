@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/spcli"
 )
 
 var _test = false
@@ -82,17 +83,17 @@ var infoAllCmd = &cli.Command{
 		}
 
 		fmt.Println("\n#: Proving Info")
-		if err := provingInfoCmd.Action(cctx); err != nil {
+		if err := spcli.ProvingInfoCmd(LMActorOrEnvGetter).Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 
 		fmt.Println("\n#: Proving Deadlines")
-		if err := provingDeadlinesCmd.Action(cctx); err != nil {
+		if err := spcli.ProvingDeadlinesCmd(LMActorOrEnvGetter).Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 
 		fmt.Println("\n#: Proving Faults")
-		if err := provingFaultsCmd.Action(cctx); err != nil {
+		if err := spcli.ProvingFaultsCmd(LMActorOrEnvGetter).Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 

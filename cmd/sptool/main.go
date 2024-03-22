@@ -22,7 +22,7 @@ func main() {
 		actorCmd,
 		spcli.InfoCmd(SPTActorGetter),
 		//sectorsCmd,
-		//provingCmd,
+		provingCmd,
 		//multiSigCmd,
 	}
 
