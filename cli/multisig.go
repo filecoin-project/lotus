@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
@@ -410,7 +411,16 @@ var msigProposeCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			params = p
+
+			if abi.MethodNum(method) == builtintypes.MethodsEVM.InvokeContract {
+				var buffer bytes.Buffer
+				if err := cbg.WriteByteArray(&buffer, p); err != nil {
+					return xerrors.Errorf("failed to encode evm params as cbor: %w", err)
+				}
+				params = buffer.Bytes()
+			} else {
+				params = p
+			}
 		}
 
 		var from address.Address
@@ -582,7 +592,15 @@ var msigApproveCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				params = p
+				if abi.MethodNum(method) == builtintypes.MethodsEVM.InvokeContract {
+					var buffer bytes.Buffer
+					if err := cbg.WriteByteArray(&buffer, p); err != nil {
+						return xerrors.Errorf("failed to encode evm params as cbor: %w", err)
+					}
+					params = buffer.Bytes()
+				} else {
+					params = p
+				}
 			}
 
 			proto, err := api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
@@ -707,7 +725,16 @@ var msigCancelCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				params = p
+
+				if abi.MethodNum(method) == builtintypes.MethodsEVM.InvokeContract {
+					var buffer bytes.Buffer
+					if err := cbg.WriteByteArray(&buffer, p); err != nil {
+						return xerrors.Errorf("failed to encode evm params as cbor: %w", err)
+					}
+					params = buffer.Bytes()
+				} else {
+					params = p
+				}
 			}
 
 			proto, err := api.MsigCancelTxnHash(ctx, msig, txid, dest, types.BigInt(value), from, method, params)
