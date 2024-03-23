@@ -268,10 +268,8 @@ func ConfigFullNode(c interface{}) Option {
 			Override(SetupFallbackBlockstoresKey, modules.InitFallbackBlockstores),
 		),
 
-		// If the Eth JSON-RPC is enabled, enable storing events at the ChainStore.
-		// This is the case even if real-time and historic filtering are disabled,
-		// as it enables us to serve logs in eth_getTransactionReceipt.
-		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI || cfg.ChainIndexer.EnableIndexer, Override(StoreEventsKey, modules.EnableStoringEvents)),
+		// FORCE always storing events in the blockstore, making this conditional is pointless
+		Override(StoreEventsKey, modules.EnableStoringEvents),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
