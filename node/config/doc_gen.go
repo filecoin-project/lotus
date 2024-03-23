@@ -726,17 +726,6 @@ the database must already exist and be writeable. If a relative path is provided
 relative to the CWD (current working directory).`,
 		},
 	},
-	"EventsConfig": {
-		{
-			Name: "EnableActorEventsAPI",
-			Type: "bool",
-
-			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
-emitted by (smart contracts + built-in Actors).
-This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-disabled by setting their respective Disable* options in Fevm.Events.`,
-		},
-	},
 	"FaultReporterConfig": {
 		{
 			Name: "EnableConsensusFaultReporter",
@@ -824,12 +813,6 @@ Set to 0 to keep all mappings`,
 		{
 			Name: "Fevm",
 			Type: "FevmConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "Events",
-			Type: "EventsConfig",
 
 			Comment: ``,
 		},

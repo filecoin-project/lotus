@@ -941,14 +941,6 @@ type EventsConfig struct {
 	// Set upper bound on index size
 }
 
-type EventsConfig struct {
-	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
-	// emitted by (smart contracts + built-in Actors).
-	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-	// disabled by setting their respective Disable* options in Fevm.Events.
-	EnableActorEventsAPI bool
-}
-
 type IndexConfig struct {
 	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
