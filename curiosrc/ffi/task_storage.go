@@ -158,7 +158,7 @@ func (t *TaskStorage) Claim(taskID int) error {
 	// be fetched, so we will need to create reservations for that too.
 	// NOTE localStore.AcquireSector does not open or create any files, nor does it reserve space. It only proposes
 	// paths to be used.
-	pathsFs, pathIDs, err := t.sc.sectors.localStore.AcquireSector(ctx, sectorRef.Ref(), storiface.FTNone, requestedTypes, storiface.PathSealing, storiface.AcquireMove)
+	pathsFs, pathIDs, err := t.sc.sectors.localStore.AcquireSector(ctx, sectorRef.Ref(), storiface.FTNone, requestedTypes, t.pathType, storiface.AcquireMove)
 	if err != nil {
 		return err
 	}

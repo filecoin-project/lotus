@@ -53,7 +53,15 @@ type path struct {
 	reservations map[abi.SectorID]storiface.SectorFileType
 }
 
-func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
+// statExistingSectorForReservation is optional parameter for stat method
+// which will make it take into account existing sectors when calculating
+// available space for new reservations
+type statExistingSectorForReservation struct {
+	id abi.SectorID
+	ft storiface.SectorFileType
+}
+
+func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservation) (fsutil.FsStat, error) {
 	start := time.Now()
 
 	stat, err := ls.Stat(p.local)
@@ -63,34 +71,49 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 
 	stat.Reserved = p.reserved
 
+	accountExistingFiles := func(id abi.SectorID, fileType storiface.SectorFileType) error {
+		sp := p.sectorPath(id, fileType)
+
+		used, err := ls.DiskUsage(sp)
+		if err == os.ErrNotExist {
+			p, ferr := tempFetchDest(sp, false)
+			if ferr != nil {
+				return ferr
+			}
+
+			used, err = ls.DiskUsage(p)
+		}
+		if err != nil {
+			// we don't care about 'not exist' errors, as storage can be
+			// reserved before any files are written, so this error is not
+			// unexpected
+			if !os.IsNotExist(err) {
+				log.Warnf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+			}
+			return nil
+		}
+
+		stat.Reserved -= used
+		return nil
+	}
+
 	for id, ft := range p.reservations {
-		for _, fileType := range storiface.PathTypes {
-			if fileType&ft == 0 {
+		for _, fileType := range ft.AllSet() {
+			if err := accountExistingFiles(id, fileType); err != nil {
+				return fsutil.FsStat{}, err
+			}
+		}
+	}
+	for _, reservation := range newReserve {
+		for _, fileType := range reservation.ft.AllSet() {
+			if p.reservations[reservation.id]&fileType != 0 {
+				// already accounted for
 				continue
 			}
 
-			sp := p.sectorPath(id, fileType)
-
-			used, err := ls.DiskUsage(sp)
-			if err == os.ErrNotExist {
-				p, ferr := tempFetchDest(sp, false)
-				if ferr != nil {
-					return fsutil.FsStat{}, ferr
-				}
-
-				used, err = ls.DiskUsage(p)
+			if err := accountExistingFiles(reservation.id, fileType); err != nil {
+				return fsutil.FsStat{}, err
 			}
-			if err != nil {
-				// we don't care about 'not exist' errors, as storage can be
-				// reserved before any files are written, so this error is not
-				// unexpected
-				if !os.IsNotExist(err) {
-					log.Warnf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
-				}
-				continue
-			}
-
-			stat.Reserved -= used
 		}
 	}
 
@@ -414,11 +437,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		deferredDone()
 	}()
 
-	for _, fileType := range storiface.PathTypes {
-		if fileType&ft == 0 {
-			continue
-		}
-
+	for _, fileType := range ft.AllSet() {
 		id := storiface.ID(storiface.PathByType(storageIDs, fileType))
 
 		p, ok := st.paths[id]
@@ -426,7 +445,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			return nil, errPathNotFound
 		}
 
-		stat, err := p.stat(st.localStorage)
+		stat, err := p.stat(st.localStorage, statExistingSectorForReservation{sid.ID, fileType})
 		if err != nil {
 			return nil, xerrors.Errorf("getting local storage stat: %w", err)
 		}

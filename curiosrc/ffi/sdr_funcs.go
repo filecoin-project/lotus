@@ -98,6 +98,8 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 			}
 		}
 	} else {
+		// No related reservation, acquire storage as usual
+
 		var err error
 		paths, storageIDs, err = l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
 		if err != nil {
@@ -159,17 +161,7 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 	return nil
 }
 
-func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, error) {
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
-	}
-	defer releaseSector()
-
-	return proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
-}
-
-func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid) (cid.Cid, cid.Cid, error) {
+func (sb *SealCalls) TreeDRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, cid.Cid, error) {
 	p1o, err := sb.makePhase1Out(unsealed, sector.ProofType)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
@@ -180,6 +172,15 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
 	defer releaseSector()
+
+	treeDUnsealed, err := proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("building tree-d: %w", err)
+	}
+
+	if treeDUnsealed != unsealed {
+		return cid.Undef, cid.Undef, xerrors.Errorf("tree-d cid mismatch with supplied unsealed cid")
+	}
 
 	{
 		// create sector-sized file at paths.Sealed; PC2 transforms it into a sealed sector in-place
@@ -224,7 +225,16 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 		}
 	}
 
-	return ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
+	sl, uns, err := ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
+	}
+
+	if uns != unsealed {
+		return cid.Undef, cid.Undef, xerrors.Errorf("unsealed cid changed after sealing")
+	}
+
+	return sl, uns, nil
 }
 
 func (sb *SealCalls) GenerateSynthPoRep() {
