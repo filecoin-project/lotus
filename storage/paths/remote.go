@@ -167,6 +167,8 @@ func (r *Remote) AcquireSector(ctx context.Context, s storiface.SectorRef, exist
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.Errorf("allocate local sector for fetching: %w", err)
 		}
 
+		log.Debugw("Fetching sector data without existing reservation", "sector", s, "toFetch", toFetch, "fetchPaths", fetchPaths, "fetchIDs", fetchIDs)
+
 		overheadTable := storiface.FSOverheadSeal
 		if pathType == storiface.PathStorage {
 			overheadTable = storiface.FsOverheadFinalized
@@ -183,6 +185,8 @@ func (r *Remote) AcquireSector(ctx context.Context, s storiface.SectorRef, exist
 	} else {
 		fetchPaths = settings.Into.Paths
 		fetchIDs = settings.Into.IDs
+
+		log.Debugw("Fetching sector data with existing reservation", "sector", s, "toFetch", toFetch, "fetchPaths", fetchPaths, "fetchIDs", fetchIDs)
 	}
 
 	for _, fileType := range toFetch.AllSet() {

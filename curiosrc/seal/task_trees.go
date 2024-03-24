@@ -186,20 +186,10 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		ProofType: sectorParams.RegSealProof,
 	}
 
-	// D
-	treeUnsealed, err := t.sc.TreeD(ctx, sref, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
-	if err != nil {
-		return false, xerrors.Errorf("computing tree d: %w", err)
-	}
-
-	// R / C
-	sealed, unsealed, err := t.sc.TreeRC(ctx, sref, commd)
+	// D / R / C
+	sealed, unsealed, err := t.sc.TreeDRC(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
 	if err != nil {
 		return false, xerrors.Errorf("computing tree r and c: %w", err)
-	}
-
-	if unsealed != treeUnsealed {
-		return false, xerrors.Errorf("tree-d and tree-r/c unsealed CIDs disagree")
 	}
 
 	// todo synth porep
@@ -228,13 +218,19 @@ func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.Task
 }
 
 func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {
+	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
+	if isDevnet {
+		ssize = abi.SectorSize(2 << 20)
+	}
+
 	return harmonytask.TaskTypeDetails{
 		Max:  t.max,
 		Name: "SDRTrees",
 		Cost: resources.Resources{
-			Cpu: 1,
-			Gpu: 1,
-			Ram: 8000 << 20, // todo
+			Cpu:     1,
+			Gpu:     1,
+			Ram:     8000 << 20, // todo
+			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing),
 		},
 		MaxFailures: 3,
 		Follows:     nil,
@@ -243,6 +239,21 @@ func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {
 
 func (t *TreesTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	t.sp.pollers[pollerTrees].Set(taskFunc)
+}
+
+func (t *TreesTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
+	var refs []ffi.SectorRef
+
+	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_r = $1`, id)
+	if err != nil {
+		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
+	}
+
+	if len(refs) != 1 {
+		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
+	}
+
+	return refs[0], nil
 }
 
 type UrlPieceReader struct {
