@@ -495,6 +495,22 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 	var out storiface.SectorPaths
 	var storageIDs storiface.SectorPaths
 
+	allocPathOk := func(canSeal, canStore bool, allowTypes, denyTypes []string, fileType storiface.SectorFileType) bool {
+		if (pathType == storiface.PathSealing) && !canSeal {
+			return false
+		}
+
+		if (pathType == storiface.PathStorage) && !canStore {
+			return false
+		}
+
+		if !fileType.Allowed(allowTypes, denyTypes) {
+			return false
+		}
+
+		return true
+	}
+
 	// First find existing files
 	for _, fileType := range storiface.PathTypes {
 		// also try to find existing sectors if we're allocating
@@ -518,6 +534,10 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 
 			if p.local == "" { // TODO: can that even be the case?
 				continue
+			}
+
+			if allocate.Has(fileType) && !allocPathOk(info.CanSeal, info.CanStore, info.AllowTypes, info.DenyTypes, fileType) {
+				continue // allocate request for a path of different type
 			}
 
 			spath := p.sectorPath(sid.ID, fileType)
@@ -554,15 +574,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 				continue
 			}
 
-			if (pathType == storiface.PathSealing) && !si.CanSeal {
-				continue
-			}
-
-			if (pathType == storiface.PathStorage) && !si.CanStore {
-				continue
-			}
-
-			if !fileType.Allowed(si.AllowTypes, si.DenyTypes) {
+			if !allocPathOk(si.CanSeal, si.CanStore, si.AllowTypes, si.DenyTypes, fileType) {
 				continue
 			}
 
