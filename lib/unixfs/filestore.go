@@ -15,7 +15,6 @@ import (
 	"github.com/ipfs/boxo/ipld/unixfs/importer/balanced"
 	ihelper "github.com/ipfs/boxo/ipld/unixfs/importer/helpers"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-cidutil"
 	ipld "github.com/ipfs/go-ipld-format"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
@@ -33,11 +32,7 @@ func CidBuilder() (cid.Builder, error) {
 		return nil, fmt.Errorf("failed to initialize UnixFS CID Builder: %w", err)
 	}
 	prefix.MhType = DefaultHashFunction
-	b := cidutil.InlineBuilder{
-		Builder: prefix,
-		Limit:   126,
-	}
-	return b, nil
+	return prefix, nil
 }
 
 // CreateFilestore takes a standard file whose path is src, forms a UnixFS DAG, and

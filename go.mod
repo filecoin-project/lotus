@@ -101,6 +101,7 @@ require (
 	github.com/ipld/go-car/v2 v2.10.1
 	github.com/ipld/go-codec-dagpb v1.6.0
 	github.com/ipld/go-ipld-prime v0.20.0
+	github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20230102063945-1a409dc236dd
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/ipni/go-libipni v0.0.8
 	github.com/ipni/index-provider v0.12.0
