@@ -238,7 +238,7 @@ var infoAllCmd = &cli.Command{
 			fmt.Printf("\n##: Sector %d Status\n", s)
 
 			fs := &flag.FlagSet{}
-			for _, f := range sectorsStatusCmd.Flags {
+			for _, f := range spcli.SectorsStatusCmd(LMActorOrEnvGetter, getOnDiskInfo).Flags {
 				if err := f.Apply(fs); err != nil {
 					fmt.Println("ERROR: ", err)
 				}
@@ -247,7 +247,7 @@ var infoAllCmd = &cli.Command{
 				fmt.Println("ERROR: ", err)
 			}
 
-			if err := sectorsStatusCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
+			if err := spcli.SectorsStatusCmd(LMActorOrEnvGetter, getOnDiskInfo).Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
 				fmt.Println("ERROR: ", err)
 			}
 

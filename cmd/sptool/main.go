@@ -21,7 +21,7 @@ func main() {
 	local := []*cli.Command{
 		actorCmd,
 		spcli.InfoCmd(SPTActorGetter),
-		//sectorsCmd,
+		sectorsCmd,
 		provingCmd,
 		//multiSigCmd,
 	}

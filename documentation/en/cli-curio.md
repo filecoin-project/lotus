@@ -19,13 +19,12 @@ COMMANDS:
    guided-setup  Run the guided setup for migrating from lotus-miner to Curio
    from-miner    Express a database config (for curio) from an existing miner.
    seal          Manage the sealing pipeline
+   auth          Manage RPC permissions
+   log           Manage logging
+   wait-api      Wait for lotus api to come online
+   fetch-params  Fetch proving parameters
    version       Print version
    help, h       Shows a list of commands or help for one command
-   DEVELOPER:
-     auth          Manage RPC permissions
-     log           Manage logging
-     wait-api      Wait for lotus api to come online
-     fetch-params  Fetch proving parameters
 
 GLOBAL OPTIONS:
    --color              use color in display output (default: depends on output being a TTY)
@@ -386,18 +385,6 @@ OPTIONS:
    --help, -h                         show help
 ```
 
-## curio version
-```
-NAME:
-   curio version - Print version
-
-USAGE:
-   curio version [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help
-```
-
 ## curio auth
 ```
 NAME:
@@ -525,9 +512,6 @@ NAME:
 USAGE:
    curio wait-api [command options] [arguments...]
 
-CATEGORY:
-   DEVELOPER
-
 OPTIONS:
    --timeout value  duration to wait till fail (default: 30s)
    --help, -h       show help
@@ -541,8 +525,17 @@ NAME:
 USAGE:
    curio fetch-params [command options] [sectorSize]
 
-CATEGORY:
-   DEVELOPER
+OPTIONS:
+   --help, -h  show help
+```
+
+## curio version
+```
+NAME:
+   curio version - Print version
+
+USAGE:
+   curio version [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help

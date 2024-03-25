@@ -1,24 +1,20 @@
 package spcli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/fatih/color"
-	"github.com/filecoin-project/go-address"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
-
-type tipFunc func(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*types.TipSet, error)
 
 func InfoCmd(getActorAddress ActorAddressGetter) *cli.Command {
 	return &cli.Command{

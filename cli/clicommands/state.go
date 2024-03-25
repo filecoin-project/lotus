@@ -4,8 +4,9 @@
 package clicommands
 
 import (
-	"github.com/filecoin-project/go-address"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-address"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cli/spcli"
