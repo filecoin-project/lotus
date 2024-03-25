@@ -1,7 +1,7 @@
 {{define "cluster_machines"}}
 {{range .}}
     <tr>
-        <td>{{.Address}}</td>
+        <td><a href="/hapi/node/{{.ID}}">{{.Address}}</a></td>
         <td>{{.ID}}</td>
         <td>{{.SinceContact}}</td>
         {{range .RecentTasks}}
