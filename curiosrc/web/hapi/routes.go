@@ -29,11 +29,12 @@ func Routes(r *mux.Router, deps *deps.Deps) error {
 	go a.watchRpc()
 	go a.watchActor()
 
-	r.HandleFunc("/actorsummary", a.actorSummary)
-	r.HandleFunc("/machines", a.indexMachines)
-	r.HandleFunc("/tasks", a.indexTasks)
-	r.HandleFunc("/taskhistory", a.indexTasksHistory)
-	r.HandleFunc("/pipeline-porep", a.indexPipelinePorep)
+	// index page (simple info)
+	r.HandleFunc("/simpleinfo/actorsummary", a.actorSummary)
+	r.HandleFunc("/simpleinfo/machines", a.indexMachines)
+	r.HandleFunc("/simpleinfo/tasks", a.indexTasks)
+	r.HandleFunc("/simpleinfo/taskhistory", a.indexTasksHistory)
+	r.HandleFunc("/simpleinfo/pipeline-porep", a.indexPipelinePorep)
 
 	// pipeline-porep page
 	r.HandleFunc("/pipeline-porep/sectors", a.pipelinePorepSectors)

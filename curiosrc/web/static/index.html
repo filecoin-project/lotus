@@ -63,7 +63,7 @@
                 <th>Tasks (24h)</th>
             </tr>
             </thead>
-            <tbody hx-get="/hapi/machines" hx-trigger="load,every 5s">
+            <tbody hx-get="/hapi/simpleinfo/machines" hx-trigger="load,every 5s">
             </tbody>
         </table>
     </div>
@@ -84,7 +84,7 @@
                 <th>Failed</th>
             </tr>
             </thead>
-            <tbody hx-get="/hapi/pipeline-porep" hx-trigger="load,every 5s">
+            <tbody hx-get="/hapi/simpleinfo/pipeline-porep" hx-trigger="load,every 5s">
             </tbody>
         </table>
     </div>
@@ -104,7 +104,7 @@
                 <th>Wins</th>
             </tr>
             </thead>
-            <tbody hx-get="/hapi/actorsummary" hx-trigger="load,every 5s">
+            <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
             </tbody>
         </table>
     </div>
@@ -125,7 +125,7 @@
                 <th>Message</th>
             </tr>
             </thead>
-            <tbody hx-get="/hapi/taskhistory" hx-trigger="load, every 2s">
+            <tbody hx-get="/hapi/simpleinfo/taskhistory" hx-trigger="load, every 2s">
             </tbody>
         </table>
     </div>
@@ -141,7 +141,7 @@
                 <th>Owner</th>
             </tr>
             </thead>
-            <tbody hx-get="/hapi/tasks" hx-trigger="load,every 1s">
+            <tbody hx-get="/hapi/simpleinfo/tasks" hx-trigger="load,every 1s">
             </tbody>
         </table>
     </div>
