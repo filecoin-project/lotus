@@ -8,6 +8,7 @@ package guidedsetup
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -18,12 +19,14 @@ import (
 	"os/signal"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/docker/go-units"
 	"github.com/manifoldco/promptui"
 	"github.com/mitchellh/go-homedir"
 	"github.com/samber/lo"
@@ -33,11 +36,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cli/spcli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -50,7 +55,7 @@ const DeveloperFocusRequestURL = "https://curiostorage.org/cgi-bin/savedata.php"
 
 var GuidedsetupCmd = &cli.Command{
 	Name:  "guided-setup",
-	Usage: "Run the guided setup for migrating from lotus-miner to Curio",
+	Usage: "Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner",
 	Flags: []cli.Flag{
 		&cli.StringFlag{ // for cliutil.GetFullNodeAPI
 			Name:    "repo",
@@ -63,9 +68,6 @@ var GuidedsetupCmd = &cli.Command{
 		T, say := SetupLanguage()
 		setupCtrlC(say)
 
-		say(header, "This interactive tool migrates lotus-miner to Curio in 5 minutes.")
-		say(notice, "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.")
-
 		// Run the migration steps
 		migrationData := MigrationData{
 			T:   T,
@@ -74,10 +76,25 @@ var GuidedsetupCmd = &cli.Command{
 				Help: T("Use the arrow keys to navigate: ↓ ↑ → ← "),
 			},
 			cctx: cctx,
+			ctx:  cctx.Context,
 		}
-		for _, step := range migrationSteps {
-			step(&migrationData)
+
+		newOrMigrate(&migrationData)
+		if migrationData.init {
+			say(header, "This interactive tool creates a new miner actor and creates the basic configuration layer for it.")
+			say(notice, "This process is partially idempotent. Once a new miner actor has been created and subsequent steps fail, the user need to run 'curio config new-cluster < miner ID >' to finish the configuration.")
+			for _, step := range newMinerSteps {
+				step(&migrationData)
+			}
+		} else {
+			say(header, "This interactive tool migrates lotus-miner to Curio in 5 minutes.")
+			say(notice, "Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.")
+
+			for _, step := range migrationSteps {
+				step(&migrationData)
+			}
 		}
+
 		for _, closer := range migrationData.closers {
 			closer()
 		}
@@ -164,6 +181,23 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 		}
 }
 
+func newOrMigrate(d *MigrationData) {
+	i, _, err := (&promptui.Select{
+		Label: d.T("Choose if you with to create a new miner or migrate from existing Lotus-Miner"),
+		Items: []string{
+			d.T("Migrate from existing Lotus-Miner"),
+			d.T("Create a new miner")},
+		Templates: d.selectTemplates,
+	}).Run()
+	if err != nil {
+		d.say(notice, "Aborting remaining steps.", err.Error())
+		os.Exit(1)
+	}
+	if i == 1 {
+		d.init = true
+	}
+}
+
 type migrationStep func(*MigrationData)
 
 var migrationSteps = []migrationStep{
@@ -174,6 +208,17 @@ var migrationSteps = []migrationStep{
 	doc,
 	oneLastThing,
 	complete,
+}
+
+type newMinerStep func(data *MigrationData)
+
+var newMinerSteps = []newMinerStep{
+	stepPresteps,
+	stepCreateActor,
+	stepNewMinerConfig,
+	doc,
+	oneLastThing,
+	completeInit,
 }
 
 type MigrationData struct {
@@ -187,6 +232,13 @@ type MigrationData struct {
 	full            v0api.FullNode
 	cctx            *cli.Context
 	closers         []jsonrpc.ClientCloser
+	ctx             context.Context
+	owner           address.Address
+	worker          address.Address
+	sender          address.Address
+	ssize           abi.SectorSize
+	confidence      uint64
+	init            bool
 }
 
 func complete(d *MigrationData) {
@@ -194,6 +246,12 @@ func complete(d *MigrationData) {
 	d.say(plain, "Try the web interface with %s for further guided improvements.", "--layers=gui")
 	d.say(plain, "You can now migrate your market node (%s), if applicable.", "Boost")
 }
+
+func completeInit(d *MigrationData) {
+	stepCompleted(d, d.T("New Miner initialization complete."))
+	d.say(plain, "Try the web interface with %s for further guided improvements.", "--layers=gui")
+}
+
 func configToDB(d *MigrationData) {
 	d.say(section, "Migrating lotus-miner config.toml to Curio in-database configuration.")
 
@@ -381,69 +439,11 @@ func yugabyteConnect(d *MigrationData) {
 	}
 	var err error
 	d.DB, err = harmonydb.NewFromConfig(harmonyCfg)
-	if err == nil {
-		goto yugabyteConnected
-	}
-	for {
-		i, _, err := (&promptui.Select{
-			Label: d.T("Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)"),
-			Items: []string{
-				d.T("Host: %s", strings.Join(harmonyCfg.Hosts, ",")),
-				d.T("Port: %s", harmonyCfg.Port),
-				d.T("Username: %s", harmonyCfg.Username),
-				d.T("Password: %s", harmonyCfg.Password),
-				d.T("Database: %s", harmonyCfg.Database),
-				d.T("Continue to connect and update schema.")},
-			Size:      6,
-			Templates: d.selectTemplates,
-		}).Run()
-		if err != nil {
-			d.say(notice, "Database config error occurred, abandoning migration: %s ", err.Error())
-			os.Exit(1)
-		}
-		switch i {
-		case 0:
-			host, err := (&promptui.Prompt{
-				Label: d.T("Enter the Yugabyte database host(s)"),
-			}).Run()
-			if err != nil {
-				d.say(notice, "No host provided")
-				continue
-			}
-			harmonyCfg.Hosts = strings.Split(host, ",")
-		case 1, 2, 3, 4:
-			val, err := (&promptui.Prompt{
-				Label: d.T("Enter the Yugabyte database %s", []string{"port", "username", "password", "database"}[i-1]),
-			}).Run()
-			if err != nil {
-				d.say(notice, "No value provided")
-				continue
-			}
-			switch i {
-			case 1:
-				harmonyCfg.Port = val
-			case 2:
-				harmonyCfg.Username = val
-			case 3:
-				harmonyCfg.Password = val
-			case 4:
-				harmonyCfg.Database = val
-			}
-			continue
-		case 5:
-			d.DB, err = harmonydb.NewFromConfig(harmonyCfg)
-			if err != nil {
-				if err.Error() == "^C" {
-					os.Exit(1)
-				}
-				d.say(notice, "Error connecting to Yugabyte database: %s", err.Error())
-				continue
-			}
-			goto yugabyteConnected
-		}
+	if err != nil {
+		hcfg := getDBDetails(d)
+		harmonyCfg = *hcfg
 	}
 
-yugabyteConnected:
 	d.say(plain, "Connected to Yugabyte. Schema is current.")
 	if !reflect.DeepEqual(harmonyCfg, d.MinerConfig.HarmonyDB) || !d.MinerConfig.Subsystems.EnableSectorIndexDB {
 		d.MinerConfig.HarmonyDB = harmonyCfg
@@ -587,4 +587,273 @@ func readMinerConfig(d *MigrationData) {
 func stepCompleted(d *MigrationData, step string) {
 	fmt.Print(green.Render("✔ "))
 	d.say(plain, "Step Complete: %s\n", step)
+}
+
+func stepCreateActor(d *MigrationData) {
+	d.say(plain, "Initializing a new miner actor.")
+
+	for {
+		i, _, err := (&promptui.Select{
+			Label: d.T("Enter the info to create a new miner"),
+			Items: []string{
+				d.T("Owner Address: %s", d.owner.String()),
+				d.T("Worker Address: %s", d.worker.String()),
+				d.T("Sender Address: %s", d.sender.String()),
+				d.T("Sector Size: %d", d.ssize),
+				d.T("Confidence epochs: %d", d.confidence),
+				d.T("Continue to verify the addresses and create a new miner actor.")},
+			Size:      6,
+			Templates: d.selectTemplates,
+		}).Run()
+		if err != nil {
+			d.say(notice, "Miner creation error occurred: %s ", err.Error())
+			os.Exit(1)
+		}
+		switch i {
+		case 0:
+			owner, err := (&promptui.Prompt{
+				Label: d.T("Enter the owner address"),
+			}).Run()
+			if err != nil {
+				d.say(notice, "No address provided")
+				continue
+			}
+			ownerAddr, err := address.NewFromString(owner)
+			if err != nil {
+				d.say(notice, "Failed to parse the address: %s", err.Error())
+			}
+			d.owner = ownerAddr
+		case 1, 2:
+			val, err := (&promptui.Prompt{
+				Label:   d.T("Enter %s address", []string{"worker", "sender"}[i-1]),
+				Default: d.owner.String(),
+			}).Run()
+			if err != nil {
+				d.say(notice, err.Error())
+				continue
+			}
+			addr, err := address.NewFromString(val)
+			if err != nil {
+				d.say(notice, "Failed to parse the address: %s", err.Error())
+			}
+			switch i {
+			case 1:
+				d.worker = addr
+			case 2:
+				d.sender = addr
+			}
+			continue
+		case 3:
+			val, err := (&promptui.Prompt{
+				Label: d.T("Enter the sector size"),
+			}).Run()
+			if err != nil {
+				d.say(notice, "No value provided")
+				continue
+			}
+			sectorSize, err := units.RAMInBytes(val)
+			if err != nil {
+				d.say(notice, "Failed to parse sector size: %s", err.Error())
+				continue
+			}
+			d.ssize = abi.SectorSize(sectorSize)
+			continue
+		case 4:
+			confidenceStr, err := (&promptui.Prompt{
+				Label:   d.T("Confidence epochs"),
+				Default: strconv.Itoa(5),
+			}).Run()
+			if err != nil {
+				d.say(notice, err.Error())
+				continue
+			}
+			confidence, err := strconv.ParseUint(confidenceStr, 10, 64)
+			if err != nil {
+				d.say(notice, "Failed to parse confidence: %s", err.Error())
+				continue
+			}
+			d.confidence = confidence
+			goto minerInit // break out of the for loop once we have all the values
+		}
+	}
+
+minerInit:
+	miner, err := spcli.CreateStorageMiner(d.ctx, d.full, d.owner, d.worker, d.sender, d.ssize, d.confidence)
+	if err != nil {
+		d.say(notice, "Failed to create the miner actor: %s", err.Error())
+		os.Exit(1)
+	}
+
+	d.MinerID = miner
+	stepCompleted(d, d.T("Miner %s created successfully", miner.String()))
+}
+
+func stepPresteps(d *MigrationData) {
+
+	// Setup and connect to YugabyteDB
+	_ = getDBDetails(d)
+
+	// Verify HarmonyDB connection
+	var titles []string
+	err := d.DB.Select(d.ctx, &titles, `SELECT title FROM harmony_config WHERE LENGTH(config) > 0`)
+	if err != nil {
+		d.say(notice, "Cannot reach the DB: %s", err.Error())
+		os.Exit(1)
+	}
+
+	// Get full node API
+	full, closer, err := cliutil.GetFullNodeAPI(d.cctx)
+	if err != nil {
+		d.say(notice, "Error connecting to full node API: %s", err.Error())
+		os.Exit(1)
+	}
+	d.full = full
+	d.closers = append(d.closers, closer)
+	stepCompleted(d, d.T("Pre-initialization steps complete"))
+}
+
+func stepNewMinerConfig(d *MigrationData) {
+	curioCfg := config.DefaultCurioConfig()
+
+	curioCfg.Addresses = append(curioCfg.Addresses, config.CurioAddresses{
+		PreCommitControl:      nil,
+		CommitControl:         nil,
+		TerminateControl:      nil,
+		DisableOwnerFallback:  false,
+		DisableWorkerFallback: false,
+		MinerAddresses:        []string{d.MinerID.String()},
+	})
+
+	sk, err := io.ReadAll(io.LimitReader(rand.Reader, 32))
+	if err != nil {
+		d.say(notice, "Failed to generate random bytes for secret: %s", err.Error())
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+
+	curioCfg.Apis.StorageRPCSecret = base64.StdEncoding.EncodeToString(sk)
+
+	ainfo, err := cliutil.GetAPIInfo(d.cctx, repo.FullNode)
+	if err != nil {
+		d.say(notice, "Failed to get API info for FullNode: %w", err)
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+
+	token, err := d.full.AuthNew(d.ctx, api.AllPermissions)
+	if err != nil {
+		d.say(notice, "Failed to verify the auth token from daemon node: %s", err.Error())
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+
+	curioCfg.Apis.ChainApiInfo = append(curioCfg.Apis.ChainApiInfo, fmt.Sprintf("%s:%s", string(token), ainfo.Addr))
+
+	// write config
+
+	configTOML := &bytes.Buffer{}
+	if err = toml.NewEncoder(configTOML).Encode(curioCfg); err != nil {
+		if err != nil {
+			d.say(notice, "Failed to encode the config: %s", err.Error())
+			d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+			os.Exit(1)
+		}
+	}
+
+	var titles []string
+	err = d.DB.Select(d.ctx, &titles, `SELECT title FROM harmony_config WHERE LENGTH(config) > 0`)
+	if err != nil {
+		d.say(notice, "Cannot reach the DB: %s", err.Error())
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+
+	if !lo.Contains(titles, "base") {
+		c := config.DefaultCurioConfig()
+		cb, err := config.ConfigUpdate(c, nil, config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+		if err != nil {
+			d.say(notice, "Failed to generate default config: %s", err.Error())
+			d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+			os.Exit(1)
+		}
+		cfg := string(cb)
+		_, err = d.DB.Exec(d.ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', $1)", cfg)
+		if err != nil {
+			d.say(notice, "Failed to insert 'base' config layer in database: %s", err.Error())
+			d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+			os.Exit(1)
+		}
+	}
+
+	_, err = d.DB.Exec(d.ctx, "INSERT INTO harmony_config (title, config) VALUES ($1, $2)", d.MinerID.String(), configTOML.String())
+	if err != nil {
+		d.say(notice, "Failed to insert '%s' config layer in database: %s", d.MinerID.String(), err.Error())
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+
+	stepCompleted(d, d.T("New Curio configuration layer '%s' created", d.MinerID.String()))
+}
+
+func getDBDetails(d *MigrationData) *config.HarmonyDB {
+	harmonyCfg := config.DefaultStorageMiner().HarmonyDB
+	for {
+		i, _, err := (&promptui.Select{
+			Label: d.T("Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)"),
+			Items: []string{
+				d.T("Host: %s", strings.Join(harmonyCfg.Hosts, ",")),
+				d.T("Port: %s", harmonyCfg.Port),
+				d.T("Username: %s", harmonyCfg.Username),
+				d.T("Password: %s", harmonyCfg.Password),
+				d.T("Database: %s", harmonyCfg.Database),
+				d.T("Continue to connect and update schema.")},
+			Size:      6,
+			Templates: d.selectTemplates,
+		}).Run()
+		if err != nil {
+			d.say(notice, "Database config error occurred, abandoning migration: %s ", err.Error())
+			os.Exit(1)
+		}
+		switch i {
+		case 0:
+			host, err := (&promptui.Prompt{
+				Label: d.T("Enter the Yugabyte database host(s)"),
+			}).Run()
+			if err != nil {
+				d.say(notice, "No host provided")
+				continue
+			}
+			harmonyCfg.Hosts = strings.Split(host, ",")
+		case 1, 2, 3, 4:
+			val, err := (&promptui.Prompt{
+				Label: d.T("Enter the Yugabyte database %s", []string{"port", "username", "password", "database"}[i-1]),
+			}).Run()
+			if err != nil {
+				d.say(notice, "No value provided")
+				continue
+			}
+			switch i {
+			case 1:
+				harmonyCfg.Port = val
+			case 2:
+				harmonyCfg.Username = val
+			case 3:
+				harmonyCfg.Password = val
+			case 4:
+				harmonyCfg.Database = val
+			}
+			continue
+		case 5:
+			db, err := harmonydb.NewFromConfig(harmonyCfg)
+			if err != nil {
+				if err.Error() == "^C" {
+					os.Exit(1)
+				}
+				d.say(notice, "Error connecting to Yugabyte database: %s", err.Error())
+				continue
+			}
+			d.DB = db
+			return &harmonyCfg
+		}
+	}
 }

@@ -16,7 +16,7 @@ COMMANDS:
    config        Manage node config by layers. The layer 'base' will always be applied at Curio start-up.
    test          Utility functions for testing
    web           Start Curio web interface
-   guided-setup  Run the guided setup for migrating from lotus-miner to Curio
+   guided-setup  Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner
    from-miner    Express a database config (for curio) from an existing miner.
    seal          Manage the sealing pipeline
    auth          Manage RPC permissions
@@ -324,7 +324,7 @@ OPTIONS:
 ## curio guided-setup
 ```
 NAME:
-   curio guided-setup - Run the guided setup for migrating from lotus-miner to Curio
+   curio guided-setup - Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner
 
 USAGE:
    curio guided-setup [command options] [arguments...]

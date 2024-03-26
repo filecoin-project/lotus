@@ -32,6 +32,7 @@ var actorCmd = &cli.Command{
 		spcli.ActorCompactAllocatedCmd(SPTActorGetter),
 		spcli.ActorProposeChangeBeneficiaryCmd(SPTActorGetter),
 		spcli.ActorConfirmChangeBeneficiaryCmd(SPTActorGetter),
+		spcli.ActorNewMinerCmd,
 	},
 }
 
