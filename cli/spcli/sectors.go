@@ -401,13 +401,6 @@ func SectorsListUpgradeBoundsCmd(getActorAddress ActorAddressGetter) *cli.Comman
 	}
 }
 
-func yesno(b bool) string {
-	if b {
-		return color.GreenString("YES")
-	}
-	return color.RedString("NO")
-}
-
 func SectorPreCommitsCmd(getActorAddress ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:  "precommits",

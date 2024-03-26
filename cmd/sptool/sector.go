@@ -302,8 +302,6 @@ var sectorsListCmd = &cli.Command{
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 
-			const verifiedPowerGainMul = 9
-
 			dw, _ := st.DealWeight.Float64()
 			vp, _ := st.VerifiedDealWeight.Float64()
 			// estimate := (st.Expiration-st.Activation <= 0) || sealing.IsUpgradeState(sealing.SectorState(st.State))
