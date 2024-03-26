@@ -7,6 +7,7 @@
 /lotus-shed
 /lotus-sim
 /curio
+/sptool
 /lotus-townhall
 /lotus-fountain
 /lotus-stats
@@ -36,8 +37,6 @@ build/paramfetch.sh
 /darwin
 /linux
 *.snap
-curio
-sptool
 devgen.car
 localnet.json
 
