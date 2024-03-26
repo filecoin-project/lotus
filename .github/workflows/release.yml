@@ -17,6 +17,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  # This enables the workflow to create GitHub releases
+  contents: write
+
 jobs:
   build:
     name: Build (${{ matrix.os }}/${{ matrix.arch }})

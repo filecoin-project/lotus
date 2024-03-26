@@ -19,6 +19,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   docker:
     name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}]
