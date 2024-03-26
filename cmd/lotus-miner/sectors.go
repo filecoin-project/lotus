@@ -37,6 +37,8 @@ import (
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
+const parallelSectorChecks = 300
+
 var sectorsCmd = &cli.Command{
 	Name:  "sectors",
 	Usage: "interact with sector store",
