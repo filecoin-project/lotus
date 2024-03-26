@@ -38,7 +38,7 @@ var ddls = []string{
 		height INTEGER NOT NULL,
 		tipset_key BLOB NOT NULL,
 		tipset_key_cid BLOB NOT NULL,
-		emitter_addr BLOB NOT NULL,
+		emitter INTEGER NOT NULL,
 		event_index INTEGER NOT NULL,
 		message_cid BLOB NOT NULL,
 		message_index INTEGER NOT NULL,
@@ -46,7 +46,7 @@ var ddls = []string{
 	)`,
 
 	createIndexEventHeightTipsetKey,
-	createIndexEventEmitterAddr,
+	createIndexEventEmitter,
 
 	`CREATE TABLE IF NOT EXISTS event_entry (
 		event_id INTEGER,
@@ -67,6 +67,7 @@ var ddls = []string{
 	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
 	`INSERT OR IGNORE INTO _meta (version) VALUES (2)`,
 	`INSERT OR IGNORE INTO _meta (version) VALUES (3)`,
+	`INSERT OR IGNORE INTO _meta (version) VALUES (4)`,
 }
 
 var (
@@ -74,16 +75,16 @@ var (
 )
 
 const (
-	schemaVersion = 3
+	schemaVersion = 4
 
-	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter=? AND event_index=? AND message_cid=? AND message_index=?`
+	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
 	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
 	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
-	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter=? AND event_index=? AND message_cid=? AND message_index=?`
 
 	createIndexEventHeightTipsetKey = `CREATE INDEX IF NOT EXISTS height_tipset_key ON event (height,tipset_key)`
-	createIndexEventEmitterAddr     = `CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)`
+	createIndexEventEmitter         = `CREATE INDEX IF NOT EXISTS event_emitter ON event (emitter)`
 	createIndexEventEntryKey        = `CREATE INDEX IF NOT EXISTS event_entry_key_index ON event_entry (key)`
 )
 
@@ -266,11 +267,19 @@ func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *store.C
 		return xerrors.Errorf("commit transaction: %w", err)
 	}
 
-	// during the migration, we have likely increased the WAL size a lot, so lets do some
+	ei.vacuumDBAndCheckpointWAL(ctx)
+
+	log.Infof("successfully migrated event index from version 1 to version 2 in %s", time.Since(now))
+
+	return nil
+}
+
+func (ei *EventIndex) vacuumDBAndCheckpointWAL(ctx context.Context) {
+	// During the large migrations, we have likely increased the WAL size a lot, so lets do some
 	// simple DB administration to free up space (VACUUM followed by truncating the WAL file)
-	// as this would be a good time to do it when no other writes are happening
+	// as this would be a good time to do it when no other writes are happening.
 	log.Infof("Performing DB vacuum and wal checkpointing to free up space after the migration")
-	_, err = ei.db.ExecContext(ctx, "VACUUM")
+	_, err := ei.db.ExecContext(ctx, "VACUUM")
 	if err != nil {
 		log.Warnf("error vacuuming database: %s", err)
 	}
@@ -278,10 +287,6 @@ func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *store.C
 	if err != nil {
 		log.Warnf("error checkpointing wal: %s", err)
 	}
-
-	log.Infof("Successfully migrated events to version 2 in %s", time.Since(now))
-
-	return nil
 }
 
 // migrateToVersion3 migrates the schema from version 2 to version 3 by creating two indices:
@@ -296,7 +301,7 @@ func (ei *EventIndex) migrateToVersion3(ctx context.Context) error {
 	defer func() { _ = tx.Rollback() }()
 
 	// create index on event.emitter_addr.
-	_, err = tx.ExecContext(ctx, createIndexEventEmitterAddr)
+	_, err = tx.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)")
 	if err != nil {
 		return xerrors.Errorf("create index event_emitter_addr: %w", err)
 	}
@@ -317,11 +322,111 @@ func (ei *EventIndex) migrateToVersion3(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("commit transaction: %w", err)
 	}
-	log.Infof("Successfully migrated events to version 3 in %s", time.Since(now))
+	log.Infof("successfully migrated event index from version 2 to version 3 in %s", time.Since(now))
 	return nil
 }
 
-func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStore) (*EventIndex, error) {
+// migrateToVersion4 migrates the schema from version 3 to version 4: indexing events by emitter actor ID.
+// This migration replaces the emitter_addr column in event table with a new column called `emitter`, which stores
+// the emitter's actor ID.
+// The migration
+// For each event
+func (ei *EventIndex) migrateToVersion4(ctx context.Context, chainStore *store.ChainStore, actorResolver ActorResolver) error {
+	now := time.Now()
+
+	head := chainStore.GetHeaviestTipSet()
+
+	tx, err := ei.db.BeginTx(ctx, nil)
+	if err != nil {
+		return xerrors.Errorf("begin transaction: %w", err)
+	}
+	// Rollback the transaction (a no-op if the transaction was already committed)
+	defer func() { _ = tx.Rollback() }()
+
+	// Alter the event table to add a new column called `emitter`
+	// Note: since `emitter` column does not accept NULL values, set the default to 0 so that the table
+	// can be altered. This means after the migration all the reverted events for which address resolution
+	// cannot be performed will end up with 0 as their emitter actor ID.
+	if _, err = tx.Exec("ALTER TABLE event ADD COLUMN emitter INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
+	stmtUpdateEmitterByID, err := tx.Prepare("UPDATE event SET emitter=? WHERE id=?")
+	if err != nil {
+		return xerrors.Errorf("prepare stmtUpdateEmitterByID: %w", err)
+	}
+
+	rows, err := tx.QueryContext(ctx, `SELECT id, emitter_addr FROM event WHERE reverted=false ORDER BY id DESC`)
+	if err != nil {
+		return xerrors.Errorf("select event emitter_addrs: %w", err)
+	}
+
+	for rows.Next() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		var row struct {
+			id          int64
+			emitterAddr []byte
+		}
+		if err := rows.Scan(&row.id, &row.emitterAddr); err != nil {
+			return xerrors.Errorf("read event emitter_addr row: %w", err)
+		}
+		addr, err := address.NewFromBytes(row.emitterAddr)
+		if err != nil {
+			return xerrors.Errorf("parse emitter_addr: %w", err)
+		}
+		emitter, err := actorResolver(ctx, addr, head)
+		if err != nil {
+			return xerrors.Errorf("resolve emitter from addr: %w", err)
+		}
+		updateRes, err := stmtUpdateEmitterByID.ExecContext(ctx, uint64(emitter), row.id)
+		if err != nil {
+			return xerrors.Errorf("resolve emitter from addr: %w", err)
+		}
+		affected, err := updateRes.RowsAffected()
+		if err != nil {
+			return xerrors.Errorf("rows affected: %w", err)
+		}
+		if affected != 1 {
+			log.Warnw("expected exactly one row to be affected as a result of emitter update", "affected", affected)
+		}
+	}
+
+	// Delete event.emitter_addr index introduced in version 3
+	if _, err = tx.ExecContext(ctx, "DROP INDEX IF EXISTS event_emitter_addr"); err != nil {
+		return xerrors.Errorf("drop event_emitter_addr index: %w", err)
+	}
+
+	// Delete the redundant emitter_addr column.
+	if _, err = tx.ExecContext(ctx, "ALTER TABLE event DROP COLUMN emitter_addr"); err != nil {
+		return xerrors.Errorf("drop event.emitter_addr column: %w", err)
+	}
+
+	// Create a new index index fo event.emitter, replacing the deleted event.emitter_addr.
+	if _, err = tx.ExecContext(ctx, createIndexEventEmitter); err != nil {
+		return xerrors.Errorf("create event_emitter index: %w", err)
+	}
+
+	// Increment the schema version in _meta table to 4.
+	if _, err = tx.Exec("INSERT OR IGNORE INTO _meta (version) VALUES (4)"); err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return xerrors.Errorf("commit transaction: %w", err)
+	}
+
+	ei.vacuumDBAndCheckpointWAL(ctx)
+
+	log.Infof("successfully migrated event index from version 3 to version 4 in %s", time.Since(now))
+	return nil
+}
+
+func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStore, actorResolver ActorResolver) (*EventIndex, error) {
 	db, err := sql.Open("sqlite3", path+"?mode=rwc")
 	if err != nil {
 		return nil, xerrors.Errorf("open sqlite3 database: %w", err)
@@ -362,7 +467,7 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 			err = eventIndex.migrateToVersion2(ctx, chainStore)
 			if err != nil {
 				_ = db.Close()
-				return nil, xerrors.Errorf("could not migrate sql data to version 2: %w", err)
+				return nil, xerrors.Errorf("could not migrate event index schema from version 1 to version 2: %w", err)
 			}
 			version = 2
 		}
@@ -375,6 +480,16 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 				return nil, xerrors.Errorf("could not migrate sql data to version 2: %w", err)
 			}
 			version = 3
+		}
+
+		if version == 3 {
+			log.Infof("upgrading event index from version 3 to version 4")
+			err = eventIndex.migrateToVersion4(ctx, chainStore, actorResolver)
+			if err != nil {
+				_ = db.Close()
+				return nil, xerrors.Errorf("could not migrate sql data from version 2 to version 3: %w", err)
+			}
+			version = 4
 		}
 
 		if version != schemaVersion {
@@ -399,7 +514,7 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
-func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
+func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool) error {
 	tx, err := ei.db.Begin()
 	if err != nil {
 		return xerrors.Errorf("begin transaction: %w", err)
@@ -422,9 +537,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return nil
 	}
 
-	// cache of lookups between actor id and f4 address
-	addressLookups := make(map[abi.ActorID]address.Address)
-
 	ems, err := te.messages(ctx)
 	if err != nil {
 		return xerrors.Errorf("load executed messages: %w", err)
@@ -434,17 +546,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// don't exist, otherwise mark them as not reverted
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
-			addr, found := addressLookups[ev.Emitter]
-			if !found {
-				var ok bool
-				addr, ok = resolver(ctx, ev.Emitter, te.rctTs)
-				if !ok {
-					// not an address we will be able to match against
-					continue
-				}
-				addressLookups[ev.Emitter] = addr
-			}
-
 			tsKeyCid, err := te.msgTs.Key().Cid()
 			if err != nil {
 				return xerrors.Errorf("tipset key cid: %w", err)
@@ -456,7 +557,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				te.msgTs.Height(),          // height
 				te.msgTs.Key().Bytes(),     // tipset_key
 				tsKeyCid.Bytes(),           // tipset_key_cid
-				addr.Bytes(),               // emitter_addr
+				ev.Emitter,                 // emitter
 				evIdx,                      // event_index
 				em.Message().Cid().Bytes(), // message_cid
 				msgIdx,                     // message_index
@@ -471,7 +572,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Height(),          // height
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
-					addr.Bytes(),               // emitter_addr
+					ev.Emitter,                 // emitter
 					evIdx,                      // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
@@ -506,7 +607,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Height(),          // height
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
-					addr.Bytes(),               // emitter_addr
+					ev.Emitter,                 // emitter
 					evIdx,                      // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
@@ -536,7 +637,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	return nil
 }
 
-// prefillFilter fills a filter's collection of events from the historic index
+// prefillFilter fills a filter's collection of events from the historic index.
 func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
 	var (
 		clauses, joins []string
@@ -557,18 +658,26 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		}
 	}
 
+	// Resolve emitters from filter addresses at the latest TipSet.
+	// TODO investigate if it is safe to use the current tipset; what about finality?
+	emitters, err := f.emitters(ctx, nil)
+	if err != nil {
+		return xerrors.Errorf("emitters clauses: %w", err)
+	}
+	if len(emitters) > 0 {
+		subclauses := make([]string, 0, len(emitters))
+		for emitter := range emitters {
+			subclauses = append(subclauses, "emitter=?")
+			values = append(values, emitter)
+		}
+		clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
+		// Explicitly exclude reverted events, since at least one emitter is present and reverts cannot be considered.
+		excludeReverted = true
+	}
+
 	if excludeReverted {
 		clauses = append(clauses, "event.reverted=?")
 		values = append(values, false)
-	}
-
-	if len(f.addresses) > 0 {
-		subclauses := make([]string, 0, len(f.addresses))
-		for _, addr := range f.addresses {
-			subclauses = append(subclauses, "emitter_addr=?")
-			values = append(values, addr.Bytes())
-		}
-		clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 	}
 
 	if len(f.keysWithCodec) > 0 {
@@ -595,7 +704,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			event.height,
 			event.tipset_key,
 			event.tipset_key_cid,
-			event.emitter_addr,
+			event.emitter,
 			event.event_index,
 			event.message_cid,
 			event.message_index,
@@ -645,7 +754,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			height       uint64
 			tipsetKey    []byte
 			tipsetKeyCid []byte
-			emitterAddr  []byte
+			emitter      uint64
 			eventIndex   int
 			messageCid   []byte
 			messageIndex int
@@ -661,7 +770,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			&row.height,
 			&row.tipsetKey,
 			&row.tipsetKeyCid,
-			&row.emitterAddr,
+			&row.emitter,
 			&row.eventIndex,
 			&row.messageCid,
 			&row.messageIndex,
@@ -688,15 +797,11 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 
 			currentID = row.id
 			ce = &CollectedEvent{
+				Emitter:  abi.ActorID(row.emitter),
 				EventIdx: row.eventIndex,
 				Reverted: row.reverted,
 				Height:   abi.ChainEpoch(row.height),
 				MsgIdx:   row.messageIndex,
-			}
-
-			ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
-			if err != nil {
-				return xerrors.Errorf("parse emitter addr: %w", err)
 			}
 
 			ce.TipSetKey, err = types.TipSetKeyFromBytes(row.tipsetKey)

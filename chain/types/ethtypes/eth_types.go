@@ -382,8 +382,9 @@ func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 			return EthAddress{}, xerrors.Errorf("f410f addresses cannot embed masked-ID payloads: %s", ethAddr)
 		}
 		return ethAddr, nil
+	default:
+		return EthAddress{}, ErrInvalidAddress
 	}
-	return EthAddress{}, ErrInvalidAddress
 }
 
 // ParseEthAddress parses an Ethereum address from a hex string.
@@ -615,7 +616,7 @@ type EthFilterSpec struct {
 	BlockHash *EthHash `json:"blockHash,omitempty"`
 }
 
-// EthAddressSpec represents a list of addresses.
+// EthAddressList represents a list of addresses.
 // The JSON decoding must treat a string as equivalent to an array with one value, for example
 // "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
 type EthAddressList []EthAddress
@@ -642,7 +643,7 @@ func (e *EthAddressList) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// TopicSpec represents a specification for matching by topic. An empty spec means all topics
+// EthTopicSpec represents a specification for matching by topic. An empty spec means all topics
 // will be matched. Otherwise topics are matched conjunctively in the first dimension of the
 // slice and disjunctively in the second dimension. Topics are matched in order.
 // An event log with topics [A, B] will be matched by the following topic specs:
@@ -682,7 +683,7 @@ func (e *EthHashList) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// FilterResult represents the response from executing a filter: a list of block hashes, a list of transaction hashes
+// EthFilterResult represents the response from executing a filter: a list of block hashes, a list of transaction hashes
 // or a list of logs
 // This is a union type. Only one field will be populated.
 // The JSON encoding must produce an array of the populated field.

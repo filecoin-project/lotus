@@ -168,6 +168,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gotest.tools v2.2.0+incompatible
+	lukechampine.com/blake3 v1.2.1
 )
 
 require (
@@ -333,7 +334,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
-	lukechampine.com/blake3 v1.2.1 // indirect
 )
 
 // https://github.com/magik6k/reflink/commit/cff5a40f3eeca17f44fc95a57ff3878e5ac761dc

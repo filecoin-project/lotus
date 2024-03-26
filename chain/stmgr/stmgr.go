@@ -570,3 +570,21 @@ func (sm *StateManager) GetRandomnessDigestFromTickets(ctx context.Context, rand
 
 	return r.GetChainRandomness(ctx, randEpoch)
 }
+
+func (sm *StateManager) ResolveActorID(ctx context.Context, emitter address.Address, ts *types.TipSet) (abi.ActorID, error) {
+	var addr address.Address
+	if emitter.Protocol() == address.ID {
+		addr = emitter // already an ID address
+	} else {
+		var err error
+		addr, err = sm.LookupID(ctx, emitter, ts)
+		if err != nil {
+			return 0, xerrors.Errorf("resolve actor id: lookup id: %w", err)
+		}
+	}
+	actor, err := address.IDFromAddress(addr)
+	if err != nil {
+		return 0, xerrors.Errorf("resolve actor id: id from addr: %w", err)
+	}
+	return abi.ActorID(actor), nil
+}

@@ -117,7 +117,7 @@ func (a *ActorEventHandler) GetActorEventsRaw(ctx context.Context, evtFilter *ty
 			log.Warnf("failed to remove filter: %s", err)
 		}
 	}()
-	return getCollected(ctx, f), nil
+	return getCollectedEvents(ctx, f)
 }
 
 type filterParams struct {
@@ -249,7 +249,11 @@ func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilt
 
 		// Handle any historical events that our filter may have picked up -----------------------------
 
-		evs := getCollected(ctx, fm)
+		evs, err := getCollectedEvents(ctx, fm)
+		if err != nil {
+			log.Errorw("failed to get collected events", "err", err)
+			return
+		}
 		if len(evs) > 0 {
 			// ensure we get all events out on the channel within one block's time (30s on mainnet)
 			timer := a.clock.Timer(a.blockDelay)
@@ -296,9 +300,15 @@ func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilt
 				return false
 			}
 
+			emitter, err := address.NewIDAddress(uint64(ce.Emitter))
+			if err != nil {
+				log.Errorw("failed to instantiate address from emitter actor id", "emitter", ce.Emitter, "err", err)
+				return false
+			}
+
 			buffer = append(buffer, &types.ActorEvent{
 				Entries:   ce.Entries,
-				Emitter:   ce.EmitterAddr,
+				Emitter:   emitter,
 				Reverted:  ce.Reverted,
 				Height:    ce.Height,
 				TipSetKey: ce.TipSetKey,
@@ -356,21 +366,22 @@ func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilt
 	return out, nil
 }
 
-func getCollected(ctx context.Context, f filter.EventFilter) []*types.ActorEvent {
+func getCollectedEvents(ctx context.Context, f filter.EventFilter) ([]*types.ActorEvent, error) {
 	ces := f.TakeCollectedEvents(ctx)
-
-	var out []*types.ActorEvent
-
+	out := make([]*types.ActorEvent, 0, len(ces))
 	for _, e := range ces {
+		emitter, err := address.NewIDAddress(uint64(e.Emitter))
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, &types.ActorEvent{
 			Entries:   e.Entries,
-			Emitter:   e.EmitterAddr,
+			Emitter:   emitter,
 			Reverted:  e.Reverted,
 			Height:    e.Height,
 			TipSetKey: e.TipSetKey,
 			MsgCid:    e.MsgCid,
 		})
 	}
-
-	return out
+	return out, nil
 }
