@@ -36,8 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
-const parallelSectorChecks = 300
-
 type OnDiskInfoGetter func(cctx *cli.Context, id abi.SectorNumber, onChainInfo bool) (api.SectorInfo, error)
 
 func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskInfoGetter) *cli.Command {
