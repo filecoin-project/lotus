@@ -1,10 +1,11 @@
-name: Install Ubuntu Dependencies
-description: Install Ubuntu dependencies for Filecoin Lotus
+name: Install System Dependencies
+description: Install System dependencies for Filecoin Lotus
 
 runs:
   using: composite
   steps:
-    - run: |
+    - if: runner.os == 'Linux'
+      run: |
         sudo apt-get update -y
         sudo apt-get install -y ocl-icd-opencl-dev libhwloc-dev pkg-config
       shell: bash
