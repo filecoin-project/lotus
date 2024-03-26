@@ -22,7 +22,7 @@
 - [ ] run `make gen && make docsgen-cli`
 - [ ] Generate changelog using the script at scripts/mkreleaselog
 - [ ] Add contents of generated text to lotus/CHANGELOG.md in addition to other details
-- [ ] Commit using PR 
+- [ ] Commit using PR
 - [ ] tag commit with `vX.Y.Z-rcN`
 - [ ] cut a pre-release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true)
 
