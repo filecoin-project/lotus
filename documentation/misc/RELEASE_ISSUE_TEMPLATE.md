@@ -26,6 +26,10 @@
 - [ ] tag commit with `vX.Y.Z-rcN`
 - [ ] cut a pre-release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true)
 
+**Testing**
+
+Test the release candidate thoroughly, including automated and manual tests to ensure stability and functionality across various environments and scenarios.
+
 **Stable Release**
   - [ ] Final preparation
     - [ ] Verify that version string in [`version.go`](https://github.com/filecoin-project/lotus/blob/master/build/version.go) has been updated.
