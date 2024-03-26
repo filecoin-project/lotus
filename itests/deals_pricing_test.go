@@ -1,3 +1,5 @@
+//go:build integration && parameters
+
 // stm: #integration
 package itests
 

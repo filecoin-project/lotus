@@ -1,3 +1,5 @@
+//go:build integration && xlarge
+
 // stm: #integration
 package itests
 

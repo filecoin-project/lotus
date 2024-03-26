@@ -53,6 +53,7 @@ jobs:
                 "skip_conformance": "0"
               }
             ]
+        run: |
           # Mapping from test group names to custom runner labels
           # The jobs default to running on the default hosted runners (4 CPU, 16 RAM).
           # We use self-hosted xlarge (4 CPU, 8 RAM; and large - 2 CPU, 4 RAM) runners
@@ -67,101 +68,54 @@ jobs:
           # - itest-worker (✅)
           # - unit-cli (❌)
           # - unit-rest (❌)
-          runners: |
-            {
-              "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
+          runners='{
+            "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
+            "multicore-sdr": ["self-hosted", "linux", "x64", "xlarge"],
+            "unit-node": ["self-hosted", "linux", "x64", "xlarge"],
+          '
+          # Detect integration test groups that require non-default runners
+          for file in $(find ./itests -name '*_test.go'); do
+              if grep -q '//go:build integration .*xlarge' $file; then
+                  base_name=$(basename -- "$file")
+                  test_name="${base_name%_test.go}"
+                  runner_size=$(grep -o '.*xlarge' $file | awk '{print $NF}')
+                  runners+=$'\n'"\"itest-$test_name\": [\"self-hosted\", \"linux\", \"x64\", \"$runner_size\"],"
+              fi
+          done
+          runners=${runners%?}
+          runners+=$'\n'"}"
 
-              "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-sector_import_simple": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
-              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
+          # A list of test groups that require YugabyteDB to be started
+          yugabytedb=""
+          for file in $(find ./itests -name '*_test.go'); do
+              if grep -q '//go:build integration .* db' $file; then
+                  base_name=$(basename -- "$file")
+                  test_name="${base_name%_test.go}"
+                  yugabytedb+=$'\n'"\"itest-$test_name\","
+              fi
+          done
+          yugabytedb="[${yugabytedb%?}]"
 
-              "itest-batch_deal": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-cli": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_512mb": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_anycid": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_invalid_utf8_label": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_max_staging_deals": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_partial_retrieval": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_publish": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-deals_remote_retrieval": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-decode_params": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-dup_mpool_messages": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_account_abstraction": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_api": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_balance": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_bytecode": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_config": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_conformance": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_deploy": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_fee_history": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-eth_transactions": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-fevm_address": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-fevm_events": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-gas_estimation": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-msgindex": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-multisig": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-net": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-nonce": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-path_detach_redeclare": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-sector_numassign": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-self_sent_txn": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-verifreg": ["self-hosted", "linux", "x64", "xlarge"],
-              "multicore-sdr": ["self-hosted", "linux", "x64", "xlarge"],
-              "unit-node": ["self-hosted", "linux", "x64", "xlarge"]
-            }
-          # A list of test groups that require YugabyteDB to be running
-          # In CircleCI, all jobs had yugabytedb running as a sidecar.
-          yugabytedb: |
-            ["itest-harmonydb", "itest-harmonytask"]
           # A list of test groups that require Proof Parameters to be fetched
           # In CircleCI, only the following jobs had get-params set:
           # - unit-cli (✅)
           # - unit-storage (✅)
           # - itest-sector_pledge (✅)
           # - itest-wdpost (✅)
-          parameters: |
-            [
-              "conformance",
-              "itest-api",
-              "itest-deals_offline",
-              "itest-deals_padding",
-              "itest-deals_partial_retrieval_dm-level",
-              "itest-deals_pricing",
-              "itest-deals",
-              "itest-direct_data_onboard_verified",
-              "itest-direct_data_onboard",
-              "itest-net",
-              "itest-path_detach_redeclare",
-              "itest-path_type_filters",
-              "itest-sealing_resources",
-              "itest-sector_finalize_early",
-              "itest-sector_import_full",
-              "itest-sector_import_simple",
-              "itest-sector_pledge",
-              "itest-sector_unseal",
-              "itest-wdpost_no_miner_storage",
-              "itest-wdpost_worker_config",
-              "itest-wdpost",
-              "itest-worker_upgrade",
-              "itest-worker",
-              "multicore-sdr",
-              "unit-cli",
-              "unit-storage"
-            ]
-        run: |
+          parameters='
+            "conformance",
+            "multicore-sdr",
+            "unit-cli",
+            "unit-storage",'
+          for file in $(find ./itests -name '*_test.go'); do
+              if grep -q '//go:build integration .* parameters' $file; then
+                  base_name=$(basename -- "$file")
+                  test_name="${base_name%_test.go}"
+                  parameters+=$'\n'"\"itest-$test_name\","
+              fi
+          done
+          parameters="[${parameters%?}]"
+
           # Create a list of integration test groups
           itests="$(
             find ./itests -name "*_test.go" | \
