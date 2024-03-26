@@ -609,6 +609,73 @@ func TestDisablePreMigration(t *testing.T) {
 	require.Equal(t, 1, len(counter))
 }
 
+func TestDisableMigration(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelInfo)
+
+	cg, err := gen.NewGenerator()
+	require.NoError(t, err)
+
+	err = os.Setenv(EnvDisableMigrations, "1")
+	require.NoError(t, err)
+
+	defer func() {
+		err := os.Unsetenv(EnvDisableMigrations)
+		require.NoError(t, err)
+	}()
+
+	counter := make(chan struct{}, 10)
+
+	sm, err := NewStateManager(
+		cg.ChainStore(),
+		consensus.NewTipSetExecutor(filcns.RewardFunc),
+		cg.StateManager().VMSys(),
+		UpgradeSchedule{{
+			Network: network.Version1,
+			Height:  testForkHeight,
+			Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
+				root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+				panic("should be skipped")
+			},
+			PreMigrations: []PreMigration{{
+				StartWithin: 20,
+				PreMigration: func(ctx context.Context, _ *StateManager, _ MigrationCache,
+					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+					return nil
+				},
+			}}},
+		},
+		cg.BeaconSchedule(),
+		datastore.NewMapDatastore(),
+		index.DummyMsgIndex,
+	)
+	require.NoError(t, err)
+	require.NoError(t, sm.Start(context.Background()))
+	defer func() {
+		require.NoError(t, sm.Stop(context.Background()))
+	}()
+
+	inv := consensus.NewActorRegistry()
+	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
+	inv.Register(actorstypes.Version0, nil, registry)
+
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
+		require.NoError(t, err)
+		nvm.SetInvoker(inv)
+		return nvm, nil
+	})
+
+	cg.SetStateManager(sm)
+
+	for i := 0; i < 50; i++ {
+		_, err := cg.NextTipSet()
+		require.NoError(t, err)
+	}
+
+	// should be 0 because we are skipping the migration
+	require.Equal(t, 0, len(counter))
+}
+
 func TestMigrtionCache(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelInfo)
 
