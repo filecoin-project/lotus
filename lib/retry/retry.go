@@ -11,14 +11,14 @@ import (
 
 var log = logging.Logger("retry")
 
-func Retry[T any](ctx context.Context, attempts int, initialBackoff time.Duration, errorTypes []error, f func() (T, error)) (result T, err error) {
+func Retry[T any](ctx context.Context, attempts int, initialBackoff time.Duration, errorTypes []error, f func(isRetr bool) (T, error)) (result T, err error) {
 	for i := 0; i < attempts; i++ {
 		if i > 0 {
 			log.Info("Retrying after error:", err)
 			time.Sleep(initialBackoff)
 			initialBackoff *= 2
 		}
-		result, err = f()
+		result, err = f(i > 0)
 		if err == nil || !api.ErrorIsIn(err, errorTypes) {
 			return result, err
 		}
