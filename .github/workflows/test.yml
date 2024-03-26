@@ -193,29 +193,29 @@ jobs:
           # Output the groups
           echo "groups=$groups"
           echo "groups=$(jq -nc --argjson g "$groups" '$g')" >> $GITHUB_OUTPUT
-  fetch:
-    name: Fetch Dependencies
+  cache:
+    name: Cache Dependencies
     runs-on: ubuntu-latest
     outputs:
-      parameters_key: ${{ steps.parameters.outputs.key }}
-      parameters_path: ${{ steps.parameters.outputs.path }}
-      filcrypto_key: ${{ steps.filcrypto.outputs.key }}
-      filcrypto_path: ${{ steps.filcrypto.outputs.path }}
+      fetch_params_key: ${{ steps.fetch_params.outputs.key }}
+      fetch_params_path: ${{ steps.fetch_params.outputs.path }}
+      make_deps_key: ${{ steps.make_deps.outputs.key }}
+      make_deps_path: ${{ steps.make_deps.outputs.path }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - id: parameters
+      - id: fetch_params
         env:
-          CACHE_KEY: filecoin-proof-parameters-${{ hashFiles('./extern/filecoin-ffi/parameters.json') }}
+          CACHE_KEY: fetch-params-${{ hashFiles('./extern/filecoin-ffi/parameters.json') }}
           CACHE_PATH: |
             /var/tmp/filecoin-proof-parameters/
         run: |
           echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
-      - id: filcrypto
+      - id: make_deps
         env:
-          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-filcrypto-${{ hashFiles('./extern/filecoin-ffi/install-filcrypto') }}-${{ hashFiles('./extern/filecoin-ffi/rust/rustc-target-features-optimized.json') }}
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./extern/filecoin-ffi/install-filcrypto') }}-${{ hashFiles('./extern/filecoin-ffi/rust/rustc-target-features-optimized.json') }}
           CACHE_PATH: |
             ./extern/filecoin-ffi/filcrypto.h
             ./extern/filecoin-ffi/libfilcrypto.a
@@ -223,42 +223,42 @@ jobs:
         run: |
           echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
-      - id: restore_parameters
+      - id: restore_fetch_params
         uses: actions/cache/restore@v4
         with:
-          key: ${{ steps.parameters.outputs.key }}
-          path: ${{ steps.parameters.outputs.path }}
+          key: ${{ steps.fetch_params.outputs.key }}
+          path: ${{ steps.fetch_params.outputs.path }}
           lookup-only: true
-      - id: restore_filcrypto
+      - id: restore_make_deps
         uses: actions/cache/restore@v4
         with:
-          key: ${{ steps.filcrypto.outputs.key }}
-          path: ${{ steps.filcrypto.outputs.path }}
+          key: ${{ steps.make_deps.outputs.key }}
+          path: ${{ steps.make_deps.outputs.path }}
           lookup-only: true
-      - if: steps.restore_parameters.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         uses: ./.github/actions/install-ubuntu-deps
-      - if: steps.restore_parameters.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         uses: ./.github/actions/install-go
-      - if: steps.restore_parameters.outputs.cache-hit != 'true' || steps.restore_filcrypto.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: make deps
-      - if: steps.restore_parameters.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: make lotus
-      - if: steps.restore_parameters.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: ./lotus fetch-params 2048
-      - if: steps.restore_parameters.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: ${{ steps.parameters.outputs.key }}
-          path: ${{ steps.parameters.outputs.path }}
-      - if: steps.restore_filcrypto.outputs.cache-hit != 'true'
+          key: ${{ steps.fetch_params.outputs.key }}
+          path: ${{ steps.fetch_params.outputs.path }}
+      - if: steps.restore_make_deps.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: ${{ steps.filcrypto.outputs.key }}
-          path: ${{ steps.filcrypto.outputs.path }}
+          key: ${{ steps.make_deps.outputs.key }}
+          path: ${{ steps.make_deps.outputs.path }}
   test:
-    needs: [discover, fetch]
+    needs: [discover, cache]
     name: Test (${{ matrix.name }})
     runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
     strategy:
@@ -272,18 +272,18 @@ jobs:
       - uses: ./.github/actions/install-ubuntu-deps
       - uses: ./.github/actions/install-go
       - run: go install gotest.tools/gotestsum@latest
-      - name: Install filcrypto
+      - name: Restore cached make deps outputs
         uses: actions/cache/restore@v4
         with:
-          key: ${{ needs.fetch.outputs.filcrypto_key }}
-          path: ${{ needs.fetch.outputs.filcrypto_path }}
+          key: ${{ needs.cache.outputs.make_deps_key }}
+          path: ${{ needs.cache.outputs.make_deps_path }}
           fail-on-cache-miss: true
       - if: ${{ matrix.needs_parameters }}
-        name: Fetch Proof Parameters
+        name: Restore cached fetch params outputs
         uses: actions/cache/restore@v4
         with:
-          key: ${{ needs.fetch.outputs.parameters_key }}
-          path: ${{ needs.fetch.outputs.parameters_path }}
+          key: ${{ needs.cache.outputs.fetch_params_key }}
+          path: ${{ needs.cache.outputs.fetch_params_path }}
           fail-on-cache-miss: true
       - if: ${{ matrix.needs_yugabytedb }}
         uses: ./.github/actions/start-yugabytedb
