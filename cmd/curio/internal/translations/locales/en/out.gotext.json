@@ -464,20 +464,10 @@
             "fuzzy": true
         },
         {
-            "id": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
-            "message": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
-            "translation": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
+            "id": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
+            "message": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
+            "translation": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
             "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Post",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "\"post\""
-                }
-            ],
             "fuzzy": true
         },
         {

@@ -387,7 +387,7 @@ func doc(d *MigrationData) {
 
 	d.say(plain, "Filecoin %s channels: %s and %s", "Slack", "#fil-curio-help", "#fil-curio-dev")
 
-	d.say(plain, "Start multiple Curio instances with the '%s' layer to redundancy.", "post")
+	d.say(plain, "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'")
 	//d.say(plain, "Point your browser to your web GUI to complete setup with %s and advanced featues.", "Boost")
 	d.say(plain, "One database can serve multiple miner IDs: Run a migration for each lotus-miner.")
 }

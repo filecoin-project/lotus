@@ -999,6 +999,12 @@
       "translation": "置信度时期",
       "message": "Confidence epochs",
       "placeholder": null
+    },
+    {
+      "id": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
+      "translation": "通过冗余增加可靠性：使用至少后层启动多台机器：'curio run --layers=post'",
+      "message": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
+      "placeholder": null
     }
   ]
 }
