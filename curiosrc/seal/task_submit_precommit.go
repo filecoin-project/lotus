@@ -28,6 +28,7 @@ import (
 )
 
 type SubmitPrecommitTaskApi interface {
+	ChainHead(context.Context) (*types.TipSet, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
@@ -58,6 +59,8 @@ func NewSubmitPrecommitTask(sp *SealPoller, db *harmonydb.DB, api SubmitPrecommi
 
 func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
+
+	// 1. Load sector info
 
 	var sectorParamsArr []struct {
 		SpID         int64                   `db:"sp_id"`
@@ -95,6 +98,8 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 	if err != nil {
 		return false, xerrors.Errorf("parsing unsealed CID: %w", err)
 	}
+
+	// 2. Prepare message params
 
 	params := miner.PreCommitSectorBatchParams2{}
 
@@ -157,6 +162,26 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		params.Sectors[0].Expiration = minExpiration
 	}
 
+	// 3. Check precommit
+
+	{
+		record, err := s.checkPrecommit(ctx, params)
+		if err != nil {
+			if record {
+				_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
+					SET failed = TRUE, failed_at = NOW(), failed_reason = 'precommit-check', failed_reason_msg = $1
+					WHERE task_id_precommit_msg = $2`, err.Error(), taskID)
+				if perr != nil {
+					return false, xerrors.Errorf("persisting precommit check error: %w", perr)
+				}
+			}
+
+			return record, xerrors.Errorf("checking precommit: %w", err)
+		}
+	}
+
+	// 4. Prepare and send message
+
 	var pbuf bytes.Buffer
 	if err := params.MarshalCBOR(&pbuf); err != nil {
 		return false, xerrors.Errorf("serializing params: %w", err)
@@ -205,6 +230,29 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 	_, err = s.db.Exec(ctx, `INSERT INTO message_waits (signed_message_cid) VALUES ($1)`, mcid)
 	if err != nil {
 		return false, xerrors.Errorf("inserting into message_waits: %w", err)
+	}
+
+	return true, nil
+}
+
+func (s *SubmitPrecommitTask) checkPrecommit(ctx context.Context, params miner.PreCommitSectorBatchParams2) (record bool, err error) {
+	if len(params.Sectors) != 1 {
+		return false, xerrors.Errorf("expected 1 sector")
+	}
+
+	preCommitInfo := params.Sectors[0]
+
+	head, err := s.api.ChainHead(ctx)
+	if err != nil {
+		return false, xerrors.Errorf("getting chain head: %w", err)
+	}
+	height := head.Height()
+
+	//never commit P2 message before, check ticket expiration
+	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
+
+	if preCommitInfo.SealRandEpoch < ticketEarliest {
+		return true, xerrors.Errorf("ticket expired: seal height: %d, head: %d", preCommitInfo.SealRandEpoch+policy.SealRandomnessLookback, height)
 	}
 
 	return true, nil

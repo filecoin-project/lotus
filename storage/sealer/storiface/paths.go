@@ -25,3 +25,15 @@ type SectorLock struct {
 type SectorLocks struct {
 	Locks []SectorLock
 }
+
+type AcquireSettings struct {
+	Into *PathsWithIDs
+}
+
+type AcquireOption func(*AcquireSettings)
+
+func AcquireInto(pathIDs PathsWithIDs) AcquireOption {
+	return func(settings *AcquireSettings) {
+		settings.Into = &pathIDs
+	}
+}
