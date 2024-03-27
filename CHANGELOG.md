@@ -6,6 +6,14 @@
 
 ## Improvements
 
+# v1.26.1 / 2024-03-27
+
+**This is a patch release for the Calibration network user.** The Calibration network is scheduled for an upgrade to include the two additional built-in actor events to ease the transition and observability of DDO for the ecosystem ([#964](https://github.com/filecoin-project/FIPs/pull/964) and [#968](https://github.com/filecoin-project/FIPs/pull/968)).
+
+The agreed-upon epoch between the Filecoin implementer team for the update is `1493854`, corresponding to `2024-04-03T11:00:00Z`. All Calibration network users need to upgrade to this patch release before that.
+
+ **Lotus Mainnet Users**: For users on the Mainnet, the [Lotus v1.26.0](https://github.com/filecoin-project/lotus/releases/tag/v1.26.0) release already includes the aforementioned events in preparation for the Mainnet nv22 upgrade. Therefore, both v1.26.0 and v1.26.1 versions are suitable for use on the Mainnet for the coming network version 22 upgrade.
+
 # v1.26.0 / 2024-03-21
 
 This is the stable release for the upcoming MANDATORY Filecoin network upgrade v22, codenamed Dragon 🐉, at `epoch 3817920 - 2024-04-11 - 14:00:00Z`
