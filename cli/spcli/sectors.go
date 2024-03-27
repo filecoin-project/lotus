@@ -18,10 +18,13 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -1260,6 +1263,133 @@ func SectorsCompactPartitionsCmd(getActorAddress ActorAddressGetter) *cli.Comman
 
 			return nil
 
+		},
+	}
+}
+
+func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
+	return &cli.Command{
+		Name:      "terminate",
+		Usage:     "Forcefully terminate a sector (WARNING: This means losing power and pay a one-time termination penalty(including collateral) for the terminated sector)",
+		ArgsUsage: "[sectorNum1 sectorNum2 ...]",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "actor",
+				Usage: "specify the address of miner actor",
+			},
+			&cli.BoolFlag{
+				Name:  "really-do-it",
+				Usage: "pass this flag if you know what you are doing",
+			},
+			&cli.StringFlag{
+				Name:  "from",
+				Usage: "specify the address to send the terminate message from",
+			},
+		},
+		Action: func(cctx *cli.Context) error {
+			if cctx.NArg() < 1 {
+				return lcli.ShowHelp(cctx, fmt.Errorf("at least one sector must be specified"))
+			}
+
+			var maddr address.Address
+			if act := cctx.String("actor"); act != "" {
+				var err error
+				maddr, err = address.NewFromString(act)
+				if err != nil {
+					return fmt.Errorf("parsing address %s: %w", act, err)
+				}
+			}
+
+			if !cctx.Bool("really-do-it") {
+				return fmt.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
+			}
+
+			nodeApi, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			ctx := lcli.ReqContext(cctx)
+
+			if maddr.Empty() {
+				maddr, err = getActorAddress(cctx)
+			}
+
+			mi, err := nodeApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			terminationDeclarationParams := []miner2.TerminationDeclaration{}
+
+			for _, sn := range cctx.Args().Slice() {
+				sectorNum, err := strconv.ParseUint(sn, 10, 64)
+				if err != nil {
+					return fmt.Errorf("could not parse sector number: %w", err)
+				}
+
+				sectorbit := bitfield.New()
+				sectorbit.Set(sectorNum)
+
+				loca, err := nodeApi.StateSectorPartition(ctx, maddr, abi.SectorNumber(sectorNum), types.EmptyTSK)
+				if err != nil {
+					return fmt.Errorf("get state sector partition %s", err)
+				}
+
+				para := miner2.TerminationDeclaration{
+					Deadline:  loca.Deadline,
+					Partition: loca.Partition,
+					Sectors:   sectorbit,
+				}
+
+				terminationDeclarationParams = append(terminationDeclarationParams, para)
+			}
+
+			terminateSectorParams := &miner2.TerminateSectorsParams{
+				Terminations: terminationDeclarationParams,
+			}
+
+			sp, err := actors.SerializeParams(terminateSectorParams)
+			if err != nil {
+				return xerrors.Errorf("serializing params: %w", err)
+			}
+
+			var fromAddr address.Address
+			if from := cctx.String("from"); from != "" {
+				var err error
+				fromAddr, err = address.NewFromString(from)
+				if err != nil {
+					return fmt.Errorf("parsing address %s: %w", from, err)
+				}
+			} else {
+				fromAddr = mi.Worker
+			}
+
+			smsg, err := nodeApi.MpoolPushMessage(ctx, &types.Message{
+				From:   fromAddr,
+				To:     maddr,
+				Method: builtin.MethodsMiner.TerminateSectors,
+
+				Value:  big.Zero(),
+				Params: sp,
+			}, nil)
+			if err != nil {
+				return xerrors.Errorf("mpool push message: %w", err)
+			}
+
+			fmt.Println("sent termination message:", smsg.Cid())
+
+			wait, err := nodeApi.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
+			if err != nil {
+				return err
+			}
+
+			if wait.Receipt.ExitCode.IsError() {
+				return fmt.Errorf("terminate sectors message returned exit %d", wait.Receipt.ExitCode)
+			}
+
+			return nil
 		},
 	}
 }

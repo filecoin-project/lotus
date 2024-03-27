@@ -73,7 +73,7 @@ func getOnDiskInfo(cctx *cli.Context, id abi.SectorNumber, onChainInfo bool) (ap
 		return api.SectorInfo{}, err
 	}
 	defer closer()
-	return minerApi.SectorsStatus(cctx.Context, abi.SectorNumber(id), onChainInfo)
+	return minerApi.SectorsStatus(cctx.Context, id, onChainInfo)
 }
 
 var sectorsPledgeCmd = &cli.Command{
