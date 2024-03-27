@@ -27,7 +27,7 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: '{{ if index .Env "GITHUB_WORKSPACE"  }}{{ .Env.GITHUB_WORKSPACE }}{{ else }}/tmp/workspace{{ end }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus'
+      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus'
   - id: lotus-miner
     binary: lotus-miner
     builder: prebuilt
@@ -43,7 +43,7 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: '{{ if index .Env "GITHUB_WORKSPACE"  }}{{ .Env.GITHUB_WORKSPACE }}{{ else }}/tmp/workspace{{ end }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner'
+      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner'
   - id: lotus-worker
     binary: lotus-worker
     builder: prebuilt
@@ -59,7 +59,7 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: '{{ if index .Env "GITHUB_WORKSPACE"  }}{{ .Env.GITHUB_WORKSPACE }}{{ else }}/tmp/workspace{{ end }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker'
+      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker'
 
 archives:
   - id: primary

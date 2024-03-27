@@ -7,10 +7,12 @@
 <h1 align="center">Project Lotus - 莲</h1>
 
 <p align="center">
-  <a href="https://circleci.com/gh/filecoin-project/lotus"><img src="https://circleci.com/gh/filecoin-project/lotus.svg?style=svg"></a>
-  <a href="https://codecov.io/gh/filecoin-project/lotus"><img src="https://codecov.io/gh/filecoin-project/lotus/branch/master/graph/badge.svg"></a>
-  <a href="https://goreportcard.com/report/github.com/filecoin-project/lotus"><img src="https://goreportcard.com/badge/github.com/filecoin-project/lotus" /></a>  
-  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.18.8-blue.svg" /></a>
+![example workflow](https://github.com/github/docs/actions/workflows/main.yml/badge.svg)
+  <a href="https://github.com/filecoin-project/lotus/actions/workflows/build.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/build.yml/badge.svg"></a>
+  <a href="https://github.com/filecoin-project/lotus/actions/workflows/check.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/check.yml/badge.svg"></a>
+  <a href="https://github.com/filecoin-project/lotus/actions/workflows/test.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/test.yml/badge.svg"></a>
+  <a href="https://goreportcard.com/report/github.com/filecoin-project/lotus"><img src="https://goreportcard.com/badge/github.com/filecoin-project/lotus" /></a>
+  <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.21.7-blue.svg" /></a>
   <br>
 </p>
 
@@ -19,7 +21,7 @@ Lotus is an implementation of the Filecoin Distributed Storage Network. For more
 ## Building & Documentation
 
 > Note: The default `master` branch is the dev branch, please use with caution. For the latest stable version, checkout the most recent [`Latest release`](https://github.com/filecoin-project/lotus/releases).
- 
+
 For complete instructions on how to build, install and setup lotus, please visit [https://lotus.filecoin.io](https://lotus.filecoin.io/lotus/install/prerequisites/#supported-platforms). Basic build instructions can be found further down in this readme.
 
 ## Reporting a Vulnerability
@@ -96,7 +98,7 @@ Once all the dependencies are installed, you can build and install the Lotus sui
    git clone https://github.com/filecoin-project/lotus.git
    cd lotus/
    ```
-   
+
 Note: The default branch `master` is the dev branch where the latest new features, bug fixes and improvement are in. However, if you want to run lotus on Filecoin mainnet and want to run a production-ready lotus, get the latest release[ here](https://github.com/filecoin-project/lotus/releases).
 
 2. To join mainnet, checkout the [latest release](https://github.com/filecoin-project/lotus/releases).
