@@ -1344,7 +1344,7 @@ OPTIONS:
    --miner value, -m value, --provider value, -p value [ --miner value, -m value, --provider value, -p value ]  storage provider address[es]
    --assume-yes, -y, --yes                                                                                      automatic yes to prompts; assume 'yes' as answer to all prompts and run non-interactively (default: false)
    --confidence value                                                                                           number of block confirmations to wait for (default: 5)
-   --batch-size value                                                                                           number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: 1000)
+   --batch-size value                                                                                           number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: 500)
    --help, -h                                                                                                   show help
 ```
 

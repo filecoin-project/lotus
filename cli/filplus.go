@@ -973,7 +973,7 @@ If the client id different then claim can be extended up to Maximum 5 years from
 		&cli.IntFlag{
 			Name:  "batch-size",
 			Usage: "number of extend requests per batch. If set incorrectly, this will lead to out of gas error",
-			Value: 1000,
+			Value: 500,
 		},
 	},
 	ArgsUsage: "<claim1> <claim2> ... or <miner1=claim1> <miner2=claims2> ...",
@@ -1150,7 +1150,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 	}
 
 	var terms []verifregtypes13.ClaimTerm
-	var newClaims []verifregtypes13.ClaimExtensionRequest
+	newClaims := make(map[verifregtypes13.ClaimExtensionRequest]big.Int)
 	rDataCap := big.NewInt(0)
 
 	// If --all is set
@@ -1175,11 +1175,12 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				if claim.Client != wid {
 					// The new duration should be greater than the original deal duration and claim should not already be expired
 					if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
-						newClaims = append(newClaims, verifregtypes13.ClaimExtensionRequest{
+						req := verifregtypes13.ClaimExtensionRequest{
 							Claim:    verifregtypes13.ClaimId(claimID),
 							Provider: abi.ActorID(mid),
 							TermMax:  head.Height() + tmax - claim.TermStart,
-						})
+						}
+						newClaims[req] = big.NewInt(int64(claim.Size))
 						rDataCap.Add(big.NewInt(int64(claim.Size)).Int, rDataCap.Int)
 					}
 					// If new duration shorter than the original duration then do nothing
@@ -1222,11 +1223,12 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			if claim.Client != wid {
 				// The new duration should be greater than the original deal duration and claim should not already be expired
 				if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
-					newClaims = append(newClaims, verifregtypes13.ClaimExtensionRequest{
+					req := verifregtypes13.ClaimExtensionRequest{
 						Claim:    claimID,
 						Provider: abi.ActorID(mid),
 						TermMax:  head.Height() + tmax - claim.TermStart,
-					})
+					}
+					newClaims[req] = big.NewInt(int64(claim.Size))
 					rDataCap.Add(big.NewInt(int64(claim.Size)).Int, rDataCap.Int)
 				}
 				// If new duration shorter than the original duration then do nothing
@@ -1258,11 +1260,12 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			if claim.Client != wid {
 				// The new duration should be greater than the original deal duration and claim should not already be expired
 				if head.Height()+tmax-claim.TermStart > claim.TermMax-claim.TermStart && claim.TermStart+claim.TermMax > head.Height() {
-					newClaims = append(newClaims, verifregtypes13.ClaimExtensionRequest{
+					req := verifregtypes13.ClaimExtensionRequest{
 						Claim:    claimID,
 						Provider: prov.ID,
 						TermMax:  head.Height() + tmax - claim.TermStart,
-					})
+					}
+					newClaims[req] = big.NewInt(int64(claim.Size))
 					rDataCap.Add(big.NewInt(int64(claim.Size)).Int, rDataCap.Int)
 				}
 				// If new duration shorter than the original duration then do nothing
@@ -1281,27 +1284,30 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 
 	var msgs []*types.Message
 
-	for i := 0; i < len(terms); i += batchSize {
-		batchEnd := i + batchSize
-		if batchEnd > len(terms) {
-			batchEnd = len(terms)
-		}
+	if len(terms) > 0 {
+		// Batch in 500 to avoid running out of gas
+		for i := 0; i < len(terms); i += batchSize {
+			batchEnd := i + batchSize
+			if batchEnd > len(terms) {
+				batchEnd = len(terms)
+			}
 
-		batch := terms[i:batchEnd]
+			batch := terms[i:batchEnd]
 
-		params, err := actors.SerializeParams(&verifregtypes13.ExtendClaimTermsParams{
-			Terms: batch,
-		})
-		if err != nil {
-			return nil, xerrors.Errorf("failed to searialise the parameters: %s", err)
+			params, err := actors.SerializeParams(&verifregtypes13.ExtendClaimTermsParams{
+				Terms: batch,
+			})
+			if err != nil {
+				return nil, xerrors.Errorf("failed to searialise the parameters: %s", err)
+			}
+			oclaimMsg := &types.Message{
+				To:     verifreg.Address,
+				From:   wallet,
+				Method: verifreg.Methods.ExtendClaimTerms,
+				Params: params,
+			}
+			msgs = append(msgs, oclaimMsg)
 		}
-		oclaimMsg := &types.Message{
-			To:     verifreg.Address,
-			From:   wallet,
-			Method: verifreg.Methods.ExtendClaimTerms,
-			Params: params,
-		}
-		msgs = append(msgs, oclaimMsg)
 	}
 
 	if len(newClaims) > 0 {
@@ -1355,14 +1361,27 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 			}
 		}
 
-		// Batch in 1000 to avoid running out of gas
-		for i := 0; i < len(newClaims); i += batchSize {
+		// Create a map of just keys, so we can easily batch based on the numeric keys
+		keys := make([]verifregtypes13.ClaimExtensionRequest, 0, len(newClaims))
+		for k := range newClaims {
+			keys = append(keys, k)
+		}
+
+		// Batch in 500 to avoid running out of gas
+		for i := 0; i < len(keys); i += batchSize {
 			batchEnd := i + batchSize
 			if batchEnd > len(newClaims) {
 				batchEnd = len(newClaims)
 			}
 
-			batch := newClaims[i:batchEnd]
+			batch := keys[i:batchEnd]
+
+			// Calculate Datacap for this batch
+			dcap := big.NewInt(0)
+			for _, k := range batch {
+				dc := newClaims[k]
+				dcap.Add(dcap.Int, dc.Int)
+			}
 
 			ncparams, err := actors.SerializeParams(&verifregtypes13.AllocationRequests{
 				Extensions: batch,
@@ -1373,7 +1392,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 
 			transferParams, err := actors.SerializeParams(&datacap2.TransferParams{
 				To:           builtin.VerifiedRegistryActorAddr,
-				Amount:       big.Mul(rDataCap, builtin.TokenPrecision),
+				Amount:       big.Mul(dcap, builtin.TokenPrecision),
 				OperatorData: ncparams,
 			})
 
