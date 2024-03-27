@@ -388,7 +388,7 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.CurioConfig, error)
 		for _, k := range meta.Keys() {
 			have = append(have, strings.Join(k, " "))
 		}
-		log.Infow("Using layer", "layer", layer, "config", curioConfig)
+		log.Debugw("Using layer", "layer", layer, "config", curioConfig)
 	}
 	_ = have // FUTURE: verify that required fields are here.
 	// If config includes 3rd-party config, consider JSONSchema as a way that

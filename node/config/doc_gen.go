@@ -579,7 +579,7 @@ received. Deal data in PiecePark is accessed when the sector TreeD and TreeR are
 the initial SDR layers computation. Pieces in PiecePark are removed after all sectors referencing the piece are
 sealed.
 
-To get API info for boost configuration run 'curio cli market rpc-info'
+To get API info for boost configuration run 'curio market rpc-info'
 
 NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
 a machine which handles ParkPiece tasks.`,
