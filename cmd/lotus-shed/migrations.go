@@ -1,27 +1,41 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/ipfs/boxo/blockservice"
+	"github.com/ipfs/boxo/exchange/offline"
+	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/filecoin-project/go-hamt-ipld/v3"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	v10 "github.com/filecoin-project/go-state-types/builtin/v10"
 	v11 "github.com/filecoin-project/go-state-types/builtin/v11"
 	v12 "github.com/filecoin-project/go-state-types/builtin/v12"
+	v13 "github.com/filecoin-project/go-state-types/builtin/v13"
+	market13 "github.com/filecoin-project/go-state-types/builtin/v13/market"
+	adt13 "github.com/filecoin-project/go-state-types/builtin/v13/util/adt"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
@@ -53,6 +67,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
@@ -71,6 +86,9 @@ var migrationsCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name: "check-invariants",
+		},
+		&cli.StringFlag{
+			Name: "export-bad-migration",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -215,6 +233,31 @@ var migrationsCmd = &cli.Command{
 			cachedMigrationTime := time.Since(startTime)
 
 			if newCid1 != newCid2 {
+				{
+					if err := printStateDiff(ctx, network.Version(nv), newCid2, newCid1, bs); err != nil {
+						fmt.Println("failed to print state diff: ", err)
+					}
+				}
+
+				if cctx.IsSet("export-bad-migration") {
+					fi, err := os.Create(cctx.String("export-bad-migration"))
+					if err != nil {
+						return xerrors.Errorf("opening the output file: %w", err)
+					}
+
+					defer fi.Close() //nolint:errcheck
+
+					roots := []cid.Cid{newCid1, newCid2}
+
+					dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+					err = car.WriteCarWithWalker(ctx, dag, roots, fi, carWalkFunc)
+					if err != nil {
+						return err
+					}
+
+					fmt.Println("exported bad migration to ", cctx.String("export-bad-migration"))
+				}
+
 				return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
 					newCid2)
 			}
@@ -246,6 +289,8 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 		return filcns.UpgradeActorsV11, filcns.PreUpgradeActorsV11, checkNv19Invariants, nil
 	case network.Version21:
 		return filcns.UpgradeActorsV12, filcns.PreUpgradeActorsV12, checkNv21Invariants, nil
+	case network.Version22:
+		return filcns.UpgradeActorsV13, filcns.PreUpgradeActorsV13, checkNv22Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
 	}
@@ -255,6 +300,357 @@ type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.Migrat
 type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
 type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
 
+func printStateDiff(ctx context.Context, nv network.Version, newCid1, newCid2 cid.Cid, bs blockstore.Blockstore) error {
+	// migration diff
+	var sra, srb types.StateRoot
+	cst := cbornode.NewCborStore(bs)
+
+	if err := cst.Get(ctx, newCid1, &sra); err != nil {
+		return err
+	}
+	if err := cst.Get(ctx, newCid2, &srb); err != nil {
+		return err
+	}
+
+	if sra.Version != srb.Version {
+		fmt.Println("state root versions do not match: ", sra.Version, srb.Version)
+	}
+	if sra.Info != srb.Info {
+		fmt.Println("state root infos do not match: ", sra.Info, srb.Info)
+	}
+	if sra.Actors != srb.Actors {
+		fmt.Println("state root actors do not match: ", sra.Actors, srb.Actors)
+		if err := printActorsDiff(ctx, cst, nv, sra.Actors, srb.Actors); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func printActorsDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv network.Version, a, b cid.Cid) error {
+	// actor diff, a b are a hamt
+
+	diffs, err := hamt.Diff(ctx, cst, cst, a, b, hamt.UseTreeBitWidth(builtin.DefaultHamtBitwidth))
+	if err != nil {
+		return err
+	}
+
+	keyParser := func(k string) (interface{}, error) {
+		return address.NewFromBytes([]byte(k))
+	}
+
+	for _, d := range diffs {
+		switch d.Type {
+		case hamt.Add:
+			color.Green("+ Add %v", must.One(keyParser(d.Key)))
+		case hamt.Remove:
+			color.Red("- Remove %v", must.One(keyParser(d.Key)))
+		case hamt.Modify:
+			addr := must.One(keyParser(d.Key)).(address.Address)
+			color.Yellow("~ Modify %v", addr)
+			var aa, bb types.ActorV5
+
+			if err := aa.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+				return err
+			}
+			if err := bb.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+				return err
+			}
+
+			if err := printActorDiff(ctx, cst, nv, addr, aa, bb); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func printActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv network.Version, addr address.Address, a, b types.ActorV5) error {
+	if a.Code != b.Code {
+		fmt.Println("  Code: ", a.Code, b.Code)
+	}
+	if a.Head != b.Head {
+		fmt.Println("  Head: ", a.Head, b.Head)
+	}
+	if a.Nonce != b.Nonce {
+		fmt.Println("  Nonce: ", a.Nonce, b.Nonce)
+	}
+	if big.Cmp(a.Balance, b.Balance) == 0 {
+		fmt.Println("  Balance: ", a.Balance, b.Balance)
+	}
+
+	switch addr.String() {
+	case "f05":
+		if err := printMarketActorDiff(ctx, cst, nv, a.Head, b.Head); err != nil {
+			return err
+		}
+	default:
+		fmt.Println("no logic to diff actor state for ", addr)
+	}
+
+	return nil
+}
+
+func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv network.Version, a, b cid.Cid) error {
+	if nv != network.Version22 {
+		return xerrors.Errorf("market actor diff not implemented for nv%d", nv)
+	}
+
+	var ma, mb market13.State
+	if err := cst.Get(ctx, a, &ma); err != nil {
+		return err
+	}
+	if err := cst.Get(ctx, b, &mb); err != nil {
+		return err
+	}
+
+	if ma.Proposals != mb.Proposals {
+		fmt.Println("  Proposals: ", ma.Proposals, mb.Proposals)
+	}
+	if ma.States != mb.States {
+		fmt.Println("  States: ", ma.States, mb.States)
+
+		// diff the AMTs
+		amtDiff, err := amt.Diff(ctx, cst, cst, ma.States, mb.States, amt.UseTreeBitWidth(market13.StatesAmtBitwidth))
+		if err != nil {
+			return err
+		}
+
+		proposalsArrA, err := adt13.AsArray(adt8.WrapStore(ctx, cst), ma.Proposals, market13.ProposalsAmtBitwidth)
+		if err != nil {
+			return err
+		}
+		proposalsArrB, err := adt13.AsArray(adt8.WrapStore(ctx, cst), mb.Proposals, market13.ProposalsAmtBitwidth)
+		if err != nil {
+			return err
+		}
+
+		for _, d := range amtDiff {
+			switch d.Type {
+			case amt.Add:
+				color.Green("  state + Add %v", d.Key)
+			case amt.Remove:
+				color.Red("  state - Remove %v", d.Key)
+			case amt.Modify:
+				color.Yellow("  state ~ Modify %v", d.Key)
+
+				var a, b market13.DealState
+				if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+					return err
+				}
+				if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+					return err
+				}
+
+				ja, err := json.Marshal(a)
+				if err != nil {
+					return err
+				}
+				jb, err := json.Marshal(b)
+				if err != nil {
+					return err
+				}
+
+				fmt.Println("   A: ", string(ja))
+				fmt.Println("   B: ", string(jb))
+
+				var propA, propB market13.DealProposal
+
+				if _, err := proposalsArrA.Get(d.Key, &propA); err != nil {
+					return err
+				}
+				if _, err := proposalsArrB.Get(d.Key, &propB); err != nil {
+					return err
+				}
+
+				pab, err := json.Marshal(propA)
+				if err != nil {
+					return err
+				}
+				pbb, err := json.Marshal(propB)
+				if err != nil {
+					return err
+				}
+				if string(pab) != string(pbb) {
+					fmt.Println("   PropA: ", string(pab))
+					fmt.Println("   PropB: ", string(pbb))
+				} else {
+					fmt.Println("   Prop: ", string(pab))
+				}
+
+			}
+		}
+	}
+	if ma.PendingProposals != mb.PendingProposals {
+		fmt.Println("  PendingProposals: ", ma.PendingProposals, mb.PendingProposals)
+	}
+	if ma.EscrowTable != mb.EscrowTable {
+		fmt.Println("  EscrowTable: ", ma.EscrowTable, mb.EscrowTable)
+	}
+	if ma.LockedTable != mb.LockedTable {
+		fmt.Println("  LockedTable: ", ma.LockedTable, mb.LockedTable)
+	}
+	if ma.NextID != mb.NextID {
+		fmt.Println("  NextID: ", ma.NextID, mb.NextID)
+	}
+	if ma.DealOpsByEpoch != mb.DealOpsByEpoch {
+		fmt.Println("  DealOpsByEpoch: ", ma.DealOpsByEpoch, mb.DealOpsByEpoch)
+	}
+	if ma.LastCron != mb.LastCron {
+		fmt.Println("  LastCron: ", ma.LastCron, mb.LastCron)
+	}
+	if ma.TotalClientLockedCollateral != mb.TotalClientLockedCollateral {
+		fmt.Println("  TotalClientLockedCollateral: ", ma.TotalClientLockedCollateral, mb.TotalClientLockedCollateral)
+	}
+	if ma.TotalProviderLockedCollateral != mb.TotalProviderLockedCollateral {
+		fmt.Println("  TotalProviderLockedCollateral: ", ma.TotalProviderLockedCollateral, mb.TotalProviderLockedCollateral)
+	}
+	if ma.TotalClientStorageFee != mb.TotalClientStorageFee {
+		fmt.Println("  TotalClientStorageFee: ", ma.TotalClientStorageFee, mb.TotalClientStorageFee)
+	}
+	if ma.PendingDealAllocationIds != mb.PendingDealAllocationIds {
+		fmt.Println("  PendingDealAllocationIds: ", ma.PendingDealAllocationIds, mb.PendingDealAllocationIds)
+	}
+	if ma.ProviderSectors != mb.ProviderSectors {
+		fmt.Println("  ProviderSectors: ", ma.ProviderSectors, mb.ProviderSectors)
+
+		// diff the HAMTs
+		hamtDiff, err := hamt.Diff(ctx, cst, cst, ma.ProviderSectors, mb.ProviderSectors, hamt.UseTreeBitWidth(market13.ProviderSectorsHamtBitwidth))
+		if err != nil {
+			return err
+		}
+
+		for _, d := range hamtDiff {
+			spIDk := must.One(abi.ParseUIntKey(d.Key))
+
+			switch d.Type {
+			case hamt.Add:
+				color.Green("  ProviderSectors + Add f0%v", spIDk)
+
+				var b cbg.CborCid
+				if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+					return err
+				}
+
+				fmt.Println("  |-B: ", cid.Cid(b).String())
+
+				inner, err := adt13.AsMap(adt8.WrapStore(ctx, cst), cid.Cid(b), market13.ProviderSectorsHamtBitwidth)
+				if err != nil {
+					return err
+				}
+
+				var ids market13.SectorDealIDs
+				err = inner.ForEach(&ids, func(k string) error {
+					sectorNumber := must.One(abi.ParseUIntKey(k))
+
+					color.Green("  |-- ProviderSectors + Add %v", sectorNumber)
+					fmt.Printf("  |+: %v\n", ids)
+
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+			case hamt.Remove:
+				color.Red("  ProviderSectors - Remove f0%v", spIDk)
+			case hamt.Modify:
+				color.Yellow("  ProviderSectors ~ Modify f0%v", spIDk)
+
+				var a, b cbg.CborCid
+				if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+					return err
+				}
+				if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+					return err
+				}
+
+				fmt.Println("  |-A: ", cid.Cid(b).String())
+				fmt.Println("  |-B: ", cid.Cid(a).String())
+
+				// diff the inner HAMTs
+				innerHamtDiff, err := hamt.Diff(ctx, cst, cst, cid.Cid(a), cid.Cid(b), hamt.UseTreeBitWidth(market13.ProviderSectorsHamtBitwidth))
+				if err != nil {
+					return err
+				}
+
+				for _, d := range innerHamtDiff {
+					sectorNumber := must.One(abi.ParseUIntKey(d.Key))
+
+					switch d.Type {
+					case hamt.Add:
+						var b market13.SectorDealIDs
+
+						if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+							return err
+						}
+
+						color.Green("  |-- ProviderSectors + Add %v", sectorNumber)
+						fmt.Printf("  |B: %v\n", b)
+					case hamt.Remove:
+						var a market13.SectorDealIDs
+
+						if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+							return err
+						}
+
+						color.Red("  |-- ProviderSectors - Remove %v", sectorNumber)
+						fmt.Printf("  |A: %v\n", a)
+					case hamt.Modify:
+						var a, b market13.SectorDealIDs
+
+						if err := a.UnmarshalCBOR(bytes.NewReader(d.Before.Raw)); err != nil {
+							return err
+						}
+						if err := b.UnmarshalCBOR(bytes.NewReader(d.After.Raw)); err != nil {
+							return err
+						}
+
+						color.Yellow("  |-- ProviderSectors ~ Modify %v", sectorNumber)
+						fmt.Printf("  |A: %v\n", a)
+						fmt.Printf("  |B: %v\n", b)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func checkNv22Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
+
+	// Load the new state root.
+	var newStateRoot types.StateRoot
+	if err := actorStore.Get(ctx, newStateRootCid, &newStateRoot); err != nil {
+		return xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version13)
+	if err != nil {
+		return err
+	}
+	newActorTree, err := builtin.LoadTree(actorStore, newStateRoot.Actors)
+	if err != nil {
+		return err
+	}
+	messages, err := v13.CheckStateInvariants(newActorTree, epoch, actorCodeCids)
+	if err != nil {
+		return xerrors.Errorf("checking state invariants: %w", err)
+	}
+
+	for _, message := range messages.Messages() {
+		fmt.Println("got the following error: ", message)
+	}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
+
+	return nil
+}
 func checkNv21Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 
 	actorStore := store.ActorStore(ctx, bs)

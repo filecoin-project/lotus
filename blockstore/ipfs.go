@@ -5,9 +5,7 @@ import (
 	"context"
 	"io"
 
-	iface "github.com/ipfs/boxo/coreiface"
-	"github.com/ipfs/boxo/coreiface/options"
-	"github.com/ipfs/boxo/coreiface/path"
+	"github.com/ipfs/boxo/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
@@ -15,6 +13,8 @@ import (
 	"golang.org/x/xerrors"
 
 	rpc "github.com/filecoin-project/kubo-api-client"
+	iface "github.com/filecoin-project/kubo-api-client/coreiface"
+	"github.com/filecoin-project/kubo-api-client/coreiface/options"
 )
 
 type IPFSBlockstore struct {
@@ -83,7 +83,7 @@ func (i *IPFSBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 }
 
 func (i *IPFSBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
-	_, err := i.offlineAPI.Block().Stat(ctx, path.IpldPath(cid))
+	_, err := i.offlineAPI.Block().Stat(ctx, path.FromCid(cid))
 	if err != nil {
 		// The underlying client is running in Offline mode.
 		// Stat() will fail with an err if the block isn't in the
@@ -99,7 +99,7 @@ func (i *IPFSBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 }
 
 func (i *IPFSBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
-	rd, err := i.api.Block().Get(ctx, path.IpldPath(cid))
+	rd, err := i.api.Block().Get(ctx, path.FromCid(cid))
 	if err != nil {
 		return nil, xerrors.Errorf("getting ipfs block: %w", err)
 	}
@@ -113,7 +113,7 @@ func (i *IPFSBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, er
 }
 
 func (i *IPFSBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
-	st, err := i.api.Block().Stat(ctx, path.IpldPath(cid))
+	st, err := i.api.Block().Stat(ctx, path.FromCid(cid))
 	if err != nil {
 		return 0, xerrors.Errorf("getting ipfs block: %w", err)
 	}

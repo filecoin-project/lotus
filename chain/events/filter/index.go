@@ -536,12 +536,11 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	return nil
 }
 
-// prefillFilter fills a filter's collection of events from the historic index
+// PrefillFilter fills a filter's collection of events from the historic index
 func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
-	var (
-		clauses, joins []string
-		values         []any
-	)
+	clauses := []string{}
+	values := []any{}
+	joins := []string{}
 
 	if f.tipsetCid != cid.Undef {
 		clauses = append(clauses, "event.tipset_key_cid=?")
