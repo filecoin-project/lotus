@@ -355,4 +355,6 @@ type ChainExportConfig struct {
 	IncludeMessages   bool
 	IncludeReceipts   bool
 	IncludeStateRoots bool
+	FileName          string
+	ExportDir         string
 }
