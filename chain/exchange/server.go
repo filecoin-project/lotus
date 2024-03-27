@@ -13,9 +13,12 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+const StreamReadTimeout = 10 * time.Second
 
 // server implements exchange.Server. It services requests for the
 // libp2p ChainExchange protocol.
@@ -41,6 +44,7 @@ func (s *server) HandleStream(stream inet.Stream) {
 	defer stream.Close() //nolint:errcheck
 
 	var req Request
+	_ = stream.SetReadDeadline(build.Clock.Now().Add(StreamReadTimeout))
 	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
 		log.Warnf("failed to read block sync request: %s", err)
 		return
@@ -54,7 +58,7 @@ func (s *server) HandleStream(stream inet.Stream) {
 		return
 	}
 
-	_ = stream.SetDeadline(time.Now().Add(WriteResDeadline))
+	_ = stream.SetWriteDeadline(time.Now().Add(WriteResDeadline))
 	buffered := bufio.NewWriter(stream)
 	if err = cborutil.WriteCborRPC(buffered, resp); err == nil {
 		err = buffered.Flush()
