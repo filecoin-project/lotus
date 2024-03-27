@@ -821,7 +821,7 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	require.NoError(t, err)
 
 	/* --- Allocate datacap for the piece by the verified client --- */
-	clientId, allocationId := ddoVerifiedSetupAllocations(ctx, t, client, minerId, dc, verifiedClientAddr1, false, builtin.EpochsInYear*3)
+	clientId, allocationId := ddoVerifiedSetupAllocations(ctx, t, client, minerId, dc, verifiedClientAddr1, 0, builtin.EpochsInYear*3)
 
 	/* --- Onboard the piece --- */
 
@@ -881,4 +881,6 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newclaim)
 	require.EqualValues(t, newclaim.TermMax, verifregtypes13.MaximumVerifiedAllocationTerm)
+
+	// TODO: check "claim-updated" message
 }
