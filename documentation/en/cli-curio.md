@@ -28,10 +28,11 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --color              use color in display output (default: depends on output being a TTY)
-   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
+   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "127.0.0.1") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
    --db-name value      (default: "yugabyte") [$CURIO_DB_NAME, $CURIO_HARMONYDB_NAME]
    --db-user value      (default: "yugabyte") [$CURIO_DB_USER, $CURIO_HARMONYDB_USERNAME]
    --db-password value  (default: "yugabyte") [$CURIO_DB_PASSWORD, $CURIO_HARMONYDB_PASSWORD]
+   --db-port value      (default: "5433") [$CURIO_DB_PORT, $CURIO_HARMONYDB_PORT]
    --repo-path value    (default: "~/.curio") [$CURIO_REPO_PATH]
    --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h           show help

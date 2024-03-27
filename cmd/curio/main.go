@@ -107,7 +107,7 @@ func main() {
 				Name:    "db-host",
 				EnvVars: []string{"CURIO_DB_HOST", "CURIO_HARMONYDB_HOSTS"},
 				Usage:   "Command separated list of hostnames for yugabyte cluster",
-				Value:   "yugabyte",
+				Value:   "127.0.0.1",
 			},
 			&cli.StringFlag{
 				Name:    "db-name",
@@ -127,7 +127,6 @@ func main() {
 			&cli.StringFlag{
 				Name:    "db-port",
 				EnvVars: []string{"CURIO_DB_PORT", "CURIO_HARMONYDB_PORT"},
-				Hidden:  true,
 				Value:   "5433",
 			},
 			&cli.StringFlag{
