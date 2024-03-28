@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/spcli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -803,7 +804,7 @@ var storageListSectorsCmd = &cli.Command{
 				"Storage":  color.New(sc1).Sprint(e.storage),
 				"Sector":   e.id,
 				"Type":     e.ft.String(),
-				"State":    color.New(stateOrder[sealing.SectorState(e.state)].col).Sprint(e.state),
+				"State":    color.New(spcli.StateOrder[sealing.SectorState(e.state)].Col).Sprint(e.state),
 				"Primary":  maybeStr(e.primary, color.FgGreen, "primary") + maybeStr(e.copy, color.FgBlue, "copy") + maybeStr(e.main, color.FgRed, "main"),
 				"Path use": maybeStr(e.seal, color.FgMagenta, "seal ") + maybeStr(e.store, color.FgCyan, "store"),
 				"URLs":     e.urls,
@@ -995,7 +996,7 @@ var storageLocks = &cli.Command{
 				return xerrors.Errorf("getting sector status(%d): %w", lock.Sector.Number, err)
 			}
 
-			lockstr := fmt.Sprintf("%d\t%s\t", lock.Sector.Number, color.New(stateOrder[sealing.SectorState(st.State)].col).Sprint(st.State))
+			lockstr := fmt.Sprintf("%d\t%s\t", lock.Sector.Number, color.New(spcli.StateOrder[sealing.SectorState(st.State)].Col).Sprint(st.State))
 
 			for i := 0; i < storiface.FileTypes; i++ {
 				if lock.Write[i] > 0 {

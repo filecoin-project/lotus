@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/clicommands"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
@@ -112,7 +113,7 @@ func main() {
 			return nil
 		},
 
-		Commands: append(local, lcli.Commands...),
+		Commands: append(local, clicommands.Commands...),
 	}
 
 	app.Setup()

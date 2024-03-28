@@ -39,7 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
-var filplusCmd = &cli.Command{
+var FilplusCmd = &cli.Command{
 	Name:  "filplus",
 	Usage: "Interact with the verified registry actor used by Filplus",
 	Flags: []cli.Flag{},

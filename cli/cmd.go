@@ -66,29 +66,6 @@ var CommonCommands = []*cli.Command{
 	VersionCmd,
 }
 
-var Commands = []*cli.Command{
-	WithCategory("basic", sendCmd),
-	WithCategory("basic", walletCmd),
-	WithCategory("basic", infoCmd),
-	WithCategory("basic", clientCmd),
-	WithCategory("basic", multisigCmd),
-	WithCategory("basic", filplusCmd),
-	WithCategory("basic", paychCmd),
-	WithCategory("developer", AuthCmd),
-	WithCategory("developer", MpoolCmd),
-	WithCategory("developer", StateCmd),
-	WithCategory("developer", ChainCmd),
-	WithCategory("developer", LogCmd),
-	WithCategory("developer", WaitApiCmd),
-	WithCategory("developer", FetchParamCmd),
-	WithCategory("developer", EvmCmd),
-	WithCategory("network", NetCmd),
-	WithCategory("network", SyncCmd),
-	WithCategory("status", StatusCmd),
-	PprofCmd,
-	VersionCmd,
-}
-
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {
 	cmd.Category = strings.ToUpper(cat)
 	return cmd

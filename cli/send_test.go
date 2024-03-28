@@ -45,7 +45,7 @@ func TestSendCLI(t *testing.T) {
 	oneFil := abi.TokenAmount(types.MustParseFIL("1"))
 
 	t.Run("simple", func(t *testing.T) {
-		app, mockSrvcs, buf, done := newMockApp(t, sendCmd)
+		app, mockSrvcs, buf, done := newMockApp(t, SendCmd)
 		defer done()
 
 		arbtProto := &api.MessagePrototype{
@@ -76,7 +76,7 @@ func TestSendEthereum(t *testing.T) {
 	oneFil := abi.TokenAmount(types.MustParseFIL("1"))
 
 	t.Run("simple", func(t *testing.T) {
-		app, mockSrvcs, buf, done := newMockApp(t, sendCmd)
+		app, mockSrvcs, buf, done := newMockApp(t, SendCmd)
 		defer done()
 
 		testEthAddr, err := ethtypes.CastEthAddress(make([]byte, 20))

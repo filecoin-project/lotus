@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/paychmgr"
 )
 
-var paychCmd = &cli.Command{
+var PaychCmd = &cli.Command{
 	Name:  "paych",
 	Usage: "Manage payment channels",
 	Subcommands: []*cli.Command{

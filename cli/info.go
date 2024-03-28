@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/journal/alerting"
 )
 
-var infoCmd = &cli.Command{
+var InfoCmd = &cli.Command{
 	Name:   "info",
 	Usage:  "Print node info",
 	Action: infoCmdAct,

@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/spcli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
@@ -369,94 +370,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	return nil
 }
 
-type stateMeta struct {
-	i     int
-	col   color.Attribute
-	state sealing.SectorState
-}
-
-var stateOrder = map[sealing.SectorState]stateMeta{}
-var stateList = []stateMeta{
-	{col: 39, state: "Total"},
-	{col: color.FgGreen, state: sealing.Proving},
-	{col: color.FgGreen, state: sealing.Available},
-	{col: color.FgGreen, state: sealing.UpdateActivating},
-
-	{col: color.FgMagenta, state: sealing.ReceiveSector},
-
-	{col: color.FgBlue, state: sealing.Empty},
-	{col: color.FgBlue, state: sealing.WaitDeals},
-	{col: color.FgBlue, state: sealing.AddPiece},
-	{col: color.FgBlue, state: sealing.SnapDealsWaitDeals},
-	{col: color.FgBlue, state: sealing.SnapDealsAddPiece},
-
-	{col: color.FgRed, state: sealing.UndefinedSectorState},
-	{col: color.FgYellow, state: sealing.Packing},
-	{col: color.FgYellow, state: sealing.GetTicket},
-	{col: color.FgYellow, state: sealing.PreCommit1},
-	{col: color.FgYellow, state: sealing.PreCommit2},
-	{col: color.FgYellow, state: sealing.PreCommitting},
-	{col: color.FgYellow, state: sealing.PreCommitWait},
-	{col: color.FgYellow, state: sealing.SubmitPreCommitBatch},
-	{col: color.FgYellow, state: sealing.PreCommitBatchWait},
-	{col: color.FgYellow, state: sealing.WaitSeed},
-	{col: color.FgYellow, state: sealing.Committing},
-	{col: color.FgYellow, state: sealing.CommitFinalize},
-	{col: color.FgYellow, state: sealing.SubmitCommit},
-	{col: color.FgYellow, state: sealing.CommitWait},
-	{col: color.FgYellow, state: sealing.SubmitCommitAggregate},
-	{col: color.FgYellow, state: sealing.CommitAggregateWait},
-	{col: color.FgYellow, state: sealing.FinalizeSector},
-	{col: color.FgYellow, state: sealing.SnapDealsPacking},
-	{col: color.FgYellow, state: sealing.UpdateReplica},
-	{col: color.FgYellow, state: sealing.ProveReplicaUpdate},
-	{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
-	{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
-	{col: color.FgYellow, state: sealing.WaitMutable},
-	{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
-	{col: color.FgYellow, state: sealing.ReleaseSectorKey},
-
-	{col: color.FgCyan, state: sealing.Terminating},
-	{col: color.FgCyan, state: sealing.TerminateWait},
-	{col: color.FgCyan, state: sealing.TerminateFinality},
-	{col: color.FgCyan, state: sealing.TerminateFailed},
-	{col: color.FgCyan, state: sealing.Removing},
-	{col: color.FgCyan, state: sealing.Removed},
-	{col: color.FgCyan, state: sealing.AbortUpgrade},
-
-	{col: color.FgRed, state: sealing.FailedUnrecoverable},
-	{col: color.FgRed, state: sealing.AddPieceFailed},
-	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
-	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
-	{col: color.FgRed, state: sealing.PreCommitFailed},
-	{col: color.FgRed, state: sealing.ComputeProofFailed},
-	{col: color.FgRed, state: sealing.RemoteCommitFailed},
-	{col: color.FgRed, state: sealing.CommitFailed},
-	{col: color.FgRed, state: sealing.CommitFinalizeFailed},
-	{col: color.FgRed, state: sealing.PackingFailed},
-	{col: color.FgRed, state: sealing.FinalizeFailed},
-	{col: color.FgRed, state: sealing.Faulty},
-	{col: color.FgRed, state: sealing.FaultReported},
-	{col: color.FgRed, state: sealing.FaultedFinal},
-	{col: color.FgRed, state: sealing.RemoveFailed},
-	{col: color.FgRed, state: sealing.DealsExpired},
-	{col: color.FgRed, state: sealing.RecoverDealIDs},
-	{col: color.FgRed, state: sealing.SnapDealsAddPieceFailed},
-	{col: color.FgRed, state: sealing.SnapDealsDealsExpired},
-	{col: color.FgRed, state: sealing.ReplicaUpdateFailed},
-	{col: color.FgRed, state: sealing.ReleaseSectorKeyFailed},
-	{col: color.FgRed, state: sealing.FinalizeReplicaUpdateFailed},
-}
-
-func init() {
-	for i, state := range stateList {
-		stateOrder[state.state] = stateMeta{
-			i:   i,
-			col: state.col,
-		}
-	}
-}
-
 func sectorsInfo(ctx context.Context, mapi api.StorageMiner) error {
 	summary, err := mapi.SectorsSummary(ctx)
 	if err != nil {
@@ -471,17 +384,17 @@ func sectorsInfo(ctx context.Context, mapi api.StorageMiner) error {
 	}
 	buckets["Total"] = total
 
-	var sorted []stateMeta
+	var sorted []spcli.StateMeta
 	for state, i := range buckets {
-		sorted = append(sorted, stateMeta{i: i, state: state})
+		sorted = append(sorted, spcli.StateMeta{I: i, State: state})
 	}
 
 	sort.Slice(sorted, func(i, j int) bool {
-		return stateOrder[sorted[i].state].i < stateOrder[sorted[j].state].i
+		return spcli.StateOrder[sorted[i].State].I < spcli.StateOrder[sorted[j].State].I
 	})
 
 	for _, s := range sorted {
-		_, _ = color.New(stateOrder[s.state].col).Printf("\t%s: %d\n", s.state, s.i)
+		_, _ = color.New(spcli.StateOrder[s.State].Col).Printf("\t%s: %d\n", s.State, s.I)
 	}
 
 	return nil
