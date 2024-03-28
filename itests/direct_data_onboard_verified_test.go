@@ -880,6 +880,7 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newclaim)
 
+	// TODO: check "claim-updated" event
 	// New TermMax should be more than 5 years
 	require.Greater(t, int(newclaim.TermMax), verifregtypes13.MaximumVerifiedAllocationTerm)
 }
