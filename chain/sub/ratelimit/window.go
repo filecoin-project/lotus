@@ -24,7 +24,7 @@ func NewWindow(capacity int, size time.Duration) *Window {
 }
 
 // Add attempts to append a new timestamp into the current window.  Previously
-// added values that are not not within `size` difference from the value being
+// added values that are not within `size` difference from the value being
 // added are first removed.  Add fails if adding the value would cause the
 // window to exceed capacity.
 func (w *Window) Add() error {

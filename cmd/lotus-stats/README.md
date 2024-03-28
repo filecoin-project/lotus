@@ -43,4 +43,4 @@ The default username and password for grafana are both `admin`.
 ## Updating the dashboard
 
 After importing the provided dashboard in `chain.dashboard.json`, you may make changes to the dashboard. To export
-the dashboard to be commited back to the project, make sure the option "sharing externally" is toggled on.
+the dashboard to be committed back to the project, make sure the option "sharing externally" is toggled on.
