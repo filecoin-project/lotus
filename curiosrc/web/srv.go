@@ -41,8 +41,8 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 
 	var static fs.FS = static
 	if webDev {
-		basePath = "cmd/curio/web/static"
-		static = os.DirFS(basePath)
+		basePath = ""
+		static = os.DirFS("curiosrc/web/static")
 	}
 
 	mx.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

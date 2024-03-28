@@ -178,7 +178,7 @@ func New(
 				}
 			}
 			if !h.considerWork(workSourceRecover, []TaskID{TaskID(w.ID)}) {
-				log.Error("Strange: Unable to accept previously owned task: ", w.ID, w.Name)
+				log.Errorw("Strange: Unable to accept previously owned task", "id", w.ID, "type", w.Name)
 			}
 		}
 	}

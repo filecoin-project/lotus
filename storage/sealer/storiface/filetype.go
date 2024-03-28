@@ -174,6 +174,10 @@ func (t SectorFileType) SubAllowed(allowTypes []string, denyTypes []string) Sect
 	return t & denyMask
 }
 
+func (t SectorFileType) Unset(toUnset SectorFileType) SectorFileType {
+	return t &^ toUnset
+}
+
 func (t SectorFileType) AnyAllowed(allowTypes []string, denyTypes []string) bool {
 	return t.SubAllowed(allowTypes, denyTypes) != t
 }
@@ -210,6 +214,10 @@ func (t SectorFileType) All() [FileTypes]bool {
 	return out
 }
 
+func (t SectorFileType) IsNone() bool {
+	return t == 0
+}
+
 type SectorPaths struct {
 	ID abi.SectorID
 
@@ -219,6 +227,28 @@ type SectorPaths struct {
 	Update      string
 	UpdateCache string
 	Piece       string
+}
+
+func (sp SectorPaths) HasAllSet(ft SectorFileType) bool {
+	for _, fileType := range ft.AllSet() {
+		if PathByType(sp, fileType) == "" {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (sp SectorPaths) Subset(filter SectorFileType) SectorPaths {
+	var out SectorPaths
+
+	for _, fileType := range filter.AllSet() {
+		SetPathByType(&out, fileType, PathByType(sp, fileType))
+	}
+
+	out.ID = sp.ID
+
+	return out
 }
 
 func ParseSectorID(baseName string) (abi.SectorID, error) {
@@ -277,4 +307,13 @@ func SetPathByType(sps *SectorPaths, fileType SectorFileType, p string) {
 	case FTPiece:
 		sps.Piece = p
 	}
+}
+
+type PathsWithIDs struct {
+	Paths SectorPaths
+	IDs   SectorPaths
+}
+
+func (p PathsWithIDs) HasAllSet(ft SectorFileType) bool {
+	return p.Paths.HasAllSet(ft) && p.IDs.HasAllSet(ft)
 }

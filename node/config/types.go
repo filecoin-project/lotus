@@ -873,18 +873,47 @@ type FevmConfig struct {
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
 
-	Events Events
+	Events DeprecatedEvents `toml:"Events,omitempty"`
 }
 
-type Events struct {
+type DeprecatedEvents struct {
+	// DisableRealTimeFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableRealTimeFilterAPI instead.
+	DisableRealTimeFilterAPI bool `moved:"Events.DisableRealTimeFilterAPI" toml:"DisableRealTimeFilterAPI,omitempty"`
+
+	// DisableHistoricFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableHistoricFilterAPI instead.
+	DisableHistoricFilterAPI bool `moved:"Events.DisableHistoricFilterAPI" toml:"DisableHistoricFilterAPI,omitempty"`
+
+	// FilterTTL is DEPRECATED and will be removed in a future release. Use Events.FilterTTL instead.
+	FilterTTL Duration `moved:"Events.FilterTTL" toml:"FilterTTL,omitzero"`
+
+	// MaxFilters is DEPRECATED and will be removed in a future release. Use Events.MaxFilters instead.
+	MaxFilters int `moved:"Events.MaxFilters" toml:"MaxFilters,omitzero"`
+
+	// MaxFilterResults is DEPRECATED and will be removed in a future release. Use Events.MaxFilterResults instead.
+	MaxFilterResults int `moved:"Events.MaxFilterResults" toml:"MaxFilterResults,omitzero"`
+
+	// MaxFilterHeightRange is DEPRECATED and will be removed in a future release. Use Events.MaxFilterHeightRange instead.
+	MaxFilterHeightRange uint64 `moved:"Events.MaxFilterHeightRange" toml:"MaxFilterHeightRange,omitzero"`
+
+	// DatabasePath is DEPRECATED and will be removed in a future release. Use Events.DatabasePath instead.
+	DatabasePath string `moved:"Events.DatabasePath" toml:"DatabasePath,omitempty"`
+}
+
+type EventsConfig struct {
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool
 
 	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableHistoricFilterAPI bool
+
+	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+	// emitted by (smart contracts + built-in Actors).
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+	// disabled by setting their respective Disable* options.
+	EnableActorEventsAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
 	// this time become eligible for automatic deletion.
@@ -910,14 +939,6 @@ type Events struct {
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
 	// Set upper bound on index size
-}
-
-type EventsConfig struct {
-	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
-	// emitted by (smart contracts + built-in Actors).
-	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
-	// disabled by setting their respective Disable* options in Fevm.Events.
-	EnableActorEventsAPI bool
 }
 
 type IndexConfig struct {
