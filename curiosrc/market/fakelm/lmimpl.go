@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/BurntSushi/toml"
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/google/uuid"
 	"golang.org/x/xerrors"
@@ -37,21 +36,21 @@ type LMRPCProvider struct {
 
 	ssize abi.SectorSize
 
-	pi        market.Ingester
-	db        *harmonydb.DB
-	confLayer string
+	pi   market.Ingester
+	db   *harmonydb.DB
+	conf *config.CurioConfig
 }
 
-func NewLMRPCProvider(si paths.SectorIndex, full api.FullNode, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi market.Ingester, db *harmonydb.DB, confLayer string) *LMRPCProvider {
+func NewLMRPCProvider(si paths.SectorIndex, full api.FullNode, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi market.Ingester, db *harmonydb.DB, conf *config.CurioConfig) *LMRPCProvider {
 	return &LMRPCProvider{
-		si:        si,
-		full:      full,
-		maddr:     maddr,
-		minerID:   minerID,
-		ssize:     ssize,
-		pi:        pi,
-		db:        db,
-		confLayer: confLayer,
+		si:      si,
+		full:    full,
+		maddr:   maddr,
+		minerID: minerID,
+		ssize:   ssize,
+		pi:      pi,
+		db:      db,
+		conf:    conf,
 	}
 }
 
@@ -330,24 +329,6 @@ func (l *LMRPCProvider) AllocatePieceToSector(ctx context.Context, maddr address
 }
 
 func (l *LMRPCProvider) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
-	var cs []struct {
-		Config string
-	}
-
-	err := l.db.Select(ctx, &cs, "select config from harmony_config where title = $1", l.confLayer)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(cs) == 0 {
-		return nil, xerrors.Errorf("no harmony config found")
-	}
-
-	lp := config.DefaultCurioConfig()
-	if _, err := toml.Decode(cs[0].Config, lp); err != nil {
-		return nil, xerrors.Errorf("decode harmony config: %w", err)
-	}
-
 	type jwtPayload struct {
 		Allow []auth.Permission
 	}
@@ -356,7 +337,7 @@ func (l *LMRPCProvider) AuthNew(ctx context.Context, perms []auth.Permission) ([
 		Allow: perms,
 	}
 
-	sk, err := base64.StdEncoding.DecodeString(lp.Apis.StorageRPCSecret)
+	sk, err := base64.StdEncoding.DecodeString(l.conf.Apis.StorageRPCSecret)
 	if err != nil {
 		return nil, xerrors.Errorf("decode secret: %w", err)
 	}

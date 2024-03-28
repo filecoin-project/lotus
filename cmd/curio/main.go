@@ -54,6 +54,7 @@ func main() {
 		webCmd,
 		guidedsetup.GuidedsetupCmd,
 		sealCmd,
+		marketCmd,
 	}
 
 	jaeger := tracing.SetupJaegerTracing("curio")

@@ -18,6 +18,7 @@ COMMANDS:
    web           Start Curio web interface
    guided-setup  Run the guided setup for migrating from lotus-miner to Curio
    seal          Manage the sealing pipeline
+   market        
    version       Print version
    help, h       Shows a list of commands or help for one command
    DEVELOPER:
@@ -344,6 +345,35 @@ OPTIONS:
    --cc                               Start sealing new CC sectors (default: false)
    --count value                      Number of sectors to start (default: 1)
    --synthetic                        Use synthetic PoRep (default: false)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
+```
+
+## curio market
+```
+NAME:
+   curio market
+
+USAGE:
+   curio market command [command options] [arguments...]
+
+COMMANDS:
+   rpc-info  
+   help, h   Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### curio market rpc-info
+```
+NAME:
+   curio market rpc-info
+
+USAGE:
+   curio market rpc-info [command options] [arguments...]
+
+OPTIONS:
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
    --help, -h                         show help
 ```
