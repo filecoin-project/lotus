@@ -126,19 +126,18 @@ USAGE:
    sptool actor control command [command options] [arguments...]
 
 COMMANDS:
-   list     Get currently set control addresses
+   list     Get currently set control addresses. Note: This excludes most roles as they are not known to the immediate chain state.
    set      Set control address(-es)
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --toml value  path to toml file, or folder containing config.toml (default: ~/.lotusminer) [$LOTUS_MINER_PATH]
-   --help, -h    show help
+   --help, -h  show help
 ```
 
 #### sptool actor control list
 ```
 NAME:
-   sptool actor control list - Get currently set control addresses
+   sptool actor control list - Get currently set control addresses. Note: This excludes most roles as they are not known to the immediate chain state.
 
 USAGE:
    sptool actor control list [command options] [arguments...]
@@ -368,7 +367,6 @@ OPTIONS:
    --deadline value                           the deadline to compact the partitions in (default: 0)
    --partitions value [ --partitions value ]  list of partitions to compact sectors in
    --really-do-it                             Actually send transaction performing the action (default: false)
-   --actor value                              Specify the address of the miner to run this command
    --help, -h                                 show help
 ```
 

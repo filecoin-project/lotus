@@ -1032,7 +1032,6 @@ OPTIONS:
    --deadline value                           the deadline to compact the partitions in (default: 0)
    --partitions value [ --partitions value ]  list of partitions to compact sectors in
    --really-do-it                             Actually send transaction performing the action (default: false)
-   --actor value                              Specify the address of the miner to run this command
    --help, -h                                 show help
 ```
 

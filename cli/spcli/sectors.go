@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -135,6 +134,11 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 				if err != nil {
 					return err
 				}
+
+				mid, err := address.IDFromAddress(maddr)
+				if err != nil {
+					return err
+				}
 				fmt.Printf("\nSector On Chain Info\n")
 				fmt.Printf("SealProof:\t\t%x\n", status.SealProof)
 				fmt.Printf("Activation:\t\t%v\n", status.Activation)
@@ -142,7 +146,7 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 				fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
 				fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
 				fmt.Printf("InitialPledge:\t\t%v\n", types.FIL(status.InitialPledge))
-
+				fmt.Printf("SectorID:\t\t{Miner: %v, Number: %v}\n", abi.ActorID(mid), status.SectorNumber)
 			}
 
 			if cctx.Bool("partition-info") {
@@ -1116,10 +1120,6 @@ func SectorsCompactPartitionsCmd(getActorAddress ActorAddressGetter) *cli.Comman
 				Usage: "Actually send transaction performing the action",
 				Value: false,
 			},
-			&cli.StringFlag{
-				Name:  "actor",
-				Usage: "Specify the address of the miner to run this command",
-			},
 		},
 		Action: func(cctx *cli.Context) error {
 			fullNodeAPI, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -1172,7 +1172,7 @@ func SectorsCompactPartitionsCmd(getActorAddress ActorAddressGetter) *cli.Comman
 				}
 
 				estimatedMsg, err := fullNodeAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
-				if err != nil && xerrors.Is(err, &api.ErrOutOfGas{}) {
+				if err != nil && errors.Is(err, &api.ErrOutOfGas{}) {
 					// the message is too big -- split into 2
 					partitionsSlice, err := partitionsBf.All(math.MaxUint64)
 					if err != nil {
@@ -1314,6 +1314,9 @@ func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
 
 			if maddr.Empty() {
 				maddr, err = getActorAddress(cctx)
+				if err != nil {
+					return err
+				}
 			}
 
 			mi, err := nodeApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
