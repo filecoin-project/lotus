@@ -16,6 +16,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build
@@ -24,6 +27,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - uses: ./.github/actions/install-ubuntu-deps
+      - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - run: make deps lotus
