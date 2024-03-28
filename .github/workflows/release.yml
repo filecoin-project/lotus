@@ -103,8 +103,8 @@ jobs:
           version: latest
           args: release --clean --debug ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
+          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
+          GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
       - run: ./scripts/generate-checksums.sh
       - if: env.PUBLISH == 'true'
         env:
