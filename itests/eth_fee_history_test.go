@@ -1,3 +1,5 @@
+//go:build integration && xlarge
+
 package itests
 
 import (
