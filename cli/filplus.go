@@ -936,8 +936,8 @@ var filplusExtendClaimCmd = &cli.Command{
 	Name:  "extend-claim",
 	Usage: "extends claim expiration (TermMax)",
 	UsageText: `Extends claim expiration (TermMax).
-If the client is original client then claim can be extended to Maximum 5 years and no Datacap is required.
-If the client id different then claim can be extended up to Maximum 5 years from now and Datacap is required.
+If the client is original client then claim can be extended to maximum 5 years and no Datacap is required.
+If the client id different then claim can be extended up to maximum 5 years from now and Datacap is required.
 `,
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
@@ -1186,7 +1186,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 					// If new duration shorter than the original duration then do nothing
 					continue
 				}
-				// For original client, compare duration(TermMax) and claim should be already be expired
+				// For original client, compare duration(TermMax) and claim should not already be expired
 				if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 					terms = append(terms, verifregtypes13.ClaimTerm{
 						ClaimId:  verifregtypes13.ClaimId(claimID),
@@ -1234,7 +1234,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				// If new duration shorter than the original duration then do nothing
 				continue
 			}
-			// For original client, compare duration(TermMax) and claim should be already be expired
+			// For original client, compare duration(TermMax) and claim should not already be expired
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 				terms = append(terms, verifregtypes13.ClaimTerm{
 					ClaimId:  claimID,
@@ -1271,7 +1271,7 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				// If new duration shorter than the original duration then do nothing
 				continue
 			}
-			// For original client, compare duration(TermMax) and claim should be already be expired
+			// For original client, compare duration(TermMax) and claim should not already be expired
 			if claim.TermMax < tmax && claim.TermStart+claim.TermMax > head.Height() {
 				terms = append(terms, verifregtypes13.ClaimTerm{
 					ClaimId:  claimID,

@@ -1333,8 +1333,8 @@ NAME:
 
 USAGE:
    Extends claim expiration (TermMax).
-   If the client is original client then claim can be extended to Maximum 5 years and no Datacap is required.
-   If the client id different then claim can be extended up to Maximum 5 years from now and Datacap is required.
+   If the client is original client then claim can be extended to maximum 5 years and no Datacap is required.
+   If the client id different then claim can be extended up to maximum 5 years from now and Datacap is required.
 
 
 OPTIONS:
