@@ -193,22 +193,53 @@ func New(
 // GracefullyTerminate hangs until all present tasks have completed.
 // Call this to cleanly exit the process. As some processes are long-running,
 // passing a deadline will ignore those still running (to be picked-up later).
-func (e *TaskEngine) GracefullyTerminate(deadline time.Duration) {
-	e.grace()
-	e.reg.Shutdown()
-	deadlineChan := time.NewTimer(deadline).C
-top:
-	for _, h := range e.handlers {
-		if h.Count.Load() > 0 {
-			select {
-			case <-deadlineChan:
-				return
-			default:
-				time.Sleep(time.Millisecond)
-				goto top
+func (e *TaskEngine) GracefullyTerminate() {
+
+	// If there are any Post tasks then wait till Timeout and check again
+	// When no Post tasks are active, break out of loop  and call the shutdown function
+	for {
+		timeout := time.Second
+		for _, h := range e.handlers {
+			if h.TaskTypeDetails.Name == "WinPost" && h.Count.Load() > 0 {
+				timeout = time.Second * 30
+				log.Infof("node shutdown deferred for %f seconds", timeout.Seconds())
+				continue
+			}
+			if h.TaskTypeDetails.Name == "WdPost" && h.Count.Load() > 0 {
+				timeout = time.Minute
+				log.Infof("node shutdown deferred for %f seconds due to running WdPost task", timeout.Seconds())
+				continue
+			}
+
+			if h.TaskTypeDetails.Name == "WdPostSubmit" && h.Count.Load() > 0 {
+				timeout = time.Minute
+				log.Infof("node shutdown deferred for %f seconds due to running WdPostSubmit task", timeout.Seconds())
+				continue
+			}
+
+			if h.TaskTypeDetails.Name == "WdPostRecover" && h.Count.Load() > 0 {
+				timeout = time.Minute
+				log.Infof("node shutdown deferred for %f seconds due to running WdPostRecover task", timeout.Seconds())
+				continue
+			}
+
+			// Test tasks fir itest
+			if h.TaskTypeDetails.Name == "ThingOne" && h.Count.Load() > 0 {
+				timeout = time.Second * 2
+				log.Infof("node shutdown deferred for %f seconds due to running itest task", timeout.Seconds())
+				continue
 			}
 		}
+		if timeout > time.Second {
+			time.Sleep(timeout)
+			continue
+		}
+		break
 	}
+
+	e.grace()
+	e.reg.Shutdown()
+	return
 }
 
 func (e *TaskEngine) poller() {
