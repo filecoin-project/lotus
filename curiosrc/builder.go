@@ -19,7 +19,7 @@ import (
 
 //var log = logging.Logger("provider")
 
-func WindowPostScheduler(ctx context.Context, fc config.CurioFees, pc config.ProvingConfig,
+func WindowPostScheduler(ctx context.Context, fc config.CurioFees, pc config.CurioProvingConfig,
 	api api.FullNode, verif storiface.Verifier, lw *sealer.LocalWorker, sender *message.Sender, chainSched *chainsched.CurioChainSched,
 	as *multictladdr.MultiAddressSelector, addresses map[dtypes.MinerAddress]bool, db *harmonydb.DB,
 	stor paths.Store, idx paths.SectorIndex, max int) (*window.WdPostTask, *window.WdPostSubmitTask, *window.WdPostRecoverDeclareTask, error) {
