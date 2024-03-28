@@ -43,6 +43,7 @@ COMMANDS:
    compact-allocated           compact allocated sectors bitfield
    propose-change-beneficiary  Propose a beneficiary address change
    confirm-change-beneficiary  Confirm a beneficiary address change
+   new-miner                   Initializes a new miner actor
    help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -229,6 +230,22 @@ OPTIONS:
    --existing-beneficiary  send confirmation from the existing beneficiary address (default: false)
    --new-beneficiary       send confirmation from the new beneficiary address (default: false)
    --help, -h              show help
+```
+
+### sptool actor new-miner
+```
+NAME:
+   sptool actor new-miner - Initializes a new miner actor
+
+USAGE:
+   sptool actor new-miner [command options] [arguments...]
+
+OPTIONS:
+   --worker value, -w value  worker key to use for new miner initialisation
+   --owner value, -o value   owner key to use for new miner initialisation
+   --from value, -f value    address to send actor(miner) creation message from
+   --sector-size value       specify sector size to use for new miner initialisation
+   --help, -h                show help
 ```
 
 ## sptool info
