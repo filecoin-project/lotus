@@ -913,7 +913,7 @@ func (n *Ensemble) Start() *Ensemble {
 		if err != nil {
 			return nil
 		}
-		defer taskEngine.GracefullyTerminate(time.Hour)
+		defer taskEngine.GracefullyTerminate()
 
 		err = rpc.ListenAndServe(ctx, p.Deps, shutdownChan) // Monitor for shutdown.
 		require.NoError(n.t, err)

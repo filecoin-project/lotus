@@ -90,7 +90,7 @@ func TestHarmonyTasks(t *testing.T) {
 		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1")
 		require.NoError(t, err)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
-		e.GracefullyTerminate(time.Minute)
+		e.GracefullyTerminate()
 		expected := []string{"taskResult56", "taskResult73"}
 		sort.Strings(t1.WorkCompleted)
 		require.Equal(t, expected, t1.WorkCompleted, "unexpected results")
@@ -173,8 +173,8 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{workerParty}, "test:2")
 		require.NoError(t, err)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
-		sender.GracefullyTerminate(time.Second * 5)
-		worker.GracefullyTerminate(time.Second * 5)
+		sender.GracefullyTerminate()
+		worker.GracefullyTerminate()
 		sort.Strings(dest)
 		require.Equal(t, []string{"A", "B"}, dest)
 	})
@@ -204,7 +204,7 @@ func TestWorkStealing(t *testing.T) {
 		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fooLetterSaver(t, cdb, &dest)}, "test:2")
 		require.ErrorIs(t, err, nil)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
-		worker.GracefullyTerminate(time.Second * 5)
+		worker.GracefullyTerminate()
 		require.Equal(t, []string{"M"}, dest)
 	})
 }
@@ -243,8 +243,8 @@ func TestTaskRetry(t *testing.T) {
 		rcv, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fails2xPerMsg}, "test:2")
 		require.NoError(t, err)
 		time.Sleep(time.Second)
-		sender.GracefullyTerminate(time.Hour)
-		rcv.GracefullyTerminate(time.Hour)
+		sender.GracefullyTerminate()
+		rcv.GracefullyTerminate()
 		sort.Strings(dest)
 		require.Equal(t, []string{"A", "B"}, dest)
 		type hist struct {
