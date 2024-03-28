@@ -840,12 +840,11 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	pcm[verifregtypes13.ClaimId(allocationId)] = prov
 
 	// Extend claim with same client
-	msgs, err := cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, verifiedClientAddr1, (builtin.EpochsInYear*3)+3000, false, true)
+	msgs, err := cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, verifiedClientAddr1, (builtin.EpochsInYear*3)+3000, false, true, 100)
 	require.NoError(t, err)
 	require.NotNil(t, msgs)
 	require.Len(t, msgs, 1)
 
-	// MpoolBatchPushMessage method will take care of gas estimation and funds check
 	smsg, err := client.MpoolPushMessage(ctx, msgs[0], nil)
 	require.NoError(t, err)
 
@@ -859,11 +858,11 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	require.EqualValues(t, newclaim.TermMax-oldclaim.TermMax, 3000)
 
 	// Extend claim with non-verified client | should fail
-	_, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, unverifiedClient.Address, verifregtypes13.MaximumVerifiedAllocationTerm, false, true)
+	_, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, unverifiedClient.Address, verifregtypes13.MaximumVerifiedAllocationTerm, false, true, 100)
 	require.ErrorContains(t, err, "does not have any datacap")
 
 	// Extend all claim with verified client
-	msgs, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, nil, []string{miner.ActorAddr.String()}, verifiedClientAddr2, verifregtypes13.MaximumVerifiedAllocationTerm, true, true)
+	msgs, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, nil, []string{miner.ActorAddr.String()}, verifiedClientAddr2, verifregtypes13.MaximumVerifiedAllocationTerm, true, true, 100)
 	require.NoError(t, err)
 	require.Len(t, msgs, 1)
 	smsg, err = client.MpoolPushMessage(ctx, msgs[0], nil)
@@ -873,14 +872,15 @@ func TestVerifiedDDOExtendClaim(t *testing.T) {
 	require.True(t, wait.Receipt.ExitCode.IsSuccess())
 
 	// Extend all claims with lower TermMax
-	msgs, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, verifiedClientAddr2, builtin.EpochsInYear*4, false, true)
+	msgs, err = cli.CreateExtendClaimMsg(ctx, client.FullNode, pcm, []string{}, verifiedClientAddr2, builtin.EpochsInYear*4, false, true, 100)
 	require.NoError(t, err)
 	require.Nil(t, msgs)
 
 	newclaim, err = client.StateGetClaim(ctx, miner.ActorAddr, verifreg.ClaimId(allocationId), types.EmptyTSK)
 	require.NoError(t, err)
 	require.NotNil(t, newclaim)
-	require.EqualValues(t, newclaim.TermMax, verifregtypes13.MaximumVerifiedAllocationTerm)
 
-	// TODO: check "claim-updated" message
+	// TODO: check "claim-updated" event
+	// New TermMax should be more than 5 years
+	require.Greater(t, int(newclaim.TermMax), verifregtypes13.MaximumVerifiedAllocationTerm)
 }
