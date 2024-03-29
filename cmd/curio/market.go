@@ -61,7 +61,7 @@ var marketRPCInfoCmd = &cli.Command{
 		})
 
 		for _, at := range addrTokens {
-			fmt.Printf("%s %s\n", at.Address, at.Token)
+			fmt.Printf("[lotus-miner/boost compatible] %s %s\n", at.Address, at.Token)
 		}
 
 		return nil

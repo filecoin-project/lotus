@@ -100,7 +100,7 @@ func MakeTokens(cfg *config.CurioConfig) (map[address.Address]string, error) {
 }
 
 func forEachMarketRPC(cfg *config.CurioConfig, cb func(string, string) error) error {
-	for n, server := range cfg.Subsystems.MarketRPCServers {
+	for n, server := range cfg.Subsystems.BoostAdapters {
 		n := n
 
 		// server: [f0.. actor address]:[bind address]

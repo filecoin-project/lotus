@@ -563,10 +563,10 @@ also be bounded by resources available on the machine. It is recommended that th
 uses all available network (or disk) bandwidth on the machine without causing bottlenecks.`,
 		},
 		{
-			Name: "MarketRPCServers",
+			Name: "BoostAdapters",
 			Type: "[]string",
 
-			Comment: `MarketRPCServers is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
+			Comment: `BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
 This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
 Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
 Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.

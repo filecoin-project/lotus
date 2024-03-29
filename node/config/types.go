@@ -200,7 +200,7 @@ type CurioSubsystemsConfig struct {
 	// uses all available network (or disk) bandwidth on the machine without causing bottlenecks.
 	MoveStorageMaxTasks int
 
-	// MarketRPCServers is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
+	// BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
 	// This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
 	// Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
 	// Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
@@ -217,7 +217,7 @@ type CurioSubsystemsConfig struct {
 	//
 	// NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
 	// a machine which handles ParkPiece tasks.
-	MarketRPCServers []string
+	BoostAdapters []string
 
 	// EnableWebGui enables the web GUI on this lotus-provider instance. The UI has minimal local overhead, but it should
 	// only need to be run on a single machine in the cluster.
