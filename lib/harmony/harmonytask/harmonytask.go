@@ -195,50 +195,53 @@ func New(
 // passing a deadline will ignore those still running (to be picked-up later).
 func (e *TaskEngine) GracefullyTerminate() {
 
+	// call the cancel func to avoid picking up any new tasks. Running tasks have context.Background()
+	// Call shutdown to stop posting heartbeat to DB.
+	e.grace()
+	e.reg.Shutdown()
+
 	// If there are any Post tasks then wait till Timeout and check again
 	// When no Post tasks are active, break out of loop  and call the shutdown function
 	for {
-		timeout := time.Second
+		timeout := time.Millisecond
 		for _, h := range e.handlers {
 			if h.TaskTypeDetails.Name == "WinPost" && h.Count.Load() > 0 {
-				timeout = time.Second * 30
+				timeout = time.Second
 				log.Infof("node shutdown deferred for %f seconds", timeout.Seconds())
 				continue
 			}
 			if h.TaskTypeDetails.Name == "WdPost" && h.Count.Load() > 0 {
-				timeout = time.Minute
+				timeout = time.Second * 3
 				log.Infof("node shutdown deferred for %f seconds due to running WdPost task", timeout.Seconds())
 				continue
 			}
 
 			if h.TaskTypeDetails.Name == "WdPostSubmit" && h.Count.Load() > 0 {
-				timeout = time.Minute
+				timeout = time.Second
 				log.Infof("node shutdown deferred for %f seconds due to running WdPostSubmit task", timeout.Seconds())
 				continue
 			}
 
 			if h.TaskTypeDetails.Name == "WdPostRecover" && h.Count.Load() > 0 {
-				timeout = time.Minute
+				timeout = time.Second
 				log.Infof("node shutdown deferred for %f seconds due to running WdPostRecover task", timeout.Seconds())
 				continue
 			}
 
-			// Test tasks fir itest
+			// Test tasks for itest
 			if h.TaskTypeDetails.Name == "ThingOne" && h.Count.Load() > 0 {
-				timeout = time.Second * 2
+				timeout = time.Second
 				log.Infof("node shutdown deferred for %f seconds due to running itest task", timeout.Seconds())
 				continue
 			}
 		}
-		if timeout > time.Second {
+		if timeout > time.Millisecond {
 			time.Sleep(timeout)
 			continue
 		}
 		break
 	}
 
-	e.grace()
-	e.reg.Shutdown()
 	return
 }
 
