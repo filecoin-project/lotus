@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -228,21 +229,6 @@ var sectorsListCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		// showRemoved := cctx.Bool("show-removed")
-		// var states []api.SectorState
-		// if cctx.IsSet("states") && cctx.IsSet("unproven") {
-		// 	return xerrors.Errorf("only one of --states or --unproven can be specified at once")
-		// }
-
-		// if cctx.IsSet("states") {
-		// 	showRemoved = true
-		// 	sList := strings.Split(cctx.String("states"), ",")
-		// 	states = make([]api.SectorState, len(sList))
-		// 	for i := range sList {
-		// 		states[i] = api.SectorState(sList[i])
-		// 	}
-		// }
-
 		maddr, err := SPTActorGetter(cctx)
 		if err != nil {
 			return err
@@ -295,30 +281,16 @@ var sectorsListCmd = &cli.Command{
 		for _, st := range sset {
 			s := st.SectorNumber
 
-			// if !showRemoved && st.State == api.SectorState(sealing.Removed) {
-			// 	continue
-			// }
-
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 
-			dw, _ := st.DealWeight.Float64()
-			vp, _ := st.VerifiedDealWeight.Float64()
-			// estimate := (st.Expiration-st.Activation <= 0) || sealing.IsUpgradeState(sealing.SectorState(st.State))
-			// if !estimate {
-			// 	rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
-			// 	dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
-			// 	vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
-			// } else {
-			// 	for _, piece := range st.Pieces {
-			// 		if piece.DealInfo != nil {
-			// 			dw += float64(piece.Piece.Size)
-			// 			if piece.DealInfo.DealProposal != nil && piece.DealInfo.DealProposal.VerifiedDeal {
-			// 				vp += float64(piece.Piece.Size) * verifiedPowerGainMul
-			// 			}
-			// 		}
-			// 	}
-			// }
+			const verifiedPowerGainMul = 9
+			dw, vp := .0, .0
+			{
+				rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
+				dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+			}
 
 			var deals int
 			for _, deal := range st.DealIDs {
@@ -363,16 +335,9 @@ var sectorsListCmd = &cli.Command{
 			}
 
 			if !fast && deals > 0 {
-				estWrap := func(s string) string {
-					// if !estimate {
-					// 	return s
-					// }
-					return fmt.Sprintf("[%s]", s)
-				}
-
-				m["DealWeight"] = estWrap(units.BytesSize(dw))
+				m["DealWeight"] = units.BytesSize(dw)
 				if vp > 0 {
-					m["VerifiedPower"] = estWrap(color.GreenString(units.BytesSize(vp)))
+					m["VerifiedPower"] = color.GreenString(units.BytesSize(vp))
 				}
 			}
 
