@@ -141,8 +141,8 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 				}
 				fmt.Printf("\nSector On Chain Info\n")
 				fmt.Printf("SealProof:\t\t%x\n", status.SealProof)
-				fmt.Printf("Activation:\t\t%v\n", status.Activation)
-				fmt.Printf("Expiration:\t\t%v\n", status.Expiration)
+				fmt.Printf("Activation:\t\t%v\n", cliutil.EpochTime(head.Height(), status.Activation))
+				fmt.Printf("Expiration:\t\t%s\n", cliutil.EpochTime(head.Height(), status.Expiration))
 				fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
 				fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
 				fmt.Printf("InitialPledge:\t\t%v\n", types.FIL(status.InitialPledge))
@@ -882,7 +882,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 										currEpoch <= (claim.TermStart+claim.TermMin) ||
 										// FIP-0045 requires the sector to be in its last 30 days of life
 										(currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod) {
-										fmt.Printf("skipping sector %d because claim %d does not live long enough \n", sectorNumber, claimId)
+										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) does not live long enough \n", sectorNumber, claimId, claim.Client, claim.Data)
 										cannotExtendSector = true
 										break
 									}
