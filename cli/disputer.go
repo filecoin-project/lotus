@@ -238,6 +238,15 @@ var disputerStartCmd = &cli.Command{
 
 			// TODO: Parallelizeable
 			for _, dl := range dls {
+				// CHECK: if miner waller balance is zero then skip sending dispute message
+				walletBalance, err := api.WalletBalance(ctx, dl.miner)
+				if err != nil {
+					return xerrors.Errorf("failed to get wallet balance while checking to send dispute messages to miner %w: %w", dl.miner, err)
+				}
+				if walletBalance.Equals(big.Zero()) {
+					disputeLog.Warnw("wallet balance is zero, skipping dispute message", "wallet", dl.miner)
+					return nil
+				}
 				fullDeadlines, err := api.StateMinerDeadlines(ctx, dl.miner, tsk)
 				if err != nil {
 					return xerrors.Errorf("failed to load deadlines: %w", err)
