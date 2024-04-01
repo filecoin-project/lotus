@@ -352,15 +352,6 @@ var configEditCmd = &cli.Command{
 	},
 }
 
-func getDefaultConfig(comment bool) (string, error) {
-	c := config.DefaultCurioConfig()
-	cb, err := config.ConfigUpdate(c, nil, config.Commented(comment), config.DefaultKeepUncommented(), config.NoEnv())
-	if err != nil {
-		return "", err
-	}
-	return string(cb), nil
-}
-
 func diff(sourceConf, newConf string) (string, error) {
 	lpSrc := config.DefaultCurioConfig()
 	lpNew := config.DefaultCurioConfig()

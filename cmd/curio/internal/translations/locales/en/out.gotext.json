@@ -1348,43 +1348,59 @@
             "fuzzy": true
         },
         {
-            "id": "Failed to insert '{String}' config layer in database: {Error}",
-            "message": "Failed to insert '{String}' config layer in database: {Error}",
-            "translation": "Failed to insert '{String}' config layer in database: {Error}",
+            "id": "Configuration 'base' was updated to include this miner's address",
+            "message": "Configuration 'base' was updated to include this miner's address",
+            "translation": "Configuration 'base' was updated to include this miner's address",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Cannot load base config: {Error}",
+            "message": "Cannot load base config: {Error}",
+            "translation": "Cannot load base config: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
-                    "id": "String",
+                    "id": "Error",
                     "string": "%[1]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "d.MinerID.String()"
-                },
-                {
-                    "id": "Error",
-                    "string": "%[2]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 2,
                     "expr": "err.Error()"
                 }
             ],
             "fuzzy": true
         },
         {
-            "id": "New Curio configuration layer '{String}' created",
-            "message": "New Curio configuration layer '{String}' created",
-            "translation": "New Curio configuration layer '{String}' created",
+            "id": "Failed to load base config: {Error}",
+            "message": "Failed to load base config: {Error}",
+            "translation": "Failed to load base config: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
-                    "id": "String",
+                    "id": "Error",
                     "string": "%[1]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "d.MinerID.String()"
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to regenerate base config: {Error}",
+            "message": "Failed to regenerate base config: {Error}",
+            "translation": "Failed to regenerate base config: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
                 }
             ],
             "fuzzy": true

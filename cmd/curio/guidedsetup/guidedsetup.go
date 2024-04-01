@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli/spcli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -770,6 +771,7 @@ func stepNewMinerConfig(d *MigrationData) {
 
 	if !lo.Contains(titles, "base") {
 		c := config.DefaultCurioConfig()
+		c.Addresses[0].MinerAddresses = []string{d.MinerID.String()}
 		cb, err := config.ConfigUpdate(c, nil, config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 		if err != nil {
 			d.say(notice, "Failed to generate default config: %s", err.Error())
@@ -783,16 +785,46 @@ func stepNewMinerConfig(d *MigrationData) {
 			d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
 			os.Exit(1)
 		}
+		stepCompleted(d, d.T("Configuration 'base' was updated to include this miner's address"))
+		return
 	}
 
-	_, err = d.DB.Exec(d.ctx, "INSERT INTO harmony_config (title, config) VALUES ($1, $2)", d.MinerID.String(), configTOML.String())
+	baseCfg := &config.CurioConfig{}
+	baseText := ""
+
+	err = d.DB.QueryRow(d.ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
 	if err != nil {
-		d.say(notice, "Failed to insert '%s' config layer in database: %s", d.MinerID.String(), err.Error())
+		d.say(notice, "Cannot load base config: %s", err.Error())
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+	EnsureEmptyArrays(baseCfg)
+	_, err = deps.LoadConfigWithUpgrades(baseText, baseCfg)
+	if err != nil {
+		d.say(notice, "Failed to load base config: %s", err.Error())
 		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
 		os.Exit(1)
 	}
 
-	stepCompleted(d, d.T("New Curio configuration layer '%s' created", d.MinerID.String()))
+	baseCfg.Addresses = append(baseCfg.Addresses, curioCfg.Addresses[0])
+	baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
+		return len(a.MinerAddresses) > 0
+	})
+
+	cb, err := config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+	if err != nil {
+		d.say(notice, "Failed to regenerate base config: %s", err.Error())
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+	_, err = d.DB.Exec(d.ctx, "UPDATE harmony_config SET config=$1 WHERE title='base'", string(cb))
+	if err != nil {
+		d.say(notice, "Failed to insert 'base' config layer in database: %s", err.Error())
+		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
+		os.Exit(1)
+	}
+
+	stepCompleted(d, d.T("Configuration 'base' was updated to include this miner's address"))
 }
 
 func getDBDetails(d *MigrationData) *config.HarmonyDB {

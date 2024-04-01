@@ -1041,6 +1041,30 @@
             "translation": "나는 원한다:",
             "message": "I want to:",
             "placeholder": null
+        },
+        {
+            "id": "Configuration 'base' was updated to include this miner's address",
+            "translation": "이 마이너 주소를 포함한 구성 'base'가 업데이트되었습니다.",
+            "message": "Configuration 'base' was updated to include this miner's address",
+            "placeholder": null
+        },
+        {
+            "id": "Cannot load base config: {Error}",
+            "translation": "기본 구성을 불러올 수 없습니다: {Error}",
+            "message": "Cannot load base config: {Error}",
+            "placeholder": null
+        },
+        {
+            "id": "Failed to load base config: {Error}",
+            "translation": "기본 구성을 로드하는 데 실패했습니다: {Error}",
+            "message": "Failed to load base config: {Error}",
+            "placeholder": null
+        },
+        {
+            "id": "Failed to regenerate base config: {Error}",
+            "translation": "기본 구성을 재생성하는 데 실패했습니다: {Error}",
+            "message": "Failed to regenerate base config: {Error}",
+            "placeholder": null
         }
     ]
 }

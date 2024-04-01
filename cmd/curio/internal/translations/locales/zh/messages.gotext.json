@@ -1011,6 +1011,30 @@
       "translation": "我想要：",
       "message": "I want to:",
       "placeholder": null
+    },
+    {
+      "id": "Configuration 'base' was updated to include this miner's address",
+      "translation": "配置 'base' 已更新以包含此矿工的地址",
+      "message": "Configuration 'base' was updated to include this miner's address",
+      "placeholder": null
+    },
+    {
+      "id": "Cannot load base config: {Error}",
+      "translation": "无法加载基本配置: {Error}",
+      "message": "Cannot load base config: {Error}",
+      "placeholder": null
+    },
+    {
+      "id": "Failed to load base config: {Error}",
+      "translation": "加载基本配置失败: {Error}",
+      "message": "Failed to load base config: {Error}",
+      "placeholder": null
+    },
+    {
+      "id": "Failed to regenerate base config: {Error}",
+      "translation": "重新生成基本配置失败: {Error}",
+      "message": "Failed to regenerate base config: {Error}",
+      "placeholder": null
     }
   ]
 }

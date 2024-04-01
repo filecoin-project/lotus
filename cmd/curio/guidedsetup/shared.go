@@ -86,7 +86,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 	}
 	curioCfg := config.DefaultCurioConfig()
 
-	ensureEmptyArrays(curioCfg)
+	EnsureEmptyArrays(curioCfg)
 	_, err = deps.LoadConfigWithUpgrades(string(buf), curioCfg)
 
 	if err != nil {
@@ -149,7 +149,7 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 		if err != nil {
 			return minerAddress, xerrors.Errorf("Cannot load base config: %w", err)
 		}
-		ensureEmptyArrays(baseCfg)
+		EnsureEmptyArrays(baseCfg)
 		_, err := deps.LoadConfigWithUpgrades(baseText, baseCfg)
 		if err != nil {
 			return minerAddress, xerrors.Errorf("Cannot load base config: %w", err)
@@ -242,7 +242,7 @@ func getDBSettings(smCfg config.StorageMiner) string {
 	return dbSettings
 }
 
-func ensureEmptyArrays(cfg *config.CurioConfig) {
+func EnsureEmptyArrays(cfg *config.CurioConfig) {
 	if cfg.Addresses == nil {
 		cfg.Addresses = []config.CurioAddresses{}
 	} else {
