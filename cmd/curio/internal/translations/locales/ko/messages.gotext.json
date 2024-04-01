@@ -1035,6 +1035,12 @@
             "translation": "신뢰성 향상을 위한 중복성 사용: 적어도 post 레이어를 사용하여 여러 대의 기계를 시작하십시오: 'curio run --layers=post'",
             "message": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
             "placeholder": null
+        },
+        {
+            "id": "I want to:",
+            "translation": "나는 원한다:",
+            "message": "I want to:",
+            "placeholder": null
         }
     ]
 }

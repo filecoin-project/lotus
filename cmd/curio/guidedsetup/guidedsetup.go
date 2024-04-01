@@ -183,7 +183,7 @@ func SetupLanguage() (func(key message.Reference, a ...interface{}) string, func
 
 func newOrMigrate(d *MigrationData) {
 	i, _, err := (&promptui.Select{
-		Label: d.T("Choose if you with to create a new miner or migrate from existing Lotus-Miner"),
+		Label: d.T("I want to:"),
 		Items: []string{
 			d.T("Migrate from existing Lotus-Miner"),
 			d.T("Create a new miner")},

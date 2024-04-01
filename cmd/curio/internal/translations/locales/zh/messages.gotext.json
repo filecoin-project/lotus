@@ -1005,6 +1005,12 @@
       "translation": "通过冗余增加可靠性：使用至少后层启动多台机器：'curio run --layers=post'",
       "message": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
       "placeholder": null
+    },
+    {
+      "id": "I want to:",
+      "translation": "我想要：",
+      "message": "I want to:",
+      "placeholder": null
     }
   ]
 }

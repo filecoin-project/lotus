@@ -44,9 +44,9 @@
             "fuzzy": true
         },
         {
-            "id": "Choose if you with to create a new miner or migrate from existing Lotus-Miner",
-            "message": "Choose if you with to create a new miner or migrate from existing Lotus-Miner",
-            "translation": "Choose if you with to create a new miner or migrate from existing Lotus-Miner",
+            "id": "I want to:",
+            "message": "I want to:",
+            "translation": "I want to:",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },

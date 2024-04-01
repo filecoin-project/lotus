@@ -45,7 +45,6 @@ var messageKeyToIndex = map[string]int{
 	"Aggregate-Anonymous: version, chain, and Miner power (bucketed).": 22,
 	"Cannot reach the DB: %s": 90,
 	"Cannot read the config.toml file in the provided directory, Error: %s":                                                                                  65,
-	"Choose if you with to create a new miner or migrate from existing Lotus-Miner":                                                                          6,
 	"Compare the configurations %s to %s. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.": 115,
 	"Confidence epochs":     86,
 	"Confidence epochs: %d": 76,
@@ -106,7 +105,8 @@ var messageKeyToIndex = map[string]int{
 	"Failed to verify the auth token from daemon node: %s":     96,
 	"Filecoin %s channels: %s and %s":                          35,
 	"Hint: I am someone running Curio on whichever chain.":     23,
-	"Host: %s": 103,
+	"Host: %s":   103,
+	"I want to:": 6,
 	"Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'": 36,
 	"Individual Data: Miner ID, Curio version, chain (%s or %s). Signed.":                                                    21,
 	"Initializing a new miner actor.":   70,
@@ -165,42 +165,42 @@ var messageKeyToIndex = map[string]int{
 var enIndex = []uint32{ // 121 elements
 	// Entry 0 - 1F
 	0x00000000, 0x00000035, 0x00000097, 0x0000015a,
-	0x0000019c, 0x000001f5, 0x00000210, 0x0000025e,
-	0x00000280, 0x00000293, 0x000002ad, 0x000002cd,
-	0x0000030f, 0x0000034c, 0x0000036f, 0x000003b5,
-	0x000003ce, 0x000003f9, 0x00000414, 0x0000044c,
-	0x000004a6, 0x000004d9, 0x00000523, 0x00000564,
-	0x00000599, 0x000005a2, 0x000005c3, 0x000005e4,
-	0x00000604, 0x00000621, 0x0000063e, 0x00000671,
+	0x0000019c, 0x000001f5, 0x00000210, 0x0000021b,
+	0x0000023d, 0x00000250, 0x0000026a, 0x0000028a,
+	0x000002cc, 0x00000309, 0x0000032c, 0x00000372,
+	0x0000038b, 0x000003b6, 0x000003d1, 0x00000409,
+	0x00000463, 0x00000496, 0x000004e0, 0x00000521,
+	0x00000556, 0x0000055f, 0x00000580, 0x000005a1,
+	0x000005c1, 0x000005de, 0x000005fb, 0x0000062e,
 	// Entry 20 - 3F
-	0x0000067f, 0x00000693, 0x000006fe, 0x0000073e,
-	0x00000767, 0x000007de, 0x0000082f, 0x0000087b,
-	0x000008ad, 0x000008db, 0x000008fa, 0x0000093c,
-	0x00000975, 0x0000098e, 0x000009a2, 0x000009d2,
-	0x000009fc, 0x00000a26, 0x00000a48, 0x00000abf,
-	0x00000adb, 0x00000b08, 0x00000b2a, 0x00000b4b,
-	0x00000b6c, 0x00000b8d, 0x00000bae, 0x00000bc8,
-	0x00000bde, 0x00000c2b, 0x00000c65, 0x00000c6b,
+	0x0000063c, 0x00000650, 0x000006bb, 0x000006fb,
+	0x00000724, 0x0000079b, 0x000007ec, 0x00000838,
+	0x0000086a, 0x00000898, 0x000008b7, 0x000008f9,
+	0x00000932, 0x0000094b, 0x0000095f, 0x0000098f,
+	0x000009b9, 0x000009e3, 0x00000a05, 0x00000a7c,
+	0x00000a98, 0x00000ac5, 0x00000ae7, 0x00000b08,
+	0x00000b29, 0x00000b4a, 0x00000b6b, 0x00000b85,
+	0x00000b9b, 0x00000be8, 0x00000c22, 0x00000c28,
 	// Entry 40 - 5F
-	0x00000ca7, 0x00000cd3, 0x00000d1c, 0x00000d5c,
-	0x00000dad, 0x00000dbf, 0x00000dd9, 0x00000df9,
-	0x00000e1e, 0x00000e33, 0x00000e49, 0x00000e5f,
-	0x00000e72, 0x00000e8b, 0x00000eca, 0x00000ef4,
-	0x00000f0c, 0x00000f20, 0x00000f43, 0x00000f57,
-	0x00000f6d, 0x00000f7f, 0x00000fa2, 0x00000fb4,
-	0x00000fd6, 0x00000ffe, 0x0000101f, 0x0000103a,
-	0x00001063, 0x00001085, 0x000010b7, 0x0000114e,
+	0x00000c64, 0x00000c90, 0x00000cd9, 0x00000d19,
+	0x00000d6a, 0x00000d7c, 0x00000d96, 0x00000db6,
+	0x00000ddb, 0x00000df0, 0x00000e06, 0x00000e1c,
+	0x00000e2f, 0x00000e48, 0x00000e87, 0x00000eb1,
+	0x00000ec9, 0x00000edd, 0x00000f00, 0x00000f14,
+	0x00000f2a, 0x00000f3c, 0x00000f5f, 0x00000f71,
+	0x00000f93, 0x00000fbb, 0x00000fdc, 0x00000ff7,
+	0x00001020, 0x00001042, 0x00001074, 0x0000110b,
 	// Entry 60 - 7F
-	0x00001179, 0x000011b1, 0x000011d4, 0x000011fd,
-	0x00001235, 0x0000126e, 0x0000129c, 0x000012fe,
-	0x0000130a, 0x00001316, 0x00001326, 0x00001336,
-	0x00001346, 0x0000136d, 0x000013ae, 0x000013d2,
-	0x000013e3, 0x00001405, 0x00001432, 0x00001489,
-	0x00001526, 0x0000157d, 0x00001597, 0x000015b5,
-	0x00001615,
+	0x00001136, 0x0000116e, 0x00001191, 0x000011ba,
+	0x000011f2, 0x0000122b, 0x00001259, 0x000012bb,
+	0x000012c7, 0x000012d3, 0x000012e3, 0x000012f3,
+	0x00001303, 0x0000132a, 0x0000136b, 0x0000138f,
+	0x000013a0, 0x000013c2, 0x000013ef, 0x00001446,
+	0x000014e3, 0x0000153a, 0x00001554, 0x00001572,
+	0x000015d2,
 } // Size: 508 bytes
 
-const enData string = "" + // Size: 5653 bytes
+const enData string = "" + // Size: 5586 bytes
 	"\x04\x00\x01 0\x02Use the arrow keys to navigate: ↓ ↑ → ←\x02This intera" +
 	"ctive tool creates a new miner actor and creates the basic configuration" +
 	" layer for it.\x02This process is partially idempotent. Once a new miner" +
@@ -208,48 +208,47 @@ const enData string = "" + // Size: 5653 bytes
 	"'curio config new-cluster < miner ID >' to finish the configuration.\x02" +
 	"This interactive tool migrates lotus-miner to Curio in 5 minutes.\x02Eac" +
 	"h step needs your confirmation and can be reversed. Press Ctrl+C to exit" +
-	" at any time.\x02Ctrl+C pressed in Terminal\x02Choose if you with to cre" +
-	"ate a new miner or migrate from existing Lotus-Miner\x02Migrate from exi" +
-	"sting Lotus-Miner\x02Create a new miner\x02Aborting remaining steps.\x02" +
-	"Lotus-Miner to Curio Migration.\x02Try the web interface with %[1]s for " +
-	"further guided improvements.\x02You can now migrate your market node (%[" +
-	"1]s), if applicable.\x02New Miner initialization complete.\x02Migrating " +
-	"lotus-miner config.toml to Curio in-database configuration.\x02Error get" +
-	"ting API: %[1]s\x02could not get API info for FullNode: %[1]w\x02Error g" +
-	"etting token: %[1]s\x02Error saving config to layer: %[1]s. Aborting Mig" +
-	"ration\x02The Curio team wants to improve the software you use. Tell the" +
-	" team you're using `%[1]s`.\x02Select what you want to share with the Cu" +
-	"rio team.\x02Individual Data: Miner ID, Curio version, chain (%[1]s or %" +
-	"[2]s). Signed.\x02Aggregate-Anonymous: version, chain, and Miner power (" +
-	"bucketed).\x02Hint: I am someone running Curio on whichever chain.\x02No" +
-	"thing.\x02Error getting miner power: %[1]s\x02Error marshalling message:" +
-	" %[1]s\x02Error getting miner info: %[1]s\x02Error signing message: %[1]" +
-	"s\x02Error sending message: %[1]s\x04\x00\x01 .\x02Error sending message" +
-	": Status %[1]s, Message:\x02Message sent.\x04\x00\x01 \x0f\x02Documentat" +
-	"ion:\x02The '%[1]s' layer stores common configuration. All curio instanc" +
-	"es can include it in their %[2]s argument.\x02You can add other layers f" +
-	"or per-machine configuration changes.\x02Filecoin %[1]s channels: %[2]s " +
-	"and %[3]s\x02Increase reliability using redundancy: start multiple machi" +
-	"nes with at-least the post layer: 'curio run --layers=post'\x02One datab" +
-	"ase can serve multiple miner IDs: Run a migration for each lotus-miner." +
-	"\x02Please start (or restart) %[1]s now that database credentials are in" +
-	" %[2]s.\x02Waiting for %[1]s to write sectors into Yugabyte.\x02Error in" +
-	"terpreting miner ID: %[1]s: ID: %[2]s\x02Error verifying sectors: %[1]s" +
-	"\x02The sectors are in the database. The database is ready for %[1]s." +
-	"\x02Now shut down lotus-miner and move the systems to %[1]s.\x02Press re" +
-	"turn to continue\x02Aborting migration.\x02Sectors verified. %[1]d secto" +
-	"r locations found.\x02Connected to Yugabyte. Schema is current.\x02Enabl" +
-	"ing Sector Indexing in the database.\x02Error encoding config.toml: %[1]" +
-	"s\x02Press return to update %[1]s with Yugabyte info. A Backup file will" +
-	" be written to that folder before changes are made.\x02Error expanding p" +
-	"ath: %[1]s\x02Error reading filemode of config.toml: %[1]s\x02Error crea" +
-	"ting backup file: %[1]s\x02Error reading config.toml: %[1]s\x02Error wri" +
-	"ting backup file: %[1]s\x02Error closing backup file: %[1]s\x02Error wri" +
-	"ting config.toml: %[1]s\x04\x00\x01 \x15\x02Restart Lotus Miner.\x02Conn" +
-	"ected to Yugabyte\x02To start, ensure your sealing pipeline is drained a" +
-	"nd shut-down lotus-miner.\x02Select the location of your lotus-miner con" +
-	"fig directory?\x02Other\x02Enter the path to the configuration directory" +
-	" used by %[1]s\x04\x00\x01 '\x02No path provided, abandoning migration" +
+	" at any time.\x02Ctrl+C pressed in Terminal\x02I want to:\x02Migrate fro" +
+	"m existing Lotus-Miner\x02Create a new miner\x02Aborting remaining steps" +
+	".\x02Lotus-Miner to Curio Migration.\x02Try the web interface with %[1]s" +
+	" for further guided improvements.\x02You can now migrate your market nod" +
+	"e (%[1]s), if applicable.\x02New Miner initialization complete.\x02Migra" +
+	"ting lotus-miner config.toml to Curio in-database configuration.\x02Erro" +
+	"r getting API: %[1]s\x02could not get API info for FullNode: %[1]w\x02Er" +
+	"ror getting token: %[1]s\x02Error saving config to layer: %[1]s. Abortin" +
+	"g Migration\x02The Curio team wants to improve the software you use. Tel" +
+	"l the team you're using `%[1]s`.\x02Select what you want to share with t" +
+	"he Curio team.\x02Individual Data: Miner ID, Curio version, chain (%[1]s" +
+	" or %[2]s). Signed.\x02Aggregate-Anonymous: version, chain, and Miner po" +
+	"wer (bucketed).\x02Hint: I am someone running Curio on whichever chain." +
+	"\x02Nothing.\x02Error getting miner power: %[1]s\x02Error marshalling me" +
+	"ssage: %[1]s\x02Error getting miner info: %[1]s\x02Error signing message" +
+	": %[1]s\x02Error sending message: %[1]s\x04\x00\x01 .\x02Error sending m" +
+	"essage: Status %[1]s, Message:\x02Message sent.\x04\x00\x01 \x0f\x02Docu" +
+	"mentation:\x02The '%[1]s' layer stores common configuration. All curio i" +
+	"nstances can include it in their %[2]s argument.\x02You can add other la" +
+	"yers for per-machine configuration changes.\x02Filecoin %[1]s channels: " +
+	"%[2]s and %[3]s\x02Increase reliability using redundancy: start multiple" +
+	" machines with at-least the post layer: 'curio run --layers=post'\x02One" +
+	" database can serve multiple miner IDs: Run a migration for each lotus-m" +
+	"iner.\x02Please start (or restart) %[1]s now that database credentials a" +
+	"re in %[2]s.\x02Waiting for %[1]s to write sectors into Yugabyte.\x02Err" +
+	"or interpreting miner ID: %[1]s: ID: %[2]s\x02Error verifying sectors: %" +
+	"[1]s\x02The sectors are in the database. The database is ready for %[1]s" +
+	".\x02Now shut down lotus-miner and move the systems to %[1]s.\x02Press r" +
+	"eturn to continue\x02Aborting migration.\x02Sectors verified. %[1]d sect" +
+	"or locations found.\x02Connected to Yugabyte. Schema is current.\x02Enab" +
+	"ling Sector Indexing in the database.\x02Error encoding config.toml: %[1" +
+	"]s\x02Press return to update %[1]s with Yugabyte info. A Backup file wil" +
+	"l be written to that folder before changes are made.\x02Error expanding " +
+	"path: %[1]s\x02Error reading filemode of config.toml: %[1]s\x02Error cre" +
+	"ating backup file: %[1]s\x02Error reading config.toml: %[1]s\x02Error wr" +
+	"iting backup file: %[1]s\x02Error closing backup file: %[1]s\x02Error wr" +
+	"iting config.toml: %[1]s\x04\x00\x01 \x15\x02Restart Lotus Miner.\x02Con" +
+	"nected to Yugabyte\x02To start, ensure your sealing pipeline is drained " +
+	"and shut-down lotus-miner.\x02Select the location of your lotus-miner co" +
+	"nfig directory?\x02Other\x02Enter the path to the configuration director" +
+	"y used by %[1]s\x04\x00\x01 '\x02No path provided, abandoning migration" +
 	"\x02Cannot read the config.toml file in the provided directory, Error: %" +
 	"[1]s\x02Could not create repo from directory: %[1]s. Aborting migration" +
 	"\x02Could not lock miner repo. Your miner must be stopped: %[1]s\x0a Abo" +
@@ -291,185 +290,183 @@ const enData string = "" + // Size: 5653 bytes
 var koIndex = []uint32{ // 121 elements
 	// Entry 0 - 1F
 	0x00000000, 0x00000044, 0x000000c1, 0x000001c1,
-	0x0000020e, 0x00000289, 0x000002aa, 0x00000302,
-	0x0000032b, 0x00000346, 0x0000036b, 0x0000038e,
-	0x000003e8, 0x00000438, 0x0000045e, 0x000004b7,
-	0x000004d6, 0x00000512, 0x00000542, 0x0000059a,
-	0x00000626, 0x0000065f, 0x000006b5, 0x000006f3,
-	0x00000741, 0x0000075c, 0x00000796, 0x000007c9,
-	0x00000803, 0x0000082d, 0x00000857, 0x00000899,
+	0x0000020e, 0x00000289, 0x000002aa, 0x000002bc,
+	0x000002e5, 0x00000300, 0x00000325, 0x00000348,
+	0x000003a2, 0x000003f2, 0x00000418, 0x00000471,
+	0x00000490, 0x000004cc, 0x000004fc, 0x00000554,
+	0x000005e0, 0x00000619, 0x0000066f, 0x000006ad,
+	0x000006fb, 0x00000716, 0x00000750, 0x00000783,
+	0x000007bd, 0x000007e7, 0x00000811, 0x00000853,
 	// Entry 20 - 3F
-	0x000008bd, 0x000008ca, 0x00000950, 0x000009a2,
-	0x000009c9, 0x00000a65, 0x00000af7, 0x00000b72,
-	0x00000bb6, 0x00000bf4, 0x00000c1b, 0x00000c86,
-	0x00000cd0, 0x00000cf7, 0x00000d12, 0x00000d61,
-	0x00000da2, 0x00000de2, 0x00000e29, 0x00000ecf,
-	0x00000eff, 0x00000f4e, 0x00000f71, 0x00000f92,
-	0x00000fb5, 0x00000fd8, 0x00001016, 0x0000103a,
-	0x00001050, 0x000010bb, 0x0000110a, 0x00001111,
+	0x00000877, 0x00000884, 0x0000090a, 0x0000095c,
+	0x00000983, 0x00000a1f, 0x00000ab1, 0x00000b2c,
+	0x00000b70, 0x00000bae, 0x00000bd5, 0x00000c40,
+	0x00000c8a, 0x00000cb1, 0x00000ccc, 0x00000d1b,
+	0x00000d5c, 0x00000d9c, 0x00000de3, 0x00000e89,
+	0x00000eb9, 0x00000f08, 0x00000f2b, 0x00000f4c,
+	0x00000f6f, 0x00000f92, 0x00000fd0, 0x00000ff4,
+	0x0000100a, 0x00001075, 0x000010c4, 0x000010cb,
 	// Entry 40 - 5F
-	0x00001159, 0x000011ab, 0x00001205, 0x0000126f,
-	0x00001300, 0x00001318, 0x00001332, 0x00001356,
-	0x00001389, 0x000013a1, 0x000013b9, 0x000013d1,
-	0x000013e6, 0x000013fe, 0x00001455, 0x00001480,
-	0x00001498, 0x000014bf, 0x000014e2, 0x000014f6,
-	0x0000150b, 0x0000152f, 0x00001559, 0x0000156a,
-	0x00001590, 0x000015b6, 0x000015ef, 0x00001627,
-	0x0000165f, 0x0000167e, 0x000016ca, 0x00001788,
+	0x00001113, 0x00001165, 0x000011bf, 0x00001229,
+	0x000012ba, 0x000012d2, 0x000012ec, 0x00001310,
+	0x00001343, 0x0000135b, 0x00001373, 0x0000138b,
+	0x000013a0, 0x000013b8, 0x0000140f, 0x0000143a,
+	0x00001452, 0x00001479, 0x0000149c, 0x000014b0,
+	0x000014c5, 0x000014e9, 0x00001513, 0x00001524,
+	0x0000154a, 0x00001570, 0x000015a9, 0x000015e1,
+	0x00001619, 0x00001638, 0x00001684, 0x00001742,
 	// Entry 60 - 7F
-	0x000017d4, 0x00001822, 0x00001855, 0x00001878,
-	0x000018d4, 0x00001931, 0x00001973, 0x000019e1,
-	0x000019f2, 0x00001a00, 0x00001a18, 0x00001a2c,
-	0x00001a46, 0x00001a70, 0x00001ad3, 0x00001b0f,
-	0x00001b39, 0x00001b71, 0x00001bc5, 0x00001c2f,
-	0x00001ce9, 0x00001d4d, 0x00001d7c, 0x00001da3,
-	0x00001e2f,
+	0x0000178e, 0x000017dc, 0x0000180f, 0x00001832,
+	0x0000188e, 0x000018eb, 0x0000192d, 0x0000199b,
+	0x000019ac, 0x000019ba, 0x000019d2, 0x000019e6,
+	0x00001a00, 0x00001a2a, 0x00001a8d, 0x00001ac9,
+	0x00001af3, 0x00001b2b, 0x00001b7f, 0x00001be9,
+	0x00001ca3, 0x00001d07, 0x00001d36, 0x00001d5d,
+	0x00001de9,
 } // Size: 508 bytes
 
-const koData string = "" + // Size: 7727 bytes
+const koData string = "" + // Size: 7657 bytes
 	"\x04\x00\x01 ?\x02화살표 키를 사용하여 이동하세요: ↓ ↑ → ←\x02이 대화형 도구는 새로운 채굴자 액터를 생성" +
 	"하고 그에 대한 기본 구성 레이어를 생성합니다.\x02이 프로세스는 부분적으로 항등원적입니다. 새로운 채굴자 액터가 생성되었고" +
 	" 후속 단계가 실패하는 경우 사용자는 구성을 완료하기 위해 'curio config new-cluster < 채굴자 ID >'를 " +
 	"실행해야 합니다.\x02이 대화형 도구는 5분 안에 lotus-miner를 Curio로 이주합니다.\x02각 단계는 확인이 필" +
-	"요하며 되돌릴 수 있습니다. 언제든지 Ctrl+C를 눌러 종료할 수 있습니다.\x02터미널에서 Ctrl+C가 눌림\x02새 채" +
-	"굴자를 생성할지 기존의 Lotus-Miner에서 이전할지 선택하세요.\x02기존의 Lotus-Miner에서 이전하기\x02새로" +
-	"운 채굴자 생성\x02나머지 단계를 중단합니다.\x02Lotus-Miner에서 Curio로 이주.\x02더 많은 안내를 위해 " +
-	"%[1]s를 사용하여 웹 인터페이스를 시도하세요.\x02해당하는 경우 이제 시장 노드를 이주할 수 있습니다 (%[1]s).\x02" +
-	"새로운 채굴자 초기화 완료.\x02lotus-miner config.toml을 Curio의 데이터베이스 구성으로 이전 중입니다" +
-	".\x02API 가져오기 오류: %[1]s\x02FullNode의 API 정보를 가져올 수 없습니다: %[1]w\x02토큰을 가져" +
-	"오는 중 오류 발생: %[1]s\x02레이어에 구성을 저장하는 중 오류 발생: %[1]s. 마이그레이션 중단\x02Curio " +
-	"팀은 당신이 사용하는 소프트웨어를 개선하고자 합니다. 팀에게 `%[1]s`를 사용 중이라고 알려주세요.\x02Curio 팀과 " +
-	"공유하고 싶은 것을 선택하세요.\x02개별 데이터: 채굴자 ID, Curio 버전, 체인 (%[1]s 또는 %[2]s). 서명" +
-	"됨.\x02집계-익명: 버전, 체인, 및 채굴자 파워 (버킷).\x02힌트: 나는 어떤 체인에서든 Curio를 실행 중인 사람" +
-	"입니다.\x02아무것도 없습니다.\x02마이너 파워를 가져오는 중 오류 발생: %[1]s\x02메시지를 마샬하는 중 오류 발생" +
-	": %[1]s\x02마이너 정보를 가져오는 중 오류 발생: %[1]s\x02메시지 서명 중 오류 발생: %[1]s\x02메시지 전" +
-	"송 중 오류 발생: %[1]s\x04\x00\x01 =\x02메시지 전송 중 오류 발생: 상태 %[1]s, 메시지:\x02메시" +
-	"지가 전송되었습니다.\x04\x00\x01 \x08\x02문서:\x02'%[1]s' 레이어에는 공통 구성이 저장됩니다. 모든 " +
-	"Curio 인스턴스는 %[2]s 인수에 포함시킬 수 있습니다.\x02기계별 구성 변경을 위해 다른 레이어를 추가할 수 있습니다." +
-	"\x02Filecoin %[1]s 채널: %[2]s 및 %[3]s\x02신뢰성 향상을 위한 중복성 사용: 적어도 post 레이어를" +
-	" 사용하여 여러 대의 기계를 시작하십시오: 'curio run --layers=post'\x02한 개의 데이터베이스는 여러 광부 " +
-	"ID를 제공할 수 있습니다: 각 lotus-miner에 대해 마이그레이션을 실행하세요.\x02데이터베이스 자격 증명이 %[2]s에" +
-	" 입력되었으므로 지금 %[1]s을 시작하거나 다시 시작하세요.\x02%[1]s가 Yugabyte에 섹터를 기록하도록 대기 중입니다" +
-	".\x02광부 ID를 해석하는 중 오류 발생: %[1]s: ID: %[2]s\x02섹터 확인 중 오류 발생: %[1]s\x02섹터" +
-	"가 데이터베이스에 있습니다. 데이터베이스가 %[1]s를 위해 준비되었습니다.\x02이제 lotus-miner를 종료하고 시스템" +
-	"을 %[1]s로 이동하세요.\x02계속하려면 리턴을 누르세요\x02마이그레이션 중단.\x02섹터가 확인되었습니다. %[1]d개" +
-	"의 섹터 위치를 찾았습니다.\x02Yugabyte에 연결되었습니다. 스키마가 현재입니다.\x02데이터베이스에서 Sector I" +
-	"ndexing을 활성화합니다.\x02config.toml을 인코딩하는 중 오류가 발생했습니다: %[1]s\x02%[1]s을 Yug" +
-	"abyte 정보로 업데이트하려면 리턴 키를 누르세요. 변경 사항을 적용하기 전에 해당 폴더에 백업 파일이 작성됩니다.\x02경로를" +
-	" 확장하는 중 오류 발생: %[1]s\x02config.toml의 파일 모드를 읽는 중 오류가 발생했습니다: %[1]s\x02백업" +
-	" 파일 생성 오류: %[1]s\x02config.toml 읽기 오류: %[1]s\x02백업 파일 쓰기 오류: %[1]s\x02백업" +
-	" 파일 닫기 오류: %[1]s\x02config.toml을 쓰는 중 오류가 발생했습니다: %[1]s\x04\x00\x01 \x1f" +
-	"\x02로터스 마이너 재시작.\x02Yugabyte에 연결됨\x02시작하려면 밀봉 파이프라인이 비어 있고 lotus-miner가 " +
-	"종료되었는지 확인하세요.\x02로터스 마이너 구성 디렉토리의 위치를 선택하시겠습니까?\x02기타\x02%[1]s에서 사용하는 " +
-	"구성 디렉터리 경로를 입력하세요.\x04\x00\x01 M\x02경로가 제공되지 않았으므로 마이그레이션을 포기합니다\x02제공" +
-	"된 디렉토리에서 config.toml 파일을 읽을 수 없습니다. 오류: %[1]s\x02디렉토리에서 저장소를 생성할 수 없습니" +
-	"다: %[1]s. 마이그레이션을 중단합니다.\x02광부 저장소를 잠금 해제할 수 없습니다. 귀하의 광부를 중지해야 합니다: %" +
-	"[1]s\x0a 마이그레이션을 중단합니다.\x02마이너 구성 읽기\x04\x00\x01\x0a\x15\x02단계 완료: %[1]s" +
-	"\x02새 채굴자 액터 초기화 중.\x02새 채굴자를 생성하기 위한 정보 입력\x02소유자 주소: %[1]s\x02작업자 주소: " +
-	"%[1]s\x02송신자 주소: %[1]s\x02섹터 크기: %[1]d\x02신뢰 에포크: %[1]d\x02주소를 확인하고 새 채굴" +
-	"자 액터를 생성하려면 계속 진행하세요.\x04\x00\x01 &\x02채굴자 생성 오류 발생: %[1]s\x02소유자 주소 입" +
-	"력\x02주소가 제공되지 않았습니다\x02주소 구문 분석 실패: %[1]s\x02%[1]s 주소 입력\x02섹터 크기 입력" +
-	"\x02값이 제공되지 않았습니다\x02섹터 크기 구문 분석 실패: %[1]s\x02신뢰 에포크\x02신뢰도 구문 분석 실패: %[" +
-	"1]s\x02채굴자 액터 생성 실패: %[1]s\x02%[1]s 채굴자가 성공적으로 생성되었습니다\x02데이터베이스에 연결할 수 " +
-	"없습니다: %[1]s\x02풀 노드 API에 연결하는 중 오류 발생: %[1]s\x02사전 초기화 단계 완료\x02비밀번호를 " +
-	"위한 랜덤 바이트 생성에 실패했습니다: %[1]s\x02마이너 생성은 idempotent하지 않으므로 가이드 설정을 다시 실행" +
-	"하지 마십시오. 구성을 완료하려면 'curio config new-cluster %[1]s'를 실행해야 합니다.\x02Full" +
-	"Node에 대한 API 정보를 가져오는 데 실패했습니다: %[1]w\x02데몬 노드로부터 인증 토큰을 확인하는 중 오류 발생: %" +
-	"[1]s\x02구성을 인코딩하는 중 오류 발생: %[1]s\x02기본 구성 생성 실패: %[1]s\x02데이터베이스에 'base'" +
-	" 구성 레이어를 삽입하는 데 실패했습니다: %[1]s\x02데이터베이스에 '%[1]s' 구성 레이어를 삽입하는 데 실패했습니다: " +
-	"%[2]s\x02새로운 Curio 구성 레이어 '%[1]s'가 생성되었습니다\x02Yugabyte 데이터베이스 설치에 연결할 정보" +
-	"를 입력하십시오 (https://download.yugabyte.com/)\x02호스트: %[1]s\x02포트: %[1]s" +
-	"\x02사용자 이름: %[1]s\x02비밀번호: %[1]s\x02데이터베이스: %[1]s\x02계속 연결 및 스키마 업데이트." +
-	"\x04\x00\x01 ^\x02데이터베이스 구성 오류가 발생하여 마이그레이션을 포기합니다: %[1]s\x02Yugabyte 데이" +
-	"터베이스 호스트를 입력하십시오\x02호스트가 제공되지 않았습니다\x02Yugabyte 데이터베이스 %[1]s을 입력하십시오" +
-	"\x02Yugabyte 데이터베이스에 연결하는 중 오류가 발생했습니다: %[1]s\x02이 마이너의 주소와 지갑 설정을 포함하도록" +
-	" 구성 'base'가 업데이트되었습니다.\x02구성 %[1]s를 %[2]s과 비교하세요. 지갑 주소 이외의 마이너 ID 사이의 변" +
-	"경 사항은 필요한 실행자를 위한 새로운 최소한의 레이어여야 합니다.\x02이 마이너의 주소와 지갑 설정을 포함하도록 구성 'b" +
-	"ase'가 생성되었습니다.\x04\x00\x01 *\x02레이어 %[1]s가 생성되었습니다.\x04\x00\x01 \x22\x02" +
-	"구성 파일을 사용하려면:\x02Curio를 실행하려면: 기계 또는 cgroup 격리를 사용하여 다음 명령을 사용하세요 (예제 " +
-	"레이어 선택과 함께):"
+	"요하며 되돌릴 수 있습니다. 언제든지 Ctrl+C를 눌러 종료할 수 있습니다.\x02터미널에서 Ctrl+C가 눌림\x02나는 " +
+	"원한다:\x02기존의 Lotus-Miner에서 이전하기\x02새로운 채굴자 생성\x02나머지 단계를 중단합니다.\x02Lotu" +
+	"s-Miner에서 Curio로 이주.\x02더 많은 안내를 위해 %[1]s를 사용하여 웹 인터페이스를 시도하세요.\x02해당하는 " +
+	"경우 이제 시장 노드를 이주할 수 있습니다 (%[1]s).\x02새로운 채굴자 초기화 완료.\x02lotus-miner con" +
+	"fig.toml을 Curio의 데이터베이스 구성으로 이전 중입니다.\x02API 가져오기 오류: %[1]s\x02FullNode의" +
+	" API 정보를 가져올 수 없습니다: %[1]w\x02토큰을 가져오는 중 오류 발생: %[1]s\x02레이어에 구성을 저장하는 중" +
+	" 오류 발생: %[1]s. 마이그레이션 중단\x02Curio 팀은 당신이 사용하는 소프트웨어를 개선하고자 합니다. 팀에게 `%[1" +
+	"]s`를 사용 중이라고 알려주세요.\x02Curio 팀과 공유하고 싶은 것을 선택하세요.\x02개별 데이터: 채굴자 ID, Cur" +
+	"io 버전, 체인 (%[1]s 또는 %[2]s). 서명됨.\x02집계-익명: 버전, 체인, 및 채굴자 파워 (버킷).\x02힌트:" +
+	" 나는 어떤 체인에서든 Curio를 실행 중인 사람입니다.\x02아무것도 없습니다.\x02마이너 파워를 가져오는 중 오류 발생: " +
+	"%[1]s\x02메시지를 마샬하는 중 오류 발생: %[1]s\x02마이너 정보를 가져오는 중 오류 발생: %[1]s\x02메시지 " +
+	"서명 중 오류 발생: %[1]s\x02메시지 전송 중 오류 발생: %[1]s\x04\x00\x01 =\x02메시지 전송 중 오" +
+	"류 발생: 상태 %[1]s, 메시지:\x02메시지가 전송되었습니다.\x04\x00\x01 \x08\x02문서:\x02'%[1]" +
+	"s' 레이어에는 공통 구성이 저장됩니다. 모든 Curio 인스턴스는 %[2]s 인수에 포함시킬 수 있습니다.\x02기계별 구성 변" +
+	"경을 위해 다른 레이어를 추가할 수 있습니다.\x02Filecoin %[1]s 채널: %[2]s 및 %[3]s\x02신뢰성 향" +
+	"상을 위한 중복성 사용: 적어도 post 레이어를 사용하여 여러 대의 기계를 시작하십시오: 'curio run --layers" +
+	"=post'\x02한 개의 데이터베이스는 여러 광부 ID를 제공할 수 있습니다: 각 lotus-miner에 대해 마이그레이션을 실" +
+	"행하세요.\x02데이터베이스 자격 증명이 %[2]s에 입력되었으므로 지금 %[1]s을 시작하거나 다시 시작하세요.\x02%[1" +
+	"]s가 Yugabyte에 섹터를 기록하도록 대기 중입니다.\x02광부 ID를 해석하는 중 오류 발생: %[1]s: ID: %[2]" +
+	"s\x02섹터 확인 중 오류 발생: %[1]s\x02섹터가 데이터베이스에 있습니다. 데이터베이스가 %[1]s를 위해 준비되었습니다" +
+	".\x02이제 lotus-miner를 종료하고 시스템을 %[1]s로 이동하세요.\x02계속하려면 리턴을 누르세요\x02마이그레이션" +
+	" 중단.\x02섹터가 확인되었습니다. %[1]d개의 섹터 위치를 찾았습니다.\x02Yugabyte에 연결되었습니다. 스키마가 현재" +
+	"입니다.\x02데이터베이스에서 Sector Indexing을 활성화합니다.\x02config.toml을 인코딩하는 중 오류가 " +
+	"발생했습니다: %[1]s\x02%[1]s을 Yugabyte 정보로 업데이트하려면 리턴 키를 누르세요. 변경 사항을 적용하기 전" +
+	"에 해당 폴더에 백업 파일이 작성됩니다.\x02경로를 확장하는 중 오류 발생: %[1]s\x02config.toml의 파일 모" +
+	"드를 읽는 중 오류가 발생했습니다: %[1]s\x02백업 파일 생성 오류: %[1]s\x02config.toml 읽기 오류: " +
+	"%[1]s\x02백업 파일 쓰기 오류: %[1]s\x02백업 파일 닫기 오류: %[1]s\x02config.toml을 쓰는 중 오" +
+	"류가 발생했습니다: %[1]s\x04\x00\x01 \x1f\x02로터스 마이너 재시작.\x02Yugabyte에 연결됨\x02" +
+	"시작하려면 밀봉 파이프라인이 비어 있고 lotus-miner가 종료되었는지 확인하세요.\x02로터스 마이너 구성 디렉토리의 위" +
+	"치를 선택하시겠습니까?\x02기타\x02%[1]s에서 사용하는 구성 디렉터리 경로를 입력하세요.\x04\x00\x01 M" +
+	"\x02경로가 제공되지 않았으므로 마이그레이션을 포기합니다\x02제공된 디렉토리에서 config.toml 파일을 읽을 수 없습니다" +
+	". 오류: %[1]s\x02디렉토리에서 저장소를 생성할 수 없습니다: %[1]s. 마이그레이션을 중단합니다.\x02광부 저장소를 " +
+	"잠금 해제할 수 없습니다. 귀하의 광부를 중지해야 합니다: %[1]s\x0a 마이그레이션을 중단합니다.\x02마이너 구성 읽기" +
+	"\x04\x00\x01\x0a\x15\x02단계 완료: %[1]s\x02새 채굴자 액터 초기화 중.\x02새 채굴자를 생성하기 위" +
+	"한 정보 입력\x02소유자 주소: %[1]s\x02작업자 주소: %[1]s\x02송신자 주소: %[1]s\x02섹터 크기: %" +
+	"[1]d\x02신뢰 에포크: %[1]d\x02주소를 확인하고 새 채굴자 액터를 생성하려면 계속 진행하세요.\x04\x00\x01 " +
+	"&\x02채굴자 생성 오류 발생: %[1]s\x02소유자 주소 입력\x02주소가 제공되지 않았습니다\x02주소 구문 분석 실패: " +
+	"%[1]s\x02%[1]s 주소 입력\x02섹터 크기 입력\x02값이 제공되지 않았습니다\x02섹터 크기 구문 분석 실패: %[1" +
+	"]s\x02신뢰 에포크\x02신뢰도 구문 분석 실패: %[1]s\x02채굴자 액터 생성 실패: %[1]s\x02%[1]s 채굴자가" +
+	" 성공적으로 생성되었습니다\x02데이터베이스에 연결할 수 없습니다: %[1]s\x02풀 노드 API에 연결하는 중 오류 발생: %" +
+	"[1]s\x02사전 초기화 단계 완료\x02비밀번호를 위한 랜덤 바이트 생성에 실패했습니다: %[1]s\x02마이너 생성은 ide" +
+	"mpotent하지 않으므로 가이드 설정을 다시 실행하지 마십시오. 구성을 완료하려면 'curio config new-cluster" +
+	" %[1]s'를 실행해야 합니다.\x02FullNode에 대한 API 정보를 가져오는 데 실패했습니다: %[1]w\x02데몬 노드" +
+	"로부터 인증 토큰을 확인하는 중 오류 발생: %[1]s\x02구성을 인코딩하는 중 오류 발생: %[1]s\x02기본 구성 생성" +
+	" 실패: %[1]s\x02데이터베이스에 'base' 구성 레이어를 삽입하는 데 실패했습니다: %[1]s\x02데이터베이스에 '%[" +
+	"1]s' 구성 레이어를 삽입하는 데 실패했습니다: %[2]s\x02새로운 Curio 구성 레이어 '%[1]s'가 생성되었습니다" +
+	"\x02Yugabyte 데이터베이스 설치에 연결할 정보를 입력하십시오 (https://download.yugabyte.com/)" +
+	"\x02호스트: %[1]s\x02포트: %[1]s\x02사용자 이름: %[1]s\x02비밀번호: %[1]s\x02데이터베이스: %" +
+	"[1]s\x02계속 연결 및 스키마 업데이트.\x04\x00\x01 ^\x02데이터베이스 구성 오류가 발생하여 마이그레이션을 포기" +
+	"합니다: %[1]s\x02Yugabyte 데이터베이스 호스트를 입력하십시오\x02호스트가 제공되지 않았습니다\x02Yugaby" +
+	"te 데이터베이스 %[1]s을 입력하십시오\x02Yugabyte 데이터베이스에 연결하는 중 오류가 발생했습니다: %[1]s\x02" +
+	"이 마이너의 주소와 지갑 설정을 포함하도록 구성 'base'가 업데이트되었습니다.\x02구성 %[1]s를 %[2]s과 비교하세" +
+	"요. 지갑 주소 이외의 마이너 ID 사이의 변경 사항은 필요한 실행자를 위한 새로운 최소한의 레이어여야 합니다.\x02이 마이" +
+	"너의 주소와 지갑 설정을 포함하도록 구성 'base'가 생성되었습니다.\x04\x00\x01 *\x02레이어 %[1]s가 생성" +
+	"되었습니다.\x04\x00\x01 \x22\x02구성 파일을 사용하려면:\x02Curio를 실행하려면: 기계 또는 cgroup" +
+	" 격리를 사용하여 다음 명령을 사용하세요 (예제 레이어 선택과 함께):"
 
 var zhIndex = []uint32{ // 121 elements
 	// Entry 0 - 1F
 	0x00000000, 0x00000033, 0x0000008b, 0x00000134,
-	0x0000017c, 0x000001cb, 0x000001e4, 0x00000228,
-	0x00000248, 0x00000261, 0x00000277, 0x00000294,
-	0x000002d3, 0x00000314, 0x00000330, 0x00000375,
-	0x00000392, 0x000003bb, 0x000003d9, 0x00000412,
-	0x00000466, 0x00000493, 0x000004e2, 0x0000051d,
-	0x00000552, 0x0000055c, 0x00000580, 0x0000059e,
-	0x000005c2, 0x000005e0, 0x000005fe, 0x00000633,
+	0x0000017c, 0x000001cb, 0x000001e4, 0x000001f1,
+	0x00000211, 0x0000022a, 0x00000240, 0x0000025d,
+	0x0000029c, 0x000002dd, 0x000002f9, 0x0000033e,
+	0x0000035b, 0x00000384, 0x000003a2, 0x000003db,
+	0x0000042f, 0x0000045c, 0x000004ab, 0x000004e6,
+	0x0000051b, 0x00000525, 0x00000549, 0x00000567,
+	0x0000058b, 0x000005a9, 0x000005c7, 0x000005fc,
 	// Entry 20 - 3F
-	0x00000646, 0x00000655, 0x000006af, 0x000006ec,
-	0x00000714, 0x00000773, 0x000007c3, 0x00000816,
-	0x0000083c, 0x00000869, 0x00000887, 0x000008c3,
-	0x000008f5, 0x00000905, 0x00000915, 0x00000948,
-	0x00000975, 0x0000099a, 0x000009bd, 0x00000a35,
-	0x00000a53, 0x00000a82, 0x00000aa6, 0x00000acb,
-	0x00000aef, 0x00000b13, 0x00000b36, 0x00000b56,
-	0x00000b6b, 0x00000bb6, 0x00000be6, 0x00000bed,
+	0x0000060f, 0x0000061e, 0x00000678, 0x000006b5,
+	0x000006dd, 0x0000073c, 0x0000078c, 0x000007df,
+	0x00000805, 0x00000832, 0x00000850, 0x0000088c,
+	0x000008be, 0x000008ce, 0x000008de, 0x00000911,
+	0x0000093e, 0x00000963, 0x00000986, 0x000009fe,
+	0x00000a1c, 0x00000a4b, 0x00000a6f, 0x00000a94,
+	0x00000ab8, 0x00000adc, 0x00000aff, 0x00000b1f,
+	0x00000b34, 0x00000b7f, 0x00000baf, 0x00000bb6,
 	// Entry 40 - 5F
-	0x00000c17, 0x00000c3b, 0x00000c7f, 0x00000cb1,
-	0x00000cfa, 0x00000d0d, 0x00000d27, 0x00000d46,
-	0x00000d6b, 0x00000d83, 0x00000d98, 0x00000db0,
-	0x00000dc4, 0x00000ddb, 0x00000e0c, 0x00000e31,
-	0x00000e47, 0x00000e57, 0x00000e71, 0x00000e85,
-	0x00000e98, 0x00000ea5, 0x00000ec5, 0x00000ed5,
-	0x00000ef2, 0x00000f12, 0x00000f2c, 0x00000f49,
-	0x00000f7a, 0x00000f93, 0x00000fbc, 0x00001049,
+	0x00000be0, 0x00000c04, 0x00000c48, 0x00000c7a,
+	0x00000cc3, 0x00000cd6, 0x00000cf0, 0x00000d0f,
+	0x00000d34, 0x00000d4c, 0x00000d61, 0x00000d79,
+	0x00000d8d, 0x00000da4, 0x00000dd5, 0x00000dfa,
+	0x00000e10, 0x00000e20, 0x00000e3a, 0x00000e4e,
+	0x00000e61, 0x00000e6e, 0x00000e8e, 0x00000e9e,
+	0x00000ebb, 0x00000edb, 0x00000ef5, 0x00000f12,
+	0x00000f43, 0x00000f5c, 0x00000f85, 0x00001012,
 	// Entry 60 - 7F
-	0x00001075, 0x000010b0, 0x000010ca, 0x000010ea,
-	0x0000111b, 0x0000114d, 0x00001176, 0x000011d0,
-	0x000011df, 0x000011ee, 0x00001200, 0x0000120f,
-	0x00001221, 0x00001240, 0x00001278, 0x0000129d,
-	0x000012ad, 0x000012cb, 0x000012f7, 0x00001343,
-	0x000013c5, 0x00001411, 0x0000142b, 0x00001443,
-	0x0000149a,
+	0x0000103e, 0x00001079, 0x00001093, 0x000010b3,
+	0x000010e4, 0x00001116, 0x0000113f, 0x00001199,
+	0x000011a8, 0x000011b7, 0x000011c9, 0x000011d8,
+	0x000011ea, 0x00001209, 0x00001241, 0x00001266,
+	0x00001276, 0x00001294, 0x000012c0, 0x0000130c,
+	0x0000138e, 0x000013da, 0x000013f4, 0x0000140c,
+	0x00001463,
 } // Size: 508 bytes
 
-const zhData string = "" + // Size: 5274 bytes
+const zhData string = "" + // Size: 5219 bytes
 	"\x04\x00\x01 .\x02使用箭头键进行导航：↓ ↑ → ←\x02此交互式工具将创建一个新的矿工角色，并为其创建基本配置层。\x02" +
 	"该过程部分幂等。一旦创建了新的矿工角色，并且随后的步骤失败，用户需要运行 'curio config new-cluster < 矿工 ID" +
 	" >' 来完成配置。\x02这个交互式工具可以在5分钟内将lotus-miner迁移到Curio。\x02每一步都需要您的确认，并且可以撤销。随" +
-	"时按Ctrl+C退出。\x02在终端中按下Ctrl+C\x02选择您是否要创建新矿工或从现有的 Lotus-Miner 迁移\x02从现有的" +
-	" Lotus-Miner 迁移\x02创建一个新的矿工\x02中止剩余步骤。\x02Lotus-Miner到Curio迁移。\x02尝试使用%[" +
-	"1]s的Web界面进行进一步引导式改进。\x02如果适用，您现在可以迁移您的市场节点(%[1]s)。\x02新矿工初始化完成。\x02将 lot" +
-	"us-miner config.toml 迁移到 Curio 的数据库配置中。\x02获取 API 时出错：%[1]s\x02无法获取FullN" +
-	"ode的API信息：%[1]w\x02获取令牌时出错：%[1]s\x02保存配置到层时出错：%[1]s。正在中止迁移\x02Curio 团队希望" +
-	"改进您使用的软件。告诉团队您正在使用 `%[1]s`。\x02选择您想与Curio团队分享的内容。\x02个人数据：矿工 ID，Curio " +
-	"版本，链（%[1]s 或 %[2]s）。签名。\x02聚合-匿名：版本，链和矿工算力（分桶）。\x02提示：我是在任何链上运行 Curio " +
-	"的人。\x02没有。\x02获取矿工功率时出错：%[1]s\x02整理消息时出错：%[1]s\x02获取矿工信息时出错：%[1]s\x02签" +
-	"署消息时出错：%[1]s\x02发送消息时出错：%[1]s\x04\x00\x01 0\x02发送消息时出错：状态%[1]s，消息：\x02" +
-	"消息已发送。\x04\x00\x01 \x0a\x02文档：\x02'%[1]s'层存储通用配置。所有Curio实例都可以在其%[2]s参数" +
-	"中包含它。\x02您可以添加其他层进行每台机器的配置更改。\x02Filecoin %[1]s 频道：%[2]s 和 %[3]s\x02通过" +
-	"冗余增加可靠性：使用至少后层启动多台机器：'curio run --layers=post'\x02一个数据库可以服务多个矿工ID：为每个l" +
-	"otus-miner运行迁移。\x02请立即启动（或重新启动）%[1]s，因为数据库凭据已在%[2]s中。\x02等待%[1]s将扇区写入Yug" +
-	"abyte。\x02解释矿工ID时出错：%[1]s：ID：%[2]s\x02验证扇区时出错：%[1]s\x02扇区在数据库中。数据库已准备好用于" +
-	"%[1]s。\x02现在关闭lotus-miner并将系统移至%[1]s。\x02按回车继续\x02中止迁移。\x02扇区已验证。发现了%[1]" +
-	"d个扇区位置。\x02已连接到Yugabyte。模式是当前的。\x02在数据库中启用扇区索引。\x02编码config.toml时出错：%[1]" +
-	"s\x02按回车键更新 %[1]s 以包含 Yugabyte 信息。在进行更改之前，将在该文件夹中写入备份文件。\x02扩展路径时出错：%[1]" +
-	"s\x02读取config.toml文件模式时出错：%[1]s\x02创建备份文件时出错：%[1]s\x02读取 config.toml 时出错" +
-	"：%[1]s\x02写入备份文件时出错：%[1]s\x02关闭备份文件时出错：%[1]s\x02写入config.toml时出错：%[1]s" +
-	"\x04\x00\x01 \x1b\x02重新启动Lotus Miner。\x02已连接到Yugabyte\x02开始之前，请确保您的密封管道已" +
-	"排空并关闭lotus-miner。\x02选择您的lotus-miner配置目录的位置？\x02其他\x02输入%[1]s使用的配置目录的路" +
-	"径\x04\x00\x01 \x1f\x02未提供路径，放弃迁移\x02无法读取提供的目录中的config.toml文件，错误：%[1]s" +
-	"\x02无法从目录创建repo：%[1]s。 中止迁移\x02无法锁定矿工repo。 您的矿工必须停止：%[1]s\x0a 中止迁移\x02读取" +
-	"矿工配置\x04\x00\x01\x0a\x15\x02步骤完成：%[1]s\x02初始化新的矿工角色。\x02输入创建新矿工所需的信息" +
-	"\x02所有者地址：%[1]s\x02工作地址：%[1]s\x02发送者地址：%[1]s\x02扇区大小: %[1]d\x02置信度时期: %[" +
-	"1]d\x02继续验证地址并创建新的矿工角色。\x04\x00\x01  \x02矿工创建错误发生: %[1]s\x02输入所有者地址\x02未" +
-	"提供地址\x02解析地址失败: %[1]s\x02输入 %[1]s 地址\x02输入扇区大小\x02未提供值\x02解析扇区大小失败: %[" +
-	"1]s\x02置信度时期\x02解析置信度失败: %[1]s\x02创建矿工角色失败: %[1]s\x02矿工 %[1]s 创建成功\x02无法" +
-	"访问数据库: %[1]s\x02连接到完整节点 API 时发生错误: %[1]s\x02预初始化步骤完成\x02生成密码的随机字节失败: %" +
-	"[1]s\x02请不要再次运行引导设置，因为矿工创建不是幂等的。 您需要运行 'curio config new-cluster %[1]s' " +
-	"来完成配置。\x02无法获取 FullNode 的 API 信息: %[1]w\x02无法验证来自守护进程节点的授权令牌: %[1]s" +
-	"\x02无法编码配置: %[1]s\x02无法生成默认配置: %[1]s\x02无法将 'base' 配置层插入数据库: %[1]s\x02无法" +
-	"将 '%[1]s' 配置层插入数据库: %[2]s\x02新的 Curio 配置层 '%[1]s' 已创建\x02输入连接到您的Yugaby" +
-	"te数据库安装的信息（https://download.yugabyte.com/）\x02主机：%[1]s\x02端口：%[1]s\x02用户" +
-	"名：%[1]s\x02密码：%[1]s\x02数据库：%[1]s\x02继续连接和更新架构。\x04\x00\x01 3\x02发生数据库配" +
-	"置错误，放弃迁移：%[1]s\x02输入Yugabyte数据库主机（S）\x02未提供主机\x02输入Yugabyte数据库 %[1]s" +
-	"\x02连接到Yugabyte数据库时出错：%[1]s\x02配置'base'已更新，包含了这个矿工的地址和其钱包设置。\x02比较配置%[1]" +
-	"s和%[2]s。矿工ID之间除了钱包地址的变化应该是需要的运行者的一个新的、最小的层。\x02配置'base'已创建，包括了这个矿工的地址和其钱" +
-	"包设置。\x04\x00\x01 \x15\x02层%[1]s已创建。\x04\x00\x01 \x13\x02要使用配置：\x02运行Cu" +
-	"rio：使用机器或cgroup隔离，使用命令（附带示例层选择）："
+	"时按Ctrl+C退出。\x02在终端中按下Ctrl+C\x02我想要：\x02从现有的 Lotus-Miner 迁移\x02创建一个新的矿工" +
+	"\x02中止剩余步骤。\x02Lotus-Miner到Curio迁移。\x02尝试使用%[1]s的Web界面进行进一步引导式改进。\x02如果适" +
+	"用，您现在可以迁移您的市场节点(%[1]s)。\x02新矿工初始化完成。\x02将 lotus-miner config.toml 迁移到 " +
+	"Curio 的数据库配置中。\x02获取 API 时出错：%[1]s\x02无法获取FullNode的API信息：%[1]w\x02获取令牌时出" +
+	"错：%[1]s\x02保存配置到层时出错：%[1]s。正在中止迁移\x02Curio 团队希望改进您使用的软件。告诉团队您正在使用 `%[1" +
+	"]s`。\x02选择您想与Curio团队分享的内容。\x02个人数据：矿工 ID，Curio 版本，链（%[1]s 或 %[2]s）。签名。" +
+	"\x02聚合-匿名：版本，链和矿工算力（分桶）。\x02提示：我是在任何链上运行 Curio 的人。\x02没有。\x02获取矿工功率时出错：%" +
+	"[1]s\x02整理消息时出错：%[1]s\x02获取矿工信息时出错：%[1]s\x02签署消息时出错：%[1]s\x02发送消息时出错：%[1" +
+	"]s\x04\x00\x01 0\x02发送消息时出错：状态%[1]s，消息：\x02消息已发送。\x04\x00\x01 \x0a\x02文档" +
+	"：\x02'%[1]s'层存储通用配置。所有Curio实例都可以在其%[2]s参数中包含它。\x02您可以添加其他层进行每台机器的配置更改。" +
+	"\x02Filecoin %[1]s 频道：%[2]s 和 %[3]s\x02通过冗余增加可靠性：使用至少后层启动多台机器：'curio run" +
+	" --layers=post'\x02一个数据库可以服务多个矿工ID：为每个lotus-miner运行迁移。\x02请立即启动（或重新启动）%[" +
+	"1]s，因为数据库凭据已在%[2]s中。\x02等待%[1]s将扇区写入Yugabyte。\x02解释矿工ID时出错：%[1]s：ID：%[2]" +
+	"s\x02验证扇区时出错：%[1]s\x02扇区在数据库中。数据库已准备好用于%[1]s。\x02现在关闭lotus-miner并将系统移至%[" +
+	"1]s。\x02按回车继续\x02中止迁移。\x02扇区已验证。发现了%[1]d个扇区位置。\x02已连接到Yugabyte。模式是当前的。" +
+	"\x02在数据库中启用扇区索引。\x02编码config.toml时出错：%[1]s\x02按回车键更新 %[1]s 以包含 Yugabyte " +
+	"信息。在进行更改之前，将在该文件夹中写入备份文件。\x02扩展路径时出错：%[1]s\x02读取config.toml文件模式时出错：%[1" +
+	"]s\x02创建备份文件时出错：%[1]s\x02读取 config.toml 时出错：%[1]s\x02写入备份文件时出错：%[1]s\x02" +
+	"关闭备份文件时出错：%[1]s\x02写入config.toml时出错：%[1]s\x04\x00\x01 \x1b\x02重新启动Lotu" +
+	"s Miner。\x02已连接到Yugabyte\x02开始之前，请确保您的密封管道已排空并关闭lotus-miner。\x02选择您的lotu" +
+	"s-miner配置目录的位置？\x02其他\x02输入%[1]s使用的配置目录的路径\x04\x00\x01 \x1f\x02未提供路径，放弃迁" +
+	"移\x02无法读取提供的目录中的config.toml文件，错误：%[1]s\x02无法从目录创建repo：%[1]s。 中止迁移\x02无" +
+	"法锁定矿工repo。 您的矿工必须停止：%[1]s\x0a 中止迁移\x02读取矿工配置\x04\x00\x01\x0a\x15\x02步骤" +
+	"完成：%[1]s\x02初始化新的矿工角色。\x02输入创建新矿工所需的信息\x02所有者地址：%[1]s\x02工作地址：%[1]s" +
+	"\x02发送者地址：%[1]s\x02扇区大小: %[1]d\x02置信度时期: %[1]d\x02继续验证地址并创建新的矿工角色。\x04" +
+	"\x00\x01  \x02矿工创建错误发生: %[1]s\x02输入所有者地址\x02未提供地址\x02解析地址失败: %[1]s\x02输入" +
+	" %[1]s 地址\x02输入扇区大小\x02未提供值\x02解析扇区大小失败: %[1]s\x02置信度时期\x02解析置信度失败: %[1]" +
+	"s\x02创建矿工角色失败: %[1]s\x02矿工 %[1]s 创建成功\x02无法访问数据库: %[1]s\x02连接到完整节点 API 时" +
+	"发生错误: %[1]s\x02预初始化步骤完成\x02生成密码的随机字节失败: %[1]s\x02请不要再次运行引导设置，因为矿工创建不是幂" +
+	"等的。 您需要运行 'curio config new-cluster %[1]s' 来完成配置。\x02无法获取 FullNode 的 A" +
+	"PI 信息: %[1]w\x02无法验证来自守护进程节点的授权令牌: %[1]s\x02无法编码配置: %[1]s\x02无法生成默认配置: %" +
+	"[1]s\x02无法将 'base' 配置层插入数据库: %[1]s\x02无法将 '%[1]s' 配置层插入数据库: %[2]s\x02新的 " +
+	"Curio 配置层 '%[1]s' 已创建\x02输入连接到您的Yugabyte数据库安装的信息（https://download.yugaby" +
+	"te.com/）\x02主机：%[1]s\x02端口：%[1]s\x02用户名：%[1]s\x02密码：%[1]s\x02数据库：%[1]s" +
+	"\x02继续连接和更新架构。\x04\x00\x01 3\x02发生数据库配置错误，放弃迁移：%[1]s\x02输入Yugabyte数据库主机（" +
+	"S）\x02未提供主机\x02输入Yugabyte数据库 %[1]s\x02连接到Yugabyte数据库时出错：%[1]s\x02配置'base" +
+	"'已更新，包含了这个矿工的地址和其钱包设置。\x02比较配置%[1]s和%[2]s。矿工ID之间除了钱包地址的变化应该是需要的运行者的一个新的、" +
+	"最小的层。\x02配置'base'已创建，包括了这个矿工的地址和其钱包设置。\x04\x00\x01 \x15\x02层%[1]s已创建。" +
+	"\x04\x00\x01 \x13\x02要使用配置：\x02运行Curio：使用机器或cgroup隔离，使用命令（附带示例层选择）："
 
-	// Total table size 20178 bytes (19KiB); checksum: 82F430DD
+	// Total table size 19986 bytes (19KiB); checksum: C47D2E67
