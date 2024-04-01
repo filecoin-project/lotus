@@ -1,0 +1,1 @@
+ALTER TABLE storage_path ADD COLUMN IF NOT EXISTS allow_miners varchar, ADD COLUMN IF NOT EXISTS deny_miners varchar; -- comma separated list of miner addresses

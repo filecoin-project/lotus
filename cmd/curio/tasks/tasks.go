@@ -8,6 +8,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
@@ -36,6 +38,20 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	lstor := dependencies.LocalStore
 	si := dependencies.Si
 	var activeTasks []harmonytask.TaskInterface
+
+	// Get all miner address from config
+	var miners []address.Address
+	for _, ad := range cfg.Addresses {
+		ad := ad
+		for _, m := range ad.MinerAddresses {
+			m := m
+			maddr, err := address.NewFromString(m)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to parse the miner address: %w", err)
+			}
+			miners = append(miners, maddr)
+		}
+	}
 
 	sender, sendTask := message.NewSender(full, full, db)
 	activeTasks = append(activeTasks, sendTask)
@@ -76,7 +92,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	{
 		// Piece handling
 		if cfg.Subsystems.EnableParkPiece {
-			parkPieceTask := piece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
+			parkPieceTask := piece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks, miners)
 			cleanupPieceTask := piece.NewCleanupPieceTask(db, must.One(slrLazy.Val()), 0)
 			activeTasks = append(activeTasks, parkPieceTask, cleanupPieceTask)
 		}

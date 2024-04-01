@@ -356,7 +356,7 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 
 	// selector will schedule the Unseal task on a worker that either already has the sealed sector files or has space in
 	// one of it's sealing scratch spaces to store them after fetching them from another worker.
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, true)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, sector.ID.Miner, true)
 
 	log.Debugf("will schedule unseal for sector %d", sector.ID)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
@@ -377,7 +377,7 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 	}
 
 	// get a selector for moving unsealed sector into long-term storage
-	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTUnsealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTUnsealed, storiface.PathStorage, sector.ID.Miner, !m.disallowRemoteFinalize)
 
 	// move unsealed sector to long-term storage
 	// Possible TODO: Add an option to not keep the unsealed sector in long term storage?
@@ -431,9 +431,9 @@ func (m *Manager) AddPiece(ctx context.Context, sector storiface.SectorRef, exis
 	var selector WorkerSelector
 	var err error
 	if len(existingPieces) == 0 { // new
-		selector = newAllocSelector(m.index, storiface.FTUnsealed, storiface.PathSealing)
+		selector = newAllocSelector(m.index, storiface.FTUnsealed, storiface.PathSealing, sector.ID.Miner)
 	} else { // use existing
-		selector = newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, false)
+		selector = newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, sector.ID.Miner, false)
 	}
 
 	var out abi.PieceInfo
@@ -484,7 +484,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector storiface.SectorRef
 
 	// TODO: also consider where the unsealed data sits
 
-	selector := newAllocSelector(m.index, storiface.FTCache|storiface.FTSealed, storiface.PathSealing)
+	selector := newAllocSelector(m.index, storiface.FTCache|storiface.FTSealed, storiface.PathSealing, sector.ID.Miner)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit1, selector, m.schedFetch(sector, storiface.FTUnsealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
 		err := m.startWork(ctx, w, wk)(w.SealPreCommit1(ctx, sector, ticket, pieces))
@@ -533,7 +533,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 		return storiface.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, true)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, sector.ID.Miner, true)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, m.schedFetch(sector, storiface.FTCache|storiface.FTSealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
 		err := m.startWork(ctx, w, wk)(w.SealPreCommit2(ctx, sector, phase1Out))
@@ -585,7 +585,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 	// NOTE: We set allowFetch to false in so that we always execute on a worker
 	// with direct access to the data. We want to do that because this step is
 	// generally very cheap / fast, and transferring data is not worth the effort
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, false)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, sector.ID.Miner, false)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit1, selector, m.schedFetch(sector, storiface.FTCache|storiface.FTSealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
 		err := m.startWork(ctx, w, wk)(w.SealCommit1(ctx, sector, ticket, seed, pieces, cids))
@@ -700,7 +700,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 
 	// do the cache trimming wherever the likely still very large cache lives.
 	// we really don't want to move it.
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache, false)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache, sector.ID.Miner, false)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
 		m.schedFetch(sector, storiface.FTCache, cachePathType, storiface.AcquireMove),
@@ -713,7 +713,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	}
 
 	// get a selector for moving stuff into long-term storage
-	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, sector.ID.Miner, !m.disallowRemoteFinalize)
 
 	// only move the unsealed file if it still exists and needs moving
 	moveUnsealed := storiface.FTUnsealed
@@ -769,7 +769,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 
 	// do the cache trimming wherever the likely still large cache lives.
 	// we really don't want to move it.
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdateCache, false)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdateCache, sector.ID.Miner, false)
 
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeReplicaUpdate, selector,
 		m.schedFetch(sector, storiface.FTCache|storiface.FTUpdateCache, pathType, storiface.AcquireMove),
@@ -783,7 +783,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 
 	move := func(types storiface.SectorFileType) error {
 		// get a selector for moving stuff into long-term storage
-		fetchSel := newMoveSelector(m.index, sector.ID, types, storiface.PathStorage, !m.disallowRemoteFinalize)
+		fetchSel := newMoveSelector(m.index, sector.ID, types, storiface.PathStorage, sector.ID.Miner, !m.disallowRemoteFinalize)
 
 		err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 			m.schedFetch(sector, types, storiface.PathStorage, storiface.AcquireMove),
@@ -834,7 +834,7 @@ func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRe
 		return nil
 	}
 
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, false)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, sector.ID.Miner, false)
 
 	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeUnsealed, selector, m.schedFetch(sector, storiface.FTUnsealed, pathType, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
 		_, err := m.waitSimpleCall(ctx)(w.ReleaseUnsealed(ctx, sector, keepUnsealed))
@@ -906,7 +906,7 @@ func (m *Manager) GenerateSectorKeyFromData(ctx context.Context, sector storifac
 	// NOTE: We set allowFetch to false in so that we always execute on a worker
 	// with direct access to the data. We want to do that because this step is
 	// generally very cheap / fast, and transferring data is not worth the effort
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTUnsealed|storiface.FTUpdate|storiface.FTUpdateCache|storiface.FTCache, true)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTUnsealed|storiface.FTUpdate|storiface.FTUpdateCache|storiface.FTCache, sector.ID.Miner, true)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTRegenSectorKey, selector, m.schedFetch(sector, storiface.FTUpdate|storiface.FTUnsealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
 		err := m.startWork(ctx, w, wk)(w.GenerateSectorKeyFromData(ctx, sector, commD))
@@ -984,7 +984,7 @@ func (m *Manager) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef,
 		return storiface.ReplicaUpdateOut{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	selector := newAllocSelector(m.index, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)
+	selector := newAllocSelector(m.index, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, sector.ID.Miner)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTReplicaUpdate, selector, m.schedFetch(sector, storiface.FTUnsealed|storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy), func(ctx context.Context, w Worker) error {
 		err := m.startWork(ctx, w, wk)(w.ReplicaUpdate(ctx, sector, pieces))
@@ -1035,7 +1035,7 @@ func (m *Manager) ProveReplicaUpdate1(ctx context.Context, sector storiface.Sect
 	// NOTE: We set allowFetch to false in so that we always execute on a worker
 	// with direct access to the data. We want to do that because this step is
 	// generally very cheap / fast, and transferring data is not worth the effort
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdate|storiface.FTUpdateCache, false)
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdate|storiface.FTUpdateCache, sector.ID.Miner, false)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTProveReplicaUpdate1, selector, m.schedFetch(sector, storiface.FTSealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, storiface.AcquireCopy), func(ctx context.Context, w Worker) error {
 
@@ -1153,7 +1153,7 @@ func (m *Manager) DownloadSectorData(ctx context.Context, sector storiface.Secto
 		ptype = storiface.PathStorage
 	}
 
-	selector := newAllocSelector(m.index, toFetch, ptype)
+	selector := newAllocSelector(m.index, toFetch, ptype, sector.ID.Miner)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTDownloadSector, selector, schedNop, func(ctx context.Context, w Worker) error {
 		err := m.startWork(ctx, w, wk)(w.DownloadSectorData(ctx, sector, finalized, src))
