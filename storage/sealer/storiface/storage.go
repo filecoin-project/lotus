@@ -225,4 +225,12 @@ type LocalStorageMeta struct {
 	// - "update-cache"
 	// Any other value will generate a warning and be ignored.
 	DenyTypes []string
+
+	// AllowMiners lists miner IDs which are allowed to store their sector data into
+	// this path. If empty, all miner IDs are allowed
+	AllowMiners []string
+
+	// DenyMiners lists miner IDs which are denied to store their sector data into
+	// this path
+	DenyMiners []string
 }

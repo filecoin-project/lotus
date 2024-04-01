@@ -15,6 +15,7 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -200,7 +201,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 			currUrls = union(currUrls, si.URLs)
 
 			_, err = tx.Exec(
-				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9, last_heartbeat=NOW() WHERE storage_id=$10",
+				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9, allow_miners=$10, deny_miners=$11, last_heartbeat=NOW() WHERE storage_id=$12",
 				strings.Join(currUrls, ","),
 				si.Weight,
 				si.MaxStorage,
@@ -210,6 +211,8 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 				strings.Join(si.AllowTo, ","),
 				strings.Join(si.AllowTypes, ","),
 				strings.Join(si.DenyTypes, ","),
+				strings.Join(si.AllowMiners, ","),
+				strings.Join(si.DenyMiners, ","),
 				si.ID)
 			if err != nil {
 				return false, xerrors.Errorf("storage attach UPDATE fails: %v", err)
@@ -221,7 +224,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		// Insert storage id
 		_, err = tx.Exec(
 			"INSERT INTO storage_path "+
-				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())",
+				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), $16, $17)",
 			si.ID,
 			strings.Join(si.URLs, ","),
 			si.Weight,
@@ -236,7 +239,9 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 			st.Available,
 			st.FSAvailable,
 			st.Reserved,
-			st.Used)
+			st.Used,
+			strings.Join(si.AllowMiners, ","),
+			strings.Join(si.DenyMiners, ","))
 		if err != nil {
 			return false, xerrors.Errorf("StorageAttach insert fails: %v", err)
 		}
@@ -532,14 +537,16 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 		// 7. Storage path is part of the groups which are allowed from the storage paths which already hold the sector
 
 		var rows []struct {
-			StorageId  string
-			Urls       string
-			Weight     uint64
-			CanSeal    bool
-			CanStore   bool
-			Groups     string
-			AllowTypes string
-			DenyTypes  string
+			StorageId   string
+			Urls        string
+			Weight      uint64
+			CanSeal     bool
+			CanStore    bool
+			Groups      string
+			AllowTypes  string
+			DenyTypes   string
+			AllowMiners string
+			DenyMiners  string
 		}
 		err = dbi.harmonyDB.Select(ctx, &rows,
 			`SELECT storage_id, 
@@ -549,7 +556,9 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 					  	can_store,
 					  	groups, 
 					  	allow_types, 
-					  	deny_types
+					  	deny_types,
+					  	allow_miners,
+					  	deny_miners
 				FROM storage_path 
 				WHERE can_seal=true 
 				  and available >= $1 
@@ -568,6 +577,53 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 			if !ft.AnyAllowed(splitString(row.AllowTypes), splitString(row.DenyTypes)) {
 				log.Debugf("not selecting on %s, not allowed by file type filters", row.StorageId)
 				continue
+			}
+
+			if len(row.AllowMiners) > 0 {
+				found := false
+				allowMiners := splitString(row.AllowMiners)
+				for _, m := range allowMiners {
+					m := m
+					maddr, err := address.NewFromString(m)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner address: %w", err)
+					}
+					mid, err := address.IDFromAddress(maddr)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner ID: %w", err)
+					}
+					if abi.ActorID(mid) == s.Miner {
+						found = true
+						break
+					}
+				}
+				if !found {
+					log.Debugf("not selecting on %s, not allowed by allow miners filters", row.StorageId)
+					continue
+				}
+			}
+			if len(row.DenyMiners) > 0 {
+				found := false
+				denyMiners := splitString(row.DenyMiners)
+				for _, m := range denyMiners {
+					m := m
+					maddr, err := address.NewFromString(m)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner address: %w", err)
+					}
+					mid, err := address.IDFromAddress(maddr)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner ID: %w", err)
+					}
+					if abi.ActorID(mid) == s.Miner {
+						found = true
+						break
+					}
+				}
+				if found {
+					log.Debugf("not selecting on %s, not allowed by deny miners filters", row.StorageId)
+					continue
+				}
 			}
 
 			if allowList != nil {
@@ -618,19 +674,21 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface.StorageInfo, error) {
 
 	var qResults []struct {
-		Urls       string
-		Weight     uint64
-		MaxStorage uint64
-		CanSeal    bool
-		CanStore   bool
-		Groups     string
-		AllowTo    string
-		AllowTypes string
-		DenyTypes  string
+		Urls        string
+		Weight      uint64
+		MaxStorage  uint64
+		CanSeal     bool
+		CanStore    bool
+		Groups      string
+		AllowTo     string
+		AllowTypes  string
+		DenyTypes   string
+		AllowMiners string
+		DenyMiners  string
 	}
 
 	err := dbi.harmonyDB.Select(ctx, &qResults,
-		"SELECT urls, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types "+
+		"SELECT urls, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types, allow_miners, deny_miners "+
 			"FROM storage_path WHERE storage_id=$1", string(id))
 	if err != nil {
 		return storiface.StorageInfo{}, xerrors.Errorf("StorageInfo query fails: %v", err)
@@ -647,11 +705,13 @@ func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface
 	sinfo.AllowTo = splitString(qResults[0].AllowTo)
 	sinfo.AllowTypes = splitString(qResults[0].AllowTypes)
 	sinfo.DenyTypes = splitString(qResults[0].DenyTypes)
+	sinfo.AllowMiners = splitString(qResults[0].AllowMiners)
+	sinfo.DenyMiners = splitString(qResults[0].DenyMiners)
 
 	return sinfo, nil
 }
 
-func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) {
+func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error) {
 	var err error
 	var spaceReq uint64
 	switch pathType {
@@ -667,16 +727,18 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 	}
 
 	var rows []struct {
-		StorageId  string
-		Urls       string
-		Weight     uint64
-		MaxStorage uint64
-		CanSeal    bool
-		CanStore   bool
-		Groups     string
-		AllowTo    string
-		AllowTypes string
-		DenyTypes  string
+		StorageId   string
+		Urls        string
+		Weight      uint64
+		MaxStorage  uint64
+		CanSeal     bool
+		CanStore    bool
+		Groups      string
+		AllowTo     string
+		AllowTypes  string
+		DenyTypes   string
+		AllowMiners string
+		DenyMiners  string
 	}
 
 	err = dbi.harmonyDB.Select(ctx, &rows,
@@ -689,7 +751,9 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 								groups, 
 								allow_to, 
 								allow_types, 
-								deny_types 
+								deny_types,
+								allow_miners,
+								deny_miners
 						 FROM storage_path 
 						 WHERE available >= $1
 						 and NOW()-($2 * INTERVAL '1 second') < last_heartbeat
@@ -700,24 +764,77 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 		SkippedHeartbeatThresh.Seconds(),
 		pathType == storiface.PathSealing,
 		pathType == storiface.PathStorage,
+		miner.String(),
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("Querying for best storage sectors fails with err %w: ", err)
 	}
 
 	var result []storiface.StorageInfo
+
 	for _, row := range rows {
+		// Matching with 0 as a workaround to avoid having minerID
+		// present when calling TaskStorage.HasCapacity()
+		if !(miner == abi.ActorID(0)) {
+			if len(row.AllowMiners) > 0 {
+				found := false
+				allowMiners := splitString(row.AllowMiners)
+				for _, m := range allowMiners {
+					m := m
+					maddr, err := address.NewFromString(m)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner address: %w", err)
+					}
+					mid, err := address.IDFromAddress(maddr)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner ID: %w", err)
+					}
+					if abi.ActorID(mid) == miner {
+						found = true
+						break
+					}
+				}
+				if !found {
+					continue
+				}
+			}
+			if len(row.DenyMiners) > 0 {
+				found := false
+				denyMiners := splitString(row.DenyMiners)
+				for _, m := range denyMiners {
+					m := m
+					maddr, err := address.NewFromString(m)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner address: %w", err)
+					}
+					mid, err := address.IDFromAddress(maddr)
+					if err != nil {
+						return nil, xerrors.Errorf("parsing miner ID: %w", err)
+					}
+					if abi.ActorID(mid) == miner {
+						found = true
+						break
+					}
+				}
+				if found {
+					continue
+				}
+			}
+		}
+
 		result = append(result, storiface.StorageInfo{
-			ID:         storiface.ID(row.StorageId),
-			URLs:       splitString(row.Urls),
-			Weight:     row.Weight,
-			MaxStorage: row.MaxStorage,
-			CanSeal:    row.CanSeal,
-			CanStore:   row.CanStore,
-			Groups:     splitString(row.Groups),
-			AllowTo:    splitString(row.AllowTo),
-			AllowTypes: splitString(row.AllowTypes),
-			DenyTypes:  splitString(row.DenyTypes),
+			ID:          storiface.ID(row.StorageId),
+			URLs:        splitString(row.Urls),
+			Weight:      row.Weight,
+			MaxStorage:  row.MaxStorage,
+			CanSeal:     row.CanSeal,
+			CanStore:    row.CanStore,
+			Groups:      splitString(row.Groups),
+			AllowTo:     splitString(row.AllowTo),
+			AllowTypes:  splitString(row.AllowTypes),
+			DenyTypes:   splitString(row.DenyTypes),
+			AllowMiners: splitString(row.AllowMiners),
+			DenyMiners:  splitString(row.DenyMiners),
 		})
 	}
 

@@ -54,18 +54,18 @@ func (mr *MockSectorIndexMockRecorder) StorageAttach(arg0, arg1, arg2 interface{
 }
 
 // StorageBestAlloc mocks base method.
-func (m *MockSectorIndex) StorageBestAlloc(arg0 context.Context, arg1 storiface.SectorFileType, arg2 abi.SectorSize, arg3 storiface.PathType) ([]storiface.StorageInfo, error) {
+func (m *MockSectorIndex) StorageBestAlloc(arg0 context.Context, arg1 storiface.SectorFileType, arg2 abi.SectorSize, arg3 storiface.PathType, arg4 abi.ActorID) ([]storiface.StorageInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StorageBestAlloc", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "StorageBestAlloc", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].([]storiface.StorageInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StorageBestAlloc indicates an expected call of StorageBestAlloc.
-func (mr *MockSectorIndexMockRecorder) StorageBestAlloc(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockSectorIndexMockRecorder) StorageBestAlloc(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageBestAlloc", reflect.TypeOf((*MockSectorIndex)(nil).StorageBestAlloc), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageBestAlloc", reflect.TypeOf((*MockSectorIndex)(nil).StorageBestAlloc), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StorageDeclareSector mocks base method.

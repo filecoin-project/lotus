@@ -9,6 +9,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/curiosrc/seal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -32,13 +34,14 @@ type ParkPieceTask struct {
 	max int
 }
 
-func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) *ParkPieceTask {
+func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int, miners []address.Address) *ParkPieceTask {
 	pt := &ParkPieceTask{
 		db: db,
 		sc: sc,
 
 		max: max,
 	}
+
 	go pt.pollPieceTasks(context.Background())
 	return pt
 }

@@ -14,6 +14,7 @@ import (
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
@@ -204,16 +205,18 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 	}
 
 	err = st.index.StorageAttach(ctx, storiface.StorageInfo{
-		ID:         meta.ID,
-		URLs:       st.urls,
-		Weight:     meta.Weight,
-		MaxStorage: meta.MaxStorage,
-		CanSeal:    meta.CanSeal,
-		CanStore:   meta.CanStore,
-		Groups:     meta.Groups,
-		AllowTo:    meta.AllowTo,
-		AllowTypes: meta.AllowTypes,
-		DenyTypes:  meta.DenyTypes,
+		ID:          meta.ID,
+		URLs:        st.urls,
+		Weight:      meta.Weight,
+		MaxStorage:  meta.MaxStorage,
+		CanSeal:     meta.CanSeal,
+		CanStore:    meta.CanStore,
+		Groups:      meta.Groups,
+		AllowTo:     meta.AllowTo,
+		AllowTypes:  meta.AllowTypes,
+		DenyTypes:   meta.DenyTypes,
+		AllowMiners: meta.AllowMiners,
+		DenyMiners:  meta.DenyMiners,
 	}, fst)
 	if err != nil {
 		return xerrors.Errorf("declaring storage in index: %w", err)
@@ -294,16 +297,18 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 		}
 
 		err = st.index.StorageAttach(ctx, storiface.StorageInfo{
-			ID:         id,
-			URLs:       st.urls,
-			Weight:     meta.Weight,
-			MaxStorage: meta.MaxStorage,
-			CanSeal:    meta.CanSeal,
-			CanStore:   meta.CanStore,
-			Groups:     meta.Groups,
-			AllowTo:    meta.AllowTo,
-			AllowTypes: meta.AllowTypes,
-			DenyTypes:  meta.DenyTypes,
+			ID:          id,
+			URLs:        st.urls,
+			Weight:      meta.Weight,
+			MaxStorage:  meta.MaxStorage,
+			CanSeal:     meta.CanSeal,
+			CanStore:    meta.CanStore,
+			Groups:      meta.Groups,
+			AllowTo:     meta.AllowTo,
+			AllowTypes:  meta.AllowTypes,
+			DenyTypes:   meta.DenyTypes,
+			AllowMiners: meta.AllowMiners,
+			DenyMiners:  meta.DenyMiners,
 		}, fst)
 		if err != nil {
 			return xerrors.Errorf("redeclaring storage in index: %w", err)
@@ -495,20 +500,64 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 	var out storiface.SectorPaths
 	var storageIDs storiface.SectorPaths
 
-	allocPathOk := func(canSeal, canStore bool, allowTypes, denyTypes []string, fileType storiface.SectorFileType) bool {
+	allocPathOk := func(canSeal, canStore bool, allowTypes, denyTypes, allowMiners, denyMiners []string, fileType storiface.SectorFileType, miner abi.ActorID) (bool, error) {
 		if (pathType == storiface.PathSealing) && !canSeal {
-			return false
+			return false, nil
 		}
 
 		if (pathType == storiface.PathStorage) && !canStore {
-			return false
+			return false, nil
 		}
 
 		if !fileType.Allowed(allowTypes, denyTypes) {
-			return false
+			return false, nil
 		}
 
-		return true
+		if len(allowMiners) > 0 {
+			found := false
+			for _, m := range allowMiners {
+				minerIDStr := m
+				maddr, err := address.NewFromString(minerIDStr)
+				if err != nil {
+					return false, xerrors.Errorf("parsing miner address: %w", err)
+				}
+				mid, err := address.IDFromAddress(maddr)
+				if err != nil {
+					return false, xerrors.Errorf("converting miner address to ID: %w", err)
+				}
+				if abi.ActorID(mid) == miner {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false, nil
+			}
+		}
+
+		if len(denyMiners) > 0 {
+			found := false
+			for _, m := range denyMiners {
+				minerIDStr := m
+				maddr, err := address.NewFromString(minerIDStr)
+				if err != nil {
+					return false, xerrors.Errorf("parsing miner address: %w", err)
+				}
+				mid, err := address.IDFromAddress(maddr)
+				if err != nil {
+					return false, xerrors.Errorf("converting miner address to ID: %w", err)
+				}
+				if abi.ActorID(mid) == miner {
+					found = true
+					break
+				}
+			}
+			if found {
+				return false, nil
+			}
+		}
+
+		return true, nil
 	}
 
 	// First find existing files
@@ -536,8 +585,15 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 				continue
 			}
 
-			if allocate.Has(fileType) && !allocPathOk(info.CanSeal, info.CanStore, info.AllowTypes, info.DenyTypes, fileType) {
-				continue // allocate request for a path of different type
+			if allocate.Has(fileType) {
+				ok, err := allocPathOk(info.CanSeal, info.CanStore, info.AllowTypes, info.DenyTypes, info.AllowMiners, info.DenyMiners, fileType, sid.ID.Miner)
+				if err != nil {
+					log.Debug(err)
+					continue
+				}
+				if !ok {
+					continue // allocate request for a path of different type
+				}
 			}
 
 			spath := p.sectorPath(sid.ID, fileType)
@@ -556,7 +612,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 			continue
 		}
 
-		sis, err := st.index.StorageBestAlloc(ctx, fileType, ssize, pathType)
+		sis, err := st.index.StorageBestAlloc(ctx, fileType, ssize, pathType, sid.ID.Miner)
 		if err != nil {
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.Errorf("finding best storage for allocating : %w", err)
 		}
@@ -574,7 +630,14 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 				continue
 			}
 
-			if !allocPathOk(si.CanSeal, si.CanStore, si.AllowTypes, si.DenyTypes, fileType) {
+			alloc, err := allocPathOk(si.CanSeal, si.CanStore, si.AllowTypes, si.DenyTypes, si.AllowMiners, si.DenyMiners, fileType, sid.ID.Miner)
+
+			if err != nil {
+				log.Debug(err)
+				continue
+			}
+
+			if !alloc {
 				continue
 			}
 

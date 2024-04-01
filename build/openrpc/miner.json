@@ -8897,11 +8897,23 @@
                                 ],
                                 "DenyTypes": [
                                     "string value"
+                                ],
+                                "AllowMiners": [
+                                    "string value"
+                                ],
+                                "DenyMiners": [
+                                    "string value"
                                 ]
                             }
                         ],
                         "additionalProperties": false,
                         "properties": {
+                            "AllowMiners": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
                             "AllowTo": {
                                 "items": {
                                     "type": "string"
@@ -8919,6 +8931,12 @@
                             },
                             "CanStore": {
                                 "type": "boolean"
+                            },
+                            "DenyMiners": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
                             },
                             "DenyTypes": {
                                 "items": {
@@ -9078,7 +9096,7 @@
         },
         {
             "name": "Filecoin.StorageBestAlloc",
-            "description": "```go\nfunc (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {\n\tif s.Internal.StorageBestAlloc == nil {\n\t\treturn *new([]storiface.StorageInfo), ErrNotSupported\n\t}\n\treturn s.Internal.StorageBestAlloc(p0, p1, p2, p3)\n}\n```",
+            "description": "```go\nfunc (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType, p4 abi.ActorID) ([]storiface.StorageInfo, error) {\n\tif s.Internal.StorageBestAlloc == nil {\n\t\treturn *new([]storiface.StorageInfo), ErrNotSupported\n\t}\n\treturn s.Internal.StorageBestAlloc(p0, p1, p2, p3, p4)\n}\n```",
             "summary": "StorageBestAlloc returns list of paths where sector files of the specified type can be allocated, ordered by preference.\nPaths with more weight and more % of free space are preferred.\nNote: This method doesn't filter paths based on AllowTypes/DenyTypes.\n",
             "paramStructure": "by-position",
             "params": [
@@ -9130,6 +9148,23 @@
                     },
                     "required": true,
                     "deprecated": false
+                },
+                {
+                    "name": "p4",
+                    "description": "abi.ActorID",
+                    "summary": "",
+                    "schema": {
+                        "title": "number",
+                        "description": "Number is a number",
+                        "examples": [
+                            1000
+                        ],
+                        "type": [
+                            "number"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
                 }
             ],
             "result": {
@@ -9159,6 +9194,12 @@
                                 ],
                                 "DenyTypes": [
                                     "string value"
+                                ],
+                                "AllowMiners": [
+                                    "string value"
+                                ],
+                                "DenyMiners": [
+                                    "string value"
                                 ]
                             }
                         ]
@@ -9167,6 +9208,12 @@
                         {
                             "additionalProperties": false,
                             "properties": {
+                                "AllowMiners": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
                                 "AllowTo": {
                                     "items": {
                                         "type": "string"
@@ -9184,6 +9231,12 @@
                                 },
                                 "CanStore": {
                                     "type": "boolean"
+                                },
+                                "DenyMiners": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "DenyTypes": {
                                     "items": {
@@ -9620,6 +9673,12 @@
                                 ],
                                 "DenyTypes": [
                                     "string value"
+                                ],
+                                "AllowMiners": [
+                                    "string value"
+                                ],
+                                "DenyMiners": [
+                                    "string value"
                                 ]
                             }
                         ]
@@ -9628,6 +9687,12 @@
                         {
                             "additionalProperties": false,
                             "properties": {
+                                "AllowMiners": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
                                 "AllowTypes": {
                                     "items": {
                                         "type": "string"
@@ -9645,6 +9710,12 @@
                                 },
                                 "CanStore": {
                                     "type": "boolean"
+                                },
+                                "DenyMiners": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 },
                                 "DenyTypes": {
                                     "items": {
@@ -9833,11 +9904,23 @@
                             ],
                             "DenyTypes": [
                                 "string value"
+                            ],
+                            "AllowMiners": [
+                                "string value"
+                            ],
+                            "DenyMiners": [
+                                "string value"
                             ]
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
+                        "AllowMiners": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
                         "AllowTo": {
                             "items": {
                                 "type": "string"
@@ -9855,6 +9938,12 @@
                         },
                         "CanStore": {
                             "type": "boolean"
+                        },
+                        "DenyMiners": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
                         },
                         "DenyTypes": {
                             "items": {
