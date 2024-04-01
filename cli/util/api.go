@@ -170,7 +170,13 @@ func GetRawAPIMultiV2(ctx *cli.Context, ainfoCfg []string, version string) ([]Ht
 	var httpHeads []HttpHead
 
 	if len(ainfoCfg) == 0 {
-		return httpHeads, xerrors.Errorf("could not get API info: none configured. \nConsider getting base.toml with './curio config get base >/tmp/base.toml' \nthen adding   \n[APIs] \n ChainApiInfo = [\" result_from lotus auth api-info --perm=admin \"]\n  and updating it with './curio config set /tmp/base.toml'")
+		return httpHeads, xerrors.Errorf(`could not get API info: none configured.
+		If new/migrating, use curio "guided-setup" or if already a curio user,
+		Consider getting base.toml with './curio config get base >/tmp/base.toml' 
+		then adding   
+		 [APIs] 
+		  ChainApiInfo = [\" result_from lotus auth api-info --perm=admin \"]
+		   and updating it with './curio config set /tmp/base.toml'`)
 	}
 	for _, i := range ainfoCfg {
 		ainfo := ParseApiInfo(i)
