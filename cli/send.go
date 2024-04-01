@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-var sendCmd = &cli.Command{
+var SendCmd = &cli.Command{
 	Name:      "send",
 	Usage:     "Send funds between accounts",
 	ArgsUsage: "[targetAddress] [amount]",
