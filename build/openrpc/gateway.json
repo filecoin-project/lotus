@@ -5219,8 +5219,8 @@
             }
         },
         {
-            "name": "Filecoin.GetActorEvents",
-            "description": "```go\nfunc (s *GatewayStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {\n\tif s.Internal.GetActorEvents == nil {\n\t\treturn *new([]*types.ActorEvent), ErrNotSupported\n\t}\n\treturn s.Internal.GetActorEvents(p0, p1)\n}\n```",
+            "name": "Filecoin.GetActorEventsRaw",
+            "description": "```go\nfunc (s *GatewayStruct) GetActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {\n\tif s.Internal.GetActorEventsRaw == nil {\n\t\treturn *new([]*types.ActorEvent), ErrNotSupported\n\t}\n\treturn s.Internal.GetActorEventsRaw(p0, p1)\n}\n```",
             "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [

@@ -35,16 +35,16 @@ table tr td:first-child, table tr th:first-child {
     border-left: none;
 }
 
-a:link {
-    color: #cfc;
+a {
+    text-decoration: none;
 }
 
-a:visited {
-    color: #dfa;
+a:link, a:visited {
+    color: #adf7ad;
 }
 
 a:hover {
-    color: #af7;
+    color: #88cc60;
 }
 
 .success {

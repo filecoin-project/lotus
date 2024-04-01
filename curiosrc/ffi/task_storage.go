@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -111,6 +110,11 @@ func (t *TaskStorage) HasCapacity() bool {
 }
 
 func (t *TaskStorage) Claim(taskID int) error {
+	// TaskStorage Claim Attempts to reserve storage for the task
+	// A: Create a reservation for files to be allocated
+	// B: Create a reservation for existing files to be fetched into local storage
+	// C: Create a reservation for existing files in local storage which may be extended (e.g. sector cache when computing Trees)
+
 	ctx := context.Background()
 
 	sectorRef, err := t.taskToSectorRef(harmonytask.TaskID(taskID))
@@ -121,7 +125,7 @@ func (t *TaskStorage) Claim(taskID int) error {
 	// storage writelock sector
 	lkctx, cancel := context.WithCancel(ctx)
 
-	allocate := storiface.FTCache
+	requestedTypes := t.alloc | t.existing
 
 	lockAcquireTimuout := time.Second * 10
 	lockAcquireTimer := time.NewTimer(lockAcquireTimuout)
@@ -135,7 +139,7 @@ func (t *TaskStorage) Claim(taskID int) error {
 		}
 	}()
 
-	if err := t.sc.sectors.sindex.StorageLock(lkctx, sectorRef.ID(), storiface.FTNone, allocate); err != nil {
+	if err := t.sc.sectors.sindex.StorageLock(lkctx, sectorRef.ID(), storiface.FTNone, requestedTypes); err != nil {
 		// timer will expire
 		return xerrors.Errorf("claim StorageLock: %w", err)
 	}
@@ -149,39 +153,18 @@ func (t *TaskStorage) Claim(taskID int) error {
 		lockAcquireTimer.Reset(0)
 	}()
 
-	// find anywhere
-	//  if found return nil, for now
-	s, err := t.sc.sectors.sindex.StorageFindSector(ctx, sectorRef.ID(), allocate, must.One(sectorRef.RegSealProof.SectorSize()), false)
-	if err != nil {
-		return xerrors.Errorf("claim StorageFindSector: %w", err)
-	}
-
-	lp, err := t.sc.sectors.localStore.Local(ctx)
-	if err != nil {
-		return err
-	}
-
-	// see if there are any non-local sector files in storage
-	for _, info := range s {
-		for _, l := range lp {
-			if l.ID == info.ID {
-				continue
-			}
-
-			// TODO: Create reservation for fetching; This will require quite a bit more refactoring, but for now we'll
-			//  only care about new allocations
-			return nil
-		}
-	}
-
-	// acquire a path to make a reservation in
-	pathsFs, pathIDs, err := t.sc.sectors.localStore.AcquireSector(ctx, sectorRef.Ref(), storiface.FTNone, allocate, storiface.PathSealing, storiface.AcquireMove)
+	// First see what we have locally. We are putting allocate and existing together because local acquire will look
+	// for existing files for allocate requests, separately existing files which aren't found locally will be need to
+	// be fetched, so we will need to create reservations for that too.
+	// NOTE localStore.AcquireSector does not open or create any files, nor does it reserve space. It only proposes
+	// paths to be used.
+	pathsFs, pathIDs, err := t.sc.sectors.localStore.AcquireSector(ctx, sectorRef.Ref(), storiface.FTNone, requestedTypes, t.pathType, storiface.AcquireMove)
 	if err != nil {
 		return err
 	}
 
 	// reserve the space
-	release, err := t.sc.sectors.localStore.Reserve(ctx, sectorRef.Ref(), allocate, pathIDs, storiface.FSOverheadSeal)
+	release, err := t.sc.sectors.localStore.Reserve(ctx, sectorRef.Ref(), requestedTypes, pathIDs, storiface.FSOverheadSeal)
 	if err != nil {
 		return err
 	}

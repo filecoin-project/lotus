@@ -41,9 +41,13 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // AcquireSector mocks base method.
-func (m *MockStore) AcquireSector(arg0 context.Context, arg1 storiface.SectorRef, arg2, arg3 storiface.SectorFileType, arg4 storiface.PathType, arg5 storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
+func (m *MockStore) AcquireSector(arg0 context.Context, arg1 storiface.SectorRef, arg2, arg3 storiface.SectorFileType, arg4 storiface.PathType, arg5 storiface.AcquireMode, arg6 ...storiface.AcquireOption) (storiface.SectorPaths, storiface.SectorPaths, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireSector", arg0, arg1, arg2, arg3, arg4, arg5)
+	varargs := []interface{}{arg0, arg1, arg2, arg3, arg4, arg5}
+	for _, a := range arg6 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "AcquireSector", varargs...)
 	ret0, _ := ret[0].(storiface.SectorPaths)
 	ret1, _ := ret[1].(storiface.SectorPaths)
 	ret2, _ := ret[2].(error)
@@ -51,9 +55,10 @@ func (m *MockStore) AcquireSector(arg0 context.Context, arg1 storiface.SectorRef
 }
 
 // AcquireSector indicates an expected call of AcquireSector.
-func (mr *MockStoreMockRecorder) AcquireSector(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) AcquireSector(arg0, arg1, arg2, arg3, arg4, arg5 interface{}, arg6 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireSector", reflect.TypeOf((*MockStore)(nil).AcquireSector), arg0, arg1, arg2, arg3, arg4, arg5)
+	varargs := append([]interface{}{arg0, arg1, arg2, arg3, arg4, arg5}, arg6...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireSector", reflect.TypeOf((*MockStore)(nil).AcquireSector), varargs...)
 }
 
 // FsStat mocks base method.

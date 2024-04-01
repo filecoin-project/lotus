@@ -9392,9 +9392,9 @@
             }
         },
         {
-            "name": "Filecoin.GetActorEvents",
-            "description": "```go\nfunc (s *FullNodeStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {\n\tif s.Internal.GetActorEvents == nil {\n\t\treturn *new([]*types.ActorEvent), ErrNotSupported\n\t}\n\treturn s.Internal.GetActorEvents(p0, p1)\n}\n```",
-            "summary": "GetActorEvents returns all user-programmed and built-in actor events that match the given\nfilter.\nThis is a request/response API.\nResults available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange\nconfiguration options and also the amount of historical data available in the node.\n\nThis is an EXPERIMENTAL API and may be subject to change.\n",
+            "name": "Filecoin.GetActorEventsRaw",
+            "description": "```go\nfunc (s *FullNodeStruct) GetActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {\n\tif s.Internal.GetActorEventsRaw == nil {\n\t\treturn *new([]*types.ActorEvent), ErrNotSupported\n\t}\n\treturn s.Internal.GetActorEventsRaw(p0, p1)\n}\n```",
+            "summary": "GetActorEventsRaw returns all user-programmed and built-in actor events that match the given\nfilter.\nThis is a request/response API.\nResults available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange\nconfiguration options and also the amount of historical data available in the node.\n\nThis is an EXPERIMENTAL API and may be subject to change.\n",
             "paramStructure": "by-position",
             "params": [
                 {

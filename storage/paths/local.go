@@ -53,7 +53,15 @@ type path struct {
 	reservations map[abi.SectorID]storiface.SectorFileType
 }
 
-func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
+// statExistingSectorForReservation is optional parameter for stat method
+// which will make it take into account existing sectors when calculating
+// available space for new reservations
+type statExistingSectorForReservation struct {
+	id abi.SectorID
+	ft storiface.SectorFileType
+}
+
+func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservation) (fsutil.FsStat, error) {
 	start := time.Now()
 
 	stat, err := ls.Stat(p.local)
@@ -63,34 +71,49 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 
 	stat.Reserved = p.reserved
 
+	accountExistingFiles := func(id abi.SectorID, fileType storiface.SectorFileType) error {
+		sp := p.sectorPath(id, fileType)
+
+		used, err := ls.DiskUsage(sp)
+		if err == os.ErrNotExist {
+			p, ferr := tempFetchDest(sp, false)
+			if ferr != nil {
+				return ferr
+			}
+
+			used, err = ls.DiskUsage(p)
+		}
+		if err != nil {
+			// we don't care about 'not exist' errors, as storage can be
+			// reserved before any files are written, so this error is not
+			// unexpected
+			if !os.IsNotExist(err) {
+				log.Warnf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+			}
+			return nil
+		}
+
+		stat.Reserved -= used
+		return nil
+	}
+
 	for id, ft := range p.reservations {
-		for _, fileType := range storiface.PathTypes {
-			if fileType&ft == 0 {
+		for _, fileType := range ft.AllSet() {
+			if err := accountExistingFiles(id, fileType); err != nil {
+				return fsutil.FsStat{}, err
+			}
+		}
+	}
+	for _, reservation := range newReserve {
+		for _, fileType := range reservation.ft.AllSet() {
+			if p.reservations[reservation.id]&fileType != 0 {
+				// already accounted for
 				continue
 			}
 
-			sp := p.sectorPath(id, fileType)
-
-			used, err := ls.DiskUsage(sp)
-			if err == os.ErrNotExist {
-				p, ferr := tempFetchDest(sp, false)
-				if ferr != nil {
-					return fsutil.FsStat{}, ferr
-				}
-
-				used, err = ls.DiskUsage(p)
+			if err := accountExistingFiles(reservation.id, fileType); err != nil {
+				return fsutil.FsStat{}, err
 			}
-			if err != nil {
-				// we don't care about 'not exist' errors, as storage can be
-				// reserved before any files are written, so this error is not
-				// unexpected
-				if !os.IsNotExist(err) {
-					log.Warnf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
-				}
-				continue
-			}
-
-			stat.Reserved -= used
 		}
 	}
 
@@ -414,11 +437,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		deferredDone()
 	}()
 
-	for _, fileType := range storiface.PathTypes {
-		if fileType&ft == 0 {
-			continue
-		}
-
+	for _, fileType := range ft.AllSet() {
 		id := storiface.ID(storiface.PathByType(storageIDs, fileType))
 
 		p, ok := st.paths[id]
@@ -426,7 +445,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			return nil, errPathNotFound
 		}
 
-		stat, err := p.stat(st.localStorage)
+		stat, err := p.stat(st.localStorage, statExistingSectorForReservation{sid.ID, fileType})
 		if err != nil {
 			return nil, xerrors.Errorf("getting local storage stat: %w", err)
 		}
@@ -460,7 +479,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 	return done, nil
 }
 
-func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
+func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode, opts ...storiface.AcquireOption) (storiface.SectorPaths, storiface.SectorPaths, error) {
 	if existing|allocate != existing^allocate {
 		return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.New("can't both find and allocate a sector")
 	}
@@ -476,14 +495,34 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 	var out storiface.SectorPaths
 	var storageIDs storiface.SectorPaths
 
+	allocPathOk := func(canSeal, canStore bool, allowTypes, denyTypes []string, fileType storiface.SectorFileType) bool {
+		if (pathType == storiface.PathSealing) && !canSeal {
+			return false
+		}
+
+		if (pathType == storiface.PathStorage) && !canStore {
+			return false
+		}
+
+		if !fileType.Allowed(allowTypes, denyTypes) {
+			return false
+		}
+
+		return true
+	}
+
+	// First find existing files
 	for _, fileType := range storiface.PathTypes {
-		if fileType&existing == 0 {
+		// also try to find existing sectors if we're allocating
+		if fileType&(existing|allocate) == 0 {
 			continue
 		}
 
 		si, err := st.index.StorageFindSector(ctx, sid.ID, fileType, ssize, false)
 		if err != nil {
-			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
+			if fileType&existing != 0 {
+				log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
+			}
 			continue
 		}
 
@@ -497,15 +536,21 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 				continue
 			}
 
+			if allocate.Has(fileType) && !allocPathOk(info.CanSeal, info.CanStore, info.AllowTypes, info.DenyTypes, fileType) {
+				continue // allocate request for a path of different type
+			}
+
 			spath := p.sectorPath(sid.ID, fileType)
 			storiface.SetPathByType(&out, fileType, spath)
 			storiface.SetPathByType(&storageIDs, fileType, string(info.ID))
 
-			existing ^= fileType
+			existing = existing.Unset(fileType)
+			allocate = allocate.Unset(fileType)
 			break
 		}
 	}
 
+	// Then allocate for allocation requests
 	for _, fileType := range storiface.PathTypes {
 		if fileType&allocate == 0 {
 			continue
@@ -529,15 +574,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 				continue
 			}
 
-			if (pathType == storiface.PathSealing) && !si.CanSeal {
-				continue
-			}
-
-			if (pathType == storiface.PathStorage) && !si.CanStore {
-				continue
-			}
-
-			if !fileType.Allowed(si.AllowTypes, si.DenyTypes) {
+			if !allocPathOk(si.CanSeal, si.CanStore, si.AllowTypes, si.DenyTypes, fileType) {
 				continue
 			}
 

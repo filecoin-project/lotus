@@ -74,6 +74,11 @@ func run() error {
 			name := f[0]
 			typ := f[1]
 
+			if len(comment) > 0 && strings.HasPrefix(comment[0], fmt.Sprintf("%s is DEPRECATED", name)) {
+				// don't document deprecated fields
+				continue
+			}
+
 			out[currentType] = append(out[currentType], field{
 				Name:    name,
 				Type:    typ,

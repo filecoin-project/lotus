@@ -91,6 +91,7 @@ func main() {
 		FevmAnalyticsCmd,
 		mismatchesCmd,
 		blockCmd,
+		adlCmd,
 		lpUtilCmd,
 	}
 
