@@ -25,7 +25,7 @@ import (
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -1272,7 +1272,7 @@ var ActorNewMinerCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		full, closer, err := cliutil.GetFullNodeAPI(cctx)
+		full, closer, err := cliutil.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return xerrors.Errorf("connecting to full node: %w", err)
 		}
@@ -1323,7 +1323,7 @@ var ActorNewMinerCmd = &cli.Command{
 	},
 }
 
-func CreateStorageMiner(ctx context.Context, fullNode v0api.FullNode, owner, worker, sender address.Address, ssize abi.SectorSize, confidence uint64) (address.Address, error) {
+func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, worker, sender address.Address, ssize abi.SectorSize, confidence uint64) (address.Address, error) {
 	// make sure the sender account exists on chain
 	_, err := fullNode.StateLookupID(ctx, owner, types.EmptyTSK)
 	if err != nil {
@@ -1345,7 +1345,7 @@ func CreateStorageMiner(ctx context.Context, fullNode v0api.FullNode, owner, wor
 		fmt.Printf("Initializing worker account %s, message: %s\n", worker, signed.Cid())
 		fmt.Println("Waiting for confirmation")
 
-		mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence)
+		mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence, 2000, true)
 		if err != nil {
 			return address.Undef, xerrors.Errorf("waiting for worker init: %w", err)
 		}
@@ -1369,7 +1369,7 @@ func CreateStorageMiner(ctx context.Context, fullNode v0api.FullNode, owner, wor
 		fmt.Printf("Initializing owner account %s, message: %s\n", worker, signed.Cid())
 		fmt.Println("Waiting for confirmation")
 
-		mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence)
+		mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence, 2000, true)
 		if err != nil {
 			return address.Undef, xerrors.Errorf("waiting for owner init: %w", err)
 		}
@@ -1414,7 +1414,7 @@ func CreateStorageMiner(ctx context.Context, fullNode v0api.FullNode, owner, wor
 	fmt.Printf("Pushed CreateMiner message: %s\n", signed.Cid())
 	fmt.Println("Waiting for confirmation")
 
-	mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence)
+	mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence, 2000, true)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("waiting for createMiner message: %w", err)
 	}

@@ -1297,23 +1297,6 @@
             "fuzzy": true
         },
         {
-            "id": "Failed to encode the config: {Error}",
-            "message": "Failed to encode the config: {Error}",
-            "translation": "Failed to encode the config: {Error}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
             "id": "Failed to generate default config: {Error}",
             "message": "Failed to generate default config: {Error}",
             "translation": "Failed to generate default config: {Error}",
@@ -1355,9 +1338,9 @@
             "fuzzy": true
         },
         {
-            "id": "Cannot load base config: {Error}",
-            "message": "Cannot load base config: {Error}",
-            "translation": "Cannot load base config: {Error}",
+            "id": "Failed to load base config from database: {Error}",
+            "message": "Failed to load base config from database: {Error}",
+            "translation": "Failed to load base config from database: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -1372,9 +1355,9 @@
             "fuzzy": true
         },
         {
-            "id": "Failed to load base config: {Error}",
-            "message": "Failed to load base config: {Error}",
-            "translation": "Failed to load base config: {Error}",
+            "id": "Failed to parse base config: {Error}",
+            "message": "Failed to parse base config: {Error}",
+            "translation": "Failed to parse base config: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {

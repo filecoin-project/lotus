@@ -27,7 +27,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/docker/go-units"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/manifoldco/promptui"
 	"github.com/mitchellh/go-homedir"
 	"github.com/samber/lo"
@@ -40,11 +39,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli/spcli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -230,7 +230,7 @@ type MigrationData struct {
 	MinerConfig     *config.StorageMiner
 	DB              *harmonydb.DB
 	MinerID         address.Address
-	full            v0api.FullNode
+	full            v1api.FullNode
 	cctx            *cli.Context
 	closers         []jsonrpc.ClientCloser
 	ctx             context.Context
@@ -259,7 +259,7 @@ func configToDB(d *MigrationData) {
 	{
 		var closer jsonrpc.ClientCloser
 		var err error
-		d.full, closer, err = cliutil.GetFullNodeAPI(d.cctx)
+		d.full, closer, err = cliutil.GetFullNodeAPIV1(d.cctx)
 		d.closers = append(d.closers, closer)
 		if err != nil {
 			d.say(notice, "Error getting API: %s", err.Error())
@@ -703,7 +703,7 @@ func stepPresteps(d *MigrationData) {
 	}
 
 	// Get full node API
-	full, closer, err := cliutil.GetFullNodeAPI(d.cctx)
+	full, closer, err := cliutil.GetFullNodeAPIV1(d.cctx)
 	if err != nil {
 		d.say(notice, "Error connecting to full node API: %s", err.Error())
 		os.Exit(1)
@@ -716,25 +716,13 @@ func stepPresteps(d *MigrationData) {
 func stepNewMinerConfig(d *MigrationData) {
 	curioCfg := config.DefaultCurioConfig()
 	curioCfg.Addresses = append(curioCfg.Addresses, config.CurioAddresses{
-		PreCommitControl:      nil,
-		CommitControl:         nil,
-		TerminateControl:      nil,
+		PreCommitControl:      []string{},
+		CommitControl:         []string{},
+		TerminateControl:      []string{},
 		DisableOwnerFallback:  false,
 		DisableWorkerFallback: false,
 		MinerAddresses:        []string{d.MinerID.String()},
 	})
-
-	//var addresses []config.CurioAddresses
-	//newAddrs := config.CurioAddresses{
-	//	PreCommitControl:      nil,
-	//	CommitControl:         nil,
-	//	TerminateControl:      nil,
-	//	DisableOwnerFallback:  false,
-	//	DisableWorkerFallback: false,
-	//	MinerAddresses:        []string{d.MinerID.String()},
-	//}
-	//addresses = append(addresses, newAddrs)
-	//curioCfg.Addresses = addresses
 
 	sk, err := io.ReadAll(io.LimitReader(rand.Reader, 32))
 	if err != nil {

@@ -1065,6 +1065,18 @@
             "translation": "기본 구성을 재생성하는 데 실패했습니다: {Error}",
             "message": "Failed to regenerate base config: {Error}",
             "placeholder": null
+        },
+        {
+            "id": "Failed to load base config from database: {Error}",
+            "translation": "데이터베이스에서 기본 구성을 로드하는 데 실패했습니다: {Error}",
+            "message": "Failed to load base config from database: {Error}",
+            "placeholder": null
+        },
+        {
+            "id": "Failed to parse base config: {Error}",
+            "translation": "기본 구성을 구문 분석하는 데 실패했습니다: {Error}",
+            "message": "Failed to parse base config: {Error}",
+            "placeholder": null
         }
     ]
 }

@@ -1035,6 +1035,18 @@
       "translation": "重新生成基本配置失败: {Error}",
       "message": "Failed to regenerate base config: {Error}",
       "placeholder": null
+    },
+    {
+      "id": "Failed to load base config from database: {Error}",
+      "translation": "从数据库加载基本配置失败：{Error}",
+      "message": "Failed to load base config from database: {Error}",
+      "placeholder": null
+    },
+    {
+      "id": "Failed to parse base config: {Error}",
+      "translation": "解析基本配置失败：{Error}",
+      "message": "Failed to parse base config: {Error}",
+      "placeholder": null
     }
   ]
 }

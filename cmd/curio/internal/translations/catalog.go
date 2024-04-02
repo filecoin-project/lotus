@@ -42,39 +42,38 @@ func init() {
 var messageKeyToIndex = map[string]int{
 	"Aborting migration.":       45,
 	"Aborting remaining steps.": 9,
-	"Aggregate-Anonymous: version, chain, and Miner power (bucketed).":      22,
-	"Cannot load base config: %s":                                           101,
-	"Cannot reach the DB: %s":                                               90,
-	"Cannot read the config.toml file in the provided directory, Error: %s": 65,
-	"Compare the configurations %s to %s. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.": 117,
+	"Aggregate-Anonymous: version, chain, and Miner power (bucketed).": 22,
+	"Cannot reach the DB: %s": 90,
+	"Cannot read the config.toml file in the provided directory, Error: %s":                                                                                  65,
+	"Compare the configurations %s to %s. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.": 116,
 	"Confidence epochs":     86,
 	"Confidence epochs: %d": 76,
-	"Configuration 'base' was created to include this miner's address and its wallet setup.": 118,
-	"Configuration 'base' was updated to include this miner's address":                       100,
-	"Configuration 'base' was updated to include this miner's address and its wallet setup.": 116,
+	"Configuration 'base' was created to include this miner's address and its wallet setup.": 117,
+	"Configuration 'base' was updated to include this miner's address":                       99,
+	"Configuration 'base' was updated to include this miner's address and its wallet setup.": 115,
 	"Connected to Yugabyte":                                                          59,
 	"Connected to Yugabyte. Schema is current.":                                      47,
-	"Continue to connect and update schema.":                                         110,
+	"Continue to connect and update schema.":                                         109,
 	"Continue to verify the addresses and create a new miner actor.":                 77,
 	"Could not create repo from directory: %s. Aborting migration":                   66,
 	"Could not lock miner repo. Your miner must be stopped: %s\n Aborting migration": 67,
 	"Create a new miner":                                                             8,
 	"Ctrl+C pressed in Terminal":                                                     5,
-	"Database config error occurred, abandoning migration: %s ":                      111,
-	"Database: %s":    109,
+	"Database config error occurred, abandoning migration: %s ":                      110,
+	"Database: %s":    108,
 	"Documentation: ": 32,
 	"Each step needs your confirmation and can be reversed. Press Ctrl+C to exit at any time.": 4,
 	"Enabling Sector Indexing in the database.":                                                48,
 	"Enter %s address":                    82,
-	"Enter the Yugabyte database %s":      114,
-	"Enter the Yugabyte database host(s)": 112,
-	"Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)": 104,
+	"Enter the Yugabyte database %s":      113,
+	"Enter the Yugabyte database host(s)": 111,
+	"Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)": 103,
 	"Enter the info to create a new miner":                     71,
 	"Enter the owner address":                                  79,
 	"Enter the path to the configuration directory used by %s": 63,
 	"Enter the sector size":                                    83,
 	"Error closing backup file: %s":                            56,
-	"Error connecting to Yugabyte database: %s":                115,
+	"Error connecting to Yugabyte database: %s":                114,
 	"Error connecting to full node API: %s":                    91,
 	"Error creating backup file: %s":                           53,
 	"Error encoding config.toml: %s":                           49,
@@ -95,25 +94,25 @@ var messageKeyToIndex = map[string]int{
 	"Error writing backup file: %s":                            55,
 	"Error writing config.toml: %s":                            57,
 	"Failed to create the miner actor: %s":                     88,
-	"Failed to encode the config: %s":                          97,
-	"Failed to generate default config: %s":                    98,
+	"Failed to generate default config: %s":                    97,
 	"Failed to generate random bytes for secret: %s":           93,
 	"Failed to get API info for FullNode: %w":                  95,
-	"Failed to insert 'base' config layer in database: %s":     99,
-	"Failed to load base config: %s":                           102,
+	"Failed to insert 'base' config layer in database: %s":     98,
+	"Failed to load base config from database: %s":             100,
+	"Failed to parse base config: %s":                          101,
 	"Failed to parse confidence: %s":                           87,
 	"Failed to parse sector size: %s":                          85,
 	"Failed to parse the address: %s":                          81,
-	"Failed to regenerate base config: %s":                     103,
+	"Failed to regenerate base config: %s":                     102,
 	"Failed to verify the auth token from daemon node: %s":     96,
 	"Filecoin %s channels: %s and %s":                          35,
 	"Hint: I am someone running Curio on whichever chain.":     23,
-	"Host: %s":   105,
+	"Host: %s":   104,
 	"I want to:": 6,
 	"Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'": 36,
 	"Individual Data: Miner ID, Curio version, chain (%s or %s). Signed.":                                                    21,
 	"Initializing a new miner actor.":   70,
-	"Layer %s created. ":                119,
+	"Layer %s created. ":                118,
 	"Lotus-Miner to Curio Migration.":   10,
 	"Message sent.":                     31,
 	"Migrate from existing Lotus-Miner": 7,
@@ -122,7 +121,7 @@ var messageKeyToIndex = map[string]int{
 	"Miner creation error occurred: %s ":                                    78,
 	"New Miner initialization complete.":                                    13,
 	"No address provided":                                                   80,
-	"No host provided":                                                      113,
+	"No host provided":                                                      112,
 	"No path provided, abandoning migration ":                               64,
 	"No value provided":                                                     84,
 	"Nothing.":                                                              24,
@@ -130,10 +129,10 @@ var messageKeyToIndex = map[string]int{
 	"One database can serve multiple miner IDs: Run a migration for each lotus-miner.": 37,
 	"Other":             62,
 	"Owner Address: %s": 72,
-	"Password: %s":      108,
+	"Password: %s":      107,
 	"Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration": 94,
 	"Please start (or restart) %s now that database credentials are in %s.":                                                                               38,
-	"Port: %s":                          106,
+	"Port: %s":                          105,
 	"Pre-initialization steps complete": 92,
 	"Press return to continue":          44,
 	"Press return to update %s with Yugabyte info. A Backup file will be written to that folder before changes are made.": 50,
@@ -151,12 +150,12 @@ var messageKeyToIndex = map[string]int{
 	"This interactive tool creates a new miner actor and creates the basic configuration layer for it.":                                                                                                  1,
 	"This interactive tool migrates lotus-miner to Curio in 5 minutes.":                                                                                                                                  3,
 	"This process is partially idempotent. Once a new miner actor has been created and subsequent steps fail, the user need to run 'curio config new-cluster < miner ID >' to finish the configuration.": 2,
-	"To run Curio: With machine or cgroup isolation, use the command (with example layer selection):":                                                                                                    121,
+	"To run Curio: With machine or cgroup isolation, use the command (with example layer selection):":                                                                                                    120,
 	"To start, ensure your sealing pipeline is drained and shut-down lotus-miner.":                                                                                                                       60,
-	"To work with the config: ":                                      120,
+	"To work with the config: ":                                      119,
 	"Try the web interface with %s for further guided improvements.": 11,
 	"Use the arrow keys to navigate: ↓ ↑ → ← ":                       0,
-	"Username: %s": 107,
+	"Username: %s": 106,
 	"Waiting for %s to write sectors into Yugabyte.":                  39,
 	"Worker Address: %s":                                              73,
 	"You can add other layers for per-machine configuration changes.": 34,
@@ -164,7 +163,7 @@ var messageKeyToIndex = map[string]int{
 	"could not get API info for FullNode: %w":                         16,
 }
 
-var enIndex = []uint32{ // 123 elements
+var enIndex = []uint32{ // 122 elements
 	// Entry 0 - 1F
 	0x00000000, 0x00000035, 0x00000097, 0x0000015a,
 	0x0000019c, 0x000001f5, 0x00000210, 0x0000021b,
@@ -193,16 +192,16 @@ var enIndex = []uint32{ // 123 elements
 	0x00000f93, 0x00000fbb, 0x00000fdc, 0x00000ff7,
 	0x00001020, 0x00001042, 0x00001074, 0x0000110b,
 	// Entry 60 - 7F
-	0x00001136, 0x0000116e, 0x00001191, 0x000011ba,
-	0x000011f2, 0x00001233, 0x00001252, 0x00001274,
-	0x0000129c, 0x000012fe, 0x0000130a, 0x00001316,
-	0x00001326, 0x00001336, 0x00001346, 0x0000136d,
-	0x000013ae, 0x000013d2, 0x000013e3, 0x00001405,
-	0x00001432, 0x00001489, 0x00001526, 0x0000157d,
-	0x00001597, 0x000015b5, 0x00001615,
-} // Size: 516 bytes
+	0x00001136, 0x0000116e, 0x00001197, 0x000011cf,
+	0x00001210, 0x00001240, 0x00001263, 0x0000128b,
+	0x000012ed, 0x000012f9, 0x00001305, 0x00001315,
+	0x00001325, 0x00001335, 0x0000135c, 0x0000139d,
+	0x000013c1, 0x000013d2, 0x000013f4, 0x00001421,
+	0x00001478, 0x00001515, 0x0000156c, 0x00001586,
+	0x000015a4, 0x00001604,
+} // Size: 512 bytes
 
-const enData string = "" + // Size: 5653 bytes
+const enData string = "" + // Size: 5636 bytes
 	"\x04\x00\x01 0\x02Use the arrow keys to navigate: ↓ ↑ → ←\x02This intera" +
 	"ctive tool creates a new miner actor and creates the basic configuration" +
 	" layer for it.\x02This process is partially idempotent. Once a new miner" +
@@ -270,27 +269,26 @@ const enData string = "" + // Size: 5653 bytes
 	" as miner creation is not idempotent. You need to run 'curio config new-" +
 	"cluster %[1]s' to finish the configuration\x02Failed to get API info for" +
 	" FullNode: %[1]w\x02Failed to verify the auth token from daemon node: %[" +
-	"1]s\x02Failed to encode the config: %[1]s\x02Failed to generate default " +
-	"config: %[1]s\x02Failed to insert 'base' config layer in database: %[1]s" +
-	"\x02Configuration 'base' was updated to include this miner's address\x02" +
-	"Cannot load base config: %[1]s\x02Failed to load base config: %[1]s\x02F" +
-	"ailed to regenerate base config: %[1]s\x02Enter the info to connect to y" +
-	"our Yugabyte database installation (https://download.yugabyte.com/)\x02H" +
-	"ost: %[1]s\x02Port: %[1]s\x02Username: %[1]s\x02Password: %[1]s\x02Datab" +
-	"ase: %[1]s\x02Continue to connect and update schema.\x04\x00\x01 <\x02Da" +
-	"tabase config error occurred, abandoning migration: %[1]s\x02Enter the Y" +
-	"ugabyte database host(s)\x02No host provided\x02Enter the Yugabyte datab" +
-	"ase %[1]s\x02Error connecting to Yugabyte database: %[1]s\x02Configurati" +
-	"on 'base' was updated to include this miner's address and its wallet set" +
-	"up.\x02Compare the configurations %[1]s to %[2]s. Changes between the mi" +
-	"ner IDs other than wallet addreses should be a new, minimal layer for ru" +
-	"nners that need it.\x02Configuration 'base' was created to include this " +
-	"miner's address and its wallet setup.\x04\x00\x01 \x15\x02Layer %[1]s cr" +
-	"eated.\x04\x00\x01 \x19\x02To work with the config:\x02To run Curio: Wit" +
-	"h machine or cgroup isolation, use the command (with example layer selec" +
-	"tion):"
+	"1]s\x02Failed to generate default config: %[1]s\x02Failed to insert 'bas" +
+	"e' config layer in database: %[1]s\x02Configuration 'base' was updated t" +
+	"o include this miner's address\x02Failed to load base config from databa" +
+	"se: %[1]s\x02Failed to parse base config: %[1]s\x02Failed to regenerate " +
+	"base config: %[1]s\x02Enter the info to connect to your Yugabyte databas" +
+	"e installation (https://download.yugabyte.com/)\x02Host: %[1]s\x02Port: " +
+	"%[1]s\x02Username: %[1]s\x02Password: %[1]s\x02Database: %[1]s\x02Contin" +
+	"ue to connect and update schema.\x04\x00\x01 <\x02Database config error " +
+	"occurred, abandoning migration: %[1]s\x02Enter the Yugabyte database hos" +
+	"t(s)\x02No host provided\x02Enter the Yugabyte database %[1]s\x02Error c" +
+	"onnecting to Yugabyte database: %[1]s\x02Configuration 'base' was update" +
+	"d to include this miner's address and its wallet setup.\x02Compare the c" +
+	"onfigurations %[1]s to %[2]s. Changes between the miner IDs other than w" +
+	"allet addreses should be a new, minimal layer for runners that need it." +
+	"\x02Configuration 'base' was created to include this miner's address and" +
+	" its wallet setup.\x04\x00\x01 \x15\x02Layer %[1]s created.\x04\x00\x01 " +
+	"\x19\x02To work with the config:\x02To run Curio: With machine or cgroup" +
+	" isolation, use the command (with example layer selection):"
 
-var koIndex = []uint32{ // 123 elements
+var koIndex = []uint32{ // 122 elements
 	// Entry 0 - 1F
 	0x00000000, 0x00000044, 0x000000c1, 0x000001c1,
 	0x0000020e, 0x00000289, 0x000002aa, 0x000002bc,
@@ -319,16 +317,16 @@ var koIndex = []uint32{ // 123 elements
 	0x0000154a, 0x00001570, 0x000015a9, 0x000015e1,
 	0x00001619, 0x00001638, 0x00001684, 0x00001742,
 	// Entry 60 - 7F
-	0x0000178e, 0x000017dc, 0x0000180f, 0x00001832,
-	0x0000188e, 0x000018de, 0x00001911, 0x0000194d,
-	0x0000198c, 0x000019fa, 0x00001a0b, 0x00001a19,
-	0x00001a31, 0x00001a45, 0x00001a5f, 0x00001a89,
-	0x00001aec, 0x00001b28, 0x00001b52, 0x00001b8a,
-	0x00001bde, 0x00001c48, 0x00001d02, 0x00001d66,
-	0x00001d95, 0x00001dbc, 0x00001e48,
-} // Size: 516 bytes
+	0x0000178e, 0x000017dc, 0x000017ff, 0x0000185b,
+	0x000018ab, 0x00001900, 0x00001943, 0x00001982,
+	0x000019f0, 0x00001a01, 0x00001a0f, 0x00001a27,
+	0x00001a3b, 0x00001a55, 0x00001a7f, 0x00001ae2,
+	0x00001b1e, 0x00001b48, 0x00001b80, 0x00001bd4,
+	0x00001c3e, 0x00001cf8, 0x00001d5c, 0x00001d8b,
+	0x00001db2, 0x00001e3e,
+} // Size: 512 bytes
 
-const koData string = "" + // Size: 7752 bytes
+const koData string = "" + // Size: 7742 bytes
 	"\x04\x00\x01 ?\x02화살표 키를 사용하여 이동하세요: ↓ ↑ → ←\x02이 대화형 도구는 새로운 채굴자 액터를 생성" +
 	"하고 그에 대한 기본 구성 레이어를 생성합니다.\x02이 프로세스는 부분적으로 항등원적입니다. 새로운 채굴자 액터가 생성되었고" +
 	" 후속 단계가 실패하는 경우 사용자는 구성을 완료하기 위해 'curio config new-cluster < 채굴자 ID >'를 " +
@@ -376,22 +374,22 @@ const koData string = "" + // Size: 7752 bytes
 	"[1]s\x02사전 초기화 단계 완료\x02비밀번호를 위한 랜덤 바이트 생성에 실패했습니다: %[1]s\x02마이너 생성은 ide" +
 	"mpotent하지 않으므로 가이드 설정을 다시 실행하지 마십시오. 구성을 완료하려면 'curio config new-cluster" +
 	" %[1]s'를 실행해야 합니다.\x02FullNode에 대한 API 정보를 가져오는 데 실패했습니다: %[1]w\x02데몬 노드" +
-	"로부터 인증 토큰을 확인하는 중 오류 발생: %[1]s\x02구성을 인코딩하는 중 오류 발생: %[1]s\x02기본 구성 생성" +
-	" 실패: %[1]s\x02데이터베이스에 'base' 구성 레이어를 삽입하는 데 실패했습니다: %[1]s\x02이 마이너 주소를 포" +
-	"함한 구성 'base'가 업데이트되었습니다.\x02기본 구성을 불러올 수 없습니다: %[1]s\x02기본 구성을 로드하는 데 " +
-	"실패했습니다: %[1]s\x02기본 구성을 재생성하는 데 실패했습니다: %[1]s\x02Yugabyte 데이터베이스 설치에 연" +
-	"결할 정보를 입력하십시오 (https://download.yugabyte.com/)\x02호스트: %[1]s\x02포트: %[" +
-	"1]s\x02사용자 이름: %[1]s\x02비밀번호: %[1]s\x02데이터베이스: %[1]s\x02계속 연결 및 스키마 업데이트" +
-	".\x04\x00\x01 ^\x02데이터베이스 구성 오류가 발생하여 마이그레이션을 포기합니다: %[1]s\x02Yugabyte 데" +
-	"이터베이스 호스트를 입력하십시오\x02호스트가 제공되지 않았습니다\x02Yugabyte 데이터베이스 %[1]s을 입력하십시오" +
-	"\x02Yugabyte 데이터베이스에 연결하는 중 오류가 발생했습니다: %[1]s\x02이 마이너의 주소와 지갑 설정을 포함하도록" +
-	" 구성 'base'가 업데이트되었습니다.\x02구성 %[1]s를 %[2]s과 비교하세요. 지갑 주소 이외의 마이너 ID 사이의 변" +
-	"경 사항은 필요한 실행자를 위한 새로운 최소한의 레이어여야 합니다.\x02이 마이너의 주소와 지갑 설정을 포함하도록 구성 'b" +
-	"ase'가 생성되었습니다.\x04\x00\x01 *\x02레이어 %[1]s가 생성되었습니다.\x04\x00\x01 \x22\x02" +
-	"구성 파일을 사용하려면:\x02Curio를 실행하려면: 기계 또는 cgroup 격리를 사용하여 다음 명령을 사용하세요 (예제 " +
-	"레이어 선택과 함께):"
+	"로부터 인증 토큰을 확인하는 중 오류 발생: %[1]s\x02기본 구성 생성 실패: %[1]s\x02데이터베이스에 'base'" +
+	" 구성 레이어를 삽입하는 데 실패했습니다: %[1]s\x02이 마이너 주소를 포함한 구성 'base'가 업데이트되었습니다.\x02" +
+	"데이터베이스에서 기본 구성을 로드하는 데 실패했습니다: %[1]s\x02기본 구성을 구문 분석하는 데 실패했습니다: %[1]s" +
+	"\x02기본 구성을 재생성하는 데 실패했습니다: %[1]s\x02Yugabyte 데이터베이스 설치에 연결할 정보를 입력하십시오 (" +
+	"https://download.yugabyte.com/)\x02호스트: %[1]s\x02포트: %[1]s\x02사용자 이름: %[" +
+	"1]s\x02비밀번호: %[1]s\x02데이터베이스: %[1]s\x02계속 연결 및 스키마 업데이트.\x04\x00\x01 ^" +
+	"\x02데이터베이스 구성 오류가 발생하여 마이그레이션을 포기합니다: %[1]s\x02Yugabyte 데이터베이스 호스트를 입력하십" +
+	"시오\x02호스트가 제공되지 않았습니다\x02Yugabyte 데이터베이스 %[1]s을 입력하십시오\x02Yugabyte 데이터" +
+	"베이스에 연결하는 중 오류가 발생했습니다: %[1]s\x02이 마이너의 주소와 지갑 설정을 포함하도록 구성 'base'가 업데" +
+	"이트되었습니다.\x02구성 %[1]s를 %[2]s과 비교하세요. 지갑 주소 이외의 마이너 ID 사이의 변경 사항은 필요한 실행" +
+	"자를 위한 새로운 최소한의 레이어여야 합니다.\x02이 마이너의 주소와 지갑 설정을 포함하도록 구성 'base'가 생성되었습니" +
+	"다.\x04\x00\x01 *\x02레이어 %[1]s가 생성되었습니다.\x04\x00\x01 \x22\x02구성 파일을 사용하" +
+	"려면:\x02Curio를 실행하려면: 기계 또는 cgroup 격리를 사용하여 다음 명령을 사용하세요 (예제 레이어 선택과 함께" +
+	"):"
 
-var zhIndex = []uint32{ // 123 elements
+var zhIndex = []uint32{ // 122 elements
 	// Entry 0 - 1F
 	0x00000000, 0x00000033, 0x0000008b, 0x00000134,
 	0x0000017c, 0x000001cb, 0x000001e4, 0x000001f1,
@@ -420,16 +418,16 @@ var zhIndex = []uint32{ // 123 elements
 	0x00000ebb, 0x00000edb, 0x00000ef5, 0x00000f12,
 	0x00000f43, 0x00000f5c, 0x00000f85, 0x00001012,
 	// Entry 60 - 7F
-	0x0000103e, 0x00001079, 0x00001093, 0x000010b3,
-	0x000010e4, 0x00001117, 0x00001137, 0x00001157,
-	0x0000117d, 0x000011d7, 0x000011e6, 0x000011f5,
-	0x00001207, 0x00001216, 0x00001228, 0x00001247,
-	0x0000127f, 0x000012a4, 0x000012b4, 0x000012d2,
-	0x000012fe, 0x0000134a, 0x000013cc, 0x00001418,
-	0x00001432, 0x0000144a, 0x000014a1,
-} // Size: 516 bytes
+	0x0000103e, 0x00001079, 0x00001099, 0x000010ca,
+	0x000010fd, 0x0000112a, 0x0000114b, 0x00001171,
+	0x000011cb, 0x000011da, 0x000011e9, 0x000011fb,
+	0x0000120a, 0x0000121c, 0x0000123b, 0x00001273,
+	0x00001298, 0x000012a8, 0x000012c6, 0x000012f2,
+	0x0000133e, 0x000013c0, 0x0000140c, 0x00001426,
+	0x0000143e, 0x00001495,
+} // Size: 512 bytes
 
-const zhData string = "" + // Size: 5281 bytes
+const zhData string = "" + // Size: 5269 bytes
 	"\x04\x00\x01 .\x02使用箭头键进行导航：↓ ↑ → ←\x02此交互式工具将创建一个新的矿工角色，并为其创建基本配置层。\x02" +
 	"该过程部分幂等。一旦创建了新的矿工角色，并且随后的步骤失败，用户需要运行 'curio config new-cluster < 矿工 ID" +
 	" >' 来完成配置。\x02这个交互式工具可以在5分钟内将lotus-miner迁移到Curio。\x02每一步都需要您的确认，并且可以撤销。随" +
@@ -463,15 +461,15 @@ const zhData string = "" + // Size: 5281 bytes
 	"s\x02创建矿工角色失败: %[1]s\x02矿工 %[1]s 创建成功\x02无法访问数据库: %[1]s\x02连接到完整节点 API 时" +
 	"发生错误: %[1]s\x02预初始化步骤完成\x02生成密码的随机字节失败: %[1]s\x02请不要再次运行引导设置，因为矿工创建不是幂" +
 	"等的。 您需要运行 'curio config new-cluster %[1]s' 来完成配置。\x02无法获取 FullNode 的 A" +
-	"PI 信息: %[1]w\x02无法验证来自守护进程节点的授权令牌: %[1]s\x02无法编码配置: %[1]s\x02无法生成默认配置: %" +
-	"[1]s\x02无法将 'base' 配置层插入数据库: %[1]s\x02配置 'base' 已更新以包含此矿工的地址\x02无法加载基本配置" +
-	": %[1]s\x02加载基本配置失败: %[1]s\x02重新生成基本配置失败: %[1]s\x02输入连接到您的Yugabyte数据库安装的" +
-	"信息（https://download.yugabyte.com/）\x02主机：%[1]s\x02端口：%[1]s\x02用户名：%[1]" +
-	"s\x02密码：%[1]s\x02数据库：%[1]s\x02继续连接和更新架构。\x04\x00\x01 3\x02发生数据库配置错误，放弃迁移" +
-	"：%[1]s\x02输入Yugabyte数据库主机（S）\x02未提供主机\x02输入Yugabyte数据库 %[1]s\x02连接到Yug" +
-	"abyte数据库时出错：%[1]s\x02配置'base'已更新，包含了这个矿工的地址和其钱包设置。\x02比较配置%[1]s和%[2]s。矿工" +
-	"ID之间除了钱包地址的变化应该是需要的运行者的一个新的、最小的层。\x02配置'base'已创建，包括了这个矿工的地址和其钱包设置。\x04" +
-	"\x00\x01 \x15\x02层%[1]s已创建。\x04\x00\x01 \x13\x02要使用配置：\x02运行Curio：使用机器或c" +
-	"group隔离，使用命令（附带示例层选择）："
+	"PI 信息: %[1]w\x02无法验证来自守护进程节点的授权令牌: %[1]s\x02无法生成默认配置: %[1]s\x02无法将 'base" +
+	"' 配置层插入数据库: %[1]s\x02配置 'base' 已更新以包含此矿工的地址\x02从数据库加载基本配置失败：%[1]s\x02解析基" +
+	"本配置失败：%[1]s\x02重新生成基本配置失败: %[1]s\x02输入连接到您的Yugabyte数据库安装的信息（https://do" +
+	"wnload.yugabyte.com/）\x02主机：%[1]s\x02端口：%[1]s\x02用户名：%[1]s\x02密码：%[1]s" +
+	"\x02数据库：%[1]s\x02继续连接和更新架构。\x04\x00\x01 3\x02发生数据库配置错误，放弃迁移：%[1]s\x02输入Y" +
+	"ugabyte数据库主机（S）\x02未提供主机\x02输入Yugabyte数据库 %[1]s\x02连接到Yugabyte数据库时出错：%[1" +
+	"]s\x02配置'base'已更新，包含了这个矿工的地址和其钱包设置。\x02比较配置%[1]s和%[2]s。矿工ID之间除了钱包地址的变化应该" +
+	"是需要的运行者的一个新的、最小的层。\x02配置'base'已创建，包括了这个矿工的地址和其钱包设置。\x04\x00\x01 \x15" +
+	"\x02层%[1]s已创建。\x04\x00\x01 \x13\x02要使用配置：\x02运行Curio：使用机器或cgroup隔离，使用命令（" +
+	"附带示例层选择）："
 
-	// Total table size 20234 bytes (19KiB); checksum: 5C237826
+	// Total table size 20183 bytes (19KiB); checksum: 4FD3E25A
