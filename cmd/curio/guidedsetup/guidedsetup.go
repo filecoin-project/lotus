@@ -27,6 +27,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/docker/go-units"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/manifoldco/promptui"
 	"github.com/mitchellh/go-homedir"
 	"github.com/samber/lo"
@@ -44,7 +45,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli/spcli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -715,7 +715,6 @@ func stepPresteps(d *MigrationData) {
 
 func stepNewMinerConfig(d *MigrationData) {
 	curioCfg := config.DefaultCurioConfig()
-
 	curioCfg.Addresses = append(curioCfg.Addresses, config.CurioAddresses{
 		PreCommitControl:      nil,
 		CommitControl:         nil,
@@ -724,6 +723,18 @@ func stepNewMinerConfig(d *MigrationData) {
 		DisableWorkerFallback: false,
 		MinerAddresses:        []string{d.MinerID.String()},
 	})
+
+	//var addresses []config.CurioAddresses
+	//newAddrs := config.CurioAddresses{
+	//	PreCommitControl:      nil,
+	//	CommitControl:         nil,
+	//	TerminateControl:      nil,
+	//	DisableOwnerFallback:  false,
+	//	DisableWorkerFallback: false,
+	//	MinerAddresses:        []string{d.MinerID.String()},
+	//}
+	//addresses = append(addresses, newAddrs)
+	//curioCfg.Addresses = addresses
 
 	sk, err := io.ReadAll(io.LimitReader(rand.Reader, 32))
 	if err != nil {
@@ -751,16 +762,6 @@ func stepNewMinerConfig(d *MigrationData) {
 	curioCfg.Apis.ChainApiInfo = append(curioCfg.Apis.ChainApiInfo, fmt.Sprintf("%s:%s", string(token), ainfo.Addr))
 
 	// write config
-
-	configTOML := &bytes.Buffer{}
-	if err = toml.NewEncoder(configTOML).Encode(curioCfg); err != nil {
-		if err != nil {
-			d.say(notice, "Failed to encode the config: %s", err.Error())
-			d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
-			os.Exit(1)
-		}
-	}
-
 	var titles []string
 	err = d.DB.Select(d.ctx, &titles, `SELECT title FROM harmony_config WHERE LENGTH(config) > 0`)
 	if err != nil {
@@ -769,17 +770,18 @@ func stepNewMinerConfig(d *MigrationData) {
 		os.Exit(1)
 	}
 
+	// If 'base' layer is not present
 	if !lo.Contains(titles, "base") {
-		c := config.DefaultCurioConfig()
-		c.Addresses[0].MinerAddresses = []string{d.MinerID.String()}
-		cb, err := config.ConfigUpdate(c, nil, config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+		curioCfg.Addresses = lo.Filter(curioCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
+			return len(a.MinerAddresses) > 0
+		})
+		cb, err := config.ConfigUpdate(curioCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 		if err != nil {
 			d.say(notice, "Failed to generate default config: %s", err.Error())
 			d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
 			os.Exit(1)
 		}
-		cfg := string(cb)
-		_, err = d.DB.Exec(d.ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', $1)", cfg)
+		_, err = d.DB.Exec(d.ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', $1)", string(cb))
 		if err != nil {
 			d.say(notice, "Failed to insert 'base' config layer in database: %s", err.Error())
 			d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
@@ -789,24 +791,24 @@ func stepNewMinerConfig(d *MigrationData) {
 		return
 	}
 
-	baseCfg := &config.CurioConfig{}
-	baseText := ""
+	// If base layer is already present
+	baseCfg := config.DefaultCurioConfig()
+	var baseText string
 
 	err = d.DB.QueryRow(d.ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
 	if err != nil {
-		d.say(notice, "Cannot load base config: %s", err.Error())
+		d.say(notice, "Failed to load base config from database: %s", err.Error())
 		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
 		os.Exit(1)
 	}
-	EnsureEmptyArrays(baseCfg)
 	_, err = deps.LoadConfigWithUpgrades(baseText, baseCfg)
 	if err != nil {
-		d.say(notice, "Failed to load base config: %s", err.Error())
+		d.say(notice, "Failed to parse base config: %s", err.Error())
 		d.say(notice, "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster %s' to finish the configuration", d.MinerID.String())
 		os.Exit(1)
 	}
 
-	baseCfg.Addresses = append(baseCfg.Addresses, curioCfg.Addresses[0])
+	baseCfg.Addresses = append(baseCfg.Addresses, curioCfg.Addresses...)
 	baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
 		return len(a.MinerAddresses) > 0
 	})

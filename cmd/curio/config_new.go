@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io"
 
-	"github.com/BurntSushi/toml"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -18,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
-	"github.com/filecoin-project/lotus/cmd/curio/guidedsetup"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -75,9 +72,9 @@ var configNewCmd = &cli.Command{
 			}
 
 			curioConfig.Addresses = append(curioConfig.Addresses, config.CurioAddresses{
-				PreCommitControl:      nil,
-				CommitControl:         nil,
-				TerminateControl:      nil,
+				PreCommitControl:      []string{},
+				CommitControl:         []string{},
+				TerminateControl:      []string{},
 				DisableOwnerFallback:  false,
 				DisableWorkerFallback: false,
 				MinerAddresses:        []string{addr},
@@ -107,16 +104,13 @@ var configNewCmd = &cli.Command{
 			curioConfig.Apis.ChainApiInfo = append(curioConfig.Apis.ChainApiInfo, fmt.Sprintf("%s:%s", string(token), ainfo.Addr))
 		}
 
-		// write config
-
-		configTOML := &bytes.Buffer{}
-		if err = toml.NewEncoder(configTOML).Encode(curioConfig); err != nil {
-			return err
-		}
+		curioConfig.Addresses = lo.Filter(curioConfig.Addresses, func(a config.CurioAddresses, _ int) bool {
+			return len(a.MinerAddresses) > 0
+		})
 
 		// If no base layer is present
 		if !lo.Contains(titles, "base") {
-			cb, err := config.ConfigUpdate(curioConfig, nil, config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+			cb, err := config.ConfigUpdate(curioConfig, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 			if err != nil {
 				return xerrors.Errorf("Failed to generate default config: %w", err)
 			}
@@ -130,24 +124,21 @@ var configNewCmd = &cli.Command{
 		}
 
 		// if base layer is present
-		var baseCfg = config.DefaultCurioConfig()
+		baseCfg := config.DefaultCurioConfig()
 		var baseText string
 		err = db.QueryRow(ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
 		if err != nil {
-			return xerrors.Errorf("Cannot load base config: %w", err)
+			return xerrors.Errorf("Cannot load base config from database: %w", err)
 		}
-		guidedsetup.EnsureEmptyArrays(baseCfg)
 		_, err = deps.LoadConfigWithUpgrades(baseText, baseCfg)
 		if err != nil {
-			return xerrors.Errorf("Cannot load base config: %w", err)
+			return xerrors.Errorf("Cannot parse base config: %w", err)
 		}
 
-		for i := range curioConfig.Addresses {
-			baseCfg.Addresses = append(baseCfg.Addresses, curioConfig.Addresses[i])
-			baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
-				return len(a.MinerAddresses) > 0
-			})
-		}
+		baseCfg.Addresses = append(baseCfg.Addresses, curioConfig.Addresses...)
+		baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
+			return len(a.MinerAddresses) > 0
+		})
 
 		cb, err := config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 		if err != nil {
