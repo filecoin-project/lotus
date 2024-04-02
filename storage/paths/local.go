@@ -14,7 +14,6 @@ import (
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
@@ -512,49 +511,19 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 		if !fileType.Allowed(allowTypes, denyTypes) {
 			return false, nil
 		}
-
-		if len(allowMiners) > 0 {
-			found := false
-			for _, m := range allowMiners {
-				minerIDStr := m
-				maddr, err := address.NewFromString(minerIDStr)
-				if err != nil {
-					return false, xerrors.Errorf("parsing miner address: %w", err)
-				}
-				mid, err := address.IDFromAddress(maddr)
-				if err != nil {
-					return false, xerrors.Errorf("converting miner address to ID: %w", err)
-				}
-				if abi.ActorID(mid) == miner {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return false, nil
-			}
+		proceed, err := MinerFilter(allowMiners, false, miner)
+		if err != nil {
+			return false, err
 		}
-
-		if len(denyMiners) > 0 {
-			found := false
-			for _, m := range denyMiners {
-				minerIDStr := m
-				maddr, err := address.NewFromString(minerIDStr)
-				if err != nil {
-					return false, xerrors.Errorf("parsing miner address: %w", err)
-				}
-				mid, err := address.IDFromAddress(maddr)
-				if err != nil {
-					return false, xerrors.Errorf("converting miner address to ID: %w", err)
-				}
-				if abi.ActorID(mid) == miner {
-					found = true
-					break
-				}
-			}
-			if found {
-				return false, nil
-			}
+		if !proceed {
+			return false, nil
+		}
+		proceed, err = MinerFilter(denyMiners, true, miner)
+		if err != nil {
+			return false, err
+		}
+		if !proceed {
+			return false, nil
 		}
 
 		return true, nil
