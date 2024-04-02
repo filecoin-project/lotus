@@ -1,4 +1,5 @@
 name: Built-in Actors
+
 on:
   push:
     paths:
@@ -6,6 +7,9 @@ on:
       - build/builtin_actors_gen.go
     branches:
       - release/*
+
+permissions: {}
+
 jobs:
   release:
     name: Release Tests
