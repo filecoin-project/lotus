@@ -141,8 +141,8 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 				}
 				fmt.Printf("\nSector On Chain Info\n")
 				fmt.Printf("SealProof:\t\t%x\n", status.SealProof)
-				fmt.Printf("Activation:\t\t%v\n", status.Activation)
-				fmt.Printf("Expiration:\t\t%v\n", status.Expiration)
+				fmt.Printf("Activation:\t\t%v\n", cliutil.EpochTime(head.Height(), status.Activation))
+				fmt.Printf("Expiration:\t\t%s\n", cliutil.EpochTime(head.Height(), status.Expiration))
 				fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
 				fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
 				fmt.Printf("InitialPledge:\t\t%v\n", types.FIL(status.InitialPledge))
@@ -853,6 +853,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			for l, exts := range extensions {
 				for newExp, numbers := range exts {
 					sectorsWithoutClaimsToExtend := bitfield.New()
+					numbersToExtend := make([]abi.SectorNumber, 0, len(numbers))
 					var sectorsWithClaims []miner.SectorClaim
 					for _, sectorNumber := range numbers {
 						claimIdsToMaintain := make([]verifreg.ClaimId, 0)
@@ -862,6 +863,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 						// Nothing to check, add to ccSectors
 						if !ok {
 							sectorsWithoutClaimsToExtend.Set(uint64(sectorNumber))
+							numbersToExtend = append(numbersToExtend, sectorNumber)
 						} else {
 							for _, claimId := range claimIds {
 								claim, ok := claimsMap[claimId]
@@ -882,13 +884,15 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 										currEpoch <= (claim.TermStart+claim.TermMin) ||
 										// FIP-0045 requires the sector to be in its last 30 days of life
 										(currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod) {
-										fmt.Printf("skipping sector %d because claim %d does not live long enough \n", sectorNumber, claimId)
+										fmt.Printf("skipping sector %d because claim %d (client f0%s, piece %s) does not live long enough \n", sectorNumber, claimId, claim.Client, claim.Data)
 										cannotExtendSector = true
 										break
 									}
 
 									claimIdsToDrop = append(claimIdsToDrop, claimId)
 								}
+
+								numbersToExtend = append(numbersToExtend, sectorNumber)
 							}
 							if cannotExtendSector {
 								continue
@@ -921,7 +925,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 					p.Extensions = append(p.Extensions, miner.ExpirationExtension2{
 						Deadline:          l.Deadline,
 						Partition:         l.Partition,
-						Sectors:           SectorNumsToBitfield(numbers),
+						Sectors:           SectorNumsToBitfield(numbersToExtend),
 						SectorsWithClaims: sectorsWithClaims,
 						NewExpiration:     newExp,
 					})
@@ -958,6 +962,19 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				fmt.Printf("Extending %d sectors: ", scount)
 				stotal += scount
 
+				sp, aerr := actors.SerializeParams(&params[i])
+				if aerr != nil {
+					return xerrors.Errorf("serializing params: %w", err)
+				}
+
+				m := &types.Message{
+					From:   mi.Worker,
+					To:     maddr,
+					Method: builtin.MethodsMiner.ExtendSectorExpiration2,
+					Value:  big.Zero(),
+					Params: sp,
+				}
+
 				if !cctx.Bool("really-do-it") {
 					pp, err := NewPseudoExtendParams(&params[i])
 					if err != nil {
@@ -970,21 +987,16 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 					}
 
 					fmt.Println("\n", string(data))
+
+					_, err = fullApi.GasEstimateMessageGas(ctx, m, spec, types.EmptyTSK)
+					if err != nil {
+						return xerrors.Errorf("simulating message execution: %w", err)
+					}
+
 					continue
 				}
 
-				sp, aerr := actors.SerializeParams(&params[i])
-				if aerr != nil {
-					return xerrors.Errorf("serializing params: %w", err)
-				}
-
-				smsg, err := fullApi.MpoolPushMessage(ctx, &types.Message{
-					From:   mi.Worker,
-					To:     maddr,
-					Method: builtin.MethodsMiner.ExtendSectorExpiration2,
-					Value:  big.Zero(),
-					Params: sp,
-				}, spec)
+				smsg, err := fullApi.MpoolPushMessage(ctx, m, spec)
 				if err != nil {
 					return xerrors.Errorf("mpool push message: %w", err)
 				}
