@@ -55,14 +55,12 @@ type EventEntry struct {
 }
 ```
 
-A `flags` field is used to convey metadata or hints about the entry, currently this is used to provide an indication of the suitability of that field for indexing when stored or when used for querying.
+A `flags` field is used to convey metadata or hints about the entry, currently this is used to provide an indication of the suitability of that field for indexing. Suitability for indexing is only a hint, and typically relates to the queriability of the content of that field.
 
 * A `flag` of `0x00` indicates that neither the key nor value are suitable for indexing.
 * A `flag` of `0x01` indicates that the key only is suitable for indexing.
 * A `flag` of `0x02` indicates that the value is suitable for indexing.
 * A `flag` of `0x03` indicates that both the key and value are suitable for indexing.
-
-Suitability for indexing is a hint, and will typically indicate the uniqueness of the content. For example if a value has an arbitrary number, such as a `piece-size`, it's unlikely to be suitable for building an index for. However, if a field such as a `"provider"` contains an actor ID, it is likely to be suitable for indexing because queries may be made for all events from a particular actor.
 
 Typically events contain entires that use either use `0x01` or `0x03` flags.
 
