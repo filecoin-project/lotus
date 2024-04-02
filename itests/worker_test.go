@@ -1,3 +1,5 @@
+//go:build integration && 4xlarge && parameters
+
 package itests
 
 import (
