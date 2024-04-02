@@ -256,8 +256,6 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 }
 
 func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
-	time.Sleep(time.Second)
-
 	// wrap context in a cancellable context.
 	ctx, bm.cancel = context.WithCancel(ctx)
 
@@ -278,8 +276,11 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 			default:
 			}
 
+			now := time.Duration(time.Now().UnixNano())
+			delay := blocktime - (now % blocktime)
+
 			select {
-			case <-time.After(blocktime):
+			case <-time.After(delay):
 			case <-ctx.Done():
 				return
 			}
