@@ -43,7 +43,7 @@ type Store interface {
 	RemoveCopies(ctx context.Context, s abi.SectorID, types storiface.SectorFileType) error
 
 	// move sectors into storage
-	MoveStorage(ctx context.Context, s storiface.SectorRef, types storiface.SectorFileType) error
+	MoveStorage(ctx context.Context, s storiface.SectorRef, types storiface.SectorFileType, opts ...storiface.AcquireOption) error
 
 	FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error)
 
