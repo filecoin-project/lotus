@@ -716,22 +716,36 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ storifa
 	return nil
 }
 
-func (st *Local) MoveStorage(ctx context.Context, s storiface.SectorRef, types storiface.SectorFileType) error {
-	dest, destIds, err := st.AcquireSector(ctx, s, storiface.FTNone, types, storiface.PathStorage, storiface.AcquireMove)
-	if err != nil {
-		return xerrors.Errorf("acquire dest storage: %w", err)
+func (st *Local) MoveStorage(ctx context.Context, s storiface.SectorRef, types storiface.SectorFileType, opts ...storiface.AcquireOption) error {
+	settings := storiface.AcquireSettings{
+		// If into is nil then we're expecting the data to be there already, but make sure here
+		Into: nil,
+	}
+	for _, o := range opts {
+		o(&settings)
 	}
 
+	var err error
+	var dest, destIds storiface.SectorPaths
+	if settings.Into == nil {
+		dest, destIds, err = st.AcquireSector(ctx, s, storiface.FTNone, types, storiface.PathStorage, storiface.AcquireMove)
+		if err != nil {
+			return xerrors.Errorf("acquire dest storage: %w", err)
+		}
+	} else {
+		// destination from settings
+		dest = settings.Into.Paths
+		destIds = settings.Into.IDs
+	}
+
+	// note: this calls allocate on types - if data is already in paths of correct type,
+	// the returned paths are guaranteed to be the same as dest
 	src, srcIds, err := st.AcquireSector(ctx, s, types, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}
 
-	for _, fileType := range storiface.PathTypes {
-		if fileType&types == 0 {
-			continue
-		}
-
+	for _, fileType := range types.AllSet() {
 		sst, err := st.index.StorageInfo(ctx, storiface.ID(storiface.PathByType(srcIds, fileType)))
 		if err != nil {
 			return xerrors.Errorf("failed to get source storage info: %w", err)

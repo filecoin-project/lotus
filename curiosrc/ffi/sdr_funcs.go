@@ -489,7 +489,7 @@ afterUnsealedMove:
 	return nil
 }
 
-func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef) error {
+func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef, taskID *harmonytask.TaskID) error {
 	// only move the unsealed file if it still exists and needs moving
 	moveUnsealed := storiface.FTUnsealed
 	{
@@ -505,7 +505,24 @@ func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef
 
 	toMove := storiface.FTCache | storiface.FTSealed | moveUnsealed
 
-	err := sb.sectors.storage.MoveStorage(ctx, sector, toMove)
+	var opts []storiface.AcquireOption
+	if taskID != nil {
+		resv, ok := sb.sectors.storageReservations.Load(*taskID)
+		if ok {
+			defer resv.Release()
+
+			if resv.Alloc != storiface.FTNone {
+				return xerrors.Errorf("task %d has storage reservation with alloc", taskID)
+			}
+			if resv.Existing != toMove|storiface.FTUnsealed {
+				return xerrors.Errorf("task %d has storage reservation with different existing", taskID)
+			}
+
+			opts = append(opts, storiface.AcquireInto(storiface.PathsWithIDs{Paths: resv.Paths, IDs: resv.PathIDs}))
+		}
+	}
+
+	err := sb.sectors.storage.MoveStorage(ctx, sector, toMove, opts...)
 	if err != nil {
 		return xerrors.Errorf("moving storage: %w", err)
 	}
