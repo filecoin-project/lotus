@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
@@ -128,7 +127,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return nil
 		}
-		defer taskEngine.GracefullyTerminate(time.Hour)
+		defer taskEngine.GracefullyTerminate()
 
 		err = rpc.ListenAndServe(ctx, dependencies, shutdownChan) // Monitor for shutdown.
 		if err != nil {

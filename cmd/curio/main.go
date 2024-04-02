@@ -25,6 +25,10 @@ import (
 
 var log = logging.Logger("main")
 
+const (
+	FlagMinerRepo = "miner-repo"
+)
+
 func setupCloseHandler() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -49,7 +53,6 @@ func main() {
 		testCmd,
 		webCmd,
 		guidedsetup.GuidedsetupCmd,
-		configMigrateCmd,
 		sealCmd,
 	}
 
