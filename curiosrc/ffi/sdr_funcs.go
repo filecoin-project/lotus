@@ -80,7 +80,26 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 		paths = resv.Paths
 		storageIDs = resv.PathIDs
 		releaseStorage = resv.Release
+
+		if len(existing.AllSet()) > 0 {
+			// there are some "existing" files in the reservation. Some of them may need fetching, so call l.storage.AcquireSector
+			// (which unlike in the reservation code will be called on the paths.Remote instance) to ensure that the files are
+			// present locally. Note that we do not care about 'allocate' reqeuests, those files don't exist, and are just
+			// proposed paths with a reservation of space.
+
+			_, checkPathIDs, err := l.storage.AcquireSector(ctx, sector, existing, storiface.FTNone, sealing, storiface.AcquireMove, storiface.AcquireInto(storiface.PathsWithIDs{Paths: paths, IDs: storageIDs}))
+			if err != nil {
+				return storiface.SectorPaths{}, nil, xerrors.Errorf("acquire reserved existing files: %w", err)
+			}
+
+			// assert that checkPathIDs is the same as storageIDs
+			if storageIDs.Subset(existing) != checkPathIDs.Subset(existing) {
+				return storiface.SectorPaths{}, nil, xerrors.Errorf("acquire reserved existing files: pathIDs mismatch %#v != %#v", storageIDs, checkPathIDs)
+			}
+		}
 	} else {
+		// No related reservation, acquire storage as usual
+
 		var err error
 		paths, storageIDs, err = l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
 		if err != nil {
@@ -142,20 +161,7 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 	return nil
 }
 
-func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, error) {
-	maybeUns := storiface.FTNone
-	// todo sectors with data
-
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, maybeUns, storiface.PathSealing)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
-	}
-	defer releaseSector()
-
-	return proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
-}
-
-func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid) (cid.Cid, cid.Cid, error) {
+func (sb *SealCalls) TreeDRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, cid.Cid, error) {
 	p1o, err := sb.makePhase1Out(unsealed, sector.ProofType)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
@@ -166,6 +172,15 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
 	defer releaseSector()
+
+	treeDUnsealed, err := proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("building tree-d: %w", err)
+	}
+
+	if treeDUnsealed != unsealed {
+		return cid.Undef, cid.Undef, xerrors.Errorf("tree-d cid mismatch with supplied unsealed cid")
+	}
 
 	{
 		// create sector-sized file at paths.Sealed; PC2 transforms it into a sealed sector in-place
@@ -210,7 +225,16 @@ func (sb *SealCalls) TreeRC(ctx context.Context, sector storiface.SectorRef, uns
 		}
 	}
 
-	return ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
+	sl, uns, err := ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
+	}
+
+	if uns != unsealed {
+		return cid.Undef, cid.Undef, xerrors.Errorf("unsealed cid changed after sealing")
+	}
+
+	return sl, uns, nil
 }
 
 func (sb *SealCalls) GenerateSynthPoRep() {
@@ -374,11 +398,61 @@ func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.Sector
 		// * we truncate the temp file to the sector size
 		// * we move the temp file to the unsealed location
 
-		// move tree-d to temp file
+		// temp path in cache where we'll move tree-d before truncating
+		// it is in the cache directory so that we can use os.Rename to move it
+		// to unsealed (which may be on a different filesystem)
 		tempUnsealed := filepath.Join(sectorPaths.Cache, storiface.SectorName(sector.ID))
+
+		_, terr := os.Stat(tempUnsealed)
+		tempUnsealedExists := terr == nil
+
+		// First handle an edge case where we have already gone through this step,
+		// but ClearCache or later steps failed. In that case we'll see tree-d missing and unsealed present
+
+		if _, err := os.Stat(filepath.Join(sectorPaths.Cache, proofpaths.TreeDName)); err != nil {
+			if os.IsNotExist(err) {
+				// check that unsealed exists and is the right size
+				st, err := os.Stat(sectorPaths.Unsealed)
+				if err != nil {
+					if os.IsNotExist(err) {
+						if tempUnsealedExists {
+							// unsealed file does not exist, but temp unsealed file does
+							// so we can just resume where the previous attempt left off
+							goto retryUnsealedMove
+						}
+						return xerrors.Errorf("neither unsealed file nor temp-unsealed file exists")
+					}
+					return xerrors.Errorf("stat unsealed file: %w", err)
+				}
+				if st.Size() != int64(ssize) {
+					if tempUnsealedExists {
+						// unsealed file exists but is the wrong size, and temp unsealed file exists
+						// so we can just resume where the previous attempt left off with some cleanup
+
+						if err := os.Remove(sectorPaths.Unsealed); err != nil {
+							return xerrors.Errorf("removing unsealed file from last attempt: %w", err)
+						}
+
+						goto retryUnsealedMove
+					}
+					return xerrors.Errorf("unsealed file is not the right size: %d != %d and temp unsealed is missing", st.Size(), ssize)
+				}
+
+				// all good, just log that this edge case happened
+				log.Warnw("unsealed file exists but tree-d is missing, skipping move", "sector", sector.ID, "unsealed", sectorPaths.Unsealed, "cache", sectorPaths.Cache)
+				goto afterUnsealedMove
+			}
+			return xerrors.Errorf("stat tree-d file: %w", err)
+		}
+
+		// If the state in clean do the move
+
+		// move tree-d to temp file
 		if err := os.Rename(filepath.Join(sectorPaths.Cache, proofpaths.TreeDName), tempUnsealed); err != nil {
 			return xerrors.Errorf("moving tree-d to temp file: %w", err)
 		}
+
+	retryUnsealedMove:
 
 		// truncate sealed file to sector size
 		if err := os.Truncate(tempUnsealed, int64(ssize)); err != nil {
@@ -391,6 +465,7 @@ func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.Sector
 		}
 	}
 
+afterUnsealedMove:
 	if err := ffi.ClearCache(uint64(ssize), sectorPaths.Cache); err != nil {
 		return xerrors.Errorf("clearing cache: %w", err)
 	}

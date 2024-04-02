@@ -6,12 +6,10 @@
 
 ## Improvements
 
-# v1.26.0-rc2 / 2024-03-0y
+# v1.26.0 / 2024-03-21
 
-This is a release candidate of the upcoming MANDATORY Lotus v1.26.0 release, which will deliver the Filecoin network version 22, codenamed Dragon 🐉.
+This is the stable release for the upcoming MANDATORY Filecoin network upgrade v22, codenamed Dragon 🐉, at `epoch 3817920 - 2024-04-11 - 14:00:00Z`
 
-**This release candidate sets the calibration network to upgrade at epoch 1427974, which is 2024-03-11T14:00:00Z**
-This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
 The Filecoin network version 22 delivers the following FIPs:
 
 - [FIP-0063: Switching to new Drand mainnet network](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0063.md)
@@ -19,33 +17,38 @@ The Filecoin network version 22 delivers the following FIPs:
 - [FIP-0076: Direct data onboarding](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md)
 - [FIP-0083: Add built-in Actor events in the Verified Registry, Miner and Market Actors](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0083.md)
 
+## ☢️ Upgrade Warnings ☢️
+
+- This release requires a minimum Go version of v1.21.7 or higher to successfully build Lotus.
+
 ## v13 Builtin Actor Bundle
 
-The actor bundles for the **calibration network** can be checked as follows:
+[Builtin actor v13.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v13.0.0) is used for supporting this upgrade. Make sure that your lotus actor bundle matches the v13 actors manifest by running the following cli after upgrading:
 
 ```
 lotus state actor-cids --network-version=22
 Network Version: 22
 Actor Version: 13
-Manifest CID: bafy2bzacea4firkyvt2zzdwqjrws5pyeluaesh6uaid246tommayr4337xpmi
+
+Manifest CID: bafy2bzacecdhvfmtirtojwhw2tyciu4jkbpsbk5g53oe24br27oy62sn4dc4e
 
 Actor             CID  
-account           bafk2bzaceb3j36ri5y5mfklgp5emlvrms6g4733ss2j3l7jismrxq6ng3tcc6
-cron              bafk2bzaceaz6rocamdxehgpwcbku6wlapwpgzyyvkrploj66mlqptsulf52bs
-datacap           bafk2bzacea22nv5g3yngpxvonqfj4r2nkfk64y6yw2malicm7odk77x7zuads
-eam               bafk2bzaceatqtjzj7623i426noaslouvluhz6e3md3vvquqzku5qj3532uaxg
-ethaccount        bafk2bzacean3hs7ga5csw6g3uu7watxfnqv5uvxviebn3ba6vg4sagwdur5pu
-evm               bafk2bzacec5ibmbtzuzjgwjmksm2n6zfq3gkicxqywwu7tsscqgdzajpfctxk
-init              bafk2bzaced5sq72oemz6qwi6yssxwlos2g54zfprslrx5qfhhx2vlgsbvdpcs
-multisig          bafk2bzacedbgei6jkx36fwdgvoohce4aghvpohqdhoco7p4thszgssms7olv2
-paymentchannel    bafk2bzaceasmgmfsi4mjanxlowsub65fmevhzky4toeqbtw4kp6tmu4kxjpgq
+account           bafk2bzacedxnbtlsqdk76fsfmnhyvsblwyfducerwwtp3mqtx2wbrvs5idl52
+cron              bafk2bzacebbopddyn5csb3fsuhh2an4ttd23x6qnwixgohlirj5ahtcudphyc
+datacap           bafk2bzaceah42tfnhd7xnztawgf46gbvc3m2gudoxshlba2ucmmo2vy67t7ci
+eam               bafk2bzaceb23bhvvcjsth7cn7vp3gbaphrutsaz7v6hkls3ogotzs4bnhm4mk
+ethaccount        bafk2bzaceautge6zhuy6jbj3uldwoxwhpywuon6z3xfvmdbzpbdribc6zzmei
+evm               bafk2bzacedq6v2lyuhgywhlllwmudfj2zufzcauxcsvvd34m2ek5xr55mvh2q
+init              bafk2bzacedr4xacm3fts4vilyeiacjr2hpmwzclyzulbdo24lrfxbtau2wbai
+multisig          bafk2bzacecr5zqarfqak42xqcfeulsxlavcltawsx2fvc7zsjtby6ti4b3wqc
+paymentchannel    bafk2bzacebntdhfmyc24e7tm52ggx5tnw4i3hrr3jmllsepv3mibez4hywsa2
 placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
-reward            bafk2bzacedjyp6ll5ez27dfgldjj4tntxfvyp4pa5zkk7s5uhipzqjyx2gmuc
-storagemarket     bafk2bzaceabolct6qdnefwcrtati2us3sxtxfghyqk6aamfhl6byyefmtssqi
-storageminer      bafk2bzaceckzw3v7wqliyggvjvihz4wywchnnsie4frfvkm3fm5znb64mofri
-storagepower      bafk2bzacea7t4wynzjajl442mpdqbnh3wusjusqtnzgpvefvweh4n2tgzgqhu
-system            bafk2bzacedjnrb5glewazsxpcx6rwiuhl4kwrfcqolyprn6rrjtlzmthlhdq6
-verifiedregistry  bafk2bzacednskl3bykz5qpo54z2j2p4q44t5of4ktd6vs6ymmg2zebsbxazkm
+reward            bafk2bzacedq4q2kwkruu4xm7rkyygumlbw2yt4nimna2ivea4qarvtkohnuwu
+storagemarket     bafk2bzacebjtoltdviyznpj34hh5qp6u257jnnbjole5rhqfixm7ug3epvrfu
+storageminer      bafk2bzacebf4rrqyk7gcfggggul6nfpzay7f2ordnkwm7z2wcf4mq6r7i77t2
+storagepower      bafk2bzacecjy4dkulvxppg3ocbmeixe2wgg6yxoyjxrm4ko2fm3uhpvfvam6e
+system            bafk2bzacecyf523quuq2kdjfdvyty446z2ounmamtgtgeqnr3ynlu5cqrlt6e
+verifiedregistry  bafk2bzacedkxehp7y7iyukbcje3wbpqcvufisos6exatkanyrbotoecdkrbta
 ```
 
 ## Migration
@@ -62,7 +65,6 @@ For certain node operators, such as full archival nodes or systems that need to 
 
 ## New features
 - feat: api: new verified registry methods to get all allocations and claims (#11631) ([filecoin-project/lotus#11631](https://github.com/filecoin-project/lotus/pull/11631))
-- new: add forest bootstrap nodes (#11636) ([filecoin-project/lotus#11636](https://github.com/filecoin-project/lotus/pull/11636))
 - feat: sealing: Support nv22 DDO features in the sealing pipeline (#11226) ([filecoin-project/lotus#11226](https://github.com/filecoin-project/lotus/pull/11226))
 - feat: implement FIP-0063 ([filecoin-project/lotus#11572](https://github.com/filecoin-project/lotus/pull/11572))
 - feat: events: Add Lotus APIs to consume smart contract and built-in actor events ([filecoin-project/lotus#11618](https://github.com/filecoin-project/lotus/pull/11618))
@@ -132,22 +134,31 @@ Additionally, Filecoin is not Ethereum no matter how much we try to provide API/
 
 [handlefilecoinmethod]: https://fips.filecoin.io/FIPS/fip-0054.html#handlefilecoinmethod-general-handler-for-method-numbers--1024
 
-### GetActorEvents and SubscribeActorEvents
+### GetActorEventsRaw and SubscribeActorEventsRaw
 
 [FIP-0049](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md) introduced _Actor Events_ that can be emitted by user programmed actors. [FIP-0083](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0083.md) introduces new events emitted by the builtin Verified Registry, Miner and Market Actors. These new events for builtin actors are being activated with network version 22 to coincide with _Direct Data Onboarding_ as defined in [FIP-0076](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0076.md) which introduces additional flexibility for data onboarding. Sector, Deal and DataCap lifecycles can be tracked with these events, providing visibility and options for programmatic responses to changes in state.
 
-Actor events are available on message receipts, but can now be retrieved from a node using the new `GetActorEvents` and `SubscribeActorEvents` methods. These methods allow for querying and subscribing to actor events, respectively. They depend on the Lotus node both collecting events (with `Fevm.Events.RealTimeFilterAPI` and `Fevm.Events.HistoricFilterAPI`) and being enabled with the new configuration option `Events.EnableActorEventsAPI`. Note that a Lotus node can only respond to requests for historic events that it retains in its event store.
+Actor events are available on message receipts, but can now be retrieved from a node using the new `GetActorEventsRaw` and `SubscribeActorEventsRaw` methods. These methods allow for querying and subscribing to actor events, respectively. They depend on the Lotus node both collecting events (with `Fevm.Events.RealTimeFilterAPI` and `Fevm.Events.HistoricFilterAPI`) and being enabled with the new configuration option `Events.EnableActorEventsAPI`. Note that a Lotus node can only respond to requests for historic events that it retains in its event store.
 
-Both `GetActorEvents` and `SubscribeActorEvents` take a filter parameter which can optionally filter events on:
+Both `GetActorEventsRaw` and `SubscribeActorEventsRaw` take a filter parameter which can optionally filter events on:
 
 * `Addresses` of the actor(s) emitting the event
 * Specific `Fields` within the event
 * `FromHeight` and `ToHeight` to filter events by block height
 * `TipSetKey` to restrict events contained within a specific tipset
 
-`GetActorEvents` provides a one-time query for actor events, while `SubscribeActorEvents` provides a long-lived connection (via websockets) to the Lotus node, allowing for real-time updates on actor events. The subscription can be cancelled by the client at any time.
+`GetActorEventsRaw` provides a one-time query for actor events, while `SubscribeActorEventsRaw` provides a long-lived connection (via websockets) to the Lotus node, allowing for real-time updates on actor events. The subscription can be cancelled by the client at any time.
+
+A future Lotus release may include `GetActorEvents` and `SubscribeActorEvents` methods which will provide a more user-friendly interface to actor events, including deserialization of event data.
+
+### Events Configuration Changes
+
+All configuration options previously under `Fevm.Events` are now in the top-level `Events` section along with the new `Events.EnableActorEventsAPI` option mentioned above. If you have non-default options in `[Events]` under `[Fevm]` in your configuration file, please move them to the top-level `[Events]`.
+
+While `Fevm.Events.*` options are deprecated and replaced by `Events.*`, any existing custom values will be respected if their new form isn't set, but a warning will be printed to standard error upon startup. Support for these deprecated options will be removed in a future Lotus release, so please migrate your configuration promptly.
 
 ### GetAllClaims and GetAllAlocations
+
 Additionally the methods `GetAllAllocations` and `GetAllClaims` has been added to the Lotus API. These methods lists all the available allocations and claims available in the actor state.
 
 ### Lotus CLI
@@ -182,11 +193,12 @@ OPTIONS:
 ```
 
 ## Dependencies
-- github.com/filecoin-project/go-state-types (v0.12.8 -> v0.13.0-rc.2)
+- github.com/filecoin-project/go-state-types (v0.12.8 -> v0.13.1)
 - chore: deps: update to go-state-types v13.0.0-rc.1 ([filecoin-project/lotus#11662](https://github.com/filecoin-project/lotus/pull/11662))
 - chore: deps: update to go-state-types v13.0.0-rc.2 ([filecoin-project/lotus#11675](https://github.com/filecoin-project/lotus/pull/11675))
 - chore: deps: update to go-multiaddr v0.12.2 (#11602) ([filecoin-project/lotus#11602](https://github.com/filecoin-project/lotus/pull/11602))
 - feat: fvm: update the FVM/FFI to v4.1 (#11608) (#11612) ([filecoin-project/lotus#11612](https://github.com/filecoin-project/lotus/pull/11612))
+- chore: deps: update builtin-actors, GST, verified claims tests ([filecoin-project/lotus#11768](https://github.com/filecoin-project/lotus/pull/11768))
 
 ## Others
 - Remove PL operated bootstrap nodes from mainnet.pi ([filecoin-project/lotus#11491](https://github.com/filecoin-project/lotus/pull/11491))
@@ -196,6 +208,11 @@ OPTIONS:
 - fix: add UpgradePhoenixHeight to StateGetNetworkParams (#11648) ([filecoin-project/lotus#11648](https://github.com/filecoin-project/lotus/pull/11648))
 - feat: drand quicknet: allow scheduling drand quicknet upgrade before nv22 on 2k devnet ([filecoin-project/lotus#11667]https://github.com/filecoin-project/lotus/pull/11667)
 - chore: backport #11632 to release/v1.26.0 ([filecoin-project/lotus#11667](https://github.com/filecoin-project/lotus/pull/11667))
+- release: bump to v1.26.0-rc2 ([filecoin-project/lotus#11691](https://github.com/filecoin-project/lotus/pull/11691))
+- Docs: Drand: document the meaning of "IsChained ([filecoin-project/lotus#11692](https://github.com/filecoin-project/lotus/pull/11692))
+- chore: remove old calibnet bootstrappers ([filecoin-project/lotus#11702](https://github.com/filecoin-project/lotus/pull/11702))
+- chore: Add lotus-provider to build to match install ([filecoin-project/lotus#11616](https://github.com/filecoin-project/lotus/pull/11616))
+- new: add forest bootstrap nodes (#11636) ([filecoin-project/lotus#11636](https://github.com/filecoin-project/lotus/pull/11636))
 
 # v1.25.2 / 2024-01-11 
 
