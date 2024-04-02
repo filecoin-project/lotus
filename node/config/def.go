@@ -356,7 +356,7 @@ func DefaultCurioConfig() *CurioConfig {
 			TerminateControl: []string{},
 			MinerAddresses:   []string{},
 		}},
-		Proving: ProvingConfig{
+		Proving: CurioProvingConfig{
 			ParallelCheckLimit:    32,
 			PartitionCheckTimeout: Duration(20 * time.Minute),
 			SingleCheckTimeout:    Duration(10 * time.Minute),
