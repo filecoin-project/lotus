@@ -1,14 +1,16 @@
 name: sync-master-main
+
 on:
   push:
     branches:
       - master
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   sync:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
