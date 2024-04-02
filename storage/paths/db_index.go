@@ -15,7 +15,6 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -578,52 +577,23 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 				log.Debugf("not selecting on %s, not allowed by file type filters", row.StorageId)
 				continue
 			}
-
-			if len(row.AllowMiners) > 0 {
-				found := false
-				allowMiners := splitString(row.AllowMiners)
-				for _, m := range allowMiners {
-					m := m
-					maddr, err := address.NewFromString(m)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner address: %w", err)
-					}
-					mid, err := address.IDFromAddress(maddr)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner ID: %w", err)
-					}
-					if abi.ActorID(mid) == s.Miner {
-						found = true
-						break
-					}
-				}
-				if !found {
-					log.Debugf("not selecting on %s, not allowed by allow miners filters", row.StorageId)
-					continue
-				}
+			allowMiners := splitString(row.AllowMiners)
+			proceed, err := MinerFilter(allowMiners, false, s.Miner)
+			if err != nil {
+				return nil, err
 			}
-			if len(row.DenyMiners) > 0 {
-				found := false
-				denyMiners := splitString(row.DenyMiners)
-				for _, m := range denyMiners {
-					m := m
-					maddr, err := address.NewFromString(m)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner address: %w", err)
-					}
-					mid, err := address.IDFromAddress(maddr)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner ID: %w", err)
-					}
-					if abi.ActorID(mid) == s.Miner {
-						found = true
-						break
-					}
-				}
-				if found {
-					log.Debugf("not selecting on %s, not allowed by deny miners filters", row.StorageId)
-					continue
-				}
+			if !proceed {
+				log.Debugf("not allocating on %s, miner %s not allowed", row.StorageId, s.Miner.String())
+				continue
+			}
+			denyMiners := splitString(row.DenyMiners)
+			proceed, err = MinerFilter(denyMiners, true, s.Miner)
+			if err != nil {
+				return nil, err
+			}
+			if !proceed {
+				log.Debugf("not allocating on %s, miner %s denied", row.StorageId, s.Miner.String())
+				continue
 			}
 
 			if allowList != nil {
@@ -776,49 +746,23 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 		// Matching with 0 as a workaround to avoid having minerID
 		// present when calling TaskStorage.HasCapacity()
 		if !(miner == abi.ActorID(0)) {
-			if len(row.AllowMiners) > 0 {
-				found := false
-				allowMiners := splitString(row.AllowMiners)
-				for _, m := range allowMiners {
-					m := m
-					maddr, err := address.NewFromString(m)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner address: %w", err)
-					}
-					mid, err := address.IDFromAddress(maddr)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner ID: %w", err)
-					}
-					if abi.ActorID(mid) == miner {
-						found = true
-						break
-					}
-				}
-				if !found {
-					continue
-				}
+			allowMiners := splitString(row.AllowMiners)
+			proceed, err := MinerFilter(allowMiners, false, miner)
+			if err != nil {
+				return nil, err
 			}
-			if len(row.DenyMiners) > 0 {
-				found := false
-				denyMiners := splitString(row.DenyMiners)
-				for _, m := range denyMiners {
-					m := m
-					maddr, err := address.NewFromString(m)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner address: %w", err)
-					}
-					mid, err := address.IDFromAddress(maddr)
-					if err != nil {
-						return nil, xerrors.Errorf("parsing miner ID: %w", err)
-					}
-					if abi.ActorID(mid) == miner {
-						found = true
-						break
-					}
-				}
-				if found {
-					continue
-				}
+			if !proceed {
+				log.Debugf("not allocating on %s, miner %s not allowed", row.StorageId, miner.String())
+				continue
+			}
+			denyMiners := splitString(row.DenyMiners)
+			proceed, err = MinerFilter(denyMiners, true, miner)
+			if err != nil {
+				return nil, err
+			}
+			if !proceed {
+				log.Debugf("not allocating on %s, miner %s denied", row.StorageId, miner.String())
+				continue
 			}
 		}
 
