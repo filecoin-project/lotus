@@ -115,6 +115,12 @@ create table sectors_sdr_initial_pieces (
     f05_deal_start_epoch bigint,
     f05_deal_end_epoch bigint,
 
+    -- ddo deal info
+    -- added in 20240402-sdr-pipeline-ddo-deal-info.sql
+    -- direct_start_epoch bigint,
+    -- direct_end_epoch bigint,
+    -- direct_piece_activation_manifest jsonb,
+
     -- foreign key
     foreign key (sp_id, sector_number) references sectors_sdr_pipeline (sp_id, sector_number) on delete cascade,
 
