@@ -402,20 +402,8 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 			// This equality function compares big.Int
 			cmpopts.IgnoreUnexported(big.Int{}),
 			cmp.Comparer(func(x, y []string) bool {
-				//both nil
-				if x == nil && y == nil {
-					return true
-				}
-				// both []string
-				if reflect.TypeOf(x) == reflect.TypeOf(y) {
-					return true
-				}
-				// one of them is nil
-				if reflect.TypeOf(x) == nil && reflect.TypeOf(x) != reflect.TypeOf(y) {
-					return true
-				}
-				// one of them is nil
-				if reflect.TypeOf(y) == nil && reflect.TypeOf(x) != reflect.TypeOf(y) {
+				tx, ty := reflect.TypeOf(x), reflect.TypeOf(y)
+				if tx.Kind() == reflect.Slice && ty.Kind() == reflect.Slice && tx.Elem().Kind() == reflect.String && ty.Elem().Kind() == reflect.String {
 					return true
 				}
 				return false
