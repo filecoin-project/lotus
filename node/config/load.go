@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -404,7 +405,9 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 			cmp.Comparer(func(x, y []string) bool {
 				tx, ty := reflect.TypeOf(x), reflect.TypeOf(y)
 				if tx.Kind() == reflect.Slice && ty.Kind() == reflect.Slice && tx.Elem().Kind() == reflect.String && ty.Elem().Kind() == reflect.String {
-					return true
+					sort.Strings(x)
+					sort.Strings(y)
+					return strings.Join(x, "\n") == strings.Join(y, "\n")
 				}
 				return false
 			}),
