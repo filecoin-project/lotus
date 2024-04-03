@@ -2,7 +2,7 @@ package hapi
 
 import (
 	"embed"
-	"text/template"
+	"html/template"
 
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"

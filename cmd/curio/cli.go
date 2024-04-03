@@ -38,6 +38,9 @@ var cliCmd = &cli.Command{
 			// set already
 			return nil
 		}
+		if os.Getenv("LOTUS_DOCS_GENERATION") == "1" {
+			return nil
+		}
 
 		db, err := deps.MakeDB(cctx)
 		if err != nil {

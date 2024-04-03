@@ -1,22 +1,15 @@
 package hapi
 
 import (
-	"context"
-	"html/template"
-	"net/http"
-	"os"
-	"sync"
-	"time"
-
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"sort"
 	"strconv"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/gorilla/mux"
