@@ -207,8 +207,14 @@ var storageDetachCmd = &cli.Command{
 }
 
 var storageListCmd = &cli.Command{
-	Name:        "list",
-	Usage:       "list local storage paths",
+	Name:  "list",
+	Usage: "list local storage paths",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "local",
+			Usage: "only list local storage paths",
+		},
+	},
 	Subcommands: []*cli.Command{
 		//storageListSectorsCmd,
 	},
@@ -238,6 +244,12 @@ var storageListCmd = &cli.Command{
 
 		sorted := make([]fsInfo, 0, len(st))
 		for id, decls := range st {
+			if cctx.Bool("local") {
+				if _, ok := local[id]; !ok {
+					continue
+				}
+			}
+
 			st, err := minerApi.StorageStat(ctx, id)
 			if err != nil {
 				sorted = append(sorted, fsInfo{ID: id, sectors: decls})
