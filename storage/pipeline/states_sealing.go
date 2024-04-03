@@ -9,10 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,8 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-	"github.com/filecoin-project/go-statemachine"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -751,7 +747,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, []abi.DealID, error) {
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
 	dealIDs := make([]abi.DealID, 0, len(sector.Pieces))
-	var hasDDO bool
+	hasDDO := true
 
 	for _, piece := range sector.Pieces {
 		piece := piece
