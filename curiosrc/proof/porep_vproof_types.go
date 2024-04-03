@@ -90,6 +90,7 @@ type Commit1OutRaw struct {
 	Seed            Ticket                    `json:"seed"`
 	Ticket          Ticket                    `json:"ticket"`
 
+	// ProofType -> [partitions] -> [challenge_index?] -> Proof
 	VanillaProofs map[StringRegisteredProofType][][]VanillaStackedProof `json:"vanilla_proofs"`
 }
 
@@ -132,3 +133,8 @@ type EncodingProof[H HasherDomain] struct {
 	Node       uint64 `json:"node"`
 	//H          any    `json:"_h"`
 }
+
+const NODE_SIZE = 32
+
+// SectorNodes is sector size as node count
+type SectorNodes uint64
