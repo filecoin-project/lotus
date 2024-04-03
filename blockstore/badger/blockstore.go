@@ -620,9 +620,25 @@ func (b *Blockstore) Size() (int64, error) {
 	return size, nil
 }
 
+// badgerGet is a basic tri-state:  value+nil  nil+nil  nil+err
+func badgerGet(t *badger.Txn, k []byte) (*valueItem, error) {
+	switch item, err := t.Get(k); err {
+	case nil:
+		return &valueItem{item}, nil
+	case badger.ErrKeyNotFound:
+		return nil, nil
+	default:
+		return nil, err
+	}
+}
+
+type valueItem struct {
+	badgerItem *badger.Item
+}
+
 // View implements blockstore.Viewer, which leverages zero-copy read-only
 // access to values.
-func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) error) error {
+func (b *Blockstore) View(ctx context.Context, c cid.Cid, fn func([]byte) error) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -631,20 +647,19 @@ func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) erro
 	b.lockDB()
 	defer b.unlockDB()
 
-	k, pooled := b.PooledStorageKey(cid)
+	k, pooled := b.PooledStorageKey(c)
 	if pooled {
 		defer KeyPool.Put(k)
 	}
 
 	return b.db.View(func(txn *badger.Txn) error {
-		switch item, err := txn.Get(k); err {
-		case nil:
-			return item.Value(fn)
-		case badger.ErrKeyNotFound:
-			return ipld.ErrNotFound{Cid: cid}
-		default:
+		val, err := badgerGet(txn, k)
+		if err != nil {
 			return fmt.Errorf("failed to view block from badger blockstore: %w", err)
+		} else if val == nil {
+			return ipld.ErrNotFound{Cid: c}
 		}
+		return val.badgerItem.Value(fn)
 	})
 }
 
@@ -669,7 +684,7 @@ func (b *Blockstore) Flush(context.Context) error {
 }
 
 // Has implements Blockstore.Has.
-func (b *Blockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
+func (b *Blockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
 	if err := b.access(); err != nil {
 		return false, err
 	}
@@ -678,30 +693,30 @@ func (b *Blockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	b.lockDB()
 	defer b.unlockDB()
 
-	k, pooled := b.PooledStorageKey(cid)
+	k, pooled := b.PooledStorageKey(c)
 	if pooled {
 		defer KeyPool.Put(k)
 	}
 
+	var canHaz bool
 	err := b.db.View(func(txn *badger.Txn) error {
-		_, err := txn.Get(k)
+		val, err := badgerGet(txn, k)
+		if val != nil {
+			canHaz = true
+		}
 		return err
 	})
 
-	switch err {
-	case badger.ErrKeyNotFound:
-		return false, nil
-	case nil:
-		return true, nil
-	default:
+	if err != nil {
 		return false, fmt.Errorf("failed to check if block exists in badger blockstore: %w", err)
 	}
+	return canHaz, nil
 }
 
 // Get implements Blockstore.Get.
-func (b *Blockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
-	if !cid.Defined() {
-		return nil, ipld.ErrNotFound{Cid: cid}
+func (b *Blockstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+	if !c.Defined() {
+		return nil, ipld.ErrNotFound{Cid: c}
 	}
 
 	if err := b.access(); err != nil {
@@ -712,31 +727,31 @@ func (b *Blockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 	b.lockDB()
 	defer b.unlockDB()
 
-	k, pooled := b.PooledStorageKey(cid)
+	k, pooled := b.PooledStorageKey(c)
 	if pooled {
 		defer KeyPool.Put(k)
 	}
 
-	var val []byte
-	err := b.db.View(func(txn *badger.Txn) error {
-		switch item, err := txn.Get(k); err {
-		case nil:
-			val, err = item.ValueCopy(nil)
-			return err
-		case badger.ErrKeyNotFound:
-			return ipld.ErrNotFound{Cid: cid}
-		default:
+	var buf []byte
+
+	if err := b.db.View(func(txn *badger.Txn) error {
+		val, err := badgerGet(txn, k)
+		if err != nil {
 			return fmt.Errorf("failed to get block from badger blockstore: %w", err)
+		} else if val == nil {
+			return ipld.ErrNotFound{Cid: c}
 		}
-	})
-	if err != nil {
+		buf, err = val.badgerItem.ValueCopy(nil)
+		return err
+	}); err != nil {
 		return nil, err
 	}
-	return blocks.NewBlockWithCid(val, cid)
+
+	return blocks.NewBlockWithCid(buf, c)
 }
 
 // GetSize implements Blockstore.GetSize.
-func (b *Blockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
+func (b *Blockstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 	if err := b.access(); err != nil {
 		return 0, err
 	}
@@ -745,26 +760,25 @@ func (b *Blockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	b.lockDB()
 	defer b.unlockDB()
 
-	k, pooled := b.PooledStorageKey(cid)
+	k, pooled := b.PooledStorageKey(c)
 	if pooled {
 		defer KeyPool.Put(k)
 	}
 
-	var size int
+	size := -1
 	err := b.db.View(func(txn *badger.Txn) error {
-		switch item, err := txn.Get(k); err {
-		case nil:
-			size = int(item.ValueSize())
-		case badger.ErrKeyNotFound:
-			return ipld.ErrNotFound{Cid: cid}
-		default:
+		val, err := badgerGet(txn, k)
+
+		if err != nil {
 			return fmt.Errorf("failed to get block size from badger blockstore: %w", err)
+		} else if val == nil {
+			return ipld.ErrNotFound{Cid: c}
 		}
+
+		size = int(val.badgerItem.ValueSize())
 		return nil
 	})
-	if err != nil {
-		size = -1
-	}
+
 	return size, err
 }
 
@@ -805,20 +819,19 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		keys = append(keys, k)
 	}
 
-	err := b.db.View(func(txn *badger.Txn) error {
+	if err := b.db.View(func(txn *badger.Txn) error {
 		for i, k := range keys {
-			switch _, err := txn.Get(k); err {
-			case badger.ErrKeyNotFound:
-			case nil:
-				keys[i] = nil
-			default:
+			val, err := badgerGet(txn, k)
+			if err != nil {
 				// Something is actually wrong
 				return err
+			} else if val != nil {
+				// Already have it
+				keys[i] = nil
 			}
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -1027,8 +1040,8 @@ func (b *Blockstore) HashOnRead(_ bool) {
 //
 // This method may return pooled byte slice, which MUST be returned to the
 // KeyPool if pooled=true, or a leak will occur.
-func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
-	h := cid.Hash()
+func (b *Blockstore) PooledStorageKey(c cid.Cid) (key []byte, pooled bool) {
+	h := c.Hash()
 	size := base32.RawStdEncoding.EncodedLen(len(h))
 	if !b.prefixing { // optimize for branch prediction.
 		k := pool.Get(size)
@@ -1047,8 +1060,8 @@ func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 // into the provided slice. If the slice capacity is insufficient, it allocates
 // a new byte slice with enough capacity to accommodate the result. This method
 // returns the resulting slice.
-func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
-	h := cid.Hash()
+func (b *Blockstore) StorageKey(dst []byte, c cid.Cid) []byte {
+	h := c.Hash()
 	reqsize := base32.RawStdEncoding.EncodedLen(len(h)) + b.prefixLen
 	if reqsize > cap(dst) {
 		// passed slice is smaller than required size; create new.
