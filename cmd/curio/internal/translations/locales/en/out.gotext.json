@@ -2,6 +2,27 @@
     "language": "en",
     "messages": [
         {
+            "id": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "message": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "translation": "Use the arrow keys to navigate: ↓ ↑ → ←",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "This interactive tool creates a new miner actor and creates the basic configuration layer for it.",
+            "message": "This interactive tool creates a new miner actor and creates the basic configuration layer for it.",
+            "translation": "This interactive tool creates a new miner actor and creates the basic configuration layer for it.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "This process is partially idempotent. Once a new miner actor has been created and subsequent steps fail, the user need to run 'curio config new-cluster \u003c miner ID \u003e' to finish the configuration.",
+            "message": "This process is partially idempotent. Once a new miner actor has been created and subsequent steps fail, the user need to run 'curio config new-cluster \u003c miner ID \u003e' to finish the configuration.",
+            "translation": "This process is partially idempotent. Once a new miner actor has been created and subsequent steps fail, the user need to run 'curio config new-cluster \u003c miner ID \u003e' to finish the configuration.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
             "id": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
             "message": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
             "translation": "This interactive tool migrates lotus-miner to Curio in 5 minutes.",
@@ -16,17 +37,48 @@
             "fuzzy": true
         },
         {
-            "id": "Use the arrow keys to navigate: ↓ ↑ → ←",
-            "message": "Use the arrow keys to navigate: ↓ ↑ → ←",
-            "translation": "Use the arrow keys to navigate: ↓ ↑ → ←",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
             "id": "Ctrl+C pressed in Terminal",
             "message": "Ctrl+C pressed in Terminal",
             "translation": "Ctrl+C pressed in Terminal",
             "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "I want to:",
+            "message": "I want to:",
+            "translation": "I want to:",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Migrate from existing Lotus-Miner",
+            "message": "Migrate from existing Lotus-Miner",
+            "translation": "Migrate from existing Lotus-Miner",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Create a new miner",
+            "message": "Create a new miner",
+            "translation": "Create a new miner",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Aborting remaining steps.",
+            "message": "Aborting remaining steps.",
+            "translation": "Aborting remaining steps.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]v",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
             "fuzzy": true
         },
         {
@@ -71,16 +123,23 @@
             "fuzzy": true
         },
         {
-            "id": "Migrating config.toml to database.",
-            "message": "Migrating config.toml to database.",
-            "translation": "Migrating config.toml to database.",
+            "id": "New Miner initialization complete.",
+            "message": "New Miner initialization complete.",
+            "translation": "New Miner initialization complete.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Error reading from database: {Error}. Aborting Migration.",
-            "message": "Error reading from database: {Error}. Aborting Migration.",
-            "translation": "Error reading from database: {Error}. Aborting Migration.",
+            "id": "Migrating lotus-miner config.toml to Curio in-database configuration.",
+            "message": "Migrating lotus-miner config.toml to Curio in-database configuration.",
+            "translation": "Migrating lotus-miner config.toml to Curio in-database configuration.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Error getting API: {Error}",
+            "message": "Error getting API: {Error}",
+            "translation": "Error getting API: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -90,31 +149,6 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Error connecting to lotus node: {Error} {Error_1}",
-            "message": "Error connecting to lotus node: {Error} {Error_1}",
-            "translation": "Error connecting to lotus node: {Error} {Error_1}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                },
-                {
-                    "id": "Error_1",
-                    "string": "%[2]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 2,
-                    "expr": "err2.Error()"
                 }
             ],
             "fuzzy": true
@@ -171,10 +205,20 @@
             "fuzzy": true
         },
         {
-            "id": "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.",
-            "message": "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.",
-            "translation": "Protocol Labs wants to improve the software you use. Tell the team you're using Curio.",
+            "id": "The Curio team wants to improve the software you use. Tell the team you're using `{Curio}`.",
+            "message": "The Curio team wants to improve the software you use. Tell the team you're using `{Curio}`.",
+            "translation": "The Curio team wants to improve the software you use. Tell the team you're using `{Curio}`.",
             "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Curio",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "\"curio\""
+                }
+            ],
             "fuzzy": true
         },
         {
@@ -185,9 +229,9 @@
             "fuzzy": true
         },
         {
-            "id": "Individual Data: Miner ID, Curio version, net ({Mainnet} or {Testnet}). Signed.",
-            "message": "Individual Data: Miner ID, Curio version, net ({Mainnet} or {Testnet}). Signed.",
-            "translation": "Individual Data: Miner ID, Curio version, net ({Mainnet} or {Testnet}). Signed.",
+            "id": "Individual Data: Miner ID, Curio version, chain ({Mainnet} or {Calibration}). Signed.",
+            "message": "Individual Data: Miner ID, Curio version, chain ({Mainnet} or {Calibration}). Signed.",
+            "translation": "Individual Data: Miner ID, Curio version, chain ({Mainnet} or {Calibration}). Signed.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -199,27 +243,27 @@
                     "expr": "\"mainnet\""
                 },
                 {
-                    "id": "Testnet",
+                    "id": "Calibration",
                     "string": "%[2]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 2,
-                    "expr": "\"testnet\""
+                    "expr": "\"calibration\""
                 }
             ],
             "fuzzy": true
         },
         {
-            "id": "Aggregate-Anonymous: version, net, and Miner power (bucketed).",
-            "message": "Aggregate-Anonymous: version, net, and Miner power (bucketed).",
-            "translation": "Aggregate-Anonymous: version, net, and Miner power (bucketed).",
+            "id": "Aggregate-Anonymous: version, chain, and Miner power (bucketed).",
+            "message": "Aggregate-Anonymous: version, chain, and Miner power (bucketed).",
+            "translation": "Aggregate-Anonymous: version, chain, and Miner power (bucketed).",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Hint: I am someone running Curio on net.",
-            "message": "Hint: I am someone running Curio on net.",
-            "translation": "Hint: I am someone running Curio on net.",
+            "id": "Hint: I am someone running Curio on whichever chain.",
+            "message": "Hint: I am someone running Curio on whichever chain.",
+            "translation": "Hint: I am someone running Curio on whichever chain.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -228,23 +272,6 @@
             "message": "Nothing.",
             "translation": "Nothing.",
             "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Aborting remaining steps.",
-            "message": "Aborting remaining steps.",
-            "translation": "Aborting remaining steps.",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]v",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
             "fuzzy": true
         },
         {
@@ -437,37 +464,10 @@
             "fuzzy": true
         },
         {
-            "id": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
-            "message": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
-            "translation": "Start multiple Curio instances with the '{Post}' layer to redundancy.",
+            "id": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
+            "message": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
+            "translation": "Increase reliability using redundancy: start multiple machines with at-least the post layer: 'curio run --layers=post'",
             "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Post",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "\"post\""
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Point your browser to your web GUI to complete setup with {Boost} and advanced featues.",
-            "message": "Point your browser to your web GUI to complete setup with {Boost} and advanced featues.",
-            "translation": "Point your browser to your web GUI to complete setup with {Boost} and advanced featues.",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Boost",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "\"Boost\""
-                }
-            ],
             "fuzzy": true
         },
         {
@@ -627,177 +627,6 @@
             "fuzzy": true
         },
         {
-            "id": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
-            "message": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
-            "translation": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Host: {Hosts_}",
-            "message": "Host: {Hosts_}",
-            "translation": "Host: {Hosts_}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Hosts_",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "strings.Join(harmonyCfg.Hosts, \",\")"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Port: {Port}",
-            "message": "Port: {Port}",
-            "translation": "Port: {Port}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Port",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "harmonyCfg.Port"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Username: {Username}",
-            "message": "Username: {Username}",
-            "translation": "Username: {Username}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Username",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "harmonyCfg.Username"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Password: {Password}",
-            "message": "Password: {Password}",
-            "translation": "Password: {Password}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Password",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "harmonyCfg.Password"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Database: {Database}",
-            "message": "Database: {Database}",
-            "translation": "Database: {Database}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Database",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "harmonyCfg.Database"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Continue to connect and update schema.",
-            "message": "Continue to connect and update schema.",
-            "translation": "Continue to connect and update schema.",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Database config error occurred, abandoning migration: {Error}",
-            "message": "Database config error occurred, abandoning migration: {Error}",
-            "translation": "Database config error occurred, abandoning migration: {Error}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Enter the Yugabyte database host(s)",
-            "message": "Enter the Yugabyte database host(s)",
-            "translation": "Enter the Yugabyte database host(s)",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "No host provided",
-            "message": "No host provided",
-            "translation": "No host provided",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
-            "message": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
-            "translation": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Stringport_username_password_databasei_1",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "[]string{\"port\", \"username\", \"password\", \"database\"}[i-1]"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "No value provided",
-            "message": "No value provided",
-            "translation": "No value provided",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Error connecting to Yugabyte database: {Error}",
-            "message": "Error connecting to Yugabyte database: {Error}",
-            "translation": "Error connecting to Yugabyte database: {Error}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
             "id": "Connected to Yugabyte. Schema is current.",
             "message": "Connected to Yugabyte. Schema is current.",
             "translation": "Connected to Yugabyte. Schema is current.",
@@ -829,9 +658,9 @@
             "fuzzy": true
         },
         {
-            "id": "Press return to update {Toml} with Yugabyte info. Backup the file now.",
-            "message": "Press return to update {Toml} with Yugabyte info. Backup the file now.",
-            "translation": "Press return to update {Toml} with Yugabyte info. Backup the file now.",
+            "id": "Press return to update {Toml} with Yugabyte info. A Backup file will be written to that folder before changes are made.",
+            "message": "Press return to update {Toml} with Yugabyte info. A Backup file will be written to that folder before changes are made.",
+            "translation": "Press return to update {Toml} with Yugabyte info. A Backup file will be written to that folder before changes are made.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -866,6 +695,74 @@
             "id": "Error reading filemode of config.toml: {Error}",
             "message": "Error reading filemode of config.toml: {Error}",
             "translation": "Error reading filemode of config.toml: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error creating backup file: {Error}",
+            "message": "Error creating backup file: {Error}",
+            "translation": "Error creating backup file: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error reading config.toml: {Error}",
+            "message": "Error reading config.toml: {Error}",
+            "translation": "Error reading config.toml: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error writing backup file: {Error}",
+            "message": "Error writing backup file: {Error}",
+            "translation": "Error writing backup file: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error closing backup file: {Error}",
+            "message": "Error closing backup file: {Error}",
+            "translation": "Error closing backup file: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -1026,6 +923,631 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "step"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Initializing a new miner actor.",
+            "message": "Initializing a new miner actor.",
+            "translation": "Initializing a new miner actor.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the info to create a new miner",
+            "message": "Enter the info to create a new miner",
+            "translation": "Enter the info to create a new miner",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Owner Address: {String}",
+            "message": "Owner Address: {String}",
+            "translation": "Owner Address: {String}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "d.owner.String()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Worker Address: {String}",
+            "message": "Worker Address: {String}",
+            "translation": "Worker Address: {String}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "d.worker.String()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Sender Address: {String}",
+            "message": "Sender Address: {String}",
+            "translation": "Sender Address: {String}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "d.sender.String()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Sector Size: {Ssize}",
+            "message": "Sector Size: {Ssize}",
+            "translation": "Sector Size: {Ssize}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Ssize",
+                    "string": "%[1]d",
+                    "type": "github.com/filecoin-project/go-state-types/abi.SectorSize",
+                    "underlyingType": "uint64",
+                    "argNum": 1,
+                    "expr": "d.ssize"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Confidence epochs: {Confidence}",
+            "message": "Confidence epochs: {Confidence}",
+            "translation": "Confidence epochs: {Confidence}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Confidence",
+                    "string": "%[1]d",
+                    "type": "uint64",
+                    "underlyingType": "uint64",
+                    "argNum": 1,
+                    "expr": "d.confidence"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Continue to verify the addresses and create a new miner actor.",
+            "message": "Continue to verify the addresses and create a new miner actor.",
+            "translation": "Continue to verify the addresses and create a new miner actor.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Miner creation error occurred: {Error}",
+            "message": "Miner creation error occurred: {Error}",
+            "translation": "Miner creation error occurred: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the owner address",
+            "message": "Enter the owner address",
+            "translation": "Enter the owner address",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "No address provided",
+            "message": "No address provided",
+            "translation": "No address provided",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to parse the address: {Error}",
+            "message": "Failed to parse the address: {Error}",
+            "translation": "Failed to parse the address: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Enter {Stringworker_senderi_1} address",
+            "message": "Enter {Stringworker_senderi_1} address",
+            "translation": "Enter {Stringworker_senderi_1} address",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Stringworker_senderi_1",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "[]string{\"worker\", \"sender\"}[i-1]"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the sector size",
+            "message": "Enter the sector size",
+            "translation": "Enter the sector size",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "No value provided",
+            "message": "No value provided",
+            "translation": "No value provided",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to parse sector size: {Error}",
+            "message": "Failed to parse sector size: {Error}",
+            "translation": "Failed to parse sector size: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Confidence epochs",
+            "message": "Confidence epochs",
+            "translation": "Confidence epochs",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to parse confidence: {Error}",
+            "message": "Failed to parse confidence: {Error}",
+            "translation": "Failed to parse confidence: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to create the miner actor: {Error}",
+            "message": "Failed to create the miner actor: {Error}",
+            "translation": "Failed to create the miner actor: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Miner {String} created successfully",
+            "message": "Miner {String} created successfully",
+            "translation": "Miner {String} created successfully",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "miner.String()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Cannot reach the DB: {Error}",
+            "message": "Cannot reach the DB: {Error}",
+            "translation": "Cannot reach the DB: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error connecting to full node API: {Error}",
+            "message": "Error connecting to full node API: {Error}",
+            "translation": "Error connecting to full node API: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Pre-initialization steps complete",
+            "message": "Pre-initialization steps complete",
+            "translation": "Pre-initialization steps complete",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to generate random bytes for secret: {Error}",
+            "message": "Failed to generate random bytes for secret: {Error}",
+            "translation": "Failed to generate random bytes for secret: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster {String}' to finish the configuration",
+            "message": "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster {String}' to finish the configuration",
+            "translation": "Please do not run guided-setup again as miner creation is not idempotent. You need to run 'curio config new-cluster {String}' to finish the configuration",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "d.MinerID.String()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to get API info for FullNode: {Err}",
+            "message": "Failed to get API info for FullNode: {Err}",
+            "translation": "Failed to get API info for FullNode: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]w",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to verify the auth token from daemon node: {Error}",
+            "message": "Failed to verify the auth token from daemon node: {Error}",
+            "translation": "Failed to verify the auth token from daemon node: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to generate default config: {Error}",
+            "message": "Failed to generate default config: {Error}",
+            "translation": "Failed to generate default config: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to insert 'base' config layer in database: {Error}",
+            "message": "Failed to insert 'base' config layer in database: {Error}",
+            "translation": "Failed to insert 'base' config layer in database: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Configuration 'base' was updated to include this miner's address",
+            "message": "Configuration 'base' was updated to include this miner's address",
+            "translation": "Configuration 'base' was updated to include this miner's address",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to load base config from database: {Error}",
+            "message": "Failed to load base config from database: {Error}",
+            "translation": "Failed to load base config from database: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to parse base config: {Error}",
+            "message": "Failed to parse base config: {Error}",
+            "translation": "Failed to parse base config: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Failed to regenerate base config: {Error}",
+            "message": "Failed to regenerate base config: {Error}",
+            "translation": "Failed to regenerate base config: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "message": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "translation": "Enter the info to connect to your Yugabyte database installation (https://download.yugabyte.com/)",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Host: {Hosts_}",
+            "message": "Host: {Hosts_}",
+            "translation": "Host: {Hosts_}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Hosts_",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "strings.Join(harmonyCfg.Hosts, \",\")"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Port: {Port}",
+            "message": "Port: {Port}",
+            "translation": "Port: {Port}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Port",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonyCfg.Port"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Username: {Username}",
+            "message": "Username: {Username}",
+            "translation": "Username: {Username}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Username",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonyCfg.Username"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Password: {Password}",
+            "message": "Password: {Password}",
+            "translation": "Password: {Password}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Password",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonyCfg.Password"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Database: {Database}",
+            "message": "Database: {Database}",
+            "translation": "Database: {Database}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Database",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "harmonyCfg.Database"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Continue to connect and update schema.",
+            "message": "Continue to connect and update schema.",
+            "translation": "Continue to connect and update schema.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Database config error occurred, abandoning migration: {Error}",
+            "message": "Database config error occurred, abandoning migration: {Error}",
+            "translation": "Database config error occurred, abandoning migration: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the Yugabyte database host(s)",
+            "message": "Enter the Yugabyte database host(s)",
+            "translation": "Enter the Yugabyte database host(s)",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "No host provided",
+            "message": "No host provided",
+            "translation": "No host provided",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "message": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "translation": "Enter the Yugabyte database {Stringport_username_password_databasei_1}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Stringport_username_password_databasei_1",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "[]string{\"port\", \"username\", \"password\", \"database\"}[i-1]"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error connecting to Yugabyte database: {Error}",
+            "message": "Error connecting to Yugabyte database: {Error}",
+            "translation": "Error connecting to Yugabyte database: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
                 }
             ],
             "fuzzy": true

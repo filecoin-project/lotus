@@ -16,7 +16,7 @@ COMMANDS:
    config        Manage node config by layers. The layer 'base' will always be applied at Curio start-up.
    test          Utility functions for testing
    web           Start Curio web interface
-   guided-setup  Run the guided setup for migrating from lotus-miner to Curio
+   guided-setup  Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner
    seal          Manage the sealing pipeline
    market        
    auth          Manage RPC permissions
@@ -28,10 +28,11 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --color              use color in display output (default: depends on output being a TTY)
-   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
+   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "127.0.0.1") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
    --db-name value      (default: "yugabyte") [$CURIO_DB_NAME, $CURIO_HARMONYDB_NAME]
    --db-user value      (default: "yugabyte") [$CURIO_DB_USER, $CURIO_HARMONYDB_USERNAME]
    --db-password value  (default: "yugabyte") [$CURIO_DB_PASSWORD, $CURIO_HARMONYDB_PASSWORD]
+   --db-port value      (default: "5433") [$CURIO_DB_PORT, $CURIO_HARMONYDB_PORT]
    --repo-path value    (default: "~/.curio") [$CURIO_REPO_PATH]
    --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h           show help
@@ -305,7 +306,7 @@ OPTIONS:
 ## curio guided-setup
 ```
 NAME:
-   curio guided-setup - Run the guided setup for migrating from lotus-miner to Curio
+   curio guided-setup - Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner
 
 USAGE:
    curio guided-setup [command options] [arguments...]
