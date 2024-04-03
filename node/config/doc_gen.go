@@ -563,6 +563,28 @@ also be bounded by resources available on the machine. It is recommended that th
 uses all available network (or disk) bandwidth on the machine without causing bottlenecks.`,
 		},
 		{
+			Name: "BoostAdapters",
+			Type: "[]string",
+
+			Comment: `BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
+This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
+Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
+Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+
+When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
+deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
+node in the cluster has the EnableParkPiece option enabled and has sufficient scratch space to store the deal data.
+This is different from lotus-miner which stored the deal data into an "unsealed" sector as soon as the deal was
+received. Deal data in PiecePark is accessed when the sector TreeD and TreeR are computed, but isn't needed for
+the initial SDR layers computation. Pieces in PiecePark are removed after all sectors referencing the piece are
+sealed.
+
+To get API info for boost configuration run 'curio market rpc-info'
+
+NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
+a machine which handles ParkPiece tasks.`,
+		},
+		{
 			Name: "EnableWebGui",
 			Type: "bool",
 

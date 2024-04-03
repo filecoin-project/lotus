@@ -10,12 +10,14 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/filecoin-project/lotus/cmd/curio/rpc"
 	"github.com/filecoin-project/lotus/cmd/curio/tasks"
+	"github.com/filecoin-project/lotus/curiosrc/market/lmrpc"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -133,6 +135,11 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		if err := lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg); err != nil {
+			return xerrors.Errorf("starting market RPCs: %w", err)
+		}
+
 		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
 		//node.ShutdownHandler{Component: "curio", StopFunc: stop},
 
