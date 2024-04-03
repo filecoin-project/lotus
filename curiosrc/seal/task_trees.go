@@ -187,9 +187,9 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	// D / R / C
-	sealed, unsealed, err := t.sc.TreeDRC(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
+	sealed, unsealed, err := t.sc.TreeDRC(ctx, &taskID, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
 	if err != nil {
-		return false, xerrors.Errorf("computing tree r and c: %w", err)
+		return false, xerrors.Errorf("computing tree d, r and c: %w", err)
 	}
 
 	// todo synth porep
