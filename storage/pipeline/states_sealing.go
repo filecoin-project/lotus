@@ -751,7 +751,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, []abi.DealID, error) {
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
 	dealIDs := make([]abi.DealID, 0, len(sector.Pieces))
-	var hasDDO bool
+	hasDDO := true
 
 	for _, piece := range sector.Pieces {
 		piece := piece
