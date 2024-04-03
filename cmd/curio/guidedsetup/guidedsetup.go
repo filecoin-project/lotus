@@ -191,7 +191,7 @@ type MigrationData struct {
 
 func complete(d *MigrationData) {
 	stepCompleted(d, d.T("Lotus-Miner to Curio Migration."))
-	d.say(plain, "Try the web interface with %s for further guided improvements.", "--layers=gui")
+	d.say(plain, "Try the web interface with %s for further guided improvements.", code.Render("curio run --layers=gui"))
 	d.say(plain, "You can now migrate your market node (%s), if applicable.", "Boost")
 }
 func configToDB(d *MigrationData) {
@@ -220,7 +220,7 @@ func configToDB(d *MigrationData) {
 
 	chainApiInfo := fmt.Sprintf("%s:%s", string(token), ainfo.Addr)
 
-	d.MinerID, err = SaveConfigToLayer(d.MinerConfigPath, "", false, chainApiInfo)
+	d.MinerID, err = SaveConfigToLayer(d.MinerConfigPath, chainApiInfo)
 	if err != nil {
 		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
 		os.Exit(1)
@@ -364,7 +364,7 @@ func verifySectors(d *MigrationData) {
 		time.Sleep(5 * time.Second)
 	}
 	d.say(plain, "The sectors are in the database. The database is ready for %s.", "Curio")
-	d.say(notice, "Now shut down lotus-miner and move the systems to %s.", "Curio")
+	d.say(notice, "Now shut down lotus-miner and lotus-worker and use run %s instead.", code.Render("curio run"))
 
 	_, err = (&promptui.Prompt{Label: d.T("Press return to continue")}).Run()
 	if err != nil {
