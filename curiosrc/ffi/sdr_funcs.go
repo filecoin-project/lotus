@@ -492,6 +492,9 @@ func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef
 	var opts []storiface.AcquireOption
 	if taskID != nil {
 		resv, ok := sb.sectors.storageReservations.Load(*taskID)
+		// if the reservation is missing MoveStorage will simply create one internally. This is fine as the reservation
+		// will only be missing when the node is restarting, which means that the missing reservations will get recreated
+		// anyways, and before we start claiming other tasks.
 		if ok {
 			defer resv.Release()
 
