@@ -245,6 +245,7 @@ type ethSubscription struct {
 	id              ethtypes.EthSubscriptionID
 	in              chan interface{}
 	out             ethSubscriptionCallback
+	bufferedTipsets []*types.TipSet
 
 	mu      sync.Mutex
 	filters []filter.Filter
@@ -330,6 +331,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case v := <-e.in:
+		SWITCH:
 			switch vt := v.(type) {
 			case *filter.CollectedEvent:
 				evs, err := ethFilterResultFromEvents(ctx, []*filter.CollectedEvent{vt}, e.StateAPI)
@@ -341,6 +343,35 @@ func (e *ethSubscription) start(ctx context.Context) {
 					e.send(ctx, r)
 				}
 			case *types.TipSet:
+				// Get current chain epoch
+				head, err := e.ChainAPI.ChainHead(ctx)
+				if err != nil {
+					log.Errorw("failed to get chain head", "error", err)
+					break
+				}
+				currentEpoch := head.Height()
+				// Send buffered tipsets that are older than the current epoch
+				for i := 0; i < len(e.bufferedTipsets); i++ {
+					ts := e.bufferedTipsets[i]
+					if ts.Height() >= currentEpoch {
+						break
+					}
+					ev, err := newEthBlockFromFilecoinTipSet(ctx, ts, true, e.Chain, e.StateAPI)
+					if err != nil {
+						break SWITCH
+					}
+					e.send(ctx, ev)
+
+					// Remove the current tipset as it has been sent
+					e.bufferedTipsets = append(e.bufferedTipsets[:i], e.bufferedTipsets[i+1:]...)
+					i--
+				}
+
+				if vt.Height() >= currentEpoch {
+					e.bufferedTipsets = append(e.bufferedTipsets, vt)
+					break
+				}
+
 				ev, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
 				if err != nil {
 					break
