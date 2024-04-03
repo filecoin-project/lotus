@@ -318,6 +318,22 @@ func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) 
 				Size:          64,
 			})
 		}
+
+	case abi.RegisteredSealProof_StackedDrg8MiBV1_1, abi.RegisteredSealProof_StackedDrg8MiBV1_1_Feat_SyntheticPoRep:
+		phase1Output.Config.RowsToDiscard = 0
+		phase1Output.Config.Size = 524287
+		phase1Output.Labels["StackedDrg8MiBV1"] = &Labels{}
+		phase1Output.RegisteredProof = "StackedDrg8MiBV1_1"
+
+		for i := 0; i < 2; i++ {
+			phase1Output.Labels["StackedDrg8MiBV1"].Labels = append(phase1Output.Labels["StackedDrg8MiBV1"].Labels, Config{
+				ID:            fmt.Sprintf("layer-%d", i+1),
+				Path:          "/placeholder",
+				RowsToDiscard: 0,
+				Size:          262144,
+			})
+		}
+
 	case abi.RegisteredSealProof_StackedDrg512MiBV1_1:
 		phase1Output.Config.RowsToDiscard = 0
 		phase1Output.Config.Size = 33554431
