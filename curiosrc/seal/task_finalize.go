@@ -69,6 +69,10 @@ func (f *FinalizeTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (do
 		return false, xerrors.Errorf("finalizing sector: %w", err)
 	}
 
+	if err := DropSectorPieceRefs(ctx, f.db, sector.ID); err != nil {
+		return false, xerrors.Errorf("dropping sector piece refs: %w", err)
+	}
+
 	// set after_finalize
 	_, err = f.db.Exec(ctx, `update sectors_sdr_pipeline set after_finalize=true where task_id_finalize=$1`, taskID)
 	if err != nil {

@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/clicommands"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -51,7 +51,7 @@ func TestPaymentChannelsBasic(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
+	mockCLI := kit.NewMockCLI(ctx, t, clicommands.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -126,7 +126,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
+	mockCLI := kit.NewMockCLI(ctx, t, clicommands.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych status-by-from-to <creator> <receiver>
@@ -212,7 +212,7 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
+	mockCLI := kit.NewMockCLI(ctx, t, clicommands.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -350,7 +350,7 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
+	mockCLI := kit.NewMockCLI(ctx, t, clicommands.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych add-funds <creator> <receiver> <amount>

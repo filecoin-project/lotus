@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -88,6 +90,15 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	var dataReader io.Reader
 	var unpaddedData bool
 
+	var closers []io.Closer
+	defer func() {
+		for _, c := range closers {
+			if err := c.Close(); err != nil {
+				log.Errorw("error closing piece reader", "error", err)
+			}
+		}
+	}()
+
 	if len(pieces) > 0 {
 		pieceInfos := make([]abi.PieceInfo, len(pieces))
 		pieceReaders := make([]io.Reader, len(pieces))
@@ -106,10 +117,49 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 			// make pieceReader
 			if p.DataUrl != nil {
-				pieceReaders[i], _ = padreader.New(&UrlPieceReader{
-					Url:     *p.DataUrl,
-					RawSize: *p.DataRawSize,
-				}, uint64(*p.DataRawSize))
+				dataUrl := *p.DataUrl
+
+				goUrl, err := url.Parse(dataUrl)
+				if err != nil {
+					return false, xerrors.Errorf("parsing data URL: %w", err)
+				}
+
+				if goUrl.Scheme == "pieceref" {
+					// url is to a piece reference
+
+					refNum, err := strconv.ParseInt(goUrl.Opaque, 10, 64)
+					if err != nil {
+						return false, xerrors.Errorf("parsing piece reference number: %w", err)
+					}
+
+					// get pieceID
+					var pieceID []struct {
+						PieceID storiface.PieceNumber `db:"piece_id"`
+					}
+					err = t.db.Select(ctx, &pieceID, `SELECT piece_id FROM parked_piece_refs WHERE ref_id = $1`, refNum)
+					if err != nil {
+						return false, xerrors.Errorf("getting pieceID: %w", err)
+					}
+
+					if len(pieceID) != 1 {
+						return false, xerrors.Errorf("expected 1 pieceID, got %d", len(pieceID))
+					}
+
+					pr, err := t.sc.PieceReader(ctx, pieceID[0].PieceID)
+					if err != nil {
+						return false, xerrors.Errorf("getting piece reader: %w", err)
+					}
+
+					closers = append(closers, pr)
+
+					pieceReaders[i], _ = padreader.New(pr, uint64(*p.DataRawSize))
+				} else {
+					pieceReaders[i], _ = padreader.New(&UrlPieceReader{
+						Url:     dataUrl,
+						RawSize: *p.DataRawSize,
+					}, uint64(*p.DataRawSize))
+				}
+
 			} else { // padding piece (w/o fr32 padding, added in TreeD)
 				pieceReaders[i] = nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded())
 			}
@@ -136,20 +186,10 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		ProofType: sectorParams.RegSealProof,
 	}
 
-	// D
-	treeUnsealed, err := t.sc.TreeD(ctx, sref, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
-	if err != nil {
-		return false, xerrors.Errorf("computing tree d: %w", err)
-	}
-
-	// R / C
-	sealed, unsealed, err := t.sc.TreeRC(ctx, sref, commd)
+	// D / R / C
+	sealed, unsealed, err := t.sc.TreeDRC(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
 	if err != nil {
 		return false, xerrors.Errorf("computing tree r and c: %w", err)
-	}
-
-	if unsealed != treeUnsealed {
-		return false, xerrors.Errorf("tree-d and tree-r/c unsealed CIDs disagree")
 	}
 
 	// todo synth porep
@@ -178,13 +218,19 @@ func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.Task
 }
 
 func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {
+	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
+	if isDevnet {
+		ssize = abi.SectorSize(2 << 20)
+	}
+
 	return harmonytask.TaskTypeDetails{
 		Max:  t.max,
 		Name: "SDRTrees",
 		Cost: resources.Resources{
-			Cpu: 1,
-			Gpu: 1,
-			Ram: 8000 << 20, // todo
+			Cpu:     1,
+			Gpu:     1,
+			Ram:     8000 << 20, // todo
+			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing),
 		},
 		MaxFailures: 3,
 		Follows:     nil,
@@ -195,11 +241,27 @@ func (t *TreesTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	t.sp.pollers[pollerTrees].Set(taskFunc)
 }
 
+func (t *TreesTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
+	var refs []ffi.SectorRef
+
+	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_r = $1`, id)
+	if err != nil {
+		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
+	}
+
+	if len(refs) != 1 {
+		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
+	}
+
+	return refs[0], nil
+}
+
 type UrlPieceReader struct {
 	Url     string
 	RawSize int64 // the exact number of bytes read, if we read more or less that's an error
 
 	readSoFar int64
+	closed    bool
 	active    io.ReadCloser // auto-closed on EOF
 }
 
@@ -239,6 +301,7 @@ func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
 	// If EOF is reached, close the reader
 	if err == io.EOF {
 		cerr := u.active.Close()
+		u.closed = true
 		if cerr != nil {
 			log.Errorf("error closing http piece reader: %s", cerr)
 		}
@@ -251,6 +314,15 @@ func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
 	}
 
 	return n, err
+}
+
+func (u *UrlPieceReader) Close() error {
+	if !u.closed {
+		u.closed = true
+		return u.active.Close()
+	}
+
+	return nil
 }
 
 var _ harmonytask.TaskInterface = &TreesTask{}

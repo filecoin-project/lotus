@@ -366,7 +366,7 @@ type FullNodeMethods struct {
 
 	GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) `perm:"read"`
 
-	GetActorEvents func(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) `perm:"read"`
+	GetActorEventsRaw func(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) `perm:"read"`
 
 	MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
@@ -618,7 +618,7 @@ type FullNodeMethods struct {
 
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) `perm:"read"`
 
-	SubscribeActorEvents func(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
+	SubscribeActorEventsRaw func(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
 
 	SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
@@ -681,6 +681,8 @@ type GatewayMethods struct {
 	ChainGetBlock func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) ``
 
 	ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
+
+	ChainGetEvents func(p0 context.Context, p1 cid.Cid) ([]types.Event, error) ``
 
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
 
@@ -786,7 +788,7 @@ type GatewayMethods struct {
 
 	GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
-	GetActorEvents func(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) ``
+	GetActorEventsRaw func(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) ``
 
 	MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*MiningBaseInfo, error) ``
 
@@ -836,6 +838,8 @@ type GatewayMethods struct {
 
 	StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) ``
 
+	StateMinerDeadlines func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) ``
+
 	StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerInfo, error) ``
 
 	StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) ``
@@ -862,7 +866,7 @@ type GatewayMethods struct {
 
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
 
-	SubscribeActorEvents func(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) ``
+	SubscribeActorEventsRaw func(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) ``
 
 	Version func(p0 context.Context) (APIVersion, error) ``
 
@@ -2716,14 +2720,14 @@ func (s *FullNodeStub) GasEstimateMessageGas(p0 context.Context, p1 *types.Messa
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
-	if s.Internal.GetActorEvents == nil {
+func (s *FullNodeStruct) GetActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	if s.Internal.GetActorEventsRaw == nil {
 		return *new([]*types.ActorEvent), ErrNotSupported
 	}
-	return s.Internal.GetActorEvents(p0, p1)
+	return s.Internal.GetActorEventsRaw(p0, p1)
 }
 
-func (s *FullNodeStub) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+func (s *FullNodeStub) GetActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	return *new([]*types.ActorEvent), ErrNotSupported
 }
 
@@ -4102,14 +4106,14 @@ func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
-	if s.Internal.SubscribeActorEvents == nil {
+func (s *FullNodeStruct) SubscribeActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	if s.Internal.SubscribeActorEventsRaw == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.SubscribeActorEvents(p0, p1)
+	return s.Internal.SubscribeActorEventsRaw(p0, p1)
 }
 
-func (s *FullNodeStub) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (s *FullNodeStub) SubscribeActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	return nil, ErrNotSupported
 }
 
@@ -4386,6 +4390,17 @@ func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*
 
 func (s *GatewayStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	if s.Internal.ChainGetEvents == nil {
+		return *new([]types.Event), ErrNotSupported
+	}
+	return s.Internal.ChainGetEvents(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	return *new([]types.Event), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
@@ -4960,14 +4975,14 @@ func (s *GatewayStub) GasEstimateMessageGas(p0 context.Context, p1 *types.Messag
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
-	if s.Internal.GetActorEvents == nil {
+func (s *GatewayStruct) GetActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	if s.Internal.GetActorEventsRaw == nil {
 		return *new([]*types.ActorEvent), ErrNotSupported
 	}
-	return s.Internal.GetActorEvents(p0, p1)
+	return s.Internal.GetActorEventsRaw(p0, p1)
 }
 
-func (s *GatewayStub) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+func (s *GatewayStub) GetActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	return *new([]*types.ActorEvent), ErrNotSupported
 }
 
@@ -5235,6 +5250,17 @@ func (s *GatewayStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, 
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
+	if s.Internal.StateMinerDeadlines == nil {
+		return *new([]Deadline), ErrNotSupported
+	}
+	return s.Internal.StateMinerDeadlines(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
+	return *new([]Deadline), ErrNotSupported
+}
+
 func (s *GatewayStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerInfo, error) {
 	if s.Internal.StateMinerInfo == nil {
 		return *new(MinerInfo), ErrNotSupported
@@ -5378,14 +5404,14 @@ func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
-	if s.Internal.SubscribeActorEvents == nil {
+func (s *GatewayStruct) SubscribeActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	if s.Internal.SubscribeActorEventsRaw == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.SubscribeActorEvents(p0, p1)
+	return s.Internal.SubscribeActorEventsRaw(p0, p1)
 }
 
-func (s *GatewayStub) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (s *GatewayStub) SubscribeActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	return nil, ErrNotSupported
 }
 

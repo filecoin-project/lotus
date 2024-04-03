@@ -173,7 +173,7 @@ loop:
 
 	// check "sector-terminated" actor event
 	var epochZero abi.ChainEpoch
-	allEvents, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
+	allEvents, err := miner.FullNode.GetActorEventsRaw(ctx, &types.ActorEventFilter{
 		FromHeight: &epochZero,
 	})
 	require.NoError(t, err)

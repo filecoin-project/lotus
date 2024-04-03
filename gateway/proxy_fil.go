@@ -437,18 +437,35 @@ func (gw *Node) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64
 	return gw.target.StateWaitMsg(ctx, msg, confidence, limit, allowReplaced)
 }
 
-func (gw *Node) GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+func (gw *Node) GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	return gw.target.GetActorEvents(ctx, filter)
+	if filter != nil && filter.FromHeight != nil {
+		if err := gw.checkTipSetHeight(ctx, *filter.FromHeight, types.EmptyTSK); err != nil {
+			return nil, err
+		}
+	}
+	return gw.target.GetActorEventsRaw(ctx, filter)
 }
 
-func (gw *Node) SubscribeActorEvents(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+func (gw *Node) SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	return gw.target.SubscribeActorEvents(ctx, filter)
+	if filter != nil && filter.FromHeight != nil {
+		if err := gw.checkTipSetHeight(ctx, *filter.FromHeight, types.EmptyTSK); err != nil {
+			return nil, err
+		}
+	}
+	return gw.target.SubscribeActorEventsRaw(ctx, filter)
+}
+
+func (gw *Node) ChainGetEvents(ctx context.Context, eventsRoot cid.Cid) ([]types.Event, error) {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.ChainGetEvents(ctx, eventsRoot)
 }
 
 func (gw *Node) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {

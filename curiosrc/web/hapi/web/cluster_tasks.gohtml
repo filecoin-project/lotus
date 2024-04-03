@@ -4,7 +4,7 @@
             <td>{{.Name}}</td>
             <td>{{.ID}}</td>
             <td>{{.SincePosted}}</td>
-            <td>{{.Owner}}</td>
+            <td>{{if ne nil .OwnerID}}<a href="/hapi/node/{{.OwnerID}}">{{.Owner}}</a>{{end}}</td>
         </tr>
     {{end}}
 {{end}}

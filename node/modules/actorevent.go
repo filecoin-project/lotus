@@ -32,17 +32,17 @@ type EventHelperAPI struct {
 
 var _ events.EventHelperAPI = &EventHelperAPI{}
 
-func EthEventHandler(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEventHandler, error) {
+func EthEventHandler(cfg config.EventsConfig, enableEthRPC bool) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEventHandler, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.EthEventHandler, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		ee := &full.EthEventHandler{
 			Chain:                cs,
-			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
+			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
 			SubscribtionCtx:      ctx,
 		}
 
-		if !cfg.EnableEthRPC || cfg.Events.DisableRealTimeFilterAPI {
+		if !enableEthRPC || cfg.DisableRealTimeFilterAPI {
 			// all event functionality is disabled
 			// the historic filter API relies on the real time one
 			return ee, nil
@@ -53,21 +53,21 @@ func EthEventHandler(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Locked
 			StateAPI: stateapi,
 			ChainAPI: chainapi,
 		}
-		ee.FilterStore = filter.NewMemFilterStore(cfg.Events.MaxFilters)
+		ee.FilterStore = filter.NewMemFilterStore(cfg.MaxFilters)
 
 		// Start garbage collection for filters
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				go ee.GC(ctx, time.Duration(cfg.Events.FilterTTL))
+				go ee.GC(ctx, time.Duration(cfg.FilterTTL))
 				return nil
 			},
 		})
 
 		ee.TipSetFilterManager = &filter.TipSetFilterManager{
-			MaxFilterResults: cfg.Events.MaxFilterResults,
+			MaxFilterResults: cfg.MaxFilterResults,
 		}
 		ee.MemPoolFilterManager = &filter.MemPoolFilterManager{
-			MaxFilterResults: cfg.Events.MaxFilterResults,
+			MaxFilterResults: cfg.MaxFilterResults,
 		}
 		ee.EventFilterManager = fm
 
@@ -94,22 +94,22 @@ func EthEventHandler(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Locked
 	}
 }
 
-func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, full.ChainAPI) (*filter.EventFilterManager, error) {
+func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, full.ChainAPI) (*filter.EventFilterManager, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, chainapi full.ChainAPI) (*filter.EventFilterManager, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		// Enable indexing of actor events
 		var eventIndex *filter.EventIndex
-		if !cfg.Events.DisableHistoricFilterAPI {
+		if !cfg.DisableHistoricFilterAPI {
 			var dbPath string
-			if cfg.Events.DatabasePath == "" {
+			if cfg.DatabasePath == "" {
 				sqlitePath, err := r.SqlitePath()
 				if err != nil {
 					return nil, err
 				}
 				dbPath = filepath.Join(sqlitePath, "events.db")
 			} else {
-				dbPath = cfg.Events.DatabasePath
+				dbPath = cfg.DatabasePath
 			}
 
 			var err error
@@ -144,7 +144,7 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 				return *actor.Address, true
 			},
 
-			MaxFilterResults: cfg.Events.MaxFilterResults,
+			MaxFilterResults: cfg.MaxFilterResults,
 		}
 
 		lc.Append(fx.Hook{
@@ -162,18 +162,22 @@ func EventFilterManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.Loc
 	}
 }
 
-func ActorEventHandler(enable bool, fevmCfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.ActorEventHandler, error) {
+func ActorEventHandler(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *filter.EventFilterManager, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.ActorEventHandler, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, fm *filter.EventFilterManager, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.ActorEventHandler, error) {
-
-		if !enable || fevmCfg.Events.DisableRealTimeFilterAPI {
-			fm = nil
+		if !cfg.EnableActorEventsAPI || cfg.DisableRealTimeFilterAPI {
+			return full.NewActorEventHandler(
+				cs,
+				nil, // no EventFilterManager disables API calls
+				time.Duration(build.BlockDelaySecs)*time.Second,
+				abi.ChainEpoch(cfg.MaxFilterHeightRange),
+			), nil
 		}
 
 		return full.NewActorEventHandler(
 			cs,
 			fm,
 			time.Duration(build.BlockDelaySecs)*time.Second,
-			abi.ChainEpoch(fevmCfg.Events.MaxFilterHeightRange),
+			abi.ChainEpoch(cfg.MaxFilterHeightRange),
 		), nil
 	}
 }

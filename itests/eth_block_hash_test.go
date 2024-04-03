@@ -11,6 +11,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -49,19 +51,29 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// let the chain run a little bit longer to minimise the chance of reorgs
 	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
 
+	tsk := head.Key()
 	for i := 1; i <= int(head.Height()); i++ {
 		hex := fmt.Sprintf("0x%x", i)
+
+		ts, err := n2.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(i), tsk)
+		require.NoError(t, err)
 
 		ethBlockA, err := n2.EthGetBlockByNumber(ctx, hex, true)
 		// Cannot use static ErrFullRound error for comparison since it gets reserialized as a JSON RPC error.
 		if err != nil && strings.Contains(err.Error(), "null round") {
+			require.Less(t, ts.Height(), abi.ChainEpoch(i), "did not expect a tipset at epoch %d", i)
 			continue
 		}
 		require.NoError(t, err)
+		require.Equal(t, ts.Height(), abi.ChainEpoch(i), "expected a tipset at epoch %i", i)
 
 		ethBlockB, err := n2.EthGetBlockByHash(ctx, ethBlockA.Hash, true)
 		require.NoError(t, err)
 
 		require.Equal(t, ethBlockA, ethBlockB)
+
+		numBlocks := len(ts.Blocks())
+		expGasLimit := ethtypes.EthUint64(int64(numBlocks) * build.BlockGasLimit)
+		require.Equal(t, expGasLimit, ethBlockB.GasLimit)
 	}
 }

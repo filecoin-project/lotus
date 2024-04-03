@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/curio/rpc"
 )
 
-const providerEnvVar = "PROVIDER_API_INFO"
+const providerEnvVar = "CURIO_API_INFO"
 
 var cliCmd = &cli.Command{
 	Name:  "cli",

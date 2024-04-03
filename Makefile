@@ -66,7 +66,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed curio
+build-devnets: build lotus-seed lotus-shed curio sptool
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -106,6 +106,12 @@ BINS+=curio
 cu2k: GOFLAGS+=-tags=2k
 cu2k: curio
 
+sptool: $(BUILD_DEPS)
+	rm -f sptool
+	$(GOCC) build $(GOFLAGS) -o sptool ./cmd/sptool
+.PHONY: sptool
+BINS+=sptool
+
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	$(GOCC) build $(GOFLAGS) -o lotus-worker ./cmd/lotus-worker
@@ -124,13 +130,13 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker curio
+build: lotus lotus-miner lotus-worker curio sptool
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker install-curio
+install: install-daemon install-miner install-worker install-curio install-sptool
 
 install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
@@ -140,6 +146,9 @@ install-miner:
 
 install-curio:
 	install -C ./curio /usr/local/bin/curio
+
+install-sptool:
+	install -C ./sptool /usr/local/bin/sptool
 
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
@@ -158,6 +167,9 @@ uninstall-miner:
 
 uninstall-curio:
 	rm -f /usr/local/bin/curio
+
+uninstall-sptool:
+	rm -f /usr/local/bin/sptool
 
 uninstall-worker:
 	rm -f /usr/local/bin/lotus-worker
@@ -260,7 +272,7 @@ install-miner-service: install-miner install-daemon-service
 	@echo "To start the service, run: 'sudo systemctl start lotus-miner'"
 	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-miner'"
 
-install-curio-service: install-curio install-daemon-service
+install-curio-service: install-curio install-sptool install-daemon-service
 	mkdir -p /etc/systemd/system
 	mkdir -p /var/log/lotus
 	install -C -m 0644 ./scripts/curio.service /etc/systemd/system/curio.service
@@ -332,7 +344,7 @@ actors-code-gen:
 	$(GOCC) fmt ./...
 
 actors-gen: actors-code-gen 
-	./scripts/fiximports
+	$(GOCC) run ./scripts/fiximports
 .PHONY: actors-gen
 
 bundle-gen:
@@ -392,21 +404,21 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
 fiximports:
-	./scripts/fiximports
+	$(GOCC) run ./scripts/fiximports
 
 gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci
-	./scripts/fiximports
+	$(GOCC) run ./scripts/fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
 .PHONY: gen
 
 jen: gen
 
-snap: lotus lotus-miner lotus-worker curio
+snap: lotus lotus-miner lotus-worker curio sptool
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
 # separate from gen because it needs binaries
-docsgen-cli: lotus lotus-miner lotus-worker curio
+docsgen-cli: lotus lotus-miner lotus-worker curio sptool
 	python3 ./scripts/generate-lotus-cli.py
 	./lotus config default > documentation/en/default-lotus-config.toml
 	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml

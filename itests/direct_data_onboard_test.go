@@ -274,7 +274,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 		// check "deal-published" actor event
 		var epochZero abi.ChainEpoch
-		allEvents, err := miner.FullNode.GetActorEvents(ctx, &types.ActorEventFilter{
+		allEvents, err := miner.FullNode.GetActorEventsRaw(ctx, &types.ActorEventFilter{
 			FromHeight: &epochZero,
 		})
 		require.NoError(t, err)
