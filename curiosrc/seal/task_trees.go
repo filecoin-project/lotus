@@ -211,8 +211,6 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 }
 
 func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	// todo reserve storage
-
 	id := ids[0]
 	return &id, nil
 }
