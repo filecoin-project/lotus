@@ -733,21 +733,20 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		ces = append(ces, ce)
 	}
 
-	// collected event list is in inverted order since we selected only the most recent events
-	// sort it into height order
-	sort.Slice(ces, func(i, j int) bool { return ces[i].height < ces[j].height })
-
-	// sort the entries in the collected event by ordering
-	for _, ce := range ces {
-		sort.Slice(ce.entries, func(i, j int) bool { return ce.entries[i].ordering < ce.entries[j].ordering })
-	}
-
 	if len(ces) == 0 {
 		return nil
 	}
 
+	// collected event list is in inverted order since we selected only the most recent events
+	// sort it into height order
+	sort.Slice(ces, func(i, j int) bool { return ces[i].height < ces[j].height })
+
 	var collectedEvents []*CollectedEvent
+	// sort the entries in the collected event by ordering
 	for _, ce := range ces {
+		ce := ce
+		sort.Slice(ce.entries, func(i, j int) bool { return ce.entries[i].ordering < ce.entries[j].ordering })
+
 		evt := &CollectedEvent{
 			EmitterAddr: ce.emitterAddr,
 			Height:      ce.height,
