@@ -393,7 +393,7 @@ func (sb *SealCalls) LocalStorage(ctx context.Context) ([]storiface.StoragePath,
 func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed bool) error {
 	alloc := storiface.FTNone
 	if keepUnsealed {
-		// note: In lotus-provider we don't write the unsealed file in any of the previous stages, it's only written here from tree-d
+		// note: In Curio we don't write the unsealed file in any of the previous stages, it's only written here from tree-d
 		alloc = storiface.FTUnsealed
 	}
 

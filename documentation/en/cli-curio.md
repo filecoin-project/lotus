@@ -52,7 +52,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --machine value  machine host:port (lotus-provider run --listen address)
+   --machine value  machine host:port (curio run --listen address)
    --help, -h       show help
 ```
 
