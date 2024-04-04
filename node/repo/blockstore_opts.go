@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/system"
 )
 
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
@@ -59,6 +60,13 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
 			opts.NumCompactors = numWorkers
 		}
+	}
+
+	if system.BadgerFsyncDisable {
+		opts.SyncWrites = false
+	}
+	if system.BadgerQueryLegacyKeys {
+		opts.QueryLegacyKeys = true
 	}
 
 	return opts, nil

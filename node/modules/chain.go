@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/system"
 )
 
 // ChainBitswap uses a blockstore that bypasses all caches.
@@ -87,7 +88,13 @@ func ChainStore(lc fx.Lifecycle,
 	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
 
 	if err := chain.Load(helpers.LifecycleCtx(mctx, lc)); err != nil {
-		return nil, xerrors.Errorf("loading chain state from disk: %w", err)
+		if !system.BadgerQueryLegacyKeys {
+			err = xerrors.Errorf("loading chain state from disk ( !!! PERHAPS YOU NEED TO SET `LOTUS_CHAIN_BADGERSTORE_QUERY_LEGACY_KEYS` TO TRUE !!! ): %w", err)
+
+		} else {
+			err = xerrors.Errorf("loading chain state from disk: %w", err)
+		}
+		return nil, err
 	}
 
 	var startHook func(context.Context) error
