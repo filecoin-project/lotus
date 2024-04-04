@@ -53,7 +53,8 @@ var ddls = []string{
 		flags BLOB NOT NULL,
 		key TEXT NOT NULL,
 		codec INTEGER,
-		value BLOB NOT NULL
+		value BLOB NOT NULL,
+		ordering INTEGER NOT NULL
 	)`,
 
 	// metadata containing version of schema
@@ -63,6 +64,7 @@ var ddls = []string{
 
 	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
 	`INSERT OR IGNORE INTO _meta (version) VALUES (2)`,
+	`INSERT OR IGNORE INTO _meta (version) VALUES (3)`,
 }
 
 var (
@@ -70,11 +72,11 @@ var (
 )
 
 const (
-	schemaVersion = 2
+	schemaVersion = 3
 
 	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
 	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
+	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value, ordering) VALUES(?, ?, ?, ?, ?, ?, ?)`
 	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
 	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
 )
@@ -113,6 +115,35 @@ func (ei *EventIndex) initStatements() (err error) {
 	ei.stmtRestoreEvent, err = ei.db.Prepare(restoreEvent)
 	if err != nil {
 		return xerrors.Errorf("prepare stmtRestoreEvent: %w", err)
+	}
+
+	return nil
+}
+
+func (ei *EventIndex) migrateToVersion3(ctx context.Context) error {
+	tx, err := ei.db.Begin()
+	if err != nil {
+		return xerrors.Errorf("begin transaction: %w", err)
+	}
+	// rollback the transaction (a no-op if the transaction was already committed)
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err = tx.ExecContext(ctx, "ALTER TABLE event_entry ADD COLUMN ordering INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
+	// Add the index on event_id and ordering fields
+	if _, err = tx.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS idx_event_id_ordering ON event_entry (event_id, ordering)"); err != nil {
+		return xerrors.Errorf("create index on event_id and ordering: %w", err)
+	}
+
+	// update schema version in the DB to 3
+	if _, err = tx.Exec("INSERT OR IGNORE INTO _meta (version) VALUES (3)"); err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return xerrors.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
@@ -321,6 +352,18 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 			version = 2
 		}
 
+		if version == 2 {
+			log.Infof("upgrading event index from version 2 to version 3")
+
+			err = eventIndex.migrateToVersion3(ctx)
+			if err != nil {
+				_ = db.Close()
+				return nil, xerrors.Errorf("could not migrate sql data to version 3: %w", err)
+			}
+
+			version = 3
+		}
+
 		if version != schemaVersion {
 			_ = db.Close()
 			return nil, xerrors.Errorf("invalid database version: got %d, expected %d", version, schemaVersion)
@@ -431,7 +474,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				}
 
 				// insert all the entries for this event
-				for _, entry := range ev.Entries {
+				for ordering, entry := range ev.Entries {
 					_, err = tx.Stmt(ei.stmtInsertEntry).Exec(
 						entryID.Int64,               // event_id
 						isIndexedValue(entry.Flags), // indexed
@@ -439,6 +482,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 						entry.Key,                   // key
 						entry.Codec,                 // codec
 						entry.Value,                 // value
+						ordering,                    // ordering
 					)
 					if err != nil {
 						return xerrors.Errorf("exec insert entry: %w", err)
@@ -546,7 +590,8 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			event_entry.flags,
 			event_entry.key,
 			event_entry.codec,
-			event_entry.value
+			event_entry.value,
+			event_entry.ordering	
 		FROM event JOIN event_entry ON event.id=event_entry.event_id`
 
 	if len(joins) > 0 {
@@ -557,7 +602,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		s = s + " WHERE " + strings.Join(clauses, " AND ")
 	}
 
-	s += " ORDER BY event.height DESC"
+	s += "ORDER BY event.height DESC"
 
 	stmt, err := ei.db.Prepare(s)
 	if err != nil {
@@ -572,9 +617,27 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		return xerrors.Errorf("exec prefill query: %w", err)
 	}
 
-	var ces []*CollectedEvent
+	// create struct for holding EventEntry with ordering
+	type eventEntryWithOrdering struct {
+		types.EventEntry
+		ordering uint64
+	}
+
+	// create struct for holding CollectedEvent with Entries
+	type collectedEventWithOrdering struct {
+		emitterAddr address.Address
+		eventIdx    int
+		reverted    bool
+		height      abi.ChainEpoch
+		tipSetKey   types.TipSetKey
+		msgIdx      int
+		msgCid      cid.Cid
+		entries     []eventEntryWithOrdering
+	}
+
+	var ces []*collectedEventWithOrdering
 	var currentID int64 = -1
-	var ce *CollectedEvent
+	var ce *collectedEventWithOrdering
 
 	for q.Next() {
 		select {
@@ -597,6 +660,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			key          string
 			codec        uint64
 			value        []byte
+			ordering     uint64
 		}
 
 		if err := q.Scan(
@@ -613,6 +677,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			&row.key,
 			&row.codec,
 			&row.value,
+			&row.ordering,
 		); err != nil {
 			return xerrors.Errorf("read prefill row: %w", err)
 		}
@@ -630,50 +695,82 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			}
 
 			currentID = row.id
-			ce = &CollectedEvent{
-				EventIdx: row.eventIndex,
-				Reverted: row.reverted,
-				Height:   abi.ChainEpoch(row.height),
-				MsgIdx:   row.messageIndex,
+			ce = &collectedEventWithOrdering{
+				eventIdx: row.eventIndex,
+				reverted: row.reverted,
+				height:   abi.ChainEpoch(row.height),
+				msgIdx:   row.messageIndex,
 			}
 
-			ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
+			ce.emitterAddr, err = address.NewFromBytes(row.emitterAddr)
 			if err != nil {
 				return xerrors.Errorf("parse emitter addr: %w", err)
 			}
 
-			ce.TipSetKey, err = types.TipSetKeyFromBytes(row.tipsetKey)
+			ce.tipSetKey, err = types.TipSetKeyFromBytes(row.tipsetKey)
 			if err != nil {
 				return xerrors.Errorf("parse tipsetkey: %w", err)
 			}
 
-			ce.MsgCid, err = cid.Cast(row.messageCid)
+			ce.msgCid, err = cid.Cast(row.messageCid)
 			if err != nil {
 				return xerrors.Errorf("parse message cid: %w", err)
 			}
 		}
 
-		ce.Entries = append(ce.Entries, types.EventEntry{
-			Flags: row.flags[0],
-			Key:   row.key,
-			Codec: row.codec,
-			Value: row.value,
+		ce.entries = append(ce.entries, eventEntryWithOrdering{
+			EventEntry: types.EventEntry{
+				Key:   row.key,
+				Value: row.value,
+				Flags: row.flags[0],
+				Codec: row.codec,
+			},
+			ordering: row.ordering,
 		})
-
 	}
 
 	if ce != nil {
 		ces = append(ces, ce)
 	}
 
+	// collected event list is in inverted order since we selected only the most recent events
+	// sort it into height order
+	sort.Slice(ces, func(i, j int) bool { return ces[i].height < ces[j].height })
+
+	// sort the entries in the collected event by ordering
+	for _, ce := range ces {
+		sort.Slice(ce.entries, func(i, j int) bool { return ce.entries[i].ordering < ce.entries[j].ordering })
+	}
+
 	if len(ces) == 0 {
 		return nil
 	}
 
-	// collected event list is in inverted order since we selected only the most recent events
-	// sort it into height order
-	sort.Slice(ces, func(i, j int) bool { return ces[i].Height < ces[j].Height })
-	f.setCollectedEvents(ces)
+	var collectedEvents []*CollectedEvent
+	for _, ce := range ces {
+		evt := &CollectedEvent{
+			EmitterAddr: ce.emitterAddr,
+			Height:      ce.height,
+			TipSetKey:   ce.tipSetKey,
+			MsgIdx:      ce.msgIdx,
+			MsgCid:      ce.msgCid,
+			Reverted:    ce.reverted,
+			EventIdx:    ce.eventIdx,
+		}
+
+		for _, entry := range ce.entries {
+			evt.Entries = append(evt.Entries, types.EventEntry{
+				Key:   entry.Key,
+				Value: entry.Value,
+				Flags: entry.Flags,
+				Codec: entry.Codec,
+			})
+		}
+
+		collectedEvents = append(collectedEvents, evt)
+	}
+
+	f.setCollectedEvents(collectedEvents)
 
 	return nil
 }
