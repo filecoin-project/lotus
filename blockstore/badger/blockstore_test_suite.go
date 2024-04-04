@@ -17,6 +17,10 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 )
 
+func init() {
+	EnableHorriblyInefficientAllKeysChanMethod = true
+}
+
 // TODO: move this to go-ipfs-blockstore.
 
 type Suite struct {
@@ -194,7 +198,7 @@ func (s *Suite) TestAllKeysRespectsContext(t *testing.T) {
 
 	cancel()
 	// pull one value out to avoid race
-	_, _ = <-ch
+	<-ch
 
 	v, ok = <-ch
 	require.Equal(t, cid.Undef, v)
