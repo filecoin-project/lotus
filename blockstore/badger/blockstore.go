@@ -19,11 +19,38 @@ import (
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/multiformats/go-base32"
+	"github.com/multiformats/go-multicodec"
+	"github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-varint"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
+)
+
+type supportedMultihash struct {
+	cidMaker         cid.Prefix
+	journalShortCode byte // for blake2b multihashes this saves 3 bytes in the journal, which is 26bil*3 ~~ 72GiB of space for archival nodes at time of writing
+}
+
+// hardcoded hash list for now
+// justification 🧵 https://filecoinproject.slack.com/archives/CRK2LKYHW/p1711381656211189?thread_ts=1711264671.316169&cid=CRK2LKYHW
+var supportedMultihashes = map[string]supportedMultihash{
+	"\xA0\xE4\x02\x20": {
+		cid.NewPrefixV1(uint64(multicodec.Raw), uint64(multicodec.Blake2b256)),
+		1,
+	},
+	"\x12\x20": {
+		cid.NewPrefixV1(uint64(multicodec.Raw), uint64(multicodec.Sha2_256)),
+		0,
+	},
+}
+
+const (
+	supportedHashLen   = 256 / 8
+	mhJournalFilename  = "MultiHashes.bin"
+	mhJournalRecordLen = 1 + supportedHashLen // journalShortCode prefix + 256 bits hash
 )
 
 var (
@@ -104,6 +131,11 @@ const (
 	moveStateLock
 )
 
+type flushWriter interface {
+	io.WriteCloser
+	Sync() error
+}
+
 // Blockstore is a badger-backed IPLD blockstore.
 type Blockstore struct {
 	stateLk sync.RWMutex
@@ -115,9 +147,13 @@ type Blockstore struct {
 	moveState bsMoveState
 	rlock     int
 
-	db     *badger.DB
-	dbNext *badger.DB // when moving
-	opts   Options
+	db        *badger.DB
+	mhJournal flushWriter
+
+	dbNext        *badger.DB // when moving
+	mhJournalNext flushWriter
+
+	opts Options
 
 	prefixing bool
 	prefix    []byte
@@ -152,7 +188,35 @@ func Open(opts Options) (*Blockstore, error) {
 
 	bs.moveCond.L = &bs.moveMx
 
+	if !opts.ReadOnly {
+		bs.mhJournal, err = openJournal(opts.Dir)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return bs, nil
+}
+
+var fadvWriter func(uintptr) error
+
+func openJournal(dir string) (*os.File, error) {
+	fh, err := os.OpenFile(
+		dir+"/"+mhJournalFilename,
+		os.O_APPEND|os.O_WRONLY|os.O_CREATE,
+		0644,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if fadvWriter != nil {
+		if err := fadvWriter(fh.Fd()); err != nil {
+			return nil, err
+		}
+	}
+
+	return fh, nil
 }
 
 // Close closes the store. If the store has already been closed, this noops and
@@ -175,7 +239,25 @@ func (b *Blockstore) Close() error {
 	// wait for all accesses to complete
 	b.viewers.Wait()
 
-	return b.db.Close()
+	var err error
+
+	if errDb := b.db.Close(); errDb != nil {
+		errDb = xerrors.Errorf("failure closing the badger blockstore: %w", errDb)
+		log.Warn(errDb)
+		err = errDb
+	}
+
+	if b.mhJournal != nil {
+		if errMj := b.mhJournal.Close(); errMj != nil {
+			errMj = xerrors.Errorf("failure closing the multihash journal: %w", errMj)
+			log.Warn(errMj)
+			if err == nil {
+				err = errMj
+			}
+		}
+	}
+
+	return err
 }
 
 func (b *Blockstore) access() error {
@@ -268,6 +350,8 @@ func (b *Blockstore) movingGC(ctx context.Context) error {
 
 		dbNext := b.dbNext
 		b.dbNext = nil
+		mhJournalNext := b.mhJournalNext
+		b.mhJournalNext = nil
 
 		var state bsMoveState
 		if dbNext != nil {
@@ -280,9 +364,11 @@ func (b *Blockstore) movingGC(ctx context.Context) error {
 
 		if dbNext != nil {
 			// the move failed and we have a left-over db; delete it.
-			err := dbNext.Close()
-			if err != nil {
+			if err := dbNext.Close(); err != nil {
 				log.Warnf("error closing badger db: %s", err)
+			}
+			if err := mhJournalNext.Close(); err != nil {
+				log.Warnf("error closing multihash journal: %s", err)
 			}
 			b.deleteDB(newPath)
 
@@ -317,18 +403,24 @@ func (b *Blockstore) movingGC(ctx context.Context) error {
 	opts := b.opts
 	opts.Dir = newPath
 	opts.ValueDir = newPath
+	opts.ReadOnly = false // by definition the new copy is writable (we are just about to write to it)
 
 	dbNew, err := badger.Open(opts.Options)
 	if err != nil {
 		return fmt.Errorf("failed to open badger blockstore in %s: %w", newPath, err)
 	}
+	mhjNew, err := openJournal(opts.Dir)
+	if err != nil {
+		return err
+	}
 
 	b.lockMove()
 	b.dbNext = dbNew
+	b.mhJournalNext = mhjNew
 	b.unlockMove(moveStateMoving)
 
 	log.Info("copying blockstore")
-	err = b.doCopy(ctx, b.db, b.dbNext)
+	err = b.doCopy(ctx, b.db, b.dbNext, b.mhJournalNext)
 	if err != nil {
 		return fmt.Errorf("error moving badger blockstore to %s: %w", newPath, err)
 	}
@@ -336,12 +428,19 @@ func (b *Blockstore) movingGC(ctx context.Context) error {
 	b.lockMove()
 	dbOld := b.db
 	b.db = b.dbNext
+	mhjOld := b.mhJournal
+	b.mhJournal = b.mhJournalNext
 	b.dbNext = nil
+	b.mhJournalNext = nil
 	b.unlockMove(moveStateCleanup)
 
-	err = dbOld.Close()
-	if err != nil {
+	if err := dbOld.Close(); err != nil {
 		log.Warnf("error closing old badger db: %s", err)
+	}
+	if mhjOld != nil {
+		if err := mhjOld.Close(); err != nil {
+			log.Warnf("error closing old multihash journal: %s", err)
+		}
 	}
 
 	// this is the canonical db path; this is where our db lives.
@@ -391,7 +490,7 @@ func symlink(path, linkTo string) error {
 }
 
 // doCopy copies a badger blockstore to another
-func (b *Blockstore) doCopy(ctx context.Context, from, to *badger.DB) (defErr error) {
+func (b *Blockstore) doCopy(ctx context.Context, from, to *badger.DB, jrnlFh io.Writer) (defErr error) {
 	batch := to.NewWriteBatch()
 	defer func() {
 		if defErr == nil {
@@ -407,11 +506,40 @@ func (b *Blockstore) doCopy(ctx context.Context, from, to *badger.DB) (defErr er
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+
+		jrnlSlab := pool.Get(len(kvs) * mhJournalRecordLen)
+		defer pool.Put(jrnlSlab)
+		jrnl := jrnlSlab[:0]
+
+		mhBuf := pool.Get(varint.MaxLenUvarint63 + supportedHashLen)
+		defer pool.Put(mhBuf)
+
 		for _, kv := range kvs {
+
+			n, err := base32.RawStdEncoding.Decode(mhBuf, kv.Key[b.prefixLen:])
+			if err != nil {
+				return xerrors.Errorf("undecodeable key 0x%X: %s", kv.Key[b.prefixLen:], err)
+			}
+			smh, err := isMultihashSupported(mhBuf[:n])
+			if err != nil {
+				return xerrors.Errorf("unsupported multihash for key 0x%X: %w", kv.Key[b.prefixLen:], err)
+			}
+
 			if err := batch.Set(kv.Key, kv.Value); err != nil {
 				return err
 			}
+
+			// add a journal record
+			// NOTE: this could very well result in duplicates
+			// there isn't much we can do about this right now...
+			jrnl = append(jrnl, smh.journalShortCode)
+			jrnl = append(jrnl, mhBuf[n-supportedHashLen:n]...)
 		}
+
+		if _, err := jrnlFh.Write(jrnl); err != nil {
+			return xerrors.Errorf("failed to write multihashes to journal: %w", err)
+		}
+
 		return nil
 	})
 }
@@ -588,36 +716,42 @@ func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGC
 
 // Size returns the aggregate size of the blockstore
 func (b *Blockstore) Size() (int64, error) {
-	if err := b.access(); err != nil {
+	var size int64
+
+	// do not use b.db.Size(): since we are storing data outside of usual
+	// badger files it can't be accurate anyway. Just sum up the dir sizes
+	// without even trying to lock the db
+	//
+	// moreover: badger reports a 0 size on symlinked directories anyway
+	dir := b.opts.Dir
+	entries, err := os.ReadDir(dir)
+	if err != nil {
 		return 0, err
 	}
-	defer b.viewers.Done()
 
-	b.lockDB()
-	defer b.unlockDB()
-
-	lsm, vlog := b.db.Size()
-	size := lsm + vlog
-
-	if size == 0 {
-		// badger reports a 0 size on symlinked directories... sigh
-		dir := b.opts.Dir
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return 0, err
-		}
-
-		for _, e := range entries {
-			path := filepath.Join(dir, e.Name())
-			finfo, err := os.Stat(path)
-			if err != nil {
-				return 0, err
-			}
-			size += finfo.Size()
-		}
+	for _, e := range entries {
+		path := filepath.Join(dir, e.Name())
+		finfo, _ := os.Stat(path) // ignore potential error: if we are in a compaction an .sst might disappear on us
+		size += finfo.Size()
 	}
 
 	return size, nil
+}
+
+func isMultihashSupported(mh []byte) (supportedMultihash, error) {
+	var smh supportedMultihash
+	mhDec, err := multihash.Decode(mh)
+	if err != nil {
+		return smh, xerrors.Errorf("unexpected error decoding multihash 0x%X: %s", mh, err)
+	}
+	if mhDec.Length != supportedHashLen {
+		return smh, xerrors.Errorf("unsupported hash length of %d bits", mhDec.Length*8)
+	}
+	smh, found := supportedMultihashes[string(mh[:len(mh)-supportedHashLen])]
+	if !found {
+		return smh, xerrors.Errorf("unsupported multihash prefix 0x%X", mh[:len(mh)-supportedHashLen])
+	}
+	return smh, nil
 }
 
 // badgerGet is a basic tri-state:  value+nil  nil+nil  nil+err
@@ -672,13 +806,24 @@ func (b *Blockstore) Flush(context.Context) error {
 	b.lockDB()
 	defer b.unlockDB()
 
-	var nextErr error
+	var multiErr error
+
 	if b.dbNext != nil {
-		nextErr = b.dbNext.Sync()
+		multiErr = multierr.Combine(
+			b.dbNext.Sync(),
+			b.mhJournalNext.Sync(),
+		)
+	}
+
+	if b.mhJournal != nil {
+		multiErr = multierr.Combine(
+			multiErr,
+			b.mhJournal.Sync(),
+		)
 	}
 
 	return multierr.Combine(
-		nextErr,
+		multiErr,
 		b.db.Sync(),
 	)
 }
@@ -810,14 +955,18 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		}()
 	}
 
-	keys := make([][]byte, 0, len(blocks))
-	for _, block := range blocks {
+	keys := make([][]byte, len(blocks))
+	for i, block := range blocks {
 		k, pooled := b.PooledStorageKey(block.Cid())
 		if pooled {
 			toReturn = append(toReturn, k)
 		}
-		keys = append(keys, k)
+		keys[i] = k
 	}
+
+	jrnlSlab := pool.Get(len(blocks) * mhJournalRecordLen)
+	defer pool.Put(jrnlSlab)
+	jrnl := jrnlSlab[:0]
 
 	if err := b.db.View(func(txn *badger.Txn) error {
 		for i, k := range keys {
@@ -828,6 +977,17 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 			} else if val != nil {
 				// Already have it
 				keys[i] = nil
+			} else {
+				// Got to insert that, check it is supported, write journal
+				mh := blocks[i].Cid().Hash()
+				smh, err := isMultihashSupported(mh)
+				if err != nil {
+					return xerrors.Errorf("unsupported multihash for cid %s: %w", blocks[i].Cid(), err)
+				}
+
+				// add a journal record
+				jrnl = append(jrnl, smh.journalShortCode)
+				jrnl = append(jrnl, mh[len(mh)-supportedHashLen:]...)
 			}
 		}
 		return nil
@@ -835,7 +995,7 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		return err
 	}
 
-	put := func(db *badger.DB) error {
+	put := func(db *badger.DB, mhj flushWriter) error {
 		batch := db.NewWriteBatch()
 		defer batch.Cancel()
 
@@ -850,20 +1010,23 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 			}
 		}
 
-		err := batch.Flush()
-		if err != nil {
-			return fmt.Errorf("failed to put blocks in badger blockstore: %w", err)
+		if err := batch.Flush(); err != nil {
+			return xerrors.Errorf("failed to put blocks in badger blockstore: %w", err)
+		}
+
+		if _, err := mhj.Write(jrnl); err != nil {
+			return xerrors.Errorf("failed to write multihashes to journal: %w", err)
 		}
 
 		return nil
 	}
 
-	if err := put(b.db); err != nil {
+	if err := put(b.db, b.mhJournal); err != nil {
 		return err
 	}
 
 	if b.dbNext != nil {
-		if err := put(b.dbNext); err != nil {
+		if err := put(b.dbNext, b.mhJournalNext); err != nil {
 			return err
 		}
 	}
