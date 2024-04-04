@@ -511,14 +511,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 		if !fileType.Allowed(allowTypes, denyTypes) {
 			return false, nil
 		}
-		proceed, err := MinerFilter(allowMiners, false, miner)
-		if err != nil {
-			return false, err
-		}
-		if !proceed {
-			return false, nil
-		}
-		proceed, err = MinerFilter(denyMiners, true, miner)
+		proceed, _, err := MinerFilter(allowMiners, denyMiners, miner)
 		if err != nil {
 			return false, err
 		}

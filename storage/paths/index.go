@@ -498,23 +498,13 @@ func (i *MemIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft sto
 				continue
 			}
 
-			proceed, err := MinerFilter(st.info.AllowMiners, false, s.Miner)
+			proceed, msg, err := MinerFilter(st.info.AllowMiners, st.info.DenyMiners, s.Miner)
 			if err != nil {
 				return nil, err
 			}
 
 			if !proceed {
-				log.Debugf("not allocating on %s, miner %s not allowed", st.info.ID, s.Miner.String())
-				continue
-			}
-
-			proceed, err = MinerFilter(st.info.DenyMiners, true, s.Miner)
-			if err != nil {
-				return nil, err
-			}
-
-			if !proceed {
-				log.Debugf("not allocating on %s, miner %s denied", st.info.ID, s.Miner.String())
+				log.Debugf("not allocating on %s, miner %s %s", st.info.ID, s.Miner.String(), msg)
 				continue
 			}
 
@@ -673,23 +663,13 @@ func (i *MemIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sect
 			continue
 		}
 
-		proceed, err := MinerFilter(p.info.AllowMiners, false, miner)
+		proceed, msg, err := MinerFilter(p.info.AllowMiners, p.info.DenyMiners, miner)
 		if err != nil {
 			return nil, err
 		}
 
 		if !proceed {
-			log.Debugf("not allocating on %s, miner %s not allowed", p.info.ID, miner.String())
-			continue
-		}
-
-		proceed, err = MinerFilter(p.info.DenyMiners, true, miner)
-		if err != nil {
-			return nil, err
-		}
-
-		if !proceed {
-			log.Debugf("not allocating on %s, miner %s denied", p.info.ID, miner.String())
+			log.Debugf("not allocating on %s, miner %s %s", p.info.ID, miner.String(), msg)
 			continue
 		}
 
@@ -751,10 +731,9 @@ func (i *MemIndex) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]
 
 var _ SectorIndex = &MemIndex{}
 
-func MinerFilter(miners []string, deny bool, miner abi.ActorID) (bool, error) {
-	if len(miners) > 0 {
-		found := false
-		for _, m := range miners {
+func MinerFilter(allowMiners, denyMiners []string, miner abi.ActorID) (bool, string, error) {
+	checkMinerInList := func(minersList []string, miner abi.ActorID) (bool, error) {
+		for _, m := range minersList {
 			minerIDStr := m
 			maddr, err := address.NewFromString(minerIDStr)
 			if err != nil {
@@ -765,26 +744,24 @@ func MinerFilter(miners []string, deny bool, miner abi.ActorID) (bool, error) {
 				return false, xerrors.Errorf("converting miner address to ID: %w", err)
 			}
 			if abi.ActorID(mid) == miner {
-				found = true
-				break
+				return true, nil
 			}
 		}
-		// If not found in list
-		if !found {
-			// If this is allowed list
-			if !deny {
-				return false, nil
-			}
-			// If this is denied list
-			return true, nil
-		}
-		// If found in list and
-		// If this is allowed list
-		if !deny {
-			return true, nil
-		}
-		// If this is denied list
 		return false, nil
 	}
-	return true, nil
+
+	if len(allowMiners) > 0 {
+		found, err := checkMinerInList(allowMiners, miner)
+		if err != nil || !found {
+			return false, "not allowed", err
+		}
+	}
+
+	if len(denyMiners) > 0 {
+		found, err := checkMinerInList(denyMiners, miner)
+		if err != nil || found {
+			return false, "denied", err
+		}
+	}
+	return true, "", nil
 }

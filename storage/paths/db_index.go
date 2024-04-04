@@ -24,6 +24,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
+const NoMinerFilter = abi.ActorID(0)
+
 var errAlreadyLocked = errors.New("already locked")
 
 type DBIndex struct {
@@ -578,21 +580,13 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 				continue
 			}
 			allowMiners := splitString(row.AllowMiners)
-			proceed, err := MinerFilter(allowMiners, false, s.Miner)
-			if err != nil {
-				return nil, err
-			}
-			if !proceed {
-				log.Debugf("not allocating on %s, miner %s not allowed", row.StorageId, s.Miner.String())
-				continue
-			}
 			denyMiners := splitString(row.DenyMiners)
-			proceed, err = MinerFilter(denyMiners, true, s.Miner)
+			proceed, msg, err := MinerFilter(allowMiners, denyMiners, s.Miner)
 			if err != nil {
 				return nil, err
 			}
 			if !proceed {
-				log.Debugf("not allocating on %s, miner %s denied", row.StorageId, s.Miner.String())
+				log.Debugf("not allocating on %s, miner %s %s", row.StorageId, s.Miner.String(), msg)
 				continue
 			}
 
@@ -734,7 +728,6 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 		SkippedHeartbeatThresh.Seconds(),
 		pathType == storiface.PathSealing,
 		pathType == storiface.PathStorage,
-		miner.String(),
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("Querying for best storage sectors fails with err %w: ", err)
@@ -745,23 +738,15 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 	for _, row := range rows {
 		// Matching with 0 as a workaround to avoid having minerID
 		// present when calling TaskStorage.HasCapacity()
-		if !(miner == abi.ActorID(0)) {
+		if !(miner == NoMinerFilter) {
 			allowMiners := splitString(row.AllowMiners)
-			proceed, err := MinerFilter(allowMiners, false, miner)
-			if err != nil {
-				return nil, err
-			}
-			if !proceed {
-				log.Debugf("not allocating on %s, miner %s not allowed", row.StorageId, miner.String())
-				continue
-			}
 			denyMiners := splitString(row.DenyMiners)
-			proceed, err = MinerFilter(denyMiners, true, miner)
+			proceed, msg, err := MinerFilter(allowMiners, denyMiners, miner)
 			if err != nil {
 				return nil, err
 			}
 			if !proceed {
-				log.Debugf("not allocating on %s, miner %s denied", row.StorageId, miner.String())
+				log.Debugf("not allocating on %s, miner %s %s", row.StorageId, miner.String(), msg)
 				continue
 			}
 		}

@@ -8,28 +8,28 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-// FTUnsealed represents an unsealed sector file type.
-// FTSealed represents a sealed sector file type.
-// FTCache represents a cache sector file type.
-// FTUpdate represents an update sector file type.
-// FTUpdateCache represents an update cache sector file type.
-// FTPiece represents a Piece Park sector file type.
-// FileTypes represents the total number of file types.
+// FTUnsealed represents an unsealed sector file.
+// FTSealed represents a sealed sector file.
+// FTCache represents a cache sector file.
+// FTUpdate represents an update sector file.
+// FTUpdateCache represents an update cache sector file.
+// FTPiece represents a Piece Park sector file.
+// FileTypes represents the total number of file.
 //
-// The SectorFileType type is an integer type that represents different sector file types.
-// It has several methods to manipulate and query the file type.
-// The String method returns a string representation of the file type.
-// The Strings method returns a slice of string representations of all the file types that are set in the receiver object.
-// The AllSet method returns a slice of all the file types that are set in the receiver object.
+// The SectorFileType type is an integer type that represents different sector file.
+// It has several methods to manipulate and query the file.
+// The String method returns a string representation of the file.
+// The Strings method returns a slice of string representations of all the file that are set in the receiver object.
+// The AllSet method returns a slice of all the file that are set in the receiver object.
 // The Has method checks whether a specific file type is set in the receiver object.
 // The SealSpaceUse method calculates the space used by the receiver object in sealing a sector of a given size.
-// The SubAllowed method removes selected file types from the receiver object based on a list of allowed and denied file types.
-// The Unset method removes selected file types from the receiver object.
-// The AnyAllowed method checks whether any file types in the receiver object are allowed based on a list of allowed and denied file types.
-// The Allowed method checks whether all file types in the receiver object are allowed based on a list of allowed and denied file types.
+// The SubAllowed method removes selected file from the receiver object based on a list of allowed and denied file.
+// The Unset method removes selected file from the receiver object.
+// The AnyAllowed method checks whether any file in the receiver object are allowed based on a list of allowed and denied file.
+// The Allowed method checks whether all file in the receiver object are allowed based on a list of allowed and denied file.
 // The StoreSpaceUse method calculates the space used by the receiver object in storing a sector of a given size.
-// The All method returns an array that represents which file types are set in the receiver object.
-// The IsNone method checks whether the receiver object represents no file types.
+// The All method returns an array that represents which file are set in the receiver object.
+// The IsNone method checks whether the receiver object represents no file.
 const (
 	// "regular" sectors
 	FTUnsealed SectorFileType = 1 << iota
@@ -56,14 +56,14 @@ const (
 // - FTPiece: represents Piece Park sectors
 var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache, FTUpdate, FTUpdateCache, FTPiece}
 
-// FTNone represents a sector file type of none. This constant is used in the StorageLock method to specify that a sector should not have any file types locked.
+// FTNone represents a sector file type of none. This constant is used in the StorageLock method to specify that a sector should not have any file locked.
 // Example usage:
 // err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTSealed|storiface.FTUnsealed|storiface.FTCache)
 const (
 	FTNone SectorFileType = 0
 )
 
-// FTAll represents the combination of all available sector file types.
+// FTAll represents the combination of all available sector file.
 // It is a variable of type SectorFileType.
 // The value of FTAll is calculated by iterating over the PathTypes slice and using the |= operator to perform a bitwise OR operation on each path type.
 // The result is assigned to the variable out and returned.
@@ -78,7 +78,7 @@ var FTAll = func() (out SectorFileType) {
 // FSOverheadDen represents the constant value 10, which is used to calculate the overhead in various storage space utilization calculations.
 const FSOverheadDen = 10
 
-// FSOverheadSeal is a map that represents the overheads for different SectorFileType in sealed sectors.
+// FSOverheadSeal is a map that represents the overheads for different SectorFileType in sectors which are being sealed.
 var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
 	FTUnsealed:    FSOverheadDen,
 	FTSealed:      FSOverheadDen,
@@ -93,27 +93,9 @@ var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
 // FsOverheadFinalized is a map that represents the finalized overhead for different types of SectorFileType.
 // The keys in the map are the SectorFileType values, and the values are integers representing the overhead.
 // It is used to calculate the storage space usage for different types of sectors, as shown in the example below:
-//
-//	func (t SectorFileType) StoreSpaceUse(ssize abi.SectorSize) (uint64, error) {
-//		var need uint64
-//		for _, pathType := range PathTypes {
-//			if !t.Has(pathType) {
-//				continue
-//			}
-//
-//			oh, ok := FsOverheadFinalized[pathType]
-//			if !ok {
-//				return 0, xerrors.Errorf("no finalized overhead info for %s", pathType)
-//			}
-//
-//			need += uint64(oh) * uint64(ssize) / FSOverheadDen
-//		}
-//
-//		return need, nil
-//	}
-//
 // The overhead value is retrieved from FsOverheadFinalized by using the SectorFileType value as the key.
-// If the overhead value is not found in the map, an error is returned indicating that there is no finalized overhead information for the given sector type.
+// If the overhead value is not found in the map, an error is returned indicating that there is no finalized
+// overhead information for the given sector type.
 var FsOverheadFinalized = map[SectorFileType]int{
 	FTUnsealed:    FSOverheadDen,
 	FTSealed:      FSOverheadDen,
