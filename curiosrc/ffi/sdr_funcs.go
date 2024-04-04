@@ -161,7 +161,7 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 	return nil
 }
 
-func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, cid.Cid, error) {
+func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (scid cid.Cid, ucid cid.Cid, err error) {
 	p1o, err := sb.makePhase1Out(unsealed, sector.ProofType)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
@@ -172,6 +172,15 @@ func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sect
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
 	defer releaseSector()
+
+	defer func() {
+		if err != nil {
+			clerr := removeDRCTrees(paths.Cache)
+			if clerr != nil {
+				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", paths.Cache)
+			}
+		}
+	}()
 
 	treeDUnsealed, err := proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
 	if err != nil {
@@ -235,6 +244,25 @@ func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sect
 	}
 
 	return sl, uns, nil
+}
+
+func removeDRCTrees(cache string) error {
+	// list files in cache
+	files, err := os.ReadDir(cache)
+	if err != nil {
+		return xerrors.Errorf("listing cache: %w", err)
+	}
+
+	for _, file := range files {
+		if proofpaths.IsTreeFile(file.Name()) {
+			err := os.Remove(filepath.Join(cache, file.Name()))
+			if err != nil {
+				return xerrors.Errorf("removing tree file: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (sb *SealCalls) GenerateSynthPoRep() {
