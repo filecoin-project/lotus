@@ -940,10 +940,6 @@ type Splitstore struct {
 
 // // Full Node
 type Client struct {
-	UseIpfs             bool
-	IpfsOnlineMode      bool
-	IpfsMAddr           string
-	IpfsUseForRetrieval bool
 	// The maximum number of simultaneous data transfers between the client
 	// and storage providers for storage deals
 	SimultaneousTransfersForStorage uint64
