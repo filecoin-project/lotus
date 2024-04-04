@@ -255,7 +255,9 @@ var disputerStartCmd = &cli.Command{
 					return xerrors.Errorf("failed to check for disputes: %w", err)
 				}
 
-				dpmsgs = append(dpmsgs, ms...)
+				if ms != nil {
+					dpmsgs = append(dpmsgs, ms...)
+				}
 
 				dClose, dl, err := makeMinerDeadline(ctx, api, dl.miner)
 				if err != nil {
