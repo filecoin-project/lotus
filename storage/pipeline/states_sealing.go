@@ -748,30 +748,33 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 // processPieces returns either:
 // - a list of piece activation manifests
 // - a list of deal IDs, if all non-filler pieces are deal-id pieces
-func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, []abi.DealID, error) {
+func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo, forceDDO bool) ([]miner.PieceActivationManifest, []abi.DealID, error) {
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
 	dealIDs := make([]abi.DealID, 0, len(sector.Pieces))
-	var hasDDO bool
+	hasDDO := forceDDO
 
-	for _, piece := range sector.Pieces {
-		piece := piece
+	if !forceDDO {
+		// if not forcing DDO, check if we have any DDO pieces
+		for _, piece := range sector.Pieces {
+			piece := piece
 
-		// first figure out if this is a ddo sector
-		err := piece.handleDealInfo(handleDealInfoParams{
-			FillerHandler: func(info UniversalPieceInfo) error {
-				// Fillers are implicit (todo review: Are they??)
-				return nil
-			},
-			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
-				return nil
-			},
-			DDOHandler: func(info UniversalPieceInfo) error {
-				hasDDO = true
-				return nil
-			},
-		})
-		if err != nil {
-			return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
+			// first figure out if this is a ddo sector
+			err := piece.handleDealInfo(handleDealInfoParams{
+				FillerHandler: func(info UniversalPieceInfo) error {
+					// Fillers are implicit (todo review: Are they??)
+					return nil
+				},
+				BuiltinMarketHandler: func(info UniversalPieceInfo) error {
+					return nil
+				},
+				DDOHandler: func(info UniversalPieceInfo) error {
+					hasDDO = true
+					return nil
+				},
+			})
+			if err != nil {
+				return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
+			}
 		}
 	}
 	for _, piece := range sector.Pieces {
@@ -847,7 +850,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	pams, dealIDs, err := m.processPieces(ctx.Context(), sector)
+	pams, dealIDs, err := m.processPieces(ctx.Context(), sector, false)
 	if err != nil {
 		return err
 	}
