@@ -251,9 +251,6 @@ var disputerStartCmd = &cli.Command{
 				proofsChecked += disputableProofs
 
 				ms, err := makeDisputeWindowedPosts(ctx, api, dl, disputableProofs, fromAddr)
-				if ms == nil {
-					continue
-				}
 				if err != nil {
 					return xerrors.Errorf("failed to check for disputes: %w", err)
 				}
@@ -369,7 +366,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api v0api.FullNode, dl minerD
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get wallet balance while checking to send dispute messages to miner %w: %w", dl.miner, err)
 	}
-	if walletBalance.Equals(big.Zero()) {
+	if walletBalance.IsZero() {
 		disputeLog.Warnw("wallet balance is zero, skipping dispute message", "wallet", dl.miner)
 		return nil, nil
 	}
