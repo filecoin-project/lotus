@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
+	storagePaths "github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -68,7 +69,7 @@ func (sb *SealCalls) Storage(taskToSectorRef func(taskID harmonytask.TaskID) (Se
 func (t *TaskStorage) HasCapacity() bool {
 	ctx := context.Background()
 
-	paths, err := t.sc.sectors.sindex.StorageBestAlloc(ctx, t.alloc, t.ssize, t.pathType, abi.ActorID(0))
+	paths, err := t.sc.sectors.sindex.StorageBestAlloc(ctx, t.alloc, t.ssize, t.pathType, storagePaths.NoMinerFilter)
 	if err != nil {
 		log.Errorf("finding best alloc in HasCapacity: %+v", err)
 		return false

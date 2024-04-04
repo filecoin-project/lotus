@@ -738,7 +738,7 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 	for _, row := range rows {
 		// Matching with 0 as a workaround to avoid having minerID
 		// present when calling TaskStorage.HasCapacity()
-		if !(miner == NoMinerFilter) {
+		if miner != NoMinerFilter {
 			allowMiners := splitString(row.AllowMiners)
 			denyMiners := splitString(row.DenyMiners)
 			proceed, msg, err := MinerFilter(allowMiners, denyMiners, miner)
