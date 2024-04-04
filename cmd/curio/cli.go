@@ -30,7 +30,7 @@ var cliCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "machine",
-			Usage: "machine host:port (lotus-provider run --listen address)",
+			Usage: "machine host:port (curio run --listen address)",
 		},
 	},
 	Before: func(cctx *cli.Context) error {

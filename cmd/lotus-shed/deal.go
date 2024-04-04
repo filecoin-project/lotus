@@ -31,8 +31,8 @@ import (
 )
 
 var lpUtilCmd = &cli.Command{
-	Name:  "provider-util",
-	Usage: "lotus provider utility commands",
+	Name:  "curio-util",
+	Usage: "curio utility commands",
 	Subcommands: []*cli.Command{
 		lpUtilStartDealCmd,
 	},
@@ -40,11 +40,11 @@ var lpUtilCmd = &cli.Command{
 
 var lpUtilStartDealCmd = &cli.Command{
 	Name:      "start-deal",
-	Usage:     "start a deal with a specific lotus-provider instance",
+	Usage:     "start a deal with a specific curio instance",
 	ArgsUsage: "[dataFile] [miner]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "provider-rpc",
+			Name:  "curio-rpc",
 			Value: "http://127.0.0.1:12300",
 		},
 	},
@@ -73,7 +73,7 @@ var lpUtilStartDealCmd = &cli.Command{
 
 		// open rpc
 		var rpc api.CurioStruct
-		closer2, err := jsonrpc.NewMergeClient(ctx, cctx.String("provider-rpc"), "Filecoin", []interface{}{&rpc.Internal}, nil)
+		closer2, err := jsonrpc.NewMergeClient(ctx, cctx.String("curio-rpc"), "Filecoin", []interface{}{&rpc.Internal}, nil)
 		if err != nil {
 			return xerrors.Errorf("open rpc: %w", err)
 		}
@@ -84,7 +84,7 @@ var lpUtilStartDealCmd = &cli.Command{
 			return xerrors.Errorf("rpc version: %w", err)
 		}
 
-		fmt.Printf("* provider version: %s\n", v.String())
+		fmt.Printf("* curio version: %s\n", v.String())
 
 		// open data file
 		data, err := homedir.Expand(cctx.Args().Get(0))

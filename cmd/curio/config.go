@@ -402,7 +402,7 @@ func diff(sourceConf, newConf string) (string, error) {
 }
 
 func edit(editor, cfg string) (string, error) {
-	file, err := os.CreateTemp("", "lotus-provider-config-*.toml")
+	file, err := os.CreateTemp("", "curio-config-*.toml")
 	if err != nil {
 		return "", err
 	}
