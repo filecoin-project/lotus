@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -241,4 +242,38 @@ func TestMissingDealIsIgnored(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 547300, int(exp))
+}
+
+func TestBasicPolicyDDO(t *testing.T) {
+	cfg := fakeConfigGetter(nil)
+	pcp := pipeline.NewBasicPreCommitPolicy(&fakeChain{
+		h: abi.ChainEpoch(55),
+	}, cfg, 0)
+
+	pieces := []pipeline.SafeSectorPiece{
+		pipeline.SafePiece(api.SectorPiece{
+			Piece: abi.PieceInfo{
+				Size:     abi.PaddedPieceSize(1024),
+				PieceCID: fakePieceCid(t),
+			},
+			DealInfo: &piece.PieceDealInfo{
+				PublishCid: nil,
+				DealID:     abi.DealID(44),
+				DealSchedule: piece.DealSchedule{
+					StartEpoch: abi.ChainEpoch(100_000),
+					EndEpoch:   abi.ChainEpoch(1500_000),
+				},
+				PieceActivationManifest: &miner.PieceActivationManifest{
+					Size:                  0,
+					VerifiedAllocationKey: nil,
+					Notify:                nil,
+				},
+			},
+		}),
+	}
+
+	exp, err := pcp.Expiration(context.Background(), pieces...)
+	require.NoError(t, err)
+
+	assert.Equal(t, abi.ChainEpoch(1500_000), exp)
 }
