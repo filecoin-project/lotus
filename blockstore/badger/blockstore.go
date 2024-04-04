@@ -627,7 +627,18 @@ func (b *Blockstore) Flush(context.Context) error {
 	b.lockDB()
 	defer b.unlockDB()
 
-	return b.db.Sync()
+	// fsync the new db first
+	if b.dbNext != nil {
+		if err := b.dbNext.Sync(); err != nil {
+			return err
+		}
+	}
+
+	if err := b.db.Sync(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Has implements Blockstore.Has.
