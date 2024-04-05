@@ -13,7 +13,7 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // pro
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.3.2
-	github.com/DataDog/zstd v1.4.5
+	github.com/DataDog/zstd v1.5.6-0.20240628080019-beb4dfd8efe4
 	github.com/GeertJohan/go.rice v1.0.3
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
@@ -132,6 +132,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/triplewz/poseidon v0.0.0-20230828015038-79d8165c88ed
 	github.com/urfave/cli/v2 v2.25.5
+	github.com/valyala/gozstd v1.21.1
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.1.1
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
