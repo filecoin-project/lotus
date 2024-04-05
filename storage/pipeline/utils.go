@@ -3,7 +3,6 @@ package sealing
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math/bits"
 
@@ -113,11 +112,10 @@ func simulateMsgGas(ctx context.Context, sa interface {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unmarshal the signed message: %w", err)
 	}
-	s := hex.EncodeToString(b.Bytes())
 
 	gmsg, err := sa.GasEstimateMessageGas(ctx, &msg, nil, types.EmptyTSK)
 	if err != nil {
-		err = fmt.Errorf("message %s failed: %w", s, err)
+		err = fmt.Errorf("message %x failed: %w", b.Bytes(), err)
 	}
 	return gmsg, err
 }
