@@ -6,6 +6,14 @@
 
 ## Improvements
 
+# v1.26.2 / 2024-04-05
+
+**This is a highly recommended patch release**
+
+This patch releases fixes an issue for node operators who want to index builtin-actor events after the nv22 upgrade. Specifically, it ensures the builtin actor event entries are ordered by insertion order when selected ([#11834](https://github.com/filecoin-project/lotus/pull/11834)).
+
+This patch release also includes a couple Lotus-Miner fixes, ensuring that SnapDeals works properly and are using the new ProveReplicaUpdate3 message after the network version 22 upgrade, ensuring that DDO-sectors has the correct sector expirations, as well as DDO-sector visibility in the `lotus-miner sectors list` cmd.
+
 # v1.26.1 / 2024-03-27
 
 **This is a patch release for the Calibration network user.** The Calibration network is scheduled for an upgrade to include the two additional built-in actor events to ease the transition and observability of DDO for the ecosystem ([#964](https://github.com/filecoin-project/FIPs/pull/964) and [#968](https://github.com/filecoin-project/FIPs/pull/968)).
