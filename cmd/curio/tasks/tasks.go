@@ -221,7 +221,7 @@ func machineDetails(deps *deps.Deps, activeTasks []harmonytask.TaskInterface, ma
 				}
 			}
 			if !myPostIsHandled {
-				log.Errorf("No PoSt tasks are running for miner %s. Start handling PoSts immediately!", miner)
+				log.Errorf("No PoSt tasks are running for miner %s. Start handling PoSts immediately with:\n\tcurio run --layers=\"post\" ", miner)
 			}
 		}
 	}

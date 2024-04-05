@@ -22,29 +22,40 @@ type cfg struct {
 
 func Routes(r *mux.Router, deps *deps.Deps) {
 	c := &cfg{deps}
-	r.Methods("GET").Path("/schema").HandlerFunc(getSch)
+	// At menu.html:
 	r.Methods("GET").Path("/layers").HandlerFunc(c.getLayers)
 	r.Methods("GET").Path("/topo").HandlerFunc(c.topo)
+
+	// At edit.html:
+	r.Methods("GET").Path("/schema").HandlerFunc(getSch)
 	r.Methods("GET").Path("/layers/{layer}").HandlerFunc(c.getLayer)
 	r.Methods("POST").Path("/layers/{layer}").HandlerFunc(c.setLayer)
 }
 func getSch(w http.ResponseWriter, r *http.Request) {
 	sch := jsonschema.Reflect(config.CurioConfig{})
-
 	// add comments
 	for k, doc := range config.Doc {
-		item, ok := sch.Properties.Get(strings.ToLower(k))
+		item, ok := sch.Definitions[strings.ToLower(k)]
 		if !ok {
 			continue
 		}
 		for _, line := range doc {
-			item, ok := item.Properties.Get(strings.ToLower(line.Name))
+			item, ok := item.Definitions[strings.ToLower(line.Name)]
 			if !ok {
 				continue
 			}
 			item.Description = line.Comment
 		}
 	}
+	var allOpt func(s *jsonschema.Schema)
+	allOpt = func(s *jsonschema.Schema) {
+		s.Required = []string{}
+		for _, v := range s.Definitions {
+			v.Required = []string{}
+			allOpt(v)
+		}
+	}
+	allOpt(sch)
 
 	apihelper.OrHTTPFail(w, json.NewEncoder(w).Encode(sch))
 }
@@ -57,7 +68,7 @@ func (c *cfg) getLayers(w http.ResponseWriter, r *http.Request) {
 
 func (c *cfg) getLayer(w http.ResponseWriter, r *http.Request) {
 	var layer string
-	apihelper.OrHTTPFail(w, c.DB.Select(context.Background(), &layer, `SELECT config FROM harmony_config WHERE title = $1`, mux.Vars(r)["layer"]))
+	apihelper.OrHTTPFail(w, c.DB.QueryRow(context.Background(), `SELECT config FROM harmony_config WHERE title = $1`, mux.Vars(r)["layer"]).Scan(&layer))
 
 	// Read the TOML into a struct
 	configStruct := map[string]any{} // NOT lotusproviderconfig b/c we want to preserve unsets
@@ -91,27 +102,19 @@ func (c *cfg) setLayer(w http.ResponseWriter, r *http.Request) {
 
 func (c *cfg) topo(w http.ResponseWriter, r *http.Request) {
 	var topology []struct {
-		Server      string
-		LastContact int64
-		CPU         int
-		GPU         int
-		RAM         int
-		//LayersCSV string `db:"layers"`
+		Server    string `db:"server"`
+		CPU       int    `db:"cpu"`
+		GPU       int    `db:"gpu"`
+		RAM       int    `db:"ram"`
+		LayersCSV string `db:"layers"`
+		TasksCSV  string `db:"tasks"`
 	}
 	apihelper.OrHTTPFail(w, c.DB.Select(context.Background(), &topology, `
 	SELECT 
-	harmony_machines.host_and_port as server, last_contact
-	cpu, gpu, ram
-FROM harmony_machines 
-ORDER BY server`,
-	/*`
-	SELECT
-		COALESCE(harmony_machines.host_and_port, harmony_layers.host_and_port) as server,
-		cpu, gpu, ram, layers
-	FROM harmony_machines
-	FULL JOIN harmony_layers
-		ON harmony_machines.host_and_port = harmony_layers.host_and_port
-	ORDER BY server`*/))
+		m.host_and_port as server,
+		cpu, gpu, ram, layers, tasks
+	FROM harmony_machines m JOIN harmony_machine_details d ON m.id=d.machine_id
+	ORDER BY server`))
 	w.Header().Set("Content-Type", "application/json")
 	apihelper.OrHTTPFail(w, json.NewEncoder(w).Encode(topology))
 }

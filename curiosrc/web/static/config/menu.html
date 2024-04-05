@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Configuration Editor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+
+</head>
+
+<body>
+  <!-- Get the machines -->
+  <script type="module">
+    import { LitElement, html, css } from 'https://cdn.jsdelivr.net/gh/lit/dist@3/all/lit-all.min.js';
+    window.customElements.define('config-list', class MyElement extends LitElement {
+      connectedCallback() {
+        super.connectedCallback();
+      }
+      constructor() {
+        super();
+        this.layers = [];
+        this.topo = [];
+        this.loadData();
+      }
+      static get styles() {
+        return [css``];
+      }
+      render() {
+        return html`
+            <div>
+                ${this.layers.map((layer, index) => html`
+                    <div>
+                      <a href="/config/edit.html?layer=${layer}">  ${layer}</a>
+                      Used By: ${this.topo.filter(topo => topo.LayersCSV.split(",").includes(layer)).map(
+          topo => html`${topo.Server} `)}
+                    </div>
+                `)}
+            </div>
+        `;
+      }
+      loadData() {
+        Promise.all([
+          axios.get('/api/config/layers'),
+          axios.get('/api/config/topo')
+        ])
+          .then(responses => {
+            this.layers = responses[0].data;
+            this.topo = responses[1].data;
+            super.requestUpdate();
+          })
+          .catch(error => {
+            console.error('Error fetching data:', error);
+          });
+      }
+    });
+  </script>
+  <config-list></config-list>
+</body>
+
+</html>

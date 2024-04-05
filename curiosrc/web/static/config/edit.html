@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JSON Schema Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+
+</head>
+<body>
+    <div id="editor"></div>
+
+    <script>
+        var urlParams = new URLSearchParams(window.location.search);
+        // Make simultaneous GET requests to fetch the existing data and JSON Schema
+        Promise.all([
+            axios.get('/api/config/layers/'+urlParams.get('layer')),
+            axios.get('/api/config/schema')
+        ])
+            .then(responses => {
+                const existingData = responses[0].data;
+                const schema = responses[1].data;
+
+                // Create a JSON Editor instance and pass the schema and existing data
+                const container = document.getElementById('editor');
+                const options = {
+                    //mode: 'tree',
+                    schema: schema,
+                    startval: existingData,
+                    theme: 'bootstrap5',
+                    show_opt_in: true,
+                    disable_edit_json: true,
+                };
+
+                var editor = new JSONEditor(container, options);
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+    </script>
+</body>
+</html>
