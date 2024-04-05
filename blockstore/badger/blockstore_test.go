@@ -77,7 +77,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 
 	// add some blocks
 	for i := 0; i < 10; i++ {
-		blk := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
+		blk := blocks.NewBlock([]byte(fmt.Sprintf("some data                                                   %d", i))) // compressible
 		err := db.Put(ctx, blk)
 		if err != nil {
 			t.Fatal(err)
