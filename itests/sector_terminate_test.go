@@ -189,7 +189,7 @@ loop:
 							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: keyBytes},
 							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(toTerminate)), dagcbor.Encode))},
 						}
-						require.ElementsMatch(t, expectedEntries, event.Entries)
+						require.Equal(t, expectedEntries, event.Entries)
 					}
 					break
 				}

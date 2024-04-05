@@ -557,6 +557,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		s = s + " WHERE " + strings.Join(clauses, " AND ")
 	}
 
+	// retain insertion order of event_entry rows with the implicit _rowid_ column
 	s += " ORDER BY event.height DESC, event_entry._rowid_ ASC"
 
 	stmt, err := ei.db.Prepare(s)

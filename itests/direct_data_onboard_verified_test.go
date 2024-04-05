@@ -175,11 +175,11 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			// first sector to start mining is CC
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(so.Sector)-1), dagcbor.Encode))},
 		}
-		require.ElementsMatch(t, expectedEntries, precommitedEvents[0].Entries)
+		require.Equal(t, expectedEntries, precommitedEvents[0].Entries)
 
 		// second sector has our piece
 		expectedEntries[1].Value = must.One(ipld.Encode(basicnode.NewInt(int64(so.Sector)), dagcbor.Encode))
-		require.ElementsMatch(t, expectedEntries, precommitedEvents[1].Entries)
+		require.Equal(t, expectedEntries, precommitedEvents[1].Entries)
 	}
 
 	{
@@ -192,7 +192,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(so.Sector)-1), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "unsealed-cid", Value: must.One(ipld.Encode(datamodel.Null, dagcbor.Encode))},
 		}
-		require.ElementsMatch(t, expectedEntries, activatedEvents[0].Entries)
+		require.Equal(t, expectedEntries, activatedEvents[0].Entries)
 
 		// second sector has our piece, and only our piece, so usealed-cid matches piece-cid,
 		// unfortunately we don't have a case with multiple pieces
@@ -202,7 +202,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			types.EventEntry{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))},
 			types.EventEntry{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
 		)
-		require.ElementsMatch(t, expectedEntries, activatedEvents[1].Entries)
+		require.Equal(t, expectedEntries, activatedEvents[1].Entries)
 	}
 
 	{
@@ -232,21 +232,21 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: must.One(ipld.Encode(basicnode.NewString("allocation"), dagcbor.Encode))},
 			// first, bogus, allocation
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(int64(allocationId)-1), dagcbor.Encode))},
-			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
+			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: bogusPieceCid}), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "expiration", Value: must.One(ipld.Encode(basicnode.NewInt(int64(bogusAllocationExpiry)), dagcbor.Encode))},
 		}
-		require.ElementsMatch(t, expectedEntries, allocationEvents[0].Entries)
+		require.Equal(t, expectedEntries, allocationEvents[0].Entries)
 
 		// the second, real allocation
 		expectedEntries[1].Value = must.One(ipld.Encode(basicnode.NewInt(int64(allocationId)), dagcbor.Encode))                                 // "id"
 		expectedEntries[4].Value = must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))                     // "piece-cid"
 		expectedEntries[8].Value = must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MaximumVerifiedAllocationExpiration), dagcbor.Encode)) // "expiration"
-		require.ElementsMatch(t, expectedEntries, allocationEvents[1].Entries)
+		require.Equal(t, expectedEntries, allocationEvents[1].Entries)
 	}
 
 	{
@@ -257,15 +257,15 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 		expectedEntries := []types.EventEntry{
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: must.One(ipld.Encode(basicnode.NewString("allocation-removed"), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(int64(allocationId)-1), dagcbor.Encode))},
-			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
+			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: bogusPieceCid}), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-max", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MaximumVerifiedAllocationTerm), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "expiration", Value: must.One(ipld.Encode(basicnode.NewInt(int64(bogusAllocationExpiry)), dagcbor.Encode))},
 		}
-		require.ElementsMatch(t, expectedEntries, allocationEvents[0].Entries)
+		require.Equal(t, expectedEntries, allocationEvents[0].Entries)
 	}
 
 	{
@@ -276,8 +276,8 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: must.One(ipld.Encode(basicnode.NewString("claim"), dagcbor.Encode))},
 			// claimId inherits from its original allocationId
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(int64(allocationId)), dagcbor.Encode))},
-			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
+			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: dc.PieceCID}), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(pieceSize.Padded())), dagcbor.Encode))},
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-min", Value: must.One(ipld.Encode(basicnode.NewInt(verifregtypes13.MinimumVerifiedAllocationTerm), dagcbor.Encode))},
@@ -285,7 +285,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 			{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "term-start", Value: must.One(ipld.Encode(basicnode.NewInt(int64(claimEvents[0].Height)), dagcbor.Encode))},
 			{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(si.SectorID)), dagcbor.Encode))},
 		}
-		require.ElementsMatch(t, expectedEntries, claimEvents[0].Entries)
+		require.Equal(t, expectedEntries, claimEvents[0].Entries)
 	}
 
 	// verify that we can trace a datacap allocation through to a claim with the events, since this
