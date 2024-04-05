@@ -310,6 +310,13 @@ var sectorsListCmd = &cli.Command{
 				}
 			}
 
+			var pams int
+			for _, p := range st.Pieces {
+				if p.DealInfo != nil && p.DealInfo.PieceActivationManifest != nil {
+					pams++
+				}
+			}
+
 			exp := st.Expiration
 			if st.OnTime > 0 && st.OnTime < exp {
 				exp = st.OnTime // Can be different when the sector was CC upgraded
@@ -324,6 +331,8 @@ var sectorsListCmd = &cli.Command{
 
 			if deals > 0 {
 				m["Deals"] = color.GreenString("%d", deals)
+			} else if pams > 0 {
+				m["Deals"] = color.MagentaString("DDO:%d", pams)
 			} else {
 				m["Deals"] = color.BlueString("CC")
 				if st.ToUpgrade {
