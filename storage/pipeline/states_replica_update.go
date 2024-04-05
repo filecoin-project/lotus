@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
@@ -170,7 +171,12 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 
 	// figure out message type
 
-	pams, deals, err := m.processPieces(ctx.Context(), sector)
+	nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
+	if err != nil {
+		log.Errorf("failed to get network version: %+v", err)
+	}
+
+	pams, deals, err := m.processPieces(ctx.Context(), sector, nv >= network.Version22)
 	if err != nil {
 		log.Errorf("failed to process pieces: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
