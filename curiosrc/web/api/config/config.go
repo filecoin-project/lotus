@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/gorilla/mux"
@@ -35,23 +34,25 @@ func getSch(w http.ResponseWriter, r *http.Request) {
 	sch := jsonschema.Reflect(config.CurioConfig{})
 	// add comments
 	for k, doc := range config.Doc {
-		item, ok := sch.Definitions[strings.ToLower(k)]
+		item, ok := sch.Definitions[k]
 		if !ok {
 			continue
 		}
 		for _, line := range doc {
-			item, ok := item.Definitions[strings.ToLower(line.Name)]
+			item, ok := item.Properties.Get(line.Name)
 			if !ok {
 				continue
 			}
 			item.Description = line.Comment
 		}
 	}
+
 	var allOpt func(s *jsonschema.Schema)
 	allOpt = func(s *jsonschema.Schema) {
 		s.Required = []string{}
 		for _, v := range s.Definitions {
 			v.Required = []string{}
+
 			allOpt(v)
 		}
 	}

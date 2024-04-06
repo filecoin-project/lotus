@@ -54,7 +54,7 @@ var storageAttachCmd = &cli.Command{
 	Usage:     "attach local storage path",
 	ArgsUsage: "[path]",
 	Description: `Storage can be attached to the miner using this command. The storage volume
-list is stored local to the miner in storage.json set in lotus-provider run. We do not
+list is stored local to the miner in storage.json set in curio run. We do not
 recommend manually modifying this value without further understanding of the
 storage system.
 

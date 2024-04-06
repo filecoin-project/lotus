@@ -94,7 +94,7 @@ type JournalConfig struct {
 }
 
 type CurioSubsystemsConfig struct {
-	// EnableWindowPost enables window post to be executed on this lotus-provider instance. Each machine in the cluster
+	// EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
 	// with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
 	// machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
 	// will allow for parallel processing of partitions.
@@ -105,7 +105,7 @@ type CurioSubsystemsConfig struct {
 	EnableWindowPost   bool
 	WindowPostMaxTasks int
 
-	// EnableWinningPost enables winning post to be executed on this lotus-provider instance.
+	// EnableWinningPost enables winning post to be executed on this curio instance.
 	// Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
 	// It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
 	// documentation.
@@ -166,7 +166,7 @@ type CurioSubsystemsConfig struct {
 	FinalizeMaxTasks int
 
 	// EnableSendPrecommitMsg enables the sending of precommit messages to the chain
-	// from this lotus-provider instance.
+	// from this curio instance.
 	// This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message
 	EnableSendPrecommitMsg bool
 
@@ -185,10 +185,10 @@ type CurioSubsystemsConfig struct {
 	PoRepProofMaxTasks int
 
 	// EnableSendCommitMsg enables the sending of commit messages to the chain
-	// from this lotus-provider instance.
+	// from this curio instance.
 	EnableSendCommitMsg bool
 
-	// EnableMoveStorage enables the move-into-long-term-storage task to run on this lotus-provider instance.
+	// EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
 	// This tasks should only be enabled on nodes with long-term storage.
 	//
 	// The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
@@ -200,7 +200,7 @@ type CurioSubsystemsConfig struct {
 	// uses all available network (or disk) bandwidth on the machine without causing bottlenecks.
 	MoveStorageMaxTasks int
 
-	// EnableWebGui enables the web GUI on this lotus-provider instance. The UI has minimal local overhead, but it should
+	// EnableWebGui enables the web GUI on this curio instance. The UI has minimal local overhead, but it should
 	// only need to be run on a single machine in the cluster.
 	EnableWebGui bool
 

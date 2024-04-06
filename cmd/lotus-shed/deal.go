@@ -58,7 +58,7 @@ var lpUtilCmd = &cli.Command{
 
 var lpUtilStartDealCmd = &cli.Command{
 	Name:      "start-deal",
-	Usage:     "start a deal with a specific lotus-provider instance",
+	Usage:     "start a deal with a specific curio instance",
 	ArgsUsage: "[dataFile] [miner]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{

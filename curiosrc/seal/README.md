@@ -1,8 +1,8 @@
-# Lotus-Provider Sealer
+# Curio Sealer
 
 ## Overview
 
-The lotus-provider sealer is a collection of harmony tasks and a common poller
+The curio sealer is a collection of harmony tasks and a common poller
 which implement the sealing functionality of the Filecoin protocol.
 
 ## Pipeline Tasks
