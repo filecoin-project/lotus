@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -108,6 +109,27 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 				fmt.Printf("\nExpiration Info\n")
 				fmt.Printf("OnTime:\t\t%v\n", status.OnTime)
 				fmt.Printf("Early:\t\t%v\n", status.Early)
+
+				var pamsHeaderOnce sync.Once
+
+				for pi, piece := range status.Pieces {
+					if piece.DealInfo == nil {
+						continue
+					}
+					if piece.DealInfo.PieceActivationManifest == nil {
+						continue
+					}
+					pamsHeaderOnce.Do(func() {
+						fmt.Printf("\nPiece Activation Manifests\n")
+					})
+
+					pam := piece.DealInfo.PieceActivationManifest
+
+					fmt.Printf("Piece %d: %s %s verif-alloc:%+v\n", pi, pam.CID, types.SizeStr(types.NewInt(uint64(pam.Size))), pam.VerifiedAllocationKey)
+					for ni, notification := range pam.Notify {
+						fmt.Printf("\tNotify %d: %s (%x)\n", ni, notification.Address, notification.Payload)
+					}
+				}
 
 			} else {
 				onChainInfo = true

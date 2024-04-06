@@ -26,30 +26,36 @@ import (
 func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// miner is connected to the first node, and we want to observe the chain
 	// from the second node.
-	blocktime := 250 * time.Millisecond
+	blocktime := 100 * time.Millisecond
 	n1, m1, m2, ens := kit.EnsembleOneTwo(t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	n1.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(5)))
-	defer cancel()
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		n1.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(5)))
+		cancel()
+	}
 
 	var n2 kit.TestFullNode
 	ens.FullNode(&n2, kit.ThroughRPC()).Start().Connect(n2, n1)
 
-	// find the first tipset where all miners mined a block.
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
-	n2.WaitTillChain(ctx, kit.BlocksMinedByAll(m1.ActorAddr, m2.ActorAddr))
-	defer cancel()
+	{
+		// find the first tipset where all miners mined a block.
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		n2.WaitTillChain(ctx, kit.BlocksMinedByAll(m1.ActorAddr, m2.ActorAddr))
+		cancel()
+	}
 
 	head, err := n2.ChainHead(context.Background())
 	require.NoError(t, err)
 
+	ctx := context.Background()
+
 	// let the chain run a little bit longer to minimise the chance of reorgs
-	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
+	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+10))
 
 	tsk := head.Key()
 	for i := 1; i <= int(head.Height()); i++ {

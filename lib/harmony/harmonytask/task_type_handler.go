@@ -85,6 +85,7 @@ top:
 	}
 
 	// 3. What does the impl say?
+canAcceptAgain:
 	tID, err := h.CanAccept(ids, h.TaskEngine)
 	if err != nil {
 		log.Error(err)
@@ -100,6 +101,18 @@ top:
 	if h.TaskTypeDetails.Cost.Storage != nil {
 		if err = h.TaskTypeDetails.Cost.Storage.Claim(int(*tID)); err != nil {
 			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+
+			if len(ids) > 1 {
+				var tryAgain = make([]TaskID, 0, len(ids)-1)
+				for _, id := range ids {
+					if id != *tID {
+						tryAgain = append(tryAgain, id)
+					}
+				}
+				ids = tryAgain
+				goto canAcceptAgain
+			}
+
 			return false
 		}
 		releaseStorage = func() {

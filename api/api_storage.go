@@ -200,11 +200,11 @@ type StorageMiner interface {
 	// StorageBestAlloc returns list of paths where sector files of the specified type can be allocated, ordered by preference.
 	// Paths with more weight and more % of free space are preferred.
 	// Note: This method doesn't filter paths based on AllowTypes/DenyTypes.
-	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) //perm:admin
-	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                   //perm:admin
-	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                        //perm:admin
-	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                  //perm:admin
-	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                          //perm:admin
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error) //perm:admin
+	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                                      //perm:admin
+	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                                           //perm:admin
+	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                                     //perm:admin
+	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                                             //perm:admin
 
 	StorageLocal(ctx context.Context) (map[storiface.ID]string, error)       //perm:admin
 	StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) //perm:admin

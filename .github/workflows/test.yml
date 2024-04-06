@@ -14,7 +14,7 @@ defaults:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
@@ -124,7 +124,7 @@ jobs:
           # A list of test groups that require YugabyteDB to be running
           # In CircleCI, all jobs had yugabytedb running as a sidecar.
           yugabytedb: |
-            ["itest-harmonydb", "itest-harmonytask"]
+            ["itest-harmonydb", "itest-harmonytask", "itest-curio"]
           # A list of test groups that require Proof Parameters to be fetched
           # In CircleCI, only the following jobs had get-params set:
           # - unit-cli (✅)

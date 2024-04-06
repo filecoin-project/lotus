@@ -161,17 +161,26 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 	return nil
 }
 
-func (sb *SealCalls) TreeDRC(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (cid.Cid, cid.Cid, error) {
+func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (scid cid.Cid, ucid cid.Cid, err error) {
 	p1o, err := sb.makePhase1Out(unsealed, sector.ProofType)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
 	}
 
-	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, nil, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	paths, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
 	defer releaseSector()
+
+	defer func() {
+		if err != nil {
+			clerr := removeDRCTrees(paths.Cache)
+			if clerr != nil {
+				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", paths.Cache)
+			}
+		}
+	}()
 
 	treeDUnsealed, err := proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
 	if err != nil {
@@ -235,6 +244,25 @@ func (sb *SealCalls) TreeDRC(ctx context.Context, sector storiface.SectorRef, un
 	}
 
 	return sl, uns, nil
+}
+
+func removeDRCTrees(cache string) error {
+	// list files in cache
+	files, err := os.ReadDir(cache)
+	if err != nil {
+		return xerrors.Errorf("listing cache: %w", err)
+	}
+
+	for _, file := range files {
+		if proofpaths.IsTreeFile(file.Name()) {
+			err := os.Remove(filepath.Join(cache, file.Name()))
+			if err != nil {
+				return xerrors.Errorf("removing tree file: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (sb *SealCalls) GenerateSynthPoRep() {
@@ -318,6 +346,22 @@ func (sb *SealCalls) makePhase1Out(unsCid cid.Cid, spt abi.RegisteredSealProof) 
 				Size:          64,
 			})
 		}
+
+	case abi.RegisteredSealProof_StackedDrg8MiBV1_1, abi.RegisteredSealProof_StackedDrg8MiBV1_1_Feat_SyntheticPoRep:
+		phase1Output.Config.RowsToDiscard = 0
+		phase1Output.Config.Size = 524287
+		phase1Output.Labels["StackedDrg8MiBV1"] = &Labels{}
+		phase1Output.RegisteredProof = "StackedDrg8MiBV1_1"
+
+		for i := 0; i < 2; i++ {
+			phase1Output.Labels["StackedDrg8MiBV1"].Labels = append(phase1Output.Labels["StackedDrg8MiBV1"].Labels, Config{
+				ID:            fmt.Sprintf("layer-%d", i+1),
+				Path:          "/placeholder",
+				RowsToDiscard: 0,
+				Size:          262144,
+			})
+		}
+
 	case abi.RegisteredSealProof_StackedDrg512MiBV1_1:
 		phase1Output.Config.RowsToDiscard = 0
 		phase1Output.Config.Size = 33554431
@@ -377,7 +421,7 @@ func (sb *SealCalls) LocalStorage(ctx context.Context) ([]storiface.StoragePath,
 func (sb *SealCalls) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed bool) error {
 	alloc := storiface.FTNone
 	if keepUnsealed {
-		// note: In curio we don't write the unsealed file in any of the previous stages, it's only written here from tree-d
+		// note: In Curio we don't write the unsealed file in any of the previous stages, it's only written here from tree-d
 		alloc = storiface.FTUnsealed
 	}
 
@@ -473,7 +517,7 @@ afterUnsealedMove:
 	return nil
 }
 
-func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef) error {
+func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef, taskID *harmonytask.TaskID) error {
 	// only move the unsealed file if it still exists and needs moving
 	moveUnsealed := storiface.FTUnsealed
 	{
@@ -489,7 +533,27 @@ func (sb *SealCalls) MoveStorage(ctx context.Context, sector storiface.SectorRef
 
 	toMove := storiface.FTCache | storiface.FTSealed | moveUnsealed
 
-	err := sb.sectors.storage.MoveStorage(ctx, sector, toMove)
+	var opts []storiface.AcquireOption
+	if taskID != nil {
+		resv, ok := sb.sectors.storageReservations.Load(*taskID)
+		// if the reservation is missing MoveStorage will simply create one internally. This is fine as the reservation
+		// will only be missing when the node is restarting, which means that the missing reservations will get recreated
+		// anyways, and before we start claiming other tasks.
+		if ok {
+			defer resv.Release()
+
+			if resv.Alloc != storiface.FTNone {
+				return xerrors.Errorf("task %d has storage reservation with alloc", taskID)
+			}
+			if resv.Existing != toMove|storiface.FTUnsealed {
+				return xerrors.Errorf("task %d has storage reservation with different existing", taskID)
+			}
+
+			opts = append(opts, storiface.AcquireInto(storiface.PathsWithIDs{Paths: resv.Paths, IDs: resv.PathIDs}))
+		}
+	}
+
+	err := sb.sectors.storage.MoveStorage(ctx, sector, toMove, opts...)
 	if err != nil {
 		return xerrors.Errorf("moving storage: %w", err)
 	}

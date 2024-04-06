@@ -87,30 +87,6 @@ your node if metadata log is disabled`,
 	},
 	"Client": {
 		{
-			Name: "UseIpfs",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsOnlineMode",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsMAddr",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsUseForRetrieval",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
 			Name: "SimultaneousTransfersForStorage",
 			Type: "uint64",
 
@@ -403,7 +379,7 @@ to prove each deadline, resulting in more total gas use (but each message will h
 			Name: "EnableWindowPost",
 			Type: "bool",
 
-			Comment: `EnableWindowPost enables window post to be executed on this lotus-provider instance. Each machine in the cluster
+			Comment: `EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
 with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
 machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
 will allow for parallel processing of partitions.
@@ -422,7 +398,7 @@ partitionsPerDeadline+1 machines.`,
 			Name: "EnableWinningPost",
 			Type: "bool",
 
-			Comment: `EnableWinningPost enables winning post to be executed on this lotus-provider instance.
+			Comment: `EnableWinningPost enables winning post to be executed on this curio instance.
 Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
 It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
 documentation.`,
@@ -514,7 +490,7 @@ Finalize will run in parallel with the SubmitCommitMsg task.`,
 			Type: "bool",
 
 			Comment: `EnableSendPrecommitMsg enables the sending of precommit messages to the chain
-from this lotus-provider instance.
+from this curio instance.
 This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message`,
 		},
 		{
@@ -542,13 +518,13 @@ also be bounded by resources available on the machine.`,
 			Type: "bool",
 
 			Comment: `EnableSendCommitMsg enables the sending of commit messages to the chain
-from this lotus-provider instance.`,
+from this curio instance.`,
 		},
 		{
 			Name: "EnableMoveStorage",
 			Type: "bool",
 
-			Comment: `EnableMoveStorage enables the move-into-long-term-storage task to run on this lotus-provider instance.
+			Comment: `EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
 This tasks should only be enabled on nodes with long-term storage.
 
 The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
@@ -563,10 +539,32 @@ also be bounded by resources available on the machine. It is recommended that th
 uses all available network (or disk) bandwidth on the machine without causing bottlenecks.`,
 		},
 		{
+			Name: "BoostAdapters",
+			Type: "[]string",
+
+			Comment: `BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
+This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
+Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
+Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+
+When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
+deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
+node in the cluster has the EnableParkPiece option enabled and has sufficient scratch space to store the deal data.
+This is different from lotus-miner which stored the deal data into an "unsealed" sector as soon as the deal was
+received. Deal data in PiecePark is accessed when the sector TreeD and TreeR are computed, but isn't needed for
+the initial SDR layers computation. Pieces in PiecePark are removed after all sectors referencing the piece are
+sealed.
+
+To get API info for boost configuration run 'curio market rpc-info'
+
+NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
+a machine which handles ParkPiece tasks.`,
+		},
+		{
 			Name: "EnableWebGui",
 			Type: "bool",
 
-			Comment: `EnableWebGui enables the web GUI on this lotus-provider instance. The UI has minimal local overhead, but it should
+			Comment: `EnableWebGui enables the web GUI on this curio instance. The UI has minimal local overhead, but it should
 only need to be run on a single machine in the cluster.`,
 		},
 		{

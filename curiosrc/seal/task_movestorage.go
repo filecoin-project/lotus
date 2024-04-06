@@ -58,7 +58,7 @@ func (m *MoveStorageTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) 
 		ProofType: abi.RegisteredSealProof(task.RegSealProof),
 	}
 
-	err = m.sc.MoveStorage(ctx, sector)
+	err = m.sc.MoveStorage(ctx, sector, &taskID)
 	if err != nil {
 		return false, xerrors.Errorf("moving storage: %w", err)
 	}
@@ -136,16 +136,37 @@ func (m *MoveStorageTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytas
 }
 
 func (m *MoveStorageTask) TypeDetails() harmonytask.TaskTypeDetails {
+	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
+	if isDevnet {
+		ssize = abi.SectorSize(2 << 20)
+	}
+
 	return harmonytask.TaskTypeDetails{
 		Max:  m.max,
 		Name: "MoveStorage",
 		Cost: resources.Resources{
-			Cpu: 1,
-			Gpu: 0,
-			Ram: 128 << 20,
+			Cpu:     1,
+			Gpu:     0,
+			Ram:     128 << 20,
+			Storage: m.sc.Storage(m.taskToSector, storiface.FTNone, storiface.FTCache|storiface.FTSealed|storiface.FTUnsealed, ssize, storiface.PathStorage),
 		},
 		MaxFailures: 10,
 	}
+}
+
+func (m *MoveStorageTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
+	var refs []ffi.SectorRef
+
+	err := m.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_move_storage = $1`, id)
+	if err != nil {
+		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
+	}
+
+	if len(refs) != 1 {
+		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
+	}
+
+	return refs[0], nil
 }
 
 func (m *MoveStorageTask) Adder(taskFunc harmonytask.AddTaskFunc) {

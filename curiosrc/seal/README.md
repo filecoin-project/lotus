@@ -2,7 +2,7 @@
 
 ## Overview
 
-The curio sealer is a collection of harmony tasks and a common poller
+The Curio sealer is a collection of harmony tasks and a common poller
 which implement the sealing functionality of the Filecoin protocol.
 
 ## Pipeline Tasks

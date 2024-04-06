@@ -107,17 +107,22 @@ func (mr *MockStoreMockRecorder) GenerateSingleVanillaProof(arg0, arg1, arg2, ar
 }
 
 // MoveStorage mocks base method.
-func (m *MockStore) MoveStorage(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType) error {
+func (m *MockStore) MoveStorage(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType, arg3 ...storiface.AcquireOption) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MoveStorage", arg0, arg1, arg2)
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "MoveStorage", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // MoveStorage indicates an expected call of MoveStorage.
-func (mr *MockStoreMockRecorder) MoveStorage(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) MoveStorage(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveStorage", reflect.TypeOf((*MockStore)(nil).MoveStorage), arg0, arg1, arg2)
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MoveStorage", reflect.TypeOf((*MockStore)(nil).MoveStorage), varargs...)
 }
 
 // Remove mocks base method.

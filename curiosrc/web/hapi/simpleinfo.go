@@ -393,6 +393,8 @@ type machineInfo struct {
 		FSAvailable   int64
 		Reserved      int64
 		Used          int64
+		AllowMiners   string
+		DenyMiners    string
 		LastHeartbeat time.Time
 		HeartbeatErr  *string
 
@@ -458,7 +460,7 @@ func (a *app) clusterNodeInfo(ctx context.Context, id int64) (*machineInfo, erro
 	}
 
 	// query storage info
-	rows2, err := a.db.Query(ctx, "SELECT storage_id, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types, capacity, available, fs_available, reserved, used, last_heartbeat, heartbeat_err FROM storage_path WHERE urls LIKE '%' || $1 || '%'", summaries[0].Info.Host)
+	rows2, err := a.db.Query(ctx, "SELECT storage_id, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types, capacity, available, fs_available, reserved, used, allow_miners, deny_miners, last_heartbeat, heartbeat_err FROM storage_path WHERE urls LIKE '%' || $1 || '%'", summaries[0].Info.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -481,13 +483,15 @@ func (a *app) clusterNodeInfo(ctx context.Context, id int64) (*machineInfo, erro
 			FSAvailable   int64
 			Reserved      int64
 			Used          int64
+			AllowMiners   string
+			DenyMiners    string
 			LastHeartbeat time.Time
 			HeartbeatErr  *string
 
 			UsedPercent     float64
 			ReservedPercent float64
 		}
-		if err := rows2.Scan(&s.ID, &s.Weight, &s.MaxStorage, &s.CanSeal, &s.CanStore, &s.Groups, &s.AllowTo, &s.AllowTypes, &s.DenyTypes, &s.Capacity, &s.Available, &s.FSAvailable, &s.Reserved, &s.Used, &s.LastHeartbeat, &s.HeartbeatErr); err != nil {
+		if err := rows2.Scan(&s.ID, &s.Weight, &s.MaxStorage, &s.CanSeal, &s.CanStore, &s.Groups, &s.AllowTo, &s.AllowTypes, &s.DenyTypes, &s.Capacity, &s.Available, &s.FSAvailable, &s.Reserved, &s.Used, &s.AllowMiners, &s.DenyMiners, &s.LastHeartbeat, &s.HeartbeatErr); err != nil {
 			return nil, err
 		}
 

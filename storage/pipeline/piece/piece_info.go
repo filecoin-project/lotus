@@ -147,7 +147,7 @@ func (ds *PieceDealInfo) EndEpoch() (abi.ChainEpoch, error) {
 	default:
 		// note - when implementing make sure to cache any dynamically computed values
 		// todo do we want a smarter mechanism here
-		return ds.DealSchedule.StartEpoch, nil
+		return ds.DealSchedule.EndEpoch, nil
 	}
 }
 

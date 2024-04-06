@@ -1,3 +1,16 @@
+package main
+
+import (
+	"testing"
+
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/node/config"
+)
+
+var baseText string = `
 [Subsystems]
   # EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
   # with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
@@ -139,27 +152,6 @@
   # type: int
   #MoveStorageMaxTasks = 0
 
-  # BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
-  # This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
-  # Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
-  # Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
-  # 
-  # When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
-  # deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
-  # node in the cluster has the EnableParkPiece option enabled and has sufficient scratch space to store the deal data.
-  # This is different from lotus-miner which stored the deal data into an "unsealed" sector as soon as the deal was
-  # received. Deal data in PiecePark is accessed when the sector TreeD and TreeR are computed, but isn't needed for
-  # the initial SDR layers computation. Pieces in PiecePark are removed after all sectors referencing the piece are
-  # sealed.
-  # 
-  # To get API info for boost configuration run 'curio market rpc-info'
-  # 
-  # NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
-  # a machine which handles ParkPiece tasks.
-  #
-  # type: []string
-  #BoostAdapters = []
-
   # EnableWebGui enables the web GUI on this curio instance. The UI has minimal local overhead, but it should
   # only need to be run on a single machine in the cluster.
   #
@@ -207,6 +199,19 @@
     # type: types.FIL
     #PerSector = "0.03 FIL"
 
+[[Addresses]]
+  #PreCommitControl = []
+
+  #CommitControl = []
+
+  #TerminateControl = []
+
+  #DisableOwnerFallback = false
+
+  #DisableWorkerFallback = false
+
+  MinerAddresses = ["t01013"]
+
 
 [[Addresses]]
   #PreCommitControl = []
@@ -220,6 +225,20 @@
   #DisableWorkerFallback = false
 
   #MinerAddresses = []
+
+
+[[Addresses]]
+  #PreCommitControl = []
+
+  #CommitControl = []
+
+  #TerminateControl = []
+
+  #DisableOwnerFallback = false
+
+  #DisableWorkerFallback = false
+
+  MinerAddresses = ["t01006"]
 
 
 [Proving]
@@ -255,6 +274,25 @@
   #
   # type: Duration
   #PartitionCheckTimeout = "20m0s"
+
+  # Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
+  # 
+  # WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
+  # to be recovered. Before enabling this option, make sure your PoSt workers work correctly.
+  # 
+  # After changing this option, confirm that the new value works in your setup by invoking
+  # 'lotus-miner proving compute window-post 0'
+  #
+  # type: bool
+  #DisableBuiltinWindowPoSt = false
+
+  # Disable Winning PoSt computation on the lotus-miner process even if no winning PoSt workers are present.
+  # 
+  # WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulting in lost block rewards.
+  # Before enabling this option, make sure your PoSt workers work correctly.
+  #
+  # type: bool
+  #DisableBuiltinWinningPoSt = false
 
   # Disable WindowPoSt provable sector readability checks.
   # 
@@ -326,10 +364,53 @@
 
 
 [Apis]
+  # ChainApiInfo is the API endpoint for the Lotus daemon.
+  #
+  # type: []string
+  ChainApiInfo = ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0.T_jmG4DTs9Zjd7rr78862lT7D2U63uz-zqcUKHwcqaU:/dns/localhost/tcp/1234/http"]
+
   # RPC Secret for the storage subsystem.
   # If integrating with lotus-miner this must match the value from
   # cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey
   #
   # type: string
-  #StorageRPCSecret = ""
+  StorageRPCSecret = "HxHe8YLHiY0LjHVw/WT/4XQkPGgRyCEYk+xiFi0Ob0o="
 
+`
+
+func TestConfig(t *testing.T) {
+	baseCfg := config.DefaultCurioConfig()
+
+	addr1 := config.CurioAddresses{
+		PreCommitControl:      []string{},
+		CommitControl:         []string{},
+		TerminateControl:      []string{"t3qroiebizgkz7pvj26reg5r5mqiftrt5hjdske2jzjmlacqr2qj7ytjncreih2mvujxoypwpfusmwpipvxncq"},
+		DisableOwnerFallback:  false,
+		DisableWorkerFallback: false,
+		MinerAddresses:        []string{"t01000"},
+	}
+
+	addr2 := config.CurioAddresses{
+		MinerAddresses: []string{"t01001"},
+	}
+
+	_, err := deps.LoadConfigWithUpgrades(baseText, baseCfg)
+	require.NoError(t, err)
+
+	baseCfg.Addresses = append(baseCfg.Addresses, addr1)
+	baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
+		return len(a.MinerAddresses) > 0
+	})
+
+	_, err = config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+	require.NoError(t, err)
+
+	baseCfg.Addresses = append(baseCfg.Addresses, addr2)
+	baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
+		return len(a.MinerAddresses) > 0
+	})
+
+	_, err = config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+	require.NoError(t, err)
+
+}
