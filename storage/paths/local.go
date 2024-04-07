@@ -663,6 +663,8 @@ func (st *Local) Remove(ctx context.Context, sid abi.SectorID, typ storiface.Sec
 		return xerrors.New("delete expects one file type")
 	}
 
+	log.Debugw("Remove called", "sid", sid, "type", typ, "force", force, "keepIn", keepIn)
+
 	si, err := st.index.StorageFindSector(ctx, sid, typ, 0, false)
 	if err != nil {
 		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", sid, typ, err)
@@ -739,7 +741,7 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ storifa
 	}
 
 	spath := p.sectorPath(sid, typ)
-	log.Infof("remove %s", spath)
+	log.Infow("remove", "path", spath, "id", sid, "type", typ, "storage", storage)
 
 	if err := os.RemoveAll(spath); err != nil {
 		log.Errorf("removing sector (%v) from %s: %+v", sid, spath, err)

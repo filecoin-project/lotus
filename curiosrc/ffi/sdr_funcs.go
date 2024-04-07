@@ -168,10 +168,16 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 // ensureOneCopy makes sure that there is only one version of sector data.
 // Usually called after a successful operation was done successfully on sector data.
 func (sb *SealCalls) ensureOneCopy(ctx context.Context, sid abi.SectorID, pathIDs storiface.SectorPaths, fts storiface.SectorFileType) error {
+	if !pathIDs.HasAllSet(fts) {
+		return xerrors.Errorf("ensure one copy: not all paths are set")
+	}
+
 	for _, fileType := range fts.AllSet() {
 		pid := storiface.PathByType(pathIDs, fileType)
-
 		keepIn := []storiface.ID{storiface.ID(pid)}
+
+		log.Debugw("ensureOneCopy", "sector", sid, "type", fileType, "keep", keepIn)
+
 		if err := sb.sectors.storage.Remove(ctx, sid, storiface.FTCache, true, keepIn); err != nil {
 			return err
 		}
