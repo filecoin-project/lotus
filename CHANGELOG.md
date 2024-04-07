@@ -6,13 +6,19 @@
 
 ## Improvements
 
-# v1.26.2 / 2024-04-05
+# v1.26.2 / 2024-04-08
 
-**This is a highly recommended patch release**
+**This is a mandatory patch release for the Filecoin network version 22 mainnet upgrade, for all node operators.**
 
-This patch releases fixes an issue for node operators who want to index builtin-actor events after the nv22 upgrade. Specifically, it ensures the builtin actor event entries are ordered by insertion order when selected ([#11834](https://github.com/filecoin-project/lotus/pull/11834)).
+There is an update in the upgrade epoch for nv22, you can read the [full discussion in Slack here.](https://filecoinproject.slack.com/archives/C05P37R9KQD/p1712548103521969)
 
-This patch release also includes a couple Lotus-Miner fixes, ensuring that SnapDeals works properly and are using the new ProveReplicaUpdate3 message after the network version 22 upgrade, ensuring that DDO-sectors has the correct sector expirations, as well as DDO-sector visibility in the `lotus-miner sectors list` cmd.
+The new upgrade epoch is scheduled to be on **epoch `3855360 - 2024-04-24 - 14:00:00Z`**. That means:
+
+**- All mainnet node operators that have upgraded to v1.26.x, must upgrade to this patch release before 2024-04-11T14:00:00Z.**
+**- All mainnet node operators that are on a version lower the v1.26.x, must upgrade to this patch release before 2024-04-24T14:00:00Z**
+
+This patch also includes fixes for node operators who want to index builtin-actor events after the nv22 upgrade. Specifically, it ensures the builtin actor event entries are ordered by insertion order when selected ([#11834](https://github.com/filecoin-project/lotus/pull/11834)). It also includes a couple Lotus-Miner patch fixes, ensuring that SnapDeals works properly and are using the new ProveReplicaUpdate3 message after the network version 22 upgrade, ensuring that DDO-sectors has the correct sector expirations, as well as DDO-sector visibility in the `lotus-miner sectors list` cmd.
+
 
 # v1.26.1 / 2024-03-27
 
