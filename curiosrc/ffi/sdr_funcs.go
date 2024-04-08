@@ -178,7 +178,7 @@ func (sb *SealCalls) ensureOneCopy(ctx context.Context, sid abi.SectorID, pathID
 
 		log.Debugw("ensureOneCopy", "sector", sid, "type", fileType, "keep", keepIn)
 
-		if err := sb.sectors.storage.Remove(ctx, sid, storiface.FTCache, true, keepIn); err != nil {
+		if err := sb.sectors.storage.Remove(ctx, sid, fileType, true, keepIn); err != nil {
 			return err
 		}
 	}
