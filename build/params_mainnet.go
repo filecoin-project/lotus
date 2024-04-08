@@ -132,6 +132,7 @@ func init() {
 
 	if os.Getenv("LOTUS_DISABLE_DRAGON") == "1" {
 		UpgradeDragonHeight = math.MaxInt64 - 1
+		delete(DrandSchedule, UpgradePhoenixHeight)
 		UpgradePhoenixHeight = math.MaxInt64
 	}
 
