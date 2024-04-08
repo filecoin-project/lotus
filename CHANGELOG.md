@@ -19,6 +19,25 @@ The new upgrade epoch is scheduled to be on **epoch `3855360 - 2024-04-24 - 14:0
 
 This patch also includes fixes for node operators who want to index builtin-actor events after the nv22 upgrade. Specifically, it ensures the builtin actor event entries are ordered by insertion order when selected ([#11834](https://github.com/filecoin-project/lotus/pull/11834)). It also includes a couple Lotus-Miner patch fixes, ensuring that SnapDeals works properly and are using the new ProveReplicaUpdate3 message after the network version 22 upgrade, ensuring that DDO-sectors has the correct sector expirations, as well as DDO-sector visibility in the `lotus-miner sectors list` cmd.
 
+## Upgrade Warnings
+
+For users currently on a version of Lotus lower than v1.26.0, please note that **this release requires a minimum Go version of v1.21.7 or higher to successfully build Lotus.**
+
+## v1.26.x Inclusions
+
+See the [v1.26.0](#v1260--2024-03-21) release notes below for inclusions and notes on the v1.26.x series.
+
+* [v13 Builtin Actor Bundle](#v13-builtin-actor-bundle)
+* [Migration](#migration)
+* [New features](#new-features-1)
+  * [Tracing API](#tracing-api)
+  * [Ethereum Tracing API (`trace_block` and `trace_replayBlockTransactions`)](#ethereum-tracing-api-trace_block-and-trace_replayblocktransactions)
+  * [GetActorEventsRaw and SubscribeActorEventsRaw](#getactoreventsraw-and-subscribeactoreventsraw)
+  * [Events Configuration Changes](#events-configuration-changes)
+  * [GetAllClaims and GetAllAlocations](#getallclaims-and-getallalocations)
+  * [Lotus CLI](#lotus-cli)
+
+#v1260--2024-03-21
 
 # v1.26.1 / 2024-03-27
 
@@ -94,7 +113,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - feat: implement FIP-0063 ([filecoin-project/lotus#11572](https://github.com/filecoin-project/lotus/pull/11572))
 - feat: events: Add Lotus APIs to consume smart contract and built-in actor events ([filecoin-project/lotus#11618](https://github.com/filecoin-project/lotus/pull/11618))
 
-## Tracing API
+### Tracing API
 
 Replace the `CodeCid` field in the message trace (added in 1.23.4) with an `InvokedActor` field.
 
