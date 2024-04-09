@@ -6,7 +6,52 @@
 
 ## Improvements
 
+# v1.26.2 / 2024-04-08
+
+**This is a mandatory patch release for the Filecoin network version 22 mainnet upgrade, for all node operators.**
+
+There is an update in the upgrade epoch for nv22, you can read the [full discussion in Slack here.](https://filecoinproject.slack.com/archives/C05P37R9KQD/p1712548103521969)
+
+The new upgrade epoch is scheduled to be on **epoch `3855360 - 2024-04-24 - 14:00:00Z`**. That means:
+
+- **All mainnet node operators that have upgraded to v1.26.x, must upgrade to this patch release before 2024-04-11T14:00:00Z.**
+- **All mainnet node operators that are on a version lower the v1.26.x, must upgrade to this patch release before 2024-04-24T14:00:00Z.**
+
+This patch also includes fixes for node operators who want to index builtin-actor events after the nv22 upgrade. Specifically, it ensures the builtin actor event entries are ordered by insertion order when selected ([#11834](https://github.com/filecoin-project/lotus/pull/11834)). It also includes a couple Lotus-Miner patch fixes, ensuring that SnapDeals works properly and are using the new ProveReplicaUpdate3 message after the network version 22 upgrade, ensuring that DDO-sectors has the correct sector expirations, as well as DDO-sector visibility in the `lotus-miner sectors list` cmd.
+
+## Upgrade Warnings
+
+For users currently on a version of Lotus lower than v1.26.0, please note that **this release requires a minimum Go version of v1.21.7 or higher to successfully build Lotus.**
+
+## v1.26.x Inclusions
+
+See the [v1.26.0](#v1260--2024-03-21) release notes below for inclusions and notes on the v1.26.x series.
+
+* [v13 Builtin Actor Bundle](#v13-builtin-actor-bundle)
+* [Migration](#migration)
+* [New features](#new-features-1)
+  * [Tracing API](#tracing-api)
+  * [Ethereum Tracing API (`trace_block` and `trace_replayBlockTransactions`)](#ethereum-tracing-api-trace_block-and-trace_replayblocktransactions)
+  * [GetActorEventsRaw and SubscribeActorEventsRaw](#getactoreventsraw-and-subscribeactoreventsraw)
+  * [Events Configuration Changes](#events-configuration-changes)
+  * [GetAllClaims and GetAllAlocations](#getallclaims-and-getallalocations)
+  * [Lotus CLI](#lotus-cli)
+
+#v1260--2024-03-21
+
+# v1.26.1 / 2024-03-27
+
+***RETRACTED: Due to a change in network version 22 upgrade epoch, Lotus v1.26.1 should not be used prior to the new upgrade epoch. See v1.26.2 release notes above.***
+
+**This is a patch release for the Calibration network user.** The Calibration network is scheduled for an upgrade to include the two additional built-in actor events to ease the transition and observability of DDO for the ecosystem ([#964](https://github.com/filecoin-project/FIPs/pull/964) and [#968](https://github.com/filecoin-project/FIPs/pull/968)).
+
+The agreed-upon epoch between the Filecoin implementer team for the update is `1493854`, corresponding to `2024-04-03T11:00:00Z`. All Calibration network users need to upgrade to this patch release before that.
+
+ **Lotus Mainnet Users**: For users on the Mainnet, the [Lotus v1.26.0](https://github.com/filecoin-project/lotus/releases/tag/v1.26.0) release already includes the aforementioned events in preparation for the Mainnet nv22 upgrade. Therefore, both v1.26.0 and v1.26.1 versions are suitable for use on the Mainnet for the coming network version 22 upgrade.
+
 # v1.26.0 / 2024-03-21
+
+***RETRACTED: Due to a change in network version 22 upgrade epoch, Lotus v1.26.0 should not be used prior to the new upgrade epoch. See v1.26.2 release notes above.***
 
 This is the stable release for the upcoming MANDATORY Filecoin network upgrade v22, codenamed Dragon 🐉, at `epoch 3817920 - 2024-04-11 - 14:00:00Z`
 
@@ -71,8 +116,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 
 ## Improvements
 
-## Tracing API
-
+### Tracing API
 Replace the `CodeCid` field in the message trace (added in 1.23.4) with an `InvokedActor` field.
 
 **Before:**
