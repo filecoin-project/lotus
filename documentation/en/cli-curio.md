@@ -91,7 +91,7 @@ USAGE:
 
 DESCRIPTION:
    Storage can be attached to the miner using this command. The storage volume
-   list is stored local to the miner in storage.json set in lotus-provider run. We do not
+   list is stored local to the miner in storage.json set in curio run. We do not
    recommend manually modifying this value without further understanding of the
    storage system.
 
@@ -143,6 +143,7 @@ USAGE:
    curio cli storage list [command options] [arguments...]
 
 OPTIONS:
+   --local     only list local storage paths (default: false)
    --help, -h  show help
 ```
 
@@ -167,13 +168,13 @@ USAGE:
    curio run [command options] [arguments...]
 
 OPTIONS:
-   --listen value                     host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
-   --nosync                           don't check full-node sync status (default: false)
-   --manage-fdlimit                   manage open file limit (default: true)
-   --storage-json value               path to json file containing storage config (default: "~/.curio/storage.json")
-   --journal value                    path to journal files (default: "~/.curio/")
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
-   --help, -h                         show help
+   --listen value                                                                       host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
+   --nosync                                                                             don't check full-node sync status (default: false)
+   --manage-fdlimit                                                                     manage open file limit (default: true)
+   --storage-json value                                                                 path to json file containing storage config (default: "~/.curio/storage.json")
+   --journal value                                                                      path to journal files (default: "~/.curio/")
+   --layers value, -l value, --layer value [ --layers value, -l value, --layer value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                                                                           show help
 ```
 
 ## curio stop

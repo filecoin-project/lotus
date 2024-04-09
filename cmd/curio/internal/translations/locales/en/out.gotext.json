@@ -89,18 +89,18 @@
             "fuzzy": true
         },
         {
-            "id": "Try the web interface with {__layersgui} for further guided improvements.",
-            "message": "Try the web interface with {__layersgui} for further guided improvements.",
-            "translation": "Try the web interface with {__layersgui} for further guided improvements.",
+            "id": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
+            "message": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
+            "translation": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
-                    "id": "__layersgui",
+                    "id": "Rendercurio_run___layersgui",
                     "string": "%[1]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "\"--layers=gui\""
+                    "expr": "code.Render(\"curio run --layers=gui\")"
                 }
             ],
             "fuzzy": true
@@ -579,18 +579,18 @@
             "fuzzy": true
         },
         {
-            "id": "Now shut down lotus-miner and move the systems to {Curio}.",
-            "message": "Now shut down lotus-miner and move the systems to {Curio}.",
-            "translation": "Now shut down lotus-miner and move the systems to {Curio}.",
+            "id": "Now shut down lotus-miner and lotus-worker and use run {Rendercurio_run} instead.",
+            "message": "Now shut down lotus-miner and lotus-worker and use run {Rendercurio_run} instead.",
+            "translation": "Now shut down lotus-miner and lotus-worker and use run {Rendercurio_run} instead.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
-                    "id": "Curio",
+                    "id": "Rendercurio_run",
                     "string": "%[1]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "\"Curio\""
+                    "expr": "code.Render(\"curio run\")"
                 }
             ],
             "fuzzy": true
@@ -1553,10 +1553,20 @@
             "fuzzy": true
         },
         {
-            "id": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
-            "message": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
-            "translation": "Configuration 'base' was updated to include this miner's address and its wallet setup.",
+            "id": "Configuration 'base' was updated to include this miner's address ({MinerAddress}) and its wallet setup.",
+            "message": "Configuration 'base' was updated to include this miner's address ({MinerAddress}) and its wallet setup.",
+            "translation": "Configuration 'base' was updated to include this miner's address ({MinerAddress}) and its wallet setup.",
             "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "MinerAddress",
+                    "string": "%[1]s",
+                    "type": "github.com/filecoin-project/go-address.Address",
+                    "underlyingType": "struct{str string}",
+                    "argNum": 1,
+                    "expr": "minerAddress"
+                }
+            ],
             "fuzzy": true
         },
         {
@@ -1585,9 +1595,9 @@
             "fuzzy": true
         },
         {
-            "id": "Configuration 'base' was created to include this miner's address and its wallet setup.",
-            "message": "Configuration 'base' was created to include this miner's address and its wallet setup.",
-            "translation": "Configuration 'base' was created to include this miner's address and its wallet setup.",
+            "id": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
+            "message": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
+            "translation": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
