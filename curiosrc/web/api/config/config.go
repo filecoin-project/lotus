@@ -43,7 +43,17 @@ func getSch(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				continue
 			}
-			item.Description = line.Comment
+			if line.Comment != "" {
+				extra := make(map[string]any)
+				type options struct {
+					InfoText string `json:"infoText"`
+				}
+				opt := options{
+					InfoText: line.Comment,
+				}
+				extra["options"] = opt
+				item.Extras = extra
+			}
 		}
 	}
 
