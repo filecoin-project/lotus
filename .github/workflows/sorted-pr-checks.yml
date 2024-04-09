@@ -6,10 +6,6 @@ on:
       pull_number:
         description: 'Pull request number'
         required: true
-      template:
-        description: 'Template'
-        required: false
-        default: 'sorted_by_result'
   workflow_run:
     workflows:
       - Build
@@ -33,4 +29,5 @@ jobs:
     uses: ipdxco/sorted-pr-checks/.github/workflows/comment.yml@v1
     with:
       pull_number: ${{ github.event.inputs.pull_number || github.event.workflow_run.pull_requests[0].number }}
-      template: ${{ github.event.inputs.template }}
+      template: grouped_by_result
+      identifier: ${{ github.workflow }}-${{ github.job }}-grouped_by_result
