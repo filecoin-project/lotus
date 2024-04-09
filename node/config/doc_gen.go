@@ -403,7 +403,7 @@ to prove each deadline, resulting in more total gas use (but each message will h
 			Name: "EnableWindowPost",
 			Type: "bool",
 
-			Comment: `EnableWindowPost enables window post to be executed on this lotus-provider instance. Each machine in the cluster
+			Comment: `EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
 with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
 machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
 will allow for parallel processing of partitions.
@@ -422,7 +422,7 @@ partitionsPerDeadline+1 machines.`,
 			Name: "EnableWinningPost",
 			Type: "bool",
 
-			Comment: `EnableWinningPost enables winning post to be executed on this lotus-provider instance.
+			Comment: `EnableWinningPost enables winning post to be executed on this curio instance.
 Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
 It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
 documentation.`,
@@ -514,7 +514,7 @@ Finalize will run in parallel with the SubmitCommitMsg task.`,
 			Type: "bool",
 
 			Comment: `EnableSendPrecommitMsg enables the sending of precommit messages to the chain
-from this lotus-provider instance.
+from this curio instance.
 This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message`,
 		},
 		{
@@ -542,13 +542,13 @@ also be bounded by resources available on the machine.`,
 			Type: "bool",
 
 			Comment: `EnableSendCommitMsg enables the sending of commit messages to the chain
-from this lotus-provider instance.`,
+from this curio instance.`,
 		},
 		{
 			Name: "EnableMoveStorage",
 			Type: "bool",
 
-			Comment: `EnableMoveStorage enables the move-into-long-term-storage task to run on this lotus-provider instance.
+			Comment: `EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
 This tasks should only be enabled on nodes with long-term storage.
 
 The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
@@ -566,7 +566,7 @@ uses all available network (or disk) bandwidth on the machine without causing bo
 			Name: "EnableWebGui",
 			Type: "bool",
 
-			Comment: `EnableWebGui enables the web GUI on this lotus-provider instance. The UI has minimal local overhead, but it should
+			Comment: `EnableWebGui enables the web GUI on this curio instance. The UI has minimal local overhead, but it should
 only need to be run on a single machine in the cluster.`,
 		},
 		{
