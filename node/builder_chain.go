@@ -183,7 +183,6 @@ func ConfigFullNode(c interface{}) Option {
 
 	enableLibp2pNode := true // always enable libp2p for full nodes
 
-	ipfsMaddr := cfg.Client.IpfsMAddr
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
@@ -229,13 +228,6 @@ func ConfigFullNode(c interface{}) Option {
 
 		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 
-		If(cfg.Client.UseIpfs,
-			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
-			Override(new(storagemarket.BlockstoreAccessor), modules.IpfsStorageBlockstoreAccessor),
-			If(cfg.Client.IpfsUseForRetrieval,
-				Override(new(retrievalmarket.BlockstoreAccessor), modules.IpfsRetrievalBlockstoreAccessor),
-			),
-		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfersForStorage, cfg.Client.SimultaneousTransfersForRetrieval)),
 
 		Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(cfg.Client.OffChainRetrieval)),

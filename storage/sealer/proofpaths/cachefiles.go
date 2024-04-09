@@ -2,12 +2,36 @@ package proofpaths
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
 const dataFilePrefix = "sc-02-data-"
 const TreeDName = dataFilePrefix + "tree-d.dat"
+
+const TreeRLastPrefix = dataFilePrefix + "tree-r-last-"
+const TreeCPrefix = dataFilePrefix + "tree-c-"
+
+func IsFileTreeD(baseName string) bool {
+	return baseName == TreeDName
+}
+
+func IsFileTreeRLast(baseName string) bool {
+	// TreeRLastPrefix<int>.dat
+	reg := fmt.Sprintf(`^%s\d+\.dat$`, TreeRLastPrefix)
+	return regexp.MustCompile(reg).MatchString(baseName)
+}
+
+func IsFileTreeC(baseName string) bool {
+	// TreeCPrefix<int>.dat
+	reg := fmt.Sprintf(`^%s\d+\.dat$`, TreeCPrefix)
+	return regexp.MustCompile(reg).MatchString(baseName)
+}
+
+func IsTreeFile(baseName string) bool {
+	return IsFileTreeD(baseName) || IsFileTreeRLast(baseName) || IsFileTreeC(baseName)
+}
 
 func LayerFileName(layer int) string {
 	return fmt.Sprintf("%slayer-%d.dat", dataFilePrefix, layer)

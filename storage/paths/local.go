@@ -61,24 +61,25 @@ type statExistingSectorForReservation struct {
 	ft storiface.SectorFileType
 }
 
-func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservation) (fsutil.FsStat, error) {
+func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservation) (stat fsutil.FsStat, newResvOnDisk int64, err error) {
 	start := time.Now()
 
-	stat, err := ls.Stat(p.local)
+	stat, err = ls.Stat(p.local)
 	if err != nil {
-		return fsutil.FsStat{}, xerrors.Errorf("stat %s: %w", p.local, err)
+		return fsutil.FsStat{}, 0, xerrors.Errorf("stat %s: %w", p.local, err)
 	}
 
 	stat.Reserved = p.reserved
+	var newReserveOnDisk int64
 
-	accountExistingFiles := func(id abi.SectorID, fileType storiface.SectorFileType) error {
+	accountExistingFiles := func(id abi.SectorID, fileType storiface.SectorFileType) (int64, error) {
 		sp := p.sectorPath(id, fileType)
 
 		used, err := ls.DiskUsage(sp)
 		if err == os.ErrNotExist {
 			p, ferr := tempFetchDest(sp, false)
 			if ferr != nil {
-				return ferr
+				return 0, ferr
 			}
 
 			used, err = ls.DiskUsage(p)
@@ -90,18 +91,19 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 			if !os.IsNotExist(err) {
 				log.Warnf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
 			}
-			return nil
+			return 0, nil
 		}
 
-		stat.Reserved -= used
-		return nil
+		return used, nil
 	}
 
 	for id, ft := range p.reservations {
 		for _, fileType := range ft.AllSet() {
-			if err := accountExistingFiles(id, fileType); err != nil {
-				return fsutil.FsStat{}, err
+			onDisk, err := accountExistingFiles(id, fileType)
+			if err != nil {
+				return fsutil.FsStat{}, 0, err
 			}
+			stat.Reserved -= onDisk
 		}
 	}
 	for _, reservation := range newReserve {
@@ -111,9 +113,11 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 				continue
 			}
 
-			if err := accountExistingFiles(reservation.id, fileType); err != nil {
-				return fsutil.FsStat{}, err
+			onDisk, err := accountExistingFiles(reservation.id, fileType)
+			if err != nil {
+				return fsutil.FsStat{}, 0, err
 			}
+			newReserveOnDisk += onDisk
 		}
 	}
 
@@ -130,7 +134,7 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 	if p.maxStorage > 0 {
 		used, err := ls.DiskUsage(p.local)
 		if err != nil {
-			return fsutil.FsStat{}, err
+			return fsutil.FsStat{}, 0, err
 		}
 
 		stat.Max = int64(p.maxStorage)
@@ -150,7 +154,7 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 		log.Warnw("slow storage stat", "took", time.Now().Sub(start), "reservations", len(p.reservations))
 	}
 
-	return stat, err
+	return stat, newReserveOnDisk, err
 }
 
 func (p *path) sectorPath(sid abi.SectorID, fileType storiface.SectorFileType) string {
@@ -198,22 +202,24 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		reservations: map[abi.SectorID]storiface.SectorFileType{},
 	}
 
-	fst, err := out.stat(st.localStorage)
+	fst, _, err := out.stat(st.localStorage)
 	if err != nil {
 		return err
 	}
 
 	err = st.index.StorageAttach(ctx, storiface.StorageInfo{
-		ID:         meta.ID,
-		URLs:       st.urls,
-		Weight:     meta.Weight,
-		MaxStorage: meta.MaxStorage,
-		CanSeal:    meta.CanSeal,
-		CanStore:   meta.CanStore,
-		Groups:     meta.Groups,
-		AllowTo:    meta.AllowTo,
-		AllowTypes: meta.AllowTypes,
-		DenyTypes:  meta.DenyTypes,
+		ID:          meta.ID,
+		URLs:        st.urls,
+		Weight:      meta.Weight,
+		MaxStorage:  meta.MaxStorage,
+		CanSeal:     meta.CanSeal,
+		CanStore:    meta.CanStore,
+		Groups:      meta.Groups,
+		AllowTo:     meta.AllowTo,
+		AllowTypes:  meta.AllowTypes,
+		DenyTypes:   meta.DenyTypes,
+		AllowMiners: meta.AllowMiners,
+		DenyMiners:  meta.DenyMiners,
 	}, fst)
 	if err != nil {
 		return xerrors.Errorf("declaring storage in index: %w", err)
@@ -280,7 +286,7 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 			return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p.local, err)
 		}
 
-		fst, err := p.stat(st.localStorage)
+		fst, _, err := p.stat(st.localStorage)
 		if err != nil {
 			return err
 		}
@@ -294,16 +300,18 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 		}
 
 		err = st.index.StorageAttach(ctx, storiface.StorageInfo{
-			ID:         id,
-			URLs:       st.urls,
-			Weight:     meta.Weight,
-			MaxStorage: meta.MaxStorage,
-			CanSeal:    meta.CanSeal,
-			CanStore:   meta.CanStore,
-			Groups:     meta.Groups,
-			AllowTo:    meta.AllowTo,
-			AllowTypes: meta.AllowTypes,
-			DenyTypes:  meta.DenyTypes,
+			ID:          id,
+			URLs:        st.urls,
+			Weight:      meta.Weight,
+			MaxStorage:  meta.MaxStorage,
+			CanSeal:     meta.CanSeal,
+			CanStore:    meta.CanStore,
+			Groups:      meta.Groups,
+			AllowTo:     meta.AllowTo,
+			AllowTypes:  meta.AllowTypes,
+			DenyTypes:   meta.DenyTypes,
+			AllowMiners: meta.AllowMiners,
+			DenyMiners:  meta.DenyMiners,
 		}, fst)
 		if err != nil {
 			return xerrors.Errorf("redeclaring storage in index: %w", err)
@@ -404,7 +412,7 @@ func (st *Local) reportStorage(ctx context.Context) {
 
 	toReport := map[storiface.ID]storiface.HealthReport{}
 	for id, p := range st.paths {
-		stat, err := p.stat(st.localStorage)
+		stat, _, err := p.stat(st.localStorage)
 		r := storiface.HealthReport{Stat: stat}
 		if err != nil {
 			r.Err = err.Error()
@@ -445,14 +453,19 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			return nil, errPathNotFound
 		}
 
-		stat, err := p.stat(st.localStorage, statExistingSectorForReservation{sid.ID, fileType})
+		stat, resvOnDisk, err := p.stat(st.localStorage, statExistingSectorForReservation{sid.ID, fileType})
 		if err != nil {
 			return nil, xerrors.Errorf("getting local storage stat: %w", err)
 		}
 
 		overhead := int64(overheadTab[fileType]) * int64(ssize) / storiface.FSOverheadDen
 
-		if stat.Available < overhead {
+		if overhead-resvOnDisk < 0 {
+			log.Errorw("negative overhead vs on-disk data", "overhead", overhead, "on-disk", resvOnDisk, "id", id, "sector", sid, "fileType", fileType)
+			resvOnDisk = overhead
+		}
+
+		if stat.Available < overhead-resvOnDisk {
 			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
 		}
 
@@ -495,20 +508,27 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 	var out storiface.SectorPaths
 	var storageIDs storiface.SectorPaths
 
-	allocPathOk := func(canSeal, canStore bool, allowTypes, denyTypes []string, fileType storiface.SectorFileType) bool {
+	allocPathOk := func(canSeal, canStore bool, allowTypes, denyTypes, allowMiners, denyMiners []string, fileType storiface.SectorFileType, miner abi.ActorID) (bool, error) {
 		if (pathType == storiface.PathSealing) && !canSeal {
-			return false
+			return false, nil
 		}
 
 		if (pathType == storiface.PathStorage) && !canStore {
-			return false
+			return false, nil
 		}
 
 		if !fileType.Allowed(allowTypes, denyTypes) {
-			return false
+			return false, nil
+		}
+		proceed, _, err := MinerFilter(allowMiners, denyMiners, miner)
+		if err != nil {
+			return false, err
+		}
+		if !proceed {
+			return false, nil
 		}
 
-		return true
+		return true, nil
 	}
 
 	// First find existing files
@@ -536,8 +556,15 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 				continue
 			}
 
-			if allocate.Has(fileType) && !allocPathOk(info.CanSeal, info.CanStore, info.AllowTypes, info.DenyTypes, fileType) {
-				continue // allocate request for a path of different type
+			if allocate.Has(fileType) {
+				ok, err := allocPathOk(info.CanSeal, info.CanStore, info.AllowTypes, info.DenyTypes, info.AllowMiners, info.DenyMiners, fileType, sid.ID.Miner)
+				if err != nil {
+					log.Debug(err)
+					continue
+				}
+				if !ok {
+					continue // allocate request for a path of different type
+				}
 			}
 
 			spath := p.sectorPath(sid.ID, fileType)
@@ -556,7 +583,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 			continue
 		}
 
-		sis, err := st.index.StorageBestAlloc(ctx, fileType, ssize, pathType)
+		sis, err := st.index.StorageBestAlloc(ctx, fileType, ssize, pathType, sid.ID.Miner)
 		if err != nil {
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.Errorf("finding best storage for allocating : %w", err)
 		}
@@ -574,7 +601,14 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 				continue
 			}
 
-			if !allocPathOk(si.CanSeal, si.CanStore, si.AllowTypes, si.DenyTypes, fileType) {
+			alloc, err := allocPathOk(si.CanSeal, si.CanStore, si.AllowTypes, si.DenyTypes, si.AllowMiners, si.DenyMiners, fileType, sid.ID.Miner)
+
+			if err != nil {
+				log.Debug(err)
+				continue
+			}
+
+			if !alloc {
 				continue
 			}
 
@@ -716,22 +750,36 @@ func (st *Local) removeSector(ctx context.Context, sid abi.SectorID, typ storifa
 	return nil
 }
 
-func (st *Local) MoveStorage(ctx context.Context, s storiface.SectorRef, types storiface.SectorFileType) error {
-	dest, destIds, err := st.AcquireSector(ctx, s, storiface.FTNone, types, storiface.PathStorage, storiface.AcquireMove)
-	if err != nil {
-		return xerrors.Errorf("acquire dest storage: %w", err)
+func (st *Local) MoveStorage(ctx context.Context, s storiface.SectorRef, types storiface.SectorFileType, opts ...storiface.AcquireOption) error {
+	settings := storiface.AcquireSettings{
+		// If into is nil then we're expecting the data to be there already, but make sure here
+		Into: nil,
+	}
+	for _, o := range opts {
+		o(&settings)
 	}
 
+	var err error
+	var dest, destIds storiface.SectorPaths
+	if settings.Into == nil {
+		dest, destIds, err = st.AcquireSector(ctx, s, storiface.FTNone, types, storiface.PathStorage, storiface.AcquireMove)
+		if err != nil {
+			return xerrors.Errorf("acquire dest storage: %w", err)
+		}
+	} else {
+		// destination from settings
+		dest = settings.Into.Paths
+		destIds = settings.Into.IDs
+	}
+
+	// note: this calls allocate on types - if data is already in paths of correct type,
+	// the returned paths are guaranteed to be the same as dest
 	src, srcIds, err := st.AcquireSector(ctx, s, types, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 	if err != nil {
 		return xerrors.Errorf("acquire src storage: %w", err)
 	}
 
-	for _, fileType := range storiface.PathTypes {
-		if fileType&types == 0 {
-			continue
-		}
-
+	for _, fileType := range types.AllSet() {
 		sst, err := st.index.StorageInfo(ctx, storiface.ID(storiface.PathByType(srcIds, fileType)))
 		if err != nil {
 			return xerrors.Errorf("failed to get source storage info: %w", err)
@@ -784,7 +832,8 @@ func (st *Local) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, er
 		return fsutil.FsStat{}, errPathNotFound
 	}
 
-	return p.stat(st.localStorage)
+	stat, _, err := p.stat(st.localStorage)
+	return stat, err
 }
 
 func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, si storiface.PostSectorChallenge, ppt abi.RegisteredPoStProof) ([]byte, error) {

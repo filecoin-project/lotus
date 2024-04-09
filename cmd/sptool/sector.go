@@ -280,7 +280,6 @@ var sectorsListCmd = &cli.Command{
 
 		for _, st := range sset {
 			s := st.SectorNumber
-
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 

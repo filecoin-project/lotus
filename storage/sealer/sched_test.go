@@ -274,7 +274,7 @@ func TestSched(t *testing.T) {
 			done := make(chan struct{})
 			rm.done[taskName] = done
 
-			sel := newAllocSelector(index, storiface.FTCache, storiface.PathSealing)
+			sel := newAllocSelector(index, storiface.FTCache, storiface.PathSealing, abi.ActorID(1000))
 
 			rm.wg.Add(1)
 			go func() {

@@ -375,6 +375,20 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 }
 
 func TestForkPreMigration(t *testing.T) {
+	// Backup the original value of the DISABLE_PRE_MIGRATIONS environment variable
+	originalValue, _ := os.LookupEnv("LOTUS_DISABLE_PRE_MIGRATIONS")
+
+	// Unset the DISABLE_PRE_MIGRATIONS environment variable for the test
+	if err := os.Unsetenv("LOTUS_DISABLE_PRE_MIGRATIONS"); err != nil {
+		t.Fatalf("failed to unset LOTUS_DISABLE_PRE_MIGRATIONS: %v", err)
+	}
+
+	// Restore the original DISABLE_PRE_MIGRATIONS environment variable at the end of the test
+	defer func() {
+		if err := os.Setenv("LOTUS_DISABLE_PRE_MIGRATIONS", originalValue); err != nil {
+			t.Fatalf("failed to restore LOTUS_DISABLE_PRE_MIGRATIONS: %v", err)
+		}
+	}()
 	//stm: @CHAIN_GEN_NEXT_TIPSET_001,
 	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
 	logging.SetAllLoggers(logging.LevelInfo)

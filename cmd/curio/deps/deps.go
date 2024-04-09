@@ -3,10 +3,12 @@ package deps
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -29,6 +31,8 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/types"
 	curio "github.com/filecoin-project/lotus/curiosrc"
 	"github.com/filecoin-project/lotus/curiosrc/multictladdr"
 	"github.com/filecoin-project/lotus/journal"
@@ -392,7 +396,7 @@ func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.CurioConfig, error)
 		for _, k := range meta.Keys() {
 			have = append(have, strings.Join(k, " "))
 		}
-		log.Infow("Using layer", "layer", layer, "config", curioConfig)
+		log.Debugw("Using layer", "layer", layer, "config", curioConfig)
 	}
 	_ = have // FUTURE: verify that required fields are here.
 	// If config includes 3rd-party config, consider JSONSchema as a way that
@@ -437,4 +441,97 @@ func GetDepsCLI(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 		DB:   db,
 		Full: full,
 	}, nil
+}
+
+func CreateMinerConfig(ctx context.Context, full v1api.FullNode, db *harmonydb.DB, miners []string, info string) error {
+	var titles []string
+	err := db.Select(ctx, &titles, `SELECT title FROM harmony_config WHERE LENGTH(config) > 0`)
+	if err != nil {
+		return fmt.Errorf("cannot reach the db. Ensure that Yugabyte flags are set correctly to"+
+			" reach Yugabyte: %s", err.Error())
+	}
+
+	// setup config
+	curioConfig := config.DefaultCurioConfig()
+
+	for _, addr := range miners {
+		maddr, err := address.NewFromString(addr)
+		if err != nil {
+			return xerrors.Errorf("Invalid address: %s", addr)
+		}
+
+		_, err = full.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("Failed to get miner info: %w", err)
+		}
+
+		curioConfig.Addresses = append(curioConfig.Addresses, config.CurioAddresses{
+			PreCommitControl:      []string{},
+			CommitControl:         []string{},
+			TerminateControl:      []string{},
+			DisableOwnerFallback:  false,
+			DisableWorkerFallback: false,
+			MinerAddresses:        []string{addr},
+		})
+	}
+
+	{
+		sk, err := io.ReadAll(io.LimitReader(rand.Reader, 32))
+		if err != nil {
+			return err
+		}
+
+		curioConfig.Apis.StorageRPCSecret = base64.StdEncoding.EncodeToString(sk)
+	}
+
+	{
+		curioConfig.Apis.ChainApiInfo = append(curioConfig.Apis.ChainApiInfo, info)
+	}
+
+	curioConfig.Addresses = lo.Filter(curioConfig.Addresses, func(a config.CurioAddresses, _ int) bool {
+		return len(a.MinerAddresses) > 0
+	})
+
+	// If no base layer is present
+	if !lo.Contains(titles, "base") {
+		cb, err := config.ConfigUpdate(curioConfig, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+		if err != nil {
+			return xerrors.Errorf("Failed to generate default config: %w", err)
+		}
+		cfg := string(cb)
+		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ('base', $1)", cfg)
+		if err != nil {
+			return xerrors.Errorf("failed to insert the 'base' into the database: %w", err)
+		}
+		fmt.Printf("The base layer has been updated with miner[s] %s\n", miners)
+		return nil
+	}
+
+	// if base layer is present
+	baseCfg := config.DefaultCurioConfig()
+	var baseText string
+	err = db.QueryRow(ctx, "SELECT config FROM harmony_config WHERE title='base'").Scan(&baseText)
+	if err != nil {
+		return xerrors.Errorf("Cannot load base config from database: %w", err)
+	}
+	_, err = LoadConfigWithUpgrades(baseText, baseCfg)
+	if err != nil {
+		return xerrors.Errorf("Cannot parse base config: %w", err)
+	}
+
+	baseCfg.Addresses = append(baseCfg.Addresses, curioConfig.Addresses...)
+	baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
+		return len(a.MinerAddresses) > 0
+	})
+
+	cb, err := config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+	if err != nil {
+		return xerrors.Errorf("cannot interpret config: %w", err)
+	}
+	_, err = db.Exec(ctx, "UPDATE harmony_config SET config=$1 WHERE title='base'", string(cb))
+	if err != nil {
+		return xerrors.Errorf("cannot update base config: %w", err)
+	}
+	fmt.Printf("The base layer has been updated with miner[s] %s\n", miners)
+	return nil
 }

@@ -86,6 +86,14 @@ type StorageInfo struct {
 	// - "update-cache"
 	// Any other value will generate a warning and be ignored.
 	DenyTypes []string
+
+	// AllowMiners lists miner IDs which are allowed to store their sector data into
+	// this path. If empty, all miner IDs are allowed
+	AllowMiners []string
+
+	// DenyMiners lists miner IDs which are denied to store their sector data into
+	// this path
+	DenyMiners []string
 }
 
 type HealthReport struct {
@@ -104,8 +112,10 @@ type SectorStorageInfo struct {
 
 	Primary bool
 
-	AllowTypes []string
-	DenyTypes  []string
+	AllowTypes  []string
+	DenyTypes   []string
+	AllowMiners []string
+	DenyMiners  []string
 }
 
 type Decl struct {

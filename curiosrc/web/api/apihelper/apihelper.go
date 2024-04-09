@@ -12,7 +12,7 @@ var log = logging.Logger("lp/web/apihelper")
 func OrHTTPFail(w http.ResponseWriter, err error) {
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		log.Errorw("http fail", "err", err, "stack", string(debug.Stack()))
 		panic(err)
 	}

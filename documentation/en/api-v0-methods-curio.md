@@ -179,6 +179,12 @@ Response:
     ],
     "DenyTypes": [
       "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
+      "string value"
     ]
   }
 ]
@@ -217,6 +223,12 @@ Response:
     "string value"
   ],
   "DenyTypes": [
+    "string value"
+  ],
+  "AllowMiners": [
+    "string value"
+  ],
+  "DenyMiners": [
     "string value"
   ]
 }

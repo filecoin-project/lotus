@@ -187,9 +187,9 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	// D / R / C
-	sealed, unsealed, err := t.sc.TreeDRC(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
+	sealed, unsealed, err := t.sc.TreeDRC(ctx, &taskID, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
 	if err != nil {
-		return false, xerrors.Errorf("computing tree r and c: %w", err)
+		return false, xerrors.Errorf("computing tree d, r and c: %w", err)
 	}
 
 	// todo synth porep
@@ -211,8 +211,6 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 }
 
 func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	// todo reserve storage
-
 	id := ids[0]
 	return &id, nil
 }

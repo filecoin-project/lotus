@@ -16,8 +16,9 @@ COMMANDS:
    config        Manage node config by layers. The layer 'base' will always be applied at Curio start-up.
    test          Utility functions for testing
    web           Start Curio web interface
-   guided-setup  Run the guided setup for migrating from lotus-miner to Curio
+   guided-setup  Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner
    seal          Manage the sealing pipeline
+   market        
    auth          Manage RPC permissions
    log           Manage logging
    wait-api      Wait for lotus api to come online
@@ -27,10 +28,11 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --color              use color in display output (default: depends on output being a TTY)
-   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "yugabyte") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
+   --db-host value      Command separated list of hostnames for yugabyte cluster (default: "127.0.0.1") [$CURIO_DB_HOST, $CURIO_HARMONYDB_HOSTS]
    --db-name value      (default: "yugabyte") [$CURIO_DB_NAME, $CURIO_HARMONYDB_NAME]
    --db-user value      (default: "yugabyte") [$CURIO_DB_USER, $CURIO_HARMONYDB_USERNAME]
    --db-password value  (default: "yugabyte") [$CURIO_DB_PASSWORD, $CURIO_HARMONYDB_PASSWORD]
+   --db-port value      (default: "5433") [$CURIO_DB_PORT, $CURIO_HARMONYDB_PORT]
    --repo-path value    (default: "~/.curio") [$CURIO_REPO_PATH]
    --vv                 enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h           show help
@@ -141,6 +143,7 @@ USAGE:
    curio cli storage list [command options] [arguments...]
 
 OPTIONS:
+   --local     only list local storage paths (default: false)
    --help, -h  show help
 ```
 
@@ -402,7 +405,7 @@ OPTIONS:
 ## curio guided-setup
 ```
 NAME:
-   curio guided-setup - Run the guided setup for migrating from lotus-miner to Curio
+   curio guided-setup - Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner
 
 USAGE:
    curio guided-setup [command options] [arguments...]
@@ -441,6 +444,35 @@ OPTIONS:
    --cc                               Start sealing new CC sectors (default: false)
    --count value                      Number of sectors to start (default: 1)
    --synthetic                        Use synthetic PoRep (default: false)
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
+```
+
+## curio market
+```
+NAME:
+   curio market
+
+USAGE:
+   curio market command [command options] [arguments...]
+
+COMMANDS:
+   rpc-info  
+   help, h   Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### curio market rpc-info
+```
+NAME:
+   curio market rpc-info
+
+USAGE:
+   curio market rpc-info [command options] [arguments...]
+
+OPTIONS:
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
    --help, -h                         show help
 ```

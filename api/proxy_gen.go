@@ -1185,7 +1185,7 @@ type StorageMinerMethods struct {
 
 	StorageAuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"read"`
 
-	StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) `perm:"admin"`
+	StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType, p4 abi.ActorID) ([]storiface.StorageInfo, error) `perm:"admin"`
 
 	StorageDeclareSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error `perm:"admin"`
 
@@ -6988,14 +6988,14 @@ func (s *StorageMinerStub) StorageAuthVerify(p0 context.Context, p1 string) ([]a
 	return *new([]auth.Permission), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {
+func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType, p4 abi.ActorID) ([]storiface.StorageInfo, error) {
 	if s.Internal.StorageBestAlloc == nil {
 		return *new([]storiface.StorageInfo), ErrNotSupported
 	}
-	return s.Internal.StorageBestAlloc(p0, p1, p2, p3)
+	return s.Internal.StorageBestAlloc(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {
+func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType, p4 abi.ActorID) ([]storiface.StorageInfo, error) {
 	return *new([]storiface.StorageInfo), ErrNotSupported
 }
 
