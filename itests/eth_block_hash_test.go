@@ -55,7 +55,7 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	ctx := context.Background()
 
 	// let the chain run a little bit longer to minimise the chance of reorgs
-	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+10))
+	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
 
 	tsk := head.Key()
 	for i := 1; i <= int(head.Height()); i++ {
