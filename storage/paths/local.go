@@ -104,11 +104,16 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 		return used, nil
 	}
 
-	for id := range p.reservations {
+	for id, oh := range p.reservations {
 		onDisk, err := accountExistingFiles(id.sid, id.ft)
 		if err != nil {
 			return fsutil.FsStat{}, 0, err
 		}
+		if onDisk > oh {
+			log.Warnw("reserved space on disk is greater than expected", "id", id.sid, "fileType", id.ft, "onDisk", onDisk, "oh", oh)
+			onDisk = oh
+		}
+
 		stat.Reserved -= onDisk
 	}
 	for _, reservation := range newReserve {
@@ -126,6 +131,11 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 			if err != nil {
 				return fsutil.FsStat{}, 0, err
 			}
+			if onDisk > reservation.overhead {
+				log.Warnw("reserved space on disk is greater than expected (new resv)", "id", reservation.id, "fileType", fileType, "onDisk", onDisk, "oh", reservation.overhead)
+				onDisk = reservation.overhead
+			}
+
 			newReserveOnDisk += onDisk
 		}
 	}
