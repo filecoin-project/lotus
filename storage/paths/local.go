@@ -78,7 +78,7 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 	stat.Reserved = p.reserved
 	var newReserveOnDisk int64
 
-	accountExistingFiles := func(id abi.SectorID, fileType storiface.SectorFileType) (int64, error) {
+	accountExistingFiles := func(id abi.SectorID, fileType storiface.SectorFileType, overhead int64) (int64, error) {
 		sp := p.sectorPath(id, fileType)
 
 		used, err := ls.DiskUsage(sp)
@@ -100,12 +100,12 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 			return 0, nil
 		}
 
-		log.Debugw("accounting existing files", "id", id, "fileType", fileType, "path", sp, "used", used)
+		log.Debugw("accounting existing files", "id", id, "fileType", fileType, "path", sp, "used", used, "overhead", overhead)
 		return used, nil
 	}
 
 	for id, oh := range p.reservations {
-		onDisk, err := accountExistingFiles(id.sid, id.ft)
+		onDisk, err := accountExistingFiles(id.sid, id.ft, oh)
 		if err != nil {
 			return fsutil.FsStat{}, 0, err
 		}
@@ -127,7 +127,7 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 				continue
 			}
 
-			onDisk, err := accountExistingFiles(reservation.id, fileType)
+			onDisk, err := accountExistingFiles(reservation.id, fileType, reservation.overhead)
 			if err != nil {
 				return fsutil.FsStat{}, 0, err
 			}
@@ -142,7 +142,16 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 
 	if stat.Reserved < 0 {
 		//log.Warnf("negative reserved storage: p.reserved=%d, reserved: %d", p.reserved, stat.Reserved)
-		log.Warnw("negative reserved storage", "reserved", stat.Reserved, "reservations", len(p.reservations), "newReserveOnDisk", newReserveOnDisk, "reservations", p.reservations)
+		var jsonReservations []map[string]interface{}
+		for id, res := range p.reservations {
+			jsonReservations = append(jsonReservations, map[string]interface{}{
+				"id":  id.sid,
+				"ft":  id.ft,
+				"res": res,
+			})
+		}
+
+		log.Warnw("negative reserved storage", "reserved", stat.Reserved, "origResv", p.reserved, "reservations", len(p.reservations), "newReserveOnDisk", newReserveOnDisk, "reservations", jsonReservations)
 		stat.Reserved = 0
 	}
 
