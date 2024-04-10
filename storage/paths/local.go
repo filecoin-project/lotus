@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -467,11 +468,21 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 
 	st.localLk.Lock()
 
+	var firstDonebuf []byte
+	var firstDoneN int
+
 	var doneCalled bool
 	done := func() {
 		if doneCalled {
-			log.Errorw("double done call", "sector", sid, "fileType", ft)
+			curStack := make([]byte, 20480)
+			curStackN := runtime.Stack(curStack, false)
+
+			log.Errorw("double done call", "sector", sid, "fileType", ft, "prevStack", string(firstDonebuf[:firstDoneN]), "curStack", string(curStack[:curStackN]))
 		}
+
+		firstDonebuf = make([]byte, 20480)
+		firstDoneN = runtime.Stack(firstDonebuf, false)
+
 		doneCalled = true
 	}
 
