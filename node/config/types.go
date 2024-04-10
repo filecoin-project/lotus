@@ -74,6 +74,7 @@ type CurioConfig struct {
 	// Addresses of wallets per MinerAddress (one of the fields).
 	Addresses []CurioAddresses
 	Proving   CurioProvingConfig
+	Ingest    CurioIngestConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
 }
@@ -824,6 +825,31 @@ type CurioProvingConfig struct {
 	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 	SingleRecoveringPartitionPerPostMessage bool
+}
+
+type CurioIngestConfig struct {
+	// Maximum number of sectors that can be queued waiting for SDR to start processing.
+	// 0 = unlimited
+	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+	// The SDR queue includes deals which are in the process of entering the sealing pipeline - size of this queue
+	// will also impact the maximum number of ParkPiece tasks which can run concurrently.
+	//
+	// SDR queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
+	MaxQueueSDR int
+
+	// Maximum number of sectors that can be queued waiting for SDRTrees to start processing.
+	// 0 = unlimited
+	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+	// In case of the trees tasks it is possible that this queue grows more than this limit, the backpressure is only
+	// applied to sectors entering the pipeline.
+	MaxQueueTrees int
+
+	// Maximum number of sectors that can be queued waiting for PoRep to start processing.
+	// 0 = unlimited
+	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+	// Like with the trees tasks, it is possible that this queue grows more than this limit, the backpressure is only
+	// applied to sectors entering the pipeline.
+	MaxQueuePoRep int
 }
 
 // API contains configs for API endpoint
