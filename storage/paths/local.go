@@ -507,7 +507,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 
 		resID := sectorFile{sid.ID, fileType}
 
-		log.Debugw("reserve add", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead)
+		log.Debugw("reserve add", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead, "reserved-before", p.reserved, "reserved-after", p.reserved+overhead)
 
 		p.reserved += overhead
 		p.reservations[resID] = overhead
@@ -519,7 +519,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			st.localLk.Lock()
 			defer st.localLk.Unlock()
 
-			log.Debugw("reserve done", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead)
+			log.Debugw("reserve done", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead, "reserved-before", p.reserved, "reserved-after", p.reserved-overhead)
 
 			p.reserved -= overhead
 			delete(p.reservations, resID)
