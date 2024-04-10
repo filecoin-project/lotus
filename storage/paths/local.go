@@ -118,7 +118,7 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 	}
 	for _, reservation := range newReserve {
 		for _, fileType := range reservation.ft.AllSet() {
-			log.Debugw("accounting existing files for new reservation", "id", reservation.id, "fileType", fileType, "overhead", reservation.overhead, "accounted", p.reservations[sectorFile{reservation.id, fileType}])
+			log.Debugw("accounting existing files for new reservation", "id", reservation.id, "fileType", fileType, "overhead", reservation.overhead)
 
 			resID := sectorFile{reservation.id, fileType}
 
@@ -507,6 +507,8 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 
 		resID := sectorFile{sid.ID, fileType}
 
+		log.Debugw("reserve add", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead)
+
 		p.reserved += overhead
 		p.reservations[resID] = overhead
 
@@ -516,6 +518,8 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 
 			st.localLk.Lock()
 			defer st.localLk.Unlock()
+
+			log.Debugw("reserve done", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead)
 
 			p.reserved -= overhead
 			delete(p.reservations, resID)
