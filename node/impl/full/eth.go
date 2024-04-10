@@ -817,12 +817,7 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	txArgs, err := ethtypes.ParseEthTxArgs(rawTx)
-	if err != nil {
-		return ethtypes.EmptyEthHash, err
-	}
-
-	smsg, err := txArgs.ToSignedMessage()
+	smsg, err := ethtypes.ToSignedMessage(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
