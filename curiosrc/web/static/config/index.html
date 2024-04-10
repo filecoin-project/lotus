@@ -26,9 +26,9 @@
       static get styles() {
         return [css`
         .alert {
-          background: yellow;
           font-size: 24px;
           display: inline-block;
+          color: green;
         }
         `];
       }
@@ -51,10 +51,12 @@
       loadData() {
         Promise.all([
           axios.get('/api/config/layers'),
-          axios.get('/api/config/topo')
+          axios.get('/api/config/topo'),
+          axios.get('/api/config/default')
         ])
           .then(responses => {
             this.layers = responses[0].data;
+            this.layers.unshift('default');
             this.topo = responses[1].data;
             super.requestUpdate();
           })
@@ -79,7 +81,7 @@
   </script>
   <curio-ux>
     <h1>Configuration Editor</h1>
-    <p>Click on a layer to edit its configuration</p>
+    <h3>Click on a layer to edit its configuration</h3>
     <config-list></config-list>
   </curio-ux>
 </body>

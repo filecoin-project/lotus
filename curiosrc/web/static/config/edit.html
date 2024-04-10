@@ -72,7 +72,8 @@
 
             <div class="help-button">
                 <button id="helpBtn">?</button>
-                <p id="helpText" class="hidden help-text">Checking a box will uncomment the corresponding configuration variable</p>
+                <p id="helpText" class="hidden help-text">Checking a box and entering a non default value will uncomment the corresponding configuration variable.
+                Unchecking a box will reset the value to default.</p>
             </div>
 
             <div id="editor" ></div>
@@ -81,8 +82,9 @@
                 var urlParams = new URLSearchParams(window.location.search);
                 var layer = urlParams.get('layer');
                 // Make simultaneous GET requests to fetch the existing data and JSON Schema
+                const layerPath = layer === 'default' ? 'config/default' : `config/layers/${layer}`;
                 Promise.all([
-                    axios.get('/api/config/layers/'+layer),
+                    axios.get(`/api/${layerPath}`),
                     axios.get('/api/config/schema')
                 ])
                     .then(responses => {
@@ -119,17 +121,22 @@
                         // Attach function to saveButton click event
                         var saveButton = document.getElementById('saveButton');
                         saveButton.addEventListener('click', function() {
-                            const value = editor.getValue();
-                            axios.post('/api/config/layers/'+layer, value)
-                                .then(response => {
-                                    // Set cookie named 'message' with the value 'Data saved successfully'
-                                    document.cookie = 'message=The layer "'+layer+'" saved successfully.; path=/;';
+                            if (layer === 'default'){
+                                alert('Error: cannot edit defaults');
+                            } else {
+                                const value = editor.getValue();
+                                console.log(value)
+                                axios.post('/api/config/layers/' + layer, value)
+                                    .then(response => {
+                                        // Set cookie named 'message' with the value 'Data saved successfully'
+                                        document.cookie = 'message=The layer "' + layer + '" saved successfully.; path=/;';
 
-                                    window.location.href = '/config/';
-                                })
-                                .catch(error => {
-                                    alert('Error saving data:', error);
-                                });
+                                        window.location.href = '/config/';
+                                    })
+                                    .catch(error => {
+                                        alert('Error saving data:', error);
+                                    });
+                            }
                         });
                     })
                     .catch(error => {

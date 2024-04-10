@@ -77,17 +77,18 @@ func defCommon() Common {
 	}
 }
 
-var (
-	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
-	DefaultSimultaneousTransfers = uint64(20)
-)
+var DefaultSimultaneousTransfers = uint64(20)
+
+func DefaultDefaultMaxFee() types.FIL {
+	return types.MustParseFIL("0.07")
+}
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
 		Fees: FeeConfig{
-			DefaultMaxFee: DefaultDefaultMaxFee,
+			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
 		Client: Client{
 			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
@@ -334,7 +335,7 @@ func DefaultCurioConfig() *CurioConfig {
 			BoostAdapters: []string{},
 		},
 		Fees: CurioFees{
-			DefaultMaxFee:      DefaultDefaultMaxFee,
+			DefaultMaxFee:      DefaultDefaultMaxFee(),
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
 			MaxCommitGasFee:    types.MustParseFIL("0.05"),
 

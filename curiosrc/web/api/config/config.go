@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/gorilla/mux"
@@ -29,9 +31,22 @@ func Routes(r *mux.Router, deps *deps.Deps) {
 	r.Methods("GET").Path("/schema").HandlerFunc(getSch)
 	r.Methods("GET").Path("/layers/{layer}").HandlerFunc(c.getLayer)
 	r.Methods("POST").Path("/layers/{layer}").HandlerFunc(c.setLayer)
+	r.Methods("GET").Path("/default").HandlerFunc(c.def)
 }
 func getSch(w http.ResponseWriter, r *http.Request) {
-	sch := jsonschema.Reflect(config.CurioConfig{})
+	ref := jsonschema.Reflector{
+		Mapper: func(i reflect.Type) *jsonschema.Schema {
+			if i == reflect.TypeOf(config.Duration(time.Second)) {
+				return &jsonschema.Schema{
+					Type:   "string",
+					Format: "duration",
+				}
+			}
+			return nil
+		},
+	}
+	sch := ref.Reflect(config.CurioConfig{})
+	//sch := jsonschema.Reflect(config.CurioConfig{})
 	// add comments
 	for k, doc := range config.Doc {
 		item, ok := sch.Definitions[k]
@@ -82,7 +97,7 @@ func (c *cfg) getLayer(w http.ResponseWriter, r *http.Request) {
 	apihelper.OrHTTPFail(w, c.DB.QueryRow(context.Background(), `SELECT config FROM harmony_config WHERE title = $1`, mux.Vars(r)["layer"]).Scan(&layer))
 
 	// Read the TOML into a struct
-	configStruct := map[string]any{} // NOT lotusproviderconfig b/c we want to preserve unsets
+	configStruct := map[string]any{} // NOT CurioConfig b/c we want to preserve unsets
 	_, err := toml.Decode(layer, &configStruct)
 	apihelper.OrHTTPFail(w, err)
 
@@ -99,15 +114,30 @@ func (c *cfg) getLayer(w http.ResponseWriter, r *http.Request) {
 func (c *cfg) setLayer(w http.ResponseWriter, r *http.Request) {
 	layer := mux.Vars(r)["layer"]
 	var configStruct map[string]any
-	apihelper.OrHTTPFail(w, json.NewDecoder(r.Body).Decode(&configStruct))
+	dec := json.NewDecoder(r.Body)
+	dec.UseNumber() // JSON lib by default treats number is float64()
+	apihelper.OrHTTPFail(w, dec.Decode(&configStruct))
 
-	// Encode the struct as TOML
+	//Encode the struct as TOML
 	var tomlData bytes.Buffer
 	err := toml.NewEncoder(&tomlData).Encode(configStruct)
 	apihelper.OrHTTPFail(w, err)
 
-	// Write the TOML to the database
-	_, err = c.DB.Exec(context.Background(), `INSERT INTO harmony_config (title, config) VALUES ($1, $2) ON CONFLICT (title) DO UPDATE SET config = $2`, layer, tomlData.String())
+	configStr := tomlData.String()
+
+	// Generate a full commented string if this is base layer
+	if layer == "base" {
+		// Parse the into CurioConfig TOML
+		curioCfg := config.DefaultCurioConfig()
+		_, err = deps.LoadConfigWithUpgrades(tomlData.String(), curioCfg)
+		apihelper.OrHTTPFail(w, err)
+		cb, err := config.ConfigUpdate(curioCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+		apihelper.OrHTTPFail(w, err)
+		configStr = string(cb)
+	}
+
+	//Write the TOML to the database
+	_, err = c.DB.Exec(context.Background(), `INSERT INTO harmony_config (title, config) VALUES ($1, $2) ON CONFLICT (title) DO UPDATE SET config = $2`, layer, configStr)
 	apihelper.OrHTTPFail(w, err)
 }
 
@@ -128,4 +158,23 @@ func (c *cfg) topo(w http.ResponseWriter, r *http.Request) {
 	ORDER BY server`))
 	w.Header().Set("Content-Type", "application/json")
 	apihelper.OrHTTPFail(w, json.NewEncoder(w).Encode(topology))
+}
+
+func (c *cfg) def(w http.ResponseWriter, r *http.Request) {
+	cb, err := config.ConfigUpdate(config.DefaultCurioConfig(), nil, config.Commented(false), config.DefaultKeepUncommented(), config.NoEnv())
+	apihelper.OrHTTPFail(w, err)
+
+	// Read the TOML into a struct
+	configStruct := map[string]any{} // NOT CurioConfig b/c we want to preserve unsets
+	_, err = toml.Decode(string(cb), &configStruct)
+	apihelper.OrHTTPFail(w, err)
+
+	// Encode the struct as JSON
+	jsonData, err := json.Marshal(configStruct)
+	apihelper.OrHTTPFail(w, err)
+
+	// Write the JSON response
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(jsonData)
+	apihelper.OrHTTPFail(w, err)
 }
