@@ -45,20 +45,26 @@ type Local struct {
 	localLk sync.RWMutex
 }
 
+type sectorFile struct {
+	sid abi.SectorID
+	ft  storiface.SectorFileType
+}
+
 type path struct {
 	local      string // absolute local path
 	maxStorage uint64
 
 	reserved     int64
-	reservations map[abi.SectorID]storiface.SectorFileType
+	reservations map[sectorFile]int64
 }
 
 // statExistingSectorForReservation is optional parameter for stat method
 // which will make it take into account existing sectors when calculating
 // available space for new reservations
 type statExistingSectorForReservation struct {
-	id abi.SectorID
-	ft storiface.SectorFileType
+	id       abi.SectorID
+	ft       storiface.SectorFileType
+	overhead int64
 }
 
 func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservation) (stat fsutil.FsStat, newResvOnDisk int64, err error) {
@@ -94,21 +100,24 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 			return 0, nil
 		}
 
+		log.Debugw("accounting existing files", "id", id, "fileType", fileType, "path", sp, "used", used)
 		return used, nil
 	}
 
-	for id, ft := range p.reservations {
-		for _, fileType := range ft.AllSet() {
-			onDisk, err := accountExistingFiles(id, fileType)
-			if err != nil {
-				return fsutil.FsStat{}, 0, err
-			}
-			stat.Reserved -= onDisk
+	for id := range p.reservations {
+		onDisk, err := accountExistingFiles(id.sid, id.ft)
+		if err != nil {
+			return fsutil.FsStat{}, 0, err
 		}
+		stat.Reserved -= onDisk
 	}
 	for _, reservation := range newReserve {
 		for _, fileType := range reservation.ft.AllSet() {
-			if p.reservations[reservation.id]&fileType != 0 {
+			log.Debugw("accounting existing files for new reservation", "id", reservation.id, "fileType", fileType, "overhead", reservation.overhead, "accounted", p.reservations[sectorFile{reservation.id, fileType}])
+
+			resID := sectorFile{reservation.id, fileType}
+
+			if _, has := p.reservations[resID]; has {
 				// already accounted for
 				continue
 			}
@@ -122,7 +131,8 @@ func (p *path) stat(ls LocalStorage, newReserve ...statExistingSectorForReservat
 	}
 
 	if stat.Reserved < 0 {
-		log.Warnf("negative reserved storage: p.reserved=%d, reserved: %d", p.reserved, stat.Reserved)
+		//log.Warnf("negative reserved storage: p.reserved=%d, reserved: %d", p.reserved, stat.Reserved)
+		log.Warnw("negative reserved storage", "reserved", stat.Reserved, "reservations", len(p.reservations), "newReserveOnDisk", newReserveOnDisk, "reservations", p.reservations)
 		stat.Reserved = 0
 	}
 
@@ -199,7 +209,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 
 		maxStorage:   meta.MaxStorage,
 		reserved:     0,
-		reservations: map[abi.SectorID]storiface.SectorFileType{},
+		reservations: map[sectorFile]int64{},
 	}
 
 	fst, _, err := out.stat(st.localStorage)
@@ -438,7 +448,14 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 
 	st.localLk.Lock()
 
-	done := func() {}
+	var doneCalled bool
+	done := func() {
+		if doneCalled {
+			log.Errorw("double done call", "sector", sid, "fileType", ft)
+		}
+		doneCalled = true
+	}
+
 	deferredDone := func() { done() }
 	defer func() {
 		st.localLk.Unlock()
@@ -453,12 +470,12 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			return nil, errPathNotFound
 		}
 
-		stat, resvOnDisk, err := p.stat(st.localStorage, statExistingSectorForReservation{sid.ID, fileType})
+		overhead := int64(overheadTab[fileType]) * int64(ssize) / storiface.FSOverheadDen
+
+		stat, resvOnDisk, err := p.stat(st.localStorage, statExistingSectorForReservation{sid.ID, fileType, overhead})
 		if err != nil {
 			return nil, xerrors.Errorf("getting local storage stat: %w", err)
 		}
-
-		overhead := int64(overheadTab[fileType]) * int64(ssize) / storiface.FSOverheadDen
 
 		if overhead-resvOnDisk < 0 {
 			log.Errorw("negative overhead vs on-disk data", "overhead", overhead, "on-disk", resvOnDisk, "id", id, "sector", sid, "fileType", fileType)
@@ -469,11 +486,12 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
 		}
 
+		resID := sectorFile{sid.ID, fileType}
+
 		p.reserved += overhead
-		p.reservations[sid.ID] |= fileType
+		p.reservations[resID] = overhead
 
 		prevDone := done
-		saveFileType := fileType
 		done = func() {
 			prevDone()
 
@@ -481,10 +499,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			defer st.localLk.Unlock()
 
 			p.reserved -= overhead
-			p.reservations[sid.ID] ^= saveFileType
-			if p.reservations[sid.ID] == storiface.FTNone {
-				delete(p.reservations, sid.ID)
-			}
+			delete(p.reservations, resID)
 		}
 	}
 
