@@ -148,6 +148,14 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 		return xerrors.Errorf("computing replica id: %w", err)
 	}
 
+	// make sure the cache dir is empty
+	if err := os.RemoveAll(paths.Cache); err != nil {
+		return xerrors.Errorf("removing cache dir: %w", err)
+	}
+	if err := os.MkdirAll(paths.Cache, 0755); err != nil {
+		return xerrors.Errorf("mkdir cache dir: %w", err)
+	}
+
 	// generate new sector key
 	err = ffi.GenerateSDR(
 		sector.ProofType,
