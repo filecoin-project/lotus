@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -15,8 +16,13 @@ import (
 	"github.com/gorilla/mux"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/must"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type app struct {
@@ -25,6 +31,7 @@ type app struct {
 
 	rpcInfoLk  sync.Mutex
 	workingApi v1api.FullNode
+	stor       adt.Store
 
 	actorInfoLk sync.Mutex
 	actorInfos  []actorInfo
@@ -126,6 +133,252 @@ func (a *app) nodeInfo(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	a.executePageTemplate(writer, "node_info", "Node Info", mi)
+}
+
+func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+
+	id, ok := params["id"]
+	if !ok {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+
+	intid, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	sp, ok := params["sp"]
+	if !ok {
+		http.Error(w, "missing sp", http.StatusBadRequest)
+		return
+	}
+
+	maddr, err := address.NewFromString(sp)
+	if err != nil {
+		http.Error(w, "invalid sp", http.StatusBadRequest)
+		return
+	}
+
+	spid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		http.Error(w, "invalid sp", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	var tasks []PipelineTask
+
+	err = a.db.Select(ctx, &tasks, `SELECT 
+       sp_id, sector_number,
+       create_time,
+       task_id_sdr, after_sdr,
+       task_id_tree_d, after_tree_d,
+       task_id_tree_c, after_tree_c,
+       task_id_tree_r, after_tree_r,
+       task_id_precommit_msg, after_precommit_msg,
+       after_precommit_msg_success, seed_epoch,
+       task_id_porep, porep_proof, after_porep,
+       task_id_finalize, after_finalize,
+       task_id_move_storage, after_move_storage,
+       task_id_commit_msg, after_commit_msg,
+       after_commit_msg_success,
+       failed, failed_reason
+    FROM sectors_sdr_pipeline WHERE sp_id = $1 AND sector_number = $2`, spid, intid)
+	if err != nil {
+		http.Error(w, xerrors.Errorf("failed to fetch pipeline task info: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(tasks) == 0 {
+		http.Error(w, "sector not found", http.StatusInternalServerError)
+		return
+	}
+
+	head, err := a.workingApi.ChainHead(ctx)
+	if err != nil {
+		http.Error(w, xerrors.Errorf("failed to fetch chain head: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	epoch := head.Height()
+
+	mbf, err := a.getMinerBitfields(ctx, maddr, a.stor)
+	if err != nil {
+		http.Error(w, xerrors.Errorf("failed to load miner bitfields: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+
+	task := tasks[0]
+
+	afterSeed := task.SeedEpoch != nil && *task.SeedEpoch <= int64(epoch)
+
+	var sectorLocations []struct {
+		CanSeal, CanStore bool
+		FileType          storiface.SectorFileType `db:"sector_filetype"`
+		StorageID         string                   `db:"storage_id"`
+		Urls              string                   `db:"urls"`
+	}
+
+	err = a.db.Select(ctx, &sectorLocations, `SELECT p.can_seal, p.can_store, l.sector_filetype, l.storage_id, p.urls FROM sector_location l
+    JOIN storage_path p ON l.storage_id = p.storage_id
+    WHERE l.sector_num = $1 and l.miner_id = $2 ORDER BY p.can_seal, p.can_store, l.storage_id`, intid, spid)
+
+	type fileLocations struct {
+		StorageID string
+		Urls      []string
+	}
+
+	type locationTable struct {
+		PathType        *string
+		PathTypeRowSpan int
+
+		FileType        *string
+		FileTypeRowSpan int
+
+		Locations []fileLocations
+	}
+	locs := []locationTable{}
+
+	for i, loc := range sectorLocations {
+		loc := loc
+
+		urlList := strings.Split(loc.Urls, ",") // Assuming URLs are comma-separated
+
+		fLoc := fileLocations{
+			StorageID: loc.StorageID,
+			Urls:      urlList,
+		}
+
+		var pathTypeStr *string
+		var fileTypeStr *string
+		pathTypeRowSpan := 1
+		fileTypeRowSpan := 1
+
+		pathType := "None"
+		if loc.CanSeal && loc.CanStore {
+			pathType = "Seal/Store"
+		} else if loc.CanSeal {
+			pathType = "Seal"
+		} else if loc.CanStore {
+			pathType = "Store"
+		}
+		pathTypeStr = &pathType
+
+		fileType := loc.FileType.String()
+		fileTypeStr = &fileType
+
+		if i > 0 {
+			prevNonNilPathTypeLoc := i - 1
+			for prevNonNilPathTypeLoc > 0 && locs[prevNonNilPathTypeLoc].PathType == nil {
+				prevNonNilPathTypeLoc--
+			}
+			if *locs[prevNonNilPathTypeLoc].PathType == *pathTypeStr {
+				pathTypeRowSpan = 0
+				pathTypeStr = nil
+				locs[prevNonNilPathTypeLoc].PathTypeRowSpan++
+				// only if we have extended path type we may need to extend file type
+
+				prevNonNilFileTypeLoc := i - 1
+				for prevNonNilFileTypeLoc > 0 && locs[prevNonNilFileTypeLoc].FileType == nil {
+					prevNonNilFileTypeLoc--
+				}
+				if *locs[prevNonNilFileTypeLoc].FileType == *fileTypeStr {
+					fileTypeRowSpan = 0
+					fileTypeStr = nil
+					locs[prevNonNilFileTypeLoc].FileTypeRowSpan++
+				}
+			}
+		}
+
+		locTable := locationTable{
+			PathType:        pathTypeStr,
+			PathTypeRowSpan: pathTypeRowSpan,
+			FileType:        fileTypeStr,
+			FileTypeRowSpan: fileTypeRowSpan,
+			Locations:       []fileLocations{fLoc},
+		}
+
+		locs = append(locs, locTable)
+
+	}
+
+	// TaskIDs
+	taskIDs := map[int64]struct{}{}
+	var htasks []taskSummary
+	{
+		// get non-nil task IDs
+		appendNonNil := func(id *int64) {
+			if id != nil {
+				taskIDs[*id] = struct{}{}
+			}
+		}
+		appendNonNil(task.TaskSDR)
+		appendNonNil(task.TaskTreeD)
+		appendNonNil(task.TaskTreeC)
+		appendNonNil(task.TaskTreeR)
+		appendNonNil(task.TaskPrecommitMsg)
+		appendNonNil(task.TaskPoRep)
+		appendNonNil(task.TaskFinalize)
+		appendNonNil(task.TaskMoveStorage)
+		appendNonNil(task.TaskCommitMsg)
+
+		if len(taskIDs) > 0 {
+			ids := make([]int64, 0, len(taskIDs))
+			for id := range taskIDs {
+				ids = append(ids, id)
+			}
+
+			var dbtasks []struct {
+				OwnerID     *string   `db:"owner_id"`
+				HostAndPort *string   `db:"host_and_port"`
+				TaskID      int64     `db:"id"`
+				Name        string    `db:"name"`
+				UpdateTime  time.Time `db:"update_time"`
+			}
+			err = a.db.Select(ctx, &dbtasks, `SELECT t.owner_id, hm.host_and_port, t.id, t.name, t.update_time FROM harmony_task t LEFT JOIN curio.harmony_machines hm ON hm.id = t.owner_id WHERE t.id = ANY($1)`, ids)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("failed to fetch task names: %v", err), http.StatusInternalServerError)
+				return
+			}
+
+			for _, tn := range dbtasks {
+				htasks = append(htasks, taskSummary{
+					Name:        tn.Name,
+					SincePosted: time.Since(tn.UpdateTime.Local()).Round(time.Second).String(),
+					Owner:       tn.HostAndPort,
+					OwnerID:     tn.OwnerID,
+					ID:          tn.TaskID,
+				})
+			}
+		}
+	}
+
+	mi := struct {
+		SectorNumber  int64
+		PipelinePoRep sectorListEntry
+
+		Locations []locationTable
+		Tasks     []taskSummary
+	}{
+		SectorNumber: intid,
+		PipelinePoRep: sectorListEntry{
+			PipelineTask: tasks[0],
+			AfterSeed:    afterSeed,
+
+			ChainAlloc:    must.One(mbf.alloc.IsSet(uint64(task.SectorNumber))),
+			ChainSector:   must.One(mbf.sectorSet.IsSet(uint64(task.SectorNumber))),
+			ChainActive:   must.One(mbf.active.IsSet(uint64(task.SectorNumber))),
+			ChainUnproven: must.One(mbf.unproven.IsSet(uint64(task.SectorNumber))),
+			ChainFaulty:   must.One(mbf.faulty.IsSet(uint64(task.SectorNumber))),
+		},
+
+		Locations: locs,
+		Tasks:     htasks,
+	}
+
+	a.executePageTemplate(w, "sector_info", "Sector Info", mi)
 }
 
 var templateDev = os.Getenv("LOTUS_WEB_DEV") == "1"

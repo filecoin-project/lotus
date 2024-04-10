@@ -1,70 +1,80 @@
 package hapi
 
 import (
+	"context"
 	"net/http"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
-	blocks "github.com/ipfs/go-block-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 
-	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/must"
 )
 
-var ChainBlockCache = must.One(lru.New[blockstore.MhString, blocks.Block](4096))
+type PipelineTask struct {
+	SpID         int64 `db:"sp_id"`
+	SectorNumber int64 `db:"sector_number"`
+
+	CreateTime time.Time `db:"create_time"`
+
+	TaskSDR  *int64 `db:"task_id_sdr"`
+	AfterSDR bool   `db:"after_sdr"`
+
+	TaskTreeD  *int64 `db:"task_id_tree_d"`
+	AfterTreeD bool   `db:"after_tree_d"`
+
+	TaskTreeC  *int64 `db:"task_id_tree_c"`
+	AfterTreeC bool   `db:"after_tree_c"`
+
+	TaskTreeR  *int64 `db:"task_id_tree_r"`
+	AfterTreeR bool   `db:"after_tree_r"`
+
+	TaskPrecommitMsg  *int64 `db:"task_id_precommit_msg"`
+	AfterPrecommitMsg bool   `db:"after_precommit_msg"`
+
+	AfterPrecommitMsgSuccess bool   `db:"after_precommit_msg_success"`
+	SeedEpoch                *int64 `db:"seed_epoch"`
+
+	TaskPoRep  *int64 `db:"task_id_porep"`
+	PoRepProof []byte `db:"porep_proof"`
+	AfterPoRep bool   `db:"after_porep"`
+
+	TaskFinalize  *int64 `db:"task_id_finalize"`
+	AfterFinalize bool   `db:"after_finalize"`
+
+	TaskMoveStorage  *int64 `db:"task_id_move_storage"`
+	AfterMoveStorage bool   `db:"after_move_storage"`
+
+	TaskCommitMsg  *int64 `db:"task_id_commit_msg"`
+	AfterCommitMsg bool   `db:"after_commit_msg"`
+
+	AfterCommitMsgSuccess bool `db:"after_commit_msg_success"`
+
+	Failed       bool   `db:"failed"`
+	FailedReason string `db:"failed_reason"`
+}
+
+type sectorListEntry struct {
+	PipelineTask
+
+	Address    address.Address
+	CreateTime string
+	AfterSeed  bool
+
+	ChainAlloc, ChainSector, ChainActive, ChainUnproven, ChainFaulty bool
+}
+
+type minerBitfields struct {
+	alloc, sectorSet, active, unproven, faulty bitfield.BitField
+}
 
 func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	type PipelineTask struct {
-		SpID         int64 `db:"sp_id"`
-		SectorNumber int64 `db:"sector_number"`
-
-		CreateTime time.Time `db:"create_time"`
-
-		TaskSDR  *int64 `db:"task_id_sdr"`
-		AfterSDR bool   `db:"after_sdr"`
-
-		TaskTreeD  *int64 `db:"task_id_tree_d"`
-		AfterTreeD bool   `db:"after_tree_d"`
-
-		TaskTreeC  *int64 `db:"task_id_tree_c"`
-		AfterTreeC bool   `db:"after_tree_c"`
-
-		TaskTreeR  *int64 `db:"task_id_tree_r"`
-		AfterTreeR bool   `db:"after_tree_r"`
-
-		TaskPrecommitMsg  *int64 `db:"task_id_precommit_msg"`
-		AfterPrecommitMsg bool   `db:"after_precommit_msg"`
-
-		AfterPrecommitMsgSuccess bool   `db:"after_precommit_msg_success"`
-		SeedEpoch                *int64 `db:"seed_epoch"`
-
-		TaskPoRep  *int64 `db:"task_id_porep"`
-		PoRepProof []byte `db:"porep_proof"`
-		AfterPoRep bool   `db:"after_porep"`
-
-		TaskFinalize  *int64 `db:"task_id_finalize"`
-		AfterFinalize bool   `db:"after_finalize"`
-
-		TaskMoveStorage  *int64 `db:"task_id_move_storage"`
-		AfterMoveStorage bool   `db:"after_move_storage"`
-
-		TaskCommitMsg  *int64 `db:"task_id_commit_msg"`
-		AfterCommitMsg bool   `db:"after_commit_msg"`
-
-		AfterCommitMsgSuccess bool `db:"after_commit_msg_success"`
-
-		Failed       bool   `db:"failed"`
-		FailedReason string `db:"failed_reason"`
-	}
 
 	var tasks []PipelineTask
 
@@ -89,16 +99,6 @@ func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type sectorListEntry struct {
-		PipelineTask
-
-		Address    address.Address
-		CreateTime string
-		AfterSeed  bool
-
-		ChainAlloc, ChainSector, ChainActive, ChainUnproven, ChainFaulty bool
-	}
-
 	head, err := a.workingApi.ChainHead(ctx)
 	if err != nil {
 		http.Error(w, xerrors.Errorf("failed to fetch chain head: %w", err).Error(), http.StatusInternalServerError)
@@ -106,11 +106,6 @@ func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 	}
 	epoch := head.Height()
 
-	stor := store.ActorStore(ctx, blockstore.NewReadCachedBlockstore(blockstore.NewAPIBlockstore(a.workingApi), ChainBlockCache))
-
-	type minerBitfields struct {
-		alloc, sectorSet, active, unproven, faulty bitfield.BitField
-	}
 	minerBitfieldCache := map[address.Address]minerBitfields{}
 
 	sectorList := make([]sectorListEntry, 0, len(tasks))
@@ -127,54 +122,10 @@ func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 
 		mbf, ok := minerBitfieldCache[addr]
 		if !ok {
-			act, err := a.workingApi.StateGetActor(ctx, addr, types.EmptyTSK)
+			mbf, err := a.getMinerBitfields(ctx, addr, a.stor)
 			if err != nil {
-				http.Error(w, xerrors.Errorf("failed to load actor: %w", err).Error(), http.StatusInternalServerError)
+				http.Error(w, xerrors.Errorf("failed to load miner bitfields: %w", err).Error(), http.StatusInternalServerError)
 				return
-			}
-
-			mas, err := miner.Load(stor, act)
-			if err != nil {
-				http.Error(w, xerrors.Errorf("failed to load miner actor: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
-			if err != nil {
-				http.Error(w, xerrors.Errorf("failed to load active sectors: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
-			if err != nil {
-				http.Error(w, xerrors.Errorf("failed to load all sectors: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			unproved, err := miner.AllPartSectors(mas, miner.Partition.UnprovenSectors)
-			if err != nil {
-				http.Error(w, xerrors.Errorf("failed to load unproven sectors: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			faulty, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
-			if err != nil {
-				http.Error(w, xerrors.Errorf("failed to load faulty sectors: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			alloc, err := mas.GetAllocatedSectors()
-			if err != nil {
-				http.Error(w, xerrors.Errorf("failed to load allocated sectors: %w", err).Error(), http.StatusInternalServerError)
-				return
-			}
-
-			mbf = minerBitfields{
-				alloc:     *alloc,
-				sectorSet: allSectors,
-				active:    activeSectors,
-				unproven:  unproved,
-				faulty:    faulty,
 			}
 			minerBitfieldCache[addr] = mbf
 		}
@@ -196,4 +147,49 @@ func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.executeTemplate(w, "pipeline_porep_sectors", sectorList)
+}
+
+func (a *app) getMinerBitfields(ctx context.Context, addr address.Address, stor adt.Store) (minerBitfields, error) {
+	act, err := a.workingApi.StateGetActor(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return minerBitfields{}, xerrors.Errorf("failed to load actor: %w", err)
+	}
+
+	mas, err := miner.Load(stor, act)
+	if err != nil {
+		return minerBitfields{}, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	if err != nil {
+		return minerBitfields{}, xerrors.Errorf("failed to load active sectors: %w", err)
+	}
+
+	allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
+	if err != nil {
+		return minerBitfields{}, xerrors.Errorf("failed to load all sectors: %w", err)
+	}
+
+	unproved, err := miner.AllPartSectors(mas, miner.Partition.UnprovenSectors)
+	if err != nil {
+		return minerBitfields{}, xerrors.Errorf("failed to load unproven sectors: %w", err)
+	}
+
+	faulty, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+	if err != nil {
+		return minerBitfields{}, xerrors.Errorf("failed to load faulty sectors: %w", err)
+	}
+
+	alloc, err := mas.GetAllocatedSectors()
+	if err != nil {
+		return minerBitfields{}, xerrors.Errorf("failed to load allocated sectors: %w", err)
+	}
+
+	return minerBitfields{
+		alloc:     *alloc,
+		sectorSet: allSectors,
+		active:    activeSectors,
+		unproven:  unproved,
+		faulty:    faulty,
+	}, nil
 }

@@ -41,6 +41,9 @@ func Routes(r *mux.Router, deps *deps.Deps) error {
 
 	// node info page
 	r.HandleFunc("/node/{id}", a.nodeInfo)
+
+	// sector info page
+	r.HandleFunc("/sector/{sp}/{id}", a.sectorInfo)
 	return nil
 }
 
