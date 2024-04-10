@@ -1893,7 +1893,7 @@ func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	}
 	newRoot, err := upgradeActorsV12Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v11 state: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v12 state: %w", err)
 	}
 	return newRoot, nil
 }
@@ -2210,7 +2210,7 @@ func UpgradeActorsV13(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	}
 	newRoot, err := upgradeActorsV13Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v11 state: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v13 state: %w", err)
 	}
 	return newRoot, nil
 }
