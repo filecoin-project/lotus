@@ -19,7 +19,7 @@ import (
 // define a one byte prefix for legacy eth transactions
 const LegacyEthTxPrefix = 0x80
 
-type LegacyEthTx struct {
+type EthLegacyTxArgs struct {
 	Nonce    int         `json:"nonce"`
 	GasPrice big.Int     `json:"gasPrice"`
 	GasLimit int         `json:"gasLimit"`
@@ -31,7 +31,7 @@ type LegacyEthTx struct {
 	S        big.Int     `json:"s"`
 }
 
-func parseLegacyTx(data []byte) (*LegacyEthTx, error) {
+func parseLegacyTx(data []byte) (*EthLegacyTxArgs, error) {
 	if data[0] <= 0x7f {
 		return nil, fmt.Errorf("not a legacy eth transaction")
 	}
@@ -94,7 +94,7 @@ func parseLegacyTx(data []byte) (*LegacyEthTx, error) {
 		return nil, err
 	}
 
-	return &LegacyEthTx{
+	return &EthLegacyTxArgs{
 		Nonce:    nonce,
 		GasPrice: gasPrice,
 		GasLimit: gasLimit,
@@ -107,7 +107,34 @@ func parseLegacyTx(data []byte) (*LegacyEthTx, error) {
 	}, nil
 }
 
-func (tx *LegacyEthTx) ToUnsignedMessage(from address.Address) (*types.Message, error) {
+func EthLegacyTxArgsFromUnsignedEthMessage(msg *types.Message) (EthLegacyTxArgs, error) {
+	var (
+		to     *EthAddress
+		params []byte
+		err    error
+	)
+
+	if msg.Version != 0 {
+		return EthLegacyTxArgs{}, xerrors.Errorf("unsupported msg version: %d", msg.Version)
+	}
+
+	params, to, err = parseMessageParamsAndReceipient(msg)
+	if err != nil {
+		return EthLegacyTxArgs{}, err
+	}
+
+	return EthLegacyTxArgs{
+		Nonce:    int(msg.Nonce),
+		To:       to,
+		Value:    msg.Value,
+		Input:    params,
+		GasLimit: int(msg.GasLimit),
+		GasPrice: msg.GasFeeCap,
+	}, nil
+}
+
+func (tx *EthLegacyTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, error) {
+	fmt.Println("FROM ADDRESS IS", from)
 	var err error
 	var params []byte
 	if len(tx.Input) > 0 {
@@ -146,11 +173,12 @@ func (tx *LegacyEthTx) ToUnsignedMessage(from address.Address) (*types.Message, 
 	}, nil
 }
 
-func (tx *LegacyEthTx) ToSignedMessage() (*types.SignedMessage, error) {
+func (tx *EthLegacyTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 	from, err := tx.Sender()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to calculate sender: %w", err)
 	}
+	fmt.Println("FROM ADDRESS  ToSignedMessage IS", from)
 
 	unsignedMsg, err := tx.ToUnsignedMessage(from)
 	if err != nil {
@@ -168,7 +196,25 @@ func (tx *LegacyEthTx) ToSignedMessage() (*types.SignedMessage, error) {
 	}, nil
 }
 
-func (tx *LegacyEthTx) packTxFields() ([]interface{}, error) {
+func (tx *EthLegacyTxArgs) ToRlpSignedMsg() ([]byte, error) {
+	packed1, err := tx.packTxFields()
+	if err != nil {
+		return nil, err
+	}
+
+	packed2, err := packSigFields(tx.V, tx.R, tx.S)
+	if err != nil {
+		return nil, err
+	}
+
+	encoded, err := EncodeRLP(append(packed1, packed2...))
+	if err != nil {
+		return nil, err
+	}
+	return encoded, nil
+}
+
+func (tx *EthLegacyTxArgs) packTxFields() ([]interface{}, error) {
 	nonce, err := formatInt(tx.Nonce)
 	if err != nil {
 		return nil, err
@@ -201,7 +247,7 @@ func (tx *LegacyEthTx) packTxFields() ([]interface{}, error) {
 	return res, nil
 }
 
-func (tx *LegacyEthTx) ToRlpUnsignedMsg() ([]byte, error) {
+func (tx *EthLegacyTxArgs) ToRlpUnsignedMsg() ([]byte, error) {
 	packedFields, err := tx.packTxFields()
 	if err != nil {
 		return nil, err
@@ -213,10 +259,11 @@ func (tx *LegacyEthTx) ToRlpUnsignedMsg() ([]byte, error) {
 	return encoded, nil
 }
 
-func (tx *LegacyEthTx) Signature() (*typescrypto.Signature, error) {
+func (tx *EthLegacyTxArgs) Signature() (*typescrypto.Signature, error) {
 	r := tx.R.Int.Bytes()
 	s := tx.S.Int.Bytes()
 	v := tx.V.Int.Bytes()
+	fmt.Println("extracted v is", v)
 
 	sig := append([]byte{}, padLeadingZeros(r, 32)...)
 	sig = append(sig, padLeadingZeros(s, 32)...)
@@ -237,7 +284,15 @@ func (tx *LegacyEthTx) Signature() (*typescrypto.Signature, error) {
 	}, nil
 }
 
-func (tx *LegacyEthTx) Sender() (address.Address, error) {
+func (tx *EthLegacyTxArgs) TxHash() (EthHash, error) {
+	rlp, err := tx.ToRlpSignedMsg()
+	if err != nil {
+		return EthHash{}, err
+	}
+	return EthHashFromTxBytes(rlp), nil
+}
+
+func (tx *EthLegacyTxArgs) Sender() (address.Address, error) {
 	msg, err := tx.ToRlpUnsignedMsg()
 	if err != nil {
 		return address.Undef, err
@@ -252,8 +307,16 @@ func (tx *LegacyEthTx) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	// remove the first byte before extracting public key as the first byte is the prefix for legacy txs
-	pubk, err := gocrypto.EcRecover(hash, sig.Data[1:])
+	// legacy transactions have a `V` value of 27 or 28 but new transactions have a `V` value of 0 or 1
+	vValue := big.NewInt(0).SetBytes(sig.Data[65:]).Uint64()
+	if vValue == 27 || vValue == 28 {
+		vValue = vValue - 27
+	}
+	sigData := append(sig.Data[1:65], byte(vValue))
+	fmt.Println("sigData is", sigData)
+	fmt.Println("vValue is", vValue)
+
+	pubk, err := gocrypto.EcRecover(hash, sigData)
 	if err != nil {
 		return address.Undef, err
 	}

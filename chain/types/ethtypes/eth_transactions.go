@@ -120,34 +120,9 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 		return EthTxArgs{}, xerrors.Errorf("unsupported msg version: %d", msg.Version)
 	}
 
-	if len(msg.Params) > 0 {
-		paramsReader := bytes.NewReader(msg.Params)
-		params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-		if err != nil {
-			return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
-		}
-		if paramsReader.Len() != 0 {
-			return EthTxArgs{}, xerrors.Errorf("extra data found in params")
-		}
-		if len(params) == 0 {
-			return EthTxArgs{}, xerrors.Errorf("non-empty params encode empty byte array")
-		}
-	}
-
-	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		if msg.Method != builtintypes.MethodsEAM.CreateExternal {
-			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
-		}
-	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract {
-		addr, err := EthAddressFromFilecoinAddress(msg.To)
-		if err != nil {
-			return EthTxArgs{}, err
-		}
-		to = &addr
-	} else {
-		return EthTxArgs{},
-			xerrors.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
-				msg.Method, builtintypes.MethodsEVM.InvokeContract)
+	params, to, err = parseMessageParamsAndReceipient(msg)
+	if err != nil {
+		return EthTxArgs{}, err
 	}
 
 	return EthTxArgs{
@@ -252,6 +227,20 @@ func (tx *EthTxArgs) ToRlpUnsignedMsg() ([]byte, error) {
 	return append([]byte{0x02}, encoded...), nil
 }
 
+func (tx *EthTx) ToLegacyEthTxArgs() EthLegacyTxArgs {
+	return EthLegacyTxArgs{
+		Nonce:    int(tx.Nonce),
+		To:       tx.To,
+		Value:    big.Int(tx.Value),
+		GasPrice: big.Int(tx.MaxFeePerGas),
+		GasLimit: int(tx.Gas),
+		Input:    tx.Input,
+		V:        big.Int(tx.V),
+		R:        big.Int(tx.R),
+		S:        big.Int(tx.S),
+	}
+}
+
 func (tx *EthTx) ToEthTxArgs() EthTxArgs {
 	return EthTxArgs{
 		ChainID:              int(tx.ChainID),
@@ -288,7 +277,7 @@ func (tx *EthTxArgs) ToRlpSignedMsg() ([]byte, error) {
 		return nil, err
 	}
 
-	packed2, err := tx.packSigFields()
+	packed2, err := packSigFields(tx.V, tx.R, tx.S)
 	if err != nil {
 		return nil, err
 	}
@@ -345,26 +334,6 @@ func (tx *EthTxArgs) packTxFields() ([]interface{}, error) {
 	return res, nil
 }
 
-func (tx *EthTxArgs) packSigFields() ([]interface{}, error) {
-	r, err := formatBigInt(tx.R)
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := formatBigInt(tx.S)
-	if err != nil {
-		return nil, err
-	}
-
-	v, err := formatBigInt(tx.V)
-	if err != nil {
-		return nil, err
-	}
-
-	res := []interface{}{v, r, s}
-	return res, nil
-}
-
 func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
 	r := tx.R.Int.Bytes()
 	s := tx.S.Int.Bytes()
@@ -376,6 +345,8 @@ func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
 		sig = append(sig, 0)
 	} else {
 		sig = append(sig, v[0])
+		fmt.Printf("v: %d\n", v[0])
+		fmt.Printf("sig: %x\n", sig)
 	}
 
 	if len(sig) != 65 {
@@ -420,6 +391,9 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 }
 
 func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) {
+	if len(sig.Data) == 66 && sig.Data[0] == LegacyEthTxPrefix {
+		sig.Data = sig.Data[1:]
+	}
 	if sig.Type != typescrypto.SigTypeDelegated {
 		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("RecoverSignature only supports Delegated signature")
 	}
@@ -666,4 +640,42 @@ func parseEthAddr(v interface{}) (*EthAddress, error) {
 		return nil, err
 	}
 	return &addr, nil
+}
+
+func parseMessageParamsAndReceipient(msg *types.Message) ([]byte, *EthAddress, error) {
+	var params []byte
+	var to *EthAddress
+
+	if len(msg.Params) > 0 {
+		paramsReader := bytes.NewReader(msg.Params)
+		var err error
+		params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to read params byte array: %w", err)
+		}
+		if paramsReader.Len() != 0 {
+			return nil, nil, xerrors.Errorf("extra data found in params")
+		}
+		if len(params) == 0 {
+			return nil, nil, xerrors.Errorf("non-empty params encode empty byte array")
+		}
+	}
+
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		if msg.Method != builtintypes.MethodsEAM.CreateExternal {
+			return nil, nil, fmt.Errorf("unsupported EAM method")
+		}
+	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract {
+		addr, err := EthAddressFromFilecoinAddress(msg.To)
+		if err != nil {
+			return nil, nil, err
+		}
+		to = &addr
+	} else {
+		return nil, nil,
+			xerrors.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
+				msg.Method, builtintypes.MethodsEVM.InvokeContract)
+	}
+
+	return params, to, nil
 }

@@ -120,7 +120,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, tx.S, ethTx.S)
 }
 
-func TestLegacyTransaction(t *testing.T) {
+func TestLegacyTransactionFromEtherscan(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
@@ -130,9 +130,12 @@ func TestLegacyTransaction(t *testing.T) {
 	defer cancel()
 
 	// This is a legacy style transaction obtained from etherscan
-	// Tx details: https://etherscan.io/getRawTx?tx=0x0763262208d89efeeb50c8bb05b50c537903fe9d7bdef3b223fd1f5f69f69b32
+	// Tx details: https://etherscan.io/getRawTx?tx=0x0ec3f2488a93839524add10ea229e773f6bc891b4eb4794c3337d4495263790b
 	txBytes, err := hex.DecodeString("f901130b8505d21dba008347e7c494c0ee9db1a9e07ca63e4ff0d5fb6f86bf68d47b89890775ec7b96add6c8f0b8a4c4463c80000000000000000000000000000000000000000000000000000000000000003b000000000000000000000000b656b2a9c3b2416437a811e07466ca712f5a5b5a000000000000000000000000f835a0247b0063c04ef22006ebe57c5f11977cc40000000000000000000000000000000000000000000000000000000000000009000000000000000000000000f35e2cc8e6523d683ed44870f5b7cc785051a77d1ba063e1d39bdc0fa652e6d1ab267c9b4d24ead4182296ec51d89950ec1db6aeb842a01db2e243342fc08605e1d353af7f9fd4607e9bc4cef1b37a37d240f001bb7ed2")
 	require.NoError(t, err)
+
+	// TODO: Create account for sender
+
 	_, err = client.EVM().EthSendRawTransaction(ctx, txBytes)
 	require.ErrorContains(t, err, "legacy transaction is not supported")
 }

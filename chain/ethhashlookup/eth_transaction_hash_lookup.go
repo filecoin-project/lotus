@@ -3,6 +3,7 @@ package ethhashlookup
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -57,6 +58,7 @@ type EthTxHashLookup struct {
 }
 
 func (ei *EthTxHashLookup) UpsertHash(txHash ethtypes.EthHash, c cid.Cid) error {
+	fmt.Println("UpsertHash", txHash, c)
 	hashEntry, err := ei.db.Prepare(insertTxHash)
 	if err != nil {
 		return xerrors.Errorf("prepare insert event: %w", err)

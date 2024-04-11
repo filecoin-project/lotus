@@ -310,6 +310,7 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 }
 
 func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
+	fmt.Println("txHash is", txHash)
 	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
 	if txHash == nil {
 		return nil, nil

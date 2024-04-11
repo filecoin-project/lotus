@@ -695,6 +695,8 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish
 		return cid.Undef, err
 	}
 
+	fmt.Println("message validated ! let's go !!")
+
 	// serialize push access to reduce lock contention
 	mp.addSema <- struct{}{}
 	defer func() {

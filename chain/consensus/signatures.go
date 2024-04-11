@@ -22,10 +22,27 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 	typ := msg.Signature.Type
 	switch typ {
 	case crypto.SigTypeDelegated:
-		txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(&msg.Message)
-		if err != nil {
-			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
+		type ethTxInterface interface {
+			ToUnsignedMessage(from address.Address) (*types.Message, error)
+			ToRlpUnsignedMsg() ([]byte, error)
 		}
+		var txArgs ethTxInterface
+
+		if len(msg.Signature.Data) == 66 && msg.Signature.Data[0] == ethtypes.LegacyEthTxPrefix {
+			// This is a legacy transaction
+			args, err := ethtypes.EthLegacyTxArgsFromUnsignedEthMessage(&msg.Message)
+			if err != nil {
+				return xerrors.Errorf("failed to reconstruct eth legacy transaction: %w", err)
+			}
+			txArgs = &args
+		} else {
+			args, err := ethtypes.EthTxArgsFromUnsignedEthMessage(&msg.Message)
+			if err != nil {
+				return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
+			}
+			txArgs = &args
+		}
+
 		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct filecoin msg: %w", err)
@@ -40,6 +57,7 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 			return xerrors.Errorf("failed to repack eth rlp message: %w", err)
 		}
 		digest = rlpEncodedMsg
+
 	default:
 		digest = msg.Message.Cid().Bytes()
 	}

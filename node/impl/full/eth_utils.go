@@ -472,10 +472,19 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
 
-		tx.Hash, err = tx.TxHash()
-		if err != nil {
-			return ethtypes.EthTx{}, xerrors.Errorf("failed to calculate hash for ethTx: %w", err)
+		if len(smsg.Signature.Data) == 66 {
+			ethTxArgs := tx.ToLegacyEthTxArgs()
+			tx.Hash, err = (&ethTxArgs).TxHash()
+			if err != nil {
+				return ethtypes.EthTx{}, xerrors.Errorf("failed to calculate hash for ethTx: %w", err)
+			}
+		} else {
+			tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
+			if err != nil {
+				return ethtypes.EthTx{}, xerrors.Errorf("failed to calculate hash for ethTx: %w", err)
+			}
 		}
+
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
 		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
 		if err != nil {

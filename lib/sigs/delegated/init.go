@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
@@ -40,9 +41,18 @@ func (s delegatedSigner) Sign(pk []byte, msg []byte) ([]byte, error) {
 }
 
 func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
+
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write(msg)
 	hash := hasher.Sum(nil)
+
+	if len(sig) == 66 && sig[0] == 0x80 {
+		vValue := big.NewInt(0).SetBytes(sig[65:]).Uint64()
+		if vValue == 27 || vValue == 28 {
+			vValue = vValue - 27
+		}
+		sig = append(sig[1:65], byte(vValue))
+	}
 
 	pubk, err := gocrypto.EcRecover(hash, sig)
 	if err != nil {

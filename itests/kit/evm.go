@@ -224,8 +224,35 @@ func (e *EVM) SignTransaction(tx *ethtypes.EthTxArgs, privKey []byte) {
 	tx.S = big.Int(s)
 }
 
+// SignTransaction signs an Ethereum transaction in place with the supplied private key.
+func (e *EVM) SignLegacyTransaction(tx *ethtypes.EthLegacyTxArgs, privKey []byte) {
+	preimage, err := tx.ToRlpUnsignedMsg()
+	require.NoError(e.t, err)
+
+	// sign the RLP payload
+	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
+	require.NoError(e.t, err)
+
+	r, s, v, err := ethtypes.RecoverSignature(*signature)
+	require.NoError(e.t, err)
+	tx.V = big.Int(v)
+	tx.R = big.Int(r)
+	tx.S = big.Int(s)
+	fmt.Println(" V VALUE IN TEST IS", v)
+}
+
 // SubmitTransaction submits the transaction via the Eth endpoint.
 func (e *EVM) SubmitTransaction(ctx context.Context, tx *ethtypes.EthTxArgs) ethtypes.EthHash {
+	signed, err := tx.ToRlpSignedMsg()
+	require.NoError(e.t, err)
+
+	hash, err := e.EthSendRawTransaction(ctx, signed)
+	require.NoError(e.t, err)
+
+	return hash
+}
+
+func (e *EVM) SubmitLegacyTransaction(ctx context.Context, tx *ethtypes.EthLegacyTxArgs) ethtypes.EthHash {
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(e.t, err)
 

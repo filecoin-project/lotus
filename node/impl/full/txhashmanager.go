@@ -2,6 +2,8 @@ package full
 
 import (
 	"context"
+	"fmt"
+	"github.com/ipfs/go-cid"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -85,18 +87,36 @@ func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.
 		return
 	}
 
-	ethTx, err := ethtypes.EthTxFromSignedEthMessage(msg)
-	if err != nil {
-		log.Errorf("error converting filecoin message to eth tx: %s", err)
-		return
-	}
-	txHash, err := ethTx.TxHash()
-	if err != nil {
-		log.Errorf("error hashing transaction: %s", err)
-		return
+	var (
+		txHash ethtypes.EthHash
+		mc     cid.Cid
+	)
+
+	if len(msg.Signature.Data) == 66 {
+		fmt.Println("I AM HERE")
+		ethTx, err := ethtypes.EthTxFromSignedEthMessage(msg)
+		if err != nil {
+			log.Errorf("error converting filecoin message to eth tx: %s", err)
+			return
+		}
+		ethTxArgs := ethTx.ToLegacyEthTxArgs()
+		txHash, err = (&ethTxArgs).TxHash()
+		mc = msg.Cid()
+	} else {
+		ethTx, err := ethtypes.EthTxFromSignedEthMessage(msg)
+		if err != nil {
+			log.Errorf("error converting filecoin message to eth tx: %s", err)
+			return
+		}
+		txHash, err = ethTx.TxHash()
+		if err != nil {
+			log.Errorf("error hashing transaction: %s", err)
+			return
+		}
+		mc = msg.Cid()
 	}
 
-	err = m.TransactionHashLookup.UpsertHash(txHash, msg.Cid())
+	err := m.TransactionHashLookup.UpsertHash(txHash, mc)
 	if err != nil {
 		log.Errorf("error inserting tx mapping to db: %s", err)
 		return

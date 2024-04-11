@@ -3,6 +3,7 @@ package ethtypes
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -35,4 +36,23 @@ func ToSignedMessage(data []byte) (*types.SignedMessage, error) {
 	}
 
 	return nil, fmt.Errorf("unsupported transaction type")
+}
+
+func packSigFields(v, r, s big.Int) ([]interface{}, error) {
+	vFormatted, err := formatBigInt(v)
+	if err != nil {
+		return nil, err
+	}
+
+	rFormatted, err := formatBigInt(r)
+	if err != nil {
+		return nil, err
+	}
+
+	sFormatted, err := formatBigInt(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return []interface{}{vFormatted, rFormatted, sFormatted}, nil
 }
