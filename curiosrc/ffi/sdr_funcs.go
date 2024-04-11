@@ -60,7 +60,7 @@ type storageProvider struct {
 	storageReservations *xsync.MapOf[harmonytask.TaskID, *StorageReservation]
 }
 
-func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask.TaskID, sector storiface.SectorRef, existing, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, storiface.SectorPaths, func(), error) {
+func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask.TaskID, sector storiface.SectorRef, existing, allocate storiface.SectorFileType, sealing storiface.PathType) (fspaths, ids storiface.SectorPaths, release func(), err error) {
 	var paths, storageIDs storiface.SectorPaths
 	var releaseStorage func()
 
