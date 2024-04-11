@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/must"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -224,6 +226,10 @@ func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
 	err = a.db.Select(ctx, &sectorLocations, `SELECT p.can_seal, p.can_store, l.sector_filetype, l.storage_id, p.urls FROM sector_location l
     JOIN storage_path p ON l.storage_id = p.storage_id
     WHERE l.sector_num = $1 and l.miner_id = $2 ORDER BY p.can_seal, p.can_store, l.storage_id`, intid, spid)
+	if err != nil {
+		http.Error(w, xerrors.Errorf("failed to fetch sector locations: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
 
 	type fileLocations struct {
 		StorageID string
@@ -244,7 +250,7 @@ func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
 	for i, loc := range sectorLocations {
 		loc := loc
 
-		urlList := strings.Split(loc.Urls, ",") // Assuming URLs are comma-separated
+		urlList := strings.Split(loc.Urls, paths.URLSeparator)
 
 		fLoc := fileLocations{
 			StorageID: loc.StorageID,
@@ -325,10 +331,7 @@ func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
 		appendNonNil(task.TaskCommitMsg)
 
 		if len(taskIDs) > 0 {
-			ids := make([]int64, 0, len(taskIDs))
-			for id := range taskIDs {
-				ids = append(ids, id)
-			}
+			ids := lo.Keys(taskIDs)
 
 			var dbtasks []struct {
 				OwnerID     *string   `db:"owner_id"`
