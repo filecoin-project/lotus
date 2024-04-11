@@ -29,3 +29,4 @@ jobs:
     uses: ipdxco/sorted-pr-checks/.github/workflows/comment.yml@v1
     with:
       pull_number: ${{ github.event.inputs.pull_number || github.event.workflow_run.pull_requests[0].number }}
+      template: grouped_by_result
