@@ -460,7 +460,7 @@ func (st *Local) reportStorage(ctx context.Context) {
 	}
 }
 
-func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (release func(), err error) {
 	ssize, err := sid.ProofType.SectorSize()
 	if err != nil {
 		return nil, err
@@ -469,19 +469,18 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 	st.localLk.Lock()
 
 	var firstDonebuf []byte
-	var firstDoneN int
 
 	var doneCalled bool
 	done := func() {
 		if doneCalled {
 			curStack := make([]byte, 20480)
-			curStackN := runtime.Stack(curStack, false)
+			curStack = curStack[:runtime.Stack(curStack, false)]
 
-			log.Errorw("double done call", "sector", sid, "fileType", ft, "prevStack", string(firstDonebuf[:firstDoneN]), "curStack", string(curStack[:curStackN]))
+			log.Errorw("double done call", "sector", sid, "fileType", ft, "prevStack", string(firstDonebuf), "curStack", string(curStack))
 		}
 
 		firstDonebuf = make([]byte, 20480)
-		firstDoneN = runtime.Stack(firstDonebuf, false)
+		firstDonebuf = firstDonebuf[:runtime.Stack(firstDonebuf, false)]
 
 		doneCalled = true
 	}
