@@ -33,18 +33,38 @@ class CurioUX extends LitElement {
     document.body.attributes.setNamedItem(cdsText);
 
     document.body.style.visibility = 'initial';
+
+    // how Bootstrap & DataTables expect dark mode declared.
+    document.documentElement.classList.add('dark');
+
+    this.messsage = this.getCookieMessage();
   }
 
   render() {
     return html`
       <!-- wrap the slot -->
-      <div >
+      <div>
+        ${this.message? html`<div>${this.message}</div>`: html``}
         <slot class="curio-slot"></slot>
       </div>
 
     `;
   }
   
-}
+  getCookieMessage() {
+    const name = 'message';
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.startsWith(name + '=')) {
+        var val = cookie.substring(name.length + 1);
+        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        return val;
+      }
+    }
+    return null;
+  }
+
+};
 
 customElements.define('curio-ux', CurioUX);

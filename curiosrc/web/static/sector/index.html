@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Configuration Editor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+  <script type="module" src="/ux/curio-ux.mod.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.3/css/dataTables.dataTables.min.css" />
+  <script src="https://cdn.datatables.net/2.0.2/js/dataTables.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.3/css/dataTables.bootstrap5.min.css" />
+
+  <link rel="stylesheet" href="https://cdn.datatables.net/scroller/2.4.1/css/scroller.dataTables.min.css" />
+  <script src="https://cdn.datatables.net/scroller/2.4.1/js/dataTables.scroller.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.1/css/responsive.dataTables.min.css" />
+  <script src="https://cdn.datatables.net/responsive/3.0.1/js/dataTables.responsive.min.js"></script>
+</head>
+
+<body style="visibility:hidden" data-bs-theme="dark">
+  <curio-ux>
+    TODO buttons to select, terminate, etc
+    <table id="sectorTable">
+      <tr>
+        <td>Loading...</td>
+      </tr>
+    </table>
+  </curio-ux>
+  <script>
+
+    let table = new DataTable('#sectorTable', {
+      ajax: '/api/sector/all',
+      columns: [
+        {title: "Miner ID", data:'MinerID'},
+        {title: "Sector #", data:'SectorNum'},
+        {title: "Sector Filetype", data:'SectorFiletype'},
+        {title: "Storage ID", data:'StorageID'},
+        {title: "Is Primary", data:'IsPrimary'},
+        {title: "Expires At", data:'ExpiresAt'},
+        {title: "Is On Chain", data:'IsOnChain'},
+        {title: "Seal Proof", data:'SealProof'},
+        {title: "Activation", data:'Activation'},
+        {title: "Deal IDs", data:'DealIDs'},
+        {title: "Expected Day Reward", data:'ExpectedDayReward'},
+        {title: "Missing From Disk", data:'MissingFromDisk'},
+        {title: "Is Fil Plus", data:'IsFilPlus'},
+      ],
+      responsive: true,
+      select: {
+        items: 'row',
+      },
+      scrollY:        200,
+      deferRender:    true,
+      scroller:       true,
+      responsive:     true,
+    });
+  </script>
+</body>
+
+</html>
