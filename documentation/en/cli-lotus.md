@@ -1297,6 +1297,7 @@ USAGE:
 
 OPTIONS:
    --expired   list only expired claims (default: false)
+   --json      output results in json format (default: false)
    --help, -h  show help
 ```
 
