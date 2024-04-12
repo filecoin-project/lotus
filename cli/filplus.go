@@ -394,6 +394,11 @@ var filplusListClaimsCmd = &cli.Command{
 			Name:  "expired",
 			Usage: "list only expired claims",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "output results in json format",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() > 1 {
