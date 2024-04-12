@@ -318,6 +318,37 @@
   #SingleRecoveringPartitionPerPostMessage = false
 
 
+[Ingest]
+  # Maximum number of sectors that can be queued waiting for SDR to start processing.
+  # 0 = unlimited
+  # Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+  # The SDR queue includes deals which are in the process of entering the sealing pipeline - size of this queue
+  # will also impact the maximum number of ParkPiece tasks which can run concurrently.
+  # 
+  # SDR queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
+  #
+  # type: int
+  #MaxQueueSDR = 8
+
+  # Maximum number of sectors that can be queued waiting for SDRTrees to start processing.
+  # 0 = unlimited
+  # Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+  # In case of the trees tasks it is possible that this queue grows more than this limit, the backpressure is only
+  # applied to sectors entering the pipeline.
+  #
+  # type: int
+  #MaxQueueTrees = 0
+
+  # Maximum number of sectors that can be queued waiting for PoRep to start processing.
+  # 0 = unlimited
+  # Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+  # Like with the trees tasks, it is possible that this queue grows more than this limit, the backpressure is only
+  # applied to sectors entering the pipeline.
+  #
+  # type: int
+  #MaxQueuePoRep = 0
+
+
 [Journal]
   # Events of the form: "system1:event1,system1:event2[,...]"
   #
