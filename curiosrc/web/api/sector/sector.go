@@ -3,10 +3,7 @@ package sector
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,19 +33,14 @@ func Routes(r *mux.Router, deps *deps.Deps) {
 }
 
 func (c *cfg) terminateSectors(w http.ResponseWriter, r *http.Request) {
-	var in []string
+	var in []struct {
+		MinerID int
+		Sector  int
+	}
 	apihelper.OrHTTPFail(w, json.NewDecoder(r.Body).Decode(&in))
-	toDel := map[int][]string{}
+	toDel := map[int][]int{}
 	for _, s := range in {
-		minerAndSector := strings.Split(s, ":")
-		if len(minerAndSector) != 2 {
-			apihelper.OrHTTPFail(w, errors.New("invalid sector"))
-			return
-		}
-		minerInt, err := strconv.Atoi(minerAndSector[0])
-		apihelper.OrHTTPFail(w, err)
-
-		toDel[minerInt] = append(toDel[minerInt], minerAndSector[1])
+		toDel[s.MinerID] = append(toDel[s.MinerID], s.Sector)
 	}
 
 	for minerInt, sectors := range toDel {
@@ -58,9 +50,7 @@ func (c *cfg) terminateSectors(w http.ResponseWriter, r *http.Request) {
 		apihelper.OrHTTPFail(w, err)
 		_, err = spcli.TerminateSectors(r.Context(), c.Full, maddr, sectors, mi.Worker)
 		apihelper.OrHTTPFail(w, err)
-		for _, s := range sectors {
-			sectorNumber, err := strconv.Atoi(s)
-			apihelper.OrHTTPFail(w, err)
+		for _, sectorNumber := range sectors {
 			id := abi.SectorID{Miner: abi.ActorID(minerInt), Number: abi.SectorNumber(sectorNumber)}
 			apihelper.OrHTTPFail(w, c.Stor.Remove(r.Context(), id, storiface.FTAll, true, nil))
 		}
@@ -93,7 +83,6 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		FROM sector_location 
 		GROUP BY miner_id, sector_num 
 		ORDER BY miner_id, sector_num`))
-	sectors[0].SealProof.SectorSize()
 	minerToAddr := map[int64]address.Address{}
 	head, err := c.Full.ChainHead(r.Context())
 	apihelper.OrHTTPFail(w, err)

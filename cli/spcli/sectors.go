@@ -17,6 +17,7 @@ import (
 
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -1354,7 +1355,19 @@ func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			sectorNumbers := cctx.Args().Slice()
+			var outerErr error
+			sectorNumbers := lo.Map(cctx.Args().Slice(), func(sn string, _ int) int {
+				sectorNum, err := strconv.Atoi(sn)
+				if err != nil {
+					outerErr = fmt.Errorf("could not parse sector number: %w", err)
+					return 0
+				}
+				return sectorNum
+			})
+			if outerErr != nil {
+				return outerErr
+			}
+
 			confidence := uint64(cctx.Int("confidence"))
 
 			var fromAddr address.Address
@@ -1395,18 +1408,14 @@ type TerminatorNode interface {
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
 }
 
-func TerminateSectors(ctx context.Context, full TerminatorNode, maddr address.Address, sectorNumbers []string, fromAddr address.Address) (*types.SignedMessage, error) {
+func TerminateSectors(ctx context.Context, full TerminatorNode, maddr address.Address, sectorNumbers []int, fromAddr address.Address) (*types.SignedMessage, error) {
 
 	terminationDeclarationParams := []miner2.TerminationDeclaration{}
 
-	for _, sn := range sectorNumbers {
-		sectorNum, err := strconv.ParseUint(sn, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("could not parse sector number: %w", err)
-		}
+	for _, sectorNum := range sectorNumbers {
 
 		sectorbit := bitfield.New()
-		sectorbit.Set(sectorNum)
+		sectorbit.Set(uint64(sectorNum))
 
 		loca, err := full.StateSectorPartition(ctx, maddr, abi.SectorNumber(sectorNum), types.EmptyTSK)
 		if err != nil {

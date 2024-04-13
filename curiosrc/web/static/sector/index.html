@@ -66,8 +66,9 @@
             text: 'Terminate & Delete',
             action: function (e, dt, button, config) {
               var res = dt.rows({ selected: true }).data().map(function (row) {
-                return row.MinerID+":"+row.SectorNum;
-              })
+                return {MinerID: row.MinerID, Sector: row.SectorNum};
+              });
+
               if (confirm("Terminate & Delete: "+res.join(", "))) {
                 axios.post('/api/sector/terminate', res)
                   .then(function (response) {
