@@ -11,9 +11,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/DataDog/zstd"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
@@ -24,6 +28,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+	"golang.org/x/sys/unix"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 
@@ -168,6 +173,43 @@ var DaemonCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		// install a USR2 force-GC handler, independent from anything else below
+		go func() {
+			usr2 := make(chan os.Signal, 1)
+			signal.Notify(usr2, unix.SIGUSR2)
+			var mi runtime.MemStats
+			for {
+				<-usr2 // block until signal
+
+				runtime.ReadMemStats(&mi)
+				m0 := mi.HeapAlloc + mi.StackSys + mi.OtherSys
+				t0 := time.Now()
+
+				log.Info("forced GC triggered")
+
+				runtime.GC()         // run one GC pass
+				debug.FreeOSMemory() // run another, with aggressive system-level free()
+
+				runtime.ReadMemStats(&mi)
+				m1 := mi.HeapAlloc + mi.StackSys + mi.OtherSys
+				delta := m0 - m1
+				if m1 > m0 {
+					delta = 0
+				}
+				log.Infow("forced GC completed",
+					"took", time.Since(t0),
+					"runtimeAllocBeforeGiB", fmt.Sprintf("%.02f", float64(m0)/(1<<30)),
+					"runtimeAllocAfterGiB", fmt.Sprintf("%.02f", float64(m1)/(1<<30)),
+					"deltaBytes", delta,
+				)
+
+				// drain
+				for len(usr2) > 0 {
+					<-usr2
+				}
+			}
+		}()
+
 		isLite := cctx.Bool("lite")
 
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
