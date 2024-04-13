@@ -17,11 +17,16 @@
 
   <link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.1/css/responsive.dataTables.min.css" />
   <script src="https://cdn.datatables.net/responsive/3.0.1/js/dataTables.responsive.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.1/css/buttons.dataTables.min.css" />
+  <script src="https://cdn.datatables.net/buttons/3.0.1/js/dataTables.buttons.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.datatables.net/select/2.0.0/css/select.dataTables.min.css" />
+  <script src="https://cdn.datatables.net/select/2.0.0/js/dataTables.select.min.js"></script>
 </head>
 
 <body style="visibility:hidden" data-bs-theme="dark">
   <curio-ux>
-    TODO buttons to select, terminate, etc
     <table id="sectorTable">
       <tr>
         <td>Loading...</td>
@@ -30,26 +35,75 @@
   </curio-ux>
   <script>
 
-    let table = new DataTable('#sectorTable', {
+    let dt = new DataTable('#sectorTable', {
       ajax: '/api/sector/all',
       columns: [
-        {title: "Miner ID", data:'MinerID'},
-        {title: "Sector #", data:'SectorNum'},
-        {title: "Sector Filetype", data:'SectorFiletype'},
-        {title: "Storage ID", data:'StorageID'},
-        {title: "Is Primary", data:'IsPrimary'},
-        {title: "Expires At", data:'ExpiresAt'},
-        {title: "Is On Chain", data:'IsOnChain'},
+        {title: "", data: null},
+        {title: "Miner", data:'MinerID'},
+        {title: "Sector", data:'SectorNum'},
+        {title: "Expiry", data:'ExpiresAt'},
+        {title: "🔗", data:'IsOnChain'},
+        {title: "Has Sealed", data:'HasSealed'},
+        {title: "⨎/Day", data:'ExpectedDayReward'},
+        {title: "Fil+", data:'IsFilPlus'},
+        {title: "Has Unsealed", data:'HasUnsealed'},
         {title: "Seal Proof", data:'SealProof'},
-        {title: "Activation", data:'Activation'},
-        {title: "Deal IDs", data:'DealIDs'},
-        {title: "Expected Day Reward", data:'ExpectedDayReward'},
-        {title: "Missing From Disk", data:'MissingFromDisk'},
-        {title: "Is Fil Plus", data:'IsFilPlus'},
+        {title: "Has Snap", data:'HasSnap'},
+        {title: "Size", data:"SealInfo"}
+      ],
+      layout: {
+        topStart: 'buttons',
+        bottomStart: 'info',
+      },
+      buttons: [
+        {
+            extend: 'copy',
+            text: '📋'
+        },
+        'csv',
+        {
+            extend: 'selected',
+            text: 'Terminate & Delete',
+            action: function (e, dt, button, config) {
+              var res = dt.rows({ selected: true }).data().map(function (row) {
+                return row.MinerID+":"+row.SectorNum;
+              })
+              if (confirm("Terminate & Delete: "+res.join(", "))) {
+                axios.post('/api/sector/terminate', res)
+                  .then(function (response) {
+                    console.log(response);
+                    document.cookie = "sector_refresh=true; path=/";
+                    location.reload();
+                  })
+                  .catch(function (error) {
+                    console.log(error);
+                  });
+              }
+            }
+        },
+        {
+            text: 'Refresh',
+            action: function (e, dt, button, config) {
+              document.cookie = "sector_refresh=true; path=/";
+              location.reload();
+            }
+        }
       ],
       responsive: true,
+      columnDefs: [
+          {
+              orderable: false,
+              render: DataTable.render.select(),
+              targets: 0
+          }
+      ],
+      order: [[1, 'asc']],
       select: {
+        style: 'multi',
+        selector: 'td:first-child',
         items: 'row',
+        rows: '%d rows selected',
+        headerCheckbox: true,
       },
       scrollY:        200,
       deferRender:    true,
