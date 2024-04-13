@@ -3,7 +3,10 @@ package sector
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cli/spcli"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/filecoin-project/lotus/curiosrc/web/api/apihelper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -28,6 +32,39 @@ func Routes(r *mux.Router, deps *deps.Deps) {
 	c := &cfg{deps}
 	// At menu.html:
 	r.Methods("GET").Path("/all").HandlerFunc(c.getSectors)
+	r.Methods("POST").Path("/terminate").HandlerFunc(c.terminateSectors)
+}
+
+func (c *cfg) terminateSectors(w http.ResponseWriter, r *http.Request) {
+	var in []string
+	apihelper.OrHTTPFail(w, json.NewDecoder(r.Body).Decode(&in))
+	toDel := map[int][]string{}
+	for _, s := range in {
+		minerAndSector := strings.Split(s, ":")
+		if len(minerAndSector) != 2 {
+			apihelper.OrHTTPFail(w, errors.New("invalid sector"))
+			return
+		}
+		minerInt, err := strconv.Atoi(minerAndSector[0])
+		apihelper.OrHTTPFail(w, err)
+
+		toDel[minerInt] = append(toDel[minerInt], minerAndSector[1])
+	}
+
+	for minerInt, sectors := range toDel {
+		maddr, err := address.NewIDAddress(uint64(minerInt))
+		apihelper.OrHTTPFail(w, err)
+		mi, err := c.Full.StateMinerInfo(r.Context(), maddr, types.EmptyTSK)
+		apihelper.OrHTTPFail(w, err)
+		_, err = spcli.TerminateSectors(r.Context(), c.Full, maddr, sectors, mi.Worker)
+		apihelper.OrHTTPFail(w, err)
+		for _, s := range sectors {
+			sectorNumber, err := strconv.Atoi(s)
+			apihelper.OrHTTPFail(w, err)
+			id := abi.SectorID{Miner: abi.ActorID(minerInt), Number: abi.SectorNumber(sectorNumber)}
+			apihelper.OrHTTPFail(w, c.Stor.Remove(r.Context(), id, storiface.FTAll, true, nil))
+		}
+	}
 }
 
 func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
