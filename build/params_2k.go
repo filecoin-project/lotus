@@ -23,7 +23,7 @@ var NetworkBundle = "devnet"
 var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = true
 
-var GenesisNetworkVersion = network.Version21
+var GenesisNetworkVersion = network.Version22
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -67,9 +67,11 @@ var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
 var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
 
-var UpgradeDragonHeight = abi.ChainEpoch(20)
+var UpgradeDragonHeight = abi.ChainEpoch(-24)
 
-var UpgradePhoenixHeight = UpgradeDragonHeight + 120
+var UpgradePhoenixHeight = abi.ChainEpoch(-25)
+
+var UpgradeAussieHeight = abi.ChainEpoch(200)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
@@ -154,6 +156,7 @@ func init() {
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
 	UpgradeDragonHeight = getUpgradeHeight("LOTUS_DRAGON_HEIGHT", UpgradeDragonHeight)
+	UpgradeAussieHeight = getUpgradeHeight("LOTUS_AUSSIE_HEIGHT", UpgradeAussieHeight)
 
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
