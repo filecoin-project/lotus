@@ -68,9 +68,8 @@ func MakeTokens(cfg *config.CurioConfig) (map[address.Address]string, error) {
 			return xerrors.Errorf("net resolve: %w", err)
 		}
 
-		if len(laddr.IP) == 0 {
-			// set localhost
-			laddr.IP = net.IPv4(127, 0, 0, 1)
+		if len(laddr.IP) == 0 || laddr.IP.IsUnspecified() {
+			return xerrors.Errorf("market rpc server listen address must be a specific address, not %s (probably missing bind IP)", listen)
 		}
 
 		// need minimal provider with just the config
@@ -171,9 +170,8 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 		return xerrors.Errorf("net resolve: %w", err)
 	}
 
-	if len(laddr.IP) == 0 {
-		// set localhost
-		laddr.IP = net.IPv4(127, 0, 0, 1)
+	if len(laddr.IP) == 0 || laddr.IP.IsUnspecified() {
+		return xerrors.Errorf("market rpc server listen address must be a specific address, not %s (probably missing bind IP)", listen)
 	}
 	rootUrl := url.URL{
 		Scheme: "http",
