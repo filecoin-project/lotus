@@ -313,7 +313,8 @@ func (e *TaskEngine) pollerTryAllWork() bool {
 		resources.CleanupMachines(e.ctx, e.db)
 	}
 	for _, v := range e.handlers {
-		if v.AssertMachineHasCapacity() != nil {
+		if err := v.AssertMachineHasCapacity(); err != nil {
+			log.Debugf("skipped scheduling %s type tasks on due to %s", v.Name, err.Error())
 			continue
 		}
 		var unownedTasks []TaskID
