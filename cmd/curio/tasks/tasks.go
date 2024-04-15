@@ -4,10 +4,11 @@ package tasks
 import (
 	"context"
 
-	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
