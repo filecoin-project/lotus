@@ -468,27 +468,35 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 
 	st.localLk.Lock()
 
-	var firstDonebuf []byte
+	var releaseCalled bool
 
-	var doneCalled bool
-	done := func() {
-		if doneCalled {
+	// double release debug guard
+	var firstDonebuf []byte
+	var releaseFuncs []func()
+
+	release = func() {
+		for _, releaseFunc := range releaseFuncs {
+			releaseFunc()
+		}
+
+		// debug guard against double release call
+		if releaseCalled {
 			curStack := make([]byte, 20480)
 			curStack = curStack[:runtime.Stack(curStack, false)]
 
-			log.Errorw("double done call", "sector", sid, "fileType", ft, "prevStack", string(firstDonebuf), "curStack", string(curStack))
+			log.Errorw("double release call", "sector", sid, "fileType", ft, "prevStack", string(firstDonebuf), "curStack", string(curStack))
 		}
 
 		firstDonebuf = make([]byte, 20480)
 		firstDonebuf = firstDonebuf[:runtime.Stack(firstDonebuf, false)]
 
-		doneCalled = true
+		releaseCalled = true
 	}
 
-	deferredDone := func() { done() }
+	cleanupOnError := func() { release() }
 	defer func() {
 		st.localLk.Unlock()
-		deferredDone()
+		cleanupOnError()
 	}()
 
 	for _, fileType := range ft.AllSet() {
@@ -522,22 +530,21 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		p.reserved += overhead
 		p.reservations[resID] = overhead
 
-		prevDone := done
-		done = func() {
-			prevDone()
-
+		releaseFuncs = append(releaseFuncs, func() {
 			st.localLk.Lock()
 			defer st.localLk.Unlock()
 
-			log.Debugw("reserve done", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead, "reserved-before", p.reserved, "reserved-after", p.reserved-overhead)
+			log.Debugw("reserve release", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead, "reserved-before", p.reserved, "reserved-after", p.reserved-overhead)
 
 			p.reserved -= overhead
 			delete(p.reservations, resID)
-		}
+		})
 	}
 
-	deferredDone = func() {}
-	return done, nil
+	// no errors, don't cleanup, caller will call release
+	cleanupOnError = func() {}
+
+	return release, nil
 }
 
 func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode, opts ...storiface.AcquireOption) (storiface.SectorPaths, storiface.SectorPaths, error) {
