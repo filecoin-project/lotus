@@ -1424,6 +1424,11 @@ func (s *SplitStore) purgeBatch(batch, deadCids []cid.Cid, checkpoint *Checkpoin
 
 	switch s.compactType {
 	case hot:
+		// Short circuit deleting in the case we are just going to throw this away
+		fullGCPending := s.cfg.HotStoreFullGCFrequency > 0 && s.compactionIndex%int64(s.cfg.HotStoreFullGCFrequency) == 0
+		if fullGCPending {
+			return len(deadCids), liveCnt, nil
+		}
 		if err := s.hot.DeleteMany(s.ctx, deadCids); err != nil {
 			return 0, liveCnt, xerrors.Errorf("error purging cold objects: %w", err)
 		}
