@@ -4,6 +4,9 @@
   * [Version](#Version)
 * [Allocate](#Allocate)
   * [AllocatePieceToSector](#AllocatePieceToSector)
+* [Log](#Log)
+  * [LogList](#LogList)
+  * [LogSetLevel](#LogSetLevel)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageDetachLocal](#StorageDetachLocal)
@@ -109,6 +112,38 @@ Response:
   "Offset": 1032
 }
 ```
+
+## Log
+
+
+### LogList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "string value"
+]
+```
+
+### LogSetLevel
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
 
 ## Storage
 

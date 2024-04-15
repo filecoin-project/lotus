@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -195,5 +197,50 @@ var cliCmd = &cli.Command{
 	},
 	Subcommands: []*cli.Command{
 		storageCmd,
+		logCmd,
+		waitApiCmd,
+	},
+}
+
+var waitApiCmd = &cli.Command{
+	Name:  "wait-api",
+	Usage: "Wait for Curio api to come online",
+	Flags: []cli.Flag{
+		&cli.DurationFlag{
+			Name:  "timeout",
+			Usage: "duration to wait till fail",
+			Value: time.Second * 30,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+		ctx, cancel := context.WithTimeout(ctx, cctx.Duration("timeout"))
+		defer cancel()
+		for {
+			if ctx.Err() != nil {
+				break
+			}
+
+			api, closer, err := rpc.GetCurioAPI(cctx)
+			if err != nil {
+				fmt.Printf("Not online yet... (%s)\n", err)
+				time.Sleep(time.Second)
+				continue
+			}
+			defer closer()
+
+			_, err = api.Version(ctx)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("timed out waiting for api to come online")
+		}
+
+		return ctx.Err()
 	},
 }

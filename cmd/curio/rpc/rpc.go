@@ -181,6 +181,14 @@ func (p *CurioAPI) StorageAddLocal(ctx context.Context, path string) error {
 	return nil
 }
 
+func (p *CurioAPI) LogList(ctx context.Context) ([]string, error) {
+	return logging.GetSubsystems(), nil
+}
+
+func (p *CurioAPI) LogSetLevel(ctx context.Context, subsystem, level string) error {
+	return logging.SetLogLevel(subsystem, level)
+}
+
 func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan chan struct{}) error {
 	fh := &paths.FetchHandler{Local: dependencies.LocalStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 	remoteHandler := func(w http.ResponseWriter, r *http.Request) {
