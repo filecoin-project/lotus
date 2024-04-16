@@ -9,5 +9,5 @@ create table sector_path_url_liveness (
 
     primary key (storage_id, url),
 
-    foreign key (storage_id) references storage_path (storage_id)
+    foreign key (storage_id) references storage_path (storage_id) on delete cascade
 )
