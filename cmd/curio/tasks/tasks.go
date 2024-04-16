@@ -8,6 +8,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
@@ -137,8 +139,13 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
-	log.Infow("This lotus_provider instance handles",
-		"miner_addresses", maddrs,
+	minerAddresses := make([]string, 0, len(maddrs))
+	for k := range maddrs {
+		minerAddresses = append(minerAddresses, address.Address(k).String())
+	}
+
+	log.Infow("This Curio instance handles",
+		"miner_addresses", minerAddresses,
 		"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
 
 	// harmony treats the first task as highest priority, so reverse the order

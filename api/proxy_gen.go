@@ -122,6 +122,10 @@ type CurioStruct struct {
 type CurioMethods struct {
 	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
 
+	LogList func(p0 context.Context) ([]string, error) `perm:"read"`
+
+	LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"admin"`
+
 	Shutdown func(p0 context.Context) error `perm:"admin"`
 
 	StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
@@ -1497,6 +1501,28 @@ func (s *CurioStruct) AllocatePieceToSector(p0 context.Context, p1 address.Addre
 
 func (s *CurioStub) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
 	return *new(SectorOffset), ErrNotSupported
+}
+
+func (s *CurioStruct) LogList(p0 context.Context) ([]string, error) {
+	if s.Internal.LogList == nil {
+		return *new([]string), ErrNotSupported
+	}
+	return s.Internal.LogList(p0)
+}
+
+func (s *CurioStub) LogList(p0 context.Context) ([]string, error) {
+	return *new([]string), ErrNotSupported
+}
+
+func (s *CurioStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+	if s.Internal.LogSetLevel == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.LogSetLevel(p0, p1, p2)
+}
+
+func (s *CurioStub) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+	return ErrNotSupported
 }
 
 func (s *CurioStruct) Shutdown(p0 context.Context) error {

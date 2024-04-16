@@ -25,6 +25,9 @@ type Curio interface {
 	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)                                                                                              //perm:admin
 	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error) //perm:admin
 
+	LogList(ctx context.Context) ([]string, error)                  //perm:read
+	LogSetLevel(ctx context.Context, subsystem, level string) error //perm:admin
+
 	// Trigger shutdown
 	Shutdown(context.Context) error //perm:admin
 }
