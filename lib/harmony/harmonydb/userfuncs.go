@@ -236,6 +236,10 @@ func (t *Tx) Select(sliceOfStructPtr any, sql rawStringOnly, arguments ...any) e
 	return pgxscan.Select(t.ctx, t.Tx, sliceOfStructPtr, string(sql), arguments...)
 }
 
+func (t *Tx) Get(s any, sql rawStringOnly, arguments ...any) error {
+	return pgxscan.Get(t.ctx, t.Tx, s, string(sql), arguments...)
+}
+
 func IsErrUniqueContraint(err error) bool {
 	var e2 *pgconn.PgError
 	return errors.As(err, &e2) && e2.Code == pgerrcode.UniqueViolation
