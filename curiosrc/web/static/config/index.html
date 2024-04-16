@@ -20,13 +20,15 @@
         this.layers = [];
         this.topo = [];
         this.loadData();
+        this.message = this.readCookie('message');
+        this.eraseCookie('message');
       }
       static get styles() {
         return [css`
         .alert {
-          background: yellow;
           font-size: 24px;
           display: inline-block;
+          color: green;
         }
         `];
       }
@@ -49,10 +51,12 @@
       loadData() {
         Promise.all([
           axios.get('/api/config/layers'),
-          axios.get('/api/config/topo')
+          axios.get('/api/config/topo'),
+          axios.get('/api/config/default')
         ])
           .then(responses => {
             this.layers = responses[0].data;
+            this.layers.unshift('default');
             this.topo = responses[1].data;
             super.requestUpdate();
           })
@@ -60,11 +64,24 @@
             console.error('Error fetching data:', error);
           });
       }
+      readCookie(name) {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.startsWith(name + '=')) {
+            return cookie.substring(name.length + 1);
+          }
+        }
+        return '';
+      }
+      eraseCookie(name) {
+        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
     });
   </script>
   <curio-ux>
     <h1>Configuration Editor</h1>
-    <p>Click on a layer to edit its configuration</p>
+    <h3>Click on a layer to edit its configuration</h3>
     <config-list></config-list>
   </curio-ux>
 </body>

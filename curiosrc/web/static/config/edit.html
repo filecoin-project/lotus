@@ -8,59 +8,143 @@
         <link href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/ui-darkness/jquery-ui.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/ui-darkness/theme.min.css" rel="stylesheet">
 </head>
-<body style="margin: 16px">
-    <div><button id="saveButton" class="ui-button ui-widget ui-corner-all">
-    <span class="ui-icon ui-icon-disk" style="transform: scale(1.5)"></span> Save
-</button></div>
+<body>
+<style>
+    #saveButton {
+        display: block;
+        position: fixed;
+        bottom: 20px;
+        right: 30px;
+        z-index: 99;
+        font-size: 18px;
+        border: none;
+        outline: none;
+        background-color: green;
+        color: white;
+        cursor: pointer;
+        padding: 15px;
+        border-radius: 4px;
+    }
 
-    <div id="editor" ></div>
+    #saveButton:hover {
+        background-color: #555;
+    }
 
-    <script>
-        var editor;
-        var urlParams = new URLSearchParams(window.location.search);
-        var layer = urlParams.get('layer');
-        // Make simultaneous GET requests to fetch the existing data and JSON Schema
-        Promise.all([
-            axios.get('/api/config/layers/'+layer),
-            axios.get('/api/config/schema')
-        ])
-            .then(responses => {
-                const existingData = responses[0].data;
-                const schema = responses[1].data;
+    .help-button button {
+        font-size: 24px;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        position: fixed;
+        bottom: 20px;
+        right: 120px;
+        z-index: 99;
+    }
 
-                // Create a JSON Editor instance and pass the schema and existing data
-                const container = document.getElementById('editor');
-                const options = {
-                    //mode: 'tree',
-                    schema: schema,
-                    startval: existingData,
-                    theme: 'bootstrap5',
-                    iconlib: 'jqueryui',
-                    show_opt_in: true,
-                    disable_edit_json: true,
-                };
+    .help-text {
+        display: none;
+        position: fixed;
+        border: 1px solid #ccc;
+        background-color: gray;
+        padding: 10px;
+        width: 200px;
+        bottom: 20px;
+        right: 200px;
+        z-index: 100;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
 
-                editor = new JSONEditor(container, options);
+    .hidden {
+        display: none;
+    }
 
-                // Attach function to saveButton click event
-                var saveButton = document.getElementById('saveButton');
-                saveButton.addEventListener('click', function() {
-                    const value = editor.getValue();
-                    axios.post('/api/config/layers/'+layer, value)
-                        .then(response => {
-                            // Set cookie named 'message' with the value 'Data saved successfully'
-                            document.cookie = 'message=The layer "'+layer+'" saved successfully.; path=/;';
-                            
-                            window.location.href = '/config/';
-                        })
-                        .catch(error => {
-                            alert('Error saving data:', error);
+    .show {
+        display: block;
+    }
+</style>
+
+<section class="section container-fluid implementations">
+    <div class="row justify-content-center content">
+        <div class="col-md-8">
+            <div>
+                <button id="saveButton" class="saveButton">Save</button>
+            </div>
+
+            <div class="help-button">
+                <button id="helpBtn">?</button>
+                <p id="helpText" class="hidden help-text">Checking a box and entering a non default value will uncomment the corresponding configuration variable.
+                Unchecking a box will reset the value to default.</p>
+            </div>
+
+            <div id="editor" ></div>
+            <script>
+                var editor;
+                var urlParams = new URLSearchParams(window.location.search);
+                var layer = urlParams.get('layer');
+                // Make simultaneous GET requests to fetch the existing data and JSON Schema
+                const layerPath = layer === 'default' ? 'config/default' : `config/layers/${layer}`;
+                Promise.all([
+                    axios.get(`/api/${layerPath}`),
+                    axios.get('/api/config/schema')
+                ])
+                    .then(responses => {
+                        const existingData = responses[0].data;
+                        const schema = responses[1].data;
+
+                        // Create a JSON Editor instance and pass the schema and existing data
+                        const container = document.getElementById('editor');
+                        const options = {
+                            //mode: 'tree',
+                            schema: schema,
+                            startval: existingData,
+                            theme: 'bootstrap5',
+                            iconlib: 'jqueryui',
+                            show_opt_in: true,
+                            disable_edit_json: true,
+                            form_name_root: "Configuration",
+                            disable_properties: true,
+                        };
+
+                        editor = new JSONEditor(container, options);
+
+                        document.getElementById("helpBtn").addEventListener("click", function() {
+                            var helpText = document.getElementById("helpText");
+                            if (helpText.classList.contains("hidden")) {
+                                helpText.classList.remove("hidden");
+                                helpText.classList.add("show");
+                            } else {
+                                helpText.classList.remove("show");
+                                helpText.classList.add("hidden");
+                            }
                         });
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching data:', error);
-            });
-    </script>
+
+                        // Attach function to saveButton click event
+                        var saveButton = document.getElementById('saveButton');
+                        saveButton.addEventListener('click', function() {
+                            if (layer === 'default'){
+                                alert('Error: cannot edit defaults');
+                            } else {
+                                const value = editor.getValue();
+                                console.log(value)
+                                axios.post('/api/config/layers/' + layer, value)
+                                    .then(response => {
+                                        // Set cookie named 'message' with the value 'Data saved successfully'
+                                        document.cookie = 'message=The layer "' + layer + '" saved successfully.; path=/;';
+
+                                        window.location.href = '/config/';
+                                    })
+                                    .catch(error => {
+                                        alert('Error saving data:', error);
+                                    });
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                    });
+            </script>
+        </div>
+    </div>
+</section>
 </body>
 </html>
