@@ -2,10 +2,12 @@ package harmonytask
 
 import (
 	"errors"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/passcall"
-	"github.com/jackc/pgx/v5"
-	"time"
 )
 
 func SingletonTaskAdder(minInterval time.Duration, task TaskInterface) func(AddTaskFunc) error {

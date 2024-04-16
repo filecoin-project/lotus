@@ -2,6 +2,15 @@ package gc
 
 import (
 	"context"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/samber/lo"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
@@ -9,13 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/samber/lo"
-	"golang.org/x/xerrors"
-	"os"
-	"strings"
-	"sync"
-	"time"
 )
 
 var log = logging.Logger("curiogc")

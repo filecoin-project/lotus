@@ -3,7 +3,7 @@ package tasks
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/curiosrc/gc"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
@@ -14,6 +14,7 @@ import (
 	curio "github.com/filecoin-project/lotus/curiosrc"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
+	"github.com/filecoin-project/lotus/curiosrc/gc"
 	"github.com/filecoin-project/lotus/curiosrc/message"
 	"github.com/filecoin-project/lotus/curiosrc/piece"
 	"github.com/filecoin-project/lotus/curiosrc/seal"
