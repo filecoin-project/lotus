@@ -252,7 +252,12 @@ func ListenAndServe(ctx context.Context, dependencies *deps.Deps, shutdownChan c
 			}
 			log.Warn("Graceful shutdown successful")
 		}()
-		log.Infof("Setting up web server at %s", dependencies.Cfg.Subsystems.GuiAddress)
+
+		uiAddress := dependencies.Cfg.Subsystems.GuiAddress
+		if uiAddress == "" || uiAddress[0] == ':' {
+			uiAddress = "localhost" + uiAddress
+		}
+		log.Infof("GUI:  http://%s", uiAddress)
 		eg.Go(web.ListenAndServe)
 	}
 	return eg.Wait()

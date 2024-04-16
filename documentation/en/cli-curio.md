@@ -56,6 +56,105 @@ OPTIONS:
 
 ### curio cli storage
 ```
+NAME:
+   curio cli storage - manage sector storage
+
+USAGE:
+   curio cli storage command [command options] [arguments...]
+
+DESCRIPTION:
+   Sectors can be stored across many filesystem paths. These
+   commands provide ways to manage the storage the miner will used to store sectors
+   long term for proving (references as 'store') as well as how sectors will be
+   stored while moving through the sealing pipeline (references as 'seal').
+
+COMMANDS:
+   attach   attach local storage path
+   detach   detach local storage path
+   list     list local storage paths
+   find     find sector in the storage system
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### curio cli storage attach
+```
+NAME:
+   curio cli storage attach - attach local storage path
+
+USAGE:
+   curio cli storage attach [command options] [path]
+
+DESCRIPTION:
+   Storage can be attached to the miner using this command. The storage volume
+   list is stored local to the miner in storage.json set in curio run. We do not
+   recommend manually modifying this value without further understanding of the
+   storage system.
+
+   Each storage volume contains a configuration file which describes the
+   capabilities of the volume. When the '--init' flag is provided, this file will
+   be created using the additional flags.
+
+   Weight
+   A high weight value means data will be more likely to be stored in this path
+
+   Seal
+   Data for the sealing process will be stored here
+
+   Store
+   Finalized sectors that will be moved here for long term storage and be proven
+   over time
+      
+
+OPTIONS:
+   --init                                 initialize the path first (default: false)
+   --weight value                         (for init) path weight (default: 10)
+   --seal                                 (for init) use path for sealing (default: false)
+   --store                                (for init) use path for long-term storage (default: false)
+   --max-storage value                    (for init) limit storage space for sectors (expensive for very large paths!)
+   --groups value [ --groups value ]      path group names
+   --allow-to value [ --allow-to value ]  path groups allowed to pull data from this path (allow all if not specified)
+   --help, -h                             show help
+```
+
+#### curio cli storage detach
+```
+NAME:
+   curio cli storage detach - detach local storage path
+
+USAGE:
+   curio cli storage detach [command options] [path]
+
+OPTIONS:
+   --really-do-it  (default: false)
+   --help, -h      show help
+```
+
+#### curio cli storage list
+```
+NAME:
+   curio cli storage list - list local storage paths
+
+USAGE:
+   curio cli storage list [command options] [arguments...]
+
+OPTIONS:
+   --local     only list local storage paths (default: false)
+   --help, -h  show help
+```
+
+#### curio cli storage find
+```
+NAME:
+   curio cli storage find - find sector in the storage system
+
+USAGE:
+   curio cli storage find [command options] [miner address] [sector number]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### curio cli log
@@ -75,13 +174,13 @@ USAGE:
    curio run [command options] [arguments...]
 
 OPTIONS:
-   --listen value                     host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
-   --nosync                           don't check full-node sync status (default: false)
-   --manage-fdlimit                   manage open file limit (default: true)
-   --storage-json value               path to json file containing storage config (default: "~/.curio/storage.json")
-   --journal value                    path to journal files (default: "~/.curio/")
-   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
-   --help, -h                         show help
+   --listen value                                                                       host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
+   --nosync                                                                             don't check full-node sync status (default: false)
+   --manage-fdlimit                                                                     manage open file limit (default: true)
+   --storage-json value                                                                 path to json file containing storage config (default: "~/.curio/storage.json")
+   --journal value                                                                      path to journal files (default: "~/.curio/")
+   --layers value, -l value, --layer value [ --layers value, -l value, --layer value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                                                                           show help
 ```
 
 ## curio stop

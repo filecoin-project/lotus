@@ -62,8 +62,9 @@ var runCmd = &cli.Command{
 			Value: "~/.curio/",
 		},
 		&cli.StringSliceFlag{
-			Name:  "layers",
-			Usage: "list of layers to be interpreted (atop defaults). Default: base",
+			Name:    "layers",
+			Aliases: []string{"l", "layer"},
+			Usage:   "list of layers to be interpreted (atop defaults). Default: base",
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
@@ -169,6 +170,7 @@ var webCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+
 		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -30,7 +29,7 @@ const (
 
 const FlagMinerRepoDeprecation = "storagerepo"
 
-func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApiInfo string) (minerAddress address.Address, err error) {
+func SaveConfigToLayer(minerRepoPath, chainApiInfo string) (minerAddress address.Address, err error) {
 	_, say := SetupLanguage()
 	ctx := context.Background()
 
@@ -165,6 +164,12 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 			baseCfg.Addresses = lo.Filter(baseCfg.Addresses, func(a config.CurioAddresses, _ int) bool {
 				return len(a.MinerAddresses) > 0
 			})
+			if baseCfg.Apis.ChainApiInfo == nil {
+				baseCfg.Apis.ChainApiInfo = append(baseCfg.Apis.ChainApiInfo, chainApiInfo)
+			}
+			if baseCfg.Apis.StorageRPCSecret == "" {
+				baseCfg.Apis.StorageRPCSecret = curioCfg.Apis.StorageRPCSecret
+			}
 
 			cb, err := config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 			if err != nil {
@@ -174,44 +179,33 @@ func SaveConfigToLayer(minerRepoPath, layerName string, overwrite bool, chainApi
 			if err != nil {
 				return minerAddress, xerrors.Errorf("cannot update base config: %w", err)
 			}
-			say(plain, "Configuration 'base' was updated to include this miner's address and its wallet setup.")
+			say(plain, "Configuration 'base' was updated to include this miner's address (%s) and its wallet setup.", minerAddress)
 		}
 		say(plain, "Compare the configurations %s to %s. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.", "base", "mig-"+curioCfg.Addresses[0].MinerAddresses[0])
 	skipWritingToBase:
-	} else if layerName == "" {
-		cfg, err := deps.GetDefaultConfig(true)
-		if err != nil {
-			return minerAddress, xerrors.Errorf("Cannot get default config: %w", err)
-		}
+	} else {
 		_, err = db.Exec(ctx, `INSERT INTO harmony_config (title, config) VALUES ('base', $1)
-		 ON CONFLICT(title) DO UPDATE SET config=EXCLUDED.config`, cfg)
+		 ON CONFLICT(title) DO UPDATE SET config=EXCLUDED.config`, configTOML)
 
 		if err != nil {
 			return minerAddress, xerrors.Errorf("Cannot insert base config: %w", err)
 		}
-		say(notice, "Configuration 'base' was created to include this miner's address and its wallet setup.")
+		say(notice, "Configuration 'base' was created to resemble this lotus-miner's config.toml .")
 	}
 
-	if layerName == "" { // only make mig if base exists and we are different. // compare to base.
-		layerName = fmt.Sprintf("mig-%s", curioCfg.Addresses[0].MinerAddresses[0])
-		overwrite = true
-	} else {
-		if lo.Contains(titles, layerName) && !overwrite {
-			return minerAddress, errors.New("the overwrite flag is needed to replace existing layer: " + layerName)
-		}
-	}
-	if overwrite {
-		_, err := db.Exec(ctx, "DELETE FROM harmony_config WHERE title=$1", layerName)
+	{ // make a layer representing the migration
+		layerName := fmt.Sprintf("mig-%s", curioCfg.Addresses[0].MinerAddresses[0])
+		_, err = db.Exec(ctx, "DELETE FROM harmony_config WHERE title=$1", layerName)
 		if err != nil {
 			return minerAddress, xerrors.Errorf("Cannot delete existing layer: %w", err)
 		}
-	}
 
-	_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ($1, $2)", layerName, configTOML.String())
-	if err != nil {
-		return minerAddress, xerrors.Errorf("Cannot insert layer after layer created message: %w", err)
+		_, err = db.Exec(ctx, "INSERT INTO harmony_config (title, config) VALUES ($1, $2)", layerName, configTOML.String())
+		if err != nil {
+			return minerAddress, xerrors.Errorf("Cannot insert layer after layer created message: %w", err)
+		}
+		say(plain, "Layer %s created. ", layerName)
 	}
-	say(plain, "Layer %s created. ", layerName)
 
 	dbSettings := getDBSettings(*smCfg)
 	say(plain, "To work with the config: ")

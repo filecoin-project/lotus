@@ -162,6 +162,8 @@ func (a *app) updateActor(ctx context.Context) error {
 			return xerrors.Errorf("getting worker balance: %w", err)
 		}
 
+		sort.Strings(cnames)
+
 		actorInfos = append(actorInfos, actorInfo{
 			Address:              addr.String(),
 			CLayers:              cnames,

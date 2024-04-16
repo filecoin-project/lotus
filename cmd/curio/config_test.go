@@ -1,8 +1,11 @@
 package main
 
 import (
+	"reflect"
 	"testing"
+	"time"
 
+	"github.com/invopop/jsonschema"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
@@ -413,4 +416,23 @@ func TestConfig(t *testing.T) {
 	_, err = config.ConfigUpdate(baseCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 	require.NoError(t, err)
 
+}
+
+func TestCustomConfigDurationJson(t *testing.T) {
+	ref := new(jsonschema.Reflector)
+	ref.Mapper = func(i reflect.Type) *jsonschema.Schema {
+		if i == reflect.TypeOf(config.Duration(time.Second)) {
+			return &jsonschema.Schema{
+				Type:   "string",
+				Format: "duration",
+			}
+		}
+		return nil
+	}
+
+	sch := ref.Reflect(config.CurioConfig{})
+	definitions := sch.Definitions["CurioProvingConfig"]
+	prop, ok := definitions.Properties.Get("SingleCheckTimeout")
+	require.True(t, ok)
+	require.Equal(t, prop.Type, "string")
 }
