@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/gorilla/mux"
 	"github.com/samber/lo"
 
@@ -71,6 +72,8 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		IsOnChain      bool
 		IsFilPlus      bool
 		SealInfo       string
+		Proving        bool
+		Flag           bool
 		//StorageID         string         `db:"storage_id"` // map to serverName
 		// Activation        abi.ChainEpoch // map to time.Time. advanced view only
 		// DealIDs           []abi.DealID //  advanced view only
@@ -107,24 +110,30 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		onChainInfo, err := c.getCachedSectorInfo(w, r, maddr, head.Key())
 		apihelper.OrHTTPFail(w, err)
 		for _, chainy := range onChainInfo {
-			if i, ok := sectorIdx[sectorID{minerID, uint64(chainy.SectorNumber)}]; ok {
+			if i, ok := sectorIdx[sectorID{minerID, uint64(chainy.onChain.SectorNumber)}]; ok {
 				sectors[i].IsOnChain = true
-				sectors[i].ExpiresAt = chainy.Expiration
-				sectors[i].IsFilPlus = chainy.VerifiedDealWeight.GreaterThan(chainy.DealWeight)
-				if ss, err := chainy.SealProof.SectorSize(); err == nil {
+				sectors[i].ExpiresAt = chainy.onChain.Expiration
+				sectors[i].IsFilPlus = chainy.onChain.VerifiedDealWeight.GreaterThan(chainy.onChain.DealWeight)
+				if ss, err := chainy.onChain.SealProof.SectorSize(); err == nil {
 					sectors[i].SealInfo = ss.ShortString()
+				}
+				sectors[i].Proving = chainy.active
+				if chainy.onChain.Expiration < head.Height() {
+					sectors[i].Flag = true // Flag expired sectors
 				}
 				// too many, not enough?
 			} else {
 				// sector is on chain but not in db
 				s := sector{
 					MinerID:   minerID,
-					SectorNum: int64(chainy.SectorNumber),
+					SectorNum: int64(chainy.onChain.SectorNumber),
 					IsOnChain: true,
-					ExpiresAt: chainy.Expiration,
-					IsFilPlus: chainy.VerifiedDealWeight.GreaterThan(chainy.DealWeight),
+					ExpiresAt: chainy.onChain.Expiration,
+					IsFilPlus: chainy.onChain.VerifiedDealWeight.GreaterThan(chainy.onChain.DealWeight),
+					Proving:   chainy.active,
+					Flag:      true, // All such sectors should be flagged to be terminated
 				}
-				if ss, err := chainy.SealProof.SectorSize(); err == nil {
+				if ss, err := chainy.onChain.SealProof.SectorSize(); err == nil {
 					s.SealInfo = ss.ShortString()
 				}
 				sectors = append(sectors, s)
@@ -140,8 +149,13 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 	apihelper.OrHTTPFail(w, json.NewEncoder(w).Encode(map[string]any{"data": sectors}))
 }
 
+type sectorInfo struct {
+	onChain *miner.SectorOnChainInfo
+	active  bool
+}
+
 type sectorCacheEntry struct {
-	sectors []*miner.SectorOnChainInfo
+	sectors []sectorInfo
 	loading chan struct{}
 	time.Time
 }
@@ -156,7 +170,7 @@ var sectorInfoCache = map[address.Address]sectorCacheEntry{}
 // Cache can be invalidated by setting the "sector_refresh" cookie to "true".
 // This is thread-safe.
 // Parallel requests share the chain's first response.
-func (c *cfg) getCachedSectorInfo(w http.ResponseWriter, r *http.Request, maddr address.Address, headKey types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+func (c *cfg) getCachedSectorInfo(w http.ResponseWriter, r *http.Request, maddr address.Address, headKey types.TipSetKey) ([]sectorInfo, error) {
 	mx.Lock()
 	v, ok := sectorInfoCache[maddr]
 	mx.Unlock()
@@ -187,11 +201,39 @@ func (c *cfg) getCachedSectorInfo(w http.ResponseWriter, r *http.Request, maddr 
 			mx.Unlock()
 			return nil, err
 		}
+		active, err := c.Full.StateMinerActiveSectors(context.Background(), maddr, headKey)
+		if err != nil {
+			mx.Lock()
+			delete(sectorInfoCache, maddr)
+			close(v.loading)
+			mx.Unlock()
+			return nil, err
+		}
+		activebf := bitfield.New()
+		for i, _ := range active {
+			activebf.Set(uint64(active[i].SectorNumber))
+		}
+		infos := make([]sectorInfo, len(onChainInfo))
+		for i, info := range onChainInfo {
+			info := info
+			set, err := activebf.IsSet(uint64(info.SectorNumber))
+			if err != nil {
+				mx.Lock()
+				delete(sectorInfoCache, maddr)
+				close(v.loading)
+				mx.Unlock()
+				return nil, err
+			}
+			infos[i] = sectorInfo{
+				onChain: info,
+				active:  set,
+			}
+		}
 		mx.Lock()
-		sectorInfoCache[maddr] = sectorCacheEntry{onChainInfo, nil, time.Now()}
+		sectorInfoCache[maddr] = sectorCacheEntry{infos, nil, time.Now()}
 		close(v.loading)
 		mx.Unlock()
-		return onChainInfo, nil
+		return infos, nil
 	}
 	return v.sectors, nil
 }

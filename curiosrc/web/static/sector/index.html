@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Configuration Editor</title>
+  <title>Sector List</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
   <script type="module" src="/ux/curio-ux.mjs"></script>
 
@@ -43,11 +43,13 @@
         {title: "Sector", data:'SectorNum'},
         {title: "Expiry", data:'ExpiresAt'},
         {title: "🔗", data:'IsOnChain'},
+        {title: "Proving", data:'Proving'},
         {title: "Has Sealed", data:'HasSealed'},
         {title: "Has Unsealed", data:'HasUnsealed'},
         {title: "Fil+", data:'IsFilPlus'},
         {title: "Has Snap", data:'HasSnap'},
-        {title: "Size", data:"SealInfo"}
+        {title: "Size", data:"SealInfo"},
+        {title: "Flag", data:"Flag"}
       ],
       layout: {
         topStart: 'buttons',
@@ -94,9 +96,14 @@
               orderable: false,
               render: DataTable.render.select(),
               targets: 0
+          },
+          {
+              targets: 11,
+              visible: false, // Make the "Flag" column hidden
+              searchable: false,
           }
       ],
-      order: [[1, 'asc']],
+      order: [[11, 'desc'], [1, 'asc'], [2, 'asc']],
       select: {
         style: 'multi',
         selector: 'td:first-child',
@@ -107,7 +114,6 @@
       scrollY:        window.innerHeight - 150,
       deferRender:    true,
       scroller:       true,
-      responsive:     true,
     });
   </script>
 </body>
