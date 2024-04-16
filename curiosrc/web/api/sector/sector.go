@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/gorilla/mux"
 	"github.com/samber/lo"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -210,7 +210,7 @@ func (c *cfg) getCachedSectorInfo(w http.ResponseWriter, r *http.Request, maddr 
 			return nil, err
 		}
 		activebf := bitfield.New()
-		for i, _ := range active {
+		for i := range active {
 			activebf.Set(uint64(active[i].SectorNumber))
 		}
 		infos := make([]sectorInfo, len(onChainInfo))
