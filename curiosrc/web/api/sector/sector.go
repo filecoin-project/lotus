@@ -69,13 +69,13 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		HasSnap        bool
 		ExpiresAt      abi.ChainEpoch // map to Duration
 		IsOnChain      bool
+		IsFilPlus      bool
+		SealInfo       string
 		//StorageID         string         `db:"storage_id"` // map to serverName
 		// Activation        abi.ChainEpoch // map to time.Time. advanced view only
 		// DealIDs           []abi.DealID //  advanced view only
-		ExpectedDayReward abi.TokenAmount
-		IsFilPlus         bool
-		SealProof         abi.RegisteredSealProof
-		SealInfo          string
+		//ExpectedDayReward abi.TokenAmount
+		//SealProof         abi.RegisteredSealProof
 	}
 	var sectors []sector
 	apihelper.OrHTTPFail(w, c.DB.Select(r.Context(), &sectors, `SELECT 
@@ -96,9 +96,6 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		sectors[i].HasSealed = s.SectorFiletype&int(storiface.FTSealed) != 0 || s.SectorFiletype&int(storiface.FTUpdate) != 0
 		sectors[i].HasUnsealed = s.SectorFiletype&int(storiface.FTUnsealed) != 0
 		sectors[i].HasSnap = s.SectorFiletype&int(storiface.FTUpdate) != 0
-		if ss, err := s.SealProof.SectorSize(); err == nil {
-			sectors[i].SealInfo = ss.ShortString()
-		}
 		sectorIdx[sectorID{s.MinerID, uint64(s.SectorNum)}] = i
 		if _, ok := minerToAddr[s.MinerID]; !ok {
 			minerToAddr[s.MinerID], err = address.NewIDAddress(uint64(s.MinerID))
@@ -113,21 +110,24 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 			if i, ok := sectorIdx[sectorID{minerID, uint64(chainy.SectorNumber)}]; ok {
 				sectors[i].IsOnChain = true
 				sectors[i].ExpiresAt = chainy.Expiration
-				sectors[i].SealProof = chainy.SealProof
 				sectors[i].IsFilPlus = chainy.VerifiedDealWeight.GreaterThan(chainy.DealWeight)
-				sectors[i].ExpectedDayReward = chainy.ExpectedDayReward
+				if ss, err := chainy.SealProof.SectorSize(); err == nil {
+					sectors[i].SealInfo = ss.ShortString()
+				}
 				// too many, not enough?
 			} else {
 				// sector is on chain but not in db
-				sectors = append(sectors, sector{
-					MinerID:           minerID,
-					SectorNum:         int64(chainy.SectorNumber),
-					IsOnChain:         true,
-					ExpiresAt:         chainy.Expiration,
-					SealProof:         chainy.SealProof,
-					ExpectedDayReward: chainy.ExpectedDayReward,
-					IsFilPlus:         chainy.VerifiedDealWeight.GreaterThan(chainy.DealWeight),
-				})
+				s := sector{
+					MinerID:   minerID,
+					SectorNum: int64(chainy.SectorNumber),
+					IsOnChain: true,
+					ExpiresAt: chainy.Expiration,
+					IsFilPlus: chainy.VerifiedDealWeight.GreaterThan(chainy.DealWeight),
+				}
+				if ss, err := chainy.SealProof.SectorSize(); err == nil {
+					s.SealInfo = ss.ShortString()
+				}
+				sectors = append(sectors, s)
 			}
 			/*
 				info, err := c.Full.StateSectorGetInfo(r.Context(), minerToAddr[s], abi.SectorNumber(uint64(sectors[i].SectorNum)), headKey)
