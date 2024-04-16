@@ -3,16 +3,20 @@ package sector
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/gorilla/mux"
 	"github.com/samber/lo"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -21,6 +25,8 @@ import (
 	"github.com/filecoin-project/lotus/curiosrc/web/api/apihelper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
+
+const verifiedPowerGainMul = 9
 
 type cfg struct {
 	*deps.Deps
@@ -74,6 +80,8 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		SealInfo       string
 		Proving        bool
 		Flag           bool
+		DealWeight     string
+		Deals          string
 		//StorageID         string         `db:"storage_id"` // map to serverName
 		// Activation        abi.ChainEpoch // map to time.Time. advanced view only
 		// DealIDs           []abi.DealID //  advanced view only
@@ -110,18 +118,76 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		onChainInfo, err := c.getCachedSectorInfo(w, r, maddr, head.Key())
 		apihelper.OrHTTPFail(w, err)
 		for _, chainy := range onChainInfo {
-			if i, ok := sectorIdx[sectorID{minerID, uint64(chainy.onChain.SectorNumber)}]; ok {
+			st := chainy.onChain
+			if i, ok := sectorIdx[sectorID{minerID, uint64(st.SectorNumber)}]; ok {
 				sectors[i].IsOnChain = true
-				sectors[i].ExpiresAt = chainy.onChain.Expiration
-				sectors[i].IsFilPlus = chainy.onChain.VerifiedDealWeight.GreaterThan(chainy.onChain.DealWeight)
-				if ss, err := chainy.onChain.SealProof.SectorSize(); err == nil {
+				sectors[i].ExpiresAt = st.Expiration
+				sectors[i].IsFilPlus = st.VerifiedDealWeight.GreaterThan(st.DealWeight)
+				if ss, err := st.SealProof.SectorSize(); err == nil {
 					sectors[i].SealInfo = ss.ShortString()
 				}
 				sectors[i].Proving = chainy.active
-				if chainy.onChain.Expiration < head.Height() {
+				if st.Expiration < head.Height() {
 					sectors[i].Flag = true // Flag expired sectors
 				}
-				// too many, not enough?
+
+				type Piece struct {
+					Size     int64 `db:"piece_size"`
+					DealID   uint64
+					Proposal json.RawMessage `db:"f05_deal_proposal"`
+					Manifest json.RawMessage `db:"direct_piece_activation_manifest"`
+				}
+				var Pieces []Piece
+				apihelper.OrHTTPFail(w, c.DB.Select(r.Context(), &Pieces, `SELECT 
+										piece_size, f05_deal_id, f05_deal_proposal, direct_piece_activation_manifest  
+										FROM sectors_sdr_initial_pieces 
+										WHERE sp_id = $1 AND sector_number = $2
+										ORDER BY sp_id, sector_number`, minerID, st.SectorNumber))
+
+				dw, vp := .0, .0
+				f05, deals, ddo := 0, 0, 0
+				for _, piece := range Pieces {
+					if piece.Proposal != nil && piece.DealID > 0 {
+						var prop *market.DealProposal
+						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Proposal, prop))
+						dw += float64(prop.PieceSize)
+						if prop.VerifiedDeal {
+							vp += float64(prop.PieceSize) * verifiedPowerGainMul
+						}
+						f05++
+					}
+					if piece.DealID == 0 && piece.Manifest != nil {
+						var pam *miner.PieceActivationManifest
+						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, pam))
+						dw += float64(pam.Size)
+						if pam.VerifiedAllocationKey != nil {
+							vp += float64(pam.Size) * verifiedPowerGainMul
+						}
+						ddo++
+					}
+				}
+				estimate := st.Expiration-st.Activation <= 0 // Keeping check separate for future snap-deal check
+				if !estimate {
+					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
+					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+					for _, deal := range st.DealIDs {
+						if deal != 0 {
+							deals++
+						}
+					}
+				}
+				if dw > 0 {
+					sectors[i].DealWeight = fmt.Sprintf("%s", units.BytesSize(dw))
+				} else if vp > 0 {
+					sectors[i].DealWeight = fmt.Sprintf("%s", units.BytesSize(vp))
+				} else {
+					sectors[i].DealWeight = "CC"
+				}
+				sectors[i].Deals = fmt.Sprintf("Market: %d, DDO: %d", f05, ddo)
+				if deals > 0 {
+					sectors[i].Deals = fmt.Sprintf("Market: %d, DDO: %d", deals, ddo)
+				}
 			} else {
 				// sector is on chain but not in db
 				s := sector{

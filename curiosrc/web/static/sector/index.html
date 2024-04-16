@@ -26,12 +26,24 @@
 </head>
 
 <body style="visibility:hidden" data-bs-theme="dark">
+<style>
+  #myClass {
+    text-align: center;
+  }
+</style>
+
   <curio-ux>
-    <table id="sectorTable">
-      <tr>
-        <td>Loading...</td>
-      </tr>
-    </table>
+    <section class="section container-fluid implementations">
+      <div class="row justify-content-center content">
+        <div class="col-md-12 justify-content-center content">
+          <table id="sectorTable" class="hover">
+            <tr>
+              <td>Loading...</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </section>
   </curio-ux>
   <script>
 
@@ -46,6 +58,8 @@
         {title: "Proving", data:'Proving'},
         {title: "Has Sealed", data:'HasSealed'},
         {title: "Has Unsealed", data:'HasUnsealed'},
+        {title: "DealWeight", data:"DealWeight"},
+        {title: "Deals", data:"Deals"},
         {title: "Fil+", data:'IsFilPlus'},
         {title: "Has Snap", data:'HasSnap'},
         {title: "Size", data:"SealInfo"},
@@ -93,17 +107,21 @@
       responsive: true,
       columnDefs: [
           {
+            className: 'myClass',
+            targets: -1
+          },
+          {
               orderable: false,
               render: DataTable.render.select(),
               targets: 0
           },
           {
-              targets: 11,
+              targets: 13,
               visible: false, // Make the "Flag" column hidden
               searchable: false,
           }
       ],
-      order: [[11, 'desc'], [1, 'asc'], [2, 'asc']],
+      order: [[13, 'desc'], [1, 'asc'], [2, 'asc']],
       select: {
         style: 'multi',
         selector: 'td:first-child',
