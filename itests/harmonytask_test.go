@@ -298,6 +298,6 @@ func TestBoredom(t *testing.T) {
 		ht, err := harmonytask.New(cdb, []harmonytask.TaskInterface{boredParty}, "test:1")
 		require.NoError(t, err)
 		require.Eventually(t, func() bool { return ran }, time.Second, time.Millisecond*100)
-		ht.GracefullyTerminate(time.Hour)
+		ht.GracefullyTerminate()
 	})
 }
