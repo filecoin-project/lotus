@@ -19,11 +19,7 @@ COMMANDS:
    guided-setup  Run the guided setup for migrating from lotus-miner to Curio or Creating a new Curio miner
    seal          Manage the sealing pipeline
    market        
-   auth          Manage RPC permissions
-   log           Manage logging
-   wait-api      Wait for lotus api to come online
    fetch-params  Fetch proving parameters
-   version       Print version
    help, h       Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
@@ -48,8 +44,10 @@ USAGE:
    curio cli command [command options] [arguments...]
 
 COMMANDS:
-   storage  manage sector storage
-   help, h  Shows a list of commands or help for one command
+   storage   manage sector storage
+   log       Manage logging
+   wait-api  Wait for Curio api to come online
+   help, h   Shows a list of commands or help for one command
 
 OPTIONS:
    --machine value  machine host:port (curio run --listen address)
@@ -157,6 +155,14 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help
+```
+
+### curio cli log
+```
+```
+
+### curio cli wait-api
+```
 ```
 
 ## curio run
@@ -477,138 +483,6 @@ OPTIONS:
    --help, -h                         show help
 ```
 
-## curio auth
-```
-NAME:
-   curio auth - Manage RPC permissions
-
-USAGE:
-   curio auth command [command options] [arguments...]
-
-COMMANDS:
-   create-token  Create token
-   api-info      Get token with API info required to connect to this node
-   help, h       Shows a list of commands or help for one command
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### curio auth create-token
-```
-NAME:
-   curio auth create-token - Create token
-
-USAGE:
-   curio auth create-token [command options] [arguments...]
-
-OPTIONS:
-   --perm value  permission to assign to the token, one of: read, write, sign, admin
-   --help, -h    show help
-```
-
-### curio auth api-info
-```
-NAME:
-   curio auth api-info - Get token with API info required to connect to this node
-
-USAGE:
-   curio auth api-info [command options] [arguments...]
-
-OPTIONS:
-   --perm value  permission to assign to the token, one of: read, write, sign, admin
-   --help, -h    show help
-```
-
-## curio log
-```
-NAME:
-   curio log - Manage logging
-
-USAGE:
-   curio log command [command options] [arguments...]
-
-COMMANDS:
-   list       List log systems
-   set-level  Set log level
-   alerts     Get alert states
-   help, h    Shows a list of commands or help for one command
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### curio log list
-```
-NAME:
-   curio log list - List log systems
-
-USAGE:
-   curio log list [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### curio log set-level
-```
-NAME:
-   curio log set-level - Set log level
-
-USAGE:
-   curio log set-level [command options] [level]
-
-DESCRIPTION:
-   Set the log level for logging systems:
-
-      The system flag can be specified multiple times.
-
-      eg) log set-level --system chain --system chainxchg debug
-
-      Available Levels:
-      debug
-      info
-      warn
-      error
-
-      Environment Variables:
-      GOLOG_LOG_LEVEL - Default log level for all log systems
-      GOLOG_LOG_FMT   - Change output log format (json, nocolor)
-      GOLOG_FILE      - Write logs to file
-      GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
-
-
-OPTIONS:
-   --system value [ --system value ]  limit to log system
-   --help, -h                         show help
-```
-
-### curio log alerts
-```
-NAME:
-   curio log alerts - Get alert states
-
-USAGE:
-   curio log alerts [command options] [arguments...]
-
-OPTIONS:
-   --all       get all (active and inactive) alerts (default: false)
-   --help, -h  show help
-```
-
-## curio wait-api
-```
-NAME:
-   curio wait-api - Wait for lotus api to come online
-
-USAGE:
-   curio wait-api [command options] [arguments...]
-
-OPTIONS:
-   --timeout value  duration to wait till fail (default: 30s)
-   --help, -h       show help
-```
-
 ## curio fetch-params
 ```
 NAME:
@@ -616,18 +490,6 @@ NAME:
 
 USAGE:
    curio fetch-params [command options] [sectorSize]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-## curio version
-```
-NAME:
-   curio version - Print version
-
-USAGE:
-   curio version [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help

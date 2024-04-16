@@ -362,5 +362,10 @@ func DefaultCurioConfig() *CurioConfig {
 			PartitionCheckTimeout: Duration(20 * time.Minute),
 			SingleCheckTimeout:    Duration(10 * time.Minute),
 		},
+		Ingest: CurioIngestConfig{
+			MaxQueueSDR:   8, // default to 8 sectors before sdr
+			MaxQueueTrees: 0, // default don't use this limit
+			MaxQueuePoRep: 0, // default don't use this limit
+		},
 	}
 }

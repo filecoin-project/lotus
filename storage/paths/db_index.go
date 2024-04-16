@@ -26,6 +26,8 @@ import (
 
 const NoMinerFilter = abi.ActorID(0)
 
+const URLSeparator = ","
+
 var errAlreadyLocked = errors.New("already locked")
 
 type DBIndex struct {
@@ -197,13 +199,13 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		if storageId.Valid {
 			var currUrls []string
 			if urls.Valid {
-				currUrls = strings.Split(urls.String, ",")
+				currUrls = strings.Split(urls.String, URLSeparator)
 			}
 			currUrls = union(currUrls, si.URLs)
 
 			_, err = tx.Exec(
 				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9, allow_miners=$10, deny_miners=$11, last_heartbeat=NOW() WHERE storage_id=$12",
-				strings.Join(currUrls, ","),
+				strings.Join(currUrls, URLSeparator),
 				si.Weight,
 				si.MaxStorage,
 				si.CanSeal,
@@ -277,7 +279,7 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 	}
 
 	if len(modUrls) > 0 {
-		newUrls := strings.Join(modUrls, ",")
+		newUrls := strings.Join(modUrls, URLSeparator)
 		_, err := dbi.harmonyDB.Exec(ctx, "UPDATE storage_path set urls=$1 WHERE storage_id=$2", newUrls, id)
 		if err != nil {
 			return err
@@ -721,7 +723,7 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 						 FROM storage_path 
 						 WHERE available >= $1
 						 and NOW()-($2 * INTERVAL '1 second') < last_heartbeat
-						 and heartbeat_err is null
+						 and heartbeat_err = ''
 						 and (($3 and can_seal = TRUE) or ($4 and can_store = TRUE))
 						order by (available::numeric * weight) desc`,
 		spaceReq,

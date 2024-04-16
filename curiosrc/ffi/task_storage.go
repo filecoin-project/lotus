@@ -2,6 +2,7 @@ package ffi
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -170,9 +171,14 @@ func (t *TaskStorage) Claim(taskID int) error {
 		return err
 	}
 
+	var releaseOnce sync.Once
+	releaseFunc := func() {
+		releaseOnce.Do(release)
+	}
+
 	sres := &StorageReservation{
 		SectorRef: sectorRef,
-		Release:   release,
+		Release:   releaseFunc,
 		Paths:     pathsFs,
 		PathIDs:   pathIDs,
 

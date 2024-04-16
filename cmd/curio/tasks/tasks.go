@@ -144,8 +144,13 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
-	log.Infow("This lotus_provider instance handles",
-		"miner_addresses", lo.Map(lo.Keys(maddrs), func(a dtypes.MinerAddress, _ int) string { return address.Address(a).String() }),
+	minerAddresses := make([]string, 0, len(maddrs))
+	for k := range maddrs {
+		minerAddresses = append(minerAddresses, address.Address(k).String())
+	}
+
+	log.Infow("This Curio instance handles",
+		"miner_addresses", minerAddresses,
 		"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
 
 	// harmony treats the first task as highest priority, so reverse the order

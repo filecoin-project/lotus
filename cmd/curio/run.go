@@ -132,13 +132,13 @@ var runCmd = &cli.Command{
 		}
 		defer taskEngine.GracefullyTerminate()
 
+		if err := lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg); err != nil {
+			return xerrors.Errorf("starting market RPCs: %w", err)
+		}
+
 		err = rpc.ListenAndServe(ctx, dependencies, shutdownChan) // Monitor for shutdown.
 		if err != nil {
 			return err
-		}
-
-		if err := lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg); err != nil {
-			return xerrors.Errorf("starting market RPCs: %w", err)
 		}
 
 		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},

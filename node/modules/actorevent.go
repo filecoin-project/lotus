@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -105,7 +106,7 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 			if cfg.DatabasePath == "" {
 				sqlitePath, err := r.SqlitePath()
 				if err != nil {
-					return nil, err
+					return nil, xerrors.Errorf("failed to resolve event index database path: %w", err)
 				}
 				dbPath = filepath.Join(sqlitePath, "events.db")
 			} else {
@@ -115,7 +116,7 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 			var err error
 			eventIndex, err = filter.NewEventIndex(ctx, dbPath, chainapi.Chain)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("failed to initialize event index database: %w", err)
 			}
 
 			lc.Append(fx.Hook{
