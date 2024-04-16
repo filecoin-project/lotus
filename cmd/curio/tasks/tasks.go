@@ -3,7 +3,7 @@ package tasks
 
 import (
 	"context"
-
+	"github.com/filecoin-project/lotus/curiosrc/gc"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
@@ -129,6 +129,12 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg.Fees.MaxCommitGasFee)
 			activeTasks = append(activeTasks, commitTask)
 		}
+	}
+
+	if hasAnySealingTask {
+		// Sealing nodes maintain storage index when bored
+		storageEndpointGcTask := gc.NewStorageEndpointGC(si, stor, db)
+		activeTasks = append(activeTasks, storageEndpointGcTask)
 	}
 
 	if needProofParams {

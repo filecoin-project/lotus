@@ -20,7 +20,7 @@ import (
 
 var log = logging.Logger("curiogc")
 
-const StorageEndpointGCInterval = 2 * time.Minute
+const StorageEndpointGCInterval = 2 * time.Minute // todo bump post testing
 const StorageEndpointDeadTime = 15 * time.Minute
 const MaxParallelEndpointChecks = 32
 
@@ -28,6 +28,14 @@ type StorageEndpointGC struct {
 	si     *paths.DBIndex
 	remote *paths.Remote
 	db     *harmonydb.DB
+}
+
+func NewStorageEndpointGC(si *paths.DBIndex, remote *paths.Remote, db *harmonydb.DB) *StorageEndpointGC {
+	return &StorageEndpointGC{
+		si:     si,
+		remote: remote,
+		db:     db,
+	}
 }
 
 func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
