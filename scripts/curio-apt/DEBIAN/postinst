@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/bin/sh
 set -e
 
 case "$1" in
@@ -7,12 +6,16 @@ case "$1" in
         # Reload systemd after installation or upgrade
         systemctl daemon-reload
 
-        # Restart the Curio service
-        systemctl restart curio.service
-        ;;
-    *)
-        ;;
+        if [ -z "$2" ]; then
+            # This is an initial installation
+            systemctl enable curio.service
+            echo "CURIO_LAYERS=gui,post\nCURIO_DB=postgres://yugabyte:yugabyte@yugabyte/yugabyte\n" >/etc/curio.env
+            echo "setup /etc/curio.env then run: systemctl start curio.service"
+        else
+            # This is an upgrade
+            systemctl restart curio.service
+        fi
+    ;;
 esac
 
-# exit successfully
 exit 0
