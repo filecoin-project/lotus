@@ -159,10 +159,77 @@ OPTIONS:
 
 ### curio cli log
 ```
+NAME:
+   curio cli log - Manage logging
+
+USAGE:
+   curio cli log command [command options] [arguments...]
+
+COMMANDS:
+   list       List log systems
+   set-level  Set log level
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### curio cli log list
+```
+NAME:
+   curio cli log list - List log systems
+
+USAGE:
+   curio cli log list [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+#### curio cli log set-level
+```
+NAME:
+   curio cli log set-level - Set log level
+
+USAGE:
+   curio cli log set-level [command options] [level]
+
+DESCRIPTION:
+   Set the log level for logging systems:
+
+      The system flag can be specified multiple times.
+
+      eg) log set-level --system chain --system chainxchg debug
+
+      Available Levels:
+      debug
+      info
+      warn
+      error
+
+      Environment Variables:
+      GOLOG_LOG_LEVEL - Default log level for all log systems
+      GOLOG_LOG_FMT   - Change output log format (json, nocolor)
+      GOLOG_FILE      - Write logs to file
+      GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
+
+
+OPTIONS:
+   --system value [ --system value ]  limit to log system
+   --help, -h                         show help
 ```
 
 ### curio cli wait-api
 ```
+NAME:
+   curio cli wait-api - Wait for Curio api to come online
+
+USAGE:
+   curio cli wait-api [command options] [arguments...]
+
+OPTIONS:
+   --timeout value  duration to wait till fail (default: 30s)
+   --help, -h       show help
 ```
 
 ## curio run
