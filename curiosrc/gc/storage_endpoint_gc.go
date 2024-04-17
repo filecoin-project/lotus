@@ -197,16 +197,14 @@ func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool
 		// Remove dead URLs from storage_path entries and handle path cleanup
 		for _, du := range deadURLs {
 			// Fetch the current URLs for the storage path
-			var currentPath struct {
-				URLs string
-			}
-			err = tx.Get(&currentPath, "SELECT urls FROM storage_path WHERE storage_id = $1", du.StorageID)
+			var URLs string
+			err = tx.QueryRow("SELECT urls FROM storage_path WHERE storage_id = $1", du.StorageID).Scan(&URLs)
 			if err != nil {
 				return false, xerrors.Errorf("fetching storage paths: %w", err)
 			}
 
 			// Filter out the dead URL using lo.Reject and prepare the updated list
-			urls := strings.Split(currentPath.URLs, paths.URLSeparator)
+			urls := strings.Split(URLs, paths.URLSeparator)
 			urls = lo.Reject(urls, func(u string, _ int) bool {
 				return u == du.URL
 			})
@@ -214,7 +212,7 @@ func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool
 			log.Debugw("filtered urls", "urls", urls, "dead_url", du.URL, "storage_id", du.StorageID)
 
 			if os.Getenv("CURIO_STORAGE_META_GC_DRYRUN") != "no" { // todo drop this after testing
-				log.Debugw("dryrun: not updating storage path", "storage_id", du.StorageID, "urls", urls, "dead_url", du.URL, "current_urls", currentPath.URLs, "dead_urls", deadURLs)
+				log.Debugw("dryrun: not updating storage path", "storage_id", du.StorageID, "urls", urls, "dead_url", du.URL, "current_urls", URLs, "dead_urls", deadURLs)
 				continue
 			}
 
