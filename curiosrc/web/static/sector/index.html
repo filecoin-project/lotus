@@ -26,16 +26,10 @@
 </head>
 
 <body style="visibility:hidden" data-bs-theme="dark">
-<style>
-  #myClass {
-    text-align: center;
-  }
-</style>
-
   <curio-ux>
-    <section class="section container-fluid implementations">
+    <section class="section container-fluid">
       <div class="row justify-content-center content">
-        <div class="col-md-12 justify-content-center content">
+        <div class="col-md-auto" style="max-width: 95%">
           <table id="sectorTable" class="hover">
             <tr>
               <td>Loading...</td>
@@ -106,10 +100,6 @@
       ],
       responsive: true,
       columnDefs: [
-          {
-            className: 'myClass',
-            targets: -1
-          },
           {
               orderable: false,
               render: DataTable.render.select(),
