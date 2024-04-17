@@ -50,6 +50,8 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	actors2 "github.com/filecoin-project/lotus/build/actors"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -1962,7 +1964,7 @@ func upgradeActorsV12Common(
 
 	var manifestCid cid.Cid
 	if initState.NetworkName == "calibrationnet" {
-		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix1)
+		embedded, ok := actors2.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix1)
 		if !ok {
 			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
 		}
@@ -2027,7 +2029,7 @@ func buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestCID cid.Cid) fun
 		}
 
 		// this loads the second buggy bundle, for UpgradeWatermelonFixHeight
-		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix2)
+		embedded, ok := actors2.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, calibnetv12BuggyBundleSuffix2)
 		if !ok {
 			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
 		}
@@ -2260,7 +2262,7 @@ func upgradeActorsV13Common(
 
 	var manifestCid cid.Cid
 	if initState.NetworkName == "calibrationnet" {
-		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version13, calibnetv13BuggyBundleSuffix1)
+		embedded, ok := actors2.GetEmbeddedBuiltinActorsBundle(actorstypes.Version13, calibnetv13BuggyBundleSuffix1)
 		if !ok {
 			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
 		}
@@ -2325,7 +2327,7 @@ func upgradeActorsV13VerifregFix(oldBuggyVerifregCID, newManifestCID cid.Cid) fu
 		}
 
 		// this loads the buggy bundle, for UpgradeDragonHeight
-		embedded, ok := build.GetEmbeddedBuiltinActorsBundle(actorstypes.Version13, calibnetv13BuggyBundleSuffix1)
+		embedded, ok := actors2.GetEmbeddedBuiltinActorsBundle(actorstypes.Version13, calibnetv13BuggyBundleSuffix1)
 		if !ok {
 			return cid.Undef, xerrors.Errorf("didn't find buggy calibrationnet bundle")
 		}

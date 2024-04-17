@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	actors2 "github.com/filecoin-project/lotus/build/actors"
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
@@ -69,7 +70,7 @@ func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...acto
 		)
 		if path, ok := build.BundleOverrides[av]; ok {
 			root, err = LoadBundleFromFile(ctx, bs, path)
-		} else if embedded, ok := build.GetEmbeddedBuiltinActorsBundle(av, build.NetworkBundle); ok {
+		} else if embedded, ok := actors2.GetEmbeddedBuiltinActorsBundle(av, build.NetworkBundle); ok {
 			root, err = LoadBundle(ctx, bs, bytes.NewReader(embedded))
 		} else {
 			err = xerrors.Errorf("bundle for actors version v%d not found", av)

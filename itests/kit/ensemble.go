@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	actors2 "github.com/filecoin-project/lotus/build/actors"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -172,9 +173,9 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	// Ensure we're using the right actors. This really shouldn't be some global thing, but it's
 	// the best we can do for now.
 	if n.options.mockProofs {
-		require.NoError(t, build.UseNetworkBundle("testing-fake-proofs"))
+		require.NoError(t, actors2.UseNetworkBundle("testing-fake-proofs"))
 	} else {
-		require.NoError(t, build.UseNetworkBundle("testing"))
+		require.NoError(t, actors2.UseNetworkBundle("testing"))
 	}
 
 	build.EquivocationDelaySecs = 0
