@@ -9,8 +9,10 @@ case "$1" in
         if [ -z "$2" ]; then
             # This is an initial installation
             systemctl enable curio.service
-            echo "CURIO_LAYERS=gui,post\nCURIO_DB=postgres://yugabyte:yugabyte@yugabyte/yugabyte\n" >/etc/curio.env
-            echo "setup /etc/curio.env then run: systemctl start curio.service"
+            if [ ! -f "/etc/curio.env" ]; then
+              echo "CURIO_LAYERS=gui,post\nCURIO_DB=postgres://yugabyte:yugabyte@yugabyte/yugabyte\n" >/etc/curio.env
+              echo "setup /etc/curio.env then run: systemctl start curio.service"
+            fi
         else
             # This is an upgrade
             systemctl restart curio.service
