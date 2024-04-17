@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    configure)
+        # Reload systemd after installation or upgrade
+        systemctl daemon-reload
+
+        # Restart the Curio service
+        systemctl restart curio.service
+        ;;
+    *)
+        ;;
+esac
+
+# exit successfully
+exit 0
