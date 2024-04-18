@@ -1,7 +1,7 @@
 //go:build release
 // +build release
 
-package build_test
+package actors_test
 
 import (
 	"archive/tar"

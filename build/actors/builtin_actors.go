@@ -1,4 +1,4 @@
-package build
+package actors
 
 import (
 	"archive/tar"
@@ -21,31 +21,32 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
-//go:embed actors/*.tar.zst
+//go:embed *.tar.zst
 var embeddedBuiltinActorReleases embed.FS
 
 func init() {
-	if BundleOverrides == nil {
-		BundleOverrides = make(map[actorstypes.Version]string)
+	if build.BundleOverrides == nil {
+		build.BundleOverrides = make(map[actorstypes.Version]string)
 	}
 	for _, av := range actors.Versions {
 		path := os.Getenv(fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av))
 		if path == "" {
 			continue
 		}
-		BundleOverrides[actorstypes.Version(av)] = path
+		build.BundleOverrides[actorstypes.Version(av)] = path
 	}
-	if err := loadManifests(NetworkBundle); err != nil {
+	if err := loadManifests(build.NetworkBundle); err != nil {
 		panic(err)
 	}
 
 	// The following code cid existed temporarily on the calibnet testnet, as a "buggy" storage miner actor implementation.
 	// We include them in our builtin bundle, but intentionally omit from metadata.
-	if NetworkBundle == "calibrationnet" {
+	if build.NetworkBundle == "calibrationnet" {
 		actors.AddActorMeta("storageminer", cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"), actorstypes.Version12)
 		actors.AddActorMeta("storageminer", cid.MustParse("bafk2bzaced7emkbbnrewv5uvrokxpf5tlm4jslu2jsv77ofw2yqdglg657uie"), actorstypes.Version12)
 		actors.AddActorMeta("verifiedregistry", cid.MustParse("bafk2bzacednskl3bykz5qpo54z2j2p4q44t5of4ktd6vs6ymmg2zebsbxazkm"), actorstypes.Version13)
@@ -54,13 +55,13 @@ func init() {
 
 // UseNetworkBundle switches to a different network bundle, by name.
 func UseNetworkBundle(netw string) error {
-	if NetworkBundle == netw {
+	if build.NetworkBundle == netw {
 		return nil
 	}
 	if err := loadManifests(netw); err != nil {
 		return err
 	}
-	NetworkBundle = netw
+	build.NetworkBundle = netw
 	return nil
 }
 
@@ -68,7 +69,7 @@ func loadManifests(netw string) error {
 	overridden := make(map[actorstypes.Version]struct{})
 	var newMetadata []*BuiltinActorsMetadata
 	// First, prefer overrides.
-	for av, path := range BundleOverrides {
+	for av, path := range build.BundleOverrides {
 		root, actorCids, err := readBundleManifestFromFile(path)
 		if err != nil {
 			return err
@@ -248,7 +249,7 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 }
 
 // GetEmbeddedBuiltinActorsBundle returns the builtin-actors bundle for the given actors version.
-func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version, networkBundleName string) ([]byte, bool) {
+func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version, NetworkBundleName string) ([]byte, bool) {
 	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("actors/v%d.tar.zst", version))
 	if err != nil {
 		return nil, false
@@ -259,7 +260,7 @@ func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version, networkBundleNa
 	defer uncompressed.Close() //nolint
 
 	tarReader := tar.NewReader(uncompressed)
-	targetFileName := fmt.Sprintf("builtin-actors-%s.car", networkBundleName)
+	targetFileName := fmt.Sprintf("builtin-actors-%s.car", NetworkBundleName)
 	for {
 		header, err := tarReader.Next()
 		switch err {

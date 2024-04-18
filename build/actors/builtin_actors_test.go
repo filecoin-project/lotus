@@ -1,4 +1,4 @@
-package build_test
+package actors_test
 
 import (
 	"testing"
@@ -8,17 +8,18 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/lotus/build"
+	actors2 "github.com/filecoin-project/lotus/build/actors"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
 // Test that the embedded metadata is correct.
 func TestEmbeddedMetadata(t *testing.T) {
-	metadata, err := build.ReadEmbeddedBuiltinActorsMetadata()
+	metadata, err := actors2.ReadEmbeddedBuiltinActorsMetadata()
 	require.NoError(t, err)
 
 	for i, v1 := range metadata {
-		v2 := build.EmbeddedBuiltinActorsMetadata[i]
+		v2 := actors2.EmbeddedBuiltinActorsMetadata[i]
 		require.Equal(t, v1.Network, v2.Network)
 		require.Equal(t, v1.Version, v2.Version)
 		require.Equal(t, v1.ManifestCid, v2.ManifestCid)

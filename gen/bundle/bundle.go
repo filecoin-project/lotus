@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/actors"
 )
 
 var tmpl *template.Template = template.Must(template.New("actor-metadata").Parse(`
@@ -41,7 +41,7 @@ func splitOverride(override string) (string, string) {
 
 func main() {
 	// read metadata from the embedded bundle, includes all info except git tags
-	metadata, err := build.ReadEmbeddedBuiltinActorsMetadata()
+	metadata, err := actors.ReadEmbeddedBuiltinActorsMetadata()
 	if err != nil {
 		panic(err)
 	}
@@ -90,8 +90,8 @@ func main() {
 	}
 }
 
-func getOldGitTagFromEmbeddedMetadata(m *build.BuiltinActorsMetadata) string {
-	for _, v := range build.EmbeddedBuiltinActorsMetadata {
+func getOldGitTagFromEmbeddedMetadata(m *actors.BuiltinActorsMetadata) string {
+	for _, v := range actors.EmbeddedBuiltinActorsMetadata {
 		// if we agree on the manifestCid for the previously embedded metadata, use the previously set tag
 		if m.Version == v.Version && m.Network == v.Network && m.ManifestCid == v.ManifestCid {
 			return m.BundleGitTag

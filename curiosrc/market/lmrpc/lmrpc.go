@@ -13,12 +13,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/jackc/pgx/v5"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -28,9 +31,11 @@ import (
 	"github.com/filecoin-project/lotus/curiosrc/market/fakelm"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/nullreader"
+	"github.com/filecoin-project/lotus/lib/rpcenc"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
-	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -428,7 +433,7 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 
 	finalApi := proxy.LoggingAPI[api.StorageMiner, api.StorageMinerStruct](&ast)
 
-	mh, err := node.MinerHandler(finalApi, false) // todo permissioned
+	mh, err := MinerHandler(finalApi, false) // todo permissioned
 	if err != nil {
 		return err
 	}
@@ -497,4 +502,57 @@ SELECT
 	}
 
 	return false, nil
+}
+
+// MinerHandler returns a miner handler, to be mounted as-is on the server.
+func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
+	mapi := proxy.MetricedStorMinerAPI(a)
+	if permissioned {
+		mapi = api.PermissionedStorMinerAPI(mapi)
+	}
+
+	readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
+	rpcServer := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors), readerServerOpt)
+	rpcServer.Register("Filecoin", mapi)
+	rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
+
+	rootMux := mux.NewRouter()
+
+	// remote storage
+	if _, realImpl := a.(*impl.StorageMinerAPI); realImpl {
+		m := mux.NewRouter()
+		m.PathPrefix("/remote").HandlerFunc(a.(*impl.StorageMinerAPI).ServeRemote(permissioned))
+
+		var hnd http.Handler = m
+		if permissioned {
+			hnd = &auth.Handler{
+				Verify: a.StorageAuthVerify,
+				Next:   m.ServeHTTP,
+			}
+		}
+
+		rootMux.PathPrefix("/remote").Handler(hnd)
+	}
+
+	// local APIs
+	{
+		m := mux.NewRouter()
+		m.Handle("/rpc/v0", rpcServer)
+		m.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
+		// debugging
+		m.Handle("/debug/metrics", metrics.Exporter())
+		m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+		var hnd http.Handler = m
+		if permissioned {
+			hnd = &auth.Handler{
+				Verify: a.AuthVerify,
+				Next:   m.ServeHTTP,
+			}
+		}
+
+		rootMux.PathPrefix("/").Handler(hnd)
+	}
+
+	return rootMux, nil
 }
