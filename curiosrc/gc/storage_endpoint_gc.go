@@ -196,6 +196,7 @@ func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool
 
 		// Remove dead URLs from storage_path entries and handle path cleanup
 		for _, du := range deadURLs {
+			du := du
 			// Fetch the current URLs for the storage path
 			var currentPath struct {
 				URLs string
