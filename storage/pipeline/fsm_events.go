@@ -21,7 +21,7 @@ type mutator interface {
 
 // globalMutator is an event which can apply in every state
 type globalMutator interface {
-	// applyGlobal applies the event to the state. If if returns true,
+	// applyGlobal applies the event to the state. If it returns true,
 	//  event processing should be interrupted
 	applyGlobal(state *SectorInfo) bool
 }
