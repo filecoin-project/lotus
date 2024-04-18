@@ -29,7 +29,7 @@ var basePath = "/static/"
 
 // An dev mode hack for no-restart changes to static and templates.
 // You still need to recomplie the binary for changes to go code.
-var webDev = os.Getenv("LOTUS_WEB_DEV") == "1"
+var webDev = os.Getenv("LOTUS_WEB_DEV") == "1" || os.Getenv("CURIO_WEB_DEV") == "1"
 
 func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 	mx := mux.NewRouter()

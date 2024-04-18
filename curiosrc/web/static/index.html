@@ -1,9 +1,10 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
     <title>Curio Cluster Overview</title>
     <script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
     <script type="module" src="chain-connectivity.mjs"></script>
-    <link rel="stylesheet" href="main.css">
+    <script type="module" src="/ux/curio-ux.mjs"></script>
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
     <style>
         .deadline-box {
@@ -39,19 +40,8 @@
         }
     </style>
 </head>
-<body>
-<div class="app-head">
-    <div class="logo">
-        <img src="favicon.svg" alt="Curio Logo" style="height: 64px; margin: 8px;">
-    </div>
-    <div class="head-left">
-        <h1>Curio Cluster</h1>
-    </div>
-    <div class="head-right">
-        version [todo]
-    </div>
-</div>
-<hr/>
+<body style="visibility:hidden; shown-by: curio-ux">
+<curio-ux>
 <div class="page">
     <div class="info-block">
         <h2>Chain Connectivity</h2>
@@ -152,5 +142,6 @@
         </table>
     </div>
 </div>
+</curio-ux>
 </body>
 </html>
