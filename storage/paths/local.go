@@ -513,16 +513,12 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 
 		old_r := release
 		release = func() {
-			if old_r == nil { // avoid double release.
-				return
-			}
 			old_r()
 			st.localLk.Lock()
 			defer st.localLk.Unlock()
 			log.Debugw("reserve release", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead, "reserved-before", p.reserved, "reserved-after", p.reserved-overhead)
 			p.reserved -= overhead
 			delete(p.reservations, resID)
-			old_r = nil
 		}
 	}
 
