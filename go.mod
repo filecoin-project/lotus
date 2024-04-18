@@ -148,6 +148,7 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
+	github.com/yugabyte/pgx/v5 v5.5.3-yb-2
 	github.com/zondax/ledger-filecoin-go v0.11.1
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
@@ -159,7 +160,7 @@ require (
 	go.uber.org/fx v1.20.1
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.19.0
+	golang.org/x/crypto v0.20.0
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 	golang.org/x/net v0.21.0
 	golang.org/x/sync v0.6.0
@@ -249,8 +250,8 @@ require (
 	github.com/ipld/go-ipld-adl-hamt v0.0.0-20220616142416-9004dbd839e0 // indirect
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/puddle/v2 v2.2.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-random v0.0.0-20190219211222-123a90aedc0c // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect

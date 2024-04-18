@@ -18,6 +18,7 @@ import (
 	curio "github.com/filecoin-project/lotus/curiosrc"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
+	"github.com/filecoin-project/lotus/curiosrc/gc"
 	"github.com/filecoin-project/lotus/curiosrc/message"
 	"github.com/filecoin-project/lotus/curiosrc/piece"
 	"github.com/filecoin-project/lotus/curiosrc/seal"
@@ -134,6 +135,12 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg.Fees.MaxCommitGasFee)
 			activeTasks = append(activeTasks, commitTask)
 		}
+	}
+
+	if hasAnySealingTask {
+		// Sealing nodes maintain storage index when bored
+		storageEndpointGcTask := gc.NewStorageEndpointGC(si, stor, db)
+		activeTasks = append(activeTasks, storageEndpointGcTask)
 	}
 
 	if needProofParams {
