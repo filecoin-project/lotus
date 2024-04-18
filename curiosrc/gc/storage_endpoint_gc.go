@@ -21,8 +21,8 @@ import (
 
 var log = logging.Logger("curiogc")
 
-const StorageEndpointGCInterval = 2 * time.Minute // todo bump post testing
-const StorageEndpointDeadTime = 15 * time.Minute
+const StorageEndpointGCInterval = 21 * time.Minute
+const StorageEndpointDeadTime = StorageEndpointGCInterval * 6 // ~2h
 const MaxParallelEndpointChecks = 32
 
 type StorageEndpointGC struct {
