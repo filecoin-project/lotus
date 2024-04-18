@@ -155,7 +155,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 		return storiface.SectorPaths{}, nil, err
 	}
 
-	releaseStorage, err := l.w.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal, paths.MaxStorageUtilizationPercentage)
+	releaseStorage, err := l.w.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal, paths.MinFreeStoragePercentage)
 	if err != nil {
 		return storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
 	}

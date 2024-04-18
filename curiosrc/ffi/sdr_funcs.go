@@ -106,7 +106,7 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, err
 		}
 
-		releaseStorage, err = l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal, paths.MaxStorageUtilizationPercentage)
+		releaseStorage, err = l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal, paths.MinFreeStoragePercentage)
 		if err != nil {
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
 		}
@@ -590,7 +590,7 @@ func (sb *SealCalls) sectorStorageType(ctx context.Context, sector storiface.Sec
 
 // PreFetch fetches the sector file to local storage before SDR and TreeRC Tasks
 func (sb *SealCalls) PreFetch(ctx context.Context, sector storiface.SectorRef, task *harmonytask.TaskID) error {
-	_, _, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
+	_, _, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}

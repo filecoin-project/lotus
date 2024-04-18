@@ -31,7 +31,10 @@ type TreeDTask struct {
 }
 
 func (t *TreeDTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	return &ids[0], nil
+	if engine.Resources().Gpu > 0 {
+		return &ids[0], nil
+	}
+	return nil, nil
 }
 
 func (t *TreeDTask) TypeDetails() harmonytask.TaskTypeDetails {
@@ -45,9 +48,9 @@ func (t *TreeDTask) TypeDetails() harmonytask.TaskTypeDetails {
 		Name: "SDRTreeD",
 		Cost: resources.Resources{
 			Cpu:     1,
-			Ram:     50 << 20, // todo
+			Ram:     64 << 20, // todo
 			Gpu:     0,
-			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing, 97),
+			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing, 1),
 		},
 		MaxFailures: 3,
 		Follows:     nil,
@@ -57,7 +60,7 @@ func (t *TreeDTask) TypeDetails() harmonytask.TaskTypeDetails {
 func (t *TreeDTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
 	var refs []ffi.SectorRef
 
-	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_r = $1`, id)
+	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_d = $1`, id)
 	if err != nil {
 		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
 	}
@@ -95,7 +98,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	err = t.db.Select(ctx, &sectorParamsArr, `
 		SELECT sp_id, sector_number, reg_seal_proof
 		FROM sectors_sdr_pipeline
-		WHERE task_id_tree_r = $1 AND task_id_tree_c = $1 AND task_id_tree_d = $1`, taskID)
+		WHERE task_id_tree_d = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting sector params: %w", err)
 	}

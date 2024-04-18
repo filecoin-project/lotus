@@ -47,7 +47,7 @@ func (t *TreeRCTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	}
 
 	err = t.db.Select(ctx, &sectorParamsArr, `
-		SELECT sp_id, sector_number, reg_seal_proof
+		SELECT sp_id, sector_number, reg_seal_proof, tree_d_cid
 		FROM sectors_sdr_pipeline
 		WHERE task_id_tree_c = $1 AND task_id_tree_r = $1`, taskID)
 	if err != nil {
@@ -83,7 +83,8 @@ func (t *TreeRCTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	// todo porep challenge check
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_tree_r = true, after_tree_c = true, tree_r_cid = $3, WHERE sp_id = $1 AND sector_number = $2`,
+		SET after_tree_r = true, after_tree_c = true, tree_r_cid = $3 
+		WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, sealed)
 	if err != nil {
 		return false, xerrors.Errorf("store sdr-trees success: updating pipeline: %w", err)
@@ -97,7 +98,7 @@ func (t *TreeRCTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 
 func (t *TreeRCTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	var tasks []struct {
-		TaskID       harmonytask.TaskID `db:"task_id_finalize"`
+		TaskID       harmonytask.TaskID `db:"task_id_tree_c"`
 		SpID         int64              `db:"sp_id"`
 		SectorNumber int64              `db:"sector_number"`
 		StorageID    string             `db:"storage_id"`
@@ -162,7 +163,7 @@ func (t *TreeRCTask) TypeDetails() harmonytask.TaskTypeDetails {
 			Cpu:     1,
 			Gpu:     1,
 			Ram:     8000 << 20, // todo
-			Storage: t.sc.Storage(t.taskToSector, storiface.FTNone, storiface.FTCache|storiface.FTSealed, ssize, storiface.PathSealing, paths.MaxStorageUtilizationPercentage),
+			Storage: t.sc.Storage(t.taskToSector, storiface.FTNone, storiface.FTCache|storiface.FTSealed, ssize, storiface.PathSealing, paths.MinFreeStoragePercentage),
 		},
 		MaxFailures: 3,
 		Follows:     nil,

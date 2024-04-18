@@ -36,7 +36,7 @@ type LocalStorage interface {
 
 const MetaFile = "sectorstore.json"
 
-const MaxStorageUtilizationPercentage = 100
+const MinFreeStoragePercentage = 0
 
 type Local struct {
 	localStorage LocalStorage
@@ -462,7 +462,7 @@ func (st *Local) reportStorage(ctx context.Context) {
 	}
 }
 
-func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, maxPercentage int) (release func(), err error) {
+func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, minFreePercentage int) (release func(), err error) {
 	ssize, err := sid.ProofType.SectorSize()
 	if err != nil {
 		return nil, err
@@ -526,8 +526,8 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
 		}
 
-		if (uint64(p.reserved+overhead)/p.maxStorage)*100 > uint64(maxPercentage) {
-			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), total %d, exceeds the maximum reservation percentage", overhead, p.local, id, p.maxStorage))
+		if float64((stat.Available-(p.reserved+overhead))/stat.Available) < float64(minFreePercentage/100) {
+			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), minmum free threshold reached", overhead, p.local, id))
 		}
 
 		resID := sectorFile{sid.ID, fileType}
