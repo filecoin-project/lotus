@@ -529,6 +529,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 	return
 }
 
+// DoubleCallWrap wraps a function to make sure it's not called twice
 func DoubleCallWrap(f func()) func() {
 	var stack []byte
 	return func() {
@@ -540,7 +541,6 @@ func DoubleCallWrap(f func()) func() {
 		}
 		stack = curStack
 		f()
-		stack = nil
 	}
 }
 
