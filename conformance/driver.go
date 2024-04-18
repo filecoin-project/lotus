@@ -196,6 +196,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 type ExecuteMessageParams struct {
 	Preroot        cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Message        *types.Message
 	CircSupply     abi.TokenAmount
 	BaseFee        abi.TokenAmount
@@ -249,6 +250,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
 		Epoch:     params.Epoch,
+		Timestamp: params.Timestamp,
 		Bstore:    bs,
 		Syscalls:  vm.Syscalls(ffiwrapper.ProofVerifier),
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
