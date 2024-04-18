@@ -461,42 +461,23 @@ func (st *Local) reportStorage(ctx context.Context) {
 }
 
 func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (release func(), err error) {
-	ssize, err := sid.ProofType.SectorSize()
+	var ssize abi.SectorSize
+	ssize, err = sid.ProofType.SectorSize()
 	if err != nil {
 		return nil, err
 	}
+	release = func() {}
 
 	st.localLk.Lock()
 
-	var releaseCalled bool
-
-	// double release debug guard
-	var firstDonebuf []byte
-	var releaseFuncs []func()
-
-	release = func() {
-		for _, releaseFunc := range releaseFuncs {
-			releaseFunc()
-		}
-
-		// debug guard against double release call
-		if releaseCalled {
-			curStack := make([]byte, 20480)
-			curStack = curStack[:runtime.Stack(curStack, false)]
-
-			log.Errorw("double release call", "sector", sid, "fileType", ft, "prevStack", string(firstDonebuf), "curStack", string(curStack))
-		}
-
-		firstDonebuf = make([]byte, 20480)
-		firstDonebuf = firstDonebuf[:runtime.Stack(firstDonebuf, false)]
-
-		releaseCalled = true
-	}
-
-	cleanupOnError := func() { release() }
 	defer func() {
 		st.localLk.Unlock()
-		cleanupOnError()
+		if err != nil {
+			release()
+			release = func() {}
+		} else {
+			release = DoubleCallWrap(release)
+		}
 	}()
 
 	for _, fileType := range ft.AllSet() {
@@ -530,21 +511,37 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		p.reserved += overhead
 		p.reservations[resID] = overhead
 
-		releaseFuncs = append(releaseFuncs, func() {
+		old_r := release
+		release = func() {
+			if old_r == nil { // avoid double release.
+				return
+			}
+			old_r()
 			st.localLk.Lock()
 			defer st.localLk.Unlock()
-
 			log.Debugw("reserve release", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead, "reserved-before", p.reserved, "reserved-after", p.reserved-overhead)
-
 			p.reserved -= overhead
 			delete(p.reservations, resID)
-		})
+			old_r = nil
+		}
 	}
 
-	// no errors, don't cleanup, caller will call release
-	cleanupOnError = func() {}
+	return
+}
 
-	return release, nil
+func DoubleCallWrap(f func()) func() {
+	var stack []byte
+	return func() {
+		curStack := make([]byte, 20480)
+		curStack = curStack[:runtime.Stack(curStack, false)]
+		if len(stack) > 0 {
+			log.Warnf("double call from:\n%s\nBut originally from:", curStack, stack)
+			return
+		}
+		stack = curStack
+		f()
+		stack = nil
+	}
 }
 
 func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode, opts ...storiface.AcquireOption) (storiface.SectorPaths, storiface.SectorPaths, error) {
