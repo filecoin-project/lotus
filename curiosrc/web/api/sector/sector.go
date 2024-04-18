@@ -88,19 +88,19 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		//ExpectedDayReward abi.TokenAmount
 		//SealProof         abi.RegisteredSealProof
 	}
-	type Piece struct {
+	type piece struct {
 		Size     int64           `db:"piece_size"`
 		DealID   uint64          `db:"f05_deal_id"`
 		Proposal json.RawMessage `db:"f05_deal_proposal"`
 		Manifest json.RawMessage `db:"direct_piece_activation_manifest"`
 		Miner    int64           `db:"sp_id"`
-		sector   int64           `db:"sector_number"`
+		Sector   int64           `db:"sector_number"`
 	}
 	var sectors []sector
-	var Pieces []Piece
+	var pieces []piece
 	apihelper.OrHTTPFail(w, c.DB.Select(r.Context(), &sectors, `SELECT 
 		miner_id, sector_num, SUM(sector_filetype) as sector_filetype  
-		FROM sector_location 
+		FROM sector_location WHERE sector_filetype != 32
 		GROUP BY miner_id, sector_num 
 		ORDER BY miner_id, sector_num`))
 	minerToAddr := map[int64]address.Address{}
@@ -124,16 +124,15 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get all pieces
-	apihelper.OrHTTPFail(w, c.DB.Select(r.Context(), &Pieces, `SELECT 
+	apihelper.OrHTTPFail(w, c.DB.Select(r.Context(), &pieces, `SELECT 
 										sp_id, sector_number, piece_size, f05_deal_id, f05_deal_proposal, direct_piece_activation_manifest  
 										FROM sectors_sdr_initial_pieces 
-										WHERE direct_piece_activation_manifest != '{}'::jsonb
 										ORDER BY sp_id, sector_number`))
 	pieceIndex := map[sectorID][]int{}
-	for i, piece := range Pieces {
+	for i, piece := range pieces {
 		piece := piece
-		cur := pieceIndex[sectorID{mID: piece.Miner, sNum: uint64(piece.sector)}]
-		pieceIndex[sectorID{mID: piece.Miner, sNum: uint64(piece.sector)}] = append(cur, i)
+		cur := pieceIndex[sectorID{mID: piece.Miner, sNum: uint64(piece.Sector)}]
+		pieceIndex[sectorID{mID: piece.Miner, sNum: uint64(piece.Sector)}] = append(cur, i)
 	}
 
 	for minerID, maddr := range minerToAddr {
@@ -154,27 +153,27 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 				}
 				dw, vp := .0, .0
 				f05, ddo := 0, 0
-				var pieces []Piece
+				var pi []piece
 				if j, ok := pieceIndex[sectorID{sectors[i].MinerID, uint64(sectors[i].SectorNum)}]; ok {
 					for _, k := range j {
-						pieces = append(pieces, Pieces[k])
+						pi = append(pi, pieces[k])
 					}
 				}
 				estimate := st.Expiration-st.Activation <= 0 || sectors[i].HasSnap
 				if estimate {
-					for _, piece := range pieces {
-						if piece.Proposal != nil {
+					for _, p := range pi {
+						if p.Proposal != nil {
 							var prop *market.DealProposal
-							apihelper.OrHTTPFail(w, json.Unmarshal(piece.Proposal, prop))
+							apihelper.OrHTTPFail(w, json.Unmarshal(p.Proposal, &prop))
 							dw += float64(prop.PieceSize)
 							if prop.VerifiedDeal {
 								vp += float64(prop.PieceSize) * verifiedPowerGainMul
 							}
 							f05++
 						}
-						if piece.Manifest != nil {
+						if p.Manifest != nil {
 							var pam *miner.PieceActivationManifest
-							apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, pam))
+							apihelper.OrHTTPFail(w, json.Unmarshal(p.Manifest, &pam))
 							dw += float64(pam.Size)
 							if pam.VerifiedAllocationKey != nil {
 								vp += float64(pam.Size) * verifiedPowerGainMul
@@ -187,30 +186,29 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 					for _, deal := range st.DealIDs {
-						if deal != 0 {
+						if deal > 0 {
 							f05++
 						}
 					}
 					// DDO info is not on chain
 					for _, piece := range pieces {
 						if piece.Manifest != nil {
-							var pam *miner.PieceActivationManifest
-							apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, pam))
-							dw += float64(pam.Size)
-							if pam.VerifiedAllocationKey != nil {
-								vp += float64(pam.Size) * verifiedPowerGainMul
-							}
+							//var pam *miner.PieceActivationManifest
+							//apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, pam))
+							//dw += float64(pam.Size)
+							//if pam.VerifiedAllocationKey != nil {
+							//	vp += float64(pam.Size) * verifiedPowerGainMul
+							//}
 							ddo++
 						}
 					}
 				}
-
+				sectors[i].DealWeight = "CC"
 				if dw > 0 {
 					sectors[i].DealWeight = fmt.Sprintf("%s", units.BytesSize(dw))
-				} else if vp > 0 {
+				}
+				if vp > 0 {
 					sectors[i].DealWeight = fmt.Sprintf("%s", units.BytesSize(vp))
-				} else {
-					sectors[i].DealWeight = "CC"
 				}
 				sectors[i].Deals = fmt.Sprintf("Market: %d, DDO: %d", f05, ddo)
 			} else {
@@ -241,22 +239,22 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 	// Add deal details to sectors which are not on chain
 	for i := range sectors {
 		if !sectors[i].IsOnChain {
-			var pieces []Piece
+			var pi []piece
 			dw, vp := .0, .0
 			f05, ddo := 0, 0
 
 			// Find if there are any deals for this sector
 			if j, ok := pieceIndex[sectorID{sectors[i].MinerID, uint64(sectors[i].SectorNum)}]; ok {
 				for _, k := range j {
-					pieces = append(pieces, Pieces[k])
+					pi = append(pi, pieces[k])
 				}
 			}
 
-			if len(pieces) > 0 {
-				for _, piece := range pieces {
+			if len(pi) > 0 {
+				for _, piece := range pi {
 					if piece.Proposal != nil {
 						var prop *market.DealProposal
-						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Proposal, prop))
+						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Proposal, &prop))
 						dw += float64(prop.PieceSize)
 						if prop.VerifiedDeal {
 							vp += float64(prop.PieceSize) * verifiedPowerGainMul
@@ -265,7 +263,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					}
 					if piece.Manifest != nil {
 						var pam *miner.PieceActivationManifest
-						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, pam))
+						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, &pam))
 						dw += float64(pam.Size)
 						if pam.VerifiedAllocationKey != nil {
 							vp += float64(pam.Size) * verifiedPowerGainMul
