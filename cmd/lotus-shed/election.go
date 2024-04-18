@@ -14,7 +14,7 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/genutils"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -219,7 +219,7 @@ func backTestWinner(ctx context.Context, miner address.Address, round abi.ChainE
 		brand = bvals[len(bvals)-1]
 	}
 
-	winner, err := gen.IsRoundWinner(ctx, round, miner, brand, mbi, api)
+	winner, err := genutils.IsRoundWinner(ctx, round, miner, brand, mbi, api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/genutils"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -534,7 +535,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
-	winner, err = gen.IsRoundWinner(ctx, round, m.address, rbase, mbi, m.api)
+	winner, err = genutils.IsRoundWinner(ctx, round, m.address, rbase, mbi, m.api)
 	if err != nil {
 		err = xerrors.Errorf("failed to check if we win next round: %w", err)
 		return nil, err
@@ -688,7 +689,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, rou
 		return nil, err
 	}
 
-	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, mbi.WorkerKey, input)
+	vrfOut, err := genutils.ComputeVRF(ctx, m.api.WalletSign, mbi.WorkerKey, input)
 	if err != nil {
 		return nil, err
 	}

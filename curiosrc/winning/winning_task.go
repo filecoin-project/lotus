@@ -21,7 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/genutils"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -213,7 +213,7 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 			rbase = bvals[len(bvals)-1]
 		}
 
-		eproof, err = gen.IsRoundWinner(ctx, round, maddr, rbase, mbi, t.api)
+		eproof, err = genutils.IsRoundWinner(ctx, round, maddr, rbase, mbi, t.api)
 		if err != nil {
 			log.Warnw("WinPoSt failed to check if we win next round", "error", err)
 			return false, xerrors.Errorf("failed to check if we win next round: %w", err)
@@ -655,7 +655,7 @@ func (t *WinPostTask) computeTicket(ctx context.Context, maddr address.Address, 
 		return nil, err
 	}
 
-	vrfOut, err := gen.ComputeVRF(ctx, t.api.WalletSign, mbi.WorkerKey, input)
+	vrfOut, err := genutils.ComputeVRF(ctx, t.api.WalletSign, mbi.WorkerKey, input)
 	if err != nil {
 		return nil, err
 	}

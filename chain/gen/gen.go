@@ -3,7 +3,6 @@ package gen
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"sync/atomic"
@@ -34,6 +33,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	"github.com/filecoin-project/lotus/chain/gen/gentypes"
+	"github.com/filecoin-project/lotus/chain/gen/genutils"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -78,7 +79,7 @@ type ChainGen struct {
 
 	w *wallet.LocalWallet
 
-	eppProvs  map[address.Address]WinningPoStProver
+	eppProvs  map[address.Address]gentypes.WinningPoStProver
 	Miners    []address.Address
 	receivers []address.Address
 	// a SecP address
@@ -244,7 +245,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 		return nil, xerrors.Errorf("set genesis failed: %w", err)
 	}
 
-	mgen := make(map[address.Address]WinningPoStProver)
+	mgen := make(map[address.Address]gentypes.WinningPoStProver)
 	for i := range tpl.Miners {
 		mgen[genesis2.MinerAddress(uint64(i))] = &wppProvider{}
 	}
@@ -362,7 +363,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		rbase = entries[len(entries)-1]
 	}
 
-	eproof, err := IsRoundWinner(ctx, round, m, rbase, mbi, mc)
+	eproof, err := genutils.IsRoundWinner(ctx, round, m, rbase, mbi, mc)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -394,7 +395,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		})
 	}
 
-	vrfout, err := ComputeVRF(ctx, sf, worker, ticketRand)
+	vrfout, err := genutils.ComputeVRF(ctx, sf, worker, ticketRand)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("compute VRF: %w", err)
 	}
@@ -420,7 +421,7 @@ func (cg *ChainGen) NextTipSetWithNulls(nulls abi.ChainEpoch) (*MinedTipSet, err
 	return mts, nil
 }
 
-func (cg *ChainGen) SetWinningPoStProver(m address.Address, wpp WinningPoStProver) {
+func (cg *ChainGen) SetWinningPoStProver(m address.Address, wpp gentypes.WinningPoStProver) {
 	cg.eppProvs[m] = wpp
 }
 
@@ -624,10 +625,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 	})
 }
 
-type WinningPoStProver interface {
-	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
-	ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof7.PoStProof, error)
-}
+type WinningPoStProver gentypes.WinningPoStProver
 
 type wppProvider struct{}
 
@@ -637,49 +635,6 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 
 func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof7.PoStProof, error) {
 	return ValidWpostForTesting, nil
-}
-
-func IsRoundWinner(ctx context.Context, round abi.ChainEpoch,
-	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
-
-	buf := new(bytes.Buffer)
-	if err := miner.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
-	}
-
-	electionRand, err := rand.DrawRandomnessFromBase(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to draw randomness: %w", err)
-	}
-
-	vrfout, err := ComputeVRF(ctx, a.WalletSign, mbi.WorkerKey, electionRand)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
-	}
-
-	ep := &types.ElectionProof{VRFProof: vrfout}
-	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
-	ep.WinCount = j
-	if j < 1 {
-		return nil, nil
-	}
-
-	return ep, nil
-}
-
-type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
-
-func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
-	sig, err := sign(ctx, worker, sigInput)
-	if err != nil {
-		return nil, err
-	}
-
-	if sig.Type != crypto.SigTypeBLS {
-		return nil, fmt.Errorf("miner worker address was not a BLS key")
-	}
-
-	return sig.Data, nil
 }
 
 type genFakeVerifier struct{}
