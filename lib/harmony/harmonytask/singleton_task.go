@@ -26,7 +26,7 @@ func SingletonTaskAdder(minInterval time.Duration, task TaskInterface) func(AddT
 				}
 			}
 
-			now := time.Now()
+			now := time.Now().UTC()
 			// Determine if the task should run based on the absence of a record or outdated last_run_time
 			shouldRun := err == pgx.ErrNoRows || (existingTaskID == nil && lastRunTime.Add(minInterval).Before(now))
 			if !shouldRun {
