@@ -2,11 +2,13 @@
 <head>
     <title>Lotus Provider PoRep Pipeline</title>
     <script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
+    <script type="module" src="/ux/curio-ux.mjs"></script>
     <script type="module" src="chain-connectivity.js"></script>
     <link rel="stylesheet" href="main.css">
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
 </head>
-<body>
+<body style="visibility: hidden">
+<curio-ux>
 <div class="app-head">
     <div class="head-left">
         <h1>Lotus Provider PoRep Pipeline</h1>
@@ -16,7 +18,7 @@
 <div class="page">
     <div class="info-block">
         <h2>Sectors</h2>
-        <table class="porep-pipeline-table">
+        <table class="table table-dark porep-pipeline-table">
             <thead>
             <tr>
                 <th>Sector ID</th>
@@ -28,6 +30,6 @@
             </tbody>
         </table>
     </div>
-</div>
+</div></curio-ux>
 </body>
 </html>

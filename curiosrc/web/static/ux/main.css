@@ -1,15 +1,23 @@
-html, body {
-    background: #0f0f0f;
-    color: #ffffff;
+@import url('https://fonts.cdnfonts.com/css/metropolis-2');
+
+html {
+    min-height: 100vh;
+    background: rgb(11, 22, 34);
     padding: 0;
+}
+body {
     margin: 0;
-
-    font-family: 'Hack', monospace;
+    padding: 3px 4px;
+    background: rgb(11, 22, 34);
+}
+curio-ux {
+    /*  To resemble Clarity Design  */
+    color: rgb(227, 234, 237);
+    font-family: Metropolis, monospace;
+    font-weight: 400;
+    background: rgb(11, 22, 34);
 }
 
-table td, table th {
-    font-size: 13px;
-}
 
 .app-head {
     width: 100%;
@@ -20,19 +28,6 @@ table td, table th {
 .head-right {
     display: inline-block;
     float: right;
-}
-
-table {
-    border-collapse: collapse;
-}
-
-table td, table th {
-    border-left: 1px solid #f0f0f0;
-    padding: 1px 5px;
-}
-
-table tr td:first-child, table tr th:first-child {
-    border-left: none;
 }
 
 a {
@@ -55,66 +50,4 @@ a:hover {
 }
 .error {
     color: red;
-}
-
-.dash-tile {
-    display: flex;
-    flex-direction: column;
-    padding: 0.75rem;
-    background: #3f3f3f;
-
-    & b {
-        padding-bottom: 0.5rem;
-        color: deeppink;
-    }
-}
-
-/* Path: curiosrc/web/hapi/web/pipeline_porep_sectors.gohtml */
-.porep-pipeline-table, .porep-state {
-    color: #d0d0d0;
-}
-
-.porep-pipeline-table td, .porep-pipeline-table th {
-    border-left: none;
-    border-collapse: collapse;
-}
-
-.porep-pipeline-table tr:nth-child(odd) {
-    border-top: 6px solid #999999;
-
-}
-
-.porep-pipeline-table tr:first-child, .porep-pipeline-table tr:first-child {
-    border-top: none;
-}
-
-.porep-state {
-    border-collapse: collapse;
-}
-
-.porep-state td, .porep-state th {
-    border-left: 1px solid #f0f0f0;
-    border-right: 1px solid #f0f0f0;
-
-    padding: 1px 5px;
-
-    text-align: center;
-    font-size: 0.7em;
-}
-
-.porep-state tr {
-    border-top: 1px solid #f0f0f0;
-}
-.porep-state tr:first-child {
-    border-top: none;
-}
-
-.pipeline-active {
-    background-color: #303060;
-}
-.pipeline-success {
-    background-color: #306030;
-}
-.pipeline-failed {
-    background-color: #603030;
 }

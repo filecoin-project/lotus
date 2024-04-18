@@ -11,7 +11,7 @@ class CurioUX extends LitElement {
     display: block;
     margin: 2px 3px;
   }
-
+  
   `;
   connectedCallback() { 
     super.connectedCallback(); 
@@ -23,13 +23,13 @@ class CurioUX extends LitElement {
     document.head.innerHTML += `
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
-    <link rel="stylesheet" href="/ux/main.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" 
+      integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link rel="stylesheet" href="/ux/main.css" onload="document.body.style.visibility = 'initial'">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 `
 
     document.documentElement.lang = 'en';
-
-    document.body.style.visibility = 'initial';
 
     // how Bootstrap & DataTables expect dark mode declared.
     document.documentElement.classList.add('dark');
@@ -41,7 +41,7 @@ class CurioUX extends LitElement {
       <!-- wrap the slot -->
       <div>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <nav class="navbar navbar-expand-lg navbar-expand-sm navbar-dark bg-dark">
         <div class="container-fluid">
           <a class="navbar-brand" href="#">
             <img src="/favicon.svg" width="30" height="30" class="d-inline-block align-top" alt="">
@@ -59,7 +59,13 @@ class CurioUX extends LitElement {
                 <a class="nav-link" href="/config/">Configurations</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="/sector/">Sectores</a>
+                <a class="nav-link" href="/sector/">Sectors</a>
+              </li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="https://lotus.filecoin.io/storage-providers/curio/overview/">Documentation</a>
               </li>
             </ul>
           </div>
