@@ -241,6 +241,11 @@ func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool
 				if err != nil {
 					return false, xerrors.Errorf("updating storage path urls: %w", err)
 				}
+				// Remove sector_path_url_liveness entry
+				_, err = tx.Exec("DELETE FROM sector_path_url_liveness WHERE storage_id = $1 AND url = $2", du.StorageID, du.URL)
+				if err != nil {
+					return false, xerrors.Errorf("deleting sector_path_url_liveness entry: %w", err)
+				}
 			}
 		}
 
