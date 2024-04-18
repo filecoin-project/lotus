@@ -46,7 +46,6 @@ func getSch(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	sch := ref.Reflect(config.CurioConfig{})
-	//sch := jsonschema.Reflect(config.CurioConfig{})
 	// add comments
 	for k, doc := range config.Doc {
 		item, ok := sch.Definitions[k]
