@@ -372,13 +372,12 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		collateral = big.Add(collateral, sc)
 
 		manifest := b.todo[sector].ActivationManifest
-		precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
-		if err != nil {
-			res.FailedSectors[sector] = err.Error()
-			continue
-		}
-
 		if len(manifest.Pieces) > 0 {
+			precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
+			if err != nil {
+				res.FailedSectors[sector] = err.Error()
+				continue
+			}
 			err = b.allocationCheck(manifest.Pieces, precomitInfo, abi.ActorID(mid), ts)
 			if err != nil {
 				res.FailedSectors[sector] = err.Error()
@@ -927,7 +926,7 @@ func (b *CommitBatcher) aggregateProofType(nv network.Version) (abi.RegisteredAg
 func (b *CommitBatcher) allocationCheck(Pieces []miner.PieceActivationManifest, precomitInfo *miner.SectorPreCommitOnChainInfo, miner abi.ActorID, ts *types.TipSet) error {
 	for _, p := range Pieces {
 		p := p
-		// skip filler pieces
+		// skip pieces not claiming an allocation
 		if p.VerifiedAllocationKey == nil {
 			continue
 		}
