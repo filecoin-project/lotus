@@ -33,12 +33,12 @@ class CurioUX extends LitElement {
 
     // how Bootstrap & DataTables expect dark mode declared.
     document.documentElement.classList.add('dark');
+
     this.messsage = this.getCookieMessage();
   }
 
   render() {
     return html`
-      <!-- wrap the slot -->
       <div>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
         <nav class="navbar navbar-expand-lg navbar-expand-sm navbar-dark bg-dark">
@@ -68,7 +68,7 @@ class CurioUX extends LitElement {
                 <hr class="dropdown-divider">
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="https://lotus.filecoin.io/storage-providers/curio/overview/">Documentation</a>
+                <a class="nav-link" href="https://lotus.filecoin.io/storage-providers/curio/overview/" target="_blank">Documentation</a>
               </li>
             </ul>
           </div>

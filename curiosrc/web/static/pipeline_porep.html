@@ -74,19 +74,24 @@
 </div>
 <hr/>
 <div class="page">
-    <div class="info-block">
-        <h2>Sectors</h2>
-        <table class="table table-dark porep-pipeline-table">
-            <thead>
-            <tr>
-                <th>Sector ID</th>
-                <th>Create Time</th>
-                <th>State</th>
-            </tr>
-            </thead>
-            <tbody hx-get="/hapi/pipeline-porep/sectors" hx-trigger="load,every 3s">
-            </tbody>
-        </table>
+    <div class="row">
+        <div class="row-md-auto" style="width: 50%">
+            <div class="info-block">
+                <h2>Sectors</h2>
+                <table class="table table-dark porep-pipeline-table">
+                    <thead>
+                    <tr>
+                        <th>Sector ID</th>
+                        <th>Create Time</th>
+                        <th>State</th>
+                    </tr>
+                    </thead>
+                    <tbody hx-get="/hapi/pipeline-porep/sectors" hx-trigger="load,every 3s">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row-md-auto"></div>
     </div>
 </div></curio-ux>
 </body>

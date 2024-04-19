@@ -53,7 +53,7 @@ func TestParitalConfig(t *testing.T) {
 		f, err := os.CreateTemp("", "config-*.toml")
 		fname := f.Name()
 
-		assert.NoError(err, "tmp file shold not error")
+		assert.NoError(err, "tmp file should not error")
 		_, err = f.WriteString(cfgString)
 		assert.NoError(err, "writing to tmp file should not error")
 		err = f.Close()
