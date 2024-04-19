@@ -1,14 +1,17 @@
-export default class JsonRpcClient {
+class JsonRpcClient {
     static instance = null;
 
     static async getInstance() {
         if (!JsonRpcClient.instance) {
-            const client = new JsonRpcClient(`/webrpc/v0`);
-            await client.connect();
-            JsonRpcClient.instance = client;
+            JsonRpcClient.instance = (async () => {
+                const client = new JsonRpcClient('/api/webrpc/v0');
+                await client.connect();
+                return client;
+            })();
         }
-        return JsonRpcClient.instance;
+        return await JsonRpcClient.instance;
     }
+
 
     constructor(url) {
         if (JsonRpcClient.instance) {
@@ -59,7 +62,7 @@ export default class JsonRpcClient {
         }
     }
 
-    call(method, params = {}) {
+    call(method, params = []) {
         const id = ++this.requestId;
         const request = {
             jsonrpc: "2.0",
@@ -86,3 +89,8 @@ async function init() {
 }
 
 init();
+
+export default async function(method, params = []) {
+    const i = await JsonRpcClient.getInstance();
+    return await i.call(method, params);
+}
