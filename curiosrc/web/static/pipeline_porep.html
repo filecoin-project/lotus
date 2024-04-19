@@ -3,7 +3,7 @@
     <title>Lotus Provider PoRep Pipeline</title>
     <script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
     <script type="module" src="/ux/curio-ux.mjs"></script>
-    <script type="module" src="chain-connectivity.js"></script>
+    <script type="module" src="chain-connectivity.mjs"></script>
     <link rel="stylesheet" href="main.css">
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
 </head>
@@ -16,19 +16,24 @@
 </div>
 <hr/>
 <div class="page">
-    <div class="info-block">
-        <h2>Sectors</h2>
-        <table class="table table-dark porep-pipeline-table">
-            <thead>
-            <tr>
-                <th>Sector ID</th>
-                <th>Create Time</th>
-                <th>State</th>
-            </tr>
-            </thead>
-            <tbody hx-get="/hapi/pipeline-porep/sectors" hx-trigger="load,every 3s">
-            </tbody>
-        </table>
+    <div class="row">
+        <div class="row-md-auto" style="width: 50%">
+            <div class="info-block">
+                <h2>Sectors</h2>
+                <table class="table table-dark porep-pipeline-table">
+                    <thead>
+                    <tr>
+                        <th>Sector ID</th>
+                        <th>Create Time</th>
+                        <th>State</th>
+                    </tr>
+                    </thead>
+                    <tbody hx-get="/hapi/pipeline-porep/sectors" hx-trigger="load,every 3s">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row-md-auto"></div>
     </div>
 </div></curio-ux>
 </body>

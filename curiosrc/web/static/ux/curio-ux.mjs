@@ -65,7 +65,7 @@ class CurioUX extends LitElement {
                 <hr class="dropdown-divider">
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="https://lotus.filecoin.io/storage-providers/curio/overview/">Documentation</a>
+                <a class="nav-link" href="https://lotus.filecoin.io/storage-providers/curio/overview/" target="_blank">Documentation</a>
               </li>
             </ul>
           </div>

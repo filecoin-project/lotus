@@ -1,4 +1,62 @@
 {{define "sector_porep_state"}}
+    <style>
+        /* Path: curiosrc/web/hapi/web/pipeline_porep_sectors.gohtml */
+        .porep-pipeline-table,
+        .porep-state {
+            color: #d0d0d0;
+        }
+
+        .porep-pipeline-table td,
+        .porep-pipeline-table th {
+            border-left: none;
+            border-collapse: collapse;
+        }
+
+        .porep-pipeline-table tr:nth-child(odd) {
+            border-top: 6px solid #999999;
+
+        }
+
+        .porep-pipeline-table tr:first-child,
+        .porep-pipeline-table tr:first-child {
+            border-top: none;
+        }
+
+        .porep-state {
+            border-collapse: collapse;
+        }
+
+        .porep-state td,
+        .porep-state th {
+            border-left: 1px solid #f0f0f0;
+            border-right: 1px solid #f0f0f0;
+
+            padding: 1px 5px;
+
+            text-align: center;
+            font-size: 0.7em;
+        }
+
+        .porep-state tr {
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .porep-state tr:first-child {
+            border-top: none;
+        }
+
+        .pipeline-active {
+            background-color: #303060;
+        }
+
+        .pipeline-success {
+            background-color: #306030;
+        }
+
+        .pipeline-failed {
+            background-color: #603030;
+        }
+    </style>
     <table class="porep-state">
         <tbody>
         <tr>

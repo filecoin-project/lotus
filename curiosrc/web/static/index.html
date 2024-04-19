@@ -54,165 +54,145 @@
                 color: deeppink;
             }
         }
-
-        /* Path: curiosrc/web/hapi/web/pipeline_porep_sectors.gohtml */
-        .porep-pipeline-table,
-        .porep-state {
-            color: #d0d0d0;
-        }
-
-        .porep-pipeline-table td,
-        .porep-pipeline-table th {
-            border-left: none;
-            border-collapse: collapse;
-        }
-
-        .porep-pipeline-table tr:nth-child(odd) {
-            border-top: 6px solid #999999;
-
-        }
-
-        .porep-pipeline-table tr:first-child,
-        .porep-pipeline-table tr:first-child {
-            border-top: none;
-        }
-
-        .porep-state {
-            border-collapse: collapse;
-        }
-
-        .porep-state td,
-        .porep-state th {
-            border-left: 1px solid #f0f0f0;
-            border-right: 1px solid #f0f0f0;
-
-            padding: 1px 5px;
-
-            text-align: center;
-            font-size: 0.7em;
-        }
-
-        .porep-state tr {
-            border-top: 1px solid #f0f0f0;
-        }
-
-        .porep-state tr:first-child {
-            border-top: none;
-        }
-
-        .pipeline-active {
-            background-color: #303060;
-        }
-
-        .pipeline-success {
-            background-color: #306030;
-        }
-
-        .pipeline-failed {
-            background-color: #603030;
-        }
     </style>
 </head>
 <body style="visibility:hidden">
     <curio-ux>
         <div class="page">
-            <div class="info-block">
-                <h2>Chain Connectivity</h2>
-                <chain-connectivity></chain-connectivity>
+            <div class="row">
+                <div class="col-md-auto" style="width: 50%">
+                    <div class="info-block">
+                        <h2>Chain Connectivity</h2>
+                        <chain-connectivity></chain-connectivity>
+                    </div>
+                </div>
+                <div class="col-md-auto">
+                </div>
             </div>
-            
-            <div class="info-block">
-                <h2>Cluster Machines</h2>
-                <table class="table table-dark">
-                    <thead>
-                        <tr>
-                            <th>Host</th>
-                            <th>ID</th>
-                            <th>Last Contact</th>
-                            <th>Tasks (24h)</th>
-                        </tr>
-                    </thead>
-                    <tbody hx-get="/hapi/simpleinfo/machines" hx-trigger="load,every 5s">
-                    </tbody>
-                </table>
+
+            <div class="row">
+                <div class="col-md-auto" style="width: 50%">
+                    <div class="info-block">
+                        <h2>Cluster Machines</h2>
+                        <table class="table table-dark">
+                            <thead>
+                            <tr>
+                                <th>Host</th>
+                                <th>ID</th>
+                                <th>Last Contact</th>
+                                <th>Tasks (24h)</th>
+                            </tr>
+                            </thead>
+                            <tbody hx-get="/hapi/simpleinfo/machines" hx-trigger="load,every 5s">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-auto">
+                </div>
             </div>
-            
-            <div class="info-block">
-                <h2><a href="/pipeline_porep.html">PoRep Pipeline</a></h2>
-                <table class="table table-dark">
-                    <thead>
-                        <tr>
-                            <th>Address</th>
-                            <th>SDR</th>
-                            <th>Trees</th>
-                            <th>Precommit Msg</th>
-                            <th>Wait Seed</th>
-                            <th>PoRep</th>
-                            <th>Commit Msg</th>
-                            <th>Done</th>
-                            <th>Failed</th>
-                        </tr>
-                    </thead>
-                    <tbody hx-get="/hapi/simpleinfo/pipeline-porep" hx-trigger="load,every 5s">
-                    </tbody>
-                </table>
+
+            <div class="row">
+                <div class="col-md-auto" style="width: 50%">
+                    <div class="info-block">
+                        <h2><a href="/pipeline_porep.html">PoRep Pipeline</a></h2>
+                        <table class="table table-dark">
+                            <thead>
+                            <tr>
+                                <th>Address</th>
+                                <th>SDR</th>
+                                <th>Trees</th>
+                                <th>Precommit Msg</th>
+                                <th>Wait Seed</th>
+                                <th>PoRep</th>
+                                <th>Commit Msg</th>
+                                <th>Done</th>
+                                <th>Failed</th>
+                            </tr>
+                            </thead>
+                            <tbody hx-get="/hapi/simpleinfo/pipeline-porep" hx-trigger="load,every 5s">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-auto">
+                </div>
             </div>
-            
-            <div class="info-block">
-                <h2>Actor Summary</h2>
-                <table class="table table-dark">
-                    <thead>
-                        <tr>
-                            <th>Address</th>
-                            <th>Config Layers Available</th>
-                            <th>QaP</th>
-                            <th>Deadlines</th>
-                            <th>Balance</th>
-                            <th>Available</th>
-                            <th>Worker</th>
-                            <th>Wins</th>
-                        </tr>
-                    </thead>
-                    <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
-                    </tbody>
-                </table>
+
+            <div class="row">
+                <div class="col-md-auto" style="width: 50%">
+                    <div class="info-block">
+                        <h2>Actor Summary</h2>
+                        <table class="table table-dark">
+                            <thead>
+                            <tr>
+                                <th>Address</th>
+                                <th>Config Layers Available</th>
+                                <th>QaP</th>
+                                <th>Deadlines</th>
+                                <th>Balance</th>
+                                <th>Available</th>
+                                <th>Worker</th>
+                                <th>Wins</th>
+                            </tr>
+                            </thead>
+                            <tbody hx-get="/hapi/simpleinfo/actorsummary" hx-trigger="load,every 5s">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-auto">
+                </div>
             </div>
-            
-            <div class="info-block">
-                <h2>Recently Finished Tasks</h2>
-                <table class="table table-dark">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>ID</th>
-                            <th>Executor</th>
-                            <th>Posted</th>
-                            <th>Start</th>
-                            <th>Queued</th>
-                            <th>Took</th>
-                            <th>Outcome</th>
-                            <th>Message</th>
-                        </tr>
-                    </thead>
-                    <tbody hx-get="/hapi/simpleinfo/taskhistory" hx-trigger="load, every 2s">
-                    </tbody>
-                </table>
+
+
+            <div class="row">
+                <div class="col-md-auto" style="width: 50%">
+                    <div class="info-block">
+                        <h2>Recently Finished Tasks</h2>
+                        <table class="table table-dark">
+                            <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Executor</th>
+                                <th>Posted</th>
+                                <th>Start</th>
+                                <th>Queued</th>
+                                <th>Took</th>
+                                <th>Outcome</th>
+                                <th>Message</th>
+                            </tr>
+                            </thead>
+                            <tbody hx-get="/hapi/simpleinfo/taskhistory" hx-trigger="load, every 2s">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-auto">
+                </div>
             </div>
-            
-            <div class="info-block">
-                <h2>Cluster Tasks</h2>
-                <table class="table table-dark">
-                    <thead>
-                        <tr>
-                            <th style="min-width: 128px">Task</th>
-                            <th>ID</th>
-                            <th>Posted</th>
-                            <th>Owner</th>
-                        </tr>
-                    </thead>
-                    <tbody hx-get="/hapi/simpleinfo/tasks" hx-trigger="load,every 1s">
-                    </tbody>
-                </table>
+
+            <div class="row">
+                <div class="col-md-auto" style="width: 50%">
+                    <div class="info-block">
+                        <h2>Cluster Tasks</h2>
+                        <table class="table table-dark">
+                            <thead>
+                            <tr>
+                                <th style="min-width: 128px">Task</th>
+                                <th>ID</th>
+                                <th>Posted</th>
+                                <th>Owner</th>
+                            </tr>
+                            </thead>
+                            <tbody hx-get="/hapi/simpleinfo/tasks" hx-trigger="load,every 1s">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-auto">
+                </div>
             </div>
         </div>
     </curio-ux>
