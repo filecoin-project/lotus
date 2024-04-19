@@ -130,8 +130,8 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 	}, nil
 }
 
-func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID, sector storiface.SectorRef, ticket abi.SealRandomness, commKcid cid.Cid) error {
-	paths, pathIDs, releaseSector, err := sb.sectors.AcquireSector(ctx, &taskID, sector, storiface.FTNone, storiface.FTCache, storiface.PathSealing)
+func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID, into storiface.SectorFileType, sector storiface.SectorRef, ticket abi.SealRandomness, commKcid cid.Cid) error {
+	paths, pathIDs, releaseSector, err := sb.sectors.AcquireSector(ctx, &taskID, sector, storiface.FTNone, into, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -148,25 +148,27 @@ func (sb *SealCalls) GenerateSDR(ctx context.Context, taskID harmonytask.TaskID,
 		return xerrors.Errorf("computing replica id: %w", err)
 	}
 
+	intoPath := storiface.PathByType(paths, into)
+
 	// make sure the cache dir is empty
-	if err := os.RemoveAll(paths.Cache); err != nil {
+	if err := os.RemoveAll(intoPath); err != nil {
 		return xerrors.Errorf("removing cache dir: %w", err)
 	}
-	if err := os.MkdirAll(paths.Cache, 0755); err != nil {
+	if err := os.MkdirAll(intoPath, 0755); err != nil {
 		return xerrors.Errorf("mkdir cache dir: %w", err)
 	}
 
 	// generate new sector key
 	err = ffi.GenerateSDR(
 		sector.ProofType,
-		paths.Cache,
+		intoPath,
 		replicaID,
 	)
 	if err != nil {
-		return xerrors.Errorf("generating SDR %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
+		return xerrors.Errorf("generating SDR %d (%s): %w", sector.ID.Number, intoPath, err)
 	}
 
-	if err := sb.ensureOneCopy(ctx, sector.ID, pathIDs, storiface.FTCache); err != nil {
+	if err := sb.ensureOneCopy(ctx, sector.ID, pathIDs, into); err != nil {
 		return xerrors.Errorf("ensure one copy: %w", err)
 	}
 

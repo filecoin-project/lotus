@@ -146,7 +146,7 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 	//                Trees; After one retry, it should return the sector to the
 	// 			      SDR stage; max number of retries should be configurable
 
-	err = s.sc.GenerateSDR(ctx, taskID, sref, ticket, commd)
+	err = s.sc.GenerateSDR(ctx, taskID, storiface.FTCache, sref, ticket, commd)
 	if err != nil {
 		return false, xerrors.Errorf("generating sdr: %w", err)
 	}
@@ -200,7 +200,7 @@ func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
 	res := harmonytask.TaskTypeDetails{
 		Max:  s.max,
 		Name: "SDR",
-		Cost: resources.Resources{ // todo offset for prefetch?
+		Cost: resources.Resources{
 			Cpu:     4, // todo multicore sdr
 			Gpu:     0,
 			Ram:     54 << 30,
