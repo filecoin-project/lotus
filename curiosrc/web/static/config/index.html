@@ -38,7 +38,7 @@
           <table>
               ${this.layers.map((layer, index) => html`
                   <tr>
-                    <td><a href="/config/edit.html?layer=${layer}"><button>${layer}</button></a></td>
+                    <td style="width: 50%"><a href="/config/edit.html?layer=${layer}"><button>${layer}</button></a></td>
                     <td>
                     Used By: ${(f=> f.length?f.map(topo => html`${topo.Server}`):'-')(
                       this.topo.filter(topo => topo.LayersCSV.split(",").includes(layer)))} 
@@ -80,9 +80,17 @@
     });
   </script>
   <curio-ux>
-    <h1>Configuration Editor</h1>
-    <h3>Click on a layer to edit its configuration</h3>
-    <config-list></config-list>
+    <div class="row">
+      <div class="col-md-3">
+      </div>
+      <div class="col-md-3" style="width: 70%">
+        <h1 style="text-wrap: none">Configuration Editor</h1>
+        <h3 style="text-wrap: none">Click on a layer to edit its configuration</h3>
+        <config-list></config-list>
+      </div>
+      <div class="col-md-3">
+      </div>
+    </div>
   </curio-ux>
 </body>
 

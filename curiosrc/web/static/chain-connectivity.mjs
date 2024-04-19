@@ -22,19 +22,6 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
         :host {
             box-sizing: border-box; /* Don't forgert this to include padding/border inside width calculation */
         }
-        table {
-            border-collapse: collapse;
-        }
-
-        table td, table th {
-            border-left: 1px solid #f0f0f0;
-            padding: 1px 5px;
-        }
-
-        table tr td:first-child, table tr th:first-child {
-            border-left: none;
-        }
-
         .success {
             color: green;
         }
@@ -47,7 +34,9 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
     `];
     }
     render = () => html`
-  <table>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link rel="stylesheet" href="/ux/main.css">
+  <table class="table table-dark">
     <thead>
         <tr>
             <th>RPC Address</th>
@@ -60,8 +49,8 @@ window.customElements.define('chain-connectivity', class MyElement extends LitEl
         ${this.data.map(item => html`
         <tr>
             <td>${item.Address}</td>
-            <td>${item.Reachable ? html`<span class="success">ok</span>` : html`<span class="error">FAIL</span>`}</td>
-            <td>${item.SyncState === "ok" ? html`<span class="success">ok</span>` : html`<span class="warning">${item.SyncState}</span>`}</td>
+            <td>${item.Reachable ? html`<span class="alert alert-success">ok</span>` : html`<span class="alert altert-danger">FAIL</span>`}</td>
+            <td>${item.SyncState === "ok" ? html`<span class="alert alert-success">ok</span>` : html`<span class="alert alert-warning">${item.SyncState}</span>`}</td>
             <td>${item.Version}</td>
         </tr>
         `)}
