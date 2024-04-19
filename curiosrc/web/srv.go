@@ -4,6 +4,7 @@ package web
 import (
 	"context"
 	"embed"
+	"github.com/filecoin-project/lotus/curiosrc/web/webrpc"
 	"io"
 	"io/fs"
 	"net"
@@ -38,6 +39,7 @@ func GetSrv(ctx context.Context, deps *deps.Deps) (*http.Server, error) {
 		return nil, err
 	}
 	api.Routes(mx.PathPrefix("/api").Subrouter(), deps)
+	webrpc.Routes(mx.PathPrefix("/webrpc").Subrouter(), deps)
 
 	var static fs.FS = static
 	if webDev {

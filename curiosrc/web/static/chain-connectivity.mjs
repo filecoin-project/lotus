@@ -1,4 +1,6 @@
 import { LitElement, html, css } from 'https://cdn.jsdelivr.net/gh/lit/dist@3/all/lit-all.min.js';
+import JsonRpcClient from '/lib/jsonrpc.mjs';
+
 window.customElements.define('chain-connectivity', class MyElement extends LitElement {
     constructor() {
         super();
