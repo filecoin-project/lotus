@@ -48,12 +48,17 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		msg.Value = types.NewInt(0)
 	}
 
-	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, false)
+	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, false, false)
+}
+
+// ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
+func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, false, true)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
 func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, applyTsMessages)
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, applyTsMessages, false)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -65,13 +70,13 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 		return v
 	}
 
-	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, false)
+	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, false, false)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
-func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid, nvGetter rand.NetworkVersionGetter, checkGas, applyTsMessages bool) (*api.InvocResult, error) {
+func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid, nvGetter rand.NetworkVersionGetter, checkGas, applyTsMessages bool, noReExec bool) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -117,24 +122,6 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	if stateCid == cid.Undef {
 		stateCid = ts.ParentState()
 	}
-	tsMsgs, err := sm.cs.MessagesForTipset(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to lookup messages for parent tipset: %w", err)
-	}
-
-	if applyTsMessages {
-		priorMsgs = append(tsMsgs, priorMsgs...)
-	} else {
-		var filteredTsMsgs []types.ChainMsg
-		for _, tsMsg := range tsMsgs {
-			//TODO we should technically be normalizing the filecoin address of from when we compare here
-			if tsMsg.VMMessage().From == msg.VMMessage().From {
-				filteredTsMsgs = append(filteredTsMsgs, tsMsg)
-			}
-		}
-		priorMsgs = append(filteredTsMsgs, priorMsgs...)
-	}
-
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
 	stateCid, err = sm.HandleStateForks(ctx, stateCid, ts.Height(), nil, ts)
 	if err != nil {
@@ -169,18 +156,38 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
-	for i, m := range priorMsgs {
-		_, err = vmi.ApplyMessage(ctx, m)
-		if err != nil {
-			return nil, xerrors.Errorf("applying prior message (%d, %s): %w", i, m.Cid(), err)
-		}
-	}
 
-	// We flush to get the VM's view of the state tree after applying the above messages
-	// This is needed to get the correct nonce from the actor state to match the VM
-	stateCid, err = vmi.Flush(ctx)
-	if err != nil {
-		return nil, xerrors.Errorf("flushing vm: %w", err)
+	if !noReExec {
+		tsMsgs, err := sm.cs.MessagesForTipset(ctx, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to lookup messages for parent tipset: %w", err)
+		}
+
+		if applyTsMessages {
+			priorMsgs = append(tsMsgs, priorMsgs...)
+		} else {
+			var filteredTsMsgs []types.ChainMsg
+			for _, tsMsg := range tsMsgs {
+				//TODO we should technically be normalizing the filecoin address of from when we compare here
+				if tsMsg.VMMessage().From == msg.VMMessage().From {
+					filteredTsMsgs = append(filteredTsMsgs, tsMsg)
+				}
+			}
+			priorMsgs = append(filteredTsMsgs, priorMsgs...)
+		}
+		for i, m := range priorMsgs {
+			_, err = vmi.ApplyMessage(ctx, m)
+			if err != nil {
+				return nil, xerrors.Errorf("applying prior message (%d, %s): %w", i, m.Cid(), err)
+			}
+		}
+
+		// We flush to get the VM's view of the state tree after applying the above messages
+		// This is needed to get the correct nonce from the actor state to match the VM
+		stateCid, err = vmi.Flush(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("flushing vm: %w", err)
+		}
 	}
 
 	stTree, err := state.LoadStateTree(cbor.NewCborStore(buffStore), stateCid)
