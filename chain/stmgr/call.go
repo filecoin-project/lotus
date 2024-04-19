@@ -69,7 +69,6 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 	nvGetter := func(context.Context, abi.ChainEpoch) network.Version {
 		return v
 	}
-
 	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, false, false)
 }
 
