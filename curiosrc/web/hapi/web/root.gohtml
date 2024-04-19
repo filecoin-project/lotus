@@ -7,8 +7,10 @@
     <link rel="stylesheet" href="/main.css">
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <script type="module" src="/ux/curio-ux.mjs"></script>
 </head>
 <body>
+<curio-ux>
 <div class="app-head">
     <div class="head-left">
         <h1>{{.PageTitle}}</h1>
@@ -18,6 +20,7 @@
 <div class="page">
   {{.Content}}
 </div>
+</curio-ux>
 </body>
 </html>
 {{end}}
