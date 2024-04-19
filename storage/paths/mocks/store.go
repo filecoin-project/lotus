@@ -154,7 +154,7 @@ func (mr *MockStoreMockRecorder) RemoveCopies(arg0, arg1, arg2 interface{}) *gom
 }
 
 // Reserve mocks base method.
-func (m *MockStore) Reserve(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType, arg3 storiface.SectorPaths, arg4 map[storiface.SectorFileType]int, arg5 int) (func(), error) {
+func (m *MockStore) Reserve(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType, arg3 storiface.SectorPaths, arg4 map[storiface.SectorFileType]int, arg5 float64) (func(), error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Reserve", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(func())

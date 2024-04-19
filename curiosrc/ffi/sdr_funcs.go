@@ -200,7 +200,7 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
 	}
 
-	paths, pathIDs, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathSealing)
+	fspaths, pathIDs, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -208,14 +208,55 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 
 	defer func() {
 		if err != nil {
-			clerr := removeDRCTrees(paths.Cache, "RC")
+			clerr := removeDRCTrees(fspaths.Cache, "RC")
 			if clerr != nil {
-				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", paths.Cache)
+				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", fspaths.Cache)
 			}
 		}
 	}()
 
-	sl, uns, err := ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
+	// create sector-sized file at paths.Sealed; PC2 transforms it into a sealed sector in-place
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("getting sector size: %w", err)
+	}
+
+	{
+		// copy TreeD prefix to sealed sector, SealPreCommitPhase2 will mutate it in place into the sealed sector
+
+		// first try reflink + truncate, that should be way faster
+		err := reflink.Always(filepath.Join(fspaths.Cache, proofpaths.TreeDName), fspaths.Sealed)
+		if err == nil {
+			err = os.Truncate(fspaths.Sealed, int64(ssize))
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("truncating reflinked sealed file: %w", err)
+			}
+		} else {
+			log.Errorw("reflink treed -> sealed failed, falling back to slow copy, use single scratch btrfs or xfs filesystem", "error", err, "sector", sector, "cache", fspaths.Cache, "sealed", fspaths.Sealed)
+
+			// fallback to slow copy, copy ssize bytes from treed to sealed
+			dst, err := os.OpenFile(fspaths.Sealed, os.O_WRONLY|os.O_CREATE, 0644)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("opening sealed sector file: %w", err)
+			}
+			src, err := os.Open(filepath.Join(fspaths.Cache, proofpaths.TreeDName))
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("opening treed sector file: %w", err)
+			}
+
+			_, err = io.CopyN(dst, src, int64(ssize))
+			derr := dst.Close()
+			_ = src.Close()
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("copying treed -> sealed: %w", err)
+			}
+			if derr != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("closing sealed file: %w", derr)
+			}
+		}
+	}
+
+	sl, uns, err := ffi.SealPreCommitPhase2(p1o, fspaths.Cache, fspaths.Sealed)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
 	}
@@ -589,23 +630,18 @@ func (sb *SealCalls) sectorStorageType(ctx context.Context, sector storiface.Sec
 }
 
 // PreFetch fetches the sector file to local storage before SDR and TreeRC Tasks
-func (sb *SealCalls) PreFetch(ctx context.Context, sector storiface.SectorRef, task *harmonytask.TaskID) error {
-	_, _, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+func (sb *SealCalls) PreFetch(ctx context.Context, sector storiface.SectorRef, task *harmonytask.TaskID) (fsPath, pathID storiface.SectorPaths, releaseSector func(), err error) {
+	fsPath, pathID, releaseSector, err = sb.sectors.AcquireSector(ctx, task, sector, storiface.FTNone, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
-		return xerrors.Errorf("acquiring sector paths: %w", err)
+		return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
-	defer releaseSector()
-
-	return nil
+	// Don't release the storage locks. They will be released in TreeD func()
+	return
 }
 
-func (sb *SealCalls) TreeD(ctx context.Context, task *harmonytask.TaskID, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) error {
-	fspaths, pathIDs, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
-	if err != nil {
-		return xerrors.Errorf("acquiring sector paths: %w", err)
-	}
-	defer releaseSector()
-
+func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool, fspaths, pathIDs storiface.SectorPaths, release func()) error {
+	defer release()
+	var err error
 	defer func() {
 		if err != nil {
 			clerr := removeDRCTrees(fspaths.Cache, "D")
@@ -624,48 +660,7 @@ func (sb *SealCalls) TreeD(ctx context.Context, task *harmonytask.TaskID, sector
 		return xerrors.Errorf("tree-d cid mismatch with supplied unsealed cid")
 	}
 
-	// create sector-sized file at paths.Sealed; PC2 transforms it into a sealed sector in-place
-	ssize, err := sector.ProofType.SectorSize()
-	if err != nil {
-		return xerrors.Errorf("getting sector size: %w", err)
-	}
-
-	{
-		// copy TreeD prefix to sealed sector, SealPreCommitPhase2 will mutate it in place into the sealed sector
-
-		// first try reflink + truncate, that should be way faster
-		err := reflink.Always(filepath.Join(fspaths.Cache, proofpaths.TreeDName), fspaths.Sealed)
-		if err == nil {
-			err = os.Truncate(fspaths.Sealed, int64(ssize))
-			if err != nil {
-				return xerrors.Errorf("truncating reflinked sealed file: %w", err)
-			}
-		} else {
-			log.Errorw("reflink treed -> sealed failed, falling back to slow copy, use single scratch btrfs or xfs filesystem", "error", err, "sector", sector, "cache", fspaths.Cache, "sealed", fspaths.Sealed)
-
-			// fallback to slow copy, copy ssize bytes from treed to sealed
-			dst, err := os.OpenFile(fspaths.Sealed, os.O_WRONLY|os.O_CREATE, 0644)
-			if err != nil {
-				return xerrors.Errorf("opening sealed sector file: %w", err)
-			}
-			src, err := os.Open(filepath.Join(fspaths.Cache, proofpaths.TreeDName))
-			if err != nil {
-				return xerrors.Errorf("opening treed sector file: %w", err)
-			}
-
-			_, err = io.CopyN(dst, src, int64(ssize))
-			derr := dst.Close()
-			_ = src.Close()
-			if err != nil {
-				return xerrors.Errorf("copying treed -> sealed: %w", err)
-			}
-			if derr != nil {
-				return xerrors.Errorf("closing sealed file: %w", derr)
-			}
-		}
-	}
-
-	if err := sb.ensureOneCopy(ctx, sector.ID, pathIDs, storiface.FTCache|storiface.FTSealed); err != nil {
+	if err := sb.ensureOneCopy(ctx, sector.ID, pathIDs, storiface.FTCache); err != nil {
 		return xerrors.Errorf("ensure one copy: %w", err)
 	}
 

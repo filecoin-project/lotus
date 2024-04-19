@@ -3,6 +3,7 @@ package seal
 import (
 	"context"
 	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 
@@ -45,12 +46,12 @@ func (t *TreeDTask) TypeDetails() harmonytask.TaskTypeDetails {
 
 	return harmonytask.TaskTypeDetails{
 		Max:  t.max,
-		Name: "SDRTreeD",
+		Name: "TreeD",
 		Cost: resources.Resources{
 			Cpu:     1,
 			Ram:     64 << 20, // todo
 			Gpu:     0,
-			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing, 1),
+			Storage: t.sc.Storage(t.taskToSector, storiface.FTNone, storiface.FTCache, ssize, storiface.PathSealing, 1.0),
 		},
 		MaxFailures: 3,
 		Follows:     nil,
@@ -117,7 +118,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	// Fetch the Sector to local storage
-	err = t.sc.PreFetch(ctx, sref, &taskID)
+	fsPaths, pathIds, release, err := t.sc.PreFetch(ctx, sref, &taskID)
 	if err != nil {
 		return false, xerrors.Errorf("failed to prefetch sectors: %w", err)
 	}
@@ -238,7 +239,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	// Generate Tree D
-	err = t.sc.TreeD(ctx, &taskID, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
+	err = t.sc.TreeD(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData, fsPaths, pathIds, release)
 	if err != nil {
 		return false, xerrors.Errorf("failed to generate TreeD: %w", err)
 	}
@@ -254,6 +255,75 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	return true, nil
+}
+
+type UrlPieceReader struct {
+	Url     string
+	RawSize int64 // the exact number of bytes read, if we read more or less that's an error
+
+	readSoFar int64
+	closed    bool
+	active    io.ReadCloser // auto-closed on EOF
+}
+
+func (u *UrlPieceReader) Read(p []byte) (n int, err error) {
+	// Check if we have already read the required amount of data
+	if u.readSoFar >= u.RawSize {
+		return 0, io.EOF
+	}
+
+	// If 'active' is nil, initiate the HTTP request
+	if u.active == nil {
+		resp, err := http.Get(u.Url)
+		if err != nil {
+			return 0, err
+		}
+
+		// Set 'active' to the response body
+		u.active = resp.Body
+	}
+
+	// Calculate the maximum number of bytes we can read without exceeding RawSize
+	toRead := u.RawSize - u.readSoFar
+	if int64(len(p)) > toRead {
+		p = p[:toRead]
+	}
+
+	n, err = u.active.Read(p)
+
+	// Update the number of bytes read so far
+	u.readSoFar += int64(n)
+
+	// If the number of bytes read exceeds RawSize, return an error
+	if u.readSoFar > u.RawSize {
+		return n, xerrors.New("read beyond the specified RawSize")
+	}
+
+	// If EOF is reached, close the reader
+	if err == io.EOF {
+		cerr := u.active.Close()
+		u.closed = true
+		if cerr != nil {
+			log.Errorf("error closing http piece reader: %s", cerr)
+		}
+
+		// if we're below the RawSize, return an unexpected EOF error
+		if u.readSoFar < u.RawSize {
+			log.Errorw("unexpected EOF", "readSoFar", u.readSoFar, "rawSize", u.RawSize, "url", u.Url)
+			return n, io.ErrUnexpectedEOF
+		}
+	}
+
+	return n, err
+}
+
+func (u *UrlPieceReader) Close() error {
+	if !u.closed {
+		u.closed = true
+		return u.active.Close()
+	}
+
+	return nil
 }
 
 var _ harmonytask.TaskInterface = &TreeDTask{}

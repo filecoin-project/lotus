@@ -45,7 +45,7 @@ type TaskStorage struct {
 	taskToSectorRef func(taskID harmonytask.TaskID) (SectorRef, error)
 
 	// Minimum free storage percentage cutoff for reservation rejection
-	MinFreeStoragePercentage int
+	MinFreeStoragePercentage float64
 }
 
 type ReleaseStorageFunc func() // free storage reservation
@@ -59,7 +59,7 @@ type StorageReservation struct {
 	Alloc, Existing storiface.SectorFileType
 }
 
-func (sb *SealCalls) Storage(taskToSectorRef func(taskID harmonytask.TaskID) (SectorRef, error), alloc, existing storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, MinFreeStoragePercentage int) *TaskStorage {
+func (sb *SealCalls) Storage(taskToSectorRef func(taskID harmonytask.TaskID) (SectorRef, error), alloc, existing storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, MinFreeStoragePercentage float64) *TaskStorage {
 	return &TaskStorage{
 		sc:                       sb,
 		alloc:                    alloc,
