@@ -14,8 +14,8 @@ import (
 
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/jackc/pgx/v5"
 	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/yugabyte/pgx/v5"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
