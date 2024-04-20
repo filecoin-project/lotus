@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	stdbig "math/big"
 	"sort"
@@ -161,7 +162,7 @@ var MpoolClear = &cli.Command{
 		really := cctx.Bool("really-do-it")
 		if !really {
 			//nolint:golint
-			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned")
+			return errors.New("--really-do-it must be specified for this action to have an effect; you have been warned")
 		}
 
 		local := cctx.Bool("local")

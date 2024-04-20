@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -119,7 +120,7 @@ var SyncMarkBadCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to mark")
+			return errors.New("must specify block cid to mark")
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
@@ -154,7 +155,7 @@ var SyncUnmarkBadCmd = &cli.Command{
 		}
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to unmark")
+			return errors.New("must specify block cid to unmark")
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
@@ -181,7 +182,7 @@ var SyncCheckBadCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify block cid to check")
+			return errors.New("must specify block cid to check")
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
@@ -235,7 +236,7 @@ var SyncCheckpointCmd = &cli.Command{
 		}
 
 		if ts == nil {
-			return fmt.Errorf("must pass cids for tipset to set as head, or specify epoch flag")
+			return errors.New("must pass cids for tipset to set as head, or specify epoch flag")
 		}
 
 		if err := napi.SyncCheckpoint(ctx, ts.Key()); err != nil {

@@ -72,7 +72,7 @@ var filplusVerifyClientCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		froms := cctx.String("from")
 		if froms == "" {
-			return fmt.Errorf("must specify from address with --from")
+			return errors.New("must specify from address with --from")
 		}
 
 		fromk, err := address.NewFromString(froms)
@@ -726,7 +726,7 @@ var filplusCheckClientCmd = &cli.Command{
 	ArgsUsage: "clientAddress",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must specify client address to check")
+			return errors.New("must specify client address to check")
 		}
 
 		caddr, err := address.NewFromString(cctx.Args().First())
@@ -761,7 +761,7 @@ var filplusCheckNotaryCmd = &cli.Command{
 	ArgsUsage: "notaryAddress",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must specify notary address to check")
+			return errors.New("must specify notary address to check")
 		}
 
 		vaddr, err := address.NewFromString(cctx.Args().First())
@@ -781,7 +781,7 @@ var filplusCheckNotaryCmd = &cli.Command{
 			return err
 		}
 		if !found {
-			return fmt.Errorf("not found")
+			return errors.New("not found")
 		}
 
 		fmt.Println(dcap)

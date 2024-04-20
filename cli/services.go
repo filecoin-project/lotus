@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -11,7 +12,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -113,7 +113,7 @@ type CheckInfo struct {
 	Check api.MessageCheckStatus
 }
 
-var ErrCheckFailed = fmt.Errorf("check has failed")
+var ErrCheckFailed = errors.New("check has failed")
 
 func (s *ServicesImpl) RunChecksForPrototype(ctx context.Context, prototype *api.MessagePrototype) ([][]api.MessageCheckStatus, error) {
 	var outChecks [][]api.MessageCheckStatus
