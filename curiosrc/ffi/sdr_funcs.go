@@ -631,7 +631,7 @@ func (sb *SealCalls) sectorStorageType(ctx context.Context, sector storiface.Sec
 
 // PreFetch fetches the sector file to local storage before SDR and TreeRC Tasks
 func (sb *SealCalls) PreFetch(ctx context.Context, sector storiface.SectorRef, task *harmonytask.TaskID) (fsPath, pathID storiface.SectorPaths, releaseSector func(), err error) {
-	fsPath, pathID, releaseSector, err = sb.sectors.AcquireSector(ctx, task, sector, storiface.FTNone, storiface.FTSealed, storiface.PathSealing)
+	fsPath, pathID, releaseSector, err = sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
