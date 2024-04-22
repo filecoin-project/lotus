@@ -146,7 +146,7 @@ require (
 	github.com/triplewz/poseidon v0.0.0-20220525065023-a7cdb0e183e7
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.1.1-0.20240420165745-bb55032688cc
+	github.com/whyrusleeping/cbor-gen v0.1.1
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
