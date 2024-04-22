@@ -165,7 +165,7 @@ func (q *commitQueue) advanceEpoch(epoch abi.ChainEpoch) {
 	})
 }
 
-// enquueProveCommit enqueues prove-commit for the given pre-commit for the given miner.
+// enqueueProveCommit enqueues prove-commit for the given pre-commit for the given miner.
 func (q *commitQueue) enqueueProveCommit(addr address.Address, preCommitEpoch abi.ChainEpoch, info minertypes.SectorPreCommitInfo) error {
 	// Compute the epoch at which we can start trying to commit.
 	preCommitDelay := policy.GetPreCommitChallengeDelay()
