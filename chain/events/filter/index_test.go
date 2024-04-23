@@ -286,7 +286,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.prefillFilter(context.Background(), tc.filter, false); err != nil {
+			if err := ei.prefillFilter(context.Background(), tc.filter); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 
@@ -681,14 +681,6 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			te:   events14000,
 			want: noCollectedEvents,
 		},
-	}
-
-	exclusiveTestCases := []struct {
-		name   string
-		filter *eventFilter
-		te     *TipSetEvents
-		want   []*CollectedEvent
-	}{
 		{
 			name: "nomatch tipset min height",
 			filter: &eventFilter{
@@ -929,19 +921,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	for _, tc := range inclusiveTestCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.prefillFilter(context.Background(), tc.filter, false); err != nil {
-				require.NoError(t, err, "prefill filter events")
-			}
-
-			coll := tc.filter.TakeCollectedEvents(context.Background())
-			require.ElementsMatch(t, coll, tc.want, tc.name)
-		})
-	}
-
-	for _, tc := range exclusiveTestCases {
-		tc := tc // appease lint
-		t.Run(tc.name, func(t *testing.T) {
-			if err := ei.prefillFilter(context.Background(), tc.filter, true); err != nil {
+			if err := ei.prefillFilter(context.Background(), tc.filter); err != nil {
 				require.NoError(t, err, "prefill filter events")
 			}
 

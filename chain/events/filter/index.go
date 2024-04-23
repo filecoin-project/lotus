@@ -92,7 +92,7 @@ const (
 	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
 	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter=? AND event_index=? AND message_cid=? AND message_index=?`
 
-	createIndexEventEmitter  = `CREATE INDEX IF NOT EXISTS event_emitter ON event (emitter)`
+	createIndexEventEmitter      = `CREATE INDEX IF NOT EXISTS event_emitter ON event (emitter)`
 	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
 	createIndexEventHeight       = `CREATE INDEX IF NOT EXISTS event_height ON event (height);`
 	createIndexEventReverted     = `CREATE INDEX IF NOT EXISTS event_reverted ON event (reverted);`
@@ -295,11 +295,12 @@ func (ei *EventIndex) migrateToVersion3(ctx context.Context) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// create index on event.emitter_addr.
-	_, err = tx.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)")
-	if err != nil {
-		return xerrors.Errorf("create index event_emitter_addr: %w", err)
-	}
+	// The original work on schema v3 included an index on, then, emitter_addr.
+	// Successive work to index events by emitter actor ID instead required the index on the column
+	// to be recreated on a new column called emitter. Therefore, the index creation is done as part of
+	// migrateToVersion4.
+	//
+	// For further context, see: https://github.com/filecoin-project/lotus/pull/11723#discussion_r1526295815
 
 	// original v3 migration introduced an index:
 	//	CREATE INDEX IF NOT EXISTS event_entry_key_index ON event_entry (key)
@@ -370,14 +371,11 @@ func (ei *EventIndex) migrateToVersion4(ctx context.Context) error {
 		return xerrors.Errorf("commit transaction: %w", err)
 	}
 
-	ei.vacuumDBAndCheckpointWAL(ctx)
-
 	log.Infof("Successfully migrated event index from version 3 to version 4 in %s", time.Since(now))
 	return nil
 }
 
-
-// migrateToVersion4 migrates the schema from version 3 to version 4: indexing events by emitter actor ID.
+// migrateToVersion5 migrates the schema from version 3 to version 4: indexing events by emitter actor ID.
 // This migration replaces the emitter_addr column in event table with a new column called `emitter`, which stores
 // the emitter's actor ID.
 func (ei *EventIndex) migrateToVersion5(ctx context.Context, chainStore *store.ChainStore) error {
@@ -505,7 +503,7 @@ func (ei *EventIndex) migrateToVersion5(ctx context.Context, chainStore *store.C
 	}
 
 	// Increment the schema version in _meta table to 4.
-	if _, err = tx.Exec("INSERT OR IGNORE INTO _meta (version) VALUES (4)"); err != nil {
+	if _, err = tx.Exec("INSERT OR IGNORE INTO _meta (version) VALUES (5)"); err != nil {
 		return xerrors.Errorf("increment _meta version: %w", err)
 	}
 
@@ -515,7 +513,7 @@ func (ei *EventIndex) migrateToVersion5(ctx context.Context, chainStore *store.C
 
 	ei.vacuumDBAndCheckpointWAL(ctx)
 
-	log.Infof("successfully migrated event index from version 3 to version 4 in %s", time.Since(now))
+	log.Infof("Successfully migrated event index from version 4 to version 5 in %s", time.Since(now))
 	return nil
 }
 
@@ -756,7 +754,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 }
 
 // prefillFilter fills a filter's collection of events from the historic index.
-func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
+func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter) error {
 	var (
 		clauses, joins []string
 		values         []any
@@ -792,14 +790,12 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			values = append(values, emitter)
 		}
 		clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
-		// Explicitly exclude reverted events, since at least one emitter is present and reverts cannot be considered.
-		excludeReverted = true
 	}
 
-	if excludeReverted {
-		clauses = append(clauses, "event.reverted=?")
-		values = append(values, false)
-	}
+	// Always exclude reverted events when prefilling. See:
+	// - https://github.com/filecoin-project/lotus/issues/11770
+	clauses = append(clauses, "event.reverted=?")
+	values = append(values, false)
 
 	if len(f.keysWithCodec) > 0 {
 		join := 0

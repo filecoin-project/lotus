@@ -370,7 +370,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 }
 
 func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
-	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (EventFilter, error) {
+	keysWithCodec map[string][]types.ActorEventBlock, _ bool) (EventFilter, error) {
 	m.mu.Lock()
 	if m.currentHeight == 0 {
 		// sync in progress, we haven't had an Apply
@@ -402,7 +402,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	}
 
 	if m.EventIndex != nil && requiresHistoricEvents {
-		if err := m.EventIndex.prefillFilter(ctx, f, excludeReverted); err != nil {
+		if err := m.EventIndex.prefillFilter(ctx, f); err != nil {
 			return nil, xerrors.Errorf("pre-fill historic events: %w", err)
 		}
 	}

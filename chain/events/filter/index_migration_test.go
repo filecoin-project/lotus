@@ -108,10 +108,10 @@ func TestMigration_V3ToV4Sample1(t *testing.T) {
 	require.NoError(t, err)
 	tree, err := state.NewStateTree(cst, network)
 	require.NoError(t, err)
-	//for _, addr := range addrs {
-	//	_, err = tree.RegisterNewAddress(addr)
-	//	require.NoError(t, err)
-	//}
+	for _, addr := range addrs {
+		_, err = tree.RegisterNewAddress(addr)
+		require.NoError(t, err)
+	}
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
 

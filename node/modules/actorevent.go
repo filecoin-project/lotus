@@ -103,7 +103,7 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 			resolverCacheExpiry    = time.Minute
 			resolverCacheNilTipSet = false
 		)
-		actorResolver := filter.NewCachedActorResolver(sm.LookupActorID, resolverCacheSize, resolverCacheExpiry, resolverCacheNilTipSet)
+		actorResolver := filter.NewCachedActorResolver(sm.LookupID, resolverCacheSize, resolverCacheExpiry, resolverCacheNilTipSet)
 
 		// Enable indexing of actor events
 		var eventIndex *filter.EventIndex
