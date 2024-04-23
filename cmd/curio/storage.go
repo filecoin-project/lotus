@@ -25,8 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-const metaFile = "sectorstore.json"
-
 var storageCmd = &cli.Command{
 	Name:  "storage",
 	Usage: "manage sector storage",
