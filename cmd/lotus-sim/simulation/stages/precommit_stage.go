@@ -54,7 +54,7 @@ func (*PreCommitStage) Name() string {
 	return "pre-commit"
 }
 
-// packPreCommits packs pre-commit messages until the block is full.
+// PackMessages packs pre-commit messages until the block is full.
 func (stage *PreCommitStage) PackMessages(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
 	if !stage.initialized {
 		if err := stage.load(ctx, bb); err != nil {
