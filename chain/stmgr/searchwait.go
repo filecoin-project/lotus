@@ -243,7 +243,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 		return nil, nil, cid.Undef, xerrors.Errorf("failed to load initital tipset")
 	}
 
-	mFromId, err := sm.LookupID(ctx, m.VMMessage().From, from)
+	mFromId, err := sm.LookupIDAddress(ctx, m.VMMessage().From, from)
 	if err != nil {
 		return nil, nil, cid.Undef, xerrors.Errorf("looking up From id address: %w", err)
 	}
