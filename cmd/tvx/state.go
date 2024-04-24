@@ -148,7 +148,7 @@ func (sg *StateSurgeon) WriteCAR(w io.Writer, roots ...cid.Cid) error {
 }
 
 // WriteCARIncluding writes a CAR including only the CIDs that are listed in
-// the include set. This leads to an intentially sparse tree with dangling links.
+// the include set. This leads to an intentionally sparse tree with dangling links.
 func (sg *StateSurgeon) WriteCARIncluding(w io.Writer, include map[cid.Cid]struct{}, roots ...cid.Cid) error {
 	carWalkFn := func(nd format.Node) (out []*format.Link, err error) {
 		for _, link := range nd.Links() {

@@ -117,7 +117,7 @@ func (r *Reporter) Print(elapsed time.Duration, w io.Writer) {
 	for i := 0; i < nrBucket; i++ {
 		buckets[i].start = int64(i) * bucketRange
 		buckets[i].end = buckets[i].start + bucketRange
-		// extend the last bucked by any remaning range caused by the integer division
+		// extend the last bucked by any remaining range caused by the integer division
 		if i == nrBucket-1 {
 			buckets[i].end = latencyRange
 		}

@@ -45,7 +45,7 @@ var messageKeyToIndex = map[string]int{
 	"Aggregate-Anonymous: version, chain, and Miner power (bucketed).": 22,
 	"Cannot reach the DB: %s": 90,
 	"Cannot read the config.toml file in the provided directory, Error: %s":                                                                                  65,
-	"Compare the configurations %s to %s. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.": 116,
+	"Compare the configurations %s to %s. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.": 116,
 	"Confidence epochs":     86,
 	"Confidence epochs: %d": 76,
 	"Configuration 'base' was created to resemble this lotus-miner's config.toml .":               117,
@@ -282,7 +282,7 @@ const enData string = "" + // Size: 5648 bytes
 	"base %[1]s\x02Error connecting to Yugabyte database: %[1]s\x02Configurat" +
 	"ion 'base' was updated to include this miner's address (%[1]s) and its w" +
 	"allet setup.\x02Compare the configurations %[1]s to %[2]s. Changes betwe" +
-	"en the miner IDs other than wallet addreses should be a new, minimal lay" +
+	"en the miner IDs other than wallet addresses should be a new, minimal lay" +
 	"er for runners that need it.\x02Configuration 'base' was created to rese" +
 	"mble this lotus-miner's config.toml .\x04\x00\x01 \x15\x02Layer %[1]s cr" +
 	"eated.\x04\x00\x01 \x19\x02To work with the config:\x02To run Curio: Wit" +

@@ -148,7 +148,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "conn-per-minute",
-			Usage: "The number of incomming connections to accept from a single IP per minute.  Use 0 to disable",
+			Usage: "The number of incoming connections to accept from a single IP per minute.  Use 0 to disable",
 			Value: 0,
 		},
 	},

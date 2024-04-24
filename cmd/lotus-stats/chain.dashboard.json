@@ -137,7 +137,7 @@
       },
       "id": 58,
       "options": {
-        "content": "<div style=\"font-weight: 800; font-size: 1.5em;color:#a3cae1;margin-top:10px; display: none;\">\n    The stats dashboard is undergoing some maintance. Please check back later.\n</div>",
+        "content": "<div style=\"font-weight: 800; font-size: 1.5em;color:#a3cae1;margin-top:10px; display: none;\">\n    The stats dashboard is undergoing some maintenance. Please check back later.\n</div>",
         "mode": "html"
       },
       "pluginVersion": "7.3.0",

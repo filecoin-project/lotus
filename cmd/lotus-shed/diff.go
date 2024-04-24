@@ -146,7 +146,7 @@ var diffMinerStates = &cli.Command{
 					}
 
 					if sectorsSnapshotA.Length() != sectorsSnapshotB.Length() {
-						fmt.Println("sector snapshots have different lengts!")
+						fmt.Println("sector snapshots have different lengths!")
 					}
 
 					var infoA miner9.SectorOnChainInfo

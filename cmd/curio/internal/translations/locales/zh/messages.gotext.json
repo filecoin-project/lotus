@@ -587,9 +587,9 @@
       "placeholder": null
     },
     {
-      "id": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+      "id": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.",
       "translation": "比较配置{Base}和{MinerAddresses0}。矿工ID之间除了钱包地址的变化应该是需要的运行者的一个新的、最小的层。",
-      "message": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+      "message": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.",
       "placeholder": null
     },
     {

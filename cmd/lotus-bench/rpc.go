@@ -173,7 +173,7 @@ NOTE: The last two examples will not work until we upgrade urfave dependency (tr
 				ticker := time.NewTicker(cctx.Duration("watch"))
 				for {
 					clearAndPrintReport := func() {
-						// clear the screen move the curser to the top left
+						// clear the screen move the cursor to the top left
 						fmt.Print("\033[2J")
 						fmt.Printf("\033[%d;%dH", 1, 1)
 						for i, e := range rpcMethods {
@@ -312,7 +312,7 @@ func (rpc *RPCMethod) startWorker(client *http.Client, qpsTicker *time.Ticker) {
 		} else {
 			statusCode = &resp.StatusCode
 
-			// there was not a HTTP error but we need to still check the json response for errrors
+			// there was not a HTTP error but we need to still check the json response for errors
 			var data []byte
 			data, err = io.ReadAll(resp.Body)
 			if err != nil {
