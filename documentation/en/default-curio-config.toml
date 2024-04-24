@@ -364,3 +364,17 @@
   # type: string
   #StorageRPCSecret = ""
 
+
+[Alerting]
+  # PagerDutyEventURL is URL for PagerDuty's Events API v2 URL. Events sent to this API URL are ultimately
+  # routed to a PagerDuty service and processed.
+  #
+  # type: string
+  #PagerDutyEventURL = "https://events.pagerduty.com/v2/enqueue"
+
+  # PageDutyIntegrationKey is the integration key for a pager duty service. You can find this unique service
+  # identifier in the integration page for the service.
+  #
+  # type: string
+  #PageDutyIntegrationKey = ""
+

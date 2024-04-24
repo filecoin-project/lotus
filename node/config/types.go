@@ -77,6 +77,7 @@ type CurioConfig struct {
 	Ingest    CurioIngestConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
+	Alerting  CurioAlerting
 }
 
 type ApisConfig struct {
@@ -1108,4 +1109,14 @@ type FaultReporterConfig struct {
 	// ReportConsensusFault messages. It will pay for gas fees, and receive any
 	// rewards. This address should have adequate funds to cover gas fees.
 	ConsensusFaultReporterAddress string
+}
+
+type CurioAlerting struct {
+	// PagerDutyEventURL is URL for PagerDuty's Events API v2 URL. Events sent to this API URL are ultimately
+	// routed to a PagerDuty service and processed.
+	PagerDutyEventURL string
+
+	// PageDutyIntegrationKey is the integration key for a pager duty service. You can find this unique service
+	// identifier in the integration page for the service.
+	PageDutyIntegrationKey string
 }

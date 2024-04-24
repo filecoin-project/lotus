@@ -368,5 +368,9 @@ func DefaultCurioConfig() *CurioConfig {
 			MaxQueueTrees: 0, // default don't use this limit
 			MaxQueuePoRep: 0, // default don't use this limit
 		},
+		Alerting: CurioAlerting{
+			PagerDutyEventURL:      "https://events.pagerduty.com/v2/enqueue",
+			PageDutyIntegrationKey: "",
+		},
 	}
 }

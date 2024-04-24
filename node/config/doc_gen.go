@@ -183,6 +183,22 @@ over the worker address if this flag is set.`,
 			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
 		},
 	},
+	"CurioAlerting": {
+		{
+			Name: "PagerDutyEventURL",
+			Type: "string",
+
+			Comment: `PagerDutyEventURL is URL for PagerDuty's Events API v2 URL. Events sent to this API URL are ultimately
+routed to a PagerDuty service and processed.`,
+		},
+		{
+			Name: "PageDutyIntegrationKey",
+			Type: "string",
+
+			Comment: `PageDutyIntegrationKey is the integration key for a pager duty service. You can find this unique service
+identifier in the integration page for the service.`,
+		},
+	},
 	"CurioConfig": {
 		{
 			Name: "Subsystems",
@@ -223,6 +239,12 @@ over the worker address if this flag is set.`,
 		{
 			Name: "Apis",
 			Type: "ApisConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Alerting",
+			Type: "CurioAlerting",
 
 			Comment: ``,
 		},
