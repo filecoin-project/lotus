@@ -9,6 +9,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	kmswallet "github.com/filecoin-project/lotus/chain/wallet/kmswallet_ipfsunion"
 	"io"
 	"os"
 	"path"
@@ -17,20 +20,6 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
-	metricsprom "github.com/ipfs/go-metrics-prometheus"
-	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/urfave/cli/v2"
-	"go.opencensus.io/plugin/runmetrics"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
-	"golang.org/x/xerrors"
-	"gopkg.in/cheggaaa/pb.v1"
-
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-paramfetch"
-
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
@@ -55,6 +44,12 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	metricsprom "github.com/ipfs/go-metrics-prometheus"
+	"go.opencensus.io/plugin/runmetrics"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -166,6 +161,40 @@ var DaemonCmd = &cli.Command{
 			Name:  "restore-config",
 			Usage: "config file to use when restoring from backup",
 		},
+		/*chihua begin*/
+		&cli.StringFlag{
+			Name:  "packing-pri-addrs",
+			Usage: "The addr list for priority packing",
+		},
+		&cli.StringFlag{
+			Name:  "only-whitelist",
+			Usage: "only pack the whitelist message",
+		},
+		&cli.StringFlag{
+			Name:  "force-pripacking",
+			Usage: "only pack the whitelist message",
+		},
+		&cli.StringFlag{
+			Name:  "kms-servers",
+			Usage: "The kms(key management server) URLs separated by comma",
+			Value: "http://101.133.238.237:8200,http://47.116.68.31:8200",
+		},
+		&cli.StringFlag{
+			Name:  "kms-apitoken",
+			Usage: "The kms api token",
+			Value: "s.RqRr5fIYf4jHRBGtdwjnYCYz",
+		},
+		&cli.StringFlag{
+			Name:  "kms-nodename",
+			Usage: "The node' name",
+			Value: "",
+		},
+		&cli.BoolFlag{
+			Name:  "kms-skip-verify-tls",
+			Usage: "Disable verification of TLS certificates",
+			Value: true,
+		},
+		/*chihua end*/
 	},
 	Action: func(cctx *cli.Context) error {
 		isLite := cctx.Bool("lite")
@@ -388,9 +417,9 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
-		var api lapi.FullNode
+		var apiFN lapi.FullNode //chihua modify
 		stop, err := node.New(ctx,
-			node.FullAPI(&api, node.Lite(isLite)),
+			node.FullAPI(&apiFN, node.Lite(isLite)),
 
 			node.Base(),
 			node.Repo(r),
@@ -414,13 +443,70 @@ var DaemonCmd = &cli.Command{
 				node.Unset(node.RunPeerMgrKey),
 				node.Unset(new(*peermgr.PeerMgr)),
 			),
+			/*chihua begin*/
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("packing-pri-addrs") },
+				node.Override(node.SetPendingPriAddrs, func(mPool *messagepool.MessagePool) error {
+					addrs := strings.Split(cctx.String("packing-pri-addrs"), ",")
+					if len(addrs) == 0 {
+						fmt.Println("please input at least one address")
+						return nil
+					}
+
+					var flag uint8
+
+					var addrArray []address.Address
+					for _, ar := range addrs {
+						actorAddr, _ := address.NewFromString(ar)
+						addrArray = append(addrArray, actorAddr)
+					}
+
+					var onlyWhileList bool
+					if cctx.IsSet("only-whitelist") {
+						flag = flag | 0x01
+						onlyStr := cctx.String("only-whitelist")
+						if onlyStr == "true" {
+							onlyWhileList = true
+						}
+					}
+
+					var forcePriPacking bool
+					if cctx.IsSet("force-pripacking") {
+						flag = flag | 0x10
+						forceStr := cctx.String("force-pripacking")
+						if forceStr == "true" {
+							forcePriPacking = true
+						}
+					}
+
+					return mPool.AddPendingPriAddr(forcePriPacking, onlyWhileList, flag, addrArray)
+				})),
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("kms-nodename") },
+				node.Override(new(*kmswallet.KMSWallet), func(defWI wallet.Default) (*kmswallet.KMSWallet, error) {
+					kmsServers := cctx.String("kms-servers")
+					nodeName := cctx.String("kms-nodename")
+					apiToken := cctx.String("kms-apitoken")
+					skipTLSVerify := cctx.Bool("kms-skip-verify-tls")
+					if nodeName == "" {
+						return nil, fmt.Errorf("please config the node name for kms wallet")
+					}
+
+					log.Infof("kms-server: %s", kmsServers)
+
+					kmsW := kmswallet.NewKMSWallet(kmsServers, nodeName, apiToken, skipTLSVerify)
+					if defW, ok := defWI.(*wallet.DefWallet); ok {
+						defW.SetKMSWallet(kmsW)
+					}
+
+					return kmsW, nil
+				})),
+			/*chihua end*/
 		)
 		if err != nil {
 			return xerrors.Errorf("initializing node: %w", err)
 		}
 
 		if cctx.String("import-key") != "" {
-			if err := importKey(ctx, api, cctx.String("import-key")); err != nil {
+			if err := importKey(ctx, apiFN, cctx.String("import-key")); err != nil {
 				log.Errorf("importing key failed: %+v", err)
 			}
 		}
@@ -441,7 +527,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// Instantiate the full node handler.
-		h, err := node.FullNodeHandler(api, true, serverOptions...)
+		h, err := node.FullNodeHandler(apiFN, true, serverOptions...)
 		if err != nil {
 			return fmt.Errorf("failed to instantiate rpc handler: %s", err)
 		}

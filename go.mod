@@ -348,3 +348,5 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 
 replace github.com/triplewz/poseidon => github.com/magik6k/poseidon v0.0.0-neptune
+
+replace github.com/whyrusleeping/ledger-filecoin-go => ./extern/ipfsunion_ledger_filecoin_go

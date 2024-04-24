@@ -1,0 +1,121 @@
+/*******************************************************************************
+*   (c) 2018 ZondaX GmbH
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+********************************************************************************/
+
+package ledger_filecoin_go
+
+import (
+	"encoding/hex"
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
+
+func Test_PrintVersion(t *testing.T) {
+	reqVersion := VersionInfo{0, 1, 2, 3}
+	s := fmt.Sprintf("%v", reqVersion)
+	assert.Equal(t, "1.2.3", s)
+}
+
+func Test_PathGeneration0(t *testing.T) {
+	bip44Path := []uint32{44, 100, 0, 0, 0}
+
+	pathBytes, err := GetBip44bytes(bip44Path, 0)
+
+	if err != nil {
+		t.Fatalf( "Detected error, err: %s\n", err.Error())
+	}
+
+	fmt.Printf("Path: %x\n", pathBytes)
+
+	assert.Equal(
+		t,
+		20,
+		len(pathBytes),
+		"PathBytes has wrong length: %x, expected length: %x\n", pathBytes, 40)
+
+	assert.Equal(
+		t,
+		"2c00000064000000000000000000000000000000",
+		fmt.Sprintf("%x", pathBytes),
+		"Unexpected PathBytes\n")
+}
+
+func Test_PathGeneration2(t *testing.T) {
+	bip44Path := []uint32{44, 123, 0, 0, 0}
+
+	pathBytes, err := GetBip44bytes(bip44Path, 2)
+
+	if err != nil {
+		t.Fatalf("Detected error, err: %s\n", err.Error())
+	}
+
+	fmt.Printf("Path: %x\n", pathBytes)
+
+	assert.Equal(
+		t,
+		20,
+		len(pathBytes),
+		"PathBytes has wrong length: %x, expected length: %x\n", pathBytes, 40)
+
+	assert.Equal(
+		t,
+		"2c0000807b000080000000000000000000000000",
+		fmt.Sprintf("%x", pathBytes),
+		"Unexpected PathBytes\n")
+}
+
+func Test_PathGeneration3(t *testing.T) {
+	bip44Path := []uint32{44, 123, 0, 0, 0}
+
+	pathBytes, err := GetBip44bytes(bip44Path, 3)
+
+	if err != nil {
+		t.Fatalf("Detected error, err: %s\n", err.Error())
+	}
+
+	fmt.Printf("Path: %x\n", pathBytes)
+
+	assert.Equal(
+		t,
+		20,
+		len(pathBytes),
+		"PathBytes has wrong length: %x, expected length: %x\n", pathBytes, 40)
+
+	assert.Equal(
+		t,
+		"2c0000807b000080000000800000000000000000",
+		fmt.Sprintf("%x", pathBytes),
+		"Unexpected PathBytes\n")
+}
+
+func Test_ChunkGeneration(t *testing.T) {
+	bip44Path := []uint32{44, 123, 0, 0, 0}
+
+	pathBytes, err := GetBip44bytes(bip44Path, 0)
+	if err != nil {
+		t.Fatalf("Detected error, err: %s\n", err.Error())
+	}
+
+	message, _ := hex.DecodeString("885501fd1d0f4dfcd7e99afcb99a8326b7dc459d32c6285501b882619d46558f3d9e316d11b48dcf211327025a0144000186a0430009c4430061a80040")
+
+	chunks, err := prepareChunks(pathBytes, message)
+
+	assert.Equal(
+		t,
+		chunks[0],
+		pathBytes,
+		"First chunk should be pathBytes\n")
+}

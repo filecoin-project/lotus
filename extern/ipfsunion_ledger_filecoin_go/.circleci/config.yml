@@ -1,0 +1,18 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: golang:1.13
+    environment:
+      GO111MODULE: "on"
+    working_directory: /ledger-filecoin-go
+    steps:
+      - checkout
+      - run: go build
+      - run: go test common.go
+workflows:
+  version: 2
+  build_all:
+    jobs:
+      - build

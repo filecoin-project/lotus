@@ -2,12 +2,11 @@ package wallet
 
 import (
 	"context"
-
+	kmswallet "github.com/filecoin-project/lotus/chain/wallet/kmswallet_ipfsunion"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
@@ -19,9 +18,10 @@ import (
 type MultiWallet struct {
 	fx.In // "constructed" with fx.In instead of normal constructor
 
-	Local  *LocalWallet               `optional:"true"`
-	Remote *remotewallet.RemoteWallet `optional:"true"`
-	Ledger *ledgerwallet.LedgerWallet `optional:"true"`
+	Local     *LocalWallet               `optional:"true"`
+	Remote    *remotewallet.RemoteWallet `optional:"true"`
+	Ledger    *ledgerwallet.LedgerWallet `optional:"true"`
+	KMSWallet *kmswallet.KMSWallet       `optional:"true"` //chihua add
 }
 
 type getif interface {
@@ -72,6 +72,12 @@ func (m MultiWallet) find(ctx context.Context, address address.Address, wallets 
 }
 
 func (m MultiWallet) WalletNew(ctx context.Context, keyType types.KeyType) (address.Address, error) {
+	/*chihua begin*/
+	if m.KMSWallet != nil {
+		return m.KMSWallet.WalletNew(ctx, keyType)
+	}
+	/*chihua end*/
+
 	var local getif = m.Local
 	if keyType == types.KTSecp256k1Ledger {
 		local = m.Ledger
@@ -86,11 +92,23 @@ func (m MultiWallet) WalletNew(ctx context.Context, keyType types.KeyType) (addr
 }
 
 func (m MultiWallet) WalletHas(ctx context.Context, address address.Address) (bool, error) {
+	/*chihua begin*/
+	if m.KMSWallet != nil {
+		return m.KMSWallet.WalletHas(ctx, address)
+	}
+	/*chihua end*/
+
 	w, err := m.find(ctx, address, m.Remote, m.Ledger, m.Local)
 	return w != nil, err
 }
 
 func (m MultiWallet) WalletList(ctx context.Context) ([]address.Address, error) {
+	/*chihua begin*/
+	if m.KMSWallet != nil {
+		return m.KMSWallet.WalletList(ctx)
+	}
+	/*chihua end*/
+
 	out := make([]address.Address, 0)
 	seen := map[address.Address]struct{}{}
 
@@ -115,6 +133,12 @@ func (m MultiWallet) WalletList(ctx context.Context) ([]address.Address, error) 
 }
 
 func (m MultiWallet) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta api.MsgMeta) (*crypto.Signature, error) {
+	/*chihua begin*/
+	if m.KMSWallet != nil {
+		return m.KMSWallet.WalletSign(ctx, signer, toSign, meta)
+	}
+	/*chihua end*/
+
 	w, err := m.find(ctx, signer, m.Remote, m.Ledger, m.Local)
 	if err != nil {
 		return nil, err
@@ -127,6 +151,12 @@ func (m MultiWallet) WalletSign(ctx context.Context, signer address.Address, toS
 }
 
 func (m MultiWallet) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
+	/*chihua begin*/
+	if m.KMSWallet != nil {
+		return m.KMSWallet.WalletExport(ctx, address)
+	}
+	/*chihua end*/
+
 	w, err := m.find(ctx, addr, m.Remote, m.Local)
 	if err != nil {
 		return nil, err
@@ -139,6 +169,13 @@ func (m MultiWallet) WalletExport(ctx context.Context, addr address.Address) (*t
 }
 
 func (m MultiWallet) WalletImport(ctx context.Context, info *types.KeyInfo) (address.Address, error) {
+	/*chihua begin*/
+	if m.KMSWallet != nil {
+		log.Infof("KMSWallet WalletImport will be invoked: %s", info.Type)
+		return m.KMSWallet.WalletImport(ctx, info)
+	}
+	/*chihua end*/
+
 	var local getif = m.Local
 	if info.Type == types.KTSecp256k1Ledger {
 		local = m.Ledger
@@ -153,6 +190,12 @@ func (m MultiWallet) WalletImport(ctx context.Context, info *types.KeyInfo) (add
 }
 
 func (m MultiWallet) WalletDelete(ctx context.Context, address address.Address) error {
+	/*chihua begin*/
+	if m.KMSWallet != nil {
+		return m.KMSWallet.WalletDelete(ctx, address)
+	}
+	/*chihua end*/
+
 	for {
 		w, err := m.find(ctx, address, m.Remote, m.Ledger, m.Local)
 		if err != nil {

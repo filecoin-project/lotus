@@ -50,10 +50,11 @@ func (kt *KeyType) UnmarshalJSON(bb []byte) error {
 }
 
 const (
-	KTBLS             KeyType = "bls"
-	KTSecp256k1       KeyType = "secp256k1"
-	KTSecp256k1Ledger KeyType = "secp256k1-ledger"
-	KTDelegated       KeyType = "delegated"
+	KTBLS                 KeyType = "bls"
+	KTSecp256k1           KeyType = "secp256k1"
+	KTSecp256k1Ledger     KeyType = "secp256k1-ledger"
+	KTDelegated           KeyType = "delegated"
+	KTSecp256k1LedgerAddr KeyType = "secp256k1-ledger-addr"
 )
 
 // KeyInfo is used for storing keys in KeyStore
