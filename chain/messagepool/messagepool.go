@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	stdbig "math/big"
 	"sort"
@@ -801,7 +800,7 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
 		if len(m.Signature.Data) != ffi.SignatureBytes {
-			return "", fmt.Errorf("bls signature incorrectly sized")
+			return "", errors.New("bls signature incorrectly sized")
 		}
 		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
 		return string(hashCache[:]), nil

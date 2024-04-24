@@ -321,7 +321,7 @@ func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
 		return nil, fmt.Errorf("public key should have %d in length, but got %d", pubKeyLen, len(pubk))
 	}
 	if pubk[0] != 0x04 {
-		return nil, fmt.Errorf("expected first byte of secp256k1 to be 0x04 (uncompressed)")
+		return nil, errors.New("expected first byte of secp256k1 to be 0x04 (uncompressed)")
 	}
 	pubk = pubk[1:]
 

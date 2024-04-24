@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,7 +51,7 @@ var FevmBalanceCmd = &cli.Command{
 		}
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass state root")
+			return errors.New("must pass state root")
 		}
 
 		sroot, err := cid.Decode(cctx.Args().First())
@@ -145,7 +146,7 @@ var FevmActorsCmd = &cli.Command{
 		}
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass state root")
+			return errors.New("must pass state root")
 		}
 
 		sroot, err := cid.Decode(cctx.Args().First())

@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -114,18 +115,18 @@ func moveFieldValue(valPtr interface{}, oldPath []string, newPath []string) erro
 	for {
 		field := val.FieldByName(newPath[0])
 		if !field.IsValid() {
-			return fmt.Errorf("unexpected error fetching field value")
+			return errors.New("unexpected error fetching field value")
 		}
 		if len(newPath) == 1 {
 			if field.Kind() != oldValue.Kind() {
-				return fmt.Errorf("unexpected error, old kind != new kind")
+				return errors.New("unexpected error, old kind != new kind")
 			}
 			// set field on val to be the new one, and we're done
 			field.Set(oldValue)
 			return nil
 		}
 		if field.Kind() != reflect.Struct {
-			return fmt.Errorf("unexpected error fetching field value, is not a struct")
+			return errors.New("unexpected error fetching field value, is not a struct")
 		}
 		newPath = newPath[1:]
 		val = field
@@ -139,11 +140,11 @@ func getFieldValue(val interface{}, path []string) (reflect.Value, error) {
 	}
 	field := reflect.ValueOf(val).FieldByName(path[0])
 	if !field.IsValid() {
-		return reflect.Value{}, fmt.Errorf("unexpected error fetching field value")
+		return reflect.Value{}, errors.New("unexpected error fetching field value")
 	}
 	if len(path) > 1 {
 		if field.Kind() != reflect.Struct {
-			return reflect.Value{}, fmt.Errorf("unexpected error fetching field value, is not a struct")
+			return reflect.Value{}, errors.New("unexpected error fetching field value, is not a struct")
 		}
 		return getFieldValue(field.Interface(), path[1:])
 	}

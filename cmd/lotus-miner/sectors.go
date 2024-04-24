@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -820,7 +821,7 @@ var sectorsSnapAbortCmd = &cli.Command{
 		really := cctx.Bool("really-do-it")
 		if !really {
 			//nolint:golint
-			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned")
+			return errors.New("--really-do-it must be specified for this action to have an effect; you have been warned")
 		}
 
 		minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)

@@ -3,7 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	goruntime "runtime"
 	"sync"
 
@@ -124,18 +124,18 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
-		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
+		return nil, errors.New("no consensus fault: submitted blocks are the same")
 	}
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
 	if blockA.Miner != blockB.Miner {
-		return nil, fmt.Errorf("no consensus fault: blocks not mined by same miner")
+		return nil, errors.New("no consensus fault: blocks not mined by same miner")
 	}
 
 	// block a must be earlier or equal to block b, epoch wise (ie at least as early in the chain).
 	if blockB.Height < blockA.Height {
-		return nil, fmt.Errorf("first block must not be of higher height than second")
+		return nil, errors.New("first block must not be of higher height than second")
 	}
 
 	// (2) check for the consensus faults themselves
@@ -259,7 +259,7 @@ func (ss *syscallShim) VerifyPoSt(info proof7.WindowPoStVerifyInfo) error {
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("proof was invalid")
+		return errors.New("proof was invalid")
 	}
 	return nil
 }
@@ -285,7 +285,7 @@ func (ss *syscallShim) VerifySeal(info proof7.SealVerifyInfo) error {
 		return xerrors.Errorf("failed to validate PoRep: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("invalid proof")
+		return errors.New("invalid proof")
 	}
 
 	return nil
@@ -298,7 +298,7 @@ func (ss *syscallShim) VerifyAggregateSeals(aggregate proof7.AggregateSealVerify
 	}
 
 	if !ok {
-		return fmt.Errorf("invalid aggregate proof")
+		return errors.New("invalid aggregate proof")
 	}
 
 	return nil
@@ -311,7 +311,7 @@ func (ss *syscallShim) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) erro
 	}
 
 	if !ok {
-		return fmt.Errorf("invalid replica update")
+		return errors.New("invalid replica update")
 	}
 
 	return nil

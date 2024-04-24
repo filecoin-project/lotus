@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/urfave/cli/v2"
@@ -25,7 +26,7 @@ var commpToCidCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify commP to convert")
+			return errors.New("must specify commP to convert")
 		}
 
 		var dec []byte

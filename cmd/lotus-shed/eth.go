@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -99,7 +100,7 @@ var computeEthHashCmd = &cli.Command{
 			}
 			fmt.Println(tx.Hash)
 		default:
-			return fmt.Errorf("not a signed message")
+			return errors.New("not a signed message")
 		}
 
 		return nil

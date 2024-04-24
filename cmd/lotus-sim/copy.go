@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/urfave/cli/v2"
 )
@@ -20,7 +20,7 @@ var copySimCommand = &cli.Command{
 			}
 		}()
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("expected 1 argument")
+			return errors.New("expected 1 argument")
 		}
 		name := cctx.Args().First()
 		return node.CopySim(cctx.Context, cctx.String("simulation"), name)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -49,7 +50,7 @@ var genesisVerifyCmd = &cli.Command{
 	Description: "verify some basic attributes of a genesis car file",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass genesis car file")
+			return errors.New("must pass genesis car file")
 		}
 		bs := blockstore.NewMemory()
 

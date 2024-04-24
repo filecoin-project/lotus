@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -362,7 +363,7 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 // GetActor returns the actor from any type of `addr` provided.
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	if addr == address.Undef {
-		return nil, fmt.Errorf("GetActor called on undefined address")
+		return nil, errors.New("GetActor called on undefined address")
 	}
 
 	// Transform `addr` to its ID format.

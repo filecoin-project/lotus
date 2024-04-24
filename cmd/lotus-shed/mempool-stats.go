@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -152,7 +153,7 @@ var mpoolStatsCmd = &cli.Command{
 			select {
 			case u, ok := <-updates:
 				if !ok {
-					return fmt.Errorf("connection with lotus node broke")
+					return errors.New("connection with lotus node broke")
 				}
 				switch u.Type {
 				case lapi.MpoolAdd:

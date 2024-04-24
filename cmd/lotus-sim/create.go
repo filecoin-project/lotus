@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/urfave/cli/v2"
 
@@ -36,7 +36,7 @@ var createSimCommand = &cli.Command{
 				return err
 			}
 		default:
-			return fmt.Errorf("expected 0 or 1 arguments")
+			return errors.New("expected 0 or 1 arguments")
 		}
 		_, err = node.CreateSim(cctx.Context, cctx.String("simulation"), ts)
 		return err

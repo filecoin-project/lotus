@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -192,7 +193,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		froms := cctx.String("from")
 		if froms == "" {
-			return fmt.Errorf("must specify from address with --from")
+			return errors.New("must specify from address with --from")
 		}
 
 		fromk, err := address.NewFromString(froms)
@@ -292,7 +293,7 @@ var verifRegCheckClientCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify client address to check")
+			return errors.New("must specify client address to check")
 		}
 
 		caddr, err := address.NewFromString(cctx.Args().First())
@@ -328,7 +329,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify verifier address to check")
+			return errors.New("must specify verifier address to check")
 		}
 
 		vaddr, err := address.NewFromString(cctx.Args().First())
@@ -371,7 +372,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 			return err
 		}
 		if !found {
-			return fmt.Errorf("not found")
+			return errors.New("not found")
 		}
 
 		fmt.Println(dcap)
@@ -500,7 +501,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 		}
 
 		if !senderIsSigner {
-			return fmt.Errorf("sender must be a vrk signer")
+			return errors.New("sender must be a vrk signer")
 		}
 
 		proto, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.RemoveVerifiedClientDataCap), params)

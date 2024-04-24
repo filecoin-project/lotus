@@ -2,7 +2,7 @@
 package vm
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"testing"
 
@@ -52,7 +52,7 @@ func (b *basicParams) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("bad cbor type")
+		return errors.New("bad cbor type")
 	}
 
 	b.B = byte(val)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -32,7 +33,7 @@ var dealLabelCmd = &cli.Command{
 		ctx := context.TODO()
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass state root")
+			return errors.New("must pass state root")
 		}
 
 		sroot, err := cid.Decode(cctx.Args().First())

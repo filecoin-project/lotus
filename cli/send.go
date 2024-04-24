@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -190,7 +191,7 @@ var SendCmd = &cli.Command{
 
 		if cctx.IsSet("params-json") {
 			if params.Params != nil {
-				return fmt.Errorf("can only specify one of 'params-json' and 'params-hex'")
+				return errors.New("can only specify one of 'params-json' and 'params-hex'")
 			}
 			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
 			if err != nil {

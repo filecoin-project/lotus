@@ -1,6 +1,7 @@
 package sealer
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -103,7 +104,7 @@ func (t *ManyBytes) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
+		return errors.New("expected byte array")
 	}
 
 	if extra > 0 {

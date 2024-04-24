@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"strconv"
 
@@ -1911,7 +1910,7 @@ func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch
 	select {
 	case be, ok := <-e:
 		if !ok {
-			return nil, fmt.Errorf("beacon get returned no value")
+			return nil, errors.New("beacon get returned no value")
 		}
 		if be.Err != nil {
 			return nil, be.Err

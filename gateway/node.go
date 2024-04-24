@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -214,7 +215,7 @@ func (gw *Node) checkTipset(ts *types.TipSet) error {
 
 func (gw *Node) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
 	if h > ts.Height() {
-		return fmt.Errorf("tipset height in future")
+		return errors.New("tipset height in future")
 	}
 	tsBlock := ts.Blocks()[0]
 	heightDelta := time.Duration(uint64(tsBlock.Height-h)*build.BlockDelaySecs) * time.Second

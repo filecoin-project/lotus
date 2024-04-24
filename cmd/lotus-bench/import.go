@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -301,7 +302,7 @@ var importBenchCmd = &cli.Command{
 
 			// import is NOT suppressed; do it.
 			if carFile == nil { // a CAR is compulsory for the import.
-				return fmt.Errorf("no CAR file provided for import")
+				return errors.New("no CAR file provided for import")
 			}
 
 			head, _, err = cs.Import(cctx.Context, carFile)

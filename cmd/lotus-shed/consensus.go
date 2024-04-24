@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -165,7 +166,7 @@ var consensusCheckCmd = &cli.Command{
 		}
 
 		if len(nodes) == 0 {
-			return fmt.Errorf("no nodes")
+			return errors.New("no nodes")
 		}
 
 		genesisBuckets := make(map[types.TipSetKey][]*consensusItem)
@@ -186,7 +187,7 @@ var consensusCheckCmd = &cli.Command{
 				}
 			}
 
-			return fmt.Errorf("genesis does not match between all nodes")
+			return errors.New("genesis does not match between all nodes")
 		}
 
 		target := abi.ChainEpoch(0)
@@ -265,7 +266,7 @@ var consensusCheckCmd = &cli.Command{
 				)
 			}
 
-			return fmt.Errorf("targeted tipset not found")
+			return errors.Neworf("targeted tipset not found")
 		}
 
 		if len(targetBuckets) != 1 {

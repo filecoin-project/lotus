@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -321,7 +322,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 	}
 
 	if b.Header.Messages != mrcid {
-		return fmt.Errorf("messages didnt match message root in header")
+		return errors.New("messages didnt match message root in header")
 	}
 
 	// Finally, flush.
@@ -461,7 +462,7 @@ func decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
 
 	// make sure we have a signature
 	if blk.Header.BlockSig == nil {
-		return nil, "missing_signature", fmt.Errorf("block without a signature")
+		return nil, "missing_signature", errors.New("block without a signature")
 	}
 
 	return blk, "", nil
@@ -508,7 +509,7 @@ func validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 	}
 
 	if msg.Header.Messages != mrcid {
-		return fmt.Errorf("messages didn't match root cid in header")
+		return errors.New("messages didn't match root cid in header")
 	}
 
 	return nil

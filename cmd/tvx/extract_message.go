@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -29,7 +30,7 @@ func doExtractMessage(opts extractOpts) error {
 	ctx := context.Background()
 
 	if opts.cid == "" {
-		return fmt.Errorf("missing message CID")
+		return errors.New("missing message CID")
 	}
 
 	mcid, err := cid.Decode(opts.cid)
@@ -144,7 +145,7 @@ func doExtractMessage(opts extractOpts) error {
 	case "accessed-cids":
 		tbs, ok := pst.Blockstore.(TracingBlockstore)
 		if !ok {
-			return fmt.Errorf("requested 'accessed-cids' state retention, but no tracing blockstore was present")
+			return errors.New("requested 'accessed-cids' state retention, but no tracing blockstore was present")
 		}
 
 		tbs.StartTracing()
@@ -230,7 +231,7 @@ func doExtractMessage(opts extractOpts) error {
 				log.Println(color.YellowString("receipt sanity check failed; proceeding anyway"))
 			} else {
 				log.Println(color.RedString("receipt sanity check failed; aborting"))
-				return fmt.Errorf("vector generation aborted")
+				return errors.New("vector generation aborted")
 			}
 		} else {
 			log.Println(color.GreenString("receipt sanity check succeeded"))
@@ -345,7 +346,7 @@ func resolveFromChain(ctx context.Context, api lapi.FullNode, mcid cid.Cid, bloc
 			return nil, nil, nil, fmt.Errorf("failed to locate message: %w", err)
 		}
 		if msgInfo == nil {
-			return nil, nil, nil, fmt.Errorf("failed to locate message: not found")
+			return nil, nil, nil, errors.New("failed to locate message: not found")
 		}
 
 		log.Printf("located message at tipset %s (height: %d) with exit code: %s", msgInfo.TipSet, msgInfo.Height, msgInfo.Receipt.ExitCode)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -86,7 +87,7 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 1 {
-			return lcli.ShowHelp(cctx, fmt.Errorf("at least one sector must be specified"))
+			return lcli.ShowHelp(cctx, errors.New("at least one sector must be specified"))
 		}
 
 		var maddr address.Address

@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -116,16 +117,16 @@ func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 	ts.blks = blks
 	for _, b := range blks[1:] {
 		if b.Height != blks[0].Height {
-			return nil, fmt.Errorf("cannot create tipset with mismatching heights")
+			return nil, errors.New("cannot create tipset with mismatching heights")
 		}
 
 		if len(blks[0].Parents) != len(b.Parents) {
-			return nil, fmt.Errorf("cannot create tipset with mismatching number of parents")
+			return nil, errors.New("cannot create tipset with mismatching number of parents")
 		}
 
 		for i, cid := range b.Parents {
 			if cid != blks[0].Parents[i] {
-				return nil, fmt.Errorf("cannot create tipset with mismatching parents")
+				return nil, errors.New("cannot create tipset with mismatching parents")
 			}
 		}
 

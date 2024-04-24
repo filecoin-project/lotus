@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -100,7 +101,7 @@ var mathSumCmd = &cli.Command{
 		case "raw":
 			fmt.Printf("%s\n", val)
 		default:
-			return fmt.Errorf("Unknown format")
+			return errors.New("Unknown format")
 		}
 
 		return nil

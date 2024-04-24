@@ -2,6 +2,7 @@ package points
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -286,7 +287,7 @@ func (c *ChainPointCollector) collectMessagePoints(ctx context.Context, pl *infl
 
 	cids := tipset.Cids()
 	if len(cids) == 0 {
-		return fmt.Errorf("no cids in tipset")
+		return errors.New("no cids in tipset")
 	}
 
 	msgs, err := c.api.ChainGetParentMessages(ctx, cids[0])

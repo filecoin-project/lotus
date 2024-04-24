@@ -266,7 +266,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	}, err
 }
 
-var errHaltExecution = fmt.Errorf("halt")
+var errHaltExecution = errors.New("halt")
 
 func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.Cid) (*types.Message, *vm.ApplyRet, error) {
 	var finder messageFinder

@@ -3,7 +3,7 @@ package ipldstore
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
@@ -84,9 +84,9 @@ func (ht *ApiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 		return nil
 	}
 
-	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+	return errors.New("Object does not implement CBORUnmarshaler")
 }
 
 func (ht *ApiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	return cid.Undef, fmt.Errorf("Put is not implemented on ApiIpldStore")
+	return cid.Undef, errors.New("Put is not implemented on ApiIpldStore")
 }

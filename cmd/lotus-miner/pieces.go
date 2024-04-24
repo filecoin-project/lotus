@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -126,7 +127,7 @@ var piecesInfoCmd = &cli.Command{
 	Usage: "get registered information for a given piece CID",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must specify piece cid"))
+			return lcli.ShowHelp(cctx, errors.New("must specify piece cid"))
 		}
 
 		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
@@ -161,7 +162,7 @@ var piecesCidInfoCmd = &cli.Command{
 	Usage: "get registered information for a given payload CID",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must specify payload cid"))
+			return lcli.ShowHelp(cctx, errors.New("must specify payload cid"))
 		}
 
 		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)

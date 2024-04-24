@@ -382,7 +382,7 @@ func copyBlockstore(ctx context.Context, from, to bstore.Blockstore) error {
 // maybe this code should actually live in blocksync??
 func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
-		return nil, fmt.Errorf("msgincl length didnt match tipset size")
+		return nil, errors.New("msgincl length didnt match tipset size")
 	}
 
 	if err := checkMsgMeta(ts, allbmsgs, allsmsgs, bmi, smi); err != nil {
@@ -867,8 +867,8 @@ loop:
 	return blockSet, nil
 }
 
-var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
-var ErrForkCheckpoint = fmt.Errorf("fork would require us to diverge from checkpointed block")
+var ErrForkTooLong = errors.New("fork longer than threshold")
+var ErrForkCheckpoint = errors.New("fork would require us to diverge from checkpointed block")
 
 // syncFork tries to obtain the chain fragment that links a fork into a common
 // ancestor in our view of the chain.

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os/exec"
@@ -120,7 +121,7 @@ func runSimulateCmd(_ *cli.Context) error {
 
 	tbs, ok := stores.Blockstore.(TracingBlockstore)
 	if !ok {
-		return fmt.Errorf("no tracing blockstore available")
+		return errors.New("no tracing blockstore available")
 	}
 	tbs.StartTracing()
 	applyret, postroot, err := driver.ExecuteMessage(stores.Blockstore, conformance.ExecuteMessageParams{

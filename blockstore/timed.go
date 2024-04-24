@@ -2,7 +2,7 @@ package blockstore
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -45,7 +45,7 @@ func (t *TimedCacheBlockstore) Start(_ context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closeCh != nil {
-		return fmt.Errorf("already started")
+		return errors.New("already started")
 	}
 	t.closeCh = make(chan struct{})
 
@@ -74,7 +74,7 @@ func (t *TimedCacheBlockstore) Stop(_ context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closeCh == nil {
-		return fmt.Errorf("not started")
+		return errors.New("not started")
 	}
 	select {
 	case <-t.closeCh:

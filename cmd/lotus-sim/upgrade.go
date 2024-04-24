@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -69,7 +70,7 @@ var upgradeSetCommand = &cli.Command{
 	Action: func(cctx *cli.Context) (err error) {
 		args := cctx.Args()
 		if args.Len() != 2 {
-			return fmt.Errorf("expected 2 arguments")
+			return errors.New("expected 2 arguments")
 		}
 		nvString := args.Get(0)
 		networkVersion, err := strconv.ParseUint(nvString, 10, 32)

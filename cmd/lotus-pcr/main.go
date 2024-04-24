@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -1070,7 +1071,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 	cids := tipset.Cids()
 	if len(cids) == 0 {
 		log.Errorw("no cids in tipset", "height", tipset.Height(), "key", tipset.Key())
-		return nil, fmt.Errorf("no cids in tipset")
+		return nil, errors.New("no cids in tipset")
 	}
 
 	msgs, err := r.api.ChainGetParentMessages(ctx, cids[0])

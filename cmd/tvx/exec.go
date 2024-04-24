@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -88,7 +89,7 @@ func runExec(c *cli.Context) error {
 		// we're in directory mode; ensure the out directory exists.
 		outdir := execFlags.out
 		if outdir == "" {
-			return fmt.Errorf("no output directory provided")
+			return errors.New("no output directory provided")
 		}
 		if err := ensureDir(outdir); err != nil {
 			return err

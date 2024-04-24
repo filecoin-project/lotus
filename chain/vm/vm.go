@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -1014,7 +1015,7 @@ func (vm *LegacyVM) transferFromGasHolder(addr address.Address, gasHolder *types
 
 func deductFunds(act *types.Actor, amt types.BigInt) error {
 	if act.Balance.LessThan(amt) {
-		return fmt.Errorf("not enough funds")
+		return errors.New("not enough funds")
 	}
 
 	act.Balance = types.BigSub(act.Balance, amt)

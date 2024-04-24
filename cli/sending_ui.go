@@ -170,7 +170,7 @@ func runFeeCapAdjustmentUI(proto *api.MessagePrototype, baseFee abi.TokenAmount)
 		return nil, err
 	}
 	if !send {
-		return nil, fmt.Errorf("aborted by user")
+		return nil, errors.New("aborted by user")
 	}
 
 	proto.Message.GasFeeCap = big.Div(maxFee, big.NewInt(proto.Message.GasLimit))

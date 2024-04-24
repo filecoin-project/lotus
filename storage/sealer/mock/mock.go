@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
+	"errors"
 	"io"
 	"sync"
 
@@ -293,7 +293,7 @@ func (mgr *SectorMgr) MarkFailed(sid storiface.SectorRef, failed bool) error {
 	defer mgr.lk.Unlock()
 	ss, ok := mgr.sectors[sid.ID]
 	if !ok {
-		return fmt.Errorf("no such sector in storage")
+		return errors.New("no such sector in storage")
 	}
 
 	ss.failed = failed
@@ -313,7 +313,7 @@ func (mgr *SectorMgr) MarkCorrupted(sid storiface.SectorRef, corrupted bool) err
 	defer mgr.lk.Unlock()
 	ss, ok := mgr.sectors[sid.ID]
 	if !ok {
-		return fmt.Errorf("no such sector in storage")
+		return errors.New("no such sector in storage")
 	}
 
 	ss.corrupted = corrupted

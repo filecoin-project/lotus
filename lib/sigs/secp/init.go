@@ -1,7 +1,7 @@
 package secp
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/minio/blake2b-simd"
 
@@ -49,7 +49,7 @@ func (secpSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 	}
 
 	if a != maybeaddr {
-		return fmt.Errorf("signature did not match")
+		return errors.New("signature did not match")
 	}
 
 	return nil

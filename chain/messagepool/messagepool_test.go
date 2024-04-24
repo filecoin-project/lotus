@@ -3,6 +3,7 @@ package messagepool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -181,7 +182,7 @@ func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (
 
 func (tma *testMpoolAPI) StateDeterministicAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 && addr.Protocol() != address.Delegated {
-		return address.Undef, fmt.Errorf("given address was not a key addr")
+		return address.Undef, errors.New("given address was not a key addr")
 	}
 	return addr, nil
 }
@@ -223,7 +224,7 @@ func (tma *testMpoolAPI) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*
 		}
 	}
 
-	return nil, fmt.Errorf("tipset not found")
+	return nil, errors.New("tipset not found")
 }
 
 func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {

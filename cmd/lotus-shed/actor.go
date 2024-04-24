@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -73,7 +74,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return cli.ShowSubcommandHelp(cctx)
 		}
 		if len(args) > 0 && unset {
-			return fmt.Errorf("unset can only be used with no arguments")
+			return errors.New("unset can only be used with no arguments")
 		}
 
 		var maddr address.Address
@@ -756,7 +757,7 @@ var actorProposeChangeWorker = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of new worker address")
+			return errors.New("must pass address of new worker address")
 		}
 
 		if !cctx.Bool("really-do-it") {
@@ -886,7 +887,7 @@ var actorConfirmChangeWorker = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of new worker address")
+			return errors.New("must pass address of new worker address")
 		}
 
 		if !cctx.Bool("really-do-it") {
@@ -993,7 +994,7 @@ var actorGetMethodNum = &cli.Command{
 	ArgsUsage: "[methodName]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass methodNum")
+			return errors.New("must pass methodNum")
 		}
 
 		methodName := cctx.Args().First()
@@ -1078,7 +1079,7 @@ var actorProposeChangeBeneficiary = &cli.Command{
 			fmt.Println("Expiration Epoch:", mi.PendingBeneficiaryTerm.NewExpiration)
 
 			if !cctx.Bool("overwrite-pending-change") {
-				return fmt.Errorf("must pass --overwrite-pending-change to replace current pending beneficiary change. Please review CAREFULLY")
+				return errors.New("must pass --overwrite-pending-change to replace current pending beneficiary change. Please review CAREFULLY")
 			}
 		}
 
@@ -1119,7 +1120,7 @@ var actorProposeChangeBeneficiary = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			return fmt.Errorf("propose beneficiary change failed")
+			return errors.New("propose beneficiary change failed")
 		}
 
 		updatedMinerInfo, err := api.StateMinerInfo(ctx, maddr, wait.TipSet)
@@ -1184,18 +1185,18 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 		}
 
 		if (cctx.IsSet("existing-beneficiary") && cctx.IsSet("new-beneficiary")) || (!cctx.IsSet("existing-beneficiary") && !cctx.IsSet("new-beneficiary")) {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must pass exactly one of --existing-beneficiary or --new-beneficiary"))
+			return lcli.ShowHelp(cctx, errors.New("must pass exactly one of --existing-beneficiary or --new-beneficiary"))
 		}
 
 		var fromAddr address.Address
 		if cctx.IsSet("existing-beneficiary") {
 			if mi.PendingBeneficiaryTerm.ApprovedByBeneficiary {
-				return fmt.Errorf("beneficiary change already approved by current beneficiary")
+				return errors.New("beneficiary change already approved by current beneficiary")
 			}
 			fromAddr = mi.Beneficiary
 		} else {
 			if mi.PendingBeneficiaryTerm.ApprovedByNominee {
-				return fmt.Errorf("beneficiary change already approved by new beneficiary")
+				return errors.New("beneficiary change already approved by new beneficiary")
 			}
 			fromAddr = mi.PendingBeneficiaryTerm.NewBeneficiary
 		}

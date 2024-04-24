@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -373,7 +374,7 @@ var StateExecTraceCmd = &cli.Command{
 			}
 		}
 		if trace == nil {
-			return fmt.Errorf("failed to find message in tipset trace output")
+			return errors.New("failed to find message in tipset trace output")
 		}
 
 		out, err := json.MarshalIndent(trace, "", "  ")
@@ -536,7 +537,7 @@ var StateListMinersCmd = &cli.Command{
 			}
 			return nil
 		default:
-			return fmt.Errorf("unrecognized sorting order")
+			return errors.New("unrecognized sorting order")
 		case "", "none":
 		}
 
@@ -1427,7 +1428,7 @@ var StateCallCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 2 {
-			return ShowHelp(cctx, fmt.Errorf("must specify at least actor and method to invoke"))
+			return ShowHelp(cctx, errors.New("must specify at least actor and method to invoke"))
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1455,7 +1456,7 @@ var StateCallCmd = &cli.Command{
 
 		method, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
 		if err != nil {
-			return fmt.Errorf("must pass method as a number")
+			return errors.New("must pass method as a number")
 		}
 
 		value, err := types.ParseFIL(cctx.String("value"))
@@ -1698,7 +1699,7 @@ var StateNtwkVersionCmd = &cli.Command{
 	Usage: "Returns the network version",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("doesn't expect any arguments"))
+			return ShowHelp(cctx, errors.New("doesn't expect any arguments"))
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1736,7 +1737,7 @@ var StateSysActorCIDsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("doesn't expect any arguments"))
+			return ShowHelp(cctx, errors.New("doesn't expect any arguments"))
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)

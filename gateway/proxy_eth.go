@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -84,7 +85,7 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 		var num ethtypes.EthUint64 = 0
 		if blkParam.PredefinedBlock != nil {
 			if *blkParam.PredefinedBlock == "earliest" {
-				return fmt.Errorf("block param \"earliest\" is not supported")
+				return errors.New("block param \"earliest\" is not supported")
 			} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
 				// Head is always ok.
 				if lookback == 0 {
@@ -107,13 +108,13 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 		return gw.checkBlkHash(ctx, *blkParam.BlockHash)
 	}
 
-	return fmt.Errorf("invalid block param")
+	return errors.New("invalid block param")
 }
 
 func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
 	if blkParam == "earliest" {
 		// also not supported in node impl
-		return fmt.Errorf("block param \"earliest\" is not supported")
+		return errors.New("block param \"earliest\" is not supported")
 	}
 
 	head, err := gw.target.ChainHead(ctx)
@@ -339,7 +340,7 @@ func (gw *Node) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtype
 	}
 
 	if params.BlkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
-		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count too high")
+		return ethtypes.EthFeeHistory{}, errors.New("block count too high")
 	}
 
 	return gw.target.EthFeeHistory(ctx, p)
@@ -527,7 +528,7 @@ func (gw *Node) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes
 	defer ft.lk.Unlock()
 
 	if len(ft.userSubscriptions) >= EthMaxFiltersPerConn {
-		return ethtypes.EthSubscriptionID{}, fmt.Errorf("too many subscriptions")
+		return ethtypes.EthSubscriptionID{}, errors.New("too many subscriptions")
 	}
 
 	sub, err := gw.target.EthSubscribe(ctx, p)
@@ -620,7 +621,7 @@ func addUserFilterLimited(ctx context.Context, cb func() (ethtypes.EthFilterID, 
 	defer ft.lk.Unlock()
 
 	if len(ft.userFilters) >= EthMaxFiltersPerConn {
-		return ethtypes.EthFilterID{}, fmt.Errorf("too many filters")
+		return ethtypes.EthFilterID{}, errors.New("too many filters")
 	}
 
 	id, err := cb()

@@ -3,6 +3,7 @@ package ethtypes
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	mathbig "math/big"
 
@@ -136,7 +137,7 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		if msg.Method != builtintypes.MethodsEAM.CreateExternal {
-			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
+			return EthTxArgs{}, errors.New("unsupported EAM method")
 		}
 	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract {
 		addr, err := EthAddressFromFilecoinAddress(msg.To)
@@ -379,7 +380,7 @@ func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
 	}
 
 	if len(sig) != 65 {
-		return nil, fmt.Errorf("signature is not 65 bytes")
+		return nil, errors.New("signature is not 65 bytes")
 	}
 	return &typescrypto.Signature{
 		Type: typescrypto.SigTypeDelegated, Data: sig,
@@ -421,7 +422,7 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 
 func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) {
 	if sig.Type != typescrypto.SigTypeDelegated {
-		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("RecoverSignature only supports Delegated signature")
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, errors.New("RecoverSignature only supports Delegated signature")
 	}
 
 	if len(sig.Data) != 65 {
@@ -430,17 +431,17 @@ func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) 
 
 	r_, err := parseBigInt(sig.Data[0:32])
 	if err != nil {
-		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("cannot parse r into EthBigInt")
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, errors.New("cannot parse r into EthBigInt")
 	}
 
 	s_, err := parseBigInt(sig.Data[32:64])
 	if err != nil {
-		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("cannot parse s into EthBigInt")
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, errors.New("cannot parse s into EthBigInt")
 	}
 
 	v_, err := parseBigInt([]byte{sig.Data[64]})
 	if err != nil {
-		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("cannot parse v into EthBigInt")
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, errors.New("cannot parse v into EthBigInt")
 	}
 
 	return EthBigInt(r_), EthBigInt(s_), EthBigInt(v_), nil
@@ -448,7 +449,7 @@ func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) 
 
 func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 	if data[0] != 2 {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: first byte is not 2")
+		return nil, errors.New("not an EIP-1559 transaction: first byte is not 2")
 	}
 
 	d, err := DecodeRLP(data[1:])
@@ -457,11 +458,11 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 	}
 	decoded, ok := d.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: decoded data is not a list")
+		return nil, errors.New("not an EIP-1559 transaction: decoded data is not a list")
 	}
 
 	if len(decoded) != 12 {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: should have 12 elements in the rlp list")
+		return nil, errors.New("not an EIP-1559 transaction: should have 12 elements in the rlp list")
 	}
 
 	chainId, err := parseInt(decoded[0])
@@ -506,7 +507,7 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 
 	accessList, ok := decoded[8].([]interface{})
 	if !ok || (ok && len(accessList) != 0) {
-		return nil, fmt.Errorf("access list should be an empty list")
+		return nil, errors.New("access list should be an empty list")
 	}
 
 	r, err := parseBigInt(decoded[10])
@@ -528,7 +529,7 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 	// Legacy and EIP-155 transactions support other values
 	// https://github.com/ethers-io/ethers.js/blob/56fabe987bb8c1e4891fdf1e5d3fe8a4c0471751/packages/transactions/src.ts/index.ts#L333
 	if !v.Equals(big.NewInt(0)) && !v.Equals(big.NewInt(1)) {
-		return nil, fmt.Errorf("EIP-1559 transactions only support 0 or 1 for v")
+		return nil, errors.New("EIP-1559 transactions only support 0 or 1 for v")
 	}
 
 	args := EthTxArgs{
@@ -549,17 +550,17 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 
 func ParseEthTxArgs(data []byte) (*EthTxArgs, error) {
 	if len(data) == 0 {
-		return nil, fmt.Errorf("empty data")
+		return nil, errors.New("empty data")
 	}
 
 	if data[0] > 0x7f {
 		// legacy transaction
-		return nil, fmt.Errorf("legacy transaction is not supported")
+		return nil, errors.New("legacy transaction is not supported")
 	}
 
 	if data[0] == 1 {
 		// EIP-2930
-		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
+		return nil, errors.New("EIP-2930 transaction is not supported")
 	}
 
 	if data[0] == Eip1559TxType {
@@ -567,7 +568,7 @@ func ParseEthTxArgs(data []byte) (*EthTxArgs, error) {
 		return parseEip1559Tx(data)
 	}
 
-	return nil, fmt.Errorf("unsupported transaction type")
+	return nil, errors.New("unsupported transaction type")
 }
 
 func padLeadingZeros(data []byte, length int) []byte {
@@ -616,13 +617,13 @@ func formatBigInt(val big.Int) ([]byte, error) {
 func parseInt(v interface{}) (int, error) {
 	data, ok := v.([]byte)
 	if !ok {
-		return 0, fmt.Errorf("cannot parse interface to int: input is not a byte array")
+		return 0, errors.New("cannot parse interface to int: input is not a byte array")
 	}
 	if len(data) == 0 {
 		return 0, nil
 	}
 	if len(data) > 8 {
-		return 0, fmt.Errorf("cannot parse interface to int: length is more than 8 bytes")
+		return 0, errors.New("cannot parse interface to int: length is more than 8 bytes")
 	}
 	var value int64
 	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
@@ -635,7 +636,7 @@ func parseInt(v interface{}) (int, error) {
 func parseBigInt(v interface{}) (big.Int, error) {
 	data, ok := v.([]byte)
 	if !ok {
-		return big.Zero(), fmt.Errorf("cannot parse interface to big.Int: input is not a byte array")
+		return big.Zero(), errors.New("cannot parse interface to big.Int: input is not a byte array")
 	}
 	if len(data) == 0 {
 		return big.Zero(), nil
@@ -648,7 +649,7 @@ func parseBigInt(v interface{}) (big.Int, error) {
 func parseBytes(v interface{}) ([]byte, error) {
 	val, ok := v.([]byte)
 	if !ok {
-		return nil, fmt.Errorf("cannot parse interface into bytes: input is not a byte array")
+		return nil, errors.New("cannot parse interface into bytes: input is not a byte array")
 	}
 	return val, nil
 }

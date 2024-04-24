@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -296,7 +297,7 @@ var DaemonCmd = &cli.Command{
 		willImportChain := false
 		if chainfile != "" || snapshot != "" {
 			if chainfile != "" && snapshot != "" {
-				return fmt.Errorf("cannot specify both 'import-snapshot' and 'import-chain'")
+				return errors.New("cannot specify both 'import-snapshot' and 'import-chain'")
 			}
 			willImportChain = true
 		}
@@ -317,7 +318,7 @@ var DaemonCmd = &cli.Command{
 			case "no":
 				willRemoveChain = false
 			default:
-				return fmt.Errorf("invalid input. please answer with 'yes' or 'no'")
+				return errors.New("invalid input. please answer with 'yes' or 'no'")
 			}
 		} else {
 			willRemoveChain = cctx.Bool("remove-existing-chain")

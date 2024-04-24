@@ -1183,7 +1183,7 @@ func SectorsCompactPartitionsCmd(getActorAddress ActorAddressGetter) *cli.Comman
 
 			parts := cctx.Int64Slice("partitions")
 			if len(parts) <= 0 {
-				return fmt.Errorf("must include at least one partition to compact")
+				return errors.New("must include at least one partition to compact")
 			}
 			fmt.Printf("compacting %d partitions\n", len(parts))
 
@@ -1324,7 +1324,7 @@ func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
 		},
 		Action: func(cctx *cli.Context) error {
 			if cctx.NArg() < 1 {
-				return lcli.ShowHelp(cctx, fmt.Errorf("at least one sector must be specified"))
+				return lcli.ShowHelp(cctx, errors.New("at least one sector must be specified"))
 			}
 
 			var maddr address.Address
@@ -1337,7 +1337,7 @@ func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			}
 
 			if !cctx.Bool("really-do-it") {
-				return fmt.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
+				return errors.New("this is a command for advanced users, only use it if you are sure of what you are doing")
 			}
 
 			nodeApi, closer, err := lcli.GetFullNodeAPI(cctx)

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -361,7 +362,7 @@ var keyinfoNewCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("please specify a type to generate")
+			return errors.New("please specify a type to generate")
 		}
 
 		keyType := types.KeyType(cctx.Args().First())

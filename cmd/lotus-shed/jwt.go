@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -70,7 +71,7 @@ var jwtTokenCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("please specify a name")
+			return errors.New("please specify a name")
 		}
 
 		inputFile, err := os.Open(cctx.Args().First())
@@ -136,7 +137,7 @@ var jwtNewCmd = &cli.Command{
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("please specify a name")
+			return errors.New("please specify a name")
 		}
 
 		keyName := cctx.Args().First()

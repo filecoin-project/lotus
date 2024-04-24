@@ -64,7 +64,7 @@ var exportChainCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must specify file name to write export to"))
+			return lcli.ShowHelp(cctx, errors.New("must specify file name to write export to"))
 		}
 
 		ctx := context.TODO()
@@ -156,7 +156,7 @@ var exportRawCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must specify file name to write export to"))
+			return lcli.ShowHelp(cctx, errors.New("must specify file name to write export to"))
 		}
 
 		ctx := context.TODO()

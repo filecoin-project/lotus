@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -21,11 +22,11 @@ func doExtractTipset(opts extractOpts) error {
 	ctx := context.Background()
 
 	if opts.retain != "accessed-cids" {
-		return fmt.Errorf("tipset extraction only supports 'accessed-cids' state retention")
+		return errors.New("tipset extraction only supports 'accessed-cids' state retention")
 	}
 
 	if opts.tsk == "" {
-		return fmt.Errorf("tipset key cannot be empty")
+		return errors.New("tipset key cannot be empty")
 	}
 
 	ss := strings.Split(opts.tsk, "..")
@@ -74,7 +75,7 @@ func doExtractTipset(opts extractOpts) error {
 		return writeVectors(opts.file, vectors...)
 
 	default:
-		return fmt.Errorf("unrecognized tipset format")
+		return errors.New("unrecognized tipset format")
 	}
 }
 
@@ -117,7 +118,7 @@ func extractTipsets(ctx context.Context, tss ...*types.TipSet) (*schema.TestVect
 
 	tbs, ok := pst.Blockstore.(TracingBlockstore)
 	if !ok {
-		return nil, fmt.Errorf("requested 'accessed-cids' state retention, but no tracing blockstore was present")
+		return nil, errors.New("requested 'accessed-cids' state retention, but no tracing blockstore was present")
 	}
 
 	driver := conformance.NewDriver(ctx, schema.Selector{}, conformance.DriverOpts{

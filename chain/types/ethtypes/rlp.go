@@ -3,7 +3,7 @@ package ethtypes
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"errors"
 
 	"golang.org/x/xerrors"
 )
@@ -31,7 +31,7 @@ func encodeRLPListItems(list []interface{}) (result []byte, err error) {
 
 func encodeLength(length int) (lenInBytes []byte, err error) {
 	if length == 0 {
-		return nil, fmt.Errorf("cannot encode length: length should be larger than 0")
+		return nil, errors.New("cannot encode length: length should be larger than 0")
 	}
 
 	buf := new(bytes.Buffer)
@@ -93,7 +93,7 @@ func encodeRLP(val interface{}) ([]byte, error) {
 			append(lenInBytes, encodedList...)...,
 		), nil
 	default:
-		return nil, fmt.Errorf("input data should either be a list or a byte array")
+		return nil, errors.New("input data should either be a list or a byte array")
 	}
 }
 

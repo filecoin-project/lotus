@@ -2,14 +2,15 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 var (
-	ErrKeyInfoNotFound = fmt.Errorf("key info not found")
-	ErrKeyExists       = fmt.Errorf("key already exists")
+	ErrKeyInfoNotFound = errors.New("key info not found")
+	ErrKeyExists       = errors.New("key already exists")
 )
 
 // KeyType defines a type of a key

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -83,7 +84,7 @@ var sectorInfoCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must pass miner address and sector number")
+			return errors.New("must pass miner address and sector number")
 		}
 		ctx := lcli.ReqContext(cctx)
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -152,7 +153,7 @@ var minerFaultsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass miner address")
+			return errors.New("must pass miner address")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -508,7 +509,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 
 		partitionIndices := cctx.Int64Slice("partitions")
 		if len(partitionIndices) <= 0 {
-			return fmt.Errorf("must include at least one partition to compact")
+			return errors.New("must include at least one partition to compact")
 		}
 
 		chainHead, err := api.ChainHead(ctx)

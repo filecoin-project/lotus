@@ -1,7 +1,7 @@
 package exchange
 
 import (
-	"fmt"
+	"errors"
 	"io"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -76,11 +76,11 @@ func (t *messageIndices) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+		return errors.New("cbor input should be of type array")
 	}
 
 	if extra > uint64(build.BlockMessageLimit) {
-		return fmt.Errorf("cbor input had wrong number of fields")
+		return errors.New("cbor input had wrong number of fields")
 	}
 
 	if extra > 0 {
@@ -93,7 +93,7 @@ func (t *messageIndices) UnmarshalCBOR(r io.Reader) (err error) {
 			return err
 		}
 		if maj != cbg.MajUnsignedInt {
-			return fmt.Errorf("wrong type for uint64 field")
+			return errors.New("wrong type for uint64 field")
 		}
 		t.v[i] = extra
 

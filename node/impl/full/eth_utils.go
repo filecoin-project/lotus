@@ -44,7 +44,7 @@ func init() {
 
 func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+		return nil, errors.New("block param \"earliest\" is not supported")
 	}
 
 	head := chain.GetHeaviestTipSet()
@@ -54,7 +54,7 @@ func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkPar
 	case "latest":
 		parent, err := chain.GetTipSetFromKey(ctx, head.Parents())
 		if err != nil {
-			return nil, fmt.Errorf("cannot get parent tipset")
+			return nil, errors.New("cannot get parent tipset")
 		}
 		return parent, nil
 	default:
@@ -64,7 +64,7 @@ func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkPar
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
 		if abi.ChainEpoch(num) > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+			return nil, errors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), head, true)
 		if err != nil {
@@ -83,13 +83,13 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, chain *store.ChainStor
 	predefined := blkParam.PredefinedBlock
 	if predefined != nil {
 		if *predefined == "earliest" {
-			return nil, fmt.Errorf("block param \"earliest\" is not supported")
+			return nil, errors.New("block param \"earliest\" is not supported")
 		} else if *predefined == "pending" {
 			return head, nil
 		} else if *predefined == "latest" {
 			parent, err := chain.GetTipSetFromKey(ctx, head.Parents())
 			if err != nil {
-				return nil, fmt.Errorf("cannot get parent tipset")
+				return nil, errors.New("cannot get parent tipset")
 			}
 			return parent, nil
 		} else {
@@ -100,7 +100,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, chain *store.ChainStor
 	if blkParam.BlockNumber != nil {
 		height := abi.ChainEpoch(*blkParam.BlockNumber)
 		if height > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+			return nil, errors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := chain.GetTipsetByHeight(ctx, height, head, true)
 		if err != nil {
@@ -125,7 +125,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, chain *store.ChainStor
 
 			// verify that it equals the expected tipset
 			if !walkTs.Equals(ts) {
-				return nil, fmt.Errorf("tipset is not canonical")
+				return nil, errors.New("tipset is not canonical")
 			}
 		}
 
@@ -620,7 +620,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 			}
 		}
 		if txIdx < 0 {
-			return ethtypes.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
+			return ethtypes.EthTx{}, errors.New("cannot find the msg in the tipset")
 		}
 	}
 

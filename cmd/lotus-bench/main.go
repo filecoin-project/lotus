@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -548,7 +549,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 	commitSema := make(chan struct{}, par.Commit)
 
 	if numSectors%par.PreCommit1 != 0 {
-		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
+		return nil, nil, errors.New("parallelism factor must cleanly divide numSectors")
 	}
 	for i := abi.SectorNumber(0); i < abi.SectorNumber(numSectors); i++ {
 		sid := storiface.SectorRef{

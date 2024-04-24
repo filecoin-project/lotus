@@ -1,7 +1,7 @@
 package chaos
 
 import (
-	"fmt"
+	"errors"
 	"io"
 )
 
@@ -23,10 +23,10 @@ type UnmarshallableCBOR struct{}
 
 // UnmarshalCBOR will fail to unmarshal the value from CBOR.
 func (t *UnmarshallableCBOR) UnmarshalCBOR(io.Reader) error {
-	return fmt.Errorf("failed to unmarshal cbor")
+	return errors.New("failed to unmarshal cbor")
 }
 
 // MarshalCBOR will fail to marshal the value to CBOR.
 func (t *UnmarshallableCBOR) MarshalCBOR(io.Writer) error {
-	return fmt.Errorf("failed to marshal cbor")
+	return errors.New("failed to marshal cbor")
 }

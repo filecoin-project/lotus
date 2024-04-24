@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"golang.org/x/xerrors"
@@ -41,7 +42,7 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 
 	codecid, ok := actors.GetActorCodeID(av, manifest.EamKey)
 	if !ok {
-		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
+		return errors.New("failed to get CodeCID for EAM during genesis")
 	}
 
 	header := &types.Actor{

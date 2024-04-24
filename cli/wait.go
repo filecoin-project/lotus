@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -44,7 +45,7 @@ var WaitApiCmd = &cli.Command{
 		}
 
 		if ctx.Err() == context.DeadlineExceeded {
-			return fmt.Errorf("timed out waiting for api to come online")
+			return errors.New("timed out waiting for api to come online")
 		}
 
 		return ctx.Err()

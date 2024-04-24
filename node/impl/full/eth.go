@@ -500,7 +500,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	}
 
 	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+		return nil, errors.New("no message receipt")
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
@@ -533,7 +533,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 
 	l := len(position)
 	if l > 32 {
-		return nil, fmt.Errorf("supplied storage key is too long")
+		return nil, errors.New("supplied storage key is too long")
 	}
 
 	// pad with zero bytes if smaller than 32 bytes
@@ -688,7 +688,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		return ethtypes.EthFeeHistory{}, xerrors.Errorf("decoding params: %w", err)
 	}
 	if params.BlkCount > 1024 {
-		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
+		return ethtypes.EthFeeHistory{}, errors.New("block count should be smaller than 1024")
 	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
@@ -909,7 +909,7 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 
 func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
-		return nil, fmt.Errorf("only 'trace' is supported")
+		return nil, errors.New("only 'trace' is supported")
 	}
 
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)

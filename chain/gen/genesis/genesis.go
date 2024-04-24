@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -413,7 +414,7 @@ func CreateAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.St
 
 func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address, av actorstypes.Version) error {
 	if info.Type != genesis.TMultisig {
-		return fmt.Errorf("can only call CreateMultisigAccount with multisig Actor info")
+		return errors.New("can only call CreateMultisigAccount with multisig Actor info")
 	}
 	var ainfo genesis.MultisigMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {

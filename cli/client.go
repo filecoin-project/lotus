@@ -1657,7 +1657,7 @@ var clientQueryAskCmd = &cli.Command{
 			}
 
 			if mi.PeerId == nil || *mi.PeerId == ("SETME") {
-				return fmt.Errorf("the miner hasn't initialized yet")
+				return errors.New("the miner hasn't initialized yet")
 			}
 
 			pid = *mi.PeerId

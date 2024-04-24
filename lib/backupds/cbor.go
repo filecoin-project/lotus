@@ -1,6 +1,7 @@
 package backupds
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -60,11 +61,11 @@ func (t *Entry) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+		return errors.New("cbor input should be of type array")
 	}
 
 	if extra != 3 {
-		return fmt.Errorf("cbor input had wrong number of fields")
+		return errors.New("cbor input had wrong number of fields")
 	}
 
 	// t.Key ([]uint8) (slice)
@@ -75,7 +76,7 @@ func (t *Entry) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
+		return errors.New("expected byte array")
 	}
 
 	if extra > 0 {
@@ -93,7 +94,7 @@ func (t *Entry) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
+		return errors.New("expected byte array")
 	}
 
 	if extra > 0 {
@@ -114,12 +115,12 @@ func (t *Entry) UnmarshalCBOR(r io.Reader) error {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 positive overflow")
+				return errors.New("int64 positive overflow")
 			}
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative oveflow")
+				return errors.New("int64 negative oveflow")
 			}
 			extraI = -1 - extraI
 		default:

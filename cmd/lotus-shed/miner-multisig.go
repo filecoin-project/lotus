@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -60,7 +61,7 @@ var mmProposeWithdrawBalance = &cli.Command{
 	ArgsUsage: "[amount]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass amount to withdraw")
+			return errors.New("must pass amount to withdraw")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -208,7 +209,7 @@ var mmProposeChangeOwner = &cli.Command{
 	ArgsUsage: "[newOwner]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass new owner address")
+			return errors.New("must pass new owner address")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -379,7 +380,7 @@ var mmProposeChangeWorker = &cli.Command{
 	ArgsUsage: "[newWorker]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass new worker address")
+			return errors.New("must pass new worker address")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -536,7 +537,7 @@ var mmProposeChangeBeneficiary = &cli.Command{
 			fmt.Println("Expiration Epoch:", mi.PendingBeneficiaryTerm.NewExpiration)
 
 			if !cctx.Bool("overwrite-pending-change") {
-				return fmt.Errorf("must pass --overwrite-pending-change to replace current pending beneficiary change. Please review CAREFULLY")
+				return errors.New("must pass --overwrite-pending-change to replace current pending beneficiary change. Please review CAREFULLY")
 			}
 		}
 
@@ -571,7 +572,7 @@ var mmProposeChangeBeneficiary = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			return fmt.Errorf("propose beneficiary change failed")
+			return errors.New("propose beneficiary change failed")
 		}
 
 		return nil
@@ -584,7 +585,7 @@ var mmConfirmChangeWorker = &cli.Command{
 	ArgsUsage: "[newWorker]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass new worker address")
+			return errors.New("must pass new worker address")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -759,7 +760,7 @@ var mmProposeControlSet = &cli.Command{
 	ArgsUsage: "[...address]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass new owner address")
+			return errors.New("must pass new owner address")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)

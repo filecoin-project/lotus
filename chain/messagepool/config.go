@@ -3,6 +3,7 @@ package messagepool
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -69,7 +70,7 @@ func validateConfg(cfg *types.MpoolConfig) error {
 			cfg.ReplaceByFeeRatio, ReplaceByFeePercentageMinimum)
 	}
 	if cfg.GasLimitOverestimation < 1 {
-		return fmt.Errorf("'GasLimitOverestimation' cannot be less than 1")
+		return errors.New("'GasLimitOverestimation' cannot be less than 1")
 	}
 	return nil
 }

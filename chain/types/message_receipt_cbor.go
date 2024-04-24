@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -53,7 +54,7 @@ func (mr *MessageReceipt) UnmarshalCBOR(r io.Reader) (err error) {
 	}()
 
 	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+		return errors.New("cbor input should be of type array")
 	}
 
 	var u cbor.Unmarshaler
@@ -65,7 +66,7 @@ func (mr *MessageReceipt) UnmarshalCBOR(r io.Reader) (err error) {
 		mr.version = MessageReceiptV1
 		u = &messageReceiptV1{mr}
 	default:
-		return fmt.Errorf("cbor input had wrong number of fields")
+		return errors.New("cbor input had wrong number of fields")
 	}
 
 	// Ok to pass a CBOR reader since cbg.NewCborReader will return itself when
@@ -135,12 +136,12 @@ func (t *messageReceiptV0) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 positive overflow")
+				return errors.New("int64 positive overflow")
 			}
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative overflow")
+				return errors.New("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:
@@ -160,7 +161,7 @@ func (t *messageReceiptV0) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("t.Return: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
+		return errors.New("expected byte array")
 	}
 
 	if extra > 0 {
@@ -181,12 +182,12 @@ func (t *messageReceiptV0) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 positive overflow")
+				return errors.New("int64 positive overflow")
 			}
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative overflow")
+				return errors.New("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:
@@ -273,12 +274,12 @@ func (t *messageReceiptV1) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 positive overflow")
+				return errors.New("int64 positive overflow")
 			}
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative overflow")
+				return errors.New("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:
@@ -298,7 +299,7 @@ func (t *messageReceiptV1) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("t.Return: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
+		return errors.New("expected byte array")
 	}
 
 	if extra > 0 {
@@ -319,12 +320,12 @@ func (t *messageReceiptV1) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 positive overflow")
+				return errors.New("int64 positive overflow")
 			}
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative overflow")
+				return errors.New("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:

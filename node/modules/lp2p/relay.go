@@ -1,7 +1,7 @@
 package lp2p
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/libp2p/go-libp2p"
 	coredisc "github.com/libp2p/go-libp2p/core/discovery"
@@ -21,7 +21,7 @@ func NoRelay() func() (opts Libp2pOpts, err error) {
 func Discovery(router BaseIpfsRouting) (coredisc.Discovery, error) {
 	crouter, ok := router.(routing.ContentRouting)
 	if !ok {
-		return nil, fmt.Errorf("no suitable routing for discovery")
+		return nil, errors.New("no suitable routing for discovery")
 	}
 
 	return routingdisc.NewRoutingDiscovery(crouter), nil

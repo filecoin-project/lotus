@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -88,11 +89,11 @@ func runExtractMany(c *cli.Context) error {
 	)
 
 	if in == "" {
-		return fmt.Errorf("input file not provided")
+		return errors.New("input file not provided")
 	}
 
 	if outdir == "" {
-		return fmt.Errorf("output dir not provided")
+		return errors.New("output dir not provided")
 	}
 
 	// Open the CSV file for reading.

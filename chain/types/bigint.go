@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -33,7 +34,7 @@ func BigFromBytes(b []byte) BigInt {
 func BigFromString(s string) (BigInt, error) {
 	v, ok := big.NewInt(0).SetString(s, 10)
 	if !ok {
-		return BigInt{}, fmt.Errorf("failed to parse string as a big int")
+		return BigInt{}, errors.New("failed to parse string as a big int")
 	}
 
 	return BigInt{Int: v}, nil

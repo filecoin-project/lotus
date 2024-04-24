@@ -408,7 +408,7 @@ var ChainSetHeadCmd = &cli.Command{
 		}
 
 		if ts == nil {
-			return fmt.Errorf("must pass cids for tipset to set as head")
+			return errors.New("must pass cids for tipset to set as head")
 		}
 
 		if err := api.ChainSetHead(ctx, ts.Key()); err != nil {
@@ -864,7 +864,7 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 		return nil
 	}
 
-	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+	return errors.New("Object does not implement CBORUnmarshaler")
 }
 
 func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
@@ -1121,7 +1121,7 @@ var ChainExportCmd = &cli.Command{
 		skipold := cctx.Bool("skip-old-msgs")
 
 		if rsrs == 0 && skipold {
-			return fmt.Errorf("must pass recent stateroots along with skip-old-msgs")
+			return errors.New("must pass recent stateroots along with skip-old-msgs")
 		}
 
 		stream, err := api.ChainExport(ctx, rsrs, skipold, ts.Key())

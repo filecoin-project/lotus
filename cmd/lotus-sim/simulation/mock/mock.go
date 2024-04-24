@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -81,7 +82,7 @@ func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info prooftypes.Winni
 }
 func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info prooftypes.WindowPoStVerifyInfo) (bool, error) {
 	if len(info.Proofs) != 1 {
-		return false, fmt.Errorf("expected exactly one proof")
+		return false, errors.New("expected exactly one proof")
 	}
 	proof := info.Proofs[0]
 	addr, err := address.NewIDAddress(uint64(info.Prover))

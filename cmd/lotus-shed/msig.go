@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -50,7 +51,7 @@ var multisigGetAllCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass state root")
+			return errors.New("must pass state root")
 		}
 
 		sroot, err := cid.Decode(cctx.Args().First())

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -102,7 +103,7 @@ var verifySealProofCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return fmt.Errorf("invalid proof")
+			return errors.New("invalid proof")
 		}
 
 		fmt.Println("proof valid!")

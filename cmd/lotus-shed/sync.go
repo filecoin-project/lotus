@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -39,7 +40,7 @@ var syncValidateCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() < 1 {
-			return lcli.ShowHelp(cctx, fmt.Errorf("at least one block cid must be provided"))
+			return lcli.ShowHelp(cctx, errors.New("at least one block cid must be provided"))
 		}
 
 		args := cctx.Args().Slice()
@@ -89,7 +90,7 @@ var syncScrapePowerCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() < 1 {
-			return lcli.ShowHelp(cctx, fmt.Errorf("at least one block cid must be provided"))
+			return lcli.ShowHelp(cctx, errors.New("at least one block cid must be provided"))
 		}
 
 		h, err := strconv.ParseInt(cctx.Args().Get(0), 10, 0)

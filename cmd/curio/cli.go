@@ -241,7 +241,7 @@ var waitApiCmd = &cli.Command{
 		}
 
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("timed out waiting for api to come online")
+			return errors.New("timed out waiting for api to come online")
 		}
 
 		return ctx.Err()

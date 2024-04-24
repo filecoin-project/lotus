@@ -32,11 +32,11 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 
 	head, ok := <-tsub
 	if !ok {
-		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges stream was invalid")
+		return nil, nil, cid.Undef, errors.New("SubHeadChanges stream was invalid")
 	}
 
 	if len(head) != 1 {
-		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges first entry should have been one item")
+		return nil, nil, cid.Undef, errors.New("SubHeadChanges first entry should have been one item")
 	}
 
 	if head[0].Type != store.HCCurrent {

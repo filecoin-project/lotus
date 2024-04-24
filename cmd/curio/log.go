@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/urfave/cli/v2"
@@ -82,7 +83,7 @@ var LogSetLevel = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("level is required")
+			return errors.New("level is required")
 		}
 
 		systems := cctx.StringSlice("system")

@@ -2,6 +2,7 @@ package badgerbs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -33,7 +34,7 @@ var (
 var (
 	// ErrBlockstoreClosed is returned from blockstore operations after
 	// the blockstore has been closed.
-	ErrBlockstoreClosed = fmt.Errorf("badger blockstore closed")
+	ErrBlockstoreClosed = errors.New("badger blockstore closed")
 
 	log = logger.Logger("badgerbs")
 )
@@ -248,7 +249,7 @@ func (b *Blockstore) movingGC() error {
 	b.moveMx.Lock()
 	if b.moveState != moveStateNone {
 		b.moveMx.Unlock()
-		return fmt.Errorf("move in progress")
+		return errors.New("move in progress")
 	}
 
 	b.moveState = moveStateLock

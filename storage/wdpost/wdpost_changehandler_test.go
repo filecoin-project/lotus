@@ -3,6 +3,7 @@ package wdpost
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -547,7 +548,7 @@ func TestChangeHandlerProvingErrorRecovery(t *testing.T) {
 	require.Equal(t, postStatusProving, s.mock.getPostStatus(di))
 
 	// Send an error response to the call to generate proofs
-	mock.proveResult <- &proveRes{err: fmt.Errorf("err")}
+	mock.proveResult <- &proveRes{err: errors.New("err")}
 
 	// Should abort and then move to start state
 	<-s.ch.proveHdlr.processedPostResults
@@ -616,7 +617,7 @@ func TestChangeHandlerSubmitErrorRecovery(t *testing.T) {
 	require.Equal(t, SubmitStateSubmitting, s.submitState(di))
 
 	// Send an error response to the call to submit
-	mock.submitResult <- fmt.Errorf("err")
+	mock.submitResult <- errors.New("err")
 
 	// Should abort and then move back to the start state
 	<-s.ch.submitHdlr.processedSubmitResults

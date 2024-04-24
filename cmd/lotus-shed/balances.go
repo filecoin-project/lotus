@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -153,7 +154,7 @@ every day of chain processed.
 		if cctx.IsSet("parallel") {
 			threads = cctx.Int("int")
 			if threads <= 0 {
-				return fmt.Errorf("parallelism needs to be at least 1")
+				return errors.New("parallelism needs to be at least 1")
 			}
 		} else if threads == 0 {
 			threads = 1 // if we have one core, but who are we kidding...
@@ -164,7 +165,7 @@ every day of chain processed.
 		methods := map[abi.MethodNum]bool{}
 		for _, m := range cctx.IntSlice("method") {
 			if m < 0 {
-				return fmt.Errorf("expected method numbers to be non-negative")
+				return errors.New("expected method numbers to be non-negative")
 			}
 			methods[abi.MethodNum(m)] = true
 		}
@@ -204,7 +205,7 @@ every day of chain processed.
 
 		target := abi.ChainEpoch(cctx.Int("start"))
 		if target < 0 || target > head.Height() {
-			return fmt.Errorf("start height must be greater than 0 and less than the end height")
+			return errors.New("start height must be greater than 0 and less than the end height")
 		}
 		totalEpochs := head.Height() - target
 
@@ -470,7 +471,7 @@ var chainBalanceStateCmd = &cli.Command{
 		ctx := context.TODO()
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass state root")
+			return errors.New("must pass state root")
 		}
 
 		sroot, err := cid.Decode(cctx.Args().First())
@@ -689,7 +690,7 @@ var chainPledgeCmd = &cli.Command{
 		ctx := context.TODO()
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass state root")
+			return errors.New("must pass state root")
 		}
 
 		sroot, err := cid.Decode(cctx.Args().First())

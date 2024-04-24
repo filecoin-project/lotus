@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -290,7 +291,7 @@ Examples:
 
 		if cctx.Bool("car-export-merkle-proof") {
 			if !cctx.Bool("car") || !cctx.IsSet("data-selector") {
-				return ShowHelp(cctx, fmt.Errorf("--car-export-merkle-proof requires --car and --data-selector"))
+				return ShowHelp(cctx, errors.New("--car-export-merkle-proof requires --car and --data-selector"))
 			}
 		}
 

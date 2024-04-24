@@ -440,7 +440,7 @@ func (sm *StorageMinerAPI) SectorPreCommitPending(ctx context.Context) ([]abi.Se
 
 func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber, snap bool) error {
 	if !snap {
-		return fmt.Errorf("non-snap upgrades are not supported")
+		return errors.New("non-snap upgrades are not supported")
 	}
 
 	return sm.Miner.MarkForUpgrade(ctx, id)
@@ -839,7 +839,7 @@ func (sm *StorageMinerAPI) MarketPublishPendingDeals(ctx context.Context) error 
 
 func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.DagstoreShardInfo, error) {
 	if sm.DAGStore == nil {
-		return nil, fmt.Errorf("dagstore not available on this node")
+		return nil, errors.New("dagstore not available on this node")
 	}
 
 	info := sm.DAGStore.AllShardsInfo()
@@ -867,7 +867,7 @@ func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.Dagsto
 
 func (sm *StorageMinerAPI) DagstoreRegisterShard(ctx context.Context, key string) error {
 	if sm.DAGStore == nil {
-		return fmt.Errorf("dagstore not available on this node")
+		return errors.New("dagstore not available on this node")
 	}
 
 	// First check if the shard has already been registered
@@ -896,7 +896,7 @@ func (sm *StorageMinerAPI) DagstoreRegisterShard(ctx context.Context, key string
 
 func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key string) error {
 	if sm.DAGStore == nil {
-		return fmt.Errorf("dagstore not available on this node")
+		return errors.New("dagstore not available on this node")
 	}
 
 	k := shard.KeyFromString(key)
@@ -937,11 +937,11 @@ func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key stri
 
 func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api.DagstoreInitializeAllParams) (<-chan api.DagstoreInitializeAllEvent, error) {
 	if sm.DAGStore == nil {
-		return nil, fmt.Errorf("dagstore not available on this node")
+		return nil, errors.New("dagstore not available on this node")
 	}
 
 	if sm.SectorAccessor == nil {
-		return nil, fmt.Errorf("sector accessor not available on this node")
+		return nil, errors.New("sector accessor not available on this node")
 	}
 
 	// prepare the thottler tokens.
@@ -1079,7 +1079,7 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 
 func (sm *StorageMinerAPI) DagstoreRecoverShard(ctx context.Context, key string) error {
 	if sm.DAGStore == nil {
-		return fmt.Errorf("dagstore not available on this node")
+		return errors.New("dagstore not available on this node")
 	}
 
 	k := shard.KeyFromString(key)
@@ -1109,7 +1109,7 @@ func (sm *StorageMinerAPI) DagstoreRecoverShard(ctx context.Context, key string)
 
 func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreShardResult, error) {
 	if sm.DAGStore == nil {
-		return nil, fmt.Errorf("dagstore not available on this node")
+		return nil, errors.New("dagstore not available on this node")
 	}
 
 	res, err := sm.DAGStore.GC(ctx)
@@ -1142,7 +1142,7 @@ func (sm *StorageMinerAPI) IndexerAnnounceAllDeals(ctx context.Context) error {
 
 func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]api.DagstoreShardInfo, error) {
 	if sm.DAGStore == nil {
-		return nil, fmt.Errorf("dagstore not available on this node")
+		return nil, errors.New("dagstore not available on this node")
 	}
 
 	keys, err := sm.DAGStore.TopLevelIndex.GetShardsForMultihash(ctx, cid.Hash())

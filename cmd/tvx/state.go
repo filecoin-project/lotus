@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -94,7 +95,7 @@ func (sg *StateSurgeon) GetAccessedActors(ctx context.Context, a v1api.FullNode,
 		return nil, err
 	}
 	if msgInfo == nil {
-		return nil, fmt.Errorf("message info is nil")
+		return nil, errors.New("message info is nil")
 	}
 
 	msgObj, err := a.ChainGetMessage(ctx, mid)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -117,7 +118,7 @@ func runExtract(_ *cli.Context) error {
 	case "tipset":
 		return doExtractTipset(extractFlags)
 	default:
-		return fmt.Errorf("unsupported vector class")
+		return errors.New("unsupported vector class")
 	}
 }
 

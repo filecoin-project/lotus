@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -87,7 +88,7 @@ var cidIdCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify data")
+			return errors.New("must specify data")
 		}
 
 		var dec []byte

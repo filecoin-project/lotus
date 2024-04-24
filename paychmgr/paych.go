@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -245,7 +246,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 		}
 
 		if sv.Nonce <= n {
-			return nil, fmt.Errorf("nonce too low")
+			return nil, errors.New("nonce too low")
 		}
 
 		// If the voucher amount is less than the highest known voucher amount
@@ -254,7 +255,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 			return nil, err
 		}
 		if sv.Amount.LessThanEqual(r) {
-			return nil, fmt.Errorf("voucher amount is lower than amount for voucher with lower nonce")
+			return nil, errors.New("voucher amount is lower than amount for voucher with lower nonce")
 		}
 	}
 
@@ -284,7 +285,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	}
 
 	if len(sv.Merges) != 0 {
-		return nil, fmt.Errorf("dont currently support paych lane merges")
+		return nil, errors.New("dont currently support paych lane merges")
 	}
 
 	return laneStates, nil

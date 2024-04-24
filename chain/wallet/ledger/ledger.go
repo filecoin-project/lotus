@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -50,7 +51,7 @@ func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, t
 	}
 	defer fl.Close() // nolint:errcheck
 	if meta.Type != api.MTChainMsg {
-		return nil, fmt.Errorf("ledger can only sign chain messages")
+		return nil, errors.New("ledger can only sign chain messages")
 	}
 
 	{
@@ -99,7 +100,7 @@ func (lw LedgerWallet) WalletDelete(ctx context.Context, k address.Address) erro
 }
 
 func (lw LedgerWallet) WalletExport(ctx context.Context, k address.Address) (*types.KeyInfo, error) {
-	return nil, fmt.Errorf("cannot export keys from ledger wallets")
+	return nil, errors.New("cannot export keys from ledger wallets")
 }
 
 func (lw LedgerWallet) WalletHas(ctx context.Context, k address.Address) (bool, error) {
@@ -123,7 +124,7 @@ func (lw LedgerWallet) WalletImport(ctx context.Context, kinfo *types.KeyInfo) (
 
 func (lw LedgerWallet) importKey(ctx context.Context, ki LedgerKeyInfo) (address.Address, error) {
 	if ki.Address == address.Undef {
-		return address.Undef, fmt.Errorf("no address given in imported key info")
+		return address.Undef, errors.New("no address given in imported key info")
 	}
 	if len(ki.Path) != filHdPathLen {
 		return address.Undef, fmt.Errorf("bad hd path len: %d, expected: %d", len(ki.Path), filHdPathLen)
@@ -171,7 +172,7 @@ var filHdPathLen = 5
 
 func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.Address, error) {
 	if t != types.KTSecp256k1Ledger {
-		return address.Undef, fmt.Errorf("unsupported key type: '%s', only '%s' supported",
+		return address.Undef, errors.New("unsupported key type: '%s', only '%s' supported",
 			t, types.KTSecp256k1Ledger)
 	}
 

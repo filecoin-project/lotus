@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -110,7 +111,7 @@ var ledgerListAddressesCmd = &cli.Command{
 func parseHDPath(s string) ([]uint32, error) {
 	parts := strings.Split(s, "/")
 	if parts[0] != "m" {
-		return nil, fmt.Errorf("expected HD path to start with 'm'")
+		return nil, errors.New("expected HD path to start with 'm'")
 	}
 
 	var out []uint32

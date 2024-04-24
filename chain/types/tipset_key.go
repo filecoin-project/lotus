@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -147,7 +148,7 @@ func (k *TipSetKey) UnmarshalCBOR(reader io.Reader) error {
 		return fmt.Errorf("t.Binary: byte array too large (%d)", extra)
 	}
 	if maj != typegen.MajByteString {
-		return fmt.Errorf("expected byte array")
+		return errors.New("expected byte array")
 	}
 
 	b := make([]uint8, extra)

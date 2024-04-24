@@ -3,7 +3,7 @@ package gen
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"sync/atomic"
@@ -676,7 +676,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigI
 	}
 
 	if sig.Type != crypto.SigTypeBLS {
-		return nil, fmt.Errorf("miner worker address was not a BLS key")
+		return nil, errors.New("miner worker address was not a BLS key")
 	}
 
 	return sig.Data, nil

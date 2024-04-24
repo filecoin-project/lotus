@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -174,7 +175,7 @@ var dagstoreInitializeAllCmd = &cli.Command{
 				}
 
 			case <-ctx.Done():
-				return fmt.Errorf("aborted")
+				return errors.New("aborted")
 			}
 		}
 	},

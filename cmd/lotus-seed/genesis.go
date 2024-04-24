@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -181,7 +182,7 @@ var genesisAddMsigsCmd = &cli.Command{
 	Name: "add-msigs",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 2 {
-			return fmt.Errorf("must specify template file and csv file with accounts")
+			return errors.New("must specify template file and csv file with accounts")
 		}
 
 		genf, err := homedir.Expand(cctx.Args().First())
@@ -329,7 +330,7 @@ var genesisSetVRKCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must specify template file")
+			return errors.New("must specify template file")
 		}
 
 		genf, err := homedir.Expand(cctx.Args().First())
@@ -377,7 +378,7 @@ var genesisSetVRKCmd = &cli.Command{
 
 			e := entries[0]
 			if len(e.Addresses) != e.N {
-				return fmt.Errorf("entry had mismatch between 'N' and number of addresses")
+				return errors.New("entry had mismatch between 'N' and number of addresses")
 			}
 
 			msig := &genesis.MultisigMeta{
@@ -425,7 +426,7 @@ var genesisSetRemainderCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must specify template file")
+			return errors.New("must specify template file")
 		}
 
 		genf, err := homedir.Expand(cctx.Args().First())
@@ -473,7 +474,7 @@ var genesisSetRemainderCmd = &cli.Command{
 
 			e := entries[0]
 			if len(e.Addresses) != e.N {
-				return fmt.Errorf("entry had mismatch between 'N' and number of addresses")
+				return errors.New("entry had mismatch between 'N' and number of addresses")
 			}
 
 			msig := &genesis.MultisigMeta{
@@ -519,7 +520,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 	ArgsUsage: "<genesisFile>",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must specify genesis file")
+			return errors.New("must specify genesis file")
 		}
 
 		genf, err := homedir.Expand(cctx.Args().First())
@@ -597,7 +598,7 @@ var genesisSetVRKSignersCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must specify template file")
+			return errors.New("must specify template file")
 		}
 
 		genf, err := homedir.Expand(cctx.Args().First())

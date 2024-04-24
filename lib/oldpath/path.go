@@ -1,6 +1,7 @@
 package oldpath
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -121,14 +122,14 @@ func ParsePath(txt string) (Path, error) {
 	}
 
 	if len(parts) < 3 {
-		return "", &pathError{error: fmt.Errorf("path does not begin with '/'"), path: txt}
+		return "", &pathError{error: errors.New("path does not begin with '/'"), path: txt}
 	}
 
 	//TODO: make this smarter
 	switch parts[1] {
 	case "ipfs", "ipld":
 		if parts[2] == "" {
-			return "", &pathError{error: fmt.Errorf("not enough path components"), path: txt}
+			return "", &pathError{error: errors.New("not enough path components"), path: txt}
 		}
 		// Validate Cid.
 		_, err := cid.Decode(parts[2])
@@ -137,7 +138,7 @@ func ParsePath(txt string) (Path, error) {
 		}
 	case "ipns":
 		if parts[2] == "" {
-			return "", &pathError{error: fmt.Errorf("not enough path components"), path: txt}
+			return "", &pathError{error: errors.New("not enough path components"), path: txt}
 		}
 	default:
 		return "", &pathError{error: fmt.Errorf("unknown namespace %q", parts[1]), path: txt}
@@ -149,7 +150,7 @@ func ParsePath(txt string) (Path, error) {
 // ParseCidToPath takes a CID in string form and returns a valid ipfs Path.
 func ParseCidToPath(txt string) (Path, error) {
 	if txt == "" {
-		return "", &pathError{error: fmt.Errorf("empty"), path: txt}
+		return "", &pathError{error: errors.New("empty"), path: txt}
 	}
 
 	c, err := cid.Decode(txt)
@@ -186,7 +187,7 @@ func SplitAbsPath(fpath Path) (cid.Cid, []string, error) {
 
 	// if nothing, bail.
 	if len(parts) == 0 {
-		return cid.Cid{}, nil, &pathError{error: fmt.Errorf("empty"), path: string(fpath)}
+		return cid.Cid{}, nil, &pathError{error: errors.New("empty"), path: string(fpath)}
 	}
 
 	c, err := cid.Decode(parts[0])

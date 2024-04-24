@@ -3,6 +3,7 @@ package stmgr_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -492,7 +493,7 @@ func TestForkPreMigration(t *testing.T) {
 					counter <- struct{}{}
 
 					// Fail this migration. The cached entry should not be persisted.
-					return fmt.Errorf("failed")
+					return errors.New("failed")
 				},
 			}, {
 				StartWithin: 15,

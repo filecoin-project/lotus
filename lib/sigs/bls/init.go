@@ -2,7 +2,7 @@ package bls
 
 import (
 	"crypto/rand"
-	"fmt"
+	"errors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
@@ -25,7 +25,7 @@ func (blsSigner) GenPrivate() ([]byte, error) {
 	var ikm [32]byte
 	_, err := rand.Read(ikm[:])
 	if err != nil {
-		return nil, fmt.Errorf("bls signature error generating random data")
+		return nil, errors.New("bls signature error generating random data")
 	}
 	// Note private keys seem to be serialized little-endian!
 	sk := ffi.PrivateKeyGenerateWithSeed(ikm)
@@ -34,7 +34,7 @@ func (blsSigner) GenPrivate() ([]byte, error) {
 
 func (blsSigner) ToPublic(priv []byte) ([]byte, error) {
 	if priv == nil || len(priv) != ffi.PrivateKeyBytes {
-		return nil, fmt.Errorf("bls signature invalid private key")
+		return nil, errors.New("bls signature invalid private key")
 	}
 
 	sk := new(SecretKey)
@@ -47,7 +47,7 @@ func (blsSigner) ToPublic(priv []byte) ([]byte, error) {
 
 func (blsSigner) Sign(p []byte, msg []byte) ([]byte, error) {
 	if p == nil || len(p) != ffi.PrivateKeyBytes {
-		return nil, fmt.Errorf("bls signature invalid private key")
+		return nil, errors.New("bls signature invalid private key")
 	}
 
 	sk := new(SecretKey)
@@ -61,7 +61,7 @@ func (blsSigner) Sign(p []byte, msg []byte) ([]byte, error) {
 func (blsSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 	payload := a.Payload()
 	if sig == nil || len(sig) != ffi.SignatureBytes || len(payload) != ffi.PublicKeyBytes {
-		return fmt.Errorf("bls signature failed to verify")
+		return errors.New("bls signature failed to verify")
 	}
 
 	pk := new(PublicKey)
@@ -74,7 +74,7 @@ func (blsSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 	pks := [1]PublicKey{*pk}
 
 	if !ffi.HashVerify(sigS, msgs[:], pks[:]) {
-		return fmt.Errorf("bls signature failed to verify")
+		return errors.New("bls signature failed to verify")
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package sigs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.opencensus.io/trace"
@@ -38,7 +39,7 @@ func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 	}
 
 	if addr.Protocol() == address.ID {
-		return fmt.Errorf("must resolve ID addresses before using them to verify a signature")
+		return errors.New("must resolve ID addresses before using them to verify a signature")
 	}
 
 	sv, ok := sigs[sig.Type]
