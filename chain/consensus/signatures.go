@@ -1,8 +1,6 @@
 package consensus
 
 import (
-	"fmt"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -20,43 +18,41 @@ import (
 // must be recognized by the registered verifier for the signature type.
 func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error {
 	var digest []byte
-	typ := msg.Signature.Type
-	cpy := (*msg).Signature
-	cpy.Data = make([]byte, len(msg.Signature.Data))
-	copy(cpy.Data, msg.Signature.Data)
+	signatureType := msg.Signature.Type
+	signatureCopy := msg.Signature
+	signatureCopy.Data = make([]byte, len(msg.Signature.Data))
+	copy(signatureCopy.Data, msg.Signature.Data)
 
-	switch typ {
+	switch signatureType {
 	case crypto.SigTypeDelegated:
-		txArgs, err := ethtypes.EthereumTransactionFromSignedEthMessage(msg)
+		ethTx, err := ethtypes.EthereumTransactionFromSignedEthMessage(msg)
 		if err != nil {
-			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
+			return xerrors.Errorf("failed to reconstruct Ethereum transaction: %w", err)
 		}
-		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
+		filecoinMsg, err := ethTx.ToUnsignedMessage(msg.Message.From)
 		if err != nil {
-			return xerrors.Errorf("failed to reconstruct filecoin msg: %w", err)
-		}
-
-		if !msg.Message.Equals(roundTripMsg) {
-			return xerrors.New("ethereum tx failed to roundtrip")
+			return xerrors.Errorf("failed to reconstruct Filecoin message: %w", err)
 		}
 
-		rlpEncodedMsg, err := txArgs.ToRlpUnsignedMsg()
+		if !msg.Message.Equals(filecoinMsg) {
+			return xerrors.New("Ethereum transaction roundtrip mismatch")
+		}
+
+		rlpEncodedMsg, err := ethTx.ToRlpUnsignedMsg()
 		if err != nil {
-			return xerrors.Errorf("failed to repack eth rlp message: %w", err)
+			return xerrors.Errorf("failed to encode RLP message: %w", err)
 		}
 		digest = rlpEncodedMsg
-		cpy.Data, err = txArgs.VerifiableSignature(cpy.Data)
+		signatureCopy.Data, err = ethTx.VerifiableSignature(signatureCopy.Data)
 		if err != nil {
-			return xerrors.Errorf("failed to get verifiable signature: %w", err)
+			return xerrors.Errorf("failed to verify signature: %w", err)
 		}
-		fmt.Println("signature.Data: ", cpy.Data)
 	default:
 		digest = msg.Message.Cid().Bytes()
 	}
 
-	fmt.Println("SIGNATURE IN AUTH IS", cpy.Data)
-	if err := sigs.Verify(&cpy, signer, digest); err != nil {
-		return xerrors.Errorf("message %s has invalid signature (type %d): %w", msg.Cid(), typ, err)
+	if err := sigs.Verify(&signatureCopy, signer, digest); err != nil {
+		return xerrors.Errorf("invalid signature for message %s (type %d): %w", msg.Cid(), signatureType, err)
 	}
 	return nil
 }
