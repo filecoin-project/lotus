@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"fmt"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -59,7 +58,6 @@ func (cs *ChainStore) GetMessage(ctx context.Context, c cid.Cid) (*types.Message
 		msg, err = types.DecodeMessage(b)
 		return err
 	})
-	fmt.Println("ERROR IS", err)
 	return msg, err
 }
 

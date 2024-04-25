@@ -1,8 +1,6 @@
 package ethtypes
 
 import (
-	"fmt"
-
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
@@ -159,7 +157,7 @@ func (tx *Eth1559TxArgs) Signature() (*typescrypto.Signature, error) {
 	}
 
 	if len(sig) != 65 {
-		return nil, fmt.Errorf("signature is not 65 bytes")
+		return nil, xerrors.Errorf("signature is not 65 bytes")
 	}
 	return &typescrypto.Signature{
 		Type: typescrypto.SigTypeDelegated, Data: sig,
@@ -237,26 +235,26 @@ func (tx *Eth1559TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
 
 func (tx *Eth1559TxArgs) SetEthSignatureValues(sig typescrypto.Signature) error {
 	if sig.Type != typescrypto.SigTypeDelegated {
-		return fmt.Errorf("RecoverSignature only supports Delegated signature")
+		return xerrors.Errorf("RecoverSignature only supports Delegated signature")
 	}
 
 	if len(sig.Data) != 65 {
-		return fmt.Errorf("signature should be 65 bytes long, but got %d bytes", len(sig.Data))
+		return xerrors.Errorf("signature should be 65 bytes long, but got %d bytes", len(sig.Data))
 	}
 
 	r_, err := parseBigInt(sig.Data[0:32])
 	if err != nil {
-		return fmt.Errorf("cannot parse r into EthBigInt")
+		return xerrors.Errorf("cannot parse r into EthBigInt")
 	}
 
 	s_, err := parseBigInt(sig.Data[32:64])
 	if err != nil {
-		return fmt.Errorf("cannot parse s into EthBigInt")
+		return xerrors.Errorf("cannot parse s into EthBigInt")
 	}
 
 	v_, err := parseBigInt([]byte{sig.Data[64]})
 	if err != nil {
-		return fmt.Errorf("cannot parse v into EthBigInt")
+		return xerrors.Errorf("cannot parse v into EthBigInt")
 	}
 
 	tx.R = r_
@@ -268,7 +266,7 @@ func (tx *Eth1559TxArgs) SetEthSignatureValues(sig typescrypto.Signature) error 
 
 func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 	if data[0] != 2 {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: first byte is not 2")
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not 2")
 	}
 
 	d, err := DecodeRLP(data[1:])
@@ -277,11 +275,11 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 	}
 	decoded, ok := d.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: decoded data is not a list")
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: decoded data is not a list")
 	}
 
 	if len(decoded) != 12 {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: should have 12 elements in the rlp list")
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: should have 12 elements in the rlp list")
 	}
 
 	chainId, err := parseInt(decoded[0])
@@ -326,7 +324,7 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 
 	accessList, ok := decoded[8].([]interface{})
 	if !ok || (ok && len(accessList) != 0) {
-		return nil, fmt.Errorf("access list should be an empty list")
+		return nil, xerrors.Errorf("access list should be an empty list")
 	}
 
 	r, err := parseBigInt(decoded[10])
@@ -348,7 +346,7 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 	// Legacy and EIP-155 transactions support other values
 	// https://github.com/ethers-io/ethers.js/blob/56fabe987bb8c1e4891fdf1e5d3fe8a4c0471751/packages/transactions/src.ts/index.ts#L333
 	if !v.Equals(big.NewInt(0)) && !v.Equals(big.NewInt(1)) {
-		return nil, fmt.Errorf("EIP-1559 transactions only support 0 or 1 for v")
+		return nil, xerrors.Errorf("EIP-1559 transactions only support 0 or 1 for v")
 	}
 
 	args := Eth1559TxArgs{

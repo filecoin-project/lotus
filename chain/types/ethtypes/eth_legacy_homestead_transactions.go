@@ -90,8 +90,6 @@ func (tx *EthLegacyHomesteadTxArgs) VerifiableSignature(sig []byte) ([]byte, err
 		return nil, fmt.Errorf("signature prefix should be 0x01, but got %x", sig[0])
 	}
 
-	fmt.Println("sig here is", sig)
-
 	sig = sig[1:]
 
 	// legacy transactions have a `V` value of 27 or 28 but new transactions have a `V` value of 0 or 1
@@ -224,14 +222,10 @@ func (tx *EthLegacyHomesteadTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	fmt.Println("sig: ", sig.Data)
-
 	sigData, err := tx.VerifiableSignature(sig.Data)
 	if err != nil {
 		return address.Undef, err
 	}
-
-	fmt.Println("sigData: ", sigData)
 
 	pubk, err := gocrypto.EcRecover(hash, sigData)
 	if err != nil {
@@ -279,8 +273,5 @@ func (tx *EthLegacyHomesteadTxArgs) SetEthSignatureValues(sig typescrypto.Signat
 	tx.R = r_
 	tx.S = s_
 	tx.V = v_
-	fmt.Println("tx.V: ", tx.V)
-	fmt.Println("tx.R: ", tx.R)
-	fmt.Println("tx.S: ", tx.S)
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
 	"sync"
 	"time"
 
@@ -405,41 +404,33 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 	stats.Record(ctx, metrics.MessagePublished.M(1))
 
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
-	fmt.Println("signed message is", m.Signature.Data)
 	if err != nil {
 		log.Warnf("failed to decode local message: %s", err)
 		recordFailure(ctx, metrics.MessageValidationFailure, "decode")
-		fmt.Println("111111111")
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Size() > messagepool.MaxMessageSize {
 		log.Warnf("local message is too large! (%dB)", m.Size())
 		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
-		fmt.Println("111111112")
 		return pubsub.ValidationIgnore
 	}
 
 	if m.Message.To == address.Undef {
 		log.Warn("local message has invalid destination address")
 		recordFailure(ctx, metrics.MessageValidationFailure, "undef-addr")
-		fmt.Println("111111113")
 		return pubsub.ValidationIgnore
 	}
 
 	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
 		log.Warnf("local messages has too high value: %s", m.Message.Value)
 		recordFailure(ctx, metrics.MessageValidationFailure, "value-too-high")
-		fmt.Println("111111114")
 		return pubsub.ValidationIgnore
 	}
 
 	if err := mv.mpool.VerifyMsgSig(m); err != nil {
-		fmt.Println("error is BOY", err)
 		log.Warnf("signature verification failed for local message: %s", err)
 		recordFailure(ctx, metrics.MessageValidationFailure, "verify-sig")
-		fmt.Println("111111115")
-
 		return pubsub.ValidationIgnore
 	}
 
