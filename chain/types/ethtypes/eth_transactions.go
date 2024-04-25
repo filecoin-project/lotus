@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 	mathbig "math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -111,6 +112,7 @@ func EthereumTransactionFromSignedEthMessage(smsg *types.SignedMessage) (Ethereu
 		return &tx, nil
 	case 65:
 		tx := Eth1559TxArgs{
+			ChainID:              build.Eip155ChainId,
 			Nonce:                int(msg.Nonce),
 			To:                   to,
 			Value:                msg.Value,

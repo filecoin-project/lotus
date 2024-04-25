@@ -294,15 +294,18 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 			// This should be "fine" as anyone using an "Ethereum-centric" block
 			// explorer shouldn't care about seeing pending messages from native
 			// accounts.
-			//tx, err := ethtypes.EthTxFromSignedEthMessage(p)
+			ethtx, err := ethtypes.EthereumTransactionFromSignedEthMessage(p)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
 			}
-			//tx.Hash, err = tx.TxHash()
+			tx, err := ethtx.ToEthTx(p)
+			if err != nil {
+				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
+			}
 			if err != nil {
 				return nil, fmt.Errorf("could not compute tx hash for eth txn: %w", err)
 			}
-			return nil, nil
+			return &tx, nil
 		}
 	}
 	// Ethereum clients expect an empty response when the message was not found
@@ -411,7 +414,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	}
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	fmt.Println("msgLookup", msgLookup)
+	fmt.Printf("msgLookup: %+v", msgLookup)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}
