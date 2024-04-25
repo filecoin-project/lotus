@@ -620,6 +620,7 @@ func SectorsExtendCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			&cli.Int64Flag{
 				Name:  "max-sectors",
 				Usage: "the maximum number of sectors contained in each message",
+				Value: 500,
 			},
 			&cli.BoolFlag{
 				Name:  "really-do-it",
