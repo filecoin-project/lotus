@@ -3,6 +3,7 @@ package messagepool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -118,6 +119,7 @@ func (mpp *mpoolProvider) PutMessage(ctx context.Context, m types.ChainMsg) (cid
 }
 
 func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
+	fmt.Println("HELLO")
 	return mpp.ps.Publish(k, v) // nolint
 }
 

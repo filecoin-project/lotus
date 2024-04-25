@@ -251,7 +251,10 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
 		}
 
-		tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
+		if smsg.Signature.Type != crypto.SigTypeDelegated {
+			chainID := ethtypes.EthUint64(build.Eip155ChainId)
+			tx.ChainID = &chainID
+		}
 		tx.BlockHash = &blkHash
 		tx.BlockNumber = &bn
 		tx.TransactionIndex = &ti
@@ -448,7 +451,7 @@ func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, sa StateAPI) (ethty
 
 func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, error) {
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		tx, err := ethtypes.EthTxFromSignedEthMessage(smsg)
+		tx, err := ethtypes.EthereumTransactionFromSignedEthMessage(smsg)
 		if err != nil {
 			return ethtypes.EthHash{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
@@ -467,14 +470,13 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 
 	// This is an eth tx
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		tx, err = ethtypes.EthTxFromSignedEthMessage(smsg)
+		ethTx, err := ethtypes.EthereumTransactionFromSignedEthMessage(smsg)
 		if err != nil {
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
-
-		tx.Hash, err = tx.TxHash()
+		tx, err = ethTx.ToEthTx(smsg)
 		if err != nil {
-			return ethtypes.EthTx{}, xerrors.Errorf("failed to calculate hash for ethTx: %w", err)
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
 		tx, err = ethTxFromNativeMessage(smsg.VMMessage(), st)
@@ -534,18 +536,22 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		codec = uint64(multicodec.Cbor)
 	}
 
+	chainId := ethtypes.EthUint64(build.Eip155ChainId)
+	maxFeePerGas := ethtypes.EthBigInt(msg.GasFeeCap)
+	maxPriorityFeePerGas := ethtypes.EthBigInt(msg.GasPremium)
+
 	// We decode as a native call first.
 	ethTx := ethtypes.EthTx{
 		To:                   &to,
 		From:                 from,
 		Input:                encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params),
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
-		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
+		ChainID:              &chainId,
 		Value:                ethtypes.EthBigInt(msg.Value),
 		Type:                 ethtypes.Eip1559TxType,
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
-		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
-		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
+		MaxFeePerGas:         &maxFeePerGas,
+		MaxPriorityFeePerGas: &maxPriorityFeePerGas,
 		AccessList:           []ethtypes.EthHash{},
 	}
 
@@ -713,7 +719,8 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	baseFee := parentTs.Blocks()[0].ParentBaseFee
-	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.MaxFeePerGas), big.Int(tx.MaxPriorityFeePerGas), true)
+
+	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.GasFeeCap()), big.Int(tx.GasPremium()), true)
 	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
 
 	effectiveGasPrice := big.Zero()
@@ -725,6 +732,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
+		fmt.Println("RETURN IS", lookup.Receipt.Return)
 		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}

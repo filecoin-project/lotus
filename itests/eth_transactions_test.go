@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -64,7 +65,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 	require.NoError(t, err)
 
-	tx := ethtypes.EthTxArgs{
+	tx := ethtypes.Eth1559TxArgs{
 		ChainID:              build.Eip155ChainId,
 		Value:                big.NewInt(100),
 		Nonce:                0,
@@ -84,6 +85,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
 	// Submit transaction with bad signature
+	fmt.Println("SENDING TO", *tx.To)
 	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
 	require.Error(t, err)
 
@@ -118,23 +120,6 @@ func TestValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, tx.V, ethTx.V)
 	require.EqualValues(t, tx.R, ethTx.R)
 	require.EqualValues(t, tx.S, ethTx.S)
-}
-
-func TestLegacyTransaction(t *testing.T) {
-	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-
-	ens.InterconnectAll().BeginMining(blockTime)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	// This is a legacy style transaction obtained from etherscan
-	// Tx details: https://etherscan.io/getRawTx?tx=0x0763262208d89efeeb50c8bb05b50c537903fe9d7bdef3b223fd1f5f69f69b32
-	txBytes, err := hex.DecodeString("f86f830131cf8504a817c800825208942cf1e5a8250ded8835694ebeb90cfa0237fcb9b1882ec4a5251d1100008026a0f5f8d2244d619e211eeb634acd1bea0762b7b4c97bba9f01287c82bfab73f911a015be7982898aa7cc6c6f27ff33e999e4119d6cd51330353474b98067ff56d930")
-	require.NoError(t, err)
-	_, err = client.EVM().EthSendRawTransaction(ctx, txBytes)
-	require.ErrorContains(t, err, "legacy transaction is not supported")
 }
 
 func TestContractDeploymentValidSignature(t *testing.T) {
@@ -255,7 +240,7 @@ func TestContractInvocation(t *testing.T) {
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 	require.NoError(t, err)
 
-	invokeTx := ethtypes.EthTxArgs{
+	invokeTx := ethtypes.Eth1559TxArgs{
 		ChainID:              build.Eip155ChainId,
 		To:                   &contractAddr,
 		Value:                big.Zero(),
@@ -363,7 +348,7 @@ func TestGetBlockByNumber(t *testing.T) {
 	require.Equal(t, types.FromFil(10).Int, bal.Int)
 }
 
-func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthTxArgs, error) {
+func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.Eth1559TxArgs, error) {
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
@@ -383,7 +368,7 @@ func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr eth
 	}
 
 	// now deploy a contract from the embryo, and validate it went well
-	return &ethtypes.EthTxArgs{
+	return &ethtypes.Eth1559TxArgs{
 		ChainID:              build.Eip155ChainId,
 		Value:                big.Zero(),
 		Nonce:                0,

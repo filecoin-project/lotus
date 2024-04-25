@@ -27,10 +27,10 @@ type TxTestcase struct {
 	TxJSON  string
 	NosigTx string
 	Input   EthBytes
-	Output  EthTxArgs
+	Output  Eth1559TxArgs
 }
 
-func TestTxArgs(t *testing.T) {
+func TestEIP1559TxArgs(t *testing.T) {
 	testcases, err := prepareTxTestcases()
 	require.Nil(t, err)
 	require.NotEmpty(t, testcases)
@@ -39,7 +39,7 @@ func TestTxArgs(t *testing.T) {
 		comment := fmt.Sprintf("case %d: \n%s\n%s", i, tc.TxJSON, hex.EncodeToString(tc.Input))
 
 		// parse txargs
-		txArgs, err := ParseEthTxArgs(tc.Input)
+		txArgs, err := parseEip1559Tx(tc.Input)
 		require.NoError(t, err, comment)
 
 		msgRecovered, err := txArgs.ToRlpUnsignedMsg()
@@ -63,7 +63,7 @@ func TestTxArgs(t *testing.T) {
 	}
 }
 
-func TestSignatures(t *testing.T) {
+func TestEIP1559Signatures(t *testing.T) {
 	testcases := []struct {
 		RawTx     string
 		ExpectedR string
@@ -95,7 +95,7 @@ func TestSignatures(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		tx, err := ParseEthTxArgs(mustDecodeHex(tc.RawTx))
+		tx, err := parseEip1559Tx(mustDecodeHex(tc.RawTx))
 		if tc.ExpectErr {
 			require.Error(t, err)
 			continue
@@ -105,16 +105,15 @@ func TestSignatures(t *testing.T) {
 		sig, err := tx.Signature()
 		require.Nil(t, err)
 
-		r, s, v, err := RecoverSignature(*sig)
+		tx.SetEthSignatureValues(*sig)
+
+		marshaledR, err := tx.R.MarshalJSON()
 		require.Nil(t, err)
 
-		marshaledR, err := r.MarshalJSON()
+		marshaledS, err := tx.S.MarshalJSON()
 		require.Nil(t, err)
 
-		marshaledS, err := s.MarshalJSON()
-		require.Nil(t, err)
-
-		marshaledV, err := v.MarshalJSON()
+		marshaledV, err := tx.V.MarshalJSON()
 		require.Nil(t, err)
 
 		require.Equal(t, tc.ExpectedR, string(marshaledR))
@@ -234,7 +233,7 @@ func prepareTxTestcases() ([]TxTestcase, error) {
 
 	res := []TxTestcase{}
 	for _, tc := range testcases {
-		tx := EthTxArgs{}
+		tx := Eth1559TxArgs{}
 		err := json.Unmarshal([]byte(tc.Output), &tx)
 		if err != nil {
 			return nil, err

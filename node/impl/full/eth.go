@@ -294,15 +294,15 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 			// This should be "fine" as anyone using an "Ethereum-centric" block
 			// explorer shouldn't care about seeing pending messages from native
 			// accounts.
-			tx, err := ethtypes.EthTxFromSignedEthMessage(p)
+			//tx, err := ethtypes.EthTxFromSignedEthMessage(p)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
 			}
-			tx.Hash, err = tx.TxHash()
+			//tx.Hash, err = tx.TxHash()
 			if err != nil {
 				return nil, fmt.Errorf("could not compute tx hash for eth txn: %w", err)
 			}
-			return &tx, nil
+			return nil, nil
 		}
 	}
 	// Ethereum clients expect an empty response when the message was not found
@@ -406,10 +406,12 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
+		fmt.Println("DOING THIS")
 		c = txHash.ToCid()
 	}
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	fmt.Println("msgLookup", msgLookup)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}
@@ -817,7 +819,7 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	txArgs, err := ethtypes.ParseEthTxArgs(rawTx)
+	txArgs, err := ethtypes.ParseEthTx(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
@@ -826,6 +828,8 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
+
+	fmt.Println("sumitting to mpool", smsg.Signature.Data)
 
 	_, err = a.MpoolAPI.MpoolPush(ctx, smsg)
 	if err != nil {

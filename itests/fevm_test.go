@@ -678,7 +678,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			nonce, err := client.MpoolGetNonce(ctx, ethFilAddr)
 			require.NoError(t, err)
 
-			tx := &ethtypes.EthTxArgs{
+			tx := &ethtypes.Eth1559TxArgs{
 				ChainID:              build.Eip155ChainId,
 				To:                   &contractAddr,
 				Value:                big.Zero(),
@@ -834,7 +834,7 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 	require.NoError(t, err)
 
-	tx := ethtypes.EthTxArgs{
+	tx := ethtypes.Eth1559TxArgs{
 		ChainID:              build.Eip155ChainId,
 		Value:                big.NewInt(100),
 		Nonce:                0,

@@ -44,6 +44,32 @@ func (f *TestFullNode) EVM() *EVM {
 	return &EVM{f}
 }
 
+// SignTransaction signs an Ethereum transaction in place with the supplied private key.
+func (e *EVM) SignLegacyTransaction(tx *ethtypes.EthLegacyHomesteadTxArgs, privKey []byte) error {
+	preimage, err := tx.ToRlpUnsignedMsg()
+	require.NoError(e.t, err)
+
+	// sign the RLP payload
+	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
+	require.NoError(e.t, err)
+	signature.Data = append([]byte{ethtypes.LegacyHomesteadEthTxPrefix}, signature.Data...)
+
+	fmt.Println("doing now")
+
+	return tx.SetEthSignatureValues(*signature)
+}
+
+func (e *EVM) SubmitLegacyTransaction(ctx context.Context, tx *ethtypes.EthLegacyHomesteadTxArgs) ethtypes.EthHash {
+	signed, err := tx.ToRlpSignedMsg()
+	require.NoError(e.t, err)
+
+	fmt.Println("submitting now", tx.V)
+	hash, err := e.EthSendRawTransaction(ctx, signed)
+	require.NoError(e.t, err)
+
+	return hash
+}
+
 func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Address, bytecode []byte, value big.Int) eam.CreateReturn {
 	require := require.New(e.t)
 
@@ -208,7 +234,7 @@ func (e *EVM) AssertAddressBalanceConsistent(ctx context.Context, addr address.A
 }
 
 // SignTransaction signs an Ethereum transaction in place with the supplied private key.
-func (e *EVM) SignTransaction(tx *ethtypes.EthTxArgs, privKey []byte) {
+func (e *EVM) SignTransaction(tx *ethtypes.Eth1559TxArgs, privKey []byte) {
 	preimage, err := tx.ToRlpUnsignedMsg()
 	require.NoError(e.t, err)
 
@@ -216,16 +242,11 @@ func (e *EVM) SignTransaction(tx *ethtypes.EthTxArgs, privKey []byte) {
 	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
 	require.NoError(e.t, err)
 
-	r, s, v, err := ethtypes.RecoverSignature(*signature)
-	require.NoError(e.t, err)
-
-	tx.V = big.Int(v)
-	tx.R = big.Int(r)
-	tx.S = big.Int(s)
+	tx.SetEthSignatureValues(*signature)
 }
 
 // SubmitTransaction submits the transaction via the Eth endpoint.
-func (e *EVM) SubmitTransaction(ctx context.Context, tx *ethtypes.EthTxArgs) ethtypes.EthHash {
+func (e *EVM) SubmitTransaction(ctx context.Context, tx *ethtypes.Eth1559TxArgs) ethtypes.EthHash {
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(e.t, err)
 
@@ -293,6 +314,7 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 }
 
 func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
+	fmt.Println("\n looking up hash: ", hash)
 	if mcid, err := e.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
 		return nil, err
 	} else if mcid == nil {
