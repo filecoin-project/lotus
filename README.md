@@ -97,7 +97,7 @@ Once all the dependencies are installed, you can build and install the Lotus sui
    cd lotus/
    ```
    
-Note: The default branch `master` is the dev branch where the latest new features, bug fixes and improvement are in. However, if you want to run lotus on Filecoin mainnet and want to run a production-ready lotus, get the latest release[ here](https://github.com/filecoin-project/lotus/releases).
+Note: The default branch `master` is the dev branch where the latest new features, bug fixes and improvements are in. However, if you want to run lotus on Filecoin mainnet and want to run a production-ready lotus, get the latest release[ here](https://github.com/filecoin-project/lotus/releases).
 
 2. To join mainnet, checkout the [latest release](https://github.com/filecoin-project/lotus/releases).
 
