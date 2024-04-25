@@ -32,7 +32,7 @@ type EthereumTransaction interface {
 }
 
 type EthTx struct {
-	ChainID              *EthUint64  `json:"chainId,omitempty"`
+	ChainID              EthUint64   `json:"chainId,omitempty"`
 	Nonce                EthUint64   `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            *EthHash    `json:"blockHash"`
@@ -46,7 +46,7 @@ type EthTx struct {
 	Gas                  EthUint64   `json:"gas"`
 	MaxFeePerGas         *EthBigInt  `json:"maxFeePerGas,omitempty"`
 	MaxPriorityFeePerGas *EthBigInt  `json:"maxPriorityFeePerGas,omitempty"`
-	GasPrice             EthBigInt   `json:"gasPrice"`
+	GasPrice             *EthBigInt  `json:"gasPrice,omitempty"`
 	AccessList           []EthHash   `json:"accessList,omitempty"`
 	V                    EthBigInt   `json:"v"`
 	R                    EthBigInt   `json:"r"`
@@ -54,12 +54,15 @@ type EthTx struct {
 }
 
 func (tx *EthTx) GasFeeCap() EthBigInt {
-	return tx.GasPrice
+	if tx.GasPrice == nil {
+		return *tx.MaxFeePerGas
+	}
+	return *tx.GasPrice
 }
 
 func (tx *EthTx) GasPremium() EthBigInt {
 	if tx.MaxPriorityFeePerGas == nil {
-		return tx.GasPrice
+		return *tx.GasPrice
 	}
 	return *tx.MaxPriorityFeePerGas
 }

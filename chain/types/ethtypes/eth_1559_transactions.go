@@ -204,12 +204,6 @@ func (tx *Eth1559TxArgs) VerifiableSignature(sig []byte) ([]byte, error) {
 }
 
 func (tx *Eth1559TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
-	var (
-		to     *EthAddress
-		params []byte
-		err    error
-	)
-
 	from, err := EthAddressFromFilecoinAddress(smsg.Message.From)
 	if err != nil {
 		return EthTx{}, xerrors.Errorf("sender was not an eth account")
@@ -221,17 +215,15 @@ func (tx *Eth1559TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
 	gasFeeCap := EthBigInt(tx.MaxFeePerGas)
 	gasPremium := EthBigInt(tx.MaxPriorityFeePerGas)
 
-	chainId := EthUint64(build.Eip155ChainId)
 	ethTx := EthTx{
-		ChainID:              &chainId,
+		ChainID:              EthUint64(build.Eip155ChainId),
 		Type:                 Eip1559TxType,
 		Nonce:                EthUint64(tx.Nonce),
 		Hash:                 hash,
-		To:                   to,
+		To:                   tx.To,
 		Value:                EthBigInt(tx.Value),
-		Input:                params,
+		Input:                tx.Input,
 		Gas:                  EthUint64(tx.GasLimit),
-		GasPrice:             gasFeeCap,
 		MaxFeePerGas:         &gasFeeCap,
 		MaxPriorityFeePerGas: &gasPremium,
 		From:                 from,

@@ -252,8 +252,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		}
 
 		if smsg.Signature.Type != crypto.SigTypeDelegated {
-			chainID := ethtypes.EthUint64(build.Eip155ChainId)
-			tx.ChainID = &chainID
+			tx.ChainID = build.Eip155ChainId
 		}
 		tx.BlockHash = &blkHash
 		tx.BlockNumber = &bn
@@ -536,7 +535,6 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		codec = uint64(multicodec.Cbor)
 	}
 
-	chainId := ethtypes.EthUint64(build.Eip155ChainId)
 	maxFeePerGas := ethtypes.EthBigInt(msg.GasFeeCap)
 	maxPriorityFeePerGas := ethtypes.EthBigInt(msg.GasPremium)
 
@@ -546,7 +544,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		From:                 from,
 		Input:                encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params),
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
-		ChainID:              &chainId,
+		ChainID:              build.Eip155ChainId,
 		Value:                ethtypes.EthBigInt(msg.Value),
 		Type:                 ethtypes.Eip1559TxType,
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
@@ -658,6 +656,9 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	tx.BlockHash = &blkHash
 	tx.BlockNumber = &bn
 	tx.TransactionIndex = &ti
+
+	fmt.Printf("eth tx is: %+v", tx)
+
 	return tx, nil
 }
 

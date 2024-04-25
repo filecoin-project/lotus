@@ -41,7 +41,10 @@ func (tx *EthLegacyHomesteadTxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, e
 		return EthTx{}, err
 	}
 
+	gasPrice := EthBigInt(tx.GasPrice)
+
 	ethTx := EthTx{
+		ChainID:  0x00,
 		Type:     0x00,
 		Nonce:    EthUint64(tx.Nonce),
 		Hash:     hash,
@@ -49,7 +52,7 @@ func (tx *EthLegacyHomesteadTxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, e
 		Value:    EthBigInt(tx.Value),
 		Input:    tx.Input,
 		Gas:      EthUint64(tx.GasLimit),
-		GasPrice: EthBigInt(tx.GasPrice),
+		GasPrice: &gasPrice,
 		From:     from,
 		R:        EthBigInt(tx.R),
 		S:        EthBigInt(tx.S),
