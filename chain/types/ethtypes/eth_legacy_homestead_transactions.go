@@ -85,32 +85,29 @@ func (tx *EthLegacyHomesteadTxArgs) ToUnsignedFilecoinMessage(from address.Addre
 }
 
 func (tx *EthLegacyHomesteadTxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
-	sigCopy := make([]byte, len(sig))
-	copy(sigCopy, sig)
-
-	if len(sigCopy) != legacyHomesteadTxSignatureLen {
-		return nil, fmt.Errorf("signature should be %d bytes long, but got %d bytes", legacyHomesteadTxSignatureLen, len(sigCopy))
+	if len(sig) != legacyHomesteadTxSignatureLen {
+		return nil, fmt.Errorf("signature should be %d bytes long, but got %d bytes", legacyHomesteadTxSignatureLen, len(sig))
 	}
-	if sigCopy[0] != LegacyHomesteadEthTxSignaturePrefix {
-		return nil, fmt.Errorf("expected signature prefix 0x01, but got 0x%x", sigCopy[0])
+	if sig[0] != LegacyHomesteadEthTxSignaturePrefix {
+		return nil, fmt.Errorf("expected signature prefix 0x01, but got 0x%x", sig[0])
 	}
 
 	// Remove the prefix byte as it's only used for legacy transaction identification
-	sigCopy = sigCopy[1:]
+	sig = sig[1:]
 
 	// Extract the 'v' value from the signature, which is the last byte in Ethereum signatures
-	vValue := big.NewFromGo(big.NewInt(0).SetBytes(sigCopy[64:]))
+	vValue := big.NewFromGo(big.NewInt(0).SetBytes(sig[64:]))
 
 	// Adjust 'v' value for compatibility with new transactions: 27 -> 0, 28 -> 1
 	if vValue.Equals(big.NewInt(27)) {
-		sigCopy[64] = 0
+		sig[64] = 0
 	} else if vValue.Equals(big.NewInt(28)) {
-		sigCopy[64] = 1
+		sig[64] = 1
 	} else {
 		return nil, fmt.Errorf("invalid 'v' value: expected 27 or 28, got %d", vValue.Int64())
 	}
 
-	return sigCopy, nil
+	return sig, nil
 }
 
 func (tx *EthLegacyHomesteadTxArgs) ToRlpUnsignedMsg() ([]byte, error) {
