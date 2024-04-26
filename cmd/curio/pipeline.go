@@ -151,7 +151,7 @@ var sealMigrateLMSectorsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.ReqContext(cctx)
-		dep, err := deps.GetDepsCLI(ctx, cctx)
+		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ var sealMigrateLMSectorsCmd = &cli.Command{
 			return xerrors.Errorf("parsing miner actor address: %w", err)
 		}
 
-		err = guidedsetup.MigrateSectors(ctx, addr, mmeta, dep.DB, func(n int) {
+		err = guidedsetup.MigrateSectors(ctx, addr, mmeta, db, func(n int) {
 			fmt.Printf("Migrating %d sectors\n", n)
 		})
 		if err != nil {
