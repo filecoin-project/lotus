@@ -3,6 +3,7 @@ package ethtypes
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	mathbig "math/big"
 
@@ -92,6 +93,9 @@ func (tx *EthTx) GasPremium() (EthBigInt, error) {
 }
 
 func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTransaction, error) {
+	if smsg == nil {
+		return nil, errors.New("signed message is nil")
+	}
 	// Validate the sender's address format.
 	if !IsEthAddress(smsg.Message.From) {
 		return nil, fmt.Errorf("sender must be an eth account, was %s", smsg.Message.From)
