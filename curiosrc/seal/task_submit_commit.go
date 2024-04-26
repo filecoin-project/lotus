@@ -3,6 +3,7 @@ package seal
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"golang.org/x/xerrors"
 
@@ -150,7 +151,110 @@ func (s *SubmitCommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 		return false, xerrors.Errorf("inserting into message_waits: %w", err)
 	}
 
+	if err := s.transferFinalizedSectorData(ctx, sectorParams.SpID, sectorParams.SectorNumber); err != nil {
+		return false, xerrors.Errorf("transfering finalized sector data: %w", err)
+	}
+
 	return true, nil
+}
+
+func (s *SubmitCommitTask) transferFinalizedSectorData(ctx context.Context, spID, sectorNum int64) error {
+	if _, err := s.db.Exec(ctx, `
+        INSERT INTO sectors_meta (
+            sp_id,
+            sector_num,
+            reg_seal_proof,
+            ticket_epoch,
+            ticket_value,
+            orig_sealed_cid,
+            orig_unsealed_cid,
+            cur_sealed_cid,
+            cur_unsealed_cid,
+            msg_cid_precommit,
+            msg_cid_commit,
+            seed_epoch,
+            seed_value
+        )
+        SELECT
+            sp_id,
+            sector_number as sector_num,
+            reg_seal_proof,
+            ticket_epoch,
+            ticket_value,
+            tree_r_cid as orig_sealed_cid,
+            tree_d_cid as orig_unsealed_cid,
+            tree_r_cid as cur_sealed_cid,
+            tree_d_cid as cur_unsealed_cid,
+            precommit_msg_cid,
+            commit_msg_cid,
+            seed_epoch,
+            seed_value
+        FROM
+            sectors_sdr_pipeline
+        WHERE
+            sp_id = $1 AND
+            sector_number = $2 AND
+            after_finalize = true
+        ON CONFLICT (sp_id, sector_num) DO UPDATE SET
+            reg_seal_proof = excluded.reg_seal_proof,
+            ticket_epoch = excluded.ticket_epoch,
+            ticket_value = excluded.ticket_value,
+            orig_sealed_cid = excluded.orig_sealed_cid,
+            cur_sealed_cid = excluded.cur_sealed_cid,
+            msg_cid_precommit = excluded.msg_cid_precommit,
+            msg_cid_commit = excluded.msg_cid_commit,
+            seed_epoch = excluded.seed_epoch,
+            seed_value = excluded.seed_value;
+    `, spID, sectorNum); err != nil {
+		return fmt.Errorf("failed to insert/update sectors_meta: %w", err)
+	}
+
+	// Execute the query for piece metadata
+	if _, err := s.db.Exec(ctx, `
+        INSERT INTO sector_meta_pieces (
+            sp_id,
+            sector_num,
+            piece_num,
+            piece_cid,
+            piece_size,
+            requested_keep_data,
+            raw_data_size,
+            start_epoch,
+            orig_end_epoch,
+            f05_deal_id,
+            ddo_pam
+        )
+        SELECT
+            sp_id,
+            sector_number AS sector_num,
+            piece_index AS piece_num,
+            piece_cid,
+            piece_size,
+            TRUE AS requested_keep_data,
+            data_raw_size,
+            COALESCE(f05_deal_start_epoch, direct_start_epoch) as start_epoch,
+            COALESCE(f05_deal_end_epoch, direct_end_epoch) as orig_end_epoch,
+            f05_deal_id,
+            direct_piece_activation_manifest as ddo_pam
+        FROM
+            sectors_sdr_initial_pieces
+        WHERE
+            sp_id = $1 AND
+            sector_number = $2
+        ON CONFLICT (sp_id, sector_num, piece_num) DO UPDATE SET
+            piece_cid = excluded.piece_cid,
+            piece_size = excluded.piece_size,
+            requested_keep_data = excluded.requested_keep_data,
+            raw_data_size = excluded.raw_data_size,
+            start_epoch = excluded.start_epoch,
+            orig_end_epoch = excluded.orig_end_epoch,
+            f05_deal_id = excluded.f05_deal_id,
+            ddo_pam = excluded.ddo_pam;
+    `, spID, sectorNum); err != nil {
+		return fmt.Errorf("failed to insert/update sector_meta_pieces: %w", err)
+	}
+
+	return nil
 }
 
 func (s *SubmitCommitTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {

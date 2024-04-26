@@ -121,6 +121,8 @@ create table sectors_sdr_initial_pieces (
     -- direct_end_epoch bigint,
     -- direct_piece_activation_manifest jsonb,
 
+    -- TODO keep_unsealed
+
     -- foreign key
     foreign key (sp_id, sector_number) references sectors_sdr_pipeline (sp_id, sector_number) on delete cascade,
 
