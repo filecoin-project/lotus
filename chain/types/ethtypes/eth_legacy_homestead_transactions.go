@@ -242,6 +242,11 @@ func (tx *EthLegacyHomesteadTxArgs) InitialiseSignature(sig typescrypto.Signatur
 	if err != nil {
 		return fmt.Errorf("cannot parse v into EthBigInt: %w", err)
 	}
+
+	if !v_.Equals(big.NewInt(27)) && !v_.Equals(big.NewInt(28)) {
+		return fmt.Errorf("legacy homestead transactions only support 27 or 28 for v")
+	}
+
 	tx.R = r_
 	tx.S = s_
 	tx.V = v_

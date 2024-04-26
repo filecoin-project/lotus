@@ -44,7 +44,7 @@ func (f *TestFullNode) EVM() *EVM {
 	return &EVM{f}
 }
 
-// SignTransaction signs an Ethereum transaction in place with the supplied private key.
+// SignLegacyTransaction signs a legacy Homstead Ethereum transaction in place with the supplied private key.
 func (e *EVM) SignLegacyTransaction(tx *ethtypes.EthLegacyHomesteadTxArgs, privKey []byte) {
 	preimage, err := tx.ToRlpUnsignedMsg()
 	require.NoError(e.t, err)
@@ -52,21 +52,12 @@ func (e *EVM) SignLegacyTransaction(tx *ethtypes.EthLegacyHomesteadTxArgs, privK
 	// sign the RLP payload
 	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
 	require.NoError(e.t, err)
+
 	signature.Data = append([]byte{ethtypes.LegacyHomesteadEthTxSignaturePrefix}, signature.Data...)
+	signature.Data[len(signature.Data)-1] += 27
 
 	err = tx.InitialiseSignature(*signature)
 	require.NoError(e.t, err)
-}
-
-func (e *EVM) SubmitLegacyTransaction(ctx context.Context, tx *ethtypes.EthLegacyHomesteadTxArgs) ethtypes.EthHash {
-	signed, err := tx.ToRlpSignedMsg()
-	require.NoError(e.t, err)
-
-	fmt.Println("submitting now", tx.V)
-	hash, err := e.EthSendRawTransaction(ctx, signed)
-	require.NoError(e.t, err)
-
-	return hash
 }
 
 func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Address, bytecode []byte, value big.Int) eam.CreateReturn {
@@ -246,7 +237,7 @@ func (e *EVM) SignTransaction(tx *ethtypes.Eth1559TxArgs, privKey []byte) {
 }
 
 // SubmitTransaction submits the transaction via the Eth endpoint.
-func (e *EVM) SubmitTransaction(ctx context.Context, tx *ethtypes.Eth1559TxArgs) ethtypes.EthHash {
+func (e *EVM) SubmitTransaction(ctx context.Context, tx ethtypes.EthTransaction) ethtypes.EthHash {
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(e.t, err)
 
@@ -314,7 +305,6 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 }
 
 func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	fmt.Println("\n looking up hash: ", hash)
 	if mcid, err := e.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
 		return nil, err
 	} else if mcid == nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -38,7 +37,6 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	// create a new Ethereum account
 	key, ethAddr, deployer := client.EVM().NewAccount()
 	_, ethAddr2, _ := client.EVM().NewAccount()
-	fmt.Println("Deployer address: ", deployer)
 
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
 
@@ -74,11 +72,8 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 
 	// Submit transaction with valid signature
 	client.EVM().SignLegacyTransaction(&tx, key.PrivateKey)
-	tx.V = big.NewInt(int64(tx.V.Int.Uint64()) + 27)
-	fmt.Println("V: ", tx.V)
-	fmt.Println("WILL SUBMIT VALID NOW OK")
 
-	hash := client.EVM().SubmitLegacyTransaction(ctx, &tx)
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
 
 	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
@@ -102,6 +97,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, hash, ethTx.Hash)
 	require.EqualValues(t, tx.Value, ethTx.Value)
 	require.EqualValues(t, 0, ethTx.Type)
+	require.EqualValues(t, 0, ethTx.ChainID)
 	require.EqualValues(t, ethtypes.EthBytes{}, ethTx.Input)
 	require.EqualValues(t, tx.GasLimit, ethTx.Gas)
 	require.EqualValues(t, tx.GasPrice, *ethTx.GasPrice)
@@ -150,8 +146,7 @@ func TestLegacyContractDeploymentValidSignature(t *testing.T) {
 
 	// Submit transaction with valid signature
 	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
-	tx.V = big.NewInt(int64(tx.V.Int.Uint64()) + 27)
-	hash := client.EVM().SubmitLegacyTransaction(ctx, tx)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
 
 	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
@@ -198,8 +193,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 	require.NoError(t, err)
 
 	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
-	tx.V = big.NewInt(int64(tx.V.Int.Uint64()) + 27)
-	hash := client.EVM().SubmitLegacyTransaction(ctx, tx)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
 
 	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
@@ -254,8 +248,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 
 	// Submit transaction with valid signature
 	client.EVM().SignLegacyTransaction(&invokeTx, key.PrivateKey)
-	invokeTx.V = big.NewInt(int64(invokeTx.V.Int.Uint64()) + 27)
-	hash = client.EVM().SubmitLegacyTransaction(ctx, &invokeTx)
+	hash = client.EVM().SubmitTransaction(ctx, &invokeTx)
 
 	receipt, err = client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)

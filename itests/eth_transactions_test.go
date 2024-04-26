@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -85,7 +84,6 @@ func TestValueTransferValidSignature(t *testing.T) {
 	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
 	// Submit transaction with bad signature
-	fmt.Println("SENDING TO", *tx.To)
 	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
 	require.Error(t, err)
 
