@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
 	mathbig "math/big"
+
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,25 +15,39 @@ import (
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/chain/types"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 )
 
-type EthereumTransaction interface {
-	ToUnsignedMessage(from address.Address) (*types.Message, error)
-	ToSignedMessage() (*types.SignedMessage, error)
-	ToRlpUnsignedMsg() ([]byte, error)
-	TxHash() (EthHash, error)
-	ToRlpSignedMsg() ([]byte, error)
-	packTxFields() ([]interface{}, error)
-	Signature() (*typescrypto.Signature, error)
+const (
+	// LegacyHomesteadEthTxSignaturePrefix defines the prefix byte used to identify the signature of a legacy Homestead Ethereum transaction.
+	LegacyHomesteadEthTxSignaturePrefix = 0x01
+	Eip1559TxType                       = 0x2
+
+	ethLegacyHomesteadTxType    = 0x0
+	ethLegacyHomesteadTxChainID = 0x0
+)
+
+// EthTransaction defines the interface for Ethereum-like transactions.
+// It provides methods to convert transactions to various formats,
+// retrieve transaction details, and manipulate transaction signatures.
+type EthTransaction interface {
 	Sender() (address.Address, error)
-	SetEthSignatureValues(sig typescrypto.Signature) error
-	VerifiableSignature(sig []byte) ([]byte, error)
+	Signature() (*typescrypto.Signature, error)
+	InitialiseSignature(sig typescrypto.Signature) error
+	ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error)
+	ToRlpUnsignedMsg() ([]byte, error)
+	ToRlpSignedMsg() ([]byte, error)
+	TxHash() (EthHash, error)
+	ToVerifiableSignature(sig []byte) ([]byte, error)
 	ToEthTx(*types.SignedMessage) (EthTx, error)
 }
 
+// EthTx represents an Ethereum transaction structure, encapsulating fields that align with the standard Ethereum transaction components.
+// This structure can represent both EIP-1559 transactions and legacy Homestead transactions:
+// - In EIP-1559 transactions, the `GasPrice` field is set to nil/empty.
+// - In legacy Homestead transactions, the `GasPrice` field is populated to specify the fee per unit of gas, while the `MaxFeePerGas` and `MaxPriorityFeePerGas` fields are set to nil/empty.
+// Additionally, both the `ChainID` and the `Type` fields are set to 0 in legacy Homestead transactions to differentiate them from EIP-1559 transactions.
 type EthTx struct {
-	ChainID              EthUint64   `json:"chainId,omitempty"`
+	ChainID              EthUint64   `json:"chainId"`
 	Nonce                EthUint64   `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            *EthHash    `json:"blockHash"`
@@ -47,97 +62,134 @@ type EthTx struct {
 	MaxFeePerGas         *EthBigInt  `json:"maxFeePerGas,omitempty"`
 	MaxPriorityFeePerGas *EthBigInt  `json:"maxPriorityFeePerGas,omitempty"`
 	GasPrice             *EthBigInt  `json:"gasPrice,omitempty"`
-	AccessList           []EthHash   `json:"accessList,omitempty"`
+	AccessList           []EthHash   `json:"accessList"`
 	V                    EthBigInt   `json:"v"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
 }
 
-func (tx *EthTx) GasFeeCap() EthBigInt {
-	if tx.GasPrice == nil {
-		return *tx.MaxFeePerGas
+func (tx *EthTx) GasFeeCap() (EthBigInt, error) {
+	if tx.GasPrice == nil && tx.MaxFeePerGas == nil {
+		return EthBigInt{}, fmt.Errorf("gas fee cap is not set")
 	}
-	return *tx.GasPrice
+	if tx.MaxFeePerGas != nil {
+		return *tx.MaxFeePerGas, nil
+	}
+	return *tx.GasPrice, nil
 }
 
-func (tx *EthTx) GasPremium() EthBigInt {
-	if tx.MaxPriorityFeePerGas == nil {
-		return *tx.GasPrice
+func (tx *EthTx) GasPremium() (EthBigInt, error) {
+	if tx.GasPrice == nil && tx.MaxPriorityFeePerGas == nil {
+		return EthBigInt{}, fmt.Errorf("gas premium is not set")
 	}
-	return *tx.MaxPriorityFeePerGas
+
+	if tx.MaxPriorityFeePerGas != nil {
+		return *tx.MaxPriorityFeePerGas, nil
+	}
+
+	return *tx.GasPrice, nil
 }
 
-func EthereumTransactionFromSignedEthMessage(smsg *types.SignedMessage) (EthereumTransaction, error) {
-	// The from address is always an f410f address, never an ID or other address.
+func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTransaction, error) {
+	// Validate the sender's address format.
 	if !IsEthAddress(smsg.Message.From) {
-		return nil, xerrors.Errorf("sender must be an eth account, was %s", smsg.Message.From)
+		return nil, fmt.Errorf("sender must be an eth account, was %s", smsg.Message.From)
 	}
 
-	// Probably redundant, but we might as well check.
+	// Ensure the signature type is delegated.
 	if smsg.Signature.Type != typescrypto.SigTypeDelegated {
-		return nil, xerrors.Errorf("signature is not delegated type, is type: %d", smsg.Signature.Type)
+		return nil, fmt.Errorf("signature is not delegated type, is type: %d", smsg.Signature.Type)
 	}
 
+	// Convert Filecoin address to Ethereum address.
 	_, err := EthAddressFromFilecoinAddress(smsg.Message.From)
 	if err != nil {
-		// This should be impossible as we've already asserted that we have an EthAddress
-		// sender...
-		return nil, xerrors.Errorf("sender was not an eth account")
+		return nil, fmt.Errorf("sender was not an eth account")
 	}
 
-	params, to, err := parseMessageParamsAndReceipient(&smsg.Message)
+	// Extract Ethereum parameters and recipient from the message.
+	params, to, err := getEthParamsAndRecipient(&smsg.Message)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse input params and recipient: %w", err)
 	}
 
-	msg := smsg.Message
-
-	if msg.Version != 0 {
-		return nil, xerrors.Errorf("unsupported msg version: %d", msg.Version)
+	// Check for supported message version.
+	if smsg.Message.Version != 0 {
+		return nil, fmt.Errorf("unsupported msg version: %d", smsg.Message.Version)
 	}
 
+	// Process based on the signature data length.
 	switch len(smsg.Signature.Data) {
-	case 66:
-		if smsg.Signature.Data[0] != LegacyHomesteadEthTxPrefix {
+	case 66: // Legacy Homestead transaction
+		if smsg.Signature.Data[0] != LegacyHomesteadEthTxSignaturePrefix {
 			return nil, fmt.Errorf("unsupported legacy transaction; first byte of signature is %d",
 				smsg.Signature.Data[0])
 		}
 		tx := EthLegacyHomesteadTxArgs{
-			Nonce:    int(msg.Nonce),
+			Nonce:    int(smsg.Message.Nonce),
 			To:       to,
-			Value:    msg.Value,
+			Value:    smsg.Message.Value,
 			Input:    params,
-			GasPrice: msg.GasFeeCap,
-			GasLimit: int(msg.GasLimit),
+			GasPrice: smsg.Message.GasFeeCap,
+			GasLimit: int(smsg.Message.GasLimit),
 		}
-		tx.SetEthSignatureValues(smsg.Signature)
-		fmt.Println("FINISHED SETTING ETH SIGNATURE VALUES")
+		if err := tx.InitialiseSignature(smsg.Signature); err != nil {
+			return nil, fmt.Errorf("failed to initialise signature: %w", err)
+		}
 		return &tx, nil
-	case 65:
+	case 65: // EIP-1559 transaction
 		tx := Eth1559TxArgs{
 			ChainID:              build.Eip155ChainId,
-			Nonce:                int(msg.Nonce),
+			Nonce:                int(smsg.Message.Nonce),
 			To:                   to,
-			Value:                msg.Value,
+			Value:                smsg.Message.Value,
 			Input:                params,
-			MaxFeePerGas:         msg.GasFeeCap,
-			MaxPriorityFeePerGas: msg.GasPremium,
-			GasLimit:             int(msg.GasLimit),
+			MaxFeePerGas:         smsg.Message.GasFeeCap,
+			MaxPriorityFeePerGas: smsg.Message.GasPremium,
+			GasLimit:             int(smsg.Message.GasLimit),
 		}
-		tx.SetEthSignatureValues(smsg.Signature)
+		if err := tx.InitialiseSignature(smsg.Signature); err != nil {
+			return nil, fmt.Errorf("failed to initialise signature: %w", err)
+		}
 		return &tx, nil
 	default:
 		return nil, fmt.Errorf("unsupported signature length: %d", len(smsg.Signature.Data))
 	}
 }
 
-func ParseEthTx(data []byte) (EthereumTransaction, error) {
+func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
+	from, err := tx.Sender()
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate sender: %w", err)
+	}
+
+	unsignedMsg, err := tx.ToUnsignedFilecoinMessage(from)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to unsigned msg: %w", err)
+	}
+
+	siggy, err := tx.Signature()
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate signature: %w", err)
+	}
+
+	return &types.SignedMessage{
+		Message:   *unsignedMsg,
+		Signature: *siggy,
+	}, nil
+}
+
+func ParseEthTransaction(data []byte) (EthTransaction, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("empty data")
 	}
 
 	if data[0] > 0x7f {
-		return parseLegacyHomesteadTx(data)
+		tx, err := parseLegacyHomesteadTx(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse legacy homestead transaction: %w", err)
+		}
+		return tx, nil
 	}
 
 	if data[0] == 1 {
@@ -159,28 +211,30 @@ type methodInfo struct {
 	params []byte
 }
 
-func filecoin_method_info(recipient *EthAddress, input []byte) (*methodInfo, error) {
-	var err error
+func getFilecoinMethodInfo(recipient *EthAddress, input []byte) (*methodInfo, error) {
 	var params []byte
 	if len(input) > 0 {
 		buf := new(bytes.Buffer)
-		if err = cbg.WriteByteArray(buf, input); err != nil {
-			return nil, xerrors.Errorf("failed to write input args: %w", err)
+		if err := cbg.WriteByteArray(buf, input); err != nil {
+			return nil, fmt.Errorf("failed to write input args: %w", err)
 		}
 		params = buf.Bytes()
 	}
 
 	var to address.Address
 	var method abi.MethodNum
-	// nil indicates the EAM, only CreateExternal is allowed
+
 	if recipient == nil {
+		// If recipient is nil, use Ethereum Address Manager Actor and CreateExternal method
 		method = builtintypes.MethodsEAM.CreateExternal
 		to = builtintypes.EthereumAddressManagerActorAddr
 	} else {
+		// Otherwise, use InvokeContract method and convert EthAddress to Filecoin address
 		method = builtintypes.MethodsEVM.InvokeContract
+		var err error
 		to, err = recipient.ToFilecoinAddress()
 		if err != nil {
-			return nil, xerrors.Errorf("failed to convert To into filecoin addr: %w", err)
+			return nil, fmt.Errorf("failed to convert EthAddress to Filecoin address: %w", err)
 		}
 	}
 
@@ -309,120 +363,19 @@ func parseEthAddr(v interface{}) (*EthAddress, error) {
 	return &addr, nil
 }
 
-func toSignedMessageCommon(tx EthereumTransaction) (*types.SignedMessage, error) {
-	from, err := tx.Sender()
-	if err != nil {
-		return nil, xerrors.Errorf("failed to calculate sender: %w", err)
-	}
-
-	unsignedMsg, err := tx.ToUnsignedMessage(from)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to convert to unsigned msg: %w", err)
-	}
-
-	siggy, err := tx.Signature()
-	if err != nil {
-		return nil, xerrors.Errorf("failed to calculate signature: %w", err)
-	}
-
-	return &types.SignedMessage{
-		Message:   *unsignedMsg,
-		Signature: *siggy,
-	}, nil
-}
-
-func parseLegacyHomesteadTx(data []byte) (*EthLegacyHomesteadTxArgs, error) {
-	if data[0] <= 0x7f {
-		return nil, fmt.Errorf("not a legacy eth transaction")
-	}
-
-	d, err := DecodeRLP(data)
-	if err != nil {
-		return nil, err
-	}
-	decoded, ok := d.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("not a Legacy transaction: decoded data is not a list")
-	}
-
-	if len(decoded) != 9 {
-		return nil, fmt.Errorf("not a Legacy transaction: should have 9 elements in the rlp list")
-	}
-
-	nonce, err := parseInt(decoded[0])
-	if err != nil {
-		return nil, err
-	}
-
-	gasPrice, err := parseBigInt(decoded[1])
-	if err != nil {
-		return nil, err
-	}
-
-	gasLimit, err := parseInt(decoded[2])
-	if err != nil {
-		return nil, err
-	}
-
-	to, err := parseEthAddr(decoded[3])
-	if err != nil {
-		return nil, err
-	}
-
-	value, err := parseBigInt(decoded[4])
-	if err != nil {
-		return nil, err
-	}
-
-	input, ok := decoded[5].([]byte)
-	if !ok {
-		return nil, fmt.Errorf("input is not a byte slice")
-	}
-
-	v, err := parseBigInt(decoded[6])
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := parseBigInt(decoded[7])
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := parseBigInt(decoded[8])
-	if err != nil {
-		return nil, err
-	}
-
-	return &EthLegacyHomesteadTxArgs{
-		Nonce:    nonce,
-		GasPrice: gasPrice,
-		GasLimit: gasLimit,
-		To:       to,
-		Value:    value,
-		Input:    input,
-		V:        v,
-		R:        r,
-		S:        s,
-	}, nil
-}
-
-func parseMessageParamsAndReceipient(msg *types.Message) ([]byte, *EthAddress, error) {
-	var params []byte
-	var to *EthAddress
-
+func getEthParamsAndRecipient(msg *types.Message) (params []byte, to *EthAddress, err error) {
 	if len(msg.Params) > 0 {
 		paramsReader := bytes.NewReader(msg.Params)
 		var err error
 		params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
 		if err != nil {
-			return nil, nil, xerrors.Errorf("failed to read params byte array: %w", err)
+			return nil, nil, fmt.Errorf("failed to read params byte array: %w", err)
 		}
 		if paramsReader.Len() != 0 {
-			return nil, nil, xerrors.Errorf("extra data found in params")
+			return nil, nil, fmt.Errorf("extra data found in params")
 		}
 		if len(params) == 0 {
-			return nil, nil, xerrors.Errorf("non-empty params encode empty byte array")
+			return nil, nil, fmt.Errorf("non-empty params encode empty byte array")
 		}
 	}
 
@@ -438,7 +391,7 @@ func parseMessageParamsAndReceipient(msg *types.Message) ([]byte, *EthAddress, e
 		to = &addr
 	} else {
 		return nil, nil,
-			xerrors.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
+			fmt.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
 				msg.Method, builtintypes.MethodsEVM.InvokeContract)
 	}
 

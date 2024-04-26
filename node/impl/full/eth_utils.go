@@ -450,7 +450,7 @@ func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, sa StateAPI) (ethty
 
 func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, error) {
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		tx, err := ethtypes.EthereumTransactionFromSignedEthMessage(smsg)
+		tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
 		if err != nil {
 			return ethtypes.EthHash{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
@@ -469,7 +469,7 @@ func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (
 
 	// This is an eth tx
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		ethTx, err := ethtypes.EthereumTransactionFromSignedEthMessage(smsg)
+		ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
 		if err != nil {
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
@@ -721,7 +721,17 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 
 	baseFee := parentTs.Blocks()[0].ParentBaseFee
 
-	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.GasFeeCap()), big.Int(tx.GasPremium()), true)
+	gasFeeCap, err := tx.GasFeeCap()
+	if err != nil {
+		return api.EthTxReceipt{}, xerrors.Errorf("failed to get gas fee cap: %w", err)
+	}
+	gasPremium, err := tx.GasPremium()
+	if err != nil {
+		return api.EthTxReceipt{}, xerrors.Errorf("failed to get gas premium: %w", err)
+	}
+
+	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(gasFeeCap),
+		big.Int(gasPremium), true)
 	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
 
 	effectiveGasPrice := big.Zero()

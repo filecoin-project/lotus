@@ -12,10 +12,11 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// define a one byte prefix for legacy homestead eth transactions
-const LegacyHomesteadEthTxPrefix = 0x01
+const (
+	legacyHomesteadTxSignatureLen = 66
+)
 
-var _ EthereumTransaction = (*EthLegacyHomesteadTxArgs)(nil)
+var _ EthTransaction = (*EthLegacyHomesteadTxArgs)(nil)
 
 type EthLegacyHomesteadTxArgs struct {
 	Nonce    int         `json:"nonce"`
@@ -34,18 +35,17 @@ func (tx *EthLegacyHomesteadTxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, e
 	if err != nil {
 		// This should be impossible as we've already asserted that we have an EthAddress
 		// sender...
-		return EthTx{}, xerrors.Errorf("sender was not an eth account")
+		return EthTx{}, fmt.Errorf("sender was not an eth account")
 	}
 	hash, err := tx.TxHash()
 	if err != nil {
-		return EthTx{}, err
+		return EthTx{}, fmt.Errorf("failed to get tx hash: %w", err)
 	}
 
 	gasPrice := EthBigInt(tx.GasPrice)
-
 	ethTx := EthTx{
-		ChainID:  0x00,
-		Type:     0x00,
+		ChainID:  ethLegacyHomesteadTxChainID,
+		Type:     ethLegacyHomesteadTxType,
 		Nonce:    EthUint64(tx.Nonce),
 		Hash:     hash,
 		To:       tx.To,
@@ -62,8 +62,8 @@ func (tx *EthLegacyHomesteadTxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, e
 	return ethTx, nil
 }
 
-func (tx *EthLegacyHomesteadTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, error) {
-	mi, err := filecoin_method_info(tx.To, tx.Input)
+func (tx *EthLegacyHomesteadTxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
+	mi, err := getFilecoinMethodInfo(tx.To, tx.Input)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get method info: %w", err)
 	}
@@ -82,30 +82,33 @@ func (tx *EthLegacyHomesteadTxArgs) ToUnsignedMessage(from address.Address) (*ty
 	}, nil
 }
 
-func (tx *EthLegacyHomesteadTxArgs) VerifiableSignature(sig []byte) ([]byte, error) {
-	if len(sig) != 66 {
-		return nil, fmt.Errorf("signature should be 66 bytes long, but got %d bytes", len(sig))
+func (tx *EthLegacyHomesteadTxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
+	sigCopy := make([]byte, len(sig))
+	copy(sigCopy, sig)
+
+	if len(sigCopy) != legacyHomesteadTxSignatureLen {
+		return nil, fmt.Errorf("signature should be %d bytes long, but got %d bytes", legacyHomesteadTxSignatureLen, len(sigCopy))
 	}
-	if sig[0] != LegacyHomesteadEthTxPrefix {
-		return nil, fmt.Errorf("signature prefix should be 0x01, but got %x", sig[0])
+	if sigCopy[0] != LegacyHomesteadEthTxSignaturePrefix {
+		return nil, fmt.Errorf("expected signature prefix 0x01, but got 0x%x", sigCopy[0])
 	}
 
-	sig = sig[1:]
+	// Remove the prefix byte as it's only used for legacy transaction identification
+	sigCopy = sigCopy[1:]
 
-	// legacy transactions have a `V` value of 27 or 28 but new transactions have a `V` value of 0 or 1
-	vValue := big.NewInt(0).SetBytes(sig[64:])
-	if vValue.Uint64() != 27 && vValue.Uint64() != 28 {
-		return nil, fmt.Errorf("v value is not 27 or 28 for legacy transaction")
+	// Extract the 'v' value from the signature, which is the last byte in Ethereum signatures
+	vValue := big.NewFromGo(big.NewInt(0).SetBytes(sigCopy[64:]))
+
+	// Adjust 'v' value for compatibility with new transactions: 27 -> 0, 28 -> 1
+	if vValue.Equals(big.NewInt(27)) {
+		sigCopy[64] = 0
+	} else if vValue.Equals(big.NewInt(28)) {
+		sigCopy[64] = 1
+	} else {
+		return nil, fmt.Errorf("invalid 'v' value: expected 27 or 28, got %d", vValue.Int64())
 	}
-	vValue_ := big.Sub(big.NewFromGo(vValue), big.NewInt(27))
-	// we ignore the first byte of the signature data because it is the prefix for legacy txns
-	sig[64] = byte(vValue_.Uint64())
 
-	return sig, nil
-}
-
-func (tx *EthLegacyHomesteadTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
-	return toSignedMessageCommon(tx)
+	return sigCopy, nil
 }
 
 func (tx *EthLegacyHomesteadTxArgs) ToRlpUnsignedMsg() ([]byte, error) {
@@ -146,6 +149,187 @@ func (tx *EthLegacyHomesteadTxArgs) ToRlpSignedMsg() ([]byte, error) {
 	return encoded, nil
 }
 
+func (tx *EthLegacyHomesteadTxArgs) Signature() (*typescrypto.Signature, error) {
+	// throw an error if the v value is not 27 or 28
+	if !tx.V.Equals(big.NewInt(27)) && !tx.V.Equals(big.NewInt(28)) {
+		return nil, fmt.Errorf("legacy homestead transactions only support 27 or 28 for v")
+	}
+	r := tx.R.Int.Bytes()
+	s := tx.S.Int.Bytes()
+	v := tx.V.Int.Bytes()
+
+	sig := append([]byte{}, padLeadingZeros(r, 32)...)
+	sig = append(sig, padLeadingZeros(s, 32)...)
+	if len(v) == 0 {
+		sig = append(sig, 0)
+	} else {
+		sig = append(sig, v[0])
+	}
+	// pre-pend a one byte marker so nodes know that this is a legacy transaction
+	sig = append([]byte{LegacyHomesteadEthTxSignaturePrefix}, sig...)
+
+	if len(sig) != legacyHomesteadTxSignatureLen {
+		return nil, fmt.Errorf("signature is not %d bytes", legacyHomesteadTxSignatureLen)
+	}
+
+	return &typescrypto.Signature{
+		Type: typescrypto.SigTypeDelegated, Data: sig,
+	}, nil
+}
+
+func (tx *EthLegacyHomesteadTxArgs) Sender() (address.Address, error) {
+	msg, err := tx.ToRlpUnsignedMsg()
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get rlp unsigned msg: %w", err)
+	}
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(msg)
+	hash := hasher.Sum(nil)
+
+	sig, err := tx.Signature()
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get signature: %w", err)
+	}
+
+	sigData, err := tx.ToVerifiableSignature(sig.Data)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get verifiable signature: %w", err)
+	}
+
+	pubk, err := gocrypto.EcRecover(hash, sigData)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to recover pubkey: %w", err)
+	}
+
+	ethAddr, err := EthAddressFromPubKey(pubk)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get eth address from pubkey: %w", err)
+	}
+
+	ea, err := CastEthAddress(ethAddr)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to cast eth address: %w", err)
+	}
+
+	return ea.ToFilecoinAddress()
+}
+
+func (tx *EthLegacyHomesteadTxArgs) InitialiseSignature(sig typescrypto.Signature) error {
+	if sig.Type != typescrypto.SigTypeDelegated {
+		return fmt.Errorf("RecoverSignature only supports Delegated signature")
+	}
+
+	if len(sig.Data) != legacyHomesteadTxSignatureLen {
+		return fmt.Errorf("signature should be %d bytes long, but got %d bytes", legacyHomesteadTxSignatureLen, len(sig.Data))
+	}
+
+	if sig.Data[0] != LegacyHomesteadEthTxSignaturePrefix {
+		return fmt.Errorf("expected signature prefix 0x01, but got 0x%x", sig.Data[0])
+	}
+
+	// ignore the first byte of the tx as it's only used for legacy transaction identification
+	r_, err := parseBigInt(sig.Data[1:33])
+	if err != nil {
+		return fmt.Errorf("cannot parse r into EthBigInt: %w", err)
+	}
+
+	s_, err := parseBigInt(sig.Data[33:65])
+	if err != nil {
+		return fmt.Errorf("cannot parse s into EthBigInt: %w", err)
+	}
+
+	v_, err := parseBigInt([]byte{sig.Data[65]})
+	if err != nil {
+		return fmt.Errorf("cannot parse v into EthBigInt: %w", err)
+	}
+	tx.R = r_
+	tx.S = s_
+	tx.V = v_
+	return nil
+}
+
+func parseLegacyHomesteadTx(data []byte) (*EthLegacyHomesteadTxArgs, error) {
+	if data[0] <= 0x7f {
+		return nil, fmt.Errorf("not a legacy eth transaction")
+	}
+
+	d, err := DecodeRLP(data)
+	if err != nil {
+		return nil, err
+	}
+	decoded, ok := d.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("not a Legacy transaction: decoded data is not a list")
+	}
+
+	if len(decoded) != 9 {
+		return nil, fmt.Errorf("not a Legacy transaction: should have 9 elements in the rlp list")
+	}
+
+	nonce, err := parseInt(decoded[0])
+	if err != nil {
+		return nil, err
+	}
+
+	gasPrice, err := parseBigInt(decoded[1])
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit, err := parseInt(decoded[2])
+	if err != nil {
+		return nil, err
+	}
+
+	to, err := parseEthAddr(decoded[3])
+	if err != nil {
+		return nil, err
+	}
+
+	value, err := parseBigInt(decoded[4])
+	if err != nil {
+		return nil, err
+	}
+
+	input, ok := decoded[5].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("input is not a byte slice")
+	}
+
+	v, err := parseBigInt(decoded[6])
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := parseBigInt(decoded[7])
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := parseBigInt(decoded[8])
+	if err != nil {
+		return nil, err
+	}
+
+	// legacy homestead transactions only support 27 or 28 for v
+	if !v.Equals(big.NewInt(27)) && !v.Equals(big.NewInt(28)) {
+		return nil, fmt.Errorf("legacy homestead transactions only support 27 or 28 for v")
+	}
+
+	return &EthLegacyHomesteadTxArgs{
+		Nonce:    nonce,
+		GasPrice: gasPrice,
+		GasLimit: gasLimit,
+		To:       to,
+		Value:    value,
+		Input:    input,
+		V:        v,
+		R:        r,
+		S:        s,
+	}, nil
+}
+
 func (tx *EthLegacyHomesteadTxArgs) packTxFields() ([]interface{}, error) {
 	nonce, err := formatInt(tx.Nonce)
 	if err != nil {
@@ -177,101 +361,4 @@ func (tx *EthLegacyHomesteadTxArgs) packTxFields() ([]interface{}, error) {
 		tx.Input,
 	}
 	return res, nil
-}
-
-func (tx *EthLegacyHomesteadTxArgs) Signature() (*typescrypto.Signature, error) {
-	// throw an error if the v value is not 27 or 28
-	if !tx.V.Equals(big.NewInt(27)) && !tx.V.Equals(big.NewInt(28)) {
-		return nil, fmt.Errorf("legacy homestead transactions only support 27 or 28 for v")
-	}
-	r := tx.R.Int.Bytes()
-	s := tx.S.Int.Bytes()
-	v := tx.V.Int.Bytes()
-
-	sig := append([]byte{}, padLeadingZeros(r, 32)...)
-	sig = append(sig, padLeadingZeros(s, 32)...)
-	if len(v) == 0 {
-		sig = append(sig, 0)
-	} else {
-		sig = append(sig, v[0])
-	}
-	if len(sig) != 65 {
-		return nil, fmt.Errorf("signature is not 65 bytes")
-	}
-
-	// pre-pend a one byte marker so nodes know that this is a legacy transaction
-	sig = append([]byte{LegacyHomesteadEthTxPrefix}, sig...)
-
-	return &typescrypto.Signature{
-		Type: typescrypto.SigTypeDelegated, Data: sig,
-	}, nil
-}
-
-func (tx *EthLegacyHomesteadTxArgs) Sender() (address.Address, error) {
-	msg, err := tx.ToRlpUnsignedMsg()
-	if err != nil {
-		return address.Undef, err
-	}
-
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write(msg)
-	hash := hasher.Sum(nil)
-
-	sig, err := tx.Signature()
-	if err != nil {
-		return address.Undef, err
-	}
-
-	sigData, err := tx.VerifiableSignature(sig.Data)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	pubk, err := gocrypto.EcRecover(hash, sigData)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	ethAddr, err := EthAddressFromPubKey(pubk)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	ea, err := CastEthAddress(ethAddr)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return ea.ToFilecoinAddress()
-}
-
-func (tx *EthLegacyHomesteadTxArgs) SetEthSignatureValues(sig typescrypto.Signature) error {
-	if sig.Type != typescrypto.SigTypeDelegated {
-		return fmt.Errorf("RecoverSignature only supports Delegated signature")
-	}
-
-	if len(sig.Data) != 66 {
-		return fmt.Errorf("signature should be 66 bytes long, but got %d bytes", len(sig.Data))
-	}
-
-	// ignore the first byte of the tx
-
-	r_, err := parseBigInt(sig.Data[1:33])
-	if err != nil {
-		return fmt.Errorf("cannot parse r into EthBigInt")
-	}
-
-	s_, err := parseBigInt(sig.Data[33:65])
-	if err != nil {
-		return fmt.Errorf("cannot parse s into EthBigInt")
-	}
-
-	v_, err := parseBigInt([]byte{sig.Data[65]})
-	if err != nil {
-		return fmt.Errorf("cannot parse v into EthBigInt")
-	}
-	tx.R = r_
-	tx.S = s_
-	tx.V = v_
-	return nil
 }

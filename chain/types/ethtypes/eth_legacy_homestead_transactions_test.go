@@ -52,7 +52,7 @@ func TestEthLegacyHomesteadTxArgs(t *testing.T) {
 		from, err := txArgs.Sender()
 		require.NoError(t, err)
 
-		smsg, err := txArgs.ToSignedMessage()
+		smsg, err := ToSignedFilecoinMessage(txArgs)
 		require.NoError(t, err)
 
 		sig := smsg.Signature.Data[:]
@@ -87,23 +87,23 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 	}{
 		{
 			"0xf882800182540894095e7baea6a6c7c4c2dfeb977efac326af552d8780a3deadbeef0000000101010010101010101010101010101aaabbbbbbcccccccddddddddd1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a01fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
-			`"0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353"`,
-			`"0x1fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"`,
-			`"0x1b"`,
+			"0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+			"0x1fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
+			"0x1b",
 			false,
 		},
 		{
 			"0xf85f030182520794b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa07778cde41a8a37f6a087622b38bc201bd3e7df06dce067569d4def1b53dba98c",
-			`"0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a"`,
-			`"0x7778cde41a8a37f6a087622b38bc201bd3e7df06dce067569d4def1b53dba98c"`,
-			`"0x1b"`,
+			"0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+			"0x7778cde41a8a37f6a087622b38bc201bd3e7df06dce067569d4def1b53dba98c",
+			"0x1b",
 			false,
 		},
 		{
 			"0x00",
-			`""`,
-			`""`,
-			`""`,
+			"",
+			"",
+			"",
 			true,
 		},
 	}
@@ -119,19 +119,10 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 		sig, err := tx.Signature()
 		require.Nil(t, err)
 
-		tx.SetEthSignatureValues(*sig)
+		require.NoError(t, tx.InitialiseSignature(*sig))
 
-		marshaledR, err := tx.R.MarshalJSON()
-		require.Nil(t, err)
-
-		marshaledS, err := tx.S.MarshalJSON()
-		require.Nil(t, err)
-
-		marshaledV, err := tx.V.MarshalJSON()
-		require.Nil(t, err)
-
-		require.Equal(t, tc.ExpectedR, string(marshaledR), i)
-		require.Equal(t, tc.ExpectedS, string(marshaledS), i)
-		require.Equal(t, tc.ExpectedV, string(marshaledV), i)
+		require.Equal(t, tc.ExpectedR, "0x"+tx.R.Text(16), i)
+		require.Equal(t, tc.ExpectedS, "0x"+tx.S.Text(16), i)
+		require.Equal(t, tc.ExpectedV, "0x"+tx.V.Text(16), i)
 	}
 }

@@ -1,6 +1,8 @@
 package ethtypes
 
 import (
+	"fmt"
+
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
@@ -13,9 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const Eip1559TxType = 2
-
-var _ EthereumTransaction = (*Eth1559TxArgs)(nil)
+var _ EthTransaction = (*Eth1559TxArgs)(nil)
 
 type Eth1559TxArgs struct {
 	ChainID              int         `json:"chainId"`
@@ -31,9 +31,11 @@ type Eth1559TxArgs struct {
 	S                    big.Int     `json:"s"`
 }
 
-func (tx *Eth1559TxArgs) ToUnsignedMessage(from address.Address) (*types.Message, error) {
-	tx.ChainID = build.Eip155ChainId
-	mi, err := filecoin_method_info(tx.To, tx.Input)
+func (tx *Eth1559TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
+	if tx.ChainID != build.Eip155ChainId {
+		return nil, fmt.Errorf("invalid chain id: %d", tx.ChainID)
+	}
+	mi, err := getFilecoinMethodInfo(tx.To, tx.Input)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get method info: %w", err)
 	}
@@ -52,11 +54,6 @@ func (tx *Eth1559TxArgs) ToUnsignedMessage(from address.Address) (*types.Message
 	}, nil
 }
 
-// This function has been deduplicated and now uses the common implementation from EthLegacyHomesteadTxArgs
-func (tx *Eth1559TxArgs) ToSignedMessage() (*types.SignedMessage, error) {
-	return toSignedMessageCommon(tx)
-}
-
 func (tx *Eth1559TxArgs) ToRlpUnsignedMsg() ([]byte, error) {
 	packed, err := tx.packTxFields()
 	if err != nil {
@@ -67,7 +64,7 @@ func (tx *Eth1559TxArgs) ToRlpUnsignedMsg() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append([]byte{0x02}, encoded...), nil
+	return append([]byte{Eip1559TxType}, encoded...), nil
 }
 
 func (tx *Eth1559TxArgs) TxHash() (EthHash, error) {
@@ -80,7 +77,6 @@ func (tx *Eth1559TxArgs) TxHash() (EthHash, error) {
 }
 
 func (tx *Eth1559TxArgs) ToRlpSignedMsg() ([]byte, error) {
-	tx.ChainID = build.Eip155ChainId
 	packed1, err := tx.packTxFields()
 	if err != nil {
 		return nil, err
@@ -96,51 +92,6 @@ func (tx *Eth1559TxArgs) ToRlpSignedMsg() ([]byte, error) {
 		return nil, err
 	}
 	return append([]byte{0x02}, encoded...), nil
-}
-
-func (tx *Eth1559TxArgs) packTxFields() ([]interface{}, error) {
-	chainId, err := formatInt(tx.ChainID)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce, err := formatInt(tx.Nonce)
-	if err != nil {
-		return nil, err
-	}
-
-	maxPriorityFeePerGas, err := formatBigInt(tx.MaxPriorityFeePerGas)
-	if err != nil {
-		return nil, err
-	}
-
-	maxFeePerGas, err := formatBigInt(tx.MaxFeePerGas)
-	if err != nil {
-		return nil, err
-	}
-
-	gasLimit, err := formatInt(tx.GasLimit)
-	if err != nil {
-		return nil, err
-	}
-
-	value, err := formatBigInt(tx.Value)
-	if err != nil {
-		return nil, err
-	}
-
-	res := []interface{}{
-		chainId,
-		nonce,
-		maxPriorityFeePerGas,
-		maxFeePerGas,
-		gasLimit,
-		formatEthAddr(tx.To),
-		value,
-		tx.Input,
-		[]interface{}{}, // access list
-	}
-	return res, nil
 }
 
 func (tx *Eth1559TxArgs) Signature() (*typescrypto.Signature, error) {
@@ -197,7 +148,7 @@ func (tx *Eth1559TxArgs) Sender() (address.Address, error) {
 	return ea.ToFilecoinAddress()
 }
 
-func (tx *Eth1559TxArgs) VerifiableSignature(sig []byte) ([]byte, error) {
+func (tx *Eth1559TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
 	return sig, nil
 }
 
@@ -233,7 +184,7 @@ func (tx *Eth1559TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
 	return ethTx, nil
 }
 
-func (tx *Eth1559TxArgs) SetEthSignatureValues(sig typescrypto.Signature) error {
+func (tx *Eth1559TxArgs) InitialiseSignature(sig typescrypto.Signature) error {
 	if sig.Type != typescrypto.SigTypeDelegated {
 		return xerrors.Errorf("RecoverSignature only supports Delegated signature")
 	}
@@ -264,8 +215,53 @@ func (tx *Eth1559TxArgs) SetEthSignatureValues(sig typescrypto.Signature) error 
 	return nil
 }
 
+func (tx *Eth1559TxArgs) packTxFields() ([]interface{}, error) {
+	chainId, err := formatInt(tx.ChainID)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := formatInt(tx.Nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	maxPriorityFeePerGas, err := formatBigInt(tx.MaxPriorityFeePerGas)
+	if err != nil {
+		return nil, err
+	}
+
+	maxFeePerGas, err := formatBigInt(tx.MaxFeePerGas)
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit, err := formatInt(tx.GasLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	value, err := formatBigInt(tx.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	res := []interface{}{
+		chainId,
+		nonce,
+		maxPriorityFeePerGas,
+		maxFeePerGas,
+		gasLimit,
+		formatEthAddr(tx.To),
+		value,
+		tx.Input,
+		[]interface{}{}, // access list
+	}
+	return res, nil
+}
+
 func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
-	if data[0] != 2 {
+	if data[0] != Eip1559TxType {
 		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not 2")
 	}
 
@@ -365,20 +361,14 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 	return &args, nil
 }
 
-func Eth1559TxArgsFromUnsignedEthMessage(msg *types.Message) (*Eth1559TxArgs, error) {
-	var (
-		to     *EthAddress
-		params []byte
-		err    error
-	)
-
+func Eth1559TxArgsFromUnsignedFilecoinMessage(msg *types.Message) (*Eth1559TxArgs, error) {
 	if msg.Version != 0 {
-		return nil, xerrors.Errorf("unsupported msg version: %d", msg.Version)
+		return nil, fmt.Errorf("unsupported msg version: %d", msg.Version)
 	}
 
-	params, to, err = parseMessageParamsAndReceipient(msg)
+	params, to, err := getEthParamsAndRecipient(msg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get eth params and recipient: %w", err)
 	}
 
 	return &Eth1559TxArgs{

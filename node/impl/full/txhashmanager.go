@@ -86,7 +86,7 @@ func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.
 		return
 	}
 
-	ethTx, err := ethtypes.EthereumTransactionFromSignedEthMessage(msg)
+	ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(msg)
 	if err != nil {
 		log.Errorf("error converting filecoin message to eth tx: %s", err)
 		return

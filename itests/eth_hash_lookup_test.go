@@ -385,7 +385,7 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 	sender, err := tx.Sender()
 	require.NoError(t, err)
 
-	unsignedMessage, err := tx.ToUnsignedMessage(sender)
+	unsignedMessage, err := tx.ToUnsignedFilecoinMessage(sender)
 	require.NoError(t, err)
 
 	rawTxHash, err := tx.TxHash()

@@ -62,7 +62,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 		S:        big.Zero(),
 	}
 
-	require.NoError(t, client.EVM().SignLegacyTransaction(&tx, key.PrivateKey))
+	client.EVM().SignLegacyTransaction(&tx, key.PrivateKey)
 	// Mangle signature
 	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
 
@@ -73,7 +73,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.Error(t, err)
 
 	// Submit transaction with valid signature
-	require.NoError(t, client.EVM().SignLegacyTransaction(&tx, key.PrivateKey))
+	client.EVM().SignLegacyTransaction(&tx, key.PrivateKey)
 	tx.V = big.NewInt(int64(tx.V.Int.Uint64()) + 27)
 	fmt.Println("V: ", tx.V)
 	fmt.Println("WILL SUBMIT VALID NOW OK")
@@ -104,7 +104,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, 0, ethTx.Type)
 	require.EqualValues(t, ethtypes.EthBytes{}, ethTx.Input)
 	require.EqualValues(t, tx.GasLimit, ethTx.Gas)
-	require.EqualValues(t, tx.GasPrice, ethTx.GasPrice)
+	require.EqualValues(t, tx.GasPrice, *ethTx.GasPrice)
 	require.EqualValues(t, tx.R, ethTx.R)
 	require.EqualValues(t, tx.S, ethTx.S)
 	require.EqualValues(t, tx.V, ethTx.V)
@@ -138,7 +138,7 @@ func TestLegacyContractDeploymentValidSignature(t *testing.T) {
 	tx, err := deployLegacyContractTx(ctx, client, ethAddr, contract)
 	require.NoError(t, err)
 
-	require.NoError(t, client.EVM().SignLegacyTransaction(tx, key.PrivateKey))
+	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
 	// Mangle signature
 	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
 
@@ -149,7 +149,7 @@ func TestLegacyContractDeploymentValidSignature(t *testing.T) {
 	require.Error(t, err)
 
 	// Submit transaction with valid signature
-	require.NoError(t, client.EVM().SignLegacyTransaction(tx, key.PrivateKey))
+	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
 	tx.V = big.NewInt(int64(tx.V.Int.Uint64()) + 27)
 	hash := client.EVM().SubmitLegacyTransaction(ctx, tx)
 

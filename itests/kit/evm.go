@@ -45,18 +45,17 @@ func (f *TestFullNode) EVM() *EVM {
 }
 
 // SignTransaction signs an Ethereum transaction in place with the supplied private key.
-func (e *EVM) SignLegacyTransaction(tx *ethtypes.EthLegacyHomesteadTxArgs, privKey []byte) error {
+func (e *EVM) SignLegacyTransaction(tx *ethtypes.EthLegacyHomesteadTxArgs, privKey []byte) {
 	preimage, err := tx.ToRlpUnsignedMsg()
 	require.NoError(e.t, err)
 
 	// sign the RLP payload
 	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
 	require.NoError(e.t, err)
-	signature.Data = append([]byte{ethtypes.LegacyHomesteadEthTxPrefix}, signature.Data...)
+	signature.Data = append([]byte{ethtypes.LegacyHomesteadEthTxSignaturePrefix}, signature.Data...)
 
-	fmt.Println("doing now")
-
-	return tx.SetEthSignatureValues(*signature)
+	err = tx.InitialiseSignature(*signature)
+	require.NoError(e.t, err)
 }
 
 func (e *EVM) SubmitLegacyTransaction(ctx context.Context, tx *ethtypes.EthLegacyHomesteadTxArgs) ethtypes.EthHash {
@@ -242,7 +241,8 @@ func (e *EVM) SignTransaction(tx *ethtypes.Eth1559TxArgs, privKey []byte) {
 	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
 	require.NoError(e.t, err)
 
-	tx.SetEthSignatureValues(*signature)
+	err = tx.InitialiseSignature(*signature)
+	require.NoError(e.t, err)
 }
 
 // SubmitTransaction submits the transaction via the Eth endpoint.

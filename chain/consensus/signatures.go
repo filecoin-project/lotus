@@ -25,11 +25,11 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 
 	switch signatureType {
 	case crypto.SigTypeDelegated:
-		ethTx, err := ethtypes.EthereumTransactionFromSignedEthMessage(msg)
+		ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(msg)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct Ethereum transaction: %w", err)
 		}
-		filecoinMsg, err := ethTx.ToUnsignedMessage(msg.Message.From)
+		filecoinMsg, err := ethTx.ToUnsignedFilecoinMessage(msg.Message.From)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct Filecoin message: %w", err)
 		}
@@ -43,7 +43,7 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 			return xerrors.Errorf("failed to encode RLP message: %w", err)
 		}
 		digest = rlpEncodedMsg
-		signatureCopy.Data, err = ethTx.VerifiableSignature(signatureCopy.Data)
+		signatureCopy.Data, err = ethTx.ToVerifiableSignature(signatureCopy.Data)
 		if err != nil {
 			return xerrors.Errorf("failed to verify signature: %w", err)
 		}

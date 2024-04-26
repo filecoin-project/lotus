@@ -50,7 +50,7 @@ func TestEIP1559TxArgs(t *testing.T) {
 		from, err := txArgs.Sender()
 		require.NoError(t, err, comment)
 
-		smsg, err := txArgs.ToSignedMessage()
+		smsg, err := ToSignedFilecoinMessage(txArgs)
 		require.NoError(t, err, comment)
 
 		err = sigs.Verify(&smsg.Signature, from, msgRecovered)
@@ -73,23 +73,23 @@ func TestEIP1559Signatures(t *testing.T) {
 	}{
 		{
 			"0x02f8598401df5e76028301d69083086a5e835532dd808080c080a0457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595a02d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
-			`"0x457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595"`,
-			`"0x2d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc"`,
-			`"0x0"`,
+			"0x457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595",
+			"0x2d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
+			"0x0",
 			false,
 		},
 		{
 			"0x02f8598401df5e76038301d69083086a5e835532dd808080c001a012a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddfa052a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1",
-			`"0x12a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddf"`,
-			`"0x52a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1"`,
-			`"0x1"`,
+			"0x12a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddf",
+			"0x52a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1",
+			"0x1",
 			false,
 		},
 		{
 			"0x00",
-			`""`,
-			`""`,
-			`""`,
+			"",
+			"",
+			"",
 			true,
 		},
 	}
@@ -105,20 +105,11 @@ func TestEIP1559Signatures(t *testing.T) {
 		sig, err := tx.Signature()
 		require.Nil(t, err)
 
-		tx.SetEthSignatureValues(*sig)
+		require.NoError(t, tx.InitialiseSignature(*sig))
 
-		marshaledR, err := tx.R.MarshalJSON()
-		require.Nil(t, err)
-
-		marshaledS, err := tx.S.MarshalJSON()
-		require.Nil(t, err)
-
-		marshaledV, err := tx.V.MarshalJSON()
-		require.Nil(t, err)
-
-		require.Equal(t, tc.ExpectedR, string(marshaledR))
-		require.Equal(t, tc.ExpectedS, string(marshaledS))
-		require.Equal(t, tc.ExpectedV, string(marshaledV))
+		require.Equal(t, tc.ExpectedR, "0x"+tx.R.Text(16))
+		require.Equal(t, tc.ExpectedS, "0x"+tx.S.Text(16))
+		require.Equal(t, tc.ExpectedV, "0x"+tx.V.Text(16))
 	}
 }
 
