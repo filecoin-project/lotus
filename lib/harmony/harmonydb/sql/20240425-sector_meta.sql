@@ -42,3 +42,5 @@ CREATE TABLE sectors_meta_pieces (
     PRIMARY KEY (sp_id, sector_num, piece_num),
     FOREIGN KEY (sp_id, sector_num) REFERENCES sectors_meta(sp_id, sector_num) ON DELETE CASCADE
 );
+
+ALTER TABLE sectors_sdr_initial_pieces ADD COLUMN requested_keep_data BOOL NOT NULL DEFAULT FALSE;

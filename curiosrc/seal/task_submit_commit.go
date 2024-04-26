@@ -152,7 +152,7 @@ func (s *SubmitCommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	}
 
 	if err := s.transferFinalizedSectorData(ctx, sectorParams.SpID, sectorParams.SectorNumber); err != nil {
-		return false, xerrors.Errorf("transfering finalized sector data: %w", err)
+		return false, xerrors.Errorf("transferring finalized sector data: %w", err)
 	}
 
 	return true, nil
@@ -230,7 +230,7 @@ func (s *SubmitCommitTask) transferFinalizedSectorData(ctx context.Context, spID
             piece_index AS piece_num,
             piece_cid,
             piece_size,
-            TRUE AS requested_keep_data,
+            requested_keep_data,
             data_raw_size,
             COALESCE(f05_deal_start_epoch, direct_start_epoch) as start_epoch,
             COALESCE(f05_deal_end_epoch, direct_end_epoch) as orig_end_epoch,
