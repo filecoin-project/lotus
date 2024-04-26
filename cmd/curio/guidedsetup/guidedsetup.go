@@ -279,7 +279,7 @@ func configToDB(d *MigrationData) {
 
 	chainApiInfo := fmt.Sprintf("%s:%s", string(token), ainfo.Addr)
 
-	d.MinerID, err = SaveConfigToLayer(d.MinerConfigPath, chainApiInfo)
+	d.MinerID, err = SaveConfigToLayerMigrateSectors(d.MinerConfigPath, chainApiInfo)
 	if err != nil {
 		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
 		os.Exit(1)

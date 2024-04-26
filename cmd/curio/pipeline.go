@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/ipfs/go-datastore"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -13,8 +14,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/cmd/curio/guidedsetup"
 	"github.com/filecoin-project/lotus/curiosrc/seal"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var sealCmd = &cli.Command{
@@ -22,6 +25,7 @@ var sealCmd = &cli.Command{
 	Usage: "Manage the sealing pipeline",
 	Subcommands: []*cli.Command{
 		sealStartCmd,
+		sealMigrateLMSectorsCmd,
 	},
 }
 
@@ -128,6 +132,75 @@ var sealStartCmd = &cli.Command{
 
 		for _, number := range num {
 			fmt.Println(number)
+		}
+
+		return nil
+	},
+}
+
+var sealMigrateLMSectorsCmd = &cli.Command{
+	Name:   "migrate-lm-sectors",
+	Usage:  "(debug tool) Copy LM sector metadata into Curio DB",
+	Hidden: true, // only needed in advanced cases where manual repair is needed
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "miner-repo",
+			Usage: "Path to miner repo",
+			Value: "~/.lotusminer",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+		dep, err := deps.GetDepsCLI(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		r, err := repo.NewFS(cctx.String("miner-repo"))
+		if err != nil {
+			return err
+		}
+
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return fmt.Errorf("repo not initialized at: %s", cctx.String("miner-repo"))
+		}
+
+		lr, err := r.LockRO(repo.StorageMiner)
+		if err != nil {
+			return fmt.Errorf("locking repo: %w", err)
+		}
+		defer func() {
+			err = lr.Close()
+			if err != nil {
+				fmt.Println("error closing repo: ", err)
+			}
+		}()
+
+		mmeta, err := lr.Datastore(ctx, "/metadata")
+		if err != nil {
+			return xerrors.Errorf("opening miner metadata datastore: %w", err)
+		}
+
+		maddrBytes, err := mmeta.Get(ctx, datastore.NewKey("miner-address"))
+		if err != nil {
+			return xerrors.Errorf("getting miner address datastore entry: %w", err)
+		}
+
+		addr, err := address.NewFromBytes(maddrBytes)
+		if err != nil {
+			return xerrors.Errorf("parsing miner actor address: %w", err)
+		}
+
+		err = guidedsetup.MigrateSectors(ctx, addr, mmeta, dep.DB, func(n int) {
+			fmt.Printf("Migrating %d sectors\n", n)
+		})
+		if err != nil {
+			return xerrors.Errorf("migrating sectors: %w", err)
 		}
 
 		return nil
