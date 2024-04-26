@@ -279,16 +279,25 @@ over the worker address if this flag is set.`,
 	},
 	"CurioIngestConfig": {
 		{
+			Name: "MaxQueueDealSector",
+			Type: "int",
+
+			Comment: `Maximum number of sectors that can be queued waiting for deals to start processing.
+0 = unlimited
+Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+The DealSector queue includes deals which are ready to enter the sealing pipeline but are not yet part of it -
+size of this queue will also impact the maximum number of ParkPiece tasks which can run concurrently.
+DealSector queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.`,
+		},
+		{
 			Name: "MaxQueueSDR",
 			Type: "int",
 
 			Comment: `Maximum number of sectors that can be queued waiting for SDR to start processing.
 0 = unlimited
 Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-The SDR queue includes deals which are in the process of entering the sealing pipeline - size of this queue
-will also impact the maximum number of ParkPiece tasks which can run concurrently.
-
-SDR queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.`,
+The SDR queue includes deals which are in the process of entering the sealing pipeline. In case of the trees tasks it is
+possible that this queue grows more than this limit, the backpressure is only applied to sectors entering the pipeline.`,
 		},
 		{
 			Name: "MaxQueueTrees",
@@ -309,6 +318,12 @@ applied to sectors entering the pipeline.`,
 Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
 Like with the trees tasks, it is possible that this queue grows more than this limit, the backpressure is only
 applied to sectors entering the pipeline.`,
+		},
+		{
+			Name: "MaxDealWaitTime",
+			Type: "Duration",
+
+			Comment: `Maximum time an open deal sector should wait for more deal before it starts sealing`,
 		},
 	},
 	"CurioProvingConfig": {

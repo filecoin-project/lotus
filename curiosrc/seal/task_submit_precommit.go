@@ -127,37 +127,42 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 			F05DealID         int64 `db:"f05_deal_id"`
 			F05DealEndEpoch   int64 `db:"f05_deal_end_epoch"`
 			F05DealStartEpoch int64 `db:"f05_deal_start_epoch"`
+
+			DDODealStartEpoch int64 `db:"direct_start_epoch"`
+			DDODealEndEpoch   int64 `db:"direct_end_epoch"`
 		}
 
 		err = s.db.Select(ctx, &pieces, `
-		SELECT piece_index, piece_cid, piece_size, f05_deal_id, f05_deal_end_epoch, f05_deal_start_epoch
+		SELECT piece_index, piece_cid, piece_size, f05_deal_id, f05_deal_end_epoch, f05_deal_start_epoch, direct_start_epoch, direct_end_epoch
 		FROM sectors_sdr_initial_pieces
 		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index ASC`, sectorParams.SpID, sectorParams.SectorNumber)
 		if err != nil {
 			return false, xerrors.Errorf("getting pieces: %w", err)
 		}
 
-		if len(pieces) > 1 {
-			return false, xerrors.Errorf("too many pieces") // todo support multiple pieces
-		}
-
 		if len(pieces) > 0 {
 			params.Sectors[0].UnsealedCid = &unsealedCID
-			params.Sectors[0].Expiration = abi.ChainEpoch(pieces[0].F05DealEndEpoch)
-
-			if abi.ChainEpoch(pieces[0].F05DealStartEpoch) < head.Height() {
-				// deal start epoch is in the past, can't precommit this sector anymore
-				_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-					SET failed = TRUE, failed_at = NOW(), failed_reason = 'past-start-epoch', failed_reason_msg = 'precommit: start epoch is in the past'
-					WHERE task_id_precommit_msg = $1`, taskID)
-				if perr != nil {
-					return false, xerrors.Errorf("persisting precommit start epoch expiry: %w", perr)
-				}
-				return true, xerrors.Errorf("deal start epoch is in the past")
-			}
 
 			for _, p := range pieces {
-				params.Sectors[0].DealIDs = append(params.Sectors[0].DealIDs, abi.DealID(p.F05DealID))
+				if (p.DDODealStartEpoch > 0 && abi.ChainEpoch(p.DDODealStartEpoch) < head.Height()) || (p.F05DealEndEpoch > 0 && abi.ChainEpoch(p.F05DealStartEpoch) < head.Height()) {
+					// deal start epoch is in the past, can't precommit this sector anymore
+					_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
+					SET failed = TRUE, failed_at = NOW(), failed_reason = 'past-start-epoch', failed_reason_msg = 'precommit: start epoch is in the past'
+					WHERE task_id_precommit_msg = $1`, taskID)
+					if perr != nil {
+						return false, xerrors.Errorf("persisting precommit start epoch expiry: %w", perr)
+					}
+					return true, xerrors.Errorf("deal start epoch is in the past")
+				}
+				if p.F05DealID > 0 {
+					params.Sectors[0].DealIDs = append(params.Sectors[0].DealIDs, abi.DealID(p.F05DealID))
+				}
+				if p.F05DealEndEpoch > 0 && abi.ChainEpoch(p.F05DealEndEpoch) > params.Sectors[0].Expiration {
+					params.Sectors[0].Expiration = abi.ChainEpoch(p.F05DealEndEpoch)
+				}
+				if p.DDODealEndEpoch > 0 && abi.ChainEpoch(p.DDODealEndEpoch) > params.Sectors[0].Expiration {
+					params.Sectors[0].Expiration = abi.ChainEpoch(p.DDODealEndEpoch)
+				}
 			}
 		}
 	}
