@@ -412,7 +412,7 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	return ret, nil
 }
 
-func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (rets *ApplyRet, err error) {
+func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	start := build.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
 	vmMsg := cmsg.VMMessage()

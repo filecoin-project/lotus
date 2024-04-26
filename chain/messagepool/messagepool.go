@@ -823,6 +823,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		// already validated, great
 		return nil
 	}
+
 	if err := consensus.AuthenticateMessage(m, m.Message.From); err != nil {
 		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
