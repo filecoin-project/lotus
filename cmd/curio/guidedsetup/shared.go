@@ -320,10 +320,16 @@ func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.
 			fmt.Printf("  %s: %d\n", state, count)
 		}
 
-		return xerrors.Errorf("cannot migrate sectors with these states")
+		if os.Getenv("CURIO_SKIP_UNMIGRATABLE_SECTORS") != "1" {
+			return xerrors.Errorf("cannot migrate sectors with these states. Set CURIO_SKIP_UNMIGRATABLE_SECTORS=1 to proceed anyway")
+		}
 	}
 
 	for _, sector := range sectors {
+		if !migratableState(sector.State) {
+			continue
+		}
+
 		// Insert sector metadata
 		_, err := db.Exec(ctx, `
         INSERT INTO sectors_meta (sp_id, sector_num, reg_seal_proof, ticket_epoch, ticket_value,
