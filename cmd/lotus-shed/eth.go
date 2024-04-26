@@ -88,7 +88,7 @@ var computeEthHashCmd = &cli.Command{
 
 		switch msg := msg.(type) {
 		case *types.SignedMessage:
-			tx, err := ethtypes.EthTxFromSignedEthMessage(msg)
+			tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(msg)
 			if err != nil {
 				return fmt.Errorf("failed to convert from signed message: %w", err)
 			}

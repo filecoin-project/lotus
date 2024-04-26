@@ -3,13 +3,15 @@ package ethtypes
 import (
 	"fmt"
 
+	"golang.org/x/crypto/sha3"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/go-state-types/big"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/crypto/sha3"
-	"golang.org/x/xerrors"
 )
 
 const (

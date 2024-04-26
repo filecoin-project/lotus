@@ -348,38 +348,6 @@ func TestGetBlockByNumber(t *testing.T) {
 	require.Equal(t, types.FromFil(10).Int, bal.Int)
 }
 
-func deployLegacyContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthLegacyHomesteadTxArgs, error) {
-	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
-	}})
-	if err != nil {
-		return nil, err
-	}
-
-	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
-	if err != nil {
-		return nil, err
-	}
-
-	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// now deploy a contract from the embryo, and validate it went well
-	return &ethtypes.EthLegacyHomesteadTxArgs{
-		Value:    big.Zero(),
-		Nonce:    0,
-		GasPrice: big.Int(maxPriorityFeePerGas),
-		GasLimit: int(gaslimit),
-		Input:    contract,
-		V:        big.Zero(),
-		R:        big.Zero(),
-		S:        big.Zero(),
-	}, nil
-}
-
 func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.Eth1559TxArgs, error) {
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,

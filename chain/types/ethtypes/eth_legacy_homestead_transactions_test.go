@@ -4,10 +4,11 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/lib/sigs"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 func TestEthLegacyHomesteadTxArgs(t *testing.T) {

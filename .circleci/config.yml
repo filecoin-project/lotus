@@ -748,6 +748,12 @@ workflows:
           suite: itest-eth_hash_lookup
           target: "./itests/eth_hash_lookup_test.go"
       - test:
+          name: test-itest-eth_legacy_transactions
+          requires:
+            - build
+          suite: itest-eth_legacy_transactions
+          target: "./itests/eth_legacy_transactions_test.go"
+      - test:
           name: test-itest-eth_transactions
           requires:
             - build

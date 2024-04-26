@@ -6,15 +6,16 @@ import (
 	"fmt"
 	mathbig "math/big"
 
-	"github.com/filecoin-project/lotus/build"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 const (

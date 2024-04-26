@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/manifest"
 	"os"
 	"testing"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -274,4 +274,36 @@ func TestLegacyContractInvocation(t *testing.T) {
 	require.EqualValues(t, invokResult.GasCost.GasUsed, big.NewInt(int64(receipt.GasUsed)))
 	effectiveGasPrice := big.Div(invokResult.GasCost.TotalCost, invokResult.GasCost.GasUsed)
 	require.EqualValues(t, effectiveGasPrice, big.Int(receipt.EffectiveGasPrice))
+}
+
+func deployLegacyContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthLegacyHomesteadTxArgs, error) {
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	}})
+	if err != nil {
+		return nil, err
+	}
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	if err != nil {
+		return nil, err
+	}
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// now deploy a contract from the embryo, and validate it went well
+	return &ethtypes.EthLegacyHomesteadTxArgs{
+		Value:    big.Zero(),
+		Nonce:    0,
+		GasPrice: big.Int(maxPriorityFeePerGas),
+		GasLimit: int(gaslimit),
+		Input:    contract,
+		V:        big.Zero(),
+		R:        big.Zero(),
+		S:        big.Zero(),
+	}, nil
 }
