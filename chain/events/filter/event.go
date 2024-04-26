@@ -375,12 +375,12 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
 	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (EventFilter, error) {
 	m.mu.Lock()
+	if m.currentHeight == 0 {
+		// sync in progress, we haven't had an Apply
+		m.currentHeight = m.ChainStore.GetHeaviestTipSet().Height()
+	}
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
-
-	if currentHeight == 0 {
-		return nil, xerrors.Errorf("sync in progress, cannot install event filter")
-	}
 
 	if m.EventIndex == nil && minHeight != -1 && minHeight < currentHeight {
 		return nil, xerrors.Errorf("historic event index disabled")
