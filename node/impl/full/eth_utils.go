@@ -251,6 +251,8 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
 		}
 
+		// Don't override the chainID if this is not an EIP-1559 transaction.
+		// The chainID has already been set to 0 for leagcy ETH transactions.
 		if smsg.Signature.Type != crypto.SigTypeDelegated {
 			tx.ChainID = build.Eip155ChainId
 		}
@@ -544,7 +546,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		From:                 from,
 		Input:                encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params),
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
-		ChainID:              build.Eip155ChainId,
+		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),
 		Type:                 ethtypes.Eip1559TxType,
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
@@ -657,8 +659,6 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	tx.BlockNumber = &bn
 	tx.TransactionIndex = &ti
 
-	fmt.Printf("eth tx is: %+v", tx)
-
 	return tx, nil
 }
 
@@ -743,7 +743,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
-		fmt.Println("RETURN IS", lookup.Receipt.Return)
 		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}

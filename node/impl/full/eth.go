@@ -298,13 +298,12 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
 			}
+
 			tx, err := ethtx.ToEthTx(p)
 			if err != nil {
-				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
+				return nil, fmt.Errorf("could not convert Eth transaction to EthTx: %w", err)
 			}
-			if err != nil {
-				return nil, fmt.Errorf("could not compute tx hash for eth txn: %w", err)
-			}
+
 			return &tx, nil
 		}
 	}
@@ -409,12 +408,10 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
-		fmt.Println("DOING THIS")
 		c = txHash.ToCid()
 	}
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	fmt.Printf("msgLookup: %+v", msgLookup)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}
@@ -831,8 +828,6 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
-
-	fmt.Println("sumitting to mpool", smsg.Signature.Data)
 
 	_, err = a.MpoolAPI.MpoolPush(ctx, smsg)
 	if err != nil {

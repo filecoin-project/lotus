@@ -2,7 +2,6 @@ package full
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -91,14 +90,13 @@ func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.
 		log.Errorf("error converting filecoin message to eth tx: %s", err)
 		return
 	}
+
 	txHash, err := ethTx.TxHash()
-	fmt.Println("UPSERTING TO", msg.Message.To)
 	if err != nil {
 		log.Errorf("error hashing transaction: %s", err)
 		return
 	}
 
-	fmt.Println("UPSERTING", txHash)
 	err = m.TransactionHashLookup.UpsertHash(txHash, msg.Cid())
 	if err != nil {
 		log.Errorf("error inserting tx mapping to db: %s", err)
