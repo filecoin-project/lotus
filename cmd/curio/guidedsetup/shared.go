@@ -390,7 +390,7 @@ func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.
 
 			// Splitting the SQL statement for readability and adding new fields
 			_, err = db.Exec(ctx, `
-					INSERT INTO sector_meta_pieces (
+					INSERT INTO sectors_meta_pieces (
 						sp_id, sector_num, piece_num, piece_cid, piece_size, 
 						requested_keep_data, raw_data_size, start_epoch, orig_end_epoch,
 						f05_deal_id, ddo_pam

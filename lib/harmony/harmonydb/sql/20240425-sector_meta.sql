@@ -22,7 +22,7 @@ CREATE TABLE sectors_meta (
     PRIMARY KEY (sp_id, sector_num)
 );
 
-CREATE TABLE sector_meta_pieces (
+CREATE TABLE sectors_meta_pieces (
     sp_id BIGINT NOT NULL,
     sector_num BIGINT NOT NULL,
     piece_num BIGINT NOT NULL,

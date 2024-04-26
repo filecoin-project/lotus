@@ -211,7 +211,7 @@ func (s *SubmitCommitTask) transferFinalizedSectorData(ctx context.Context, spID
 
 	// Execute the query for piece metadata
 	if _, err := s.db.Exec(ctx, `
-        INSERT INTO sector_meta_pieces (
+        INSERT INTO sectors_meta_pieces (
             sp_id,
             sector_num,
             piece_num,
