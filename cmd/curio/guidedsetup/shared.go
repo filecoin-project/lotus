@@ -326,7 +326,7 @@ func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.
 	}
 
 	for _, sector := range sectors {
-		if !migratableState(sector.State) {
+		if !migratableState(sector.State) || sector.State == sealing.Removed {
 			continue
 		}
 
@@ -357,6 +357,9 @@ func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.
 			sector.SeedValue,
 		)
 		if err != nil {
+			b, _ := json.MarshalIndent(sector, "", "  ")
+			fmt.Println(string(b))
+
 			return xerrors.Errorf("inserting/updating sectors_meta for sector %d: %w", sector.SectorNumber, err)
 		}
 
@@ -415,6 +418,9 @@ func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.
 				pamJSON,
 			)
 			if err != nil {
+				b, _ := json.MarshalIndent(sector, "", "  ")
+				fmt.Println(string(b))
+
 				return xerrors.Errorf("inserting/updating sector_meta_pieces for sector %d, piece %d: %w", sector.SectorNumber, j, err)
 			}
 		}
