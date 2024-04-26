@@ -198,6 +198,10 @@ func (d dealStateV5) SlashEpoch() abi.ChainEpoch {
 	return d.ds5.SlashEpoch
 }
 
+func (d dealStateV5) SectorNumber() abi.SectorNumber {
+	return 0
+}
+
 func (d dealStateV5) Equals(other DealState) bool {
 	if ov5, ok := other.(dealStateV5); ok {
 		return d.ds5 == ov5.ds5

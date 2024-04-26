@@ -1166,9 +1166,10 @@ type MarketBalance struct {
 }
 
 type MarketDealState struct {
-	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
-	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
-	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
+	SectorStartEpoch abi.ChainEpoch   // -1 if not yet included in proven sector
+	LastUpdatedEpoch abi.ChainEpoch   // -1 if deal state never updated
+	SlashEpoch       abi.ChainEpoch   // -1 if deal never slashed
+	SectorNumber     abi.SectorNumber // 0 if not activated or not supported (pre-nv22)
 }
 
 func MakeDealState(mds market.DealState) MarketDealState {
@@ -1193,6 +1194,10 @@ func (m mstate) LastUpdatedEpoch() abi.ChainEpoch {
 
 func (m mstate) SlashEpoch() abi.ChainEpoch {
 	return m.s.SlashEpoch
+}
+
+func (m mstate) SectorNumber() abi.SectorNumber {
+	return m.s.SectorNumber
 }
 
 func (m mstate) Equals(o market.DealState) bool {

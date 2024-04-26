@@ -146,6 +146,7 @@ type DealState interface {
 	SectorStartEpoch() abi.ChainEpoch // -1 if not yet included in proven sector
 	LastUpdatedEpoch() abi.ChainEpoch // -1 if deal state never updated
 	SlashEpoch() abi.ChainEpoch       // -1 if deal never slashed
+	SectorNumber() abi.SectorNumber   // 0 if not yet included in proven sector, or pre nv22 (0 is also a valid sector number)
 
 	Equals(other DealState) bool
 }
@@ -208,6 +209,10 @@ func (e *emptyDealState) Equals(other DealState) bool {
 		return false
 	}
 	return true
+}
+
+func (e *emptyDealState) SectorNumber() abi.SectorNumber {
+	return 0
 }
 
 func EmptyDealState() DealState {

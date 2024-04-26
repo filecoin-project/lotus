@@ -224,6 +224,10 @@ func (d dealStateV{{.v}}) SlashEpoch() abi.ChainEpoch {
 	return d.ds{{.v}}.SlashEpoch
 }
 
+func (d dealStateV{{.v}}) SectorNumber() abi.SectorNumber {
+	return {{if ge .v 13}}d.ds{{.v}}.SectorNumber{{else}}0{{end}}
+}
+
 func (d dealStateV{{.v}}) Equals(other DealState) bool {
 	if ov{{.v}}, ok := other.(dealStateV{{.v}}); ok {
 		return d.ds{{.v}} == ov{{.v}}.ds{{.v}}

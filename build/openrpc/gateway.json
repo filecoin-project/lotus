@@ -8071,7 +8071,8 @@
                             "State": {
                                 "SectorStartEpoch": 10101,
                                 "LastUpdatedEpoch": 10101,
-                                "SlashEpoch": 10101
+                                "SlashEpoch": 10101,
+                                "SectorNumber": 9
                             }
                         }
                     ],
@@ -8130,6 +8131,10 @@
                             "additionalProperties": false,
                             "properties": {
                                 "LastUpdatedEpoch": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "SectorNumber": {
                                     "title": "number",
                                     "type": "number"
                                 },

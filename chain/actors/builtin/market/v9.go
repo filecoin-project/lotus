@@ -202,6 +202,10 @@ func (d dealStateV9) SlashEpoch() abi.ChainEpoch {
 	return d.ds9.SlashEpoch
 }
 
+func (d dealStateV9) SectorNumber() abi.SectorNumber {
+	return 0
+}
+
 func (d dealStateV9) Equals(other DealState) bool {
 	if ov9, ok := other.(dealStateV9); ok {
 		return d.ds9 == ov9.ds9
