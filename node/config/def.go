@@ -77,17 +77,18 @@ func defCommon() Common {
 	}
 }
 
-var (
-	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
-	DefaultSimultaneousTransfers = uint64(20)
-)
+var DefaultSimultaneousTransfers = uint64(20)
+
+func DefaultDefaultMaxFee() types.FIL {
+	return types.MustParseFIL("0.07")
+}
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
 		Fees: FeeConfig{
-			DefaultMaxFee: DefaultDefaultMaxFee,
+			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
 		Client: Client{
 			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
@@ -330,10 +331,11 @@ const (
 func DefaultCurioConfig() *CurioConfig {
 	return &CurioConfig{
 		Subsystems: CurioSubsystemsConfig{
-			GuiAddress: ":4701",
+			GuiAddress:    ":4701",
+			BoostAdapters: []string{},
 		},
 		Fees: CurioFees{
-			DefaultMaxFee:      DefaultDefaultMaxFee,
+			DefaultMaxFee:      DefaultDefaultMaxFee(),
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
 			MaxCommitGasFee:    types.MustParseFIL("0.05"),
 
@@ -360,6 +362,11 @@ func DefaultCurioConfig() *CurioConfig {
 			ParallelCheckLimit:    32,
 			PartitionCheckTimeout: Duration(20 * time.Minute),
 			SingleCheckTimeout:    Duration(10 * time.Minute),
+		},
+		Ingest: CurioIngestConfig{
+			MaxQueueSDR:   8, // default to 8 sectors before sdr
+			MaxQueueTrees: 0, // default don't use this limit
+			MaxQueuePoRep: 0, // default don't use this limit
 		},
 	}
 }

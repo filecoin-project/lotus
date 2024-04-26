@@ -39,6 +39,7 @@ func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) *ParkPieceTa
 
 		max: max,
 	}
+
 	go pt.pollPieceTasks(context.Background())
 	return pt
 }
@@ -152,7 +153,7 @@ func (p *ParkPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (d
 
 		pnum := storiface.PieceNumber(pieceData.PieceID)
 
-		if err := p.sc.WritePiece(ctx, pnum, pieceRawSize, upr); err != nil {
+		if err := p.sc.WritePiece(ctx, &taskID, pnum, pieceRawSize, upr); err != nil {
 			return false, xerrors.Errorf("write piece: %w", err)
 		}
 

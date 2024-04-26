@@ -13,6 +13,7 @@ var stopCmd = &cli.Command{
 	Usage: "Stop a running Curio process",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
+
 		api, closer, err := lcli.GetAPI(cctx)
 		if err != nil {
 			return err

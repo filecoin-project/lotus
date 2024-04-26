@@ -36,7 +36,7 @@ var sectorsCmd = &cli.Command{
 		spcli.SectorsCheckExpireCmd(SPTActorGetter),
 		sectorsExpiredCmd, // in-house b/c chain-only is so different
 		spcli.SectorsExtendCmd(SPTActorGetter),
-		//spcli.SectorsTerminateCmd(SPTActorGetter), // Could not trace through the state-machine
+		spcli.TerminateSectorCmd(SPTActorGetter),
 		spcli.SectorsCompactPartitionsCmd(SPTActorGetter),
 	}}
 
@@ -280,7 +280,6 @@ var sectorsListCmd = &cli.Command{
 
 		for _, st := range sset {
 			s := st.SectorNumber
-
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 

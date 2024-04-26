@@ -17,10 +17,11 @@ type moveSelector struct {
 	sector      abi.SectorID
 	alloc       storiface.SectorFileType
 	destPtype   storiface.PathType
+	miner       abi.ActorID
 	allowRemote bool
 }
 
-func newMoveSelector(index paths.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, destPtype storiface.PathType, allowRemote bool) *moveSelector {
+func newMoveSelector(index paths.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, destPtype storiface.PathType, miner abi.ActorID, allowRemote bool) *moveSelector {
 	return &moveSelector{
 		index:       index,
 		sector:      sector,
@@ -67,7 +68,7 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		}
 	}
 
-	best, err := s.index.StorageBestAlloc(ctx, s.alloc, ssize, s.destPtype)
+	best, err := s.index.StorageBestAlloc(ctx, s.alloc, ssize, s.destPtype, s.miner)
 	if err != nil {
 		return false, false, xerrors.Errorf("finding best dest storage: %w", err)
 	}

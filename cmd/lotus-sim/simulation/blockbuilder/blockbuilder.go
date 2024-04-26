@@ -99,7 +99,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 	return bb, nil
 }
 
-// PushMessages tries to push the specified message into the block.
+// PushMessage tries to push the specified message into the block.
 //
 // 1. All messages will be executed in-order.
 // 2. Gas computation & nonce selection will be handled internally.

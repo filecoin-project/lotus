@@ -74,6 +74,7 @@ type CurioConfig struct {
 	// Addresses of wallets per MinerAddress (one of the fields).
 	Addresses []CurioAddresses
 	Proving   CurioProvingConfig
+	Ingest    CurioIngestConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
 }
@@ -94,7 +95,7 @@ type JournalConfig struct {
 }
 
 type CurioSubsystemsConfig struct {
-	// EnableWindowPost enables window post to be executed on this lotus-provider instance. Each machine in the cluster
+	// EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
 	// with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
 	// machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
 	// will allow for parallel processing of partitions.
@@ -105,7 +106,7 @@ type CurioSubsystemsConfig struct {
 	EnableWindowPost   bool
 	WindowPostMaxTasks int
 
-	// EnableWinningPost enables winning post to be executed on this lotus-provider instance.
+	// EnableWinningPost enables winning post to be executed on this curio instance.
 	// Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
 	// It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
 	// documentation.
@@ -166,7 +167,7 @@ type CurioSubsystemsConfig struct {
 	FinalizeMaxTasks int
 
 	// EnableSendPrecommitMsg enables the sending of precommit messages to the chain
-	// from this lotus-provider instance.
+	// from this curio instance.
 	// This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message
 	EnableSendPrecommitMsg bool
 
@@ -185,10 +186,10 @@ type CurioSubsystemsConfig struct {
 	PoRepProofMaxTasks int
 
 	// EnableSendCommitMsg enables the sending of commit messages to the chain
-	// from this lotus-provider instance.
+	// from this curio instance.
 	EnableSendCommitMsg bool
 
-	// EnableMoveStorage enables the move-into-long-term-storage task to run on this lotus-provider instance.
+	// EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
 	// This tasks should only be enabled on nodes with long-term storage.
 	//
 	// The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
@@ -200,7 +201,26 @@ type CurioSubsystemsConfig struct {
 	// uses all available network (or disk) bandwidth on the machine without causing bottlenecks.
 	MoveStorageMaxTasks int
 
-	// EnableWebGui enables the web GUI on this lotus-provider instance. The UI has minimal local overhead, but it should
+	// BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
+	// This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
+	// Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
+	// Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+	//
+	// When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
+	// deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
+	// node in the cluster has the EnableParkPiece option enabled and has sufficient scratch space to store the deal data.
+	// This is different from lotus-miner which stored the deal data into an "unsealed" sector as soon as the deal was
+	// received. Deal data in PiecePark is accessed when the sector TreeD and TreeR are computed, but isn't needed for
+	// the initial SDR layers computation. Pieces in PiecePark are removed after all sectors referencing the piece are
+	// sealed.
+	//
+	// To get API info for boost configuration run 'curio market rpc-info'
+	//
+	// NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
+	// a machine which handles ParkPiece tasks.
+	BoostAdapters []string
+
+	// EnableWebGui enables the web GUI on this curio instance. The UI has minimal local overhead, but it should
 	// only need to be run on a single machine in the cluster.
 	EnableWebGui bool
 
@@ -807,6 +827,31 @@ type CurioProvingConfig struct {
 	SingleRecoveringPartitionPerPostMessage bool
 }
 
+type CurioIngestConfig struct {
+	// Maximum number of sectors that can be queued waiting for SDR to start processing.
+	// 0 = unlimited
+	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+	// The SDR queue includes deals which are in the process of entering the sealing pipeline - size of this queue
+	// will also impact the maximum number of ParkPiece tasks which can run concurrently.
+	//
+	// SDR queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
+	MaxQueueSDR int
+
+	// Maximum number of sectors that can be queued waiting for SDRTrees to start processing.
+	// 0 = unlimited
+	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+	// In case of the trees tasks it is possible that this queue grows more than this limit, the backpressure is only
+	// applied to sectors entering the pipeline.
+	MaxQueueTrees int
+
+	// Maximum number of sectors that can be queued waiting for PoRep to start processing.
+	// 0 = unlimited
+	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+	// Like with the trees tasks, it is possible that this queue grows more than this limit, the backpressure is only
+	// applied to sectors entering the pipeline.
+	MaxQueuePoRep int
+}
+
 // API contains configs for API endpoint
 type API struct {
 	// Binding address for the Lotus API
@@ -921,10 +966,6 @@ type Splitstore struct {
 
 // // Full Node
 type Client struct {
-	UseIpfs             bool
-	IpfsOnlineMode      bool
-	IpfsMAddr           string
-	IpfsUseForRetrieval bool
 	// The maximum number of simultaneous data transfers between the client
 	// and storage providers for storage deals
 	SimultaneousTransfersForStorage uint64

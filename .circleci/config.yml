@@ -555,6 +555,12 @@ workflows:
           suite: itest-cli
           target: "./itests/cli_test.go"
       - test:
+          name: test-itest-curio
+          requires:
+            - build
+          suite: itest-curio
+          target: "./itests/curio_test.go"
+      - test:
           name: test-itest-deadlines
           requires:
             - build

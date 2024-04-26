@@ -4,6 +4,9 @@
   * [Version](#Version)
 * [Allocate](#Allocate)
   * [AllocatePieceToSector](#AllocatePieceToSector)
+* [Log](#Log)
+  * [LogList](#LogList)
+  * [LogSetLevel](#LogSetLevel)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageDetachLocal](#StorageDetachLocal)
@@ -110,6 +113,38 @@ Response:
 }
 ```
 
+## Log
+
+
+### LogList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "string value"
+]
+```
+
+### LogSetLevel
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
+
 ## Storage
 
 
@@ -179,6 +214,12 @@ Response:
     ],
     "DenyTypes": [
       "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
+      "string value"
     ]
   }
 ]
@@ -217,6 +258,12 @@ Response:
     "string value"
   ],
   "DenyTypes": [
+    "string value"
+  ],
+  "AllowMiners": [
+    "string value"
+  ],
+  "DenyMiners": [
     "string value"
   ]
 }

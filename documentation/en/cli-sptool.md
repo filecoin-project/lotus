@@ -43,6 +43,7 @@ COMMANDS:
    compact-allocated           compact allocated sectors bitfield
    propose-change-beneficiary  Propose a beneficiary address change
    confirm-change-beneficiary  Confirm a beneficiary address change
+   new-miner                   Initializes a new miner actor
    help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -231,6 +232,22 @@ OPTIONS:
    --help, -h              show help
 ```
 
+### sptool actor new-miner
+```
+NAME:
+   sptool actor new-miner - Initializes a new miner actor
+
+USAGE:
+   sptool actor new-miner [command options] [arguments...]
+
+OPTIONS:
+   --worker value, -w value  worker key to use for new miner initialisation
+   --owner value, -o value   owner key to use for new miner initialisation
+   --from value, -f value    address to send actor(miner) creation message from
+   --sector-size value       specify sector size to use for new miner initialisation
+   --help, -h                show help
+```
+
 ## sptool info
 ```
 NAME:
@@ -258,6 +275,7 @@ COMMANDS:
    check-expire        Inspect expiring sectors
    expired             Get or cleanup expired sectors
    extend              Extend expiring sectors while not exceeding each sector's max life
+   terminate           Forcefully terminate a sector (WARNING: This means losing power and pay a one-time termination penalty(including collateral) for the terminated sector)
    compact-partitions  removes dead sectors from partitions and reduces the number of partitions used if possible
    help, h             Shows a list of commands or help for one command
 
@@ -353,6 +371,21 @@ OPTIONS:
    --max-sectors value     the maximum number of sectors contained in each message (default: 0)
    --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
    --help, -h              show help
+```
+
+### sptool sectors terminate
+```
+NAME:
+   sptool sectors terminate - Forcefully terminate a sector (WARNING: This means losing power and pay a one-time termination penalty(including collateral) for the terminated sector)
+
+USAGE:
+   sptool sectors terminate [command options] [sectorNum1 sectorNum2 ...]
+
+OPTIONS:
+   --actor value   specify the address of miner actor
+   --really-do-it  pass this flag if you know what you are doing (default: false)
+   --from value    specify the address to send the terminate message from
+   --help, -h      show help
 ```
 
 ### sptool sectors compact-partitions

@@ -2,15 +2,19 @@
 <head>
     <title>Lotus Provider PoRep Pipeline</title>
     <script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
-    <script type="module" src="chain-connectivity.js"></script>
-    <link rel="stylesheet" href="main.css">
+    <script type="module" src="/ux/curio-ux.mjs"></script>
+    <script type="module" src="/chain-connectivity.mjs"></script>
+    <link rel="stylesheet" href="/ux/main.css">
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
     <style>
-        .porep-pipeline-table, .porep-state {
+        /* Path: curiosrc/web/hapi/web/pipeline_porep_sectors.gohtml */
+        .porep-pipeline-table,
+        .porep-state {
             color: #d0d0d0;
         }
 
-        .porep-pipeline-table td, .porep-pipeline-table th {
+        .porep-pipeline-table td,
+        .porep-pipeline-table th {
             border-left: none;
             border-collapse: collapse;
         }
@@ -20,7 +24,8 @@
 
         }
 
-        .porep-pipeline-table tr:first-child, .porep-pipeline-table tr:first-child {
+        .porep-pipeline-table tr:first-child,
+        .porep-pipeline-table tr:first-child {
             border-top: none;
         }
 
@@ -28,7 +33,8 @@
             border-collapse: collapse;
         }
 
-        .porep-state td, .porep-state th {
+        .porep-state td,
+        .porep-state th {
             border-left: 1px solid #f0f0f0;
             border-right: 1px solid #f0f0f0;
 
@@ -41,6 +47,7 @@
         .porep-state tr {
             border-top: 1px solid #f0f0f0;
         }
+
         .porep-state tr:first-child {
             border-top: none;
         }
@@ -48,16 +55,18 @@
         .pipeline-active {
             background-color: #303060;
         }
+
         .pipeline-success {
             background-color: #306030;
         }
+
         .pipeline-failed {
             background-color: #603030;
         }
-
     </style>
 </head>
-<body>
+<body style="visibility: hidden">
+<curio-ux>
 <div class="app-head">
     <div class="head-left">
         <h1>Lotus Provider PoRep Pipeline</h1>
@@ -65,20 +74,25 @@
 </div>
 <hr/>
 <div class="page">
-    <div class="info-block">
-        <h2>Sectors</h2>
-        <table class="porep-pipeline-table">
-            <thead>
-            <tr>
-                <th>Sector ID</th>
-                <th>Create Time</th>
-                <th>State</th>
-            </tr>
-            </thead>
-            <tbody hx-get="/hapi/pipeline-porep/sectors" hx-trigger="load,every 3s">
-            </tbody>
-        </table>
+    <div class="row">
+        <div class="row-md-auto" style="width: 50%">
+            <div class="info-block">
+                <h2>Sectors</h2>
+                <table class="table table-dark porep-pipeline-table">
+                    <thead>
+                    <tr>
+                        <th>Sector ID</th>
+                        <th>Create Time</th>
+                        <th>State</th>
+                    </tr>
+                    </thead>
+                    <tbody hx-get="/hapi/pipeline-porep/sectors" hx-trigger="load,every 3s">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row-md-auto"></div>
     </div>
-</div>
+</div></curio-ux>
 </body>
 </html>

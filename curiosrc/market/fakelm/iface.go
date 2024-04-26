@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-// MinimalLMApi is a subset of the LotusMiner API that is exposed by lotus-provider
+// MinimalLMApi is a subset of the LotusMiner API that is exposed by Curio
 // for consumption by boost
 type MinimalLMApi interface {
 	ActorAddress(context.Context) (address.Address, error)

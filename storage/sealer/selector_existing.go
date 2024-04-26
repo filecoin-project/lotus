@@ -16,14 +16,16 @@ type existingSelector struct {
 	index      paths.SectorIndex
 	sector     abi.SectorID
 	fileType   storiface.SectorFileType
+	miner      abi.ActorID
 	allowFetch bool
 }
 
-func newExistingSelector(index paths.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, allowFetch bool) *existingSelector {
+func newExistingSelector(index paths.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, miner abi.ActorID, allowFetch bool) *existingSelector {
 	return &existingSelector{
 		index:      index,
 		sector:     sector,
 		fileType:   alloc,
+		miner:      miner,
 		allowFetch: allowFetch,
 	}
 }

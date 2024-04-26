@@ -394,6 +394,11 @@ var filplusListClaimsCmd = &cli.Command{
 			Name:  "expired",
 			Usage: "list only expired claims",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "output results in json format",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() > 1 {
@@ -1311,21 +1316,6 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 	}
 
 	if len(newClaims) > 0 {
-		// Get datacap balance
-		aDataCap, err := api.StateVerifiedClientStatus(ctx, wallet, types.EmptyTSK)
-		if err != nil {
-			return nil, err
-		}
-
-		if aDataCap == nil {
-			return nil, xerrors.Errorf("wallet %s does not have any datacap", wallet)
-		}
-
-		// Check that we have enough data cap to make the allocation
-		if rDataCap.GreaterThan(big.NewInt(aDataCap.Int64())) {
-			return nil, xerrors.Errorf("requested datacap %s is greater then the available datacap %s", rDataCap, aDataCap)
-		}
-
 		if !assumeYes {
 			out := fmt.Sprintf("Some of the specified allocation have a different client address and will require %d Datacap to extend. Proceed? Yes [Y/y] / No [N/n], Ctrl+C (^C) to exit", rDataCap.Int)
 			validate := func(input string) error {
@@ -1359,6 +1349,21 @@ func CreateExtendClaimMsg(ctx context.Context, api api.FullNode, pcm map[verifre
 				fmt.Println("Dropping the extension for claims that require Datacap")
 				return msgs, nil
 			}
+		}
+
+		// Get datacap balance
+		aDataCap, err := api.StateVerifiedClientStatus(ctx, wallet, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+
+		if aDataCap == nil {
+			return nil, xerrors.Errorf("wallet %s does not have any datacap", wallet)
+		}
+
+		// Check that we have enough data cap to make the allocation
+		if rDataCap.GreaterThan(big.NewInt(aDataCap.Int64())) {
+			return nil, xerrors.Errorf("requested datacap %s is greater then the available datacap %s", rDataCap, aDataCap)
 		}
 
 		// Create a map of just keys, so we can easily batch based on the numeric keys

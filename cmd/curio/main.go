@@ -8,10 +8,14 @@ import (
 	"runtime/pprof"
 	"syscall"
 
+	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-paramfetch"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -45,7 +49,6 @@ func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
-		//initCmd,
 		cliCmd,
 		runCmd,
 		stopCmd,
@@ -54,6 +57,8 @@ func main() {
 		webCmd,
 		guidedsetup.GuidedsetupCmd,
 		sealCmd,
+		marketCmd,
+		fetchParamCmd,
 	}
 
 	jaeger := tracing.SetupJaegerTracing("curio")
@@ -110,7 +115,7 @@ func main() {
 				Name:    "db-host",
 				EnvVars: []string{"CURIO_DB_HOST", "CURIO_HARMONYDB_HOSTS"},
 				Usage:   "Command separated list of hostnames for yugabyte cluster",
-				Value:   "yugabyte",
+				Value:   "127.0.0.1",
 			},
 			&cli.StringFlag{
 				Name:    "db-name",
@@ -130,7 +135,6 @@ func main() {
 			&cli.StringFlag{
 				Name:    "db-port",
 				EnvVars: []string{"CURIO_DB_PORT", "CURIO_HARMONYDB_PORT"},
-				Hidden:  true,
 				Value:   "5433",
 			},
 			&cli.StringFlag{
@@ -140,7 +144,7 @@ func main() {
 			},
 			cliutil.FlagVeryVerbose,
 		},
-		Commands: append(local, lcli.CommonCommands...),
+		Commands: local,
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				p, err := homedir.Expand(c.String(FlagMinerRepo))
@@ -159,4 +163,27 @@ func main() {
 	app.Setup()
 	app.Metadata["repoType"] = repo.Curio
 	lcli.RunApp(app)
+}
+
+var fetchParamCmd = &cli.Command{
+	Name:      "fetch-params",
+	Usage:     "Fetch proving parameters",
+	ArgsUsage: "[sectorSize]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return xerrors.Errorf("incorrect number of arguments")
+		}
+		sectorSizeInt, err := units.RAMInBytes(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("error parsing sector size (specify as \"32GiB\", for instance): %w", err)
+		}
+		sectorSize := uint64(sectorSizeInt)
+
+		err = paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), build.SrsJSON(), sectorSize)
+		if err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+
+		return nil
+	},
 }

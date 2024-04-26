@@ -16,6 +16,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
 
@@ -46,6 +47,7 @@ type CommitBatcherApi interface {
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
 
 	// Address selector
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -348,6 +350,11 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	infos := make([]proof.AggregateSealVerifyInfo, 0, total)
 	collateral := big.Zero()
 
+	mid, err := address.IDFromAddress(b.maddr)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, sector := range sectors {
 		if b.todo[sector].DealIDPrecommit {
 			// can't process sectors precommitted with deal IDs with ProveCommitSectors2
@@ -363,6 +370,20 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		}
 
 		collateral = big.Add(collateral, sc)
+
+		manifest := b.todo[sector].ActivationManifest
+		if len(manifest.Pieces) > 0 {
+			precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
+			if err != nil {
+				res.FailedSectors[sector] = err.Error()
+				continue
+			}
+			err = b.allocationCheck(manifest.Pieces, precomitInfo, abi.ActorID(mid), ts)
+			if err != nil {
+				res.FailedSectors[sector] = err.Error()
+				continue
+			}
+		}
 
 		params.SectorActivations = append(params.SectorActivations, b.todo[sector].ActivationManifest)
 		params.SectorProofs = append(params.SectorProofs, b.todo[sector].Proof)
@@ -449,9 +470,9 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
+		log.Errorf("simulating CommitBatch %s", err)
 		res.Error = err.Error()
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch %w", err)
 	}
 
 	msgTooLarge := len(enc.Bytes()) > (messagepool.MaxMessageSize - 128)
@@ -590,9 +611,9 @@ func (b *CommitBatcher) processBatchV1(cfg sealiface.Config, sectors []abi.Secto
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
-		log.Errorf("simulating CommitBatch message failed (%x): %s", enc.Bytes(), err)
+		log.Errorf("simulating CommitBatch %s", err)
 		res.Error = err.Error()
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch %w", err)
 	}
 
 	// If we're out of gas, split the batch in half and evaluate again
@@ -900,4 +921,39 @@ func (b *CommitBatcher) aggregateProofType(nv network.Version) (abi.RegisteredAg
 		return abi.RegisteredAggregationProof_SnarkPackV1, nil
 	}
 	return abi.RegisteredAggregationProof_SnarkPackV2, nil
+}
+
+func (b *CommitBatcher) allocationCheck(Pieces []miner.PieceActivationManifest, precomitInfo *miner.SectorPreCommitOnChainInfo, miner abi.ActorID, ts *types.TipSet) error {
+	for _, p := range Pieces {
+		p := p
+		// skip pieces not claiming an allocation
+		if p.VerifiedAllocationKey == nil {
+			continue
+		}
+		addr, err := address.NewIDAddress(uint64(p.VerifiedAllocationKey.Client))
+		if err != nil {
+			return err
+		}
+
+		alloc, err := b.api.StateGetAllocation(b.mctx, addr, verifregtypes.AllocationId(p.VerifiedAllocationKey.ID), ts.Key())
+		if err != nil {
+			return err
+		}
+		if alloc == nil {
+			return xerrors.Errorf("no allocation found for piece %s with allocation ID %d", p.CID.String(), p.VerifiedAllocationKey.ID)
+		}
+		if alloc.Provider != miner {
+			return xerrors.Errorf("provider id mismatch for piece %s: expected %d and found %d", p.CID.String(), miner, alloc.Provider)
+		}
+		if alloc.Size != p.Size {
+			return xerrors.Errorf("size mismatch for piece %s: expected %d and found %d", p.CID.String(), p.Size, alloc.Size)
+		}
+		if precomitInfo.Info.Expiration < ts.Height()+alloc.TermMin {
+			return xerrors.Errorf("sector expiration %d is before than allocation TermMin %d for piece %s", precomitInfo.Info.Expiration, ts.Height()+alloc.TermMin, p.CID.String())
+		}
+		if precomitInfo.Info.Expiration > ts.Height()+alloc.TermMax {
+			return xerrors.Errorf("sector expiration %d is later than allocation TermMax %d for piece %s", precomitInfo.Info.Expiration, ts.Height()+alloc.TermMax, p.CID.String())
+		}
+	}
+	return nil
 }

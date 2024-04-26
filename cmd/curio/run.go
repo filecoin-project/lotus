@@ -10,12 +10,14 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/filecoin-project/lotus/cmd/curio/rpc"
 	"github.com/filecoin-project/lotus/cmd/curio/tasks"
+	"github.com/filecoin-project/lotus/curiosrc/market/lmrpc"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -63,6 +65,7 @@ var runCmd = &cli.Command{
 			Name:    "layers",
 			Usage:   "list of layers to be interpreted (atop defaults). Default: base",
 			EnvVars: []string{"CURIO_LAYERS"},
+			Aliases: []string{"l", "layer"},
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
@@ -130,10 +133,15 @@ var runCmd = &cli.Command{
 		}
 		defer taskEngine.GracefullyTerminate()
 
+		if err := lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg); err != nil {
+			return xerrors.Errorf("starting market RPCs: %w", err)
+		}
+
 		err = rpc.ListenAndServe(ctx, dependencies, shutdownChan) // Monitor for shutdown.
 		if err != nil {
 			return err
 		}
+
 		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
 		//node.ShutdownHandler{Component: "curio", StopFunc: stop},
 
@@ -163,6 +171,7 @@ var webCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+
 		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err

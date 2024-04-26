@@ -53,8 +53,9 @@ retryAddTask:
 }
 
 const (
-	workSourcePoller  = "poller"
-	workSourceRecover = "recovered"
+	WorkSourcePoller   = "poller"
+	WorkSourceRecover  = "recovered"
+	WorkSourceIAmBored = "bored"
 )
 
 // considerWork is called to attempt to start work on a task-id of this task type.
@@ -84,8 +85,14 @@ top:
 		return false
 	}
 
+	h.TaskEngine.WorkOrigin = from
+
 	// 3. What does the impl say?
+canAcceptAgain:
 	tID, err := h.CanAccept(ids, h.TaskEngine)
+
+	h.TaskEngine.WorkOrigin = ""
+
 	if err != nil {
 		log.Error(err)
 		return false
@@ -100,6 +107,18 @@ top:
 	if h.TaskTypeDetails.Cost.Storage != nil {
 		if err = h.TaskTypeDetails.Cost.Storage.Claim(int(*tID)); err != nil {
 			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+
+			if len(ids) > 1 {
+				var tryAgain = make([]TaskID, 0, len(ids)-1)
+				for _, id := range ids {
+					if id != *tID {
+						tryAgain = append(tryAgain, id)
+					}
+				}
+				ids = tryAgain
+				goto canAcceptAgain
+			}
+
 			return false
 		}
 		releaseStorage = func() {
@@ -110,7 +129,7 @@ top:
 	}
 
 	// if recovering we don't need to try to claim anything because those tasks are already claimed by us
-	if from != workSourceRecover {
+	if from != WorkSourceRecover {
 		// 4. Can we claim the work for our hostname?
 		ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
 		if err != nil {

@@ -6,6 +6,8 @@ runs:
   steps:
     - if: runner.os == 'Linux'
       run: |
+        # List processes to enable debugging in case /var/lib/apt/lists/ is locked 
+        ps aux
         sudo apt-get update -y
         sudo apt-get install -y ocl-icd-opencl-dev libhwloc-dev pkg-config
       shell: bash

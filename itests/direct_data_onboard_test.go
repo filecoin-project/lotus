@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
@@ -24,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -131,15 +133,17 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 	var pieces []abi.PieceInfo
 	var dealID abi.DealID
 
+	// market ddo piece
+	var marketSector api.SectorOffset
+	var marketPiece abi.PieceInfo
+	marketPieceSize := abi.PaddedPieceSize(2048 / 2).Unpadded()
 	{
-		// market piece
-		pieceSize := abi.PaddedPieceSize(2048 / 2).Unpadded()
-		pieceData := make([]byte, pieceSize)
+		pieceData := make([]byte, marketPieceSize)
 		_, _ = rand.Read(pieceData)
 
-		dc, err := miner.ComputeDataCid(ctx, pieceSize, bytes.NewReader(pieceData))
+		marketPiece, err = miner.ComputeDataCid(ctx, marketPieceSize, bytes.NewReader(pieceData))
 		require.NoError(t, err)
-		pieces = append(pieces, dc)
+		pieces = append(pieces, marketPiece)
 
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
@@ -148,7 +152,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 		psdParams := market2.PublishStorageDealsParams{
 			Deals: []market2.ClientDealProposal{
-				makeMarketDealProposal(t, client, miner, dc.PieceCID, pieceSize.Padded(), head.Height()+2880*2, head.Height()+2880*400),
+				makeMarketDealProposal(t, client, miner, marketPiece.PieceCID, marketPieceSize.Padded(), head.Height()+2880*2, head.Height()+2880*400),
 			},
 		}
 
@@ -177,7 +181,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 		mcid := smsg.Cid()
 
-		so, err := miner.SectorAddPieceToAny(ctx, pieceSize, bytes.NewReader(pieceData), piece.PieceDealInfo{
+		marketSector, err = miner.SectorAddPieceToAny(ctx, marketPieceSize, bytes.NewReader(pieceData), piece.PieceDealInfo{
 			PublishCid:   &mcid,
 			DealID:       dealID,
 			DealProposal: &psdParams.Deals[0].Proposal,
@@ -190,25 +194,26 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		require.Equal(t, abi.PaddedPieceSize(0), so.Offset)
-		require.Equal(t, abi.SectorNumber(2), so.Sector)
+		require.Equal(t, abi.PaddedPieceSize(0), marketSector.Offset)
+		require.Equal(t, abi.SectorNumber(2), marketSector.Sector)
 	}
 
+	// raw ddo piece
+	var rawSector api.SectorOffset
+	var rawPiece abi.PieceInfo
+	rawPieceSize := abi.PaddedPieceSize(2048 / 2).Unpadded()
 	{
-		// raw ddo piece
-
-		pieceSize := abi.PaddedPieceSize(2048 / 2).Unpadded()
-		pieceData := make([]byte, pieceSize)
+		pieceData := make([]byte, rawPieceSize)
 		_, _ = rand.Read(pieceData)
 
-		dc, err := miner.ComputeDataCid(ctx, pieceSize, bytes.NewReader(pieceData))
+		rawPiece, err = miner.ComputeDataCid(ctx, rawPieceSize, bytes.NewReader(pieceData))
 		require.NoError(t, err)
-		pieces = append(pieces, dc)
+		pieces = append(pieces, rawPiece)
 
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		so, err := miner.SectorAddPieceToAny(ctx, pieceSize, bytes.NewReader(pieceData), piece.PieceDealInfo{
+		rawSector, err = miner.SectorAddPieceToAny(ctx, rawPieceSize, bytes.NewReader(pieceData), piece.PieceDealInfo{
 			PublishCid:   nil,
 			DealID:       0,
 			DealProposal: nil,
@@ -218,17 +223,19 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 			},
 			KeepUnsealed: false,
 			PieceActivationManifest: &minertypes.PieceActivationManifest{
-				CID:                   dc.PieceCID,
-				Size:                  dc.Size,
+				CID:                   rawPiece.PieceCID,
+				Size:                  rawPiece.Size,
 				VerifiedAllocationKey: nil,
 				Notify:                nil,
 			},
 		})
 		require.NoError(t, err)
 
-		require.Equal(t, abi.PaddedPieceSize(1024), so.Offset)
-		require.Equal(t, abi.SectorNumber(2), so.Sector)
+		require.Equal(t, abi.PaddedPieceSize(1024), rawSector.Offset)
+		require.Equal(t, abi.SectorNumber(2), rawSector.Sector)
 	}
+
+	require.Equal(t, marketSector.Sector, rawSector.Sector) // sanity check same sector
 
 	toCheck := map[abi.SectorNumber]struct{}{
 		2: {},
@@ -272,7 +279,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 			fmt.Println("piece", piece.PieceCID, piece.Size)
 		}
 
-		// check "deal-published" actor event
+		// check some actor events
 		var epochZero abi.ChainEpoch
 		allEvents, err := miner.FullNode.GetActorEventsRaw(ctx, &types.ActorEventFilter{
 			FromHeight: &epochZero,
@@ -282,21 +289,32 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 			var found bool
 			keyBytes := must.One(ipld.Encode(basicnode.NewString(key), dagcbor.Encode))
 			for _, event := range allEvents {
-				for _, e := range event.Entries {
-					if e.Key == "$type" && bytes.Equal(e.Value, keyBytes) {
-						found = true
-						switch key {
-						case "deal-published", "deal-activated":
-							expectedEntries := []types.EventEntry{
-								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: keyBytes},
-								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(2), dagcbor.Encode))},
-								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
-								{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
-							}
-							require.ElementsMatch(t, expectedEntries, event.Entries)
+				require.True(t, len(event.Entries) > 0)
+				if event.Entries[0].Key == "$type" && bytes.Equal(event.Entries[0].Value, keyBytes) {
+					found = true
+					switch key {
+					case "deal-published", "deal-activated":
+						expectedEntries := []types.EventEntry{
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: keyBytes},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "id", Value: must.One(ipld.Encode(basicnode.NewInt(2), dagcbor.Encode))},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "client", Value: must.One(ipld.Encode(basicnode.NewInt(int64(clientId)), dagcbor.Encode))},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "provider", Value: must.One(ipld.Encode(basicnode.NewInt(int64(minerId)), dagcbor.Encode))},
 						}
-						break
+						require.Equal(t, expectedEntries, event.Entries)
+					case "sector-activated":
+						// only one sector, that has both our pieces in it
+						expectedEntries := []types.EventEntry{
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "$type", Value: must.One(ipld.Encode(basicnode.NewString("sector-activated"), dagcbor.Encode))},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "sector", Value: must.One(ipld.Encode(basicnode.NewInt(int64(rawSector.Sector)), dagcbor.Encode))},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "unsealed-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: expectCommD}), dagcbor.Encode))},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: marketPiece.PieceCID}), dagcbor.Encode))},
+							{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(marketPieceSize.Padded())), dagcbor.Encode))},
+							{Flags: 0x03, Codec: uint64(multicodec.Cbor), Key: "piece-cid", Value: must.One(ipld.Encode(basicnode.NewLink(cidlink.Link{Cid: rawPiece.PieceCID}), dagcbor.Encode))},
+							{Flags: 0x01, Codec: uint64(multicodec.Cbor), Key: "piece-size", Value: must.One(ipld.Encode(basicnode.NewInt(int64(rawPieceSize.Padded())), dagcbor.Encode))},
+						}
+						require.Equal(t, expectedEntries, event.Entries)
 					}
+					break
 				}
 			}
 			require.True(t, found, "expected to find event %s", key)

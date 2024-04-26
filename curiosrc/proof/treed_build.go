@@ -58,6 +58,15 @@ func BuildTreeD(data io.Reader, unpaddedData bool, outPath string, size abi.Padd
 	}
 	defer func() {
 		cerr := out.Close()
+
+		if err != nil {
+			// remove the file, it's probably bad
+			rerr := os.Remove(outPath)
+			if rerr != nil {
+				err = multierror.Append(err, rerr)
+			}
+		}
+
 		if cerr != nil {
 			err = multierror.Append(err, cerr)
 		}

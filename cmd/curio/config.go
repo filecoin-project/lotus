@@ -352,15 +352,6 @@ var configEditCmd = &cli.Command{
 	},
 }
 
-func getDefaultConfig(comment bool) (string, error) {
-	c := config.DefaultCurioConfig()
-	cb, err := config.ConfigUpdate(c, nil, config.Commented(comment), config.DefaultKeepUncommented(), config.NoEnv())
-	if err != nil {
-		return "", err
-	}
-	return string(cb), nil
-}
-
 func diff(sourceConf, newConf string) (string, error) {
 	lpSrc := config.DefaultCurioConfig()
 	lpNew := config.DefaultCurioConfig()
@@ -411,7 +402,7 @@ func diff(sourceConf, newConf string) (string, error) {
 }
 
 func edit(editor, cfg string) (string, error) {
-	file, err := os.CreateTemp("", "lotus-provider-config-*.toml")
+	file, err := os.CreateTemp("", "curio-config-*.toml")
 	if err != nil {
 		return "", err
 	}
