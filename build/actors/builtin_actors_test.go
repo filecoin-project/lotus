@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	actors2 "github.com/filecoin-project/lotus/build/actors"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
