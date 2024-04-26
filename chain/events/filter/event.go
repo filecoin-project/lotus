@@ -378,6 +378,10 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
 
+	if currentHeight == 0 {
+		return nil, xerrors.Errorf("sync in progress, cannot install event filter")
+	}
+
 	if m.EventIndex == nil && minHeight != -1 && minHeight < currentHeight {
 		return nil, xerrors.Errorf("historic event index disabled")
 	}
