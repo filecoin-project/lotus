@@ -322,7 +322,7 @@ var filplusListAllocationsCmd = &cli.Command{
 				tablewriter.Col(pieceSize),
 				tablewriter.Col(tMin),
 				tablewriter.Col(tMax),
-				tablewriter.NewLineCol(expr))
+				tablewriter.Col(expr))
 			// populate it with content
 			for _, alloc := range allocs {
 				tw.Write(alloc)
@@ -466,7 +466,7 @@ var filplusListClaimsCmd = &cli.Command{
 				tablewriter.Col(tMin),
 				tablewriter.Col(tMax),
 				tablewriter.Col(tStart),
-				tablewriter.NewLineCol(sector))
+				tablewriter.Col(sector))
 			// populate it with content
 			for _, alloc := range claimList {
 
