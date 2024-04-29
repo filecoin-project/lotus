@@ -1,6 +1,8 @@
 package config
 
 import (
+	"net/url"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -1114,9 +1116,14 @@ type FaultReporterConfig struct {
 type CurioAlerting struct {
 	// PagerDutyEventURL is URL for PagerDuty's Events API v2 URL. Events sent to this API URL are ultimately
 	// routed to a PagerDuty service and processed.
-	PagerDutyEventURL string
+	// The default is sufficient for integration with the stock commercial Pager Duty company's service.
+	PagerDutyEventURL *url.URL
 
 	// PageDutyIntegrationKey is the integration key for a pager duty service. You can find this unique service
 	// identifier in the integration page for the service.
 	PageDutyIntegrationKey string
+
+	// MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+	// alerts will be triggered for the wallet
+	MinimumWalletBalance types.FIL
 }

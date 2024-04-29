@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -328,6 +329,14 @@ const (
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
 
+func PGDutyURL() *url.URL {
+	ret, err := url.Parse("https://events.pagerduty.com/v2/enqueue")
+	if err != nil {
+		return &url.URL{}
+	}
+	return ret
+}
+
 func DefaultCurioConfig() *CurioConfig {
 	return &CurioConfig{
 		Subsystems: CurioSubsystemsConfig{
@@ -369,8 +378,9 @@ func DefaultCurioConfig() *CurioConfig {
 			MaxQueuePoRep: 0, // default don't use this limit
 		},
 		Alerting: CurioAlerting{
-			PagerDutyEventURL:      "https://events.pagerduty.com/v2/enqueue",
+			PagerDutyEventURL:      PGDutyURL(),
 			PageDutyIntegrationKey: "",
+			MinimumWalletBalance:   types.MustParseFIL("5"),
 		},
 	}
 }

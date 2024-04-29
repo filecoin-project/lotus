@@ -186,10 +186,11 @@ over the worker address if this flag is set.`,
 	"CurioAlerting": {
 		{
 			Name: "PagerDutyEventURL",
-			Type: "string",
+			Type: "*url.URL",
 
 			Comment: `PagerDutyEventURL is URL for PagerDuty's Events API v2 URL. Events sent to this API URL are ultimately
-routed to a PagerDuty service and processed.`,
+routed to a PagerDuty service and processed.
+The default is sufficient for integration with the stock commercial Pager Duty company's service.`,
 		},
 		{
 			Name: "PageDutyIntegrationKey",
@@ -197,6 +198,13 @@ routed to a PagerDuty service and processed.`,
 
 			Comment: `PageDutyIntegrationKey is the integration key for a pager duty service. You can find this unique service
 identifier in the integration page for the service.`,
+		},
+		{
+			Name: "MinimumWalletBalance",
+			Type: "types.FIL",
+
+			Comment: `MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+alerts will be triggered for the wallet`,
 		},
 	},
 	"CurioConfig": {

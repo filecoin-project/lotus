@@ -1,23 +1,23 @@
+// Nobody associated with this software's development has any business relationship to pagerduty.
+// This is provided as a convenient trampoline to SP's alert system of choice.
+
 package alertmanager
 
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
@@ -26,14 +26,13 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
-var MinimumBalance = types.MustParseFIL("5 FIL")
-
-const AlertMangerInterval = 10 * time.Minute
+const AlertMangerInterval = time.Hour
 
 var log = logging.Logger("curio/alertmanager")
 
 type AlertAPI interface {
 	ctladdr.NodeApi
+	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error)
 }
 
 type AlertTask struct {
@@ -51,6 +50,7 @@ type alerts struct {
 	ctx      context.Context
 	api      AlertAPI
 	db       *harmonydb.DB
+	cfg      config.CurioAlerting
 	alertMap map[string]*alertOut
 }
 
@@ -75,6 +75,7 @@ type alertFunc func(al *alerts)
 var alertFuncs = []alertFunc{
 	balanceCheck,
 	taskFailureCheck,
+	permanentStorageCheck,
 }
 
 func NewAlertTask(api AlertAPI, db *harmonydb.DB, alertingCfg config.CurioAlerting) *AlertTask {
@@ -94,6 +95,7 @@ func (a *AlertTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		ctx:      ctx,
 		api:      a.api,
 		db:       a.db,
+		cfg:      a.cfg,
 		alertMap: alMap,
 	}
 
@@ -176,7 +178,7 @@ func (a *AlertTask) sendAlert(data *pdPayload) error {
 		return fmt.Errorf("error marshaling JSON: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", a.cfg.PagerDutyEventURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", a.cfg.PagerDutyEventURL.String(), bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
@@ -191,7 +193,7 @@ func (a *AlertTask) sendAlert(data *pdPayload) error {
 			time.Sleep(time.Duration(2*i) * time.Second) // Exponential backoff
 			continue
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		switch resp.StatusCode {
 		case 202:
@@ -215,181 +217,4 @@ func (a *AlertTask) sendAlert(data *pdPayload) error {
 		}
 	}
 	return fmt.Errorf("after retries, last error: %w", err)
-}
-
-// balanceCheck retrieves the machine details from the database and performs balance checks on unique addresses.
-// It populates the alert map with any errors encountered during the process and with any alerts related to low wallet balance and missing wallets.
-// The alert map key is "Balance Check".
-// It queries the database for the configuration of each layer and decodes it using the toml.Decode function.
-// It then iterates over the addresses in the configuration and curates a list of unique addresses.
-// If an address is not found in the chain node, it adds an alert to the alert map.
-// If the balance of an address is below 5 Fil, it adds an alert to the alert map.
-// If there are any errors encountered during the process, the err field of the alert map is populated.
-func balanceCheck(al *alerts) {
-	Name := "Balance Check"
-	al.alertMap[Name] = &alertOut{}
-
-	// MachineDetails represents the structure of data received from the SQL query.
-	type machineDetail struct {
-		ID          int
-		HostAndPort string
-		Layers      string
-	}
-	var machineDetails []machineDetail
-
-	// Get all layers in use
-	err := al.db.Select(al.ctx, &machineDetails, `
-				SELECT m.id, m.host_and_port, d.layers
-				FROM harmony_machines m
-				LEFT JOIN harmony_machine_details d ON m.id = d.machine_id;`)
-	if err != nil {
-		al.alertMap[Name].err = xerrors.Errorf("getting config layers for all machines: %w", err)
-		return
-	}
-
-	// UniqueLayers takes an array of MachineDetails and returns a slice of unique layers.
-
-	layerMap := make(map[string]bool)
-	var uniqueLayers []string
-
-	// Get unique layers in use
-	for _, machine := range machineDetails {
-		machine := machine
-		// Split the Layers field into individual layers
-		layers := strings.Split(machine.Layers, ",")
-		for _, layer := range layers {
-			layer = strings.TrimSpace(layer)
-			if _, exists := layerMap[layer]; !exists && layer != "" {
-				layerMap[layer] = true
-				uniqueLayers = append(uniqueLayers, layer)
-			}
-		}
-	}
-
-	addrMap := make(map[string]bool)
-	var uniqueAddrs []string
-
-	// Get all unique addresses
-	for _, layer := range uniqueLayers {
-		text := ""
-		cfg := config.DefaultCurioConfig()
-		err := al.db.QueryRow(al.ctx, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
-		if err != nil {
-			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
-				al.alertMap[Name].err = xerrors.Errorf("missing layer '%s' ", layer)
-				return
-			}
-			al.alertMap[Name].err = fmt.Errorf("could not read layer '%s': %w", layer, err)
-			return
-		}
-
-		_, err = toml.Decode(text, cfg)
-		if err != nil {
-			al.alertMap[Name].err = fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
-			return
-		}
-
-		for i := range cfg.Addresses {
-			prec := cfg.Addresses[i].PreCommitControl
-			com := cfg.Addresses[i].CommitControl
-			term := cfg.Addresses[i].TerminateControl
-			if prec != nil {
-				for j := range prec {
-					if _, ok := addrMap[prec[j]]; !ok && prec[j] != "" {
-						addrMap[prec[j]] = true
-						uniqueAddrs = append(uniqueAddrs, prec[j])
-					}
-				}
-			}
-			if com != nil {
-				for j := range com {
-					if _, ok := addrMap[com[j]]; !ok && com[j] != "" {
-						addrMap[com[j]] = true
-						uniqueAddrs = append(uniqueAddrs, com[j])
-					}
-				}
-			}
-			if term != nil {
-				for j := range term {
-					if _, ok := addrMap[term[j]]; !ok && term[j] != "" {
-						addrMap[term[j]] = true
-						uniqueAddrs = append(uniqueAddrs, term[j])
-					}
-				}
-			}
-		}
-	}
-
-	var ret string
-
-	for _, addrStr := range uniqueAddrs {
-		addr, err := address.NewFromString(addrStr)
-		if err != nil {
-			al.alertMap[Name].err = xerrors.Errorf("failed to parse address: %w", err)
-			return
-		}
-
-		has, err := al.api.WalletHas(al.ctx, addr)
-		if err != nil {
-			al.alertMap[Name].err = err
-			return
-		}
-
-		if !has {
-			ret += fmt.Sprintf("Wallet %s was not found in chain node. ", addrStr)
-		}
-
-		balance, err := al.api.WalletBalance(al.ctx, addr)
-		if err != nil {
-			al.alertMap[Name].err = err
-		}
-
-		if abi.TokenAmount(MinimumBalance).GreaterThanEqual(balance) {
-			ret += fmt.Sprintf("Balance for wallet %s is below 5 Fil. ", addrStr)
-		}
-	}
-	if ret != "" {
-		al.alertMap[Name].alertString = ret
-	}
-	return
-}
-
-// taskFailureCheck retrieves the count of failed tasks for all machines in the task history table.
-// It populates the alert map with the machine name and the number of failures if it exceeds 10.
-func taskFailureCheck(al *alerts) {
-	Name := "TaskFailures"
-	al.alertMap[Name] = &alertOut{}
-
-	type taskFailure struct {
-		Machine  string `db:"completed_by_host_and_port"`
-		Failures int    `db:"failed_tasks_count"`
-	}
-
-	var taskFailures []taskFailure
-
-	// Get all layers in use
-	err := al.db.Select(al.ctx, &taskFailures, `
-								SELECT completed_by_host_and_port, COUNT(*) AS failed_tasks_count
-								FROM harmony_task_history
-								WHERE result = FALSE
-								AND work_end >= NOW() - $1::interval
-								GROUP BY completed_by_host_and_port
-								ORDER BY failed_tasks_count DESC;`, AlertMangerInterval.Minutes())
-	if err != nil {
-		al.alertMap[Name].err = xerrors.Errorf("getting failed task count for all machines: %w", err)
-		return
-	}
-
-	if len(taskFailures) > 0 {
-		for _, tf := range taskFailures {
-			if tf.Failures > 10 {
-				al.alertMap[Name].alertString += fmt.Sprintf("Machine: %s, Failures: %d. ", tf.Machine, tf.Failures)
-			}
-		}
-	}
-	return
-}
-
-func storageCheck(al *alerts) {
-
 }
