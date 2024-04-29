@@ -366,15 +366,36 @@
 
 
 [Alerting]
-  # PagerDutyEventURL is URL for PagerDuty's Events API v2 URL. Events sent to this API URL are ultimately
-  # routed to a PagerDuty service and processed.
-  #
-  # type: string
-  #PagerDutyEventURL = "https://events.pagerduty.com/v2/enqueue"
-
   # PageDutyIntegrationKey is the integration key for a pager duty service. You can find this unique service
   # identifier in the integration page for the service.
   #
   # type: string
   #PageDutyIntegrationKey = ""
+
+  # MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+  # alerts will be triggered for the wallet
+  #
+  # type: types.FIL
+  #MinimumWalletBalance = "5 FIL"
+
+  [Alerting.PagerDutyEventURL]
+    #Scheme = "https"
+
+    #Opaque = ""
+
+    #Host = "events.pagerduty.com"
+
+    #Path = "/v2/enqueue"
+
+    #RawPath = ""
+
+    #OmitHost = false
+
+    #ForceQuery = false
+
+    #RawQuery = ""
+
+    #Fragment = ""
+
+    #RawFragment = ""
 
