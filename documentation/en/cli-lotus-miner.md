@@ -836,7 +836,7 @@ OPTIONS:
    --to value              only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 92160 (32 days) (default: 0)
    --sector-file value     provide a file containing one sector number in each line, ignoring above selecting criteria
    --exclude value         optionally provide a file containing excluding sectors
-   --extension value       try to extend selected sectors by this number of epochs, defaults to 1278 days (default: 3680640)
+   --extension value       try to extend selected sectors by this number of epochs, defaults to 540 days (default: 1555200)
    --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
    --only-cc               only extend CC sectors (useful for making sector ready for snap upgrade) (default: false)
    --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (default: false)
