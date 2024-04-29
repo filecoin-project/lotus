@@ -2,11 +2,13 @@ package ethtypes
 
 import (
 	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
@@ -126,4 +128,131 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 		require.Equal(t, tc.ExpectedS, "0x"+tx.S.Text(16), i)
 		require.Equal(t, tc.ExpectedV, "0x"+tx.V.Text(16), i)
 	}
+}
+
+// https://etherscan.io/getRawTx?tx=0xc55e2b90168af6972193c1f86fa4d7d7b31a29c156665d15b9cd48618b5177ef
+// https://tools.deth.net/tx-decoder
+func TestEtherScanLegacyRLP(t *testing.T) {
+	rlp := "0xf8718301efc58506fc23ac008305161594104994f45d9d697ca104e5704a7b77d7fec3537c890821878651a4d70000801ba051222d91a379452395d0abaff981af4cfcc242f25cfaf947dea8245a477731f9a03a997c910b4701cca5d933fb26064ee5af7fe3236ff0ef2b58aa50b25aff8ca5"
+	bz := mustDecodeHex(rlp)
+
+	ethLegacyTx, err := parseLegacyHomesteadTx(bz)
+	require.NoError(t, err)
+
+	// Verify nonce
+	require.EqualValues(t, 0x1efc5, ethLegacyTx.Nonce)
+
+	// Verify recipient address
+	expectedToAddr, err := ParseEthAddress("0x104994f45d9d697ca104e5704a7b77d7fec3537c")
+	require.NoError(t, err)
+	require.EqualValues(t, expectedToAddr, *ethLegacyTx.To)
+
+	// Verify sender address
+	expectedFromAddr, err := ParseEthAddress("0x32Be343B94f860124dC4fEe278FDCBD38C102D88")
+	require.NoError(t, err)
+	sender, err := ethLegacyTx.Sender()
+	require.NoError(t, err)
+	expectedFromFilecoinAddr, err := expectedFromAddr.ToFilecoinAddress()
+	require.NoError(t, err)
+	require.EqualValues(t, expectedFromFilecoinAddr, sender)
+
+	// Verify transaction value
+	expectedValue, ok := big.NewInt(0).SetString("821878651a4d70000", 16)
+	require.True(t, ok)
+	require.True(t, ethLegacyTx.Value.Cmp(expectedValue) == 0)
+
+	// Verify gas limit and gas price
+	expectedGasPrice, ok := big.NewInt(0).SetString("6fc23ac00", 16)
+	require.True(t, ok)
+	require.EqualValues(t, 0x51615, ethLegacyTx.GasLimit)
+	require.True(t, ethLegacyTx.GasPrice.Cmp(expectedGasPrice) == 0)
+
+	require.Empty(t, ethLegacyTx.Input)
+
+	// Verify signature values (v, r, s)
+	expectedV, ok := big.NewInt(0).SetString("1b", 16)
+	require.True(t, ok)
+	require.True(t, ethLegacyTx.V.Cmp(expectedV) == 0)
+
+	expectedR, ok := big.NewInt(0).SetString("51222d91a379452395d0abaff981af4cfcc242f25cfaf947dea8245a477731f9", 16)
+	require.True(t, ok)
+	require.True(t, ethLegacyTx.R.Cmp(expectedR) == 0)
+
+	expectedS, ok := big.NewInt(0).SetString("3a997c910b4701cca5d933fb26064ee5af7fe3236ff0ef2b58aa50b25aff8ca5", 16)
+	require.True(t, ok)
+	require.True(t, ethLegacyTx.S.Cmp(expectedS) == 0)
+
+	// Convert to signed Filecoin message and verify fields
+	smsg, err := ToSignedFilecoinMessage(ethLegacyTx)
+	require.NoError(t, err)
+
+	require.EqualValues(t, smsg.Message.From, sender)
+
+	expectedToFilecoinAddr, err := ethLegacyTx.To.ToFilecoinAddress()
+	require.NoError(t, err)
+	require.EqualValues(t, smsg.Message.To, expectedToFilecoinAddr)
+	require.EqualValues(t, smsg.Message.Value, ethLegacyTx.Value)
+	require.EqualValues(t, smsg.Message.GasLimit, ethLegacyTx.GasLimit)
+	require.EqualValues(t, smsg.Message.GasFeeCap, ethLegacyTx.GasPrice)
+	require.EqualValues(t, smsg.Message.GasPremium, ethLegacyTx.GasPrice)
+	require.EqualValues(t, smsg.Message.Nonce, ethLegacyTx.Nonce)
+	require.Empty(t, smsg.Message.Params)
+	require.EqualValues(t, smsg.Message.Method, builtintypes.MethodsEVM.InvokeContract)
+
+	// Convert signed Filecoin message back to Ethereum transaction and verify equality
+	ethTx, err := EthTransactionFromSignedFilecoinMessage(smsg)
+	require.NoError(t, err)
+	convertedLegacyTx, ok := ethTx.(*EthLegacyHomesteadTxArgs)
+	require.True(t, ok)
+	ethLegacyTx.Input = nil
+	require.EqualValues(t, convertedLegacyTx, ethLegacyTx)
+
+	// Verify EthTx fields
+	ethTxVal, err := ethLegacyTx.ToEthTx(smsg)
+	require.NoError(t, err)
+	expectedHash, err := ethLegacyTx.TxHash()
+	require.NoError(t, err)
+	require.EqualValues(t, ethTxVal.Hash, expectedHash)
+	require.Nil(t, ethTxVal.MaxFeePerGas)
+	require.Nil(t, ethTxVal.MaxPriorityFeePerGas)
+	require.EqualValues(t, ethTxVal.Gas, ethLegacyTx.GasLimit)
+	require.EqualValues(t, ethTxVal.Value, ethLegacyTx.Value)
+	require.EqualValues(t, ethTxVal.Nonce, ethLegacyTx.Nonce)
+	require.EqualValues(t, ethTxVal.To, ethLegacyTx.To)
+	require.EqualValues(t, ethTxVal.From, expectedFromAddr)
+}
+
+func TestFailurePaths(t *testing.T) {
+	// Test case for invalid RLP
+	invalidRLP := "0x08718301efc58506fc23ac008305161594104994f45d9d697ca104e5704a7b77d7fec3537c890821878651a4d70000801ba051222d91a379452395d0abaff981af4cfcc242f25cfaf947dea8245a477731f9a03a997c910b4701cca5d933fb26064ee5af7fe3236ff0ef2b58aa50b25aff8ca5"
+	decoded, err := hex.DecodeString(strings.TrimPrefix(invalidRLP, "0x"))
+	require.NoError(t, err)
+
+	_, err = parseLegacyHomesteadTx(decoded)
+	require.Error(t, err, "Expected error for invalid RLP")
+
+	// Test case for mangled signature
+	mangledSignatureRLP := "0xf8718301efc58506fc23ac008305161594104994f45d9d697ca104e5704a7b77d7fec3537c890821878651a4d70000801ba051222d91a379452395d0abaff981af4cfcc242f25cfaf947dea8245a477731f9a03a997c910b4701cca5d933fb26064ee5af7fe3236ff0ef2b58aa50b25aff8ca5"
+	decodedSig, err := hex.DecodeString(strings.TrimPrefix(mangledSignatureRLP, "0x"))
+	require.NoError(t, err)
+
+	ethLegacyTx, err := parseLegacyHomesteadTx(decodedSig)
+	require.NoError(t, err)
+
+	// Mangle R value
+	ethLegacyTx.R = big.Add(ethLegacyTx.R, big.NewInt(1))
+
+	expectedFromAddr, err := ParseEthAddress("0x32Be343B94f860124dC4fEe278FDCBD38C102D88")
+	require.NoError(t, err)
+	expectedFromFilecoinAddr, err := expectedFromAddr.ToFilecoinAddress()
+	require.NoError(t, err)
+
+	senderAddr, err := ethLegacyTx.Sender()
+	require.NoError(t, err)
+	require.NotEqual(t, senderAddr, expectedFromFilecoinAddr, "Expected sender address to not match after mangling R value")
+
+	// Mangle V value
+	ethLegacyTx.V = big.NewInt(1)
+	_, err = ethLegacyTx.Sender()
+	require.Error(t, err, "Expected error when V value is not 27 or 28")
 }
