@@ -16,13 +16,15 @@ type allocSelector struct {
 	index paths.SectorIndex
 	alloc storiface.SectorFileType
 	ptype storiface.PathType
+	miner abi.ActorID
 }
 
-func newAllocSelector(index paths.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType) *allocSelector {
+func newAllocSelector(index paths.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType, miner abi.ActorID) *allocSelector {
 	return &allocSelector{
 		index: index,
 		alloc: alloc,
 		ptype: ptype,
+		miner: miner,
 	}
 }
 
@@ -50,7 +52,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 		return false, false, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	best, err := s.index.StorageBestAlloc(ctx, s.alloc, ssize, s.ptype)
+	best, err := s.index.StorageBestAlloc(ctx, s.alloc, ssize, s.ptype, s.miner)
 	if err != nil {
 		return false, false, xerrors.Errorf("finding best alloc storage: %w", err)
 	}

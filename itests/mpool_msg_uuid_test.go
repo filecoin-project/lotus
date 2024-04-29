@@ -34,7 +34,7 @@ func TestMsgWithoutUuidWithMaxFee(t *testing.T) {
 		To:    node.DefaultKey.Address,
 		Value: big.Div(bal, big.NewInt(2)),
 	}
-	smHalfBal, err := node.MpoolPushMessage(ctx, msgHalfBal, &api.MessageSendSpec{MaxFee: abi.TokenAmount(config.DefaultDefaultMaxFee)})
+	smHalfBal, err := node.MpoolPushMessage(ctx, msgHalfBal, &api.MessageSendSpec{MaxFee: abi.TokenAmount(config.DefaultDefaultMaxFee())})
 	require.NoError(t, err)
 	mLookup, err := node.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestMsgWithoutUuidWithMaxFee(t *testing.T) {
 		To:    node.DefaultKey.Address,
 		Value: big.Div(bal, big.NewInt(4)),
 	}
-	smQuarterBal, err := node.MpoolPushMessage(ctx, msgQuarterBal, &api.MessageSendSpec{MaxFee: abi.TokenAmount(config.DefaultDefaultMaxFee)})
+	smQuarterBal, err := node.MpoolPushMessage(ctx, msgQuarterBal, &api.MessageSendSpec{MaxFee: abi.TokenAmount(config.DefaultDefaultMaxFee())})
 	require.NoError(t, err)
 
 	require.Equal(t, msgQuarterBal.Value, smQuarterBal.Message.Value)

@@ -46,9 +46,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/deps"
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/rpc"
-	"github.com/filecoin-project/lotus/cmd/lotus-provider/tasks"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/cmd/curio/rpc"
+	"github.com/filecoin-project/lotus/cmd/curio/tasks"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
@@ -913,7 +913,7 @@ func (n *Ensemble) Start() *Ensemble {
 		if err != nil {
 			return nil
 		}
-		defer taskEngine.GracefullyTerminate(time.Hour)
+		defer taskEngine.GracefullyTerminate()
 
 		err = rpc.ListenAndServe(ctx, p.Deps, shutdownChan) // Monitor for shutdown.
 		require.NoError(n.t, err)
@@ -1099,14 +1099,14 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []api.SectorPiece{
-				{
+			Pieces: []pipeline.SafeSectorPiece{
+				pipeline.SafePiece(api.SectorPiece{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
 					DealInfo: nil, // todo: likely possible to get, but not really that useful
-				},
+				}),
 			},
 			CommD: &commD,
 			CommR: &commR,

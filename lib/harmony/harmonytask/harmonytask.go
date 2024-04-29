@@ -12,9 +12,10 @@ import (
 )
 
 // Consts (except for unit test)
-var POLL_DURATION = time.Second * 3     // Poll for Work this frequently
-var CLEANUP_FREQUENCY = 5 * time.Minute // Check for dead workers this often * everyone
-var FOLLOW_FREQUENCY = 1 * time.Minute  // Check for work to follow this often
+var POLL_DURATION = time.Second * 3             // Poll for Work this frequently
+var POLL_NEXT_DURATION = 100 * time.Millisecond // After scheduling a task, wait this long before scheduling another
+var CLEANUP_FREQUENCY = 5 * time.Minute         // Check for dead workers this often * everyone
+var FOLLOW_FREQUENCY = 1 * time.Minute          // Check for work to follow this often
 
 type TaskTypeDetails struct {
 	// Max returns how many tasks this machine can run of this type.
@@ -38,6 +39,12 @@ type TaskTypeDetails struct {
 	// NOTE: if refatoring tasks, see if your task is
 	// necessary. Ex: Is the sector state correct for your stage to run?
 	Follows map[string]func(TaskID, AddTaskFunc) (bool, error)
+
+	// IAmBored is called (when populated) when there's capacity but no work.
+	// Tasks added will be proposed to CanAccept() on this machine.
+	// CanAccept() can read taskEngine's WorkOrigin string to learn about a task.
+	// Ex: make new CC sectors, clean-up, or retrying pipelines that failed in later states.
+	IAmBored func(AddTaskFunc) error
 }
 
 // TaskInterface must be implemented in order to have a task used by harmonytask.
@@ -96,17 +103,21 @@ type TaskInterface interface {
 type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) (shouldCommit bool, seriousError error))
 
 type TaskEngine struct {
-	ctx            context.Context
-	handlers       []*taskTypeHandler
-	db             *harmonydb.DB
-	reg            *resources.Reg
-	grace          context.CancelFunc
-	taskMap        map[string]*taskTypeHandler
-	ownerID        int
-	follows        map[string][]followStruct
+	// Static After New()
+	ctx         context.Context
+	handlers    []*taskTypeHandler
+	db          *harmonydb.DB
+	reg         *resources.Reg
+	grace       context.CancelFunc
+	taskMap     map[string]*taskTypeHandler
+	ownerID     int
+	follows     map[string][]followStruct
+	hostAndPort string
+
+	// synchronous to the single-threaded poller
 	lastFollowTime time.Time
 	lastCleanup    atomic.Value
-	hostAndPort    string
+	WorkOrigin     string
 }
 type followStruct struct {
 	f    func(TaskID, AddTaskFunc) (bool, error)
@@ -176,8 +187,8 @@ func New(
 					continue // not really fatal, but not great
 				}
 			}
-			if !h.considerWork(workSourceRecover, []TaskID{TaskID(w.ID)}) {
-				log.Error("Strange: Unable to accept previously owned task: ", w.ID, w.Name)
+			if !h.considerWork(WorkSourceRecover, []TaskID{TaskID(w.ID)}) {
+				log.Errorw("Strange: Unable to accept previously owned task", "id", w.ID, "type", w.Name)
 			}
 		}
 	}
@@ -192,32 +203,72 @@ func New(
 // GracefullyTerminate hangs until all present tasks have completed.
 // Call this to cleanly exit the process. As some processes are long-running,
 // passing a deadline will ignore those still running (to be picked-up later).
-func (e *TaskEngine) GracefullyTerminate(deadline time.Duration) {
+func (e *TaskEngine) GracefullyTerminate() {
+
+	// call the cancel func to avoid picking up any new tasks. Running tasks have context.Background()
+	// Call shutdown to stop posting heartbeat to DB.
 	e.grace()
 	e.reg.Shutdown()
-	deadlineChan := time.NewTimer(deadline).C
-top:
-	for _, h := range e.handlers {
-		if h.Count.Load() > 0 {
-			select {
-			case <-deadlineChan:
-				return
-			default:
-				time.Sleep(time.Millisecond)
-				goto top
+
+	// If there are any Post tasks then wait till Timeout and check again
+	// When no Post tasks are active, break out of loop  and call the shutdown function
+	for {
+		timeout := time.Millisecond
+		for _, h := range e.handlers {
+			if h.TaskTypeDetails.Name == "WinPost" && h.Count.Load() > 0 {
+				timeout = time.Second
+				log.Infof("node shutdown deferred for %f seconds", timeout.Seconds())
+				continue
+			}
+			if h.TaskTypeDetails.Name == "WdPost" && h.Count.Load() > 0 {
+				timeout = time.Second * 3
+				log.Infof("node shutdown deferred for %f seconds due to running WdPost task", timeout.Seconds())
+				continue
+			}
+
+			if h.TaskTypeDetails.Name == "WdPostSubmit" && h.Count.Load() > 0 {
+				timeout = time.Second
+				log.Infof("node shutdown deferred for %f seconds due to running WdPostSubmit task", timeout.Seconds())
+				continue
+			}
+
+			if h.TaskTypeDetails.Name == "WdPostRecover" && h.Count.Load() > 0 {
+				timeout = time.Second
+				log.Infof("node shutdown deferred for %f seconds due to running WdPostRecover task", timeout.Seconds())
+				continue
+			}
+
+			// Test tasks for itest
+			if h.TaskTypeDetails.Name == "ThingOne" && h.Count.Load() > 0 {
+				timeout = time.Second
+				log.Infof("node shutdown deferred for %f seconds due to running itest task", timeout.Seconds())
+				continue
 			}
 		}
+		if timeout > time.Millisecond {
+			time.Sleep(timeout)
+			continue
+		}
+		break
 	}
+
+	return
 }
 
 func (e *TaskEngine) poller() {
+	nextWait := POLL_NEXT_DURATION
 	for {
 		select {
-		case <-time.NewTicker(POLL_DURATION).C: // Find work periodically
+		case <-time.After(nextWait): // Find work periodically
 		case <-e.ctx.Done(): ///////////////////// Graceful exit
 			return
 		}
-		e.pollerTryAllWork()
+		nextWait = POLL_DURATION
+
+		accepted := e.pollerTryAllWork()
+		if accepted {
+			nextWait = POLL_NEXT_DURATION
+		}
 		if time.Since(e.lastFollowTime) > FOLLOW_FREQUENCY {
 			e.followWorkInDB()
 		}
@@ -233,7 +284,7 @@ func (e *TaskEngine) followWorkInDB() {
 	for fromName, srcs := range e.follows {
 		var cList []int // Which work is done (that we follow) since we last checked?
 		err := e.db.Select(e.ctx, &cList, `SELECT h.task_id FROM harmony_task_history 
-   		WHERE h.work_end>$1 AND h.name=$2`, lastFollowTime, fromName)
+   		WHERE h.work_end>$1 AND h.name=$2`, lastFollowTime.UTC(), fromName)
 		if err != nil {
 			log.Error("Could not query DB: ", err)
 			return
@@ -266,13 +317,14 @@ func (e *TaskEngine) followWorkInDB() {
 }
 
 // pollerTryAllWork starts the next 1 task
-func (e *TaskEngine) pollerTryAllWork() {
+func (e *TaskEngine) pollerTryAllWork() bool {
 	if time.Since(e.lastCleanup.Load().(time.Time)) > CLEANUP_FREQUENCY {
 		e.lastCleanup.Store(time.Now())
 		resources.CleanupMachines(e.ctx, e.db)
 	}
 	for _, v := range e.handlers {
-		if v.AssertMachineHasCapacity() != nil {
+		if err := v.AssertMachineHasCapacity(); err != nil {
+			log.Debugf("skipped scheduling %s type tasks on due to %s", v.Name, err.Error())
 			continue
 		}
 		var unownedTasks []TaskID
@@ -285,13 +337,41 @@ func (e *TaskEngine) pollerTryAllWork() {
 			continue
 		}
 		if len(unownedTasks) > 0 {
-			accepted := v.considerWork(workSourcePoller, unownedTasks)
+			accepted := v.considerWork(WorkSourcePoller, unownedTasks)
 			if accepted {
-				return // accept new work slowly and in priority order
+				return true // accept new work slowly and in priority order
 			}
 			log.Warn("Work not accepted for " + strconv.Itoa(len(unownedTasks)) + " " + v.Name + " task(s)")
 		}
 	}
+	// if no work was accepted, are we bored? Then find work in priority order.
+	for _, v := range e.handlers {
+		v := v
+		if v.AssertMachineHasCapacity() != nil {
+			continue
+		}
+		if v.TaskTypeDetails.IAmBored != nil {
+			var added []TaskID
+			err := v.TaskTypeDetails.IAmBored(func(extraInfo func(TaskID, *harmonydb.Tx) (shouldCommit bool, seriousError error)) {
+				v.AddTask(func(tID TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+					b, err := extraInfo(tID, tx)
+					if err == nil {
+						added = append(added, tID)
+					}
+					return b, err
+				})
+			})
+			if err != nil {
+				log.Error("IAmBored failed: ", err)
+				continue
+			}
+			if added != nil { // tiny chance a fail could make these bogus, but considerWork should then fail.
+				v.considerWork(WorkSourceIAmBored, added)
+			}
+		}
+	}
+
+	return false
 }
 
 // ResourcesAvailable determines what resources are still unassigned.

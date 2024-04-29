@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -28,8 +27,10 @@ import (
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -552,14 +553,20 @@ type FullNode interface {
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 	// pending allocation is not found.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+	StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
 	// StateGetAllocations returns the all the allocations for a given client.
 	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
+	// StateGetAllAllocations returns the all the allocations available in verified registry actor.
+	StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
 	// StateGetClaim returns the claim for a given address and claim ID.
 	StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) //perm:read
 	// StateGetClaims returns the all the claims for a given provider.
 	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
+	// StateGetAllClaims returns the all the claims available in verified registry actor.
+	StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
 	// StateComputeDataCID computes DataCID from a set of on-chain deals
 	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
@@ -868,9 +875,26 @@ type FullNode interface {
 	Web3ClientVersion(ctx context.Context) (string, error) //perm:read
 
 	// TraceAPI related methods
+
+	// Returns an OpenEthereum-compatible trace of the given block (implementing `trace_block`),
+	// translating Filecoin semantics into Ethereum semantics and tracing both EVM and FVM calls.
 	//
-	// Returns traces created at given block
+	// Features:
+	//
+	// - FVM actor create events, calls, etc. show up as if they were EVM smart contract events.
+	// - Native FVM call inputs are ABI-encoded (Solidity ABI) as if they were calls to a
+	//   `handle_filecoin_method(uint64 method, uint64 codec, bytes params)` function
+	//   (where `codec` is the IPLD codec of `params`).
+	// - Native FVM call outputs (return values) are ABI-encoded as `(uint32 exit_code, uint64
+	//   codec, bytes output)` where `codec` is the IPLD codec of `output`.
+	//
+	// Limitations (for now):
+	//
+	// 1. Block rewards are not included in the trace.
+	// 2. SELFDESTRUCT operations are not included in the trace.
+	// 3. EVM smart contract "create" events always specify `0xfe` as the "code" for newly created EVM smart contracts.
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) //perm:read
+
 	// Replays all transactions in a block returning the requested traces for each transaction
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) //perm:read
 
@@ -879,6 +903,33 @@ type FullNode interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
+
+	// Actor events
+
+	// GetActorEventsRaw returns all user-programmed and built-in actor events that match the given
+	// filter.
+	// This is a request/response API.
+	// Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
+	// configuration options and also the amount of historical data available in the node.
+	//
+	// This is an EXPERIMENTAL API and may be subject to change.
+	GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) //perm:read
+
+	// SubscribeActorEventsRaw returns a long-lived stream of all user-programmed and built-in actor
+	// events that match the given filter.
+	// Events that match the given filter are written to the stream in real-time as they are emitted
+	// from the FVM.
+	// The response stream is closed when the client disconnects, when a ToHeight is specified and is
+	// reached, or if there is an error while writing an event to the stream.
+	// This API also allows clients to read all historical events matching the given filter before any
+	// real-time events are written to the response stream if the filter specifies an earlier
+	// FromHeight.
+	// Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
+	// configuration options and also the amount of historical data available in the node.
+	//
+	// Note: this API is only available via websocket connections.
+	// This is an EXPERIMENTAL API and may be subject to change.
+	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
 }
 
 // reverse interface to the client, called after EthSubscribe
@@ -1114,9 +1165,47 @@ type MarketBalance struct {
 	Locked big.Int
 }
 
+type MarketDealState struct {
+	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
+	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
+	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
+}
+
+func MakeDealState(mds market.DealState) MarketDealState {
+	return MarketDealState{
+		SectorStartEpoch: mds.SectorStartEpoch(),
+		LastUpdatedEpoch: mds.LastUpdatedEpoch(),
+		SlashEpoch:       mds.SlashEpoch(),
+	}
+}
+
+type mstate struct {
+	s MarketDealState
+}
+
+func (m mstate) SectorStartEpoch() abi.ChainEpoch {
+	return m.s.SectorStartEpoch
+}
+
+func (m mstate) LastUpdatedEpoch() abi.ChainEpoch {
+	return m.s.LastUpdatedEpoch
+}
+
+func (m mstate) SlashEpoch() abi.ChainEpoch {
+	return m.s.SlashEpoch
+}
+
+func (m mstate) Equals(o market.DealState) bool {
+	return market.DealStatesEqual(m, o)
+}
+
+func (m MarketDealState) Iface() market.DealState {
+	return mstate{m}
+}
+
 type MarketDeal struct {
 	Proposal market.DealProposal
-	State    market.DealState
+	State    MarketDealState
 }
 
 type RetrievalOrder struct {

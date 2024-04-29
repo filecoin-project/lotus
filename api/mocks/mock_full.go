@@ -27,8 +27,9 @@ import (
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
+	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	miner "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
@@ -36,7 +37,7 @@ import (
 
 	api "github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	miner1 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
@@ -1626,6 +1627,21 @@ func (mr *MockFullNodeMockRecorder) GasEstimateMessageGas(arg0, arg1, arg2, arg3
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GasEstimateMessageGas", reflect.TypeOf((*MockFullNode)(nil).GasEstimateMessageGas), arg0, arg1, arg2, arg3)
 }
 
+// GetActorEventsRaw mocks base method.
+func (m *MockFullNode) GetActorEventsRaw(arg0 context.Context, arg1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActorEventsRaw", arg0, arg1)
+	ret0, _ := ret[0].([]*types.ActorEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActorEventsRaw indicates an expected call of GetActorEventsRaw.
+func (mr *MockFullNodeMockRecorder) GetActorEventsRaw(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActorEventsRaw", reflect.TypeOf((*MockFullNode)(nil).GetActorEventsRaw), arg0, arg1)
+}
+
 // ID mocks base method.
 func (m *MockFullNode) ID(arg0 context.Context) (peer.ID, error) {
 	m.ctrl.T.Helper()
@@ -3158,6 +3174,36 @@ func (mr *MockFullNodeMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockFullNode)(nil).StateGetActor), arg0, arg1, arg2)
 }
 
+// StateGetAllAllocations mocks base method.
+func (m *MockFullNode) StateGetAllAllocations(arg0 context.Context, arg1 types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllAllocations", arg0, arg1)
+	ret0, _ := ret[0].(map[verifreg.AllocationId]verifreg.Allocation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllAllocations indicates an expected call of StateGetAllAllocations.
+func (mr *MockFullNodeMockRecorder) StateGetAllAllocations(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllAllocations", reflect.TypeOf((*MockFullNode)(nil).StateGetAllAllocations), arg0, arg1)
+}
+
+// StateGetAllClaims mocks base method.
+func (m *MockFullNode) StateGetAllClaims(arg0 context.Context, arg1 types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllClaims", arg0, arg1)
+	ret0, _ := ret[0].(map[verifreg.ClaimId]verifreg.Claim)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllClaims indicates an expected call of StateGetAllClaims.
+func (mr *MockFullNodeMockRecorder) StateGetAllClaims(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllClaims", reflect.TypeOf((*MockFullNode)(nil).StateGetAllClaims), arg0, arg1)
+}
+
 // StateGetAllocation mocks base method.
 func (m *MockFullNode) StateGetAllocation(arg0 context.Context, arg1 address.Address, arg2 verifreg.AllocationId, arg3 types.TipSetKey) (*verifreg.Allocation, error) {
 	m.ctrl.T.Helper()
@@ -3186,6 +3232,21 @@ func (m *MockFullNode) StateGetAllocationForPendingDeal(arg0 context.Context, ar
 func (mr *MockFullNodeMockRecorder) StateGetAllocationForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationForPendingDeal", reflect.TypeOf((*MockFullNode)(nil).StateGetAllocationForPendingDeal), arg0, arg1, arg2)
+}
+
+// StateGetAllocationIdForPendingDeal mocks base method.
+func (m *MockFullNode) StateGetAllocationIdForPendingDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (verifreg.AllocationId, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocationIdForPendingDeal", arg0, arg1, arg2)
+	ret0, _ := ret[0].(verifreg.AllocationId)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocationIdForPendingDeal indicates an expected call of StateGetAllocationIdForPendingDeal.
+func (mr *MockFullNodeMockRecorder) StateGetAllocationIdForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationIdForPendingDeal", reflect.TypeOf((*MockFullNode)(nil).StateGetAllocationIdForPendingDeal), arg0, arg1, arg2)
 }
 
 // StateGetAllocations mocks base method.
@@ -3549,7 +3610,7 @@ func (mr *MockFullNodeMockRecorder) StateMinerInfo(arg0, arg1, arg2 interface{})
 }
 
 // StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockFullNode) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
+func (m *MockFullNode) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)
@@ -3594,7 +3655,7 @@ func (mr *MockFullNodeMockRecorder) StateMinerPower(arg0, arg1, arg2 interface{}
 }
 
 // StateMinerPreCommitDepositForPower mocks base method.
-func (m *MockFullNode) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
+func (m *MockFullNode) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerPreCommitDepositForPower", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)
@@ -3759,10 +3820,10 @@ func (mr *MockFullNodeMockRecorder) StateSearchMsg(arg0, arg1, arg2, arg3, arg4 
 }
 
 // StateSectorExpiration mocks base method.
-func (m *MockFullNode) StateSectorExpiration(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner0.SectorExpiration, error) {
+func (m *MockFullNode) StateSectorExpiration(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner1.SectorExpiration, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorExpiration", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*miner0.SectorExpiration)
+	ret0, _ := ret[0].(*miner1.SectorExpiration)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3789,10 +3850,10 @@ func (mr *MockFullNodeMockRecorder) StateSectorGetInfo(arg0, arg1, arg2, arg3 in
 }
 
 // StateSectorPartition mocks base method.
-func (m *MockFullNode) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner0.SectorLocation, error) {
+func (m *MockFullNode) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner1.SectorLocation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPartition", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*miner0.SectorLocation)
+	ret0, _ := ret[0].(*miner1.SectorLocation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3804,10 +3865,10 @@ func (mr *MockFullNodeMockRecorder) StateSectorPartition(arg0, arg1, arg2, arg3 
 }
 
 // StateSectorPreCommitInfo mocks base method.
-func (m *MockFullNode) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
+func (m *MockFullNode) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner0.SectorPreCommitOnChainInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPreCommitInfo", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*miner.SectorPreCommitOnChainInfo)
+	ret0, _ := ret[0].(*miner0.SectorPreCommitOnChainInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3891,6 +3952,21 @@ func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uin
 func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
+}
+
+// SubscribeActorEventsRaw mocks base method.
+func (m *MockFullNode) SubscribeActorEventsRaw(arg0 context.Context, arg1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeActorEventsRaw", arg0, arg1)
+	ret0, _ := ret[0].(<-chan *types.ActorEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SubscribeActorEventsRaw indicates an expected call of SubscribeActorEventsRaw.
+func (mr *MockFullNodeMockRecorder) SubscribeActorEventsRaw(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeActorEventsRaw", reflect.TypeOf((*MockFullNode)(nil).SubscribeActorEventsRaw), arg0, arg1)
 }
 
 // SyncCheckBad mocks base method.

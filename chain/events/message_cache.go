@@ -11,13 +11,13 @@ import (
 )
 
 type messageCache struct {
-	api EventAPI
+	api EventHelperAPI
 
 	blockMsgLk    sync.Mutex
 	blockMsgCache *arc.ARCCache[cid.Cid, *api.BlockMessages]
 }
 
-func newMessageCache(a EventAPI) *messageCache {
+func newMessageCache(a EventHelperAPI) *messageCache {
 	blsMsgCache, _ := arc.NewARC[cid.Cid, *api.BlockMessages](500)
 
 	return &messageCache{

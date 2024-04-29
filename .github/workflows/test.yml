@@ -1,0 +1,320 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/*
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+jobs:
+  discover:
+    name: Discover Test Groups
+    runs-on: ubuntu-latest
+    outputs:
+      groups: ${{ steps.test.outputs.groups }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - id: test
+        env:
+          # Unit test groups other than unit-rest
+          utests: |
+            [
+              {"name": "unit-cli", "packages": ["./cli/...", "./cmd/...", "./api/..."]},
+              {"name": "unit-storage", "packages": ["./storage/...", "./extern/..."]},
+              {"name": "unit-node", "packages": ["./node/..."]}
+            ]
+          # Other tests that require special configuration
+          otests: |
+            [
+              {
+                "name": "multicore-sdr",
+                "packages": ["./storage/sealer/ffiwrapper"],
+                "go_test_flags": "-run=TestMulticoreSDR",
+                "test_rustproofs_logs": "1"
+              }, {
+                "name": "conformance",
+                "packages": ["./conformance"],
+                "go_test_flags": "-run=TestConformance",
+                "skip_conformance": "0"
+              }
+            ]
+          # Mapping from test group names to custom runner labels
+          # The jobs default to running on the default hosted runners (4 CPU, 16 RAM).
+          # We use self-hosted xlarge (4 CPU, 8 RAM; and large - 2 CPU, 4 RAM) runners
+          #   to extend the available runner capacity (60 default hosted runners).
+          # We use self-hosted 4xlarge (16 CPU, 32 RAM; and 2xlarge - 8 CPU, 16 RAM) self-hosted
+          #   to support resource intensive jobs.
+          # In CircleCI, the jobs defaulted to running on medium+ runners (3 CPU, 6 RAM).
+          # The following jobs were scheduled to run on 2xlarge runners (16 CPU, 32 RAM):
+          # - itest-deals_concurrent (✅)
+          # - itest-sector_pledge (✅)
+          # - itest-wdpost_worker_config (❌)
+          # - itest-worker (✅)
+          # - unit-cli (❌)
+          # - unit-rest (❌)
+          runners: |
+            {
+              "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
+
+              "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-sector_import_simple": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
+              "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
+
+              "itest-batch_deal": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-cli": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_512mb": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_anycid": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_invalid_utf8_label": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_max_staging_deals": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_partial_retrieval": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_publish": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-deals_remote_retrieval": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-decode_params": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-dup_mpool_messages": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_account_abstraction": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_api": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_balance": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_bytecode": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_config": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_conformance": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_deploy": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_fee_history": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-eth_transactions": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-fevm_address": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-fevm_events": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-gas_estimation": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-msgindex": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-multisig": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-net": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-nonce": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-path_detach_redeclare": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-pending_deal_allocation": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-remove_verifreg_datacap": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_miner_collateral": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-sector_numassign": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-self_sent_txn": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-verifreg": ["self-hosted", "linux", "x64", "xlarge"],
+              "multicore-sdr": ["self-hosted", "linux", "x64", "xlarge"],
+              "unit-node": ["self-hosted", "linux", "x64", "xlarge"]
+            }
+          # A list of test groups that require YugabyteDB to be running
+          # In CircleCI, all jobs had yugabytedb running as a sidecar.
+          yugabytedb: |
+            ["itest-harmonydb", "itest-harmonytask", "itest-curio"]
+          # A list of test groups that require Proof Parameters to be fetched
+          # In CircleCI, only the following jobs had get-params set:
+          # - unit-cli (✅)
+          # - unit-storage (✅)
+          # - itest-sector_pledge (✅)
+          # - itest-wdpost (✅)
+          parameters: |
+            [
+              "conformance",
+              "itest-api",
+              "itest-deals_offline",
+              "itest-deals_padding",
+              "itest-deals_partial_retrieval_dm-level",
+              "itest-deals_pricing",
+              "itest-deals",
+              "itest-direct_data_onboard_verified",
+              "itest-direct_data_onboard",
+              "itest-net",
+              "itest-path_detach_redeclare",
+              "itest-path_type_filters",
+              "itest-sealing_resources",
+              "itest-sector_finalize_early",
+              "itest-sector_import_full",
+              "itest-sector_import_simple",
+              "itest-sector_pledge",
+              "itest-sector_unseal",
+              "itest-wdpost_no_miner_storage",
+              "itest-wdpost_worker_config",
+              "itest-wdpost",
+              "itest-worker_upgrade",
+              "itest-worker",
+              "multicore-sdr",
+              "unit-cli",
+              "unit-storage"
+            ]
+        run: |
+          # Create a list of integration test groups
+          itests="$(
+            find ./itests -name "*_test.go" | \
+              jq -R '{
+                "name": "itest-\(. | split("/") | .[2] | sub("_test.go$";""))",
+                "packages": [.]
+              }' | jq -s
+            )"
+
+          # Create a list of packages that are covered by the integration and unit tests
+          packages="$(jq -n --argjson utests "$utests" '$utests | map(.packages) | flatten | . + ["./itests/..."]')"
+
+          # Create a new group for the unit tests that are not yet covered
+          rest="$(
+            find . -name "*_test.go" | cut -d/ -f2 | sort | uniq | \
+              jq -R '"./\(.)/..."' | \
+              jq -s --argjson p "$packages" '{"name": "unit-rest", "packages": (. - $p)}'
+          )"
+
+          # Combine the groups for integration tests, unit tests, the new unit-rest group, and the other tests
+          groups="$(jq -n --argjson i "$itests" --argjson u "$utests" --argjson r "$rest" --argjson o "$otests" '$i + $u + [$r] + $o')"
+
+          # Apply custom runner labels to the groups
+          groups="$(jq -n --argjson g "$groups" --argjson r "$runners" '$g | map(. + {"runner": (.name as $n | $r | .[$n]) })')"
+
+          # Apply the needs_yugabytedb flag to the groups
+          groups="$(jq -n --argjson g "$groups" --argjson y "$yugabytedb" '$g | map(. + {"needs_yugabytedb": ([.name] | inside($y)) })')"
+
+          # Apply the needs_parameters flag to the groups
+          groups="$(jq -n --argjson g "$groups" --argjson p "$parameters" '$g | map(. + {"needs_parameters": ([.name] | inside($p)) })')"
+
+          # Output the groups
+          echo "groups=$groups"
+          echo "groups=$(jq -nc --argjson g "$groups" '$g')" >> $GITHUB_OUTPUT
+  cache:
+    name: Cache Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      fetch_params_key: ${{ steps.fetch_params.outputs.key }}
+      fetch_params_path: ${{ steps.fetch_params.outputs.path }}
+      make_deps_key: ${{ steps.make_deps.outputs.key }}
+      make_deps_path: ${{ steps.make_deps.outputs.path }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - id: fetch_params
+        env:
+          CACHE_KEY: fetch-params-${{ hashFiles('./extern/filecoin-ffi/parameters.json') }}
+          CACHE_PATH: |
+            /var/tmp/filecoin-proof-parameters/
+        run: |
+          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+      - id: make_deps
+        env:
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./extern/filecoin-ffi/install-filcrypto') }}-${{ hashFiles('./extern/filecoin-ffi/rust/rustc-target-features-optimized.json') }}
+          CACHE_PATH: |
+            ./extern/filecoin-ffi/filcrypto.h
+            ./extern/filecoin-ffi/libfilcrypto.a
+            ./extern/filecoin-ffi/filcrypto.pc
+        run: |
+          echo -e "key=$CACHE_KEY" | tee -a $GITHUB_OUTPUT
+          echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
+      - id: restore_fetch_params
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.fetch_params.outputs.key }}
+          path: ${{ steps.fetch_params.outputs.path }}
+          lookup-only: true
+      - id: restore_make_deps
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.make_deps.outputs.key }}
+          path: ${{ steps.make_deps.outputs.path }}
+          lookup-only: true
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-system-dependencies
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        uses: ./.github/actions/install-go
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make deps
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        run: make lotus
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        run: ./lotus fetch-params 2048
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.fetch_params.outputs.key }}
+          path: ${{ steps.fetch_params.outputs.path }}
+      - if: steps.restore_make_deps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.make_deps.outputs.key }}
+          path: ${{ steps.make_deps.outputs.path }}
+  test:
+    needs: [discover, cache]
+    name: Test (${{ matrix.name }})
+    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.groups) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - run: go install gotest.tools/gotestsum@latest
+      - name: Restore cached make deps outputs
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.cache.outputs.make_deps_key }}
+          path: ${{ needs.cache.outputs.make_deps_path }}
+          fail-on-cache-miss: true
+      - if: ${{ matrix.needs_parameters }}
+        name: Restore cached fetch params outputs
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.cache.outputs.fetch_params_key }}
+          path: ${{ needs.cache.outputs.fetch_params_path }}
+          fail-on-cache-miss: true
+      - if: ${{ matrix.needs_yugabytedb }}
+        uses: ./.github/actions/start-yugabytedb
+        timeout-minutes: 3
+      # TODO: Install statediff (used to be used for conformance)
+      - id: reports
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+      # TODO: Track coverage (used to be tracked for conformance)
+      - env:
+          NAME: ${{ matrix.name }}
+          LOTUS_SRC_DIR: ${{ github.workspace }}
+          LOTUS_HARMONYDB_HOSTS: 127.0.0.1
+          REPORTS_PATH: ${{ steps.reports.outputs.path }}
+          SKIP_CONFORMANCE: ${{ matrix.skip_conformance || '1' }}
+          TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || '0' }}
+          FORMAT: ${{ matrix.format || 'standard-verbose' }}
+          PACKAGES: ${{ join(matrix.packages, ' ') }}
+        run: |
+          gotestsum \
+            --format "$FORMAT" \
+            --junitfile "$REPORTS_PATH/$NAME.xml" \
+            --jsonfile "$REPORTS_PATH/$NAME.json" \
+            --packages="$PACKAGES" \
+            -- ${{ matrix.go_test_flags || '' }}
+      - if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
+            ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
+        continue-on-error: true

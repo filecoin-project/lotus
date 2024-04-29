@@ -14,6 +14,7 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -38,7 +39,7 @@ type SectorIndex interface { // part of storage-miner api
 	StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error
 	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error)
 
-	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error)
 
 	// atomically acquire locks on all sector file types. close ctx to unlock
 	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error
@@ -61,6 +62,7 @@ type storageEntry struct {
 	heartbeatErr  error
 }
 
+// MemIndex represents an in-memory index of storage sectors and storage entries.
 type MemIndex struct {
 	*indexLocks
 	lk sync.RWMutex
@@ -206,6 +208,8 @@ func (i *MemIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo, 
 		i.stores[si.ID].info.AllowTo = si.AllowTo
 		i.stores[si.ID].info.AllowTypes = allow
 		i.stores[si.ID].info.DenyTypes = deny
+		i.stores[si.ID].info.AllowMiners = si.AllowMiners
+		i.stores[si.ID].info.DenyMiners = si.DenyMiners
 
 		return nil
 	}
@@ -476,8 +480,10 @@ func (i *MemIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft sto
 
 			Primary: isprimary[id],
 
-			AllowTypes: st.info.AllowTypes,
-			DenyTypes:  st.info.DenyTypes,
+			AllowTypes:  st.info.AllowTypes,
+			DenyTypes:   st.info.DenyTypes,
+			AllowMiners: st.info.AllowMiners,
+			DenyMiners:  st.info.DenyMiners,
 		})
 	}
 
@@ -489,6 +495,16 @@ func (i *MemIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft sto
 
 		for id, st := range i.stores {
 			if !st.info.CanSeal {
+				continue
+			}
+
+			proceed, msg, err := MinerFilter(st.info.AllowMiners, st.info.DenyMiners, s.Miner)
+			if err != nil {
+				return nil, err
+			}
+
+			if !proceed {
+				log.Debugf("not allocating on %s, miner %s %s", st.info.ID, s.Miner.String(), msg)
 				continue
 			}
 
@@ -555,8 +571,10 @@ func (i *MemIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft sto
 
 				Primary: false,
 
-				AllowTypes: st.info.AllowTypes,
-				DenyTypes:  st.info.DenyTypes,
+				AllowTypes:  st.info.AllowTypes,
+				DenyTypes:   st.info.DenyTypes,
+				AllowMiners: st.info.AllowMiners,
+				DenyMiners:  st.info.DenyMiners,
 			})
 		}
 	}
@@ -564,6 +582,21 @@ func (i *MemIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft sto
 	return out, nil
 }
 
+// StorageInfo retrieves the storage information for a given storage ID.
+//
+// The method first acquires a read lock on the MemIndex to ensure thread-safety.
+// It then checks if the storage ID exists in the stores map. If not, it returns
+// an error indicating that the sector store was not found.
+//
+// Finally, it returns the storage information of the selected storage.
+//
+// Parameters:
+// - ctx: the context.Context object for cancellation and timeouts
+// - id: the ID of the storage to retrieve information for
+//
+// Returns:
+// - storiface.StorageInfo: the storage information of the selected storage ID
+// - error: an error indicating any issues encountered during the process
 func (i *MemIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface.StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
@@ -576,7 +609,33 @@ func (i *MemIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface.
 	return *si.info, nil
 }
 
-func (i *MemIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) {
+// StorageBestAlloc selects the best available storage options for allocating
+// a sector file. It takes into account the allocation type (sealing or storage),
+// sector size, and path type (sealing or storage).
+//
+// The method first estimates the required space for the allocation based on the
+// sector size and path type. It then iterates through all available storage options
+// and filters out those that cannot be used for the given path type. It also filters
+// out storage options that do not have enough available space or have not received
+// heartbeats within a certain threshold.
+//
+// The remaining storage options are sorted based on their available space and weight,
+// with higher availability and weight being prioritized. The method then returns
+// the information of the selected storage options.
+//
+// If no suitable storage options are found, it returns an error indicating that
+// no good path is available.
+//
+// Parameters:
+// - ctx: the context.Context object for cancellation and timeouts
+// - allocate: the type of allocation (sealing or storage)
+// - ssize: the size of the sector file
+// - pathType: the path type (sealing or storage)
+//
+// Returns:
+// - []storiface.StorageInfo: the information of the selected storage options
+// - error: an error indicating any issues encountered during the process
+func (i *MemIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -601,6 +660,16 @@ func (i *MemIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sect
 			continue
 		}
 		if (pathType == storiface.PathStorage) && !p.info.CanStore {
+			continue
+		}
+
+		proceed, msg, err := MinerFilter(p.info.AllowMiners, p.info.DenyMiners, miner)
+		if err != nil {
+			return nil, err
+		}
+
+		if !proceed {
+			log.Debugf("not allocating on %s, miner %s %s", p.info.ID, miner.String(), msg)
 			continue
 		}
 
@@ -661,3 +730,38 @@ func (i *MemIndex) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]
 }
 
 var _ SectorIndex = &MemIndex{}
+
+func MinerFilter(allowMiners, denyMiners []string, miner abi.ActorID) (bool, string, error) {
+	checkMinerInList := func(minersList []string, miner abi.ActorID) (bool, error) {
+		for _, m := range minersList {
+			minerIDStr := m
+			maddr, err := address.NewFromString(minerIDStr)
+			if err != nil {
+				return false, xerrors.Errorf("parsing miner address: %w", err)
+			}
+			mid, err := address.IDFromAddress(maddr)
+			if err != nil {
+				return false, xerrors.Errorf("converting miner address to ID: %w", err)
+			}
+			if abi.ActorID(mid) == miner {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	if len(allowMiners) > 0 {
+		found, err := checkMinerInList(allowMiners, miner)
+		if err != nil || !found {
+			return false, "not allowed", err
+		}
+	}
+
+	if len(denyMiners) > 0 {
+		found, err := checkMinerInList(denyMiners, miner)
+		if err != nil || found {
+			return false, "denied", err
+		}
+	}
+	return true, "", nil
+}

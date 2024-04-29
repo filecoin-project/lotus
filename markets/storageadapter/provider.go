@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -92,11 +93,11 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
 	}
 
-	sdInfo := api.PieceDealInfo{
+	sdInfo := piece.PieceDealInfo{
 		DealID:       deal.DealID,
 		DealProposal: &deal.Proposal,
 		PublishCid:   deal.PublishCid,
-		DealSchedule: api.DealSchedule{
+		DealSchedule: piece.DealSchedule{
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},

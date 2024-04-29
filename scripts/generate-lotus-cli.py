@@ -51,8 +51,12 @@ if __name__ == "__main__":
     for e in [ "LOTUS_PATH", "LOTUS_MARKETS_PATH", "LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH", "LOTUS_WORKER_PATH", "WORKER_PATH", "LOTUS_PANIC_REPORT_PATH", "WALLET_PATH" ]:
         os.environ.pop(e, None)
 
+    # Set env var telling the binaries that we're generating docs
+    os.putenv("LOTUS_DOCS_GENERATION", "1")
+
     os.putenv("LOTUS_VERSION_IGNORE_COMMIT", "1")
     generate_lotus_cli('lotus')
     generate_lotus_cli('lotus-miner')
     generate_lotus_cli('lotus-worker')
-    generate_lotus_cli('lotus-provider')
+    generate_lotus_cli('curio')
+    generate_lotus_cli('sptool')

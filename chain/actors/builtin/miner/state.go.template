@@ -583,7 +583,11 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
 		{{if (ge .v 7)}}
 		SectorKeyCID: v{{.v}}.SectorKeyCID,
-        {{end}}
+                {{end}}
+		{{if (ge .v 12)}}
+		PowerBaseEpoch:        v{{.v}}.PowerBaseEpoch,
+		ReplacedDayReward:     v{{.v}}.ReplacedDayReward,
+                {{end}}
 	}
 	return info
 }

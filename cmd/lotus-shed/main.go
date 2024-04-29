@@ -84,7 +84,6 @@ func main() {
 		diffCmd,
 		itestdCmd,
 		msigCmd,
-		fip36PollCmd,
 		invariantsCmd,
 		gasTraceCmd,
 		replayOfflineCmd,
@@ -92,6 +91,8 @@ func main() {
 		FevmAnalyticsCmd,
 		mismatchesCmd,
 		blockCmd,
+		adlCmd,
+		lpUtilCmd,
 	}
 
 	app := &cli.App{

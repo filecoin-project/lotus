@@ -13,14 +13,14 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/clicommands"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 func RunMultisigTests(t *testing.T, client *kit.TestFullNode) {
 	// Create mock CLI
 	ctx := context.Background()
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
+	mockCLI := kit.NewMockCLI(ctx, t, clicommands.Commands, api.NodeFull)
 	clientCLI := mockCLI.Client(client.ListenAddr)
 
 	// Create some wallets on the node to use for testing multisig

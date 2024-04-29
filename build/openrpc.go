@@ -2,7 +2,6 @@ package build
 
 import (
 	"bytes"
-	"compress/gzip"
 	"embed"
 	"encoding/json"
 
@@ -12,17 +11,9 @@ import (
 //go:embed openrpc
 var openrpcfs embed.FS
 
-func mustReadGzippedOpenRPCDocument(data []byte) apitypes.OpenRPCDocument {
-	zr, err := gzip.NewReader(bytes.NewBuffer(data))
-	if err != nil {
-		log.Fatal(err)
-	}
+func mustReadOpenRPCDocument(data []byte) apitypes.OpenRPCDocument {
 	m := apitypes.OpenRPCDocument{}
-	err = json.NewDecoder(zr).Decode(&m)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = zr.Close()
+	err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&m)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,33 +21,33 @@ func mustReadGzippedOpenRPCDocument(data []byte) apitypes.OpenRPCDocument {
 }
 
 func OpenRPCDiscoverJSON_Full() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/full.json.gz")
+	data, err := openrpcfs.ReadFile("openrpc/full.json")
 	if err != nil {
 		panic(err)
 	}
-	return mustReadGzippedOpenRPCDocument(data)
+	return mustReadOpenRPCDocument(data)
 }
 
 func OpenRPCDiscoverJSON_Miner() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/miner.json.gz")
+	data, err := openrpcfs.ReadFile("openrpc/miner.json")
 	if err != nil {
 		panic(err)
 	}
-	return mustReadGzippedOpenRPCDocument(data)
+	return mustReadOpenRPCDocument(data)
 }
 
 func OpenRPCDiscoverJSON_Worker() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/worker.json.gz")
+	data, err := openrpcfs.ReadFile("openrpc/worker.json")
 	if err != nil {
 		panic(err)
 	}
-	return mustReadGzippedOpenRPCDocument(data)
+	return mustReadOpenRPCDocument(data)
 }
 
 func OpenRPCDiscoverJSON_Gateway() apitypes.OpenRPCDocument {
-	data, err := openrpcfs.ReadFile("openrpc/gateway.json.gz")
+	data, err := openrpcfs.ReadFile("openrpc/gateway.json")
 	if err != nil {
 		panic(err)
 	}
-	return mustReadGzippedOpenRPCDocument(data)
+	return mustReadOpenRPCDocument(data)
 }

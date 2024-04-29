@@ -491,7 +491,7 @@ var MpoolReplaceCmd = &cli.Command{
 			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
 
 			mff := func() (abi.TokenAmount, error) {
-				return abi.TokenAmount(config.DefaultDefaultMaxFee), nil
+				return abi.TokenAmount(config.DefaultDefaultMaxFee()), nil
 			}
 
 			messagepool.CapGasFee(mff, &msg, mss)

@@ -1,0 +1,21 @@
+name: Install System Dependencies
+description: Install System dependencies for Filecoin Lotus
+
+runs:
+  using: composite
+  steps:
+    - if: runner.os == 'Linux'
+      run: |
+        # List processes to enable debugging in case /var/lib/apt/lists/ is locked 
+        ps aux
+        sudo apt-get update -y
+        sudo apt-get install -y ocl-icd-opencl-dev libhwloc-dev pkg-config
+      shell: bash
+    - if: runner.os == 'macOS'
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: '1'
+      run: |
+        brew install hwloc pkg-config
+        echo "CPATH=$(brew --prefix)/include" | tee -a $GITHUB_ENV
+        echo "LIBRARY_PATH=$(brew --prefix)/lib" | tee -a $GITHUB_ENV
+      shell: bash

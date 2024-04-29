@@ -15,9 +15,9 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/yugabyte/pgx/v5"
+	"github.com/yugabyte/pgx/v5/pgconn"
+	"github.com/yugabyte/pgx/v5/pgxpool"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/config"
@@ -36,7 +36,7 @@ type DB struct {
 	schema    string
 	hostnames []string
 	BTFPOnce  sync.Once
-	BTFP      atomic.Uintptr
+	BTFP      atomic.Uintptr // BeginTransactionFramePointer
 }
 
 var logger = logging.Logger("harmonydb")
@@ -84,7 +84,7 @@ func New(hosts []string, username, password, database, port string, itestID ITes
 		}
 	}
 
-	schema := "lotus"
+	schema := "curio"
 	if itest != "" {
 		schema = "itest_" + itest
 	}

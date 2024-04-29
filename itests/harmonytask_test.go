@@ -37,13 +37,13 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 	f(miner)
 }
 
-func (t *task1) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *task1) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	if !stillOwned() {
 		return false, errors.New("Why not still owned?")
 	}
 	t.myPersonalTableLock.Lock()
 	defer t.myPersonalTableLock.Unlock()
-	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[tID]))
+	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[taskID]))
 	return true, nil
 }
 func (t *task1) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
@@ -90,7 +90,7 @@ func TestHarmonyTasks(t *testing.T) {
 		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1")
 		require.NoError(t, err)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
-		e.GracefullyTerminate(time.Minute)
+		e.GracefullyTerminate()
 		expected := []string{"taskResult56", "taskResult73"}
 		sort.Strings(t1.WorkCompleted)
 		require.Equal(t, expected, t1.WorkCompleted, "unexpected results")
@@ -104,8 +104,8 @@ type passthru struct {
 	adder     func(add harmonytask.AddTaskFunc)
 }
 
-func (t *passthru) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
-	return t.do(tID, stillOwned)
+func (t *passthru) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+	return t.do(taskID, stillOwned)
 }
 func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
 	return t.canAccept(list, e)
@@ -173,8 +173,8 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{workerParty}, "test:2")
 		require.NoError(t, err)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
-		sender.GracefullyTerminate(time.Second * 5)
-		worker.GracefullyTerminate(time.Second * 5)
+		sender.GracefullyTerminate()
+		worker.GracefullyTerminate()
 		sort.Strings(dest)
 		require.Equal(t, []string{"A", "B"}, dest)
 	})
@@ -204,7 +204,7 @@ func TestWorkStealing(t *testing.T) {
 		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fooLetterSaver(t, cdb, &dest)}, "test:2")
 		require.ErrorIs(t, err, nil)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
-		worker.GracefullyTerminate(time.Second * 5)
+		worker.GracefullyTerminate()
 		require.Equal(t, []string{"M"}, dest)
 	})
 }
@@ -243,8 +243,8 @@ func TestTaskRetry(t *testing.T) {
 		rcv, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fails2xPerMsg}, "test:2")
 		require.NoError(t, err)
 		time.Sleep(time.Second)
-		sender.GracefullyTerminate(time.Hour)
-		rcv.GracefullyTerminate(time.Hour)
+		sender.GracefullyTerminate()
+		rcv.GracefullyTerminate()
 		sort.Strings(dest)
 		require.Equal(t, []string{"A", "B"}, dest)
 		type hist struct {
@@ -262,5 +262,42 @@ func TestTaskRetry(t *testing.T) {
 			{2, true, ""},
 			{1, false, "error: intentional 'error'"},
 			{2, false, "error: intentional 'error'"}}, res)
+	})
+}
+
+func TestBoredom(t *testing.T) {
+	//t.Parallel()
+	withDbSetup(t, func(m *kit.TestMiner) {
+		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
+		harmonytask.POLL_DURATION = time.Millisecond * 100
+		var taskID harmonytask.TaskID
+		var ran bool
+		boredParty := &passthru{
+			dtl: harmonytask.TaskTypeDetails{
+				Name: "boredTest",
+				Max:  -1,
+				Cost: resources.Resources{},
+				IAmBored: func(add harmonytask.AddTaskFunc) error {
+					add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+						taskID = tID
+						return true, nil
+					})
+					return nil
+				},
+			},
+			canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+				require.Equal(t, harmonytask.WorkSourceIAmBored, e.WorkOrigin)
+				return &list[0], nil
+			},
+			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+				require.Equal(t, taskID, tID)
+				ran = true
+				return true, nil
+			},
+		}
+		ht, err := harmonytask.New(cdb, []harmonytask.TaskInterface{boredParty}, "test:1")
+		require.NoError(t, err)
+		require.Eventually(t, func() bool { return ran }, time.Second, time.Millisecond*100)
+		ht.GracefullyTerminate()
 	})
 }

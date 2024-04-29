@@ -77,17 +77,18 @@ func defCommon() Common {
 	}
 }
 
-var (
-	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
-	DefaultSimultaneousTransfers = uint64(20)
-)
+var DefaultSimultaneousTransfers = uint64(20)
+
+func DefaultDefaultMaxFee() types.FIL {
+	return types.MustParseFIL("0.07")
+}
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
 		Fees: FeeConfig{
-			DefaultMaxFee: DefaultDefaultMaxFee,
+			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
 		Client: Client{
 			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
@@ -109,14 +110,15 @@ func DefaultFullNode() *FullNode {
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
-			Events: Events{
-				DisableRealTimeFilterAPI: false,
-				DisableHistoricFilterAPI: false,
-				FilterTTL:                Duration(time.Hour * 24),
-				MaxFilters:               100,
-				MaxFilterResults:         10000,
-				MaxFilterHeightRange:     2880, // conservative limit of one day
-			},
+		},
+		Events: EventsConfig{
+			DisableRealTimeFilterAPI: false,
+			DisableHistoricFilterAPI: false,
+			EnableActorEventsAPI:     false,
+			FilterTTL:                Duration(time.Hour * 24),
+			MaxFilters:               100,
+			MaxFilterResults:         10000,
+			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
 	}
 }
@@ -326,13 +328,14 @@ const (
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
 
-func DefaultLotusProvider() *LotusProviderConfig {
-	return &LotusProviderConfig{
-		Subsystems: ProviderSubsystemsConfig{
-			GuiAddress: ":4701",
+func DefaultCurioConfig() *CurioConfig {
+	return &CurioConfig{
+		Subsystems: CurioSubsystemsConfig{
+			GuiAddress:    ":4701",
+			BoostAdapters: []string{},
 		},
-		Fees: LotusProviderFees{
-			DefaultMaxFee:      DefaultDefaultMaxFee,
+		Fees: CurioFees{
+			DefaultMaxFee:      DefaultDefaultMaxFee(),
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
 			MaxCommitGasFee:    types.MustParseFIL("0.05"),
 
@@ -349,15 +352,21 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			MaxWindowPoStGasFee: types.MustParseFIL("5"),
 			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
 		},
-		Addresses: LotusProviderAddresses{
+		Addresses: []CurioAddresses{{
 			PreCommitControl: []string{},
 			CommitControl:    []string{},
 			TerminateControl: []string{},
-		},
-		Proving: ProvingConfig{
+			MinerAddresses:   []string{},
+		}},
+		Proving: CurioProvingConfig{
 			ParallelCheckLimit:    32,
 			PartitionCheckTimeout: Duration(20 * time.Minute),
 			SingleCheckTimeout:    Duration(10 * time.Minute),
+		},
+		Ingest: CurioIngestConfig{
+			MaxQueueSDR:   8, // default to 8 sectors before sdr
+			MaxQueueTrees: 0, // default don't use this limit
+			MaxQueuePoRep: 0, // default don't use this limit
 		},
 	}
 }

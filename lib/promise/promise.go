@@ -45,3 +45,9 @@ func (p *Promise[T]) Val(ctx context.Context) T {
 		return val
 	}
 }
+
+func (p *Promise[T]) IsSet() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.done != nil
+}

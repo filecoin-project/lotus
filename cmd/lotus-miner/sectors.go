@@ -3,10 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -23,18 +20,16 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/spcli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/lib/strle"
@@ -48,16 +43,16 @@ var sectorsCmd = &cli.Command{
 	Name:  "sectors",
 	Usage: "interact with sector store",
 	Subcommands: []*cli.Command{
-		sectorsStatusCmd,
+		spcli.SectorsStatusCmd(LMActorOrEnvGetter, getOnDiskInfo),
 		sectorsListCmd,
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
 		sectorsNumbersCmd,
-		sectorPreCommitsCmd,
-		sectorsCheckExpireCmd,
+		spcli.SectorPreCommitsCmd(LMActorOrEnvGetter),
+		spcli.SectorsCheckExpireCmd(LMActorOrEnvGetter),
 		sectorsExpiredCmd,
-		sectorsExtendCmd,
+		spcli.SectorsExtendCmd(LMActorOrEnvGetter),
 		sectorsTerminateCmd,
 		sectorsRemoveCmd,
 		sectorsSnapUpCmd,
@@ -67,9 +62,18 @@ var sectorsCmd = &cli.Command{
 		sectorsCapacityCollateralCmd,
 		sectorsBatching,
 		sectorsRefreshPieceMatchingCmd,
-		sectorsCompactPartitionsCmd,
+		spcli.SectorsCompactPartitionsCmd(LMActorOrEnvGetter),
 		sectorsUnsealCmd,
 	},
+}
+
+func getOnDiskInfo(cctx *cli.Context, id abi.SectorNumber, onChainInfo bool) (api.SectorInfo, error) {
+	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+	defer closer()
+	return minerApi.SectorsStatus(cctx.Context, id, onChainInfo)
 }
 
 var sectorsPledgeCmd = &cli.Command{
@@ -90,187 +94,6 @@ var sectorsPledgeCmd = &cli.Command{
 
 		fmt.Println("Created CC sector: ", id.Number)
 
-		return nil
-	},
-}
-
-var sectorsStatusCmd = &cli.Command{
-	Name:      "status",
-	Usage:     "Get the seal status of a sector by its number",
-	ArgsUsage: "<sectorNum>",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "log",
-			Usage:   "display event log",
-			Aliases: []string{"l"},
-		},
-		&cli.BoolFlag{
-			Name:    "on-chain-info",
-			Usage:   "show sector on chain info",
-			Aliases: []string{"c"},
-		},
-		&cli.BoolFlag{
-			Name:    "partition-info",
-			Usage:   "show partition related info",
-			Aliases: []string{"p"},
-		},
-		&cli.BoolFlag{
-			Name:  "proof",
-			Usage: "print snark proof bytes as hex",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return lcli.IncorrectNumArgs(cctx)
-		}
-
-		id, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
-		if err != nil {
-			return err
-		}
-
-		onChainInfo := cctx.Bool("on-chain-info")
-		status, err := minerApi.SectorsStatus(ctx, abi.SectorNumber(id), onChainInfo)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("Status:\t\t%s\n", status.State)
-		fmt.Printf("CIDcommD:\t%s\n", status.CommD)
-		fmt.Printf("CIDcommR:\t%s\n", status.CommR)
-		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.Value)
-		fmt.Printf("TicketH:\t%d\n", status.Ticket.Epoch)
-		fmt.Printf("Seed:\t\t%x\n", status.Seed.Value)
-		fmt.Printf("SeedH:\t\t%d\n", status.Seed.Epoch)
-		fmt.Printf("Precommit:\t%s\n", status.PreCommitMsg)
-		fmt.Printf("Commit:\t\t%s\n", status.CommitMsg)
-		if cctx.Bool("proof") {
-			fmt.Printf("Proof:\t\t%x\n", status.Proof)
-		}
-		fmt.Printf("Deals:\t\t%v\n", status.Deals)
-		fmt.Printf("Retries:\t%d\n", status.Retries)
-		if status.LastErr != "" {
-			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
-		}
-
-		if onChainInfo {
-			fmt.Printf("\nSector On Chain Info\n")
-			fmt.Printf("SealProof:\t\t%x\n", status.SealProof)
-			fmt.Printf("Activation:\t\t%v\n", status.Activation)
-			fmt.Printf("Expiration:\t\t%v\n", status.Expiration)
-			fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
-			fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
-			fmt.Printf("InitialPledge:\t\t%v\n", types.FIL(status.InitialPledge))
-			fmt.Printf("\nExpiration Info\n")
-			fmt.Printf("OnTime:\t\t%v\n", status.OnTime)
-			fmt.Printf("Early:\t\t%v\n", status.Early)
-		}
-
-		if cctx.Bool("partition-info") {
-			fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
-			if err != nil {
-				return err
-			}
-			defer nCloser()
-
-			maddr, err := getActorAddress(ctx, cctx)
-			if err != nil {
-				return err
-			}
-
-			mact, err := fullApi.StateGetActor(ctx, maddr, types.EmptyTSK)
-			if err != nil {
-				return err
-			}
-
-			tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
-			mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
-			if err != nil {
-				return err
-			}
-
-			errFound := errors.New("found")
-			if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
-				return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
-					pas, err := part.AllSectors()
-					if err != nil {
-						return err
-					}
-
-					set, err := pas.IsSet(id)
-					if err != nil {
-						return err
-					}
-					if set {
-						fmt.Printf("\nDeadline:\t%d\n", dlIdx)
-						fmt.Printf("Partition:\t%d\n", partIdx)
-
-						checkIn := func(name string, bg func() (bitfield.BitField, error)) error {
-							bf, err := bg()
-							if err != nil {
-								return err
-							}
-
-							set, err := bf.IsSet(id)
-							if err != nil {
-								return err
-							}
-							setstr := "no"
-							if set {
-								setstr = "yes"
-							}
-							fmt.Printf("%s:   \t%s\n", name, setstr)
-							return nil
-						}
-
-						if err := checkIn("Unproven", part.UnprovenSectors); err != nil {
-							return err
-						}
-						if err := checkIn("Live", part.LiveSectors); err != nil {
-							return err
-						}
-						if err := checkIn("Active", part.ActiveSectors); err != nil {
-							return err
-						}
-						if err := checkIn("Faulty", part.FaultySectors); err != nil {
-							return err
-						}
-						if err := checkIn("Recovering", part.RecoveringSectors); err != nil {
-							return err
-						}
-
-						return errFound
-					}
-
-					return nil
-				})
-			}); err != errFound {
-				if err != nil {
-					return err
-				}
-
-				fmt.Println("\nNot found in any partition")
-			}
-		}
-
-		if cctx.Bool("log") {
-			fmt.Printf("--------\nEvent Log:\n")
-
-			for i, l := range status.Log {
-				fmt.Printf("%d.\t%s:\t[%s]\t%s\n", i, time.Unix(int64(l.Timestamp), 0), l.Kind, l.Message)
-				if l.Trace != "" {
-					fmt.Printf("\t%s\n", l.Trace)
-				}
-			}
-		}
 		return nil
 	},
 }
@@ -487,6 +310,13 @@ var sectorsListCmd = &cli.Command{
 				}
 			}
 
+			var pams int
+			for _, p := range st.Pieces {
+				if p.DealInfo != nil && p.DealInfo.PieceActivationManifest != nil {
+					pams++
+				}
+			}
+
 			exp := st.Expiration
 			if st.OnTime > 0 && st.OnTime < exp {
 				exp = st.OnTime // Can be different when the sector was CC upgraded
@@ -494,13 +324,15 @@ var sectorsListCmd = &cli.Command{
 
 			m := map[string]interface{}{
 				"ID":      s,
-				"State":   color.New(stateOrder[sealing.SectorState(st.State)].col).Sprint(st.State),
+				"State":   color.New(spcli.StateOrder[sealing.SectorState(st.State)].Col).Sprint(st.State),
 				"OnChain": yesno(inSSet),
 				"Active":  yesno(inASet),
 			}
 
 			if deals > 0 {
 				m["Deals"] = color.GreenString("%d", deals)
+			} else if pams > 0 {
+				m["Deals"] = color.MagentaString("DDO:%d", pams)
 			} else {
 				m["Deals"] = color.BlueString("CC")
 				if st.ToUpgrade {
@@ -2236,175 +2068,6 @@ func yesno(b bool) string {
 		return color.GreenString("YES")
 	}
 	return color.RedString("NO")
-}
-
-var sectorsCompactPartitionsCmd = &cli.Command{
-	Name:  "compact-partitions",
-	Usage: "removes dead sectors from partitions and reduces the number of partitions used if possible",
-	Flags: []cli.Flag{
-		&cli.Uint64Flag{
-			Name:     "deadline",
-			Usage:    "the deadline to compact the partitions in",
-			Required: true,
-		},
-		&cli.Int64SliceFlag{
-			Name:     "partitions",
-			Usage:    "list of partitions to compact sectors in",
-			Required: true,
-		},
-		&cli.BoolFlag{
-			Name:  "really-do-it",
-			Usage: "Actually send transaction performing the action",
-			Value: false,
-		},
-		&cli.StringFlag{
-			Name:  "actor",
-			Usage: "Specify the address of the miner to run this command",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		fullNodeAPI, acloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer acloser()
-
-		ctx := lcli.ReqContext(cctx)
-
-		maddr, err := getActorAddress(ctx, cctx)
-		if err != nil {
-			return err
-		}
-
-		minfo, err := fullNodeAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		deadline := cctx.Uint64("deadline")
-		if deadline > miner.WPoStPeriodDeadlines {
-			return fmt.Errorf("deadline %d out of range", deadline)
-		}
-
-		parts := cctx.Int64Slice("partitions")
-		if len(parts) <= 0 {
-			return fmt.Errorf("must include at least one partition to compact")
-		}
-		fmt.Printf("compacting %d partitions\n", len(parts))
-
-		var makeMsgForPartitions func(partitionsBf bitfield.BitField) ([]*types.Message, error)
-		makeMsgForPartitions = func(partitionsBf bitfield.BitField) ([]*types.Message, error) {
-			params := miner.CompactPartitionsParams{
-				Deadline:   deadline,
-				Partitions: partitionsBf,
-			}
-
-			sp, aerr := actors.SerializeParams(&params)
-			if aerr != nil {
-				return nil, xerrors.Errorf("serializing params: %w", err)
-			}
-
-			msg := &types.Message{
-				From:   minfo.Worker,
-				To:     maddr,
-				Method: builtin.MethodsMiner.CompactPartitions,
-				Value:  big.Zero(),
-				Params: sp,
-			}
-
-			estimatedMsg, err := fullNodeAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
-			if err != nil && xerrors.Is(err, &api.ErrOutOfGas{}) {
-				// the message is too big -- split into 2
-				partitionsSlice, err := partitionsBf.All(math.MaxUint64)
-				if err != nil {
-					return nil, err
-				}
-
-				partitions1 := bitfield.New()
-				for i := 0; i < len(partitionsSlice)/2; i++ {
-					partitions1.Set(uint64(i))
-				}
-
-				msgs1, err := makeMsgForPartitions(partitions1)
-				if err != nil {
-					return nil, err
-				}
-
-				// time for the second half
-				partitions2 := bitfield.New()
-				for i := len(partitionsSlice) / 2; i < len(partitionsSlice); i++ {
-					partitions2.Set(uint64(i))
-				}
-
-				msgs2, err := makeMsgForPartitions(partitions2)
-				if err != nil {
-					return nil, err
-				}
-
-				return append(msgs1, msgs2...), nil
-			} else if err != nil {
-				return nil, err
-			}
-
-			return []*types.Message{estimatedMsg}, nil
-		}
-
-		partitions := bitfield.New()
-		for _, partition := range parts {
-			partitions.Set(uint64(partition))
-		}
-
-		msgs, err := makeMsgForPartitions(partitions)
-		if err != nil {
-			return xerrors.Errorf("failed to make messages: %w", err)
-		}
-
-		// Actually send the messages if really-do-it provided, simulate otherwise
-		if cctx.Bool("really-do-it") {
-			smsgs, err := fullNodeAPI.MpoolBatchPushMessage(ctx, msgs, nil)
-			if err != nil {
-				return xerrors.Errorf("mpool push: %w", err)
-			}
-
-			if len(smsgs) == 1 {
-				fmt.Printf("Requested compact partitions in message %s\n", smsgs[0].Cid())
-			} else {
-				fmt.Printf("Requested compact partitions in %d messages\n\n", len(smsgs))
-				for _, v := range smsgs {
-					fmt.Println(v.Cid())
-				}
-			}
-
-			for _, v := range smsgs {
-				wait, err := fullNodeAPI.StateWaitMsg(ctx, v.Cid(), 2)
-				if err != nil {
-					return err
-				}
-
-				// check it executed successfully
-				if wait.Receipt.ExitCode.IsError() {
-					fmt.Println(cctx.App.Writer, "compact partitions msg %s failed!", v.Cid())
-					return err
-				}
-			}
-
-			return nil
-		}
-
-		for i, v := range msgs {
-			fmt.Printf("total of %d CompactPartitions msgs would be sent\n", len(msgs))
-
-			estMsg, err := fullNodeAPI.GasEstimateMessageGas(ctx, v, nil, types.EmptyTSK)
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("msg %d would cost up to %s\n", i+1, types.FIL(estMsg.RequiredFunds()))
-		}
-
-		return nil
-
-	},
 }
 
 var sectorsNumbersCmd = &cli.Command{

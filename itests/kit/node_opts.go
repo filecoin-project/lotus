@@ -1,6 +1,8 @@
 package kit
 
 import (
+	"math"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -63,6 +65,8 @@ var DefaultNodeOpts = nodeOpts{
 			// test defaults
 
 			cfg.Fevm.EnableEthRPC = true
+			cfg.Events.MaxFilterHeightRange = math.MaxInt64
+			cfg.Events.EnableActorEventsAPI = true
 			return nil
 		},
 	},
