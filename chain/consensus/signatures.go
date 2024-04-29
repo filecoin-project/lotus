@@ -20,11 +20,11 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 	var digest []byte
 	signatureType := msg.Signature.Type
 	signatureCopy := msg.Signature
-	signatureCopy.Data = make([]byte, len(msg.Signature.Data))
-	copy(signatureCopy.Data, msg.Signature.Data)
 
 	switch signatureType {
 	case crypto.SigTypeDelegated:
+		signatureCopy.Data = make([]byte, len(msg.Signature.Data))
+		copy(signatureCopy.Data, msg.Signature.Data)
 		ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(msg)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct Ethereum transaction: %w", err)

@@ -86,10 +86,11 @@ func (tx *EthLegacyHomesteadTxArgs) ToUnsignedFilecoinMessage(from address.Addre
 
 func (tx *EthLegacyHomesteadTxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
 	if len(sig) != legacyHomesteadTxSignatureLen {
-		return nil, fmt.Errorf("signature should be %d bytes long, but got %d bytes", legacyHomesteadTxSignatureLen, len(sig))
+		return nil, fmt.Errorf("signature should be %d bytes long (1 byte metadata, %d bytes sig data), but got %d bytes",
+			legacyHomesteadTxSignatureLen, legacyHomesteadTxSignatureLen-1, len(sig))
 	}
 	if sig[0] != LegacyHomesteadEthTxSignaturePrefix {
-		return nil, fmt.Errorf("expected signature prefix 0x01, but got 0x%x", sig[0])
+		return nil, fmt.Errorf("expected signature prefix 0x%x, but got 0x%x", LegacyHomesteadEthTxSignaturePrefix, sig[0])
 	}
 
 	// Remove the prefix byte as it's only used for legacy transaction identification
