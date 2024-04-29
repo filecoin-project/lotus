@@ -49,7 +49,7 @@ func (t *TreeDTask) TypeDetails() harmonytask.TaskTypeDetails {
 		Name: "TreeD",
 		Cost: resources.Resources{
 			Cpu:     1,
-			Ram:     64 << 20, // todo
+			Ram:     1 << 30,
 			Gpu:     0,
 			Storage: t.sc.Storage(t.taskToSector, storiface.FTNone, storiface.FTCache, ssize, storiface.PathSealing, 1.0),
 		},
@@ -122,6 +122,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	if err != nil {
 		return false, xerrors.Errorf("failed to prefetch sectors: %w", err)
 	}
+	defer release()
 
 	var pieces []struct {
 		PieceIndex int64  `db:"piece_index"`
@@ -248,10 +249,10 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		SET after_tree_d = true, tree_d_cid = $3 WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, commd)
 	if err != nil {
-		return false, xerrors.Errorf("store sdr-treeD success: updating pipeline: %w", err)
+		return false, xerrors.Errorf("store TreeD success: updating pipeline: %w", err)
 	}
 	if n != 1 {
-		return false, xerrors.Errorf("store sdr-treeD success: updated %d rows", n)
+		return false, xerrors.Errorf("store TreeD success: updated %d rows", n)
 	}
 
 	return true, nil

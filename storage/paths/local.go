@@ -533,7 +533,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		}
 	}
 
-	return
+	return release, nil
 }
 
 // DoubleCallWrap wraps a function to make sure it's not called twice

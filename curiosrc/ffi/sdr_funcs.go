@@ -640,7 +640,6 @@ func (sb *SealCalls) PreFetch(ctx context.Context, sector storiface.SectorRef, t
 }
 
 func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool, fspaths, pathIDs storiface.SectorPaths, release func()) error {
-	defer release()
 	var err error
 	defer func() {
 		if err != nil {
