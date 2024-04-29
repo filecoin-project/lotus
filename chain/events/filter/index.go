@@ -363,7 +363,7 @@ func (ei *EventIndex) migrateToVersion4(ctx context.Context) error {
 
 	ei.vacuumDBAndCheckpointWAL(ctx)
 
-	log.Infof("Successfully migrated events to version 3 in %s", time.Since(now))
+	log.Infof("Successfully migrated event index from version 3 to version 4 in %s", time.Since(now))
 	return nil
 }
 
