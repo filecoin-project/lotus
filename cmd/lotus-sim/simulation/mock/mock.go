@@ -149,7 +149,7 @@ func MockWindowPoStProof(proofType abi.RegisteredPoStProof, minerAddr address.Ad
 	return proof, nil
 }
 
-// makeCommR generates a "fake" but valid CommR for a sector. It is unique for the given sector/miner.
+// MockCommR generates a "fake" but valid CommR for a sector. It is unique for the given sector/miner.
 func MockCommR(minerAddr address.Address, sno abi.SectorNumber) cid.Cid {
 	return tutils.MakeCID(fmt.Sprintf("%s:%d", minerAddr, sno), &miner5.SealedCIDPrefix)
 }

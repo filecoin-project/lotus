@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/bits"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,8 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
-
-const metaFile = "sectorstore.json"
 
 var storageCmd = &cli.Command{
 	Name:  "storage",
@@ -122,20 +117,6 @@ over time
 		}
 
 		if cctx.Bool("init") {
-			if err := os.MkdirAll(p, 0755); err != nil {
-				if !os.IsExist(err) {
-					return err
-				}
-			}
-
-			_, err := os.Stat(filepath.Join(p, metaFile))
-			if !os.IsNotExist(err) {
-				if err == nil {
-					return xerrors.Errorf("path is already initialized")
-				}
-				return err
-			}
-
 			var maxStor int64
 			if cctx.IsSet("max-storage") {
 				maxStor, err = units.RAMInBytes(cctx.String("max-storage"))
@@ -144,7 +125,7 @@ over time
 				}
 			}
 
-			cfg := &storiface.LocalStorageMeta{
+			cfg := storiface.LocalStorageMeta{
 				ID:         storiface.ID(uuid.New().String()),
 				Weight:     cctx.Uint64("weight"),
 				CanSeal:    cctx.Bool("seal"),
@@ -158,13 +139,8 @@ over time
 				return xerrors.Errorf("must specify at least one of --store or --seal")
 			}
 
-			b, err := json.MarshalIndent(cfg, "", "  ")
-			if err != nil {
-				return xerrors.Errorf("marshaling storage config: %w", err)
-			}
-
-			if err := os.WriteFile(filepath.Join(p, metaFile), b, 0644); err != nil {
-				return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(p, metaFile), err)
+			if err := minerApi.StorageInit(ctx, p, cfg); err != nil {
+				return xerrors.Errorf("init storage: %w", err)
 			}
 		}
 

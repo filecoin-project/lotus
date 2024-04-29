@@ -384,7 +384,7 @@ func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
 	a.executePageTemplate(w, "sector_info", "Sector Info", mi)
 }
 
-var templateDev = os.Getenv("LOTUS_WEB_DEV") == "1"
+var templateDev = os.Getenv("CURIO_WEB_DEV") == "1"
 
 func (a *app) executeTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if templateDev {
