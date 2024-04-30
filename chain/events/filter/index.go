@@ -356,6 +356,10 @@ func (ei *EventIndex) migrateToVersion4(ctx context.Context) error {
 		}
 	}
 
+	if _, err = tx.Exec("INSERT OR IGNORE INTO _meta (version) VALUES (4)"); err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return xerrors.Errorf("commit transaction: %w", err)
