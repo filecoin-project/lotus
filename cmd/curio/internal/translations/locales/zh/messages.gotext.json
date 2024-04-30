@@ -1047,6 +1047,30 @@
       "translation": "解析基本配置失败：{Error}",
       "message": "Failed to parse base config: {Error}",
       "placeholder": null
+    },
+    {
+      "id": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
+      "translation": "尝试使用{Rendercurio_run___layersgui}的网络界面进行更进一步的指导性改进。",
+      "message": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
+      "placeholder": null
+    },
+    {
+      "id": "Now shut down lotus-miner and lotus-worker and use run {Rendercurio_run} instead.",
+      "translation": "现在关闭lotus-miner和lotus-worker，改为使用{Rendercurio_run}运行。",
+      "message": "Now shut down lotus-miner and lotus-worker and use run {Rendercurio_run} instead.",
+      "placeholder": null
+    },
+    {
+      "id": "Configuration 'base' was updated to include this miner's address ({MinerAddress}) and its wallet setup.",
+      "translation": "'base'配置已更新，包括该矿工的地址（{MinerAddress}）及其钱包设置。",
+      "message": "Configuration 'base' was updated to include this miner's address ({MinerAddress}) and its wallet setup.",
+      "placeholder": null
+    },
+    {
+      "id": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
+      "translation": "'base'配置已创建，以类似于这个lotus-miner的config.toml。",
+      "message": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
+      "placeholder": null
     }
   ]
 }

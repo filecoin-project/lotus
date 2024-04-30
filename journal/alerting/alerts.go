@@ -95,7 +95,7 @@ func (a *Alerting) update(at AlertType, message interface{}, upd func(Alert, jso
 		}{
 			AlertError: err.Error(),
 		})
-		log.Errorw("marshaling marshaling error failed", "type", at, "error", err)
+		log.Errorw("marshaling error failed", "type", at, "error", err)
 	}
 
 	a.alerts[at] = upd(alert, rawMsg)

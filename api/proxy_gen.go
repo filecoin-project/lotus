@@ -122,6 +122,10 @@ type CurioStruct struct {
 type CurioMethods struct {
 	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
 
+	LogList func(p0 context.Context) ([]string, error) `perm:"read"`
+
+	LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"admin"`
+
 	Shutdown func(p0 context.Context) error `perm:"admin"`
 
 	StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
@@ -131,6 +135,8 @@ type CurioMethods struct {
 	StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
 
 	StorageInfo func(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) `perm:"admin"`
+
+	StorageInit func(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error `perm:"admin"`
 
 	StorageList func(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) `perm:"admin"`
 
@@ -1499,6 +1505,28 @@ func (s *CurioStub) AllocatePieceToSector(p0 context.Context, p1 address.Address
 	return *new(SectorOffset), ErrNotSupported
 }
 
+func (s *CurioStruct) LogList(p0 context.Context) ([]string, error) {
+	if s.Internal.LogList == nil {
+		return *new([]string), ErrNotSupported
+	}
+	return s.Internal.LogList(p0)
+}
+
+func (s *CurioStub) LogList(p0 context.Context) ([]string, error) {
+	return *new([]string), ErrNotSupported
+}
+
+func (s *CurioStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+	if s.Internal.LogSetLevel == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.LogSetLevel(p0, p1, p2)
+}
+
+func (s *CurioStub) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+	return ErrNotSupported
+}
+
 func (s *CurioStruct) Shutdown(p0 context.Context) error {
 	if s.Internal.Shutdown == nil {
 		return ErrNotSupported
@@ -1552,6 +1580,17 @@ func (s *CurioStruct) StorageInfo(p0 context.Context, p1 storiface.ID) (storifac
 
 func (s *CurioStub) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
 	return *new(storiface.StorageInfo), ErrNotSupported
+}
+
+func (s *CurioStruct) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
+	if s.Internal.StorageInit == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageInit(p0, p1, p2)
+}
+
+func (s *CurioStub) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
+	return ErrNotSupported
 }
 
 func (s *CurioStruct) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {

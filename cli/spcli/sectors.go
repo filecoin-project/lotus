@@ -2,6 +2,7 @@ package spcli
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -1353,44 +1355,20 @@ func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
 				}
 			}
 
-			mi, err := nodeApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-			if err != nil {
-				return err
-			}
-
-			terminationDeclarationParams := []miner2.TerminationDeclaration{}
-
-			for _, sn := range cctx.Args().Slice() {
-				sectorNum, err := strconv.ParseUint(sn, 10, 64)
+			var outerErr error
+			sectorNumbers := lo.Map(cctx.Args().Slice(), func(sn string, _ int) int {
+				sectorNum, err := strconv.Atoi(sn)
 				if err != nil {
-					return fmt.Errorf("could not parse sector number: %w", err)
+					outerErr = fmt.Errorf("could not parse sector number: %w", err)
+					return 0
 				}
-
-				sectorbit := bitfield.New()
-				sectorbit.Set(sectorNum)
-
-				loca, err := nodeApi.StateSectorPartition(ctx, maddr, abi.SectorNumber(sectorNum), types.EmptyTSK)
-				if err != nil {
-					return fmt.Errorf("get state sector partition %s", err)
-				}
-
-				para := miner2.TerminationDeclaration{
-					Deadline:  loca.Deadline,
-					Partition: loca.Partition,
-					Sectors:   sectorbit,
-				}
-
-				terminationDeclarationParams = append(terminationDeclarationParams, para)
+				return sectorNum
+			})
+			if outerErr != nil {
+				return outerErr
 			}
 
-			terminateSectorParams := &miner2.TerminateSectorsParams{
-				Terminations: terminationDeclarationParams,
-			}
-
-			sp, err := actors.SerializeParams(terminateSectorParams)
-			if err != nil {
-				return xerrors.Errorf("serializing params: %w", err)
-			}
+			confidence := uint64(cctx.Int("confidence"))
 
 			var fromAddr address.Address
 			if from := cctx.String("from"); from != "" {
@@ -1400,24 +1378,19 @@ func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
 					return fmt.Errorf("parsing address %s: %w", from, err)
 				}
 			} else {
+				mi, err := nodeApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+				if err != nil {
+					return err
+				}
+
 				fromAddr = mi.Worker
 			}
-
-			smsg, err := nodeApi.MpoolPushMessage(ctx, &types.Message{
-				From:   fromAddr,
-				To:     maddr,
-				Method: builtin.MethodsMiner.TerminateSectors,
-
-				Value:  big.Zero(),
-				Params: sp,
-			}, nil)
+			smsg, err := TerminateSectors(ctx, nodeApi, maddr, sectorNumbers, fromAddr)
 			if err != nil {
-				return xerrors.Errorf("mpool push message: %w", err)
+				return err
 			}
 
-			fmt.Println("sent termination message:", smsg.Cid())
-
-			wait, err := nodeApi.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
+			wait, err := nodeApi.StateWaitMsg(ctx, smsg.Cid(), confidence)
 			if err != nil {
 				return err
 			}
@@ -1425,8 +1398,61 @@ func TerminateSectorCmd(getActorAddress ActorAddressGetter) *cli.Command {
 			if wait.Receipt.ExitCode.IsError() {
 				return fmt.Errorf("terminate sectors message returned exit %d", wait.Receipt.ExitCode)
 			}
-
 			return nil
 		},
 	}
+}
+
+type TerminatorNode interface {
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
+}
+
+func TerminateSectors(ctx context.Context, full TerminatorNode, maddr address.Address, sectorNumbers []int, fromAddr address.Address) (*types.SignedMessage, error) {
+
+	terminationDeclarationParams := []miner2.TerminationDeclaration{}
+
+	for _, sectorNum := range sectorNumbers {
+
+		sectorbit := bitfield.New()
+		sectorbit.Set(uint64(sectorNum))
+
+		loca, err := full.StateSectorPartition(ctx, maddr, abi.SectorNumber(sectorNum), types.EmptyTSK)
+		if err != nil {
+			return nil, fmt.Errorf("get state sector partition %s", err)
+		}
+
+		para := miner2.TerminationDeclaration{
+			Deadline:  loca.Deadline,
+			Partition: loca.Partition,
+			Sectors:   sectorbit,
+		}
+
+		terminationDeclarationParams = append(terminationDeclarationParams, para)
+	}
+
+	terminateSectorParams := &miner2.TerminateSectorsParams{
+		Terminations: terminationDeclarationParams,
+	}
+
+	sp, errA := actors.SerializeParams(terminateSectorParams)
+	if errA != nil {
+		return nil, xerrors.Errorf("serializing params: %w", errA)
+	}
+
+	smsg, err := full.MpoolPushMessage(ctx, &types.Message{
+		From:   fromAddr,
+		To:     maddr,
+		Method: builtin.MethodsMiner.TerminateSectors,
+
+		Value:  big.Zero(),
+		Params: sp,
+	}, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("mpool push message: %w", err)
+	}
+
+	fmt.Println("sent termination message:", smsg.Cid())
+
+	return smsg, nil
 }

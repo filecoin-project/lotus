@@ -35,12 +35,13 @@ Test the release candidate thoroughly, including automated and manual tests to e
     - [ ] Verify that version string in [`version.go`](https://github.com/filecoin-project/lotus/blob/master/build/version.go) has been updated.
     - [ ] Verify that codegen is up to date (`make gen && make docsgen-cli`)
     - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
-    - [ ] Merge `release-vX.Y.Z` into the `releases` branch.
-    - [ ] Tag this merge commit (on the `releases` branch) with `vX.Y.Z`
+    - [ ] Open a pull request against the `releases` branch with a merge of `release-vX.Y.Z`.
     - [ ] Cut the release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=false&target=releases).
+      - The target should be the `releases` branch.
+      - Either make the tag locally and push to the `releases` branch, or allow GitHub to create a new tag via the UI when the release is published.
 
 **Post-Release**
-  - [ ] Merge the `releases` branch back into `master`, ignoring the changes to `version.go` (keep the `-dev` version from master). Do NOT delete the `releases` branch when doing so!
+  - [ ] Open a pull request against the `master` branch with a merge of the `releases` branch. Conflict resolution should ignore the changes to `version.go` (keep the `-dev` version from master). Do NOT delete the `releases` branch when doing so!
   - [ ] Update [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with any improvements determined from this latest release iteration.
   - [ ] Create an issue using [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) for the _next_ release.
 

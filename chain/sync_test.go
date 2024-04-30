@@ -1204,7 +1204,7 @@ func TestSyncManualBadTS(t *testing.T) {
 	tu.compareSourceState(client)
 }
 
-// TestState tests fetching the sync worker state before, during & after the sync
+// TestSyncState tests fetching the sync worker state before, during & after the sync
 func TestSyncState(t *testing.T) {
 	H := 50
 	tu := prepSyncTest(t, H)

@@ -39,6 +39,7 @@ build/paramfetch.sh
 *.snap
 devgen.car
 localnet.json
+/*.ndjson
 
 *-fuzz.zip
 /chain/types/work_msg/
