@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	lpiece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -324,7 +325,7 @@ func (l *LMRPCProvider) SectorAddPieceToAny(ctx context.Context, size abi.Unpadd
 	return api.SectorOffset{}, xerrors.Errorf("not supported, use AllocatePieceToSector")
 }
 
-func (l *LMRPCProvider) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece api.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
+func (l *LMRPCProvider) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece lpiece.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
 	return l.pi.AllocatePieceToSector(ctx, maddr, piece, rawSize, source, header)
 }
 
