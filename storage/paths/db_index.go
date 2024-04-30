@@ -723,7 +723,7 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 						 FROM storage_path 
 						 WHERE available >= $1
 						 and NOW()-($2 * INTERVAL '1 second') < last_heartbeat
-						 and heartbeat_err is null
+						 and heartbeat_err IS NULL
 						 and (($3 and can_seal = TRUE) or ($4 and can_store = TRUE))
 						order by (available::numeric * weight) desc`,
 		spaceReq,

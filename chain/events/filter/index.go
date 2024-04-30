@@ -356,6 +356,10 @@ func (ei *EventIndex) migrateToVersion4(ctx context.Context) error {
 		}
 	}
 
+	if _, err = tx.Exec("INSERT OR IGNORE INTO _meta (version) VALUES (4)"); err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return xerrors.Errorf("commit transaction: %w", err)
@@ -478,7 +482,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// rollback the transaction (a no-op if the transaction was already committed)
 	defer func() { _ = tx.Rollback() }()
 
-	// lets handle the revert case first, since its simpler and we can simply mark all events events in this tipset as reverted and return
+	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
 		_, err = tx.Stmt(ei.stmtRevertEventsInTipset).Exec(te.msgTs.Height(), te.msgTs.Key().Bytes())
 		if err != nil {

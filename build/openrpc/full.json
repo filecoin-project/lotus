@@ -26382,7 +26382,7 @@
         {
             "name": "Filecoin.WalletSetDefault",
             "description": "```go\nfunc (s *FullNodeStruct) WalletSetDefault(p0 context.Context, p1 address.Address) error {\n\tif s.Internal.WalletSetDefault == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.WalletSetDefault(p0, p1)\n}\n```",
-            "summary": "WalletSetDefault marks the given address as as the default one.\n",
+            "summary": "WalletSetDefault marks the given address as the default one.\n",
             "paramStructure": "by-position",
             "params": [
                 {
