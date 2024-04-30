@@ -6,6 +6,187 @@
 
 ## Improvements
 
+# v1.27.0-rc1 / 2024-04-30
+
+This is the first release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers. This feature release introduces Curio in Beta release.
+
+## ☢️ Upgrade Warnings ☢️
+
+- This feature release drops the Raft cluster code experiemnt from the codebase. This Raft cluster never graduated beyond an experiment, had poor UX (e.g. no way to manage a running cluster, so it didn't provide High Availability, and pulled in a lot of heavy dependencies. We keep the multi-node RPC feature, it is not perfect, but it is useful.
+
+## ⭐️ Curio Beta Release  ⭐️
+
+**Curio**, the next generation of Lotus-Miner, also referred to as MinerV2! This release officially transitions Curio into beta and introduces a suite of powerful features designed to enhance your storage operations.
+
+### Highlights
+
+- **Curio as MinerV2**: Embrace the revolutionary upgrade from Lotus-Miner to Curio. This transition is not just a rebranding—it's an upgrade to a more robust, scalable, and user-friendly version.
+- **High Availability**: Curio is designed for high availability. You can run multiple instances of Curio nodes to handle similar type of tasks. The distributed scheduler and greedy worker design will ensure that tasks are completed on time despite most partial outages. You can safely update one of your Curio machines without disrupting the operation of the others.
+- **Node Heartbeat**: Each Curio node in a cluster must post a heartbeat message every 10 minutes in HarmonyDB updating its status. If a heartbeat is missed, the node is considered lost and all tasks can now be scheduled on remaining nodes.
+- **Task Retry**: Each task in Curio has a limit on how many times it should be tried before being declared lost. This ensures that Curio does not keep retrying bad tasks indefinitely. This safeguards against lost computation time and storage.
+- **Polling**: Curio avoids overloading nodes with a polling system. Nodes check for tasks they can handle, prioritizing idle nodes for even workload distribution.
+- **Simple Configuration Management**: The configuration is stored in the database in the forms of layers. These layers can be stacked on top of each other create a final configuration. Users can reuse these layers to control the behaviour of multiple machines without needing to maintain the configuration of each node. Start the binary with the appropriate flags to connect with YugabyteDB and specify which configuration layers to use to get desired behaviour.
+
+### Getting Started with Curio
+
+```bash
+cd lotus
+git pull
+make clean deps all
+sudo make install
+```
+
+On your local-dev-net or calibrationnet lotus-miner machine, initiate:
+
+`curio guided-setup`
+
+### Need More Info?
+
+For detailed documentation and additional information on Curio:
+
+Curio Overview <- insert link
+Visit the Curio Official Website insert link
+
+❗Curio is in Beta state, and we recommend our users to run Curio in a testing environment or on the Calibration network for the time being.
+
+## New features
+
+- feat: exchange: change GetBlocks to always fetch the requested number of tipsets ([filecoin-project/lotus#11565](https://github.com/filecoin-project/lotus/pull/11565))
+- feat: syncer: optimize syncFork for one-epoch forks ([filecoin-project/lotus#11533](https://github.com/filecoin-project/lotus/pull/11533))
+- feat: api: improve the correctness of Eth's trace_block (#11609) ([filecoin-project/lotus#11609](https://github.com/filecoin-project/lotus/pull/11609))
+- perf: api: add indexes to event topics and emitter addr (#11477) ([filecoin-project/lotus#11477](https://github.com/filecoin-project/lotus/pull/11477))
+- feat: drand: refactor round verification ([filecoin-project/lotus#11598](https://github.com/filecoin-project/lotus/pull/11598))
+- feat: add Forest bootstrap nodes (#11636) ([filecoin-project/lotus#11636](https://github.com/filecoin-project/lotus/pull/11636))
+- feat: curio: add miner init (#11775) ([filecoin-project/lotus#11775](https://github.com/filecoin-project/lotus/pull/11775))
+- feat: curio: sectors UI (#11869) ([filecoin-project/lotus#11869](https://github.com/filecoin-project/lotus/pull/11869))
+- feat: curio: storage index gc task (#11884) ([filecoin-project/lotus#11884](https://github.com/filecoin-project/lotus/pull/11884))
+- feat: curio: web based config edit (#11822) ([filecoin-project/lotus#11822](https://github.com/filecoin-project/lotus/pull/11822))
+- feat: spcli: sectors extend improvements (#11798) ([filecoin-project/lotus#11798](https://github.com/filecoin-project/lotus/pull/11798))
+- feat: curio: Add schemas for DDO deal support (#11805) ([filecoin-project/lotus#11805](https://github.com/filecoin-project/lotus/pull/11805))
+- feat: curioweb: add favicon (#11804) ([filecoin-project/lotus#11804](https://github.com/filecoin-project/lotus/pull/11804))
+- feat: lotus-provider: Fetch params on startup when needed ([filecoin-project/lotus#11650](https://github.com/filecoin-project/lotus/pull/11650))
+- feat: mpool: Cache actors in lite mode (#11668) ([filecoin-project/lotus#11668](https://github.com/filecoin-project/lotus/pull/11668))
+- feat: curio: simpler reservation release logic (#11900) ([filecoin-project/lotus#11900](https://github.com/filecoin-project/lotus/pull/11900))
+- feat: curio: add StorageInit api (#11918) ([filecoin-project/lotus#11918](https://github.com/filecoin-project/lotus/pull/11918))
+- feat: lotus-provider: SDR Sealing pipeline ([filecoin-project/lotus#11534](https://github.com/filecoin-project/lotus/pull/11534))
+- feat: curioweb: Sector info page (#11846) ([filecoin-project/lotus#11846](https://github.com/filecoin-project/lotus/pull/11846))
+- feat: curio web: node info page (#11745) ([filecoin-project/lotus#11745](https://github.com/filecoin-project/lotus/pull/11745))
+- feat: fvm: optimize FVM lanes a bit (#11875) ([filecoin-project/lotus#11875](https://github.com/filecoin-project/lotus/pull/11875))
+
+## Improvements
+
+- fix: api: return the correct block gas limit in the EthAPI (#11747) ([filecoin-project/lotus#11747](https://github.com/filecoin-project/lotus/pull/11747))
+- fix: exchange: explicitly cast the block message limit const (#11511) ([filecoin-project/lotus#11511](https://github.com/filecoin-project/lotus/pull/11511))
+- fix: Eth API: accept input data in call arguments under field 'input' (#11505) ([filecoin-project/lotus#11505](https://github.com/filecoin-project/lotus/pull/11505))
+- fix: api: Length check the array sent to eth_feeHistory RPC (#11696) ([filecoin-project/lotus#11696](https://github.com/filecoin-project/lotus/pull/11696))
+- fix: api: fix EthSubscribe tipsets off by one (#11858) ([filecoin-project/lotus#11858](https://github.com/filecoin-project/lotus/pull/11858))
+- fix: lotus-provider: Fix log output format in wdPostTaskCmd ([filecoin-project/lotus#11504](https://github.com/filecoin-project/lotus/pull/11504))
+- fix: lmcli: make 'sectors list' DDO-aware (#11839) ([filecoin-project/lotus#11839](https://github.com/filecoin-project/lotus/pull/11839))
+- fix: lpwinning: Fix MiningBase.afterPropDelay ([filecoin-project/lotus#11654](https://github.com/filecoin-project/lotus/pull/11654))
+- fix: exchange: allow up to 10k messages per block ([filecoin-project/lotus#11506](https://github.com/filecoin-project/lotus/pull/11506))
+- fix: harmony: Fix task reclaim on restart ([filecoin-project/lotus#11498](https://github.com/filecoin-project/lotus/pull/11498))
+- fix: lotus-provider: Wait for the correct taskID ([filecoin-project/lotus#11493](https://github.com/filecoin-project/lotus/pull/11493))
+- fix: lotus-provider: show addresses in log ([filecoin-project/lotus#11490](https://github.com/filecoin-project/lotus/pull/11490))
+- fix: sql Scan cannot write to an object ([filecoin-project/lotus#11485](https://github.com/filecoin-project/lotus/pull/11485))
+- fix: lotus-provider: Fix winning PoSt ([filecoin-project/lotus#11482](https://github.com/filecoin-project/lotus/pull/11482))
+- fix: lotus-provider: lotus-provider msg sending ([filecoin-project/lotus#11480](https://github.com/filecoin-project/lotus/pull/11480))
+- fix: chain: use latest go-state-types types for miner UI ([filecoin-project/lotus#11566](https://github.com/filecoin-project/lotus/pull/11566))
+- fix: Dockerfile non-interactive snapshot import (#11579) ([filecoin-project/lotus#11579](https://github.com/filecoin-project/lotus/pull/11579))
+- fix: daemon: avoid prompting to remove chain when noninteractive (#11582) ([filecoin-project/lotus#11582](https://github.com/filecoin-project/lotus/pull/11582))
+- fix: (events): check for sync-in-progress (#11932) ([filecoin-project/lotus#11932](https://github.com/filecoin-project/lotus/pull/11932))
+- fix: curio: common commands (#11879) ([filecoin-project/lotus#11879](https://github.com/filecoin-project/lotus/pull/11879))
+- fix: curio: fix incorrect null check for varchar column (#11881) ([filecoin-project/lotus#11881](https://github.com/filecoin-project/lotus/pull/11881))
+- fix: local storage reservations fixes (#11866) ([filecoin-project/lotus#11866](https://github.com/filecoin-project/lotus/pull/11866))
+- fix: curio: Check deal start epoch passed in PrecommitSubmit (#11873) ([filecoin-project/lotus#11873](https://github.com/filecoin-project/lotus/pull/11873))
+- fix: curio: base config by default (#11676) ([filecoin-project/lotus#11676](https://github.com/filecoin-project/lotus/pull/11676))
+- fix: curio: Start BoostAdapters before blocking rpc serve (#11871) ([filecoin-project/lotus#11871](https://github.com/filecoin-project/lotus/pull/11871))
+- fix: cli: json flag (#11868) ([filecoin-project/lotus#11868](https://github.com/filecoin-project/lotus/pull/11868))
+- feat: curio/lmrpc: Ingest backpressure (#11865) ([filecoin-project/lotus#11865](https://github.com/filecoin-project/lotus/pull/11865))
+- feat: curio: Cleanup data copies after seal ops (#11847) ([filecoin-project/lotus#11847](https://github.com/filecoin-project/lotus/pull/11847))
+- fix: spcli: add reference to the terminate command (#11851) ([filecoin-project/lotus#11851](https://github.com/filecoin-project/lotus/pull/11851))
+- fix: sealing: improve gasEstimate logging (#11840) ([filecoin-project/lotus#11840](https://github.com/filecoin-project/lotus/pull/11840))
+- fix: harmony: Try other tasks when storage claim fails
+- fix: test: TestForkPreMigration hanging when env-var is set (#11838) ([filecoin-project/lotus#11838](https://github.com/filecoin-project/lotus/pull/11838))
+- fix: piece: Don't return StartEport in PieceDealInfo.EndEpoch (#11832) ([filecoin-project/lotus#11832](https://github.com/filecoin-project/lotus/pull/11832))
+- fix: paths/local: Fix on-disk storage accounting in new reservations (#11825) ([filecoin-project/lotus#11825](https://github.com/filecoin-project/lotus/pull/11825))
+- fix: sealing pipeline: Fix panic on padding pieces in WaitDeals (#11708) ([filecoin-project/lotus#11708](https://github.com/filecoin-project/lotus/pull/11708))
+- feat: ipfs: remove IPFS client backend (#11661) ([filecoin-project/lotus#11661](https://github.com/filecoin-project/lotus/pull/11661))
+- fix: docs: Modify generate-lotus-cli.py to ignoring aliases. ([filecoin-project/lotus#11535](https://github.com/filecoin-project/lotus/pull/11535))
+- fix: eth: decode as actor creation iff "to" is the EAM (#11520) ([filecoin-project/lotus#11520](https://github.com/filecoin-project/lotus/pull/11520))
+- fix(events): properly decorate events db errors (#11856) ([filecoin-project/lotus#11856](https://github.com/filecoin-project/lotus/pull/11856))
+- fix: CLI: adjust TermMax for extend-claim used by a different client (#11764) ([filecoin-project/lotus#11764](https://github.com/filecoin-project/lotus/pull/11764))
+
+## Dependencies
+
+- chore: update deps (#11819) ([filecoin-project/lotus#11819](https://github.com/filecoin-project/lotus/pull/11819))
+- chore: mod: use upstream poseidon ([filecoin-project/lotus#11557](https://github.com/filecoin-project/lotus/pull/11557))
+- deps: multiaddress ([filecoin-project/lotus#11558](https://github.com/filecoin-project/lotus/pull/11558))
+- chore:libp2p: update libp2p deps in master ([filecoin-project/lotus#11522](https://github.com/filecoin-project/lotus/pull/11522))
+- dep: go-multi-address ([filecoin-project/lotus#11563](https://github.com/filecoin-project/lotus/pull/11563))
+
+
+## Others
+
+- ci: ci: create gh workflow that runs go checks (#11761) ([filecoin-project/lotus#11761](https://github.com/filecoin-project/lotus/pull/11761))
+- ci: ci: create gh workflow that runs go build (#11760) ([filecoin-project/lotus#11760](https://github.com/filecoin-project/lotus/pull/11760))
+- ci: cancel in progress runs on pull requests only (#11842) ([filecoin-project/lotus#11842](https://github.com/filecoin-project/lotus/pull/11842))
+- ci: ci: list processes before calling apt-get to enable debugging (#11815) ([filecoin-project/lotus#11815](https://github.com/filecoin-project/lotus/pull/11815))
+- ci: ci: allow master main sync to write to the repository (#11784) ([filecoin-project/lotus#11784](https://github.com/filecoin-project/lotus/pull/11784))
+- ci: ci: create gh workflow that runs go tests (#11762) ([filecoin-project/lotus#11762](https://github.com/filecoin-project/lotus/pull/11762))
+- misc: Drop the raft-cluster experiment ([filecoin-project/lotus#11468](https://github.com/filecoin-project/lotus/pull/11468))
+- chore: fix some typos in comments (#11892) ([filecoin-project/lotus#11892](https://github.com/filecoin-project/lotus/pull/11892))
+- chore: fix typos (#11848) ([filecoin-project/lotus#11848](https://github.com/filecoin-project/lotus/pull/11848))
+- chore: fix typo (#11697) ([filecoin-project/lotus#11697](https://github.com/filecoin-project/lotus/pull/11697))
+- chore: fix 2 typo's (#11542) ([filecoin-project/lotus#11542](https://github.com/filecoin-project/lotus/pull/11542))
+- chore: calibnet: Update bootstrap peer list ([filecoin-project/lotus#11672](https://github.com/filecoin-project/lotus/pull/11672))
+- chore: build: Bump version in master ([filecoin-project/lotus#11475](https://github.com/filecoin-project/lotus/pull/11475))
+- chore: releases: merge releases branch to master ([filecoin-project/lotus#11578](https://github.com/filecoin-project/lotus/pull/11578))
+- chore: Add systemd memory note on install and in config (#11641) ([filecoin-project/lotus#11641](https://github.com/filecoin-project/lotus/pull/11641))
+- chore: switch back to upstream ledger library (#11651) ([filecoin-project/lotus#11651](https://github.com/filecoin-project/lotus/pull/11651))
+- chore: build: update minimum go version to 1.21.7 (#11652) ([filecoin-project/lotus#11652](https://github.com/filecoin-project/lotus/pull/11652))
+- chore: docs: nv-skeleton documentation (#11065) ([filecoin-project/lotus#11065](https://github.com/filecoin-project/lotus/pull/11065))
+- chore: Add v13 support to invariants-checker (#11931) ([filecoin-project/lotus#11931](https://github.com/filecoin-project/lotus/pull/11931))
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 20 | +55315/-204 | 58 |
+| Łukasz Magiera | 201 | +16244/-6541 | 647 |
+| Andrew Jackson (Ajax) | 53 | +15293/-6764 | 394 |
+| Phi-rjan | 6 | +12669/-4521 | 221 |
+| LexLuthr | 20 | +5972/-2815 | 120 |
+| Steven Allen | 22 | +1626/-1264 | 77 |
+| Piotr Galar | 9 | +790/-412 | 33 |
+| Aayush Rajasekaran | 4 | +642/-509 | 12 |
+| Lee | 1 | +601/-533 | 9 |
+| qwdsds | 3 | +617/-510 | 11 |
+| Phi | 11 | +551/-83 | 32 |
+| Jiaying Wang | 5 | +433/-20 | 13 |
+| Masih H. Derkani | 4 | +350/-101 | 18 |
+| Aayush | 4 | +143/-76 | 17 |
+| Aarsh Shah | 3 | +63/-11 | 5 |
+| jennijuju | 3 | +22/-22 | 12 |
+| hunjixin | 1 | +21/-14 | 4 |
+| beck | 2 | +17/-17 | 2 |
+| tom123222 | 2 | +28/-4 | 2 |
+| Ian Norden | 1 | +21/-1 | 1 |
+| ZenGround0 | 1 | +3/-15 | 1 |
+| shuangcui | 1 | +7/-7 | 6 |
+| Vid Bregar | 1 | +7/-4 | 2 |
+| writegr | 1 | +5/-5 | 5 |
+| Nagaprasad V R | 1 | +9/-0 | 1 |
+| forcedebug | 1 | +4/-4 | 4 |
+| parthshah1 | 2 | +6/-1 | 2 |
+| fuyangpengqi | 1 | +3/-3 | 3 |
+| Samuel Arogbonlo | 1 | +6/-0 | 2 |
+| GlacierWalrus | 1 | +0/-6 | 1 |
+| Aloxaf | 1 | +6/-0 | 2 |
+| Rob Quist | 2 | +2/-3 | 3 |
+| wersfeds | 1 | +2/-2 | 1 |
+| Jon | 1 | +2/-0 | 1 |
+| 0x5459 | 1 | +1/-0 | 1 |
+
 # v1.26.3 / 2024-04-22
 
 **This is a patch release that addresses high memory load concerns for the Lotus daemon in the coming network migration for network version 22, scheduled on epoch `3855360 - 2024-04-24 - 14:00:00Z`.**
