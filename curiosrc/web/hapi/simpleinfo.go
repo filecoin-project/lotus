@@ -13,6 +13,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
@@ -424,7 +425,10 @@ type machineSummary struct {
 	ID           int64
 	SinceContact string
 
-	RecentTasks []*machineRecentTask
+	RecentTasks  []*machineRecentTask
+	Cpu          int
+	RamHumanized string
+	Gpu          int
 }
 
 type taskSummary struct {
@@ -487,7 +491,7 @@ func (a *app) clusterMachineSummary(ctx context.Context) ([]machineSummary, erro
 	}
 
 	// Then machine summary
-	rows, err := a.db.Query(ctx, "SELECT id, host_and_port, last_contact FROM harmony_machines order by host_and_port asc")
+	rows, err := a.db.Query(ctx, "SELECT id, host_and_port, CURRENT_TIMESTAMP - last_contact, cpu, ram, gpu AS last_contact FROM harmony_machines order by host_and_port asc")
 	if err != nil {
 		return nil, err // Handle error
 	}
@@ -496,13 +500,14 @@ func (a *app) clusterMachineSummary(ctx context.Context) ([]machineSummary, erro
 	var summaries []machineSummary
 	for rows.Next() {
 		var m machineSummary
-		var lastContact time.Time
+		var lastContact time.Duration
+		var ram int64
 
-		if err := rows.Scan(&m.ID, &m.Address, &lastContact); err != nil {
+		if err := rows.Scan(&m.ID, &m.Address, &lastContact, &m.Cpu, &ram, &m.Gpu); err != nil {
 			return nil, err // Handle error
 		}
-
-		m.SinceContact = time.Since(lastContact).Round(time.Second).String()
+		m.SinceContact = lastContact.Round(time.Second).String()
+		m.RamHumanized = humanize.Bytes(uint64(ram))
 
 		// Add recent tasks
 		if ts, ok := taskSummaries[m.Address]; ok {
