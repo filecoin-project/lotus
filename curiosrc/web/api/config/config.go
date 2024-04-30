@@ -30,9 +30,26 @@ func Routes(r *mux.Router, deps *deps.Deps) {
 	// At edit.html:
 	r.Methods("GET").Path("/schema").HandlerFunc(getSch)
 	r.Methods("GET").Path("/layers/{layer}").HandlerFunc(c.getLayer)
+	r.Methods("POST").Path("/addlayer").HandlerFunc(c.addLayer)
 	r.Methods("POST").Path("/layers/{layer}").HandlerFunc(c.setLayer)
 	r.Methods("GET").Path("/default").HandlerFunc(c.def)
 }
+
+func (c *cfg) addLayer(w http.ResponseWriter, r *http.Request) {
+	var layer struct {
+		Name string
+	}
+	apihelper.OrHTTPFail(w, json.NewDecoder(r.Body).Decode(&layer))
+	ct, err := c.DB.Exec(context.Background(), `INSERT INTO harmony_config (title, config) VALUES ($1, $2)`, layer.Name, "")
+	apihelper.OrHTTPFail(w, err)
+	if ct != 1 {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte("Layer already exists"))
+		return
+	}
+	w.WriteHeader(200)
+}
+
 func getSch(w http.ResponseWriter, r *http.Request) {
 	ref := jsonschema.Reflector{
 		Mapper: func(i reflect.Type) *jsonschema.Schema {
