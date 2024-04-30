@@ -208,7 +208,7 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 
 	defer func() {
 		if err != nil {
-			clerr := removeDRCTrees(fspaths.Cache, "RC")
+			clerr := removeDRCTrees(fspaths.Cache, false)
 			if clerr != nil {
 				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", fspaths.Cache)
 			}
@@ -272,35 +272,27 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 	return sl, uns, nil
 }
 
-func removeDRCTrees(cache string, tree string) error {
-	// list files in cache
+func removeDRCTrees(cache string, isDTree bool) error {
 	files, err := os.ReadDir(cache)
 	if err != nil {
 		return xerrors.Errorf("listing cache: %w", err)
 	}
 
-	switch tree {
-	case "D":
-		for _, file := range files {
-			if proofpaths.IsTreeDFile(file.Name()) {
-				err := os.Remove(filepath.Join(cache, file.Name()))
-				if err != nil {
-					return xerrors.Errorf("removing tree file: %w", err)
-				}
-			}
-		}
-	case "RC":
-		for _, file := range files {
-			if proofpaths.IsTreeRCFile(file.Name()) {
-				err := os.Remove(filepath.Join(cache, file.Name()))
-				if err != nil {
-					return xerrors.Errorf("removing tree file: %w", err)
-				}
-			}
-		}
-	default:
-		return xerrors.Errorf("incorrect input Tree type")
+	var testFunc func(string) bool
 
+	if isDTree {
+		testFunc = proofpaths.IsTreeDFile
+	} else {
+		testFunc = proofpaths.IsTreeRCFile
+	}
+
+	for _, file := range files {
+		if testFunc(file.Name()) {
+			err := os.Remove(filepath.Join(cache, file.Name()))
+			if err != nil {
+				return xerrors.Errorf("removing tree file: %w", err)
+			}
+		}
 	}
 	return nil
 }
@@ -640,10 +632,11 @@ func (sb *SealCalls) PreFetch(ctx context.Context, sector storiface.SectorRef, t
 }
 
 func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool, fspaths, pathIDs storiface.SectorPaths, release func()) error {
+	defer release()
 	var err error
 	defer func() {
 		if err != nil {
-			clerr := removeDRCTrees(fspaths.Cache, "D")
+			clerr := removeDRCTrees(fspaths.Cache, true)
 			if clerr != nil {
 				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", fspaths.Cache)
 			}
