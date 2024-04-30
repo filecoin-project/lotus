@@ -382,8 +382,9 @@ func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 			return EthAddress{}, xerrors.Errorf("f410f addresses cannot embed masked-ID payloads: %s", ethAddr)
 		}
 		return ethAddr, nil
+	default:
+		return EthAddress{}, ErrInvalidAddress
 	}
-	return EthAddress{}, ErrInvalidAddress
 }
 
 // ParseEthAddress parses an Ethereum address from a hex string.

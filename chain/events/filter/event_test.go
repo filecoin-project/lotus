@@ -1,7 +1,9 @@
 package filter
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	pseudo "math/rand"
 	"testing"
 
@@ -73,14 +75,14 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	noCollectedEvents := []*CollectedEvent{}
 	oneCollectedEvent := []*CollectedEvent{
 		{
-			Entries:     ev1.Entries,
-			EmitterAddr: a1,
-			EventIdx:    0,
-			Reverted:    false,
-			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
-			MsgIdx:      0,
-			MsgCid:      em.msg.Cid(),
+			Entries:   ev1.Entries,
+			Emitter:   a1ID,
+			EventIdx:  0,
+			Reverted:  false,
+			Height:    14000,
+			TipSetKey: events14000.msgTs.Key(),
+			MsgIdx:    0,
+			MsgCid:    em.msg.Cid(),
 		},
 	}
 
@@ -93,8 +95,9 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		{
 			name: "nomatch tipset min height",
 			filter: &eventFilter{
-				minHeight: 14001,
-				maxHeight: -1,
+				minHeight:     14001,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -102,8 +105,9 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		{
 			name: "nomatch tipset max height",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: 13999,
+				minHeight:     -1,
+				maxHeight:     13999,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -111,8 +115,9 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		{
 			name: "match tipset min height",
 			filter: &eventFilter{
-				minHeight: 14000,
-				maxHeight: -1,
+				minHeight:     14000,
+				maxHeight:     -1,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -120,9 +125,10 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		{
 			name: "match tipset cid",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				tipsetCid: cid14000,
+				minHeight:     -1,
+				maxHeight:     -1,
+				tipsetCid:     cid14000,
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -130,9 +136,10 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		{
 			name: "nomatch address",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a2},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a2},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -140,9 +147,10 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		{
 			name: "match address",
 			filter: &eventFilter{
-				minHeight: -1,
-				maxHeight: -1,
-				addresses: []address.Address{a1},
+				minHeight:     -1,
+				maxHeight:     -1,
+				addresses:     []address.Address{a1},
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -157,6 +165,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -173,6 +182,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -188,6 +198,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("propose"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -202,6 +213,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("approval"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -219,6 +231,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
@@ -236,6 +249,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("addr1"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -253,6 +267,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("addr2"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -267,6 +282,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 						[]byte("2988181"),
 					},
 				}),
+				actorResolver: addrMap.ResolveActor,
 			},
 			te:   events14000,
 			want: noCollectedEvents,
@@ -276,7 +292,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.filter.CollectEvents(context.Background(), tc.te, false, addrMap.ResolveAddress); err != nil {
+			if err := tc.filter.CollectEvents(context.Background(), tc.te, false); err != nil {
 				require.NoError(t, err, "collect events")
 			}
 
@@ -440,7 +456,11 @@ func (a addressMap) add(actorID abi.ActorID, addr address.Address) {
 	a[actorID] = addr
 }
 
-func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-	ra, ok := a[emitter]
-	return ra, ok
+func (a addressMap) ResolveActor(_ context.Context, target address.Address, _ *types.TipSet) (abi.ActorID, error) {
+	for actor, addr := range a {
+		if bytes.Equal(target.Bytes(), addr.Bytes()) {
+			return actor, nil
+		}
+	}
+	return 0, fmt.Errorf("no actor for address: %s", target)
 }
