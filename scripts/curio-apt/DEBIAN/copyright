@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: curio
+Upstream-Contact: support@curiostorage.org
+Source: http://mit-license.org
+
+Files: *
+Copyright: 2024 Andrew Jackson support@curiostorage.org
+           2024 Lukasz Magiera 
+License: MIT
+
+Files: debian/*
+Copyright: 2024 andy <support@curiostorage.org>
+License: MIT
+
+License: MIT
