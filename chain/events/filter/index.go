@@ -478,7 +478,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// rollback the transaction (a no-op if the transaction was already committed)
 	defer func() { _ = tx.Rollback() }()
 
-	// lets handle the revert case first, since its simpler and we can simply mark all events events in this tipset as reverted and return
+	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
 		_, err = tx.Stmt(ei.stmtRevertEventsInTipset).Exec(te.msgTs.Height(), te.msgTs.Key().Bytes())
 		if err != nil {
