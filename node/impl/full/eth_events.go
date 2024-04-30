@@ -97,7 +97,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
 	res := &ethtypes.EthFilterResult{}
 	for _, ev := range evs {
-		log := ethtypes.EthLog{
+		ethlog := ethtypes.EthLog{
 			Removed:          ev.Reverted,
 			LogIndex:         ethtypes.EthUint64(ev.EventIdx),
 			TransactionIndex: ethtypes.EthUint64(ev.MsgIdx),
@@ -108,7 +108,7 @@ func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent
 			ok  bool
 		)
 
-		log.Data, log.Topics, ok = ethLogFromEvent(ev.Entries)
+		ethlog.Data, ethlog.Topics, ok = ethLogFromEvent(ev.Entries)
 		if !ok {
 			continue
 		}
@@ -118,22 +118,33 @@ func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent
 			return nil, xerrors.Errorf("emitter to addr: %w", err)
 		}
 
-		actor, err := sa.StateGetActor(ctx, emitterAddr, ev.TipSetKey)
+		ts, err := sa.Chain.GetTipSetFromKey(ctx, ev.TipSetKey)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset: %w", err)
+		}
+		// Because we collect events after the tipset is processed, a call to TipSetState should't have
+		// to execute the tipset to get the state root, so we shouldn't have to worry about avoiding
+		// expensive migrations here.
+		stateRoot, _, err := sa.StateManager.TipSetState(ctx, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset state: %w", err)
+		}
+		actor, err := sa.StateManager.LoadActorRaw(ctx, emitterAddr, stateRoot)
 		if err != nil {
 			return nil, xerrors.Errorf("state get actor: %w", err)
 		}
 		if actor == nil && actor.Address == nil {
 			return nil, xerrors.New("state get actor: nil")
 		}
-		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
+		ethlog.Address, err = ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
 		if err != nil {
 			return nil, xerrors.Errorf("eth addr from fil: %w", err)
 		}
-		log.TransactionHash, err = ethTxHashFromMessageCid(ctx, ev.MsgCid, sa)
+		ethlog.TransactionHash, err = ethTxHashFromMessageCid(ctx, ev.MsgCid, sa)
 		if err != nil {
 			return nil, err
 		}
-		if log.TransactionHash == ethtypes.EmptyEthHash {
+		if ethlog.TransactionHash == ethtypes.EmptyEthHash {
 			// We've garbage collected the message, ignore the events and continue.
 			continue
 		}
@@ -141,12 +152,12 @@ func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent
 		if err != nil {
 			return nil, err
 		}
-		log.BlockHash, err = ethtypes.EthHashFromCid(c)
+		ethlog.BlockHash, err = ethtypes.EthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
 
-		res.Results = append(res.Results, log)
+		res.Results = append(res.Results, ethlog)
 	}
 
 	return res, nil
