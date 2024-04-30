@@ -240,7 +240,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	// Generate Tree D
-	err = t.sc.TreeD(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData, fsPaths, pathIds, release)
+	err = t.sc.TreeD(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData, fsPaths, pathIds)
 	if err != nil {
 		return false, xerrors.Errorf("failed to generate TreeD: %w", err)
 	}
