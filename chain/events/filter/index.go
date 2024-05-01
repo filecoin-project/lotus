@@ -356,6 +356,16 @@ func (ei *EventIndex) migrateToVersion4(ctx context.Context) error {
 		}
 	}
 
+	stmtEventIndexUpdate, err := tx.PrepareContext(ctx, "UPDATE event SET event_index = (SELECT COUNT(*) FROM event e2 WHERE e2.tipset_key_cid = event.tipset_key_cid AND e2.id <= event.id) - 1")
+	if err != nil {
+		return xerrors.Errorf("prepare stmtEventIndexUpdate: %w", err)
+	}
+
+	_, err = stmtEventIndexUpdate.ExecContext(ctx)
+	if err != nil {
+		return xerrors.Errorf("update event index: %w", err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return xerrors.Errorf("commit transaction: %w", err)
@@ -501,10 +511,11 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return xerrors.Errorf("load executed messages: %w", err)
 	}
 
+	eventCount := 0
 	// iterate over all executed messages in this tipset and insert them into the database if they
 	// don't exist, otherwise mark them as not reverted
 	for msgIdx, em := range ems {
-		for evIdx, ev := range em.Events() {
+		for _, ev := range em.Events() {
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
 				var ok bool
@@ -528,7 +539,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				te.msgTs.Key().Bytes(),     // tipset_key
 				tsKeyCid.Bytes(),           // tipset_key_cid
 				addr.Bytes(),               // emitter_addr
-				evIdx,                      // event_index
+				eventCount,                 // event_index
 				em.Message().Cid().Bytes(), // message_cid
 				msgIdx,                     // message_index
 			).Scan(&entryID)
@@ -543,7 +554,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
-					evIdx,                      // event_index
+					eventCount,                 // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
 					false,                      // reverted
@@ -578,7 +589,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
-					evIdx,                      // event_index
+					eventCount,                 // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
 				)
@@ -596,6 +607,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					log.Warnf("restored %d events but expected only one to exist", rowsAffected)
 				}
 			}
+			eventCount++
 		}
 	}
 
