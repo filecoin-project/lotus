@@ -82,17 +82,21 @@ func TestEthLegacyHomesteadTxArgs(t *testing.T) {
 
 func TestLegacyHomesteadSignatures(t *testing.T) {
 	testcases := []struct {
-		RawTx     string
-		ExpectedR string
-		ExpectedS string
-		ExpectedV string
-		ExpectErr bool
+		RawTx           string
+		ExpectedR       string
+		ExpectedS       string
+		ExpectedV       string
+		ExpectErr       bool
+		ExpectErrMsg    string
+		ExpectVMismatch bool
 	}{
 		{
 			"0xf882800182540894095e7baea6a6c7c4c2dfeb977efac326af552d8780a3deadbeef0000000101010010101010101010101010101aaabbbbbbcccccccddddddddd1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a01fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
 			"0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
 			"0x1fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
 			"0x1b",
+			false,
+			"",
 			false,
 		},
 		{
@@ -101,6 +105,35 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 			"0x7778cde41a8a37f6a087622b38bc201bd3e7df06dce067569d4def1b53dba98c",
 			"0x1b",
 			false,
+			"",
+			false,
+		},
+		{
+			"0xf882800182540894095e7baea6a6c7c4c2dfeb977efac326af552d8780a3deadbeef0000000101010010101010101010101010101aaabbbbbbcccccccddddddddd1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a01fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
+			"0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+			"0x1fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
+			"0x1c",
+			false,
+			"",
+			true,
+		},
+		{
+			"0xf882800182540894095e7baea6a6c7c4c2dfeb977efac326af552d8780a3deadbeef0000000101010010101010101010101010101aaabbbbbbcccccccddddddddd1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a01fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
+			"0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+			"0x1fffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804",
+			"0x1f",
+			false,
+			"",
+			true,
+		},
+		{
+			"0xf86f830131cf8504a817c800825208942cf1e5a8250ded8835694ebeb90cfa0237fcb9b1882ec4a5251d1100008026a0f5f8d2244d619e211eeb634acd1bea0762b7b4c97bba9f01287c82bfab73f911a015be7982898aa7cc6c6f27ff33e999e4119d6cd51330353474b98067ff56d930",
+			"0xf5f8d2244d619e211eeb634acd1bea0762b7b4c97bba9f01287c82bfab73f911",
+			"0x15be7982898aa7cc6c6f27ff33e999e4119d6cd51330353474b98067ff56d930",
+			"0x26",
+			true,
+			"only support 27 or 28 for v",
+			false,
 		},
 		{
 			"0x00",
@@ -108,6 +141,8 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 			"",
 			"",
 			true,
+			"not a legacy eth transaction",
+			false,
 		},
 	}
 
@@ -115,6 +150,7 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 		tx, err := parseLegacyHomesteadTx(mustDecodeHex(tc.RawTx))
 		if tc.ExpectErr {
 			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.ExpectErrMsg)
 			continue
 		}
 		require.Nil(t, err)
@@ -126,7 +162,12 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 
 		require.Equal(t, tc.ExpectedR, "0x"+tx.R.Text(16), i)
 		require.Equal(t, tc.ExpectedS, "0x"+tx.S.Text(16), i)
-		require.Equal(t, tc.ExpectedV, "0x"+tx.V.Text(16), i)
+
+		if tc.ExpectVMismatch {
+			require.NotEqual(t, tc.ExpectedV, "0x"+tx.V.Text(16), i)
+		} else {
+			require.Equal(t, tc.ExpectedV, "0x"+tx.V.Text(16), i)
+		}
 	}
 }
 

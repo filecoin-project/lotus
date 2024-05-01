@@ -251,11 +251,6 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
 		}
 
-		// Don't override the chainID if this is not an EIP-1559 transaction.
-		// The chainID has already been set to 0 for leagcy ETH transactions.
-		if smsg.Signature.Type != crypto.SigTypeDelegated {
-			tx.ChainID = build.Eip155ChainId
-		}
 		tx.BlockHash = &blkHash
 		tx.BlockNumber = &bn
 		tx.TransactionIndex = &ti

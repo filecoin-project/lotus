@@ -31,8 +31,6 @@ type EthLegacyHomesteadTxArgs struct {
 func (tx *EthLegacyHomesteadTxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
 	from, err := EthAddressFromFilecoinAddress(smsg.Message.From)
 	if err != nil {
-		// This should be impossible as we've already asserted that we have an EthAddress
-		// sender...
 		return EthTx{}, fmt.Errorf("sender was not an eth account")
 	}
 	hash, err := tx.TxHash()
