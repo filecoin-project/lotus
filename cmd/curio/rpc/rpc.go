@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -38,6 +40,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
+
+const metaFile = "sectorstore.json"
 
 var log = logging.Logger("curio/rpc")
 var permissioned = os.Getenv("LOTUS_DISABLE_AUTH_PERMISSIONED") != "1"
@@ -159,6 +163,40 @@ func (p *CurioAPI) AllocatePieceToSector(ctx context.Context, maddr address.Addr
 // Trigger shutdown
 func (p *CurioAPI) Shutdown(context.Context) error {
 	close(p.ShutdownChan)
+	return nil
+}
+
+func (p *CurioAPI) StorageInit(ctx context.Context, path string, opts storiface.LocalStorageMeta) error {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return xerrors.Errorf("expanding local path: %w", err)
+	}
+
+	if err := os.MkdirAll(path, 0755); err != nil {
+		if !os.IsExist(err) {
+			return err
+		}
+	}
+	_, err = os.Stat(filepath.Join(path, metaFile))
+	if !os.IsNotExist(err) {
+		if err == nil {
+			return xerrors.Errorf("path is already initialized")
+		}
+		return err
+	}
+	if opts.ID == "" {
+		opts.ID = storiface.ID(uuid.New().String())
+	}
+	if !(opts.CanStore || opts.CanSeal) {
+		return xerrors.Errorf("must specify at least one of --store or --seal")
+	}
+	b, err := json.MarshalIndent(opts, "", "  ")
+	if err != nil {
+		return xerrors.Errorf("marshaling storage config: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(path, metaFile), b, 0644); err != nil {
+		return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(path, metaFile), err)
+	}
 	return nil
 }
 
