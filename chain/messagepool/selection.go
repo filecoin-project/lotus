@@ -400,7 +400,7 @@ tailLoop:
 			continue tailLoop
 		}
 
-		// the merge loop ended after processing all the chains and we we probably have still
+		// the merge loop ended after processing all the chains and we probably have still
 		// gas to spare; end the loop.
 		break
 	}
