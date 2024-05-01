@@ -8,11 +8,23 @@
 
 # v1.27.0-rc1 / 2024-04-30
 
-This is the first release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers. This feature release introduces Curio in Beta release.
+This is the first release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release, check out the Curio Beta release section for how you can get started with Curio.
 
 ## ☢️ Upgrade Warnings ☢️
 
-- This feature release drops the Raft cluster code experiemnt from the codebase. This Raft cluster never graduated beyond an experiment, had poor UX (e.g. no way to manage a running cluster, so it didn't provide High Availability, and pulled in a lot of heavy dependencies. We keep the multi-node RPC feature, it is not perfect, but it is useful.
+- This feature release drops the Raft cluster code experiment from the codebase. This Raft cluster never graduated beyond an experiment, had poor UX (e.g. no way to manage a running cluster, so it didn't provide High Availability, and pulled in a lot of heavy dependencies. We keep the multi-node RPC feature, it is not perfect, but it is useful.
+- Event Database: Two sequential migrations will adjust indexes without altering data or columns, ensuring minimal invasiveness when upgrading to this release. However, these migrations may be time-consuming for nodes with extensive event databases.
+
+## Indexers, RPC- and ETH RPC-providers improvements
+
+This release includes a lot of improvements and fixes for indexers, RPC- and ETH RPC-providers. Specifically these PRs:
+
+- [Significant performance improvements of eth_getLog](https://github.com/filecoin-project/lotus/pull/11477)
+- [Return the correct block gas limit in the EthAP](https://github.com/filecoin-project/lotus/pull/11747)
+- [Accept input data in call arguments under field 'input'](https://github.com/filecoin-project/lotus/pull/11505)
+- [Length check the array sent to eth_feeHistory RPC](https://github.com/filecoin-project/lotus/pull/11696)
+- [ETH subscribe tipsets API should only return tipsets that have been executed](https://github.com/filecoin-project/lotus/pull/11858)
+- [Adjust indexes in event index db to match query patterns](https://github.com/filecoin-project/lotus/pull/111934)
 
 ## ⭐️ Curio Beta Release  ⭐️
 
