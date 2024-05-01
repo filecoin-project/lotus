@@ -20,6 +20,8 @@ import (
 )
 
 const (
+	EIP1559EthTxSignatureLen = 65
+	LegacyEthTxSignatureLen  = 66
 	// LegacyHomesteadEthTxSignaturePrefix defines the prefix byte used to identify the signature of a legacy Homestead Ethereum transaction.
 	LegacyHomesteadEthTxSignaturePrefix = 0x01
 	Eip1559TxType                       = 0x02
@@ -125,7 +127,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 
 	// Process based on the signature data length.
 	switch len(smsg.Signature.Data) {
-	case 66: // Legacy Homestead transaction
+	case LegacyEthTxSignatureLen: // Legacy Homestead transaction
 		if smsg.Signature.Data[0] != LegacyHomesteadEthTxSignaturePrefix {
 			return nil, fmt.Errorf("unsupported legacy transaction; first byte of signature is %d",
 				smsg.Signature.Data[0])
@@ -142,7 +144,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 			return nil, fmt.Errorf("failed to initialise signature: %w", err)
 		}
 		return &tx, nil
-	case 65: // EIP-1559 transaction
+	case EIP1559EthTxSignatureLen: // EIP-1559 transaction
 		tx := Eth1559TxArgs{
 			ChainID:              build.Eip155ChainId,
 			Nonce:                int(smsg.Message.Nonce),
@@ -189,22 +191,21 @@ func ParseEthTransaction(data []byte) (EthTransaction, error) {
 		return nil, fmt.Errorf("empty data")
 	}
 
-	if data[0] > 0x7f {
-		tx, err := parseLegacyHomesteadTx(data)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse legacy homestead transaction: %w", err)
-		}
-		return tx, nil
-	}
-
-	if data[0] == 1 {
+	switch data[0] {
+	case 1:
 		// EIP-2930
 		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
-	}
-
-	if data[0] == Eip1559TxType {
+	case Eip1559TxType:
 		// EIP-1559
 		return parseEip1559Tx(data)
+	default:
+		if data[0] > 0x7f {
+			tx, err := parseLegacyHomesteadTx(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse legacy homestead transaction: %w", err)
+			}
+			return tx, nil
+		}
 	}
 
 	return nil, fmt.Errorf("unsupported transaction type")

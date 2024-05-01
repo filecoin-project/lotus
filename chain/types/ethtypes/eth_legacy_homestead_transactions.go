@@ -14,10 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const (
-	legacyHomesteadTxSignatureLen = 66
-)
-
 var _ EthTransaction = (*EthLegacyHomesteadTxArgs)(nil)
 
 type EthLegacyHomesteadTxArgs struct {
@@ -85,9 +81,9 @@ func (tx *EthLegacyHomesteadTxArgs) ToUnsignedFilecoinMessage(from address.Addre
 }
 
 func (tx *EthLegacyHomesteadTxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
-	if len(sig) != legacyHomesteadTxSignatureLen {
+	if len(sig) != LegacyEthTxSignatureLen {
 		return nil, fmt.Errorf("signature should be %d bytes long (1 byte metadata, %d bytes sig data), but got %d bytes",
-			legacyHomesteadTxSignatureLen, legacyHomesteadTxSignatureLen-1, len(sig))
+			LegacyEthTxSignatureLen, LegacyEthTxSignatureLen-1, len(sig))
 	}
 	if sig[0] != LegacyHomesteadEthTxSignaturePrefix {
 		return nil, fmt.Errorf("expected signature prefix 0x%x, but got 0x%x", LegacyHomesteadEthTxSignaturePrefix, sig[0])
@@ -168,8 +164,8 @@ func (tx *EthLegacyHomesteadTxArgs) Signature() (*typescrypto.Signature, error) 
 	// pre-pend a one byte marker so nodes know that this is a legacy transaction
 	sig = append([]byte{LegacyHomesteadEthTxSignaturePrefix}, sig...)
 
-	if len(sig) != legacyHomesteadTxSignatureLen {
-		return nil, fmt.Errorf("signature is not %d bytes", legacyHomesteadTxSignatureLen)
+	if len(sig) != LegacyEthTxSignatureLen {
+		return nil, fmt.Errorf("signature is not %d bytes", LegacyEthTxSignatureLen)
 	}
 
 	return &typescrypto.Signature{
@@ -220,8 +216,8 @@ func (tx *EthLegacyHomesteadTxArgs) InitialiseSignature(sig typescrypto.Signatur
 		return fmt.Errorf("RecoverSignature only supports Delegated signature")
 	}
 
-	if len(sig.Data) != legacyHomesteadTxSignatureLen {
-		return fmt.Errorf("signature should be %d bytes long, but got %d bytes", legacyHomesteadTxSignatureLen, len(sig.Data))
+	if len(sig.Data) != LegacyEthTxSignatureLen {
+		return fmt.Errorf("signature should be %d bytes long, but got %d bytes", LegacyEthTxSignatureLen, len(sig.Data))
 	}
 
 	if sig.Data[0] != LegacyHomesteadEthTxSignaturePrefix {

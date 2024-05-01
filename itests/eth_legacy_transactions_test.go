@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -27,13 +26,6 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	// install contract
-	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
-	require.NoError(t, err)
-
-	contract, err := hex.DecodeString(string(contractHex))
-	require.NoError(t, err)
-
 	// create a new Ethereum account
 	key, ethAddr, deployer := client.EVM().NewAccount()
 	_, ethAddr2, _ := client.EVM().NewAccount()
@@ -41,8 +33,9 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
 
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
+		From:  &ethAddr,
+		To:    &ethAddr2,
+		Value: ethtypes.EthBigInt(big.NewInt(100)),
 	}})
 	require.NoError(t, err)
 
@@ -106,7 +99,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, tx.V, ethTx.V)
 }
 
-func TestLegacyContractDeploymentValidSignature(t *testing.T) {
+func TestLegacyContractInvocation(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
@@ -115,23 +108,13 @@ func TestLegacyContractDeploymentValidSignature(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	// install contract
-	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
-	require.NoError(t, err)
-
-	contract, err := hex.DecodeString(string(contractHex))
-	require.NoError(t, err)
-
 	// create a new Ethereum account
 	key, ethAddr, deployer := client.EVM().NewAccount()
-
 	// send some funds to the f410 address
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
-	// verify the deployer address is a placeholder.
-	client.AssertActorType(ctx, deployer, manifest.PlaceholderKey)
-
-	tx, err := deployLegacyContractTx(ctx, client, ethAddr, contract)
+	// DEPLOY CONTRACT
+	tx, err := deployLegacyContractTx(t, ctx, client, ethAddr)
 	require.NoError(t, err)
 
 	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
@@ -146,53 +129,7 @@ func TestLegacyContractDeploymentValidSignature(t *testing.T) {
 
 	// Submit transaction with valid signature
 	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
-	hash := client.EVM().SubmitTransaction(ctx, tx)
 
-	receipt, err := client.EVM().WaitTransaction(ctx, hash)
-	require.NoError(t, err)
-	require.NotNil(t, receipt)
-
-	// Success.
-	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
-
-	// Verify that the deployer is now an account.
-	client.AssertActorType(ctx, deployer, manifest.EthAccountKey)
-
-	// Verify that the nonce was incremented.
-	nonce, err := client.MpoolGetNonce(ctx, deployer)
-	require.NoError(t, err)
-	require.EqualValues(t, 1, nonce)
-
-	// Verify that the deployer is now an account.
-	client.AssertActorType(ctx, deployer, manifest.EthAccountKey)
-}
-
-func TestLegacyContractInvocation(t *testing.T) {
-	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-
-	ens.InterconnectAll().BeginMining(blockTime)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
-	// install contract
-	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
-	require.NoError(t, err)
-
-	contract, err := hex.DecodeString(string(contractHex))
-	require.NoError(t, err)
-
-	// create a new Ethereum account
-	key, ethAddr, deployer := client.EVM().NewAccount()
-	// send some funds to the f410 address
-	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
-
-	// DEPLOY CONTRACT
-	tx, err := deployLegacyContractTx(ctx, client, ethAddr, contract)
-	require.NoError(t, err)
-
-	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
 
 	receipt, err := client.EVM().WaitTransaction(ctx, hash)
@@ -240,7 +177,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 	// Mangle signature
 	invokeTx.V.Int.Xor(invokeTx.V.Int, big.NewInt(1).Int)
 
-	signed, err := invokeTx.ToRlpSignedMsg()
+	signed, err = invokeTx.ToRlpSignedMsg()
 	require.NoError(t, err)
 	// Submit transaction with bad signature
 	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
@@ -269,7 +206,14 @@ func TestLegacyContractInvocation(t *testing.T) {
 	require.EqualValues(t, effectiveGasPrice, big.Int(receipt.EffectiveGasPrice))
 }
 
-func deployLegacyContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthLegacyHomesteadTxArgs, error) {
+func deployLegacyContractTx(t *testing.T, ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress) (*ethtypes.EthLegacyHomesteadTxArgs, error) {
+	// install contract
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
 	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From: &ethAddr,
 		Data: contract,
