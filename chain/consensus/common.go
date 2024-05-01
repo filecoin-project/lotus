@@ -220,7 +220,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
 		if nv >= network.Version13 {
-			sender, err = st.LookupID(m.From)
+			sender, err = st.LookupIDAddress(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to lookup sender %s: %w", m.From, err)
 			}

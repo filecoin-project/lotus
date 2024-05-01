@@ -136,6 +136,8 @@ type CurioMethods struct {
 
 	StorageInfo func(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) `perm:"admin"`
 
+	StorageInit func(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error `perm:"admin"`
+
 	StorageList func(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) `perm:"admin"`
 
 	StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
@@ -1578,6 +1580,17 @@ func (s *CurioStruct) StorageInfo(p0 context.Context, p1 storiface.ID) (storifac
 
 func (s *CurioStub) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
 	return *new(storiface.StorageInfo), ErrNotSupported
+}
+
+func (s *CurioStruct) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
+	if s.Internal.StorageInit == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageInit(p0, p1, p2)
+}
+
+func (s *CurioStub) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
+	return ErrNotSupported
 }
 
 func (s *CurioStruct) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {

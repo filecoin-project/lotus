@@ -145,10 +145,10 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 	)
 
 	if !strings.HasPrefix(bundle, "v") {
-		return nil, xerrors.Errorf("bundle bundle '%q' doesn't start with a 'v'", bundle)
+		return nil, xerrors.Errorf("bundle '%q' doesn't start with a 'v'", bundle)
 	}
 	if !strings.HasSuffix(bundle, archiveExt) {
-		return nil, xerrors.Errorf("bundle bundle '%q' doesn't end with '%s'", bundle, archiveExt)
+		return nil, xerrors.Errorf("bundle '%q' doesn't end with '%s'", bundle, archiveExt)
 	}
 	version, err := strconv.ParseInt(bundle[1:len(bundle)-len(archiveExt)], 10, 0)
 	if err != nil {

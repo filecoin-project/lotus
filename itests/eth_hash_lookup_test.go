@@ -296,7 +296,7 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	require.Equal(t, ethtypes.EthBytes(expected), chainTx.Input)
 }
 
-// TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
+// TestTransactionHashLookupNonexistentMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
 func TestTransactionHashLookupNonexistentMessage(t *testing.T) {
 	kit.QuietMiningLogs()
 
