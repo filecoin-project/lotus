@@ -22,10 +22,10 @@ import (
 const (
 	// LegacyHomesteadEthTxSignaturePrefix defines the prefix byte used to identify the signature of a legacy Homestead Ethereum transaction.
 	LegacyHomesteadEthTxSignaturePrefix = 0x01
-	Eip1559TxType                       = 0x2
+	Eip1559TxType                       = 0x02
 
-	ethLegacyHomesteadTxType    = 0x0
-	ethLegacyHomesteadTxChainID = 0x0
+	ethLegacyHomesteadTxType    = 0x00
+	ethLegacyHomesteadTxChainID = 0x00
 )
 
 // EthTransaction defines the interface for Ethereum-like transactions.

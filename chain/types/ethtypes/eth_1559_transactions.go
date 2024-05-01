@@ -262,7 +262,7 @@ func (tx *Eth1559TxArgs) packTxFields() ([]interface{}, error) {
 
 func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 	if data[0] != Eip1559TxType {
-		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not 2")
+		return nil, xerrors.Errorf(fmt.Sprintf("not an EIP-1559 transaction: first byte is not %d", Eip1559TxType))
 	}
 
 	d, err := DecodeRLP(data[1:])
