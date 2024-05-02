@@ -193,8 +193,7 @@ func (s *SubmitCommitTask) transferFinalizedSectorData(ctx context.Context, spID
             sectors_sdr_pipeline
         WHERE
             sp_id = $1 AND
-            sector_number = $2 AND
-            after_finalize = true
+            sector_number = $2
         ON CONFLICT (sp_id, sector_num) DO UPDATE SET
             reg_seal_proof = excluded.reg_seal_proof,
             ticket_epoch = excluded.ticket_epoch,
