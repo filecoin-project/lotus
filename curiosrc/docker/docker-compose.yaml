@@ -1,0 +1,86 @@
+version: '3.8'
+name: curio-devnet
+
+x-logging:
+  &default-logging
+  options:
+    max-size: '20m'
+    max-file: '3'
+  driver: json-file
+
+networks:
+  default:
+    name: curio-devnet
+
+services:
+  lotus:
+    container_name: lotus
+    image: ${LOTUS_IMAGE}
+    init: true
+    ports:
+      - "1234:1234"
+      - "9090:9090"
+    environment:
+      - LOTUS_FEVM_ENABLEETHRPC=true
+      - LOTUS_API_LISTENADDRESS=/dns/lotus/tcp/1234/http
+      - LOTUS_LIBP2P_LISTENADDRESSES=/ip4/0.0.0.0/tcp/9090
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - ./data/lotus:/var/lib/lotus:rw
+      - ./data/genesis:/var/lib/genesis:rw
+      - ${FIL_PROOFS_PARAMETER_CACHE}:/var/tmp/filecoin-proof-parameters:rw
+
+  lotus-miner:
+    container_name: lotus-miner
+    image: ${LOTUS_MINER_IMAGE}
+    init: true
+    ports:
+      - "2345:2345"
+    environment:
+      - LOTUS_API_LISTENADDRESS=/dns/lotus-miner/tcp/2345/http
+      - LOTUS_API_REMOTELISTENADDRESS=lotus-miner:2345
+      - LOTUS_SEALING_BATCHPRECOMMITS=false
+      - LOTUS_SEALING_AGGREGATECOMMITS=false
+      - LOTUS_SUBSYSTEMS_ENABLEMARKETS=false
+      - LOTUS_SEALING_WAITDEALSDELAY=20s
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - ./data/lotus-miner:/var/lib/lotus-miner:rw
+      - ./data/lotus:/var/lib/lotus:ro
+      - ./data/genesis:/var/lib/genesis:ro
+      - ${FIL_PROOFS_PARAMETER_CACHE}:/var/tmp/filecoin-proof-parameters:rw
+
+  curio:
+    container_name: curio
+    image: ${CURIO_IMAGE}
+    init: true
+    ports:
+      - "12300:12300" # API
+      - "4701:4701" # UI
+      - "32100:32100" # Market
+    environment:
+      - CURIO_REPO_PATH=/var/lib/curio
+      - CURIO_HARMONYDB_HOSTS=yugabyte
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - ./data/curio:/var/lib/curio:rw
+      - ./data/lotus:/var/lib/lotus:ro
+      - ./data/lotus-miner:/var/lib/lotus-miner:ro
+      - ${FIL_PROOFS_PARAMETER_CACHE}:/var/tmp/filecoin-proof-parameters:rw
+
+  yugabyte:
+    container_name: yugabyte
+    image: curio/yugabyte-dev:dev
+    init: true
+    ports:
+      - "5433:5433"
+      - "9000:9000"
+      - "9042:9042"
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - ./data/yugabyte-data:/root/var/data
+      - ./data/yugabyte-logs:/root/var/logs
