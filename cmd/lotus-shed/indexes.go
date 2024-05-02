@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -54,6 +55,16 @@ var backfillEventsCmd = &cli.Command{
 			Value: 2000,
 			Usage: "the number of epochs to backfill",
 		},
+		&cli.BoolFlag{
+			Name:  "temporary-index",
+			Value: false,
+			Usage: "use a temporary index to speed up the backfill process",
+		},
+		&cli.BoolFlag{
+			Name:  "vacuum",
+			Value: false,
+			Usage: "run VACUUM on the database after backfilling is complete; this will reclaim space from deleted rows, but may take a long time",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		srv, err := lcli.GetFullNodeServices(cctx)
@@ -92,8 +103,12 @@ var backfillEventsCmd = &cli.Command{
 			return err
 		}
 
+		log.Infof(
+			"WARNING: If this command is run against a node that is currently collecting events with DisableHistoricFilterAPI=false, " +
+				"it may cause the node to fail to record recent events due to the need to obtain an exclusive lock on the database for writes.")
+
 		dbPath := path.Join(basePath, "sqlite", "events.db")
-		db, err := sql.Open("sqlite3", dbPath)
+		db, err := sql.Open("sqlite3", dbPath+"?_txlock=immediate")
 		if err != nil {
 			return err
 		}
@@ -104,6 +119,14 @@ var backfillEventsCmd = &cli.Command{
 				fmt.Printf("ERROR: closing db: %s", err)
 			}
 		}()
+
+		if cctx.Bool("temporary-index") {
+			log.Info("creating temporary index (tmp_event_backfill_index) on event table to speed up backfill")
+			_, err := db.Exec("CREATE INDEX IF NOT EXISTS tmp_event_backfill_index ON event (height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted);")
+			if err != nil {
+				return err
+			}
+		}
 
 		addressLookups := make(map[abi.ActorID]address.Address)
 
@@ -134,9 +157,19 @@ var backfillEventsCmd = &cli.Command{
 		var totalEntriesAffected int64
 
 		processHeight := func(ctx context.Context, cnt int, msgs []lapi.Message, receipts []*types.MessageReceipt) error {
-			tx, err := db.BeginTx(ctx, nil)
-			if err != nil {
-				return fmt.Errorf("failed to start transaction: %w", err)
+			var tx *sql.Tx
+			for {
+				var err error
+				tx, err = db.BeginTx(ctx, nil)
+				if err != nil {
+					if err.Error() == "database is locked" {
+						log.Warnf("database is locked, retrying in 200ms")
+						time.Sleep(200 * time.Millisecond)
+						continue
+					}
+					return err
+				}
+				break
 			}
 			defer tx.Rollback() //nolint:errcheck
 
@@ -311,6 +344,22 @@ var backfillEventsCmd = &cli.Command{
 		}
 
 		log.Infof("backfilling events complete, totalEventsAffected:%d, totalEntriesAffected:%d", totalEventsAffected, totalEntriesAffected)
+
+		if cctx.Bool("temporary-index") {
+			log.Info("dropping temporary index (tmp_event_backfill_index) on event table")
+			_, err := db.Exec("DROP INDEX IF EXISTS tmp_event_backfill_index;")
+			if err != nil {
+				fmt.Printf("ERROR: dropping index: %s", err)
+			}
+		}
+
+		if cctx.Bool("vacuum") {
+			log.Info("running VACUUM on the database")
+			_, err := db.Exec("VACUUM;")
+			if err != nil {
+				return fmt.Errorf("failed to run VACUUM on the database: %w", err)
+			}
+		}
 
 		return nil
 	},
