@@ -468,7 +468,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 	if err != nil {
 		return nil, err
 	}
-	release = func() {}
+	release := func() {}
 
 	st.localLk.Lock()
 
@@ -533,7 +533,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		}
 	}
 
-	return
+	return release, nil
 }
 
 // DoubleCallWrap wraps a function to make sure it's not called twice
@@ -543,7 +543,7 @@ func DoubleCallWrap(f func()) func() {
 		curStack := make([]byte, 20480)
 		curStack = curStack[:runtime.Stack(curStack, false)]
 		if len(stack) > 0 {
-			log.Warnf("double call from:\n%s\nBut originally from:", curStack, stack)
+			log.Warnf("double call from:\n%s\nBut originally from:\n%s", curStack, stack)
 			return
 		}
 		stack = curStack
