@@ -661,22 +661,10 @@ func removeExistingChain(cctx *cli.Context, lr repo.Repo) error {
 		}
 	}()
 
-	cfg, err := lockedRepo.Config()
+	log.Info("removing splitstore directory...")
+	err = deleteSplitstoreDir(lockedRepo)
 	if err != nil {
-		return xerrors.Errorf("error getting config: %w", err)
-	}
-
-	fullNodeConfig, ok := cfg.(*config.FullNode)
-	if !ok {
-		return xerrors.Errorf("wrong config type: %T", cfg)
-	}
-
-	if fullNodeConfig.Chainstore.EnableSplitstore {
-		log.Info("removing splitstore directory...")
-		err = deleteSplitstoreDir(lockedRepo)
-		if err != nil {
-			return xerrors.Errorf("error removing splitstore directory: %w", err)
-		}
+		return xerrors.Errorf("error removing splitstore directory: %w", err)
 	}
 
 	// Get the base repo path

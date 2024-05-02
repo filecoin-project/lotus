@@ -486,7 +486,7 @@ func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, t
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	ret, err := m.StateManager.LookupID(ctx, addr, ts)
+	ret, err := m.StateManager.LookupIDAddress(ctx, addr, ts)
 	if err != nil && xerrors.Is(err, types.ErrActorNotFound) {
 		return address.Undef, &api.ErrActorNotFound{}
 	}
