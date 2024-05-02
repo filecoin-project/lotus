@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/storage/paths"
@@ -310,6 +311,96 @@ func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	// Pieces
+	type sectorPieceMeta struct {
+		PieceIndex int64  `db:"piece_index"`
+		PieceCid   string `db:"piece_cid"`
+		PieceSize  int64  `db:"piece_size"`
+
+		DataUrl          string `db:"data_url"`
+		DataRawSize      int64  `db:"data_raw_size"`
+		DeleteOnFinalize bool   `db:"data_delete_on_finalize"`
+
+		F05PublishCid *string `db:"f05_publish_cid"`
+		F05DealID     *int64  `db:"f05_deal_id"`
+
+		DDOPam *string `db:"direct_piece_activation_manifest"`
+
+		// display
+		StrPieceSize   string `db:"-"`
+		StrDataRawSize string `db:"-"`
+
+		// piece park
+		IsParkedPiece          bool      `db:"-"`
+		IsParkedPieceFound     bool      `db:"-"`
+		PieceParkID            int64     `db:"-"`
+		PieceParkDataUrl       string    `db:"-"`
+		PieceParkCreatedAt     time.Time `db:"-"`
+		PieceParkComplete      bool      `db:"-"`
+		PieceParkTaskID        *int64    `db:"-"`
+		PieceParkCleanupTaskID *int64    `db:"-"`
+	}
+	var pieces []sectorPieceMeta
+
+	err = a.db.Select(ctx, &pieces, `SELECT piece_index, piece_cid, piece_size,
+       data_url, data_raw_size, data_delete_on_finalize,
+       f05_publish_cid, f05_deal_id, direct_piece_activation_manifest FROM sectors_sdr_initial_pieces WHERE sp_id = $1 AND sector_number = $2`, spid, intid)
+	if err != nil {
+		http.Error(w, xerrors.Errorf("failed to fetch sector pieces: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for i := range pieces {
+		pieces[i].StrPieceSize = types.SizeStr(types.NewInt(uint64(pieces[i].PieceSize)))
+		pieces[i].StrDataRawSize = types.SizeStr(types.NewInt(uint64(pieces[i].DataRawSize)))
+
+		id, isPiecePark := strings.CutPrefix(pieces[i].DataUrl, "pieceref:")
+		if !isPiecePark {
+			continue
+		}
+
+		intID, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			log.Errorw("failed to parse piece park id", "id", id, "error", err)
+			continue
+		}
+
+		var parkedPiece []struct {
+			// parked_piece_refs
+			PieceID int64  `db:"piece_id"`
+			DataUrl string `db:"data_url"`
+
+			// parked_pieces
+			CreatedAt     time.Time `db:"created_at"`
+			Complete      bool      `db:"complete"`
+			ParkTaskID    *int64    `db:"task_id"`
+			CleanupTaskID *int64    `db:"cleanup_task_id"`
+		}
+
+		err = a.db.Select(ctx, &parkedPiece, `SELECT ppr.piece_id, ppr.data_url, pp.created_at, pp.complete, pp.task_id, pp.cleanup_task_id FROM parked_piece_refs ppr
+		INNER JOIN parked_pieces pp ON pp.id = ppr.piece_id
+		WHERE ppr.ref_id = $1`, intID)
+		if err != nil {
+			http.Error(w, xerrors.Errorf("failed to fetch parked piece: %w", err).Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if len(parkedPiece) == 0 {
+			pieces[i].IsParkedPieceFound = false
+			continue
+		}
+
+		pieces[i].IsParkedPieceFound = true
+		pieces[i].IsParkedPiece = true
+
+		pieces[i].PieceParkID = parkedPiece[0].PieceID
+		pieces[i].PieceParkDataUrl = parkedPiece[0].DataUrl
+		pieces[i].PieceParkCreatedAt = parkedPiece[0].CreatedAt.Local()
+		pieces[i].PieceParkComplete = parkedPiece[0].Complete
+		pieces[i].PieceParkTaskID = parkedPiece[0].ParkTaskID
+		pieces[i].PieceParkCleanupTaskID = parkedPiece[0].CleanupTaskID
+	}
+
 	// TaskIDs
 	taskIDs := map[int64]struct{}{}
 	var htasks []taskSummary
@@ -362,6 +453,7 @@ func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
 		SectorNumber  int64
 		PipelinePoRep sectorListEntry
 
+		Pieces    []sectorPieceMeta
 		Locations []locationTable
 		Tasks     []taskSummary
 	}{
@@ -377,6 +469,7 @@ func (a *app) sectorInfo(w http.ResponseWriter, r *http.Request) {
 			ChainFaulty:   must.One(mbf.faulty.IsSet(uint64(task.SectorNumber))),
 		},
 
+		Pieces:    pieces,
 		Locations: locs,
 		Tasks:     htasks,
 	}
