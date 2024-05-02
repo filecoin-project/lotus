@@ -114,9 +114,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, sdrTask)
 		}
 		if cfg.Subsystems.EnableSealSDRTrees {
-			treesTask := seal.NewTreesTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeDTask := seal.NewTreeDTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeRCTask := seal.NewTreeRCTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
 			finalizeTask := seal.NewFinalizeTask(cfg.Subsystems.FinalizeMaxTasks, sp, slr, db)
-			activeTasks = append(activeTasks, treesTask, finalizeTask)
+			activeTasks = append(activeTasks, treeDTask, treeRCTask, finalizeTask)
 		}
 		if cfg.Subsystems.EnableSendPrecommitMsg {
 			precommitTask := seal.NewSubmitPrecommitTask(sp, db, full, sender, as, cfg.Fees.MaxPreCommitGasFee)

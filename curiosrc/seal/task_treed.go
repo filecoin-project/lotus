@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-type TreesTask struct {
+type TreeDTask struct {
 	sp *SealPoller
 	db *harmonydb.DB
 	sc *ffi.SealCalls
@@ -31,8 +31,54 @@ type TreesTask struct {
 	max int
 }
 
-func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *ffi.SealCalls, maxTrees int) *TreesTask {
-	return &TreesTask{
+func (t *TreeDTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+	if engine.Resources().Gpu > 0 {
+		return &ids[0], nil
+	}
+	return nil, nil
+}
+
+func (t *TreeDTask) TypeDetails() harmonytask.TaskTypeDetails {
+	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
+	if isDevnet {
+		ssize = abi.SectorSize(2 << 20)
+	}
+
+	return harmonytask.TaskTypeDetails{
+		Max:  t.max,
+		Name: "TreeD",
+		Cost: resources.Resources{
+			Cpu:     1,
+			Ram:     1 << 30,
+			Gpu:     0,
+			Storage: t.sc.Storage(t.taskToSector, storiface.FTNone, storiface.FTCache, ssize, storiface.PathSealing, 1.0),
+		},
+		MaxFailures: 3,
+		Follows:     nil,
+	}
+}
+
+func (t *TreeDTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
+	var refs []ffi.SectorRef
+
+	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_d = $1`, id)
+	if err != nil {
+		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
+	}
+
+	if len(refs) != 1 {
+		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
+	}
+
+	return refs[0], nil
+}
+
+func (t *TreeDTask) Adder(taskFunc harmonytask.AddTaskFunc) {
+	t.sp.pollers[pollerTreeD].Set(taskFunc)
+}
+
+func NewTreeDTask(sp *SealPoller, db *harmonydb.DB, sc *ffi.SealCalls, maxTrees int) *TreeDTask {
+	return &TreeDTask{
 		sp: sp,
 		db: db,
 		sc: sc,
@@ -41,7 +87,7 @@ func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *ffi.SealCalls, maxTrees 
 	}
 }
 
-func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
 	var sectorParamsArr []struct {
@@ -53,7 +99,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	err = t.db.Select(ctx, &sectorParamsArr, `
 		SELECT sp_id, sector_number, reg_seal_proof
 		FROM sectors_sdr_pipeline
-		WHERE task_id_tree_r = $1 AND task_id_tree_c = $1 AND task_id_tree_d = $1`, taskID)
+		WHERE task_id_tree_d = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting sector params: %w", err)
 	}
@@ -62,6 +108,21 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		return false, xerrors.Errorf("expected 1 sector params, got %d", len(sectorParamsArr))
 	}
 	sectorParams := sectorParamsArr[0]
+
+	sref := storiface.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(sectorParams.SpID),
+			Number: abi.SectorNumber(sectorParams.SectorNumber),
+		},
+		ProofType: sectorParams.RegSealProof,
+	}
+
+	// Fetch the Sector to local storage
+	fsPaths, pathIds, release, err := t.sc.PreFetch(ctx, sref, &taskID)
+	if err != nil {
+		return false, xerrors.Errorf("failed to prefetch sectors: %w", err)
+	}
+	defer release()
 
 	var pieces []struct {
 		PieceIndex int64  `db:"piece_index"`
@@ -178,80 +239,23 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		unpaddedData = false // nullreader includes fr32 zero bits
 	}
 
-	sref := storiface.SectorRef{
-		ID: abi.SectorID{
-			Miner:  abi.ActorID(sectorParams.SpID),
-			Number: abi.SectorNumber(sectorParams.SectorNumber),
-		},
-		ProofType: sectorParams.RegSealProof,
-	}
-
-	// D / R / C
-	sealed, unsealed, err := t.sc.TreeDRC(ctx, &taskID, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
+	// Generate Tree D
+	err = t.sc.TreeD(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData, fsPaths, pathIds)
 	if err != nil {
-		return false, xerrors.Errorf("computing tree d, r and c: %w", err)
+		return false, xerrors.Errorf("failed to generate TreeD: %w", err)
 	}
-
-	// todo synth porep
-
-	// todo porep challenge check
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_tree_r = true, after_tree_c = true, after_tree_d = true, tree_r_cid = $3, tree_d_cid = $4
-		WHERE sp_id = $1 AND sector_number = $2`,
-		sectorParams.SpID, sectorParams.SectorNumber, sealed, unsealed)
+		SET after_tree_d = true, tree_d_cid = $3 WHERE sp_id = $1 AND sector_number = $2`,
+		sectorParams.SpID, sectorParams.SectorNumber, commd)
 	if err != nil {
-		return false, xerrors.Errorf("store sdr-trees success: updating pipeline: %w", err)
+		return false, xerrors.Errorf("store TreeD success: updating pipeline: %w", err)
 	}
 	if n != 1 {
-		return false, xerrors.Errorf("store sdr-trees success: updated %d rows", n)
+		return false, xerrors.Errorf("store TreeD success: updated %d rows", n)
 	}
 
 	return true, nil
-}
-
-func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	id := ids[0]
-	return &id, nil
-}
-
-func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {
-	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
-	if isDevnet {
-		ssize = abi.SectorSize(2 << 20)
-	}
-
-	return harmonytask.TaskTypeDetails{
-		Max:  t.max,
-		Name: "SDRTrees",
-		Cost: resources.Resources{
-			Cpu:     1,
-			Gpu:     1,
-			Ram:     8000 << 20, // todo
-			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing),
-		},
-		MaxFailures: 3,
-		Follows:     nil,
-	}
-}
-
-func (t *TreesTask) Adder(taskFunc harmonytask.AddTaskFunc) {
-	t.sp.pollers[pollerTrees].Set(taskFunc)
-}
-
-func (t *TreesTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
-	var refs []ffi.SectorRef
-
-	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_r = $1`, id)
-	if err != nil {
-		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
-	}
-
-	if len(refs) != 1 {
-		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
-	}
-
-	return refs[0], nil
 }
 
 type UrlPieceReader struct {
@@ -323,4 +327,4 @@ func (u *UrlPieceReader) Close() error {
 	return nil
 }
 
-var _ harmonytask.TaskInterface = &TreesTask{}
+var _ harmonytask.TaskInterface = &TreeDTask{}

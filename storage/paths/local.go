@@ -36,6 +36,8 @@ type LocalStorage interface {
 
 const MetaFile = "sectorstore.json"
 
+const MinFreeStoragePercentage = float64(0)
+
 type Local struct {
 	localStorage LocalStorage
 	index        SectorIndex
@@ -460,13 +462,13 @@ func (st *Local) reportStorage(ctx context.Context) {
 	}
 }
 
-func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (release func(), err error) {
+func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, minFreePercentage float64) (userRelease func(), err error) {
 	var ssize abi.SectorSize
 	ssize, err = sid.ProofType.SectorSize()
 	if err != nil {
 		return nil, err
 	}
-	release = func() {}
+	release := func() {}
 
 	st.localLk.Lock()
 
@@ -501,8 +503,16 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			resvOnDisk = overhead
 		}
 
-		if stat.Available < overhead-resvOnDisk {
+		overheadOnDisk := overhead - resvOnDisk
+
+		if stat.Available < overheadOnDisk {
 			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
+		}
+
+		freePercentag := (float64(stat.Available-overheadOnDisk) / float64(stat.Available)) * 100.0
+
+		if freePercentag < minFreePercentage {
+			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), free disk percentage %f will be lower than minimum %f", overhead, p.local, id, freePercentag, minFreePercentage))
 		}
 
 		resID := sectorFile{sid.ID, fileType}
@@ -523,7 +533,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		}
 	}
 
-	return
+	return release, nil
 }
 
 // DoubleCallWrap wraps a function to make sure it's not called twice
@@ -533,7 +543,7 @@ func DoubleCallWrap(f func()) func() {
 		curStack := make([]byte, 20480)
 		curStack = curStack[:runtime.Stack(curStack, false)]
 		if len(stack) > 0 {
-			log.Warnf("double call from:\n%s\nBut originally from:", curStack, stack)
+			log.Warnf("double call from:\n%s\nBut originally from:\n%s", curStack, stack)
 			return
 		}
 		stack = curStack
