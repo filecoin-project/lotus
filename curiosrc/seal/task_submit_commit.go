@@ -230,7 +230,7 @@ func (s *SubmitCommitTask) transferFinalizedSectorData(ctx context.Context, spID
             piece_index AS piece_num,
             piece_cid,
             piece_size,
-            requested_keep_data,
+            not data_delete_on_finalize as requested_keep_data,
             data_raw_size,
             COALESCE(f05_deal_start_epoch, direct_start_epoch) as start_epoch,
             COALESCE(f05_deal_end_epoch, direct_end_epoch) as orig_end_epoch,

@@ -115,7 +115,7 @@ func SaveConfigToLayerMigrateSectors(minerRepoPath, chainApiInfo string) (minerA
 	}
 
 	if err := MigrateSectors(ctx, addr, mmeta, db, func(nSectors int) {
-		say(plain, "Migrating metadata for %d sectors. ", nSectors)
+		say(plain, "Migrating metadata for %d sectors.", nSectors)
 	}); err != nil {
 		return address.Address{}, xerrors.Errorf("migrating sectors: %w", err)
 	}
