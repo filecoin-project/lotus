@@ -9,8 +9,11 @@ x-logging:
   driver: json-file
 
 networks:
-  default:
-    name: curio-devnet
+  curio-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 services:
   lotus:
@@ -30,6 +33,9 @@ services:
       - ./data/lotus:/var/lib/lotus:rw
       - ./data/genesis:/var/lib/genesis:rw
       - ${FIL_PROOFS_PARAMETER_CACHE}:/var/tmp/filecoin-proof-parameters:rw
+    networks:
+      curio-net:
+        ipv4_address: 172.20.0.2
 
   lotus-miner:
     container_name: lotus-miner
@@ -51,6 +57,9 @@ services:
       - ./data/lotus:/var/lib/lotus:ro
       - ./data/genesis:/var/lib/genesis:ro
       - ${FIL_PROOFS_PARAMETER_CACHE}:/var/tmp/filecoin-proof-parameters:rw
+    networks:
+      curio-net:
+        ipv4_address: 172.20.0.3
 
   curio:
     container_name: curio
@@ -70,6 +79,9 @@ services:
       - ./data/lotus:/var/lib/lotus:ro
       - ./data/lotus-miner:/var/lib/lotus-miner:ro
       - ${FIL_PROOFS_PARAMETER_CACHE}:/var/tmp/filecoin-proof-parameters:rw
+    networks:
+      curio-net:
+        ipv4_address: 172.20.0.4
 
   yugabyte:
     container_name: yugabyte
@@ -84,3 +96,6 @@ services:
     volumes:
       - ./data/yugabyte-data:/root/var/data
       - ./data/yugabyte-logs:/root/var/logs
+    networks:
+      curio-net:
+        ipv4_address: 172.20.0.5

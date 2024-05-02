@@ -147,12 +147,16 @@ func (p *PoRepTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.Task
 }
 
 func (p *PoRepTask) TypeDetails() harmonytask.TaskTypeDetails {
+	gpu := 1.0
+	if isDevnet {
+		gpu = 0
+	}
 	res := harmonytask.TaskTypeDetails{
 		Max:  p.max,
 		Name: "PoRep",
 		Cost: resources.Resources{
 			Cpu:       1,
-			Gpu:       1,
+			Gpu:       gpu,
 			Ram:       50 << 30, // todo correct value
 			MachineID: 0,
 		},

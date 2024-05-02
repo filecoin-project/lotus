@@ -49,7 +49,7 @@ RUN make curio-devnet
 #####################################
 FROM ubuntu:22.04 AS curio-all-in-one
 
-RUN apt-get update && apt-get install -y dnsutils coreutils build-essential
+RUN apt-get update && apt-get install -y dnsutils vim curl
 
 # Copy libraries and binaries from curio-builder
 COPY --from=curio-builder /etc/ssl/certs /etc/ssl/certs

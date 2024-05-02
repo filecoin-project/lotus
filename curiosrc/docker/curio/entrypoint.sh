@@ -18,6 +18,7 @@ while [[ $head -le 9 ]]; do
 done
 
 echo All ready. Lets go
+myip=`nslookup curio | grep -v "#" | grep Address | awk '{print $2}'`
 
 if [ ! -f $CURIO_REPO_PATH/.init.curio ]; then
 
@@ -35,20 +36,17 @@ if [ ! -f $CURIO_REPO_PATH/.init.curio ]; then
 	echo Initiating a new Curio cluster ...
 	curio config new-cluster $newminer
 	echo Enabling market ...
-	myip=`nslookup curio | grep -v "#" | grep Address | awk '{print $2}'`
-  curio config get seal | sed -e $'$a\\\n  BoostAdapters = ["'"$newminer"':'"$myip"':32100"]' | curio config set --title sealm
+  curio config get seal | sed -e $'$a\\\n  BoostAdapters = ["'"$newminer"':'"$myip"':32100"]' | curio config set --title seal
   touch $CURIO_REPO_PATH/.init.config
   fi
 
   echo Starting Curio node to attach storage ...
-  curio run --nosync --layers sealm,post,gui &
+  curio run --nosync --layers seal,post,gui &
   CURIO_PID=`echo $!`
   until curio cli --machine $myip:12300 wait-api; do
     echo "Waiting for the curio CLI to become ready..."
     sleep 5
   done
-#  sleep 120
-#  curio cli --machine $myip:12300 wait-api
   curio cli --machine $myip:12300 storage attach --init --seal --store $CURIO_REPO_PATH
   touch $CURIO_REPO_PATH/.init.curio
   echo Stopping Curio node ...
@@ -58,5 +56,5 @@ if [ ! -f $CURIO_REPO_PATH/.init.curio ]; then
 fi
 
 echo Starting curio node ...
-exec curio run --nosync --layers sealm,post,gui
+exec curio run --nosync --layers seal,post,gui
 
