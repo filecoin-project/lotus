@@ -11,11 +11,14 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gorilla/mux"
 	"github.com/invopop/jsonschema"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/filecoin-project/lotus/curiosrc/web/api/apihelper"
 	"github.com/filecoin-project/lotus/node/config"
 )
+
+var log = logging.Logger("curio/web/config")
 
 type cfg struct {
 	*deps.Deps
@@ -44,7 +47,10 @@ func (c *cfg) addLayer(w http.ResponseWriter, r *http.Request) {
 	apihelper.OrHTTPFail(w, err)
 	if ct != 1 {
 		w.WriteHeader(http.StatusConflict)
-		w.Write([]byte("Layer already exists"))
+		_, err = w.Write([]byte("Layer already exists"))
+		if err != nil {
+			log.Errorf("Failed to write response: %s", err)
+		}
 		return
 	}
 	w.WriteHeader(200)
