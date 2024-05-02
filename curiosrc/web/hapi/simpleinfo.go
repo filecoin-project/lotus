@@ -584,7 +584,7 @@ func (a *app) clusterMachineSummary(ctx context.Context) ([]machineSummary, erro
 	}
 
 	// Then machine summary
-	rows, err := a.db.Query(ctx, "SELECT id, host_and_port, CURRENT_TIMESTAMP - last_contact, cpu, ram, gpu AS last_contact FROM harmony_machines order by host_and_port asc")
+	rows, err := a.db.Query(ctx, "SELECT id, host_and_port, CURRENT_TIMESTAMP - last_contact AS last_contact, cpu, ram, gpu FROM harmony_machines order by host_and_port asc")
 	if err != nil {
 		return nil, err // Handle error
 	}
