@@ -121,6 +121,10 @@ create table sectors_sdr_initial_pieces (
     -- direct_end_epoch bigint,
     -- direct_piece_activation_manifest jsonb,
 
+    -- sched counters
+    -- added in 20240502-sdr-pipeline-sched-count.sql
+    -- sched_count bigint,
+
     -- foreign key
     foreign key (sp_id, sector_number) references sectors_sdr_pipeline (sp_id, sector_number) on delete cascade,
 
