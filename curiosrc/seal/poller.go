@@ -21,7 +21,8 @@ var log = logging.Logger("lpseal")
 
 const (
 	pollerSDR = iota
-	pollerTrees
+	pollerTreeD
+	pollerTreeRC
 	pollerPrecommitMsg
 	pollerPoRep
 	pollerCommitMsg
@@ -154,7 +155,8 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		}
 
 		s.pollStartSDR(ctx, task)
-		s.pollStartSDRTrees(ctx, task)
+		s.pollStartSDRTreeD(ctx, task)
+		s.pollStartSDRTreeRC(ctx, task)
 		s.pollStartPrecommitMsg(ctx, task)
 		s.mustPoll(s.pollPrecommitMsgLanded(ctx, task))
 		s.pollStartPoRep(ctx, task, ts)
@@ -187,14 +189,10 @@ func (t pollTask) afterSDR() bool {
 	return t.AfterSDR
 }
 
-func (s *SealPoller) pollStartSDRTrees(ctx context.Context, task pollTask) {
-	if !task.AfterTreeD && !task.AfterTreeC && !task.AfterTreeR &&
-		task.TaskTreeD == nil && task.TaskTreeC == nil && task.TaskTreeR == nil &&
-		s.pollers[pollerTrees].IsSet() && task.AfterSDR {
-
-		s.pollers[pollerTrees].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
-			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_tree_d = $1, task_id_tree_c = $1, task_id_tree_r = $1
-                            WHERE sp_id = $2 AND sector_number = $3 AND after_sdr = TRUE AND task_id_tree_d IS NULL AND task_id_tree_c IS NULL AND task_id_tree_r IS NULL`, id, task.SpID, task.SectorNumber)
+func (s *SealPoller) pollStartSDRTreeD(ctx context.Context, task pollTask) {
+	if !task.AfterTreeD && task.TaskTreeD == nil && s.pollers[pollerTreeD].IsSet() && task.afterSDR() {
+		s.pollers[pollerTreeD].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_tree_d = $1 WHERE sp_id = $2 AND sector_number = $3 AND after_sdr = TRUE AND task_id_tree_d IS NULL`, id, task.SpID, task.SectorNumber)
 			if err != nil {
 				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
 			}
@@ -207,12 +205,33 @@ func (s *SealPoller) pollStartSDRTrees(ctx context.Context, task pollTask) {
 	}
 }
 
-func (t pollTask) afterTrees() bool {
-	return t.AfterTreeD && t.AfterTreeC && t.AfterTreeR && t.afterSDR()
+func (t pollTask) afterTreeD() bool {
+	return t.AfterTreeD && t.afterSDR()
+}
+
+func (s *SealPoller) pollStartSDRTreeRC(ctx context.Context, task pollTask) {
+	if !task.AfterTreeC && !task.AfterTreeR && task.TaskTreeC == nil && task.TaskTreeR == nil && s.pollers[pollerTreeRC].IsSet() && task.afterTreeD() {
+		s.pollers[pollerTreeRC].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
+			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_tree_c = $1, task_id_tree_r = $1
+                            WHERE sp_id = $2 AND sector_number = $3 AND after_tree_d = TRUE AND task_id_tree_c IS NULL AND task_id_tree_r IS NULL`, id, task.SpID, task.SectorNumber)
+			if err != nil {
+				return false, xerrors.Errorf("update sectors_sdr_pipeline: %w", err)
+			}
+			if n != 1 {
+				return false, xerrors.Errorf("expected to update 1 row, updated %d", n)
+			}
+
+			return true, nil
+		})
+	}
+}
+
+func (t pollTask) afterTreeRC() bool {
+	return t.AfterTreeC && t.AfterTreeR && t.afterTreeD()
 }
 
 func (t pollTask) afterPrecommitMsg() bool {
-	return t.AfterPrecommitMsg && t.afterTrees()
+	return t.AfterPrecommitMsg && t.afterTreeRC()
 }
 
 func (t pollTask) afterPrecommitMsgSuccess() bool {

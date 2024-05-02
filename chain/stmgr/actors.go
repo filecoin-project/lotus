@@ -542,7 +542,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 
-	addr, err = sm.LookupID(ctx, addr, ts)
+	addr, err = sm.LookupIDAddress(ctx, addr, ts)
 	if err != nil {
 		return api.MarketBalance{}, err
 	}

@@ -209,6 +209,7 @@ func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool
 
 		// Remove dead URLs from storage_path entries and handle path cleanup
 		for _, du := range deadURLs {
+			du := du
 			// Fetch the current URLs for the storage path
 			var URLs string
 			err = tx.QueryRow("SELECT urls FROM storage_path WHERE storage_id = $1", du.StorageID).Scan(&URLs)

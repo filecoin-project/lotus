@@ -902,7 +902,7 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
 		}
 
-		fromID, err = vm.cstate.LookupID(from)
+		fromID, err = vm.cstate.LookupIDAddress(from)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
 		}
@@ -921,7 +921,7 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return nil
 		}
 
-		toID, err = vm.cstate.LookupID(to)
+		toID, err = vm.cstate.LookupIDAddress(to)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
 		}
@@ -935,12 +935,12 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return nil
 		}
 
-		fromID, err = vm.cstate.LookupID(from)
+		fromID, err = vm.cstate.LookupIDAddress(from)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
 		}
 
-		toID, err = vm.cstate.LookupID(to)
+		toID, err = vm.cstate.LookupIDAddress(to)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
 		}
