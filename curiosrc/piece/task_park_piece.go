@@ -22,6 +22,8 @@ import (
 var log = logging.Logger("lppiece")
 var PieceParkPollInterval = time.Second * 15
 
+var MaxParkTries = 1
+
 // ParkPieceTask gets a piece from some origin, and parks it in storage
 // Pieces are always f00, piece ID is mapped to pieceCID in the DB
 type ParkPieceTask struct {
@@ -52,7 +54,7 @@ func (p *ParkPieceTask) pollPieceTasks(ctx context.Context) {
 			ID storiface.PieceNumber `db:"id"`
 		}
 
-		err := p.db.Select(ctx, &pieceIDs, `SELECT id FROM parked_pieces WHERE complete = FALSE AND task_id IS NULL`)
+		err := p.db.Select(ctx, &pieceIDs, `SELECT id FROM parked_pieces WHERE sched_count < $1 AND complete = FALSE AND task_id IS NULL`, MaxParkTries)
 		if err != nil {
 			log.Errorf("failed to get parked pieces: %s", err)
 			time.Sleep(PieceParkPollInterval)
@@ -70,7 +72,7 @@ func (p *ParkPieceTask) pollPieceTasks(ctx context.Context) {
 			// create a task for each piece
 			p.TF.Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, err error) {
 				// update
-				n, err := tx.Exec(`UPDATE parked_pieces SET task_id = $1 WHERE id = $2 AND complete = FALSE AND task_id IS NULL`, id, pieceID.ID)
+				n, err := tx.Exec(`UPDATE parked_pieces SET task_id = $1, sched_count = sched_count + 1 WHERE id = $2 AND complete = FALSE AND task_id IS NULL`, id, pieceID.ID)
 				if err != nil {
 					return false, xerrors.Errorf("updating parked piece: %w", err)
 				}

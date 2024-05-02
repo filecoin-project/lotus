@@ -11,6 +11,10 @@ create table parked_pieces (
 
     cleanup_task_id bigint default null,
 
+    -- added in 20240502-sched-counters
+    -- sched_count biging not null default 0,
+    -- sched_cleanup_count bigint not null default 0,
+
     foreign key (task_id) references harmony_task (id) on delete set null,
     foreign key (cleanup_task_id) references harmony_task (id) on delete set null,
     unique (piece_cid)

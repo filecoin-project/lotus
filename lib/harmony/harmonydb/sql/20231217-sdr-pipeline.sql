@@ -122,7 +122,7 @@ create table sectors_sdr_initial_pieces (
     -- direct_piece_activation_manifest jsonb,
 
     -- sched counters
-    -- added in 20240502-sdr-pipeline-sched-count.sql
+    -- added in 20240502-sched-counters.sql
     -- sched_count bigint,
 
     -- foreign key
