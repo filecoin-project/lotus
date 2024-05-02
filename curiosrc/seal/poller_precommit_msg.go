@@ -16,7 +16,7 @@ import (
 )
 
 func (s *SealPoller) pollStartPrecommitMsg(ctx context.Context, task pollTask) {
-	if task.TaskPrecommitMsg == nil && !task.AfterPrecommitMsg && task.afterTrees() && s.pollers[pollerPrecommitMsg].IsSet() {
+	if task.TaskPrecommitMsg == nil && !task.AfterPrecommitMsg && task.afterTreeRC() && s.pollers[pollerPrecommitMsg].IsSet() {
 		s.pollers[pollerPrecommitMsg].Val(ctx)(func(id harmonytask.TaskID, tx *harmonydb.Tx) (shouldCommit bool, seriousError error) {
 			n, err := tx.Exec(`UPDATE sectors_sdr_pipeline SET task_id_precommit_msg = $1 WHERE sp_id = $2 AND sector_number = $3 AND task_id_precommit_msg IS NULL AND after_tree_r = TRUE AND after_tree_d = TRUE`, id, task.SpID, task.SectorNumber)
 			if err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/promise"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -185,7 +186,7 @@ func (p *ParkPieceTask) TypeDetails() harmonytask.TaskTypeDetails {
 			Cpu:     1,
 			Gpu:     0,
 			Ram:     64 << 20,
-			Storage: p.sc.Storage(p.taskToRef, storiface.FTPiece, storiface.FTNone, maxSizePiece, storiface.PathSealing),
+			Storage: p.sc.Storage(p.taskToRef, storiface.FTPiece, storiface.FTNone, maxSizePiece, storiface.PathSealing, paths.MinFreeStoragePercentage),
 		},
 		MaxFailures: 10,
 	}

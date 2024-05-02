@@ -385,3 +385,8 @@ func (e *TaskEngine) ResourcesAvailable() resources.Resources {
 	}
 	return tmp
 }
+
+// Resources returns the resources available in the TaskEngine's registry.
+func (e *TaskEngine) Resources() resources.Resources {
+	return e.reg.Resources
+}
