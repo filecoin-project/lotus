@@ -468,7 +468,7 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 	if err != nil {
 		return nil, err
 	}
-	release := func() {}
+	release = func() {}
 
 	st.localLk.Lock()
 
