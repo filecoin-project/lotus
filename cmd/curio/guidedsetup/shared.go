@@ -181,7 +181,7 @@ func SaveConfigToLayer(minerRepoPath, chainApiInfo string) (minerAddress address
 			}
 			say(plain, "Configuration 'base' was updated to include this miner's address (%s) and its wallet setup.", minerAddress)
 		}
-		say(plain, "Compare the configurations %s to %s. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.", "base", "mig-"+curioCfg.Addresses[0].MinerAddresses[0])
+		say(plain, "Compare the configurations %s to %s. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.", "base", "mig-"+curioCfg.Addresses[0].MinerAddresses[0])
 	skipWritingToBase:
 	} else {
 		_, err = db.Exec(ctx, `INSERT INTO harmony_config (title, config) VALUES ('base', $1)

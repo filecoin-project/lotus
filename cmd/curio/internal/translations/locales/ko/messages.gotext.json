@@ -587,9 +587,9 @@
             "placeholder": null
         },
         {
-            "id": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+            "id": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.",
             "translation": "구성 {Base}를 {MinerAddresses0}과 비교하세요. 지갑 주소 이외의 마이너 ID 사이의 변경 사항은 필요한 실행자를 위한 새로운 최소한의 레이어여야 합니다.",
-            "message": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+            "message": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.",
             "placeholder": null
         },
         {

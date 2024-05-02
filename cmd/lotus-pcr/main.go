@@ -115,7 +115,7 @@ var findMinersCmd = &cli.Command{
 	Name:  "find-miners",
 	Usage: "find miners with a desired minimum balance",
 	Description: `Find miners returns a list of miners and their balances that are below a
-   threhold value. By default only the miner actor available balance is considered but other
+   threshold value. By default only the miner actor available balance is considered but other
    account balances can be included by enabling them through the flags.
 
    Examples

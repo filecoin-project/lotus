@@ -54,7 +54,7 @@ var keyinfoCmd = &cli.Command{
 var keyinfoVerifyCmd = &cli.Command{
 	Name:  "verify",
 	Usage: "verify the filename of a keystore object on disk with it's contents",
-	Description: `Keystore objects are base32 enocded strings, with wallets being dynamically named via
+	Description: `Keystore objects are base32 encoded strings, with wallets being dynamically named via
    the wallet address. This command can ensure that the naming of these keystore objects are correct`,
 	Action: func(cctx *cli.Context) error {
 		filePath := cctx.Args().First()
@@ -344,7 +344,7 @@ var keyinfoNewCmd = &cli.Command{
    string value, and a base64 encoded private key.
 
    Both the bls and secp256k1 keyfiles can be imported into a running lotus daemon using
-   the 'lotus wallet import' command. Or imported to a non-running / unitialized repo using
+   the 'lotus wallet import' command. Or imported to a non-running / initialized repo using
    the 'lotus-shed keyinfo import' command. Libp2p host keys can only be imported using lotus-shed
    as lotus itself does not provide this functionality at the moment.`,
 	Flags: []cli.Flag{

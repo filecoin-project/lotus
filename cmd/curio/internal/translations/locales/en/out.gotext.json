@@ -1570,9 +1570,9 @@
             "fuzzy": true
         },
         {
-            "id": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
-            "message": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
-            "translation": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addreses should be a new, minimal layer for runners that need it.",
+            "id": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.",
+            "message": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.",
+            "translation": "Compare the configurations {Base} to {MinerAddresses0}. Changes between the miner IDs other than wallet addresses should be a new, minimal layer for runners that need it.",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {

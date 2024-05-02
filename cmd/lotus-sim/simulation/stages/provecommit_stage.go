@@ -54,7 +54,7 @@ func (stage *ProveCommitStage) EnqueueProveCommit(
 	return stage.commitQueue.enqueueProveCommit(minerAddr, preCommitEpoch, info)
 }
 
-// packProveCommits packs all prove-commits for all "ready to be proven" sectors until it fills the
+// PackMessages packs all prove-commits for all "ready to be proven" sectors until it fills the
 // block or runs out.
 func (stage *ProveCommitStage) PackMessages(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
 	if !stage.initialized {
@@ -362,7 +362,7 @@ func (stage *ProveCommitStage) filterProveCommits(
 }
 
 func (stage *ProveCommitStage) load(ctx context.Context, bb *blockbuilder.BlockBuilder) error {
-	stage.initialized = false // in case something failes while we're doing this.
+	stage.initialized = false // in case something failed while we're doing this.
 	stage.commitQueue = commitQueue{offset: bb.Height()}
 	powerState, err := loadPower(bb.ActorStore(), bb.ParentStateTree())
 	if err != nil {

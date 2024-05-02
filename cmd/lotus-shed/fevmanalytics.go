@@ -237,7 +237,7 @@ var FevmActorsCmd = &cli.Command{
 
 		uniquesa := unique(ea)
 		fmt.Println("# of EVM contracts: ", EvmCount)
-		fmt.Println("# of unqiue EVM contracts: ", len(uniquesa))
+		fmt.Println("# of unique EVM contracts: ", len(uniquesa))
 		fmt.Println("b# of Eth accounts: ", EthAccountCount)
 		fmt.Println("# of placeholder: ", PlaceholderCount)
 		return nil

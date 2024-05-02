@@ -127,7 +127,7 @@ func (bb *BlockBuilder) PushMessage(msg *types.Message) (*types.MessageReceipt, 
 	}
 	if !builtin.IsAccountActor(actor.Code) {
 		return nil, xerrors.Errorf(
-			"messags may only be sent from account actors, got message from %s (%s)",
+			"messages may only be sent from account actors, got message from %s (%s)",
 			msg.From, builtin.ActorNameByCode(actor.Code),
 		)
 	}

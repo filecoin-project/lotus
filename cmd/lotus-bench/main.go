@@ -209,7 +209,7 @@ var sealBenchCmd = &cli.Command{
 				}
 			}()
 
-			// TODO: pretty sure this isnt even needed?
+			// TODO: pretty sure this isn't even needed?
 			if err := os.MkdirAll(tsdir, 0775); err != nil {
 				return err
 			}
@@ -301,7 +301,7 @@ var sealBenchCmd = &cli.Command{
 
 			genm, ok := genmm[maddr.String()]
 			if !ok {
-				return xerrors.Errorf("preseal file didnt have expected miner in it")
+				return xerrors.Errorf("preseal file didn't have expected miner in it")
 			}
 
 			for _, s := range genm.Sectors {
