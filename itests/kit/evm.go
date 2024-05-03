@@ -53,7 +53,7 @@ func (e *EVM) SignLegacyTransaction(tx *ethtypes.EthLegacyHomesteadTxArgs, privK
 	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
 	require.NoError(e.t, err)
 
-	signature.Data = append([]byte{ethtypes.LegacyHomesteadEthTxSignaturePrefix}, signature.Data...)
+	signature.Data = append([]byte{ethtypes.EthLegacyHomesteadTxSignaturePrefix}, signature.Data...)
 	signature.Data[len(signature.Data)-1] += 27
 
 	err = tx.InitialiseSignature(*signature)

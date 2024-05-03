@@ -64,7 +64,7 @@ func (tx *Eth1559TxArgs) ToRlpUnsignedMsg() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append([]byte{Eip1559TxType}, encoded...), nil
+	return append([]byte{EIP1559TxType}, encoded...), nil
 }
 
 func (tx *Eth1559TxArgs) TxHash() (EthHash, error) {
@@ -166,7 +166,7 @@ func (tx *Eth1559TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
 
 	ethTx := EthTx{
 		ChainID:              EthUint64(build.Eip155ChainId),
-		Type:                 Eip1559TxType,
+		Type:                 EIP1559TxType,
 		Nonce:                EthUint64(tx.Nonce),
 		Hash:                 hash,
 		To:                   tx.To,
@@ -261,8 +261,8 @@ func (tx *Eth1559TxArgs) packTxFields() ([]interface{}, error) {
 }
 
 func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
-	if data[0] != Eip1559TxType {
-		return nil, xerrors.Errorf(fmt.Sprintf("not an EIP-1559 transaction: first byte is not %d", Eip1559TxType))
+	if data[0] != EIP1559TxType {
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not %d", EIP1559TxType)
 	}
 
 	d, err := DecodeRLP(data[1:])

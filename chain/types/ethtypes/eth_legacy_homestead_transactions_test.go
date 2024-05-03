@@ -45,17 +45,17 @@ func TestEthLegacyHomesteadTxArgs(t *testing.T) {
 
 	for i, tc := range testcases {
 		// parse txargs
-		txArgs, err := parseLegacyHomesteadTx(mustDecodeHex(tc.RawTx))
+		tx, err := parseLegacyTx(mustDecodeHex(tc.RawTx))
 		require.NoError(t, err)
 
-		msgRecovered, err := txArgs.ToRlpUnsignedMsg()
+		msgRecovered, err := tx.ToRlpUnsignedMsg()
 		require.NoError(t, err)
 
 		// verify signatures
-		from, err := txArgs.Sender()
+		from, err := tx.Sender()
 		require.NoError(t, err)
 
-		smsg, err := ToSignedFilecoinMessage(txArgs)
+		smsg, err := ToSignedFilecoinMessage(tx)
 		require.NoError(t, err)
 
 		sig := smsg.Signature.Data[:]
@@ -68,6 +68,7 @@ func TestEthLegacyHomesteadTxArgs(t *testing.T) {
 		err = sigs.Verify(&smsg.Signature, from, msgRecovered)
 		require.NoError(t, err)
 
+		txArgs := tx.(*EthLegacyHomesteadTxArgs)
 		// verify data
 		require.EqualValues(t, tc.ExpectedNonce, txArgs.Nonce, i)
 
@@ -127,15 +128,6 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 			true,
 		},
 		{
-			"0xf86f830131cf8504a817c800825208942cf1e5a8250ded8835694ebeb90cfa0237fcb9b1882ec4a5251d1100008026a0f5f8d2244d619e211eeb634acd1bea0762b7b4c97bba9f01287c82bfab73f911a015be7982898aa7cc6c6f27ff33e999e4119d6cd51330353474b98067ff56d930",
-			"0xf5f8d2244d619e211eeb634acd1bea0762b7b4c97bba9f01287c82bfab73f911",
-			"0x15be7982898aa7cc6c6f27ff33e999e4119d6cd51330353474b98067ff56d930",
-			"0x26",
-			true,
-			"only support 27 or 28 for v",
-			false,
-		},
-		{
 			"0x00",
 			"",
 			"",
@@ -147,7 +139,7 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 	}
 
 	for i, tc := range testcases {
-		tx, err := parseLegacyHomesteadTx(mustDecodeHex(tc.RawTx))
+		tx, err := parseLegacyTx(mustDecodeHex(tc.RawTx))
 		if tc.ExpectErr {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tc.ExpectErrMsg)
@@ -160,13 +152,15 @@ func TestLegacyHomesteadSignatures(t *testing.T) {
 
 		require.NoError(t, tx.InitialiseSignature(*sig))
 
-		require.Equal(t, tc.ExpectedR, "0x"+tx.R.Text(16), i)
-		require.Equal(t, tc.ExpectedS, "0x"+tx.S.Text(16), i)
+		txArgs := tx.(*EthLegacyHomesteadTxArgs)
+
+		require.Equal(t, tc.ExpectedR, "0x"+txArgs.R.Text(16), i)
+		require.Equal(t, tc.ExpectedS, "0x"+txArgs.S.Text(16), i)
 
 		if tc.ExpectVMismatch {
-			require.NotEqual(t, tc.ExpectedV, "0x"+tx.V.Text(16), i)
+			require.NotEqual(t, tc.ExpectedV, "0x"+txArgs.V.Text(16), i)
 		} else {
-			require.Equal(t, tc.ExpectedV, "0x"+tx.V.Text(16), i)
+			require.Equal(t, tc.ExpectedV, "0x"+txArgs.V.Text(16), i)
 		}
 	}
 }
@@ -177,8 +171,11 @@ func TestEtherScanLegacyRLP(t *testing.T) {
 	rlp := "0xf8718301efc58506fc23ac008305161594104994f45d9d697ca104e5704a7b77d7fec3537c890821878651a4d70000801ba051222d91a379452395d0abaff981af4cfcc242f25cfaf947dea8245a477731f9a03a997c910b4701cca5d933fb26064ee5af7fe3236ff0ef2b58aa50b25aff8ca5"
 	bz := mustDecodeHex(rlp)
 
-	ethLegacyTx, err := parseLegacyHomesteadTx(bz)
+	tx, err := parseLegacyTx(bz)
 	require.NoError(t, err)
+
+	ethLegacyTx, ok := tx.(*EthLegacyHomesteadTxArgs)
+	require.True(t, ok)
 
 	// Verify nonce
 	require.EqualValues(t, 0x1efc5, ethLegacyTx.Nonce)
@@ -269,7 +266,7 @@ func TestFailurePaths(t *testing.T) {
 	decoded, err := hex.DecodeString(strings.TrimPrefix(invalidRLP, "0x"))
 	require.NoError(t, err)
 
-	_, err = parseLegacyHomesteadTx(decoded)
+	_, err = parseLegacyTx(decoded)
 	require.Error(t, err, "Expected error for invalid RLP")
 
 	// Test case for mangled signature
@@ -277,8 +274,11 @@ func TestFailurePaths(t *testing.T) {
 	decodedSig, err := hex.DecodeString(strings.TrimPrefix(mangledSignatureRLP, "0x"))
 	require.NoError(t, err)
 
-	ethLegacyTx, err := parseLegacyHomesteadTx(decodedSig)
+	tx, err := parseLegacyTx(decodedSig)
 	require.NoError(t, err)
+
+	ethLegacyTx, ok := tx.(*EthLegacyHomesteadTxArgs)
+	require.True(t, ok)
 
 	// Mangle R value
 	ethLegacyTx.R = big.Add(ethLegacyTx.R, big.NewInt(1))
