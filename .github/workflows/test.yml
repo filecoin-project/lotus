@@ -217,7 +217,7 @@ jobs:
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
       - id: make_deps
         env:
-          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./extern/filecoin-ffi/install-filcrypto') }}-${{ hashFiles('./extern/filecoin-ffi/rust/rustc-target-features-optimized.json') }}
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
           CACHE_PATH: |
             ./extern/filecoin-ffi/filcrypto.h
             ./extern/filecoin-ffi/libfilcrypto.a
