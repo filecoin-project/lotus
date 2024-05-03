@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -41,6 +42,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 
 	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
+	fmt.Println("gas limit is", gaslimit)
 
 	tx := ethtypes.EthLegacyHomesteadTxArgs{
 		Value:    big.NewInt(100),
@@ -97,6 +99,39 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, tx.R, ethTx.R)
 	require.EqualValues(t, tx.S, ethTx.S)
 	require.EqualValues(t, tx.V, ethTx.V)
+}
+
+func TestEIP155Tx(t *testing.T) {
+	rlpHex := "f86d8083030e1b83291e739490322092a524e0e43a2ec80ec6f35100d24799f28898a7d9b8314c000080820298a0dc782de2fec8cd45e699075beb756ad731943d19a33332fa36e72fd94802ed10a056b3e1e36f2851402661daf0b3284bc8d15db005d1fade908c1117c6ae37429d"
+	rlpBytes, err := hex.DecodeString(rlpHex)
+	require.NoError(t, err)
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	from := "0xf0a3b487d026406F5ca18891dB6896a3dA900F29"
+	ea, err := ethtypes.ParseEthAddress(from)
+	require.NoError(t, err)
+	fa, err := ea.ToFilecoinAddress()
+	require.NoError(t, err)
+	fmt.Println("fil addr is", fa.String())
+	kit.SendFunds(ctx, t, client, fa, types.FromFil(20000))
+
+	hash, err := client.EthSendRawTransaction(ctx, rlpBytes)
+	require.NoError(t, err)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, hash, receipt.TransactionHash)
+
+	// Success.
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
 }
 
 func TestLegacyContractInvocation(t *testing.T) {
