@@ -158,9 +158,9 @@ func (s *SealPoller) poll(ctx context.Context) error {
 		}
 		if task.SchedCount > MaxSchedCountBeforeFail {
 			log.Errorw("sector scheduled too many times, giving up", "spid", task.SpID, "sector", task.SectorNumber, "reason", "too many scheduling attempts")
-			_, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET sched_count = 0, failed = true, failed_reason = $1 WHERE sp_id = $2 AND sector_number = $3`, "too many scheduling attempts", task.SpID, task.SectorNumber)
+			_, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline SET sched_count = 0, failed = true, failed_reason = $1 WHERE sp_id = $2 AND sector_number = $3`, "retry-limit", task.SpID, task.SectorNumber)
 			if err != nil {
-				return xerrors.Errorf("marking sector as failed: %w", err)
+				log.Errorw("failed to update sector", "spid", task.SpID, "sector", task.SectorNumber, "error", err)
 			}
 			continue
 		}
