@@ -35,7 +35,7 @@ const (
 
 const FlagMinerRepoDeprecation = "storagerepo"
 
-func SaveConfigToLayerMigrateSectors(minerRepoPath, chainApiInfo string) (minerAddress address.Address, err error) {
+func SaveConfigToLayerMigrateSectors(minerRepoPath, chainApiInfo string, unmigSectorShouldFail func() bool) (minerAddress address.Address, err error) {
 	_, say := SetupLanguage()
 	ctx := context.Background()
 
@@ -116,7 +116,7 @@ func SaveConfigToLayerMigrateSectors(minerRepoPath, chainApiInfo string) (minerA
 
 	if err := MigrateSectors(ctx, addr, mmeta, db, func(nSectors int) {
 		say(plain, "Migrating metadata for %d sectors.", nSectors)
-	}); err != nil {
+	}, unmigSectorShouldFail); err != nil {
 		return address.Address{}, xerrors.Errorf("migrating sectors: %w", err)
 	}
 
@@ -281,7 +281,7 @@ func coalescePtrs[A any](a, b *A) *A {
 	return b
 }
 
-func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.Batching, db *harmonydb.DB, logMig func(int)) error {
+func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.Batching, db *harmonydb.DB, logMig func(int), unmigSectorShouldFail func() bool) error {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return xerrors.Errorf("getting miner ID: %w", err)
@@ -320,8 +320,8 @@ func MigrateSectors(ctx context.Context, maddr address.Address, mmeta datastore.
 			fmt.Printf("  %s: %d\n", state, count)
 		}
 
-		if os.Getenv("CURIO_SKIP_UNMIGRATABLE_SECTORS") != "1" {
-			return xerrors.Errorf("cannot migrate sectors with these states. Set CURIO_SKIP_UNMIGRATABLE_SECTORS=1 to proceed anyway")
+		if unmigSectorShouldFail() {
+			return xerrors.Errorf("aborting migration because sectors were found that are not migratable.")
 		}
 	}
 

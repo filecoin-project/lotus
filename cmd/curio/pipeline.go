@@ -148,6 +148,12 @@ var sealMigrateLMSectorsCmd = &cli.Command{
 			Usage: "Path to miner repo",
 			Value: "~/.lotusminer",
 		},
+		&cli.BoolFlag{
+			Name:    "seal-ignore",
+			Usage:   "Ignore sectors that cannot be migrated",
+			Value:   false,
+			EnvVars: []string{"CURUO_MIGRATE_SEAL_IGNORE"},
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.ReqContext(cctx)
@@ -196,9 +202,11 @@ var sealMigrateLMSectorsCmd = &cli.Command{
 			return xerrors.Errorf("parsing miner actor address: %w", err)
 		}
 
+		unmigSectorShouldFail := func() bool { return !cctx.Bool("seal-ignore") }
+
 		err = guidedsetup.MigrateSectors(ctx, addr, mmeta, db, func(n int) {
 			fmt.Printf("Migrating %d sectors\n", n)
-		})
+		}, unmigSectorShouldFail)
 		if err != nil {
 			return xerrors.Errorf("migrating sectors: %w", err)
 		}
