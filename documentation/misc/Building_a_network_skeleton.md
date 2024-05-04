@@ -28,7 +28,7 @@ Each repository has its own set of steps that need to be followed. This guide wi
     - In fvm/src/machine/default.rs, locate the new function within your machine context. You'll find a SUPPORTED_VERSIONS constant that sets the range of supported network versions. Update this range to include the new network version. Do this by replacing the existing feature flag nvXX-dev and NetworkVersion::VXX with the new ones corresponding to your new network version.
     - In `shared/src/version/mod.rs`, in the `NetworkVersion` implementation, you will find a series of constants representing different network versions. To add a new network version, you need to declare a new constant: `pub const (VXX+1): Self = Self(XX+1);` 
 
-You can take a look at [this Ref-FVM PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2000), which added the skeleton for network version 23.
+You can take a look at [this Ref-FVM PR as a reference](https://github.com/filecoin-project/ref-fvm/pull/2000), which added the skeleton for network version 23. You can also check out the [releasing primary FVM crates checklist here](https://github.com/filecoin-project/ref-fvm/blob/master/CONTRIBUTING.md#primary-fvm-crates)
 
 2. In a seperate PR bump the Ref-FVM version:
 
