@@ -24,6 +24,13 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
+const (
+	// same as in chain/events/index.go
+	eventExists = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	insertEvent = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	insertEntry = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
+)
+
 func withCategory(cat string, cmd *cli.Command) *cli.Command {
 	cmd.Category = strings.ToUpper(cat)
 	return cmd
@@ -156,6 +163,19 @@ var backfillEventsCmd = &cli.Command{
 		var totalEventsAffected int64
 		var totalEntriesAffected int64
 
+		stmtEventExists, err := db.Prepare(eventExists)
+		if err != nil {
+			return err
+		}
+		stmtInsertEvent, err := db.Prepare(insertEvent)
+		if err != nil {
+			return err
+		}
+		stmtInsertEntry, err := db.Prepare(insertEntry)
+		if err != nil {
+			return err
+		}
+
 		processHeight := func(ctx context.Context, cnt int, msgs []lapi.Message, receipts []*types.MessageReceipt) error {
 			var tx *sql.Tx
 			for {
@@ -172,19 +192,6 @@ var backfillEventsCmd = &cli.Command{
 				break
 			}
 			defer tx.Rollback() //nolint:errcheck
-
-			stmtSelectEvent, err := tx.Prepare("SELECT MAX(id) from event WHERE height=? AND tipset_key=? and tipset_key_cid=? and emitter_addr=? and event_index=? and message_cid=? and message_index=? and reverted=false")
-			if err != nil {
-				return err
-			}
-			stmtEvent, err := tx.Prepare("INSERT INTO event (height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
-			if err != nil {
-				return err
-			}
-			stmtEntry, err := tx.Prepare("INSERT INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)")
-			if err != nil {
-				return err
-			}
 
 			var eventsAffected int64
 			var entriesAffected int64
@@ -225,7 +232,7 @@ var backfillEventsCmd = &cli.Command{
 
 					// select the highest event id that exists in database, or null if none exists
 					var entryID sql.NullInt64
-					err = stmtSelectEvent.QueryRow(
+					err = tx.Stmt(stmtEventExists).QueryRow(
 						currTs.Height(),
 						currTs.Key().Bytes(),
 						tsKeyCid.Bytes(),
@@ -244,7 +251,7 @@ var backfillEventsCmd = &cli.Command{
 					}
 
 					// event does not exist, lets backfill it
-					res, err := tx.Stmt(stmtEvent).Exec(
+					res, err := tx.Stmt(stmtInsertEvent).Exec(
 						currTs.Height(),      // height
 						currTs.Key().Bytes(), // tipset_key
 						tsKeyCid.Bytes(),     // tipset_key_cid
@@ -271,7 +278,7 @@ var backfillEventsCmd = &cli.Command{
 
 					// backfill the event entries
 					for _, entry := range event.Entries {
-						_, err := tx.Stmt(stmtEntry).Exec(
+						_, err := tx.Stmt(stmtInsertEntry).Exec(
 							entryID.Int64,               // event_id
 							isIndexedValue(entry.Flags), // indexed
 							[]byte{entry.Flags},         // flags
