@@ -8,8 +8,10 @@ import (
 	mathbig "math/big"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
+	gocrypto "github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -171,7 +173,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 			return legacyTx, nil
 		case EthLegacy155TxSignaturePrefix:
 			tx := &EthLegacy155TxArgs{
-				legacyTx: legacyTx,
+				LegacyTx: legacyTx,
 			}
 			if err := tx.InitialiseSignature(smsg.Signature); err != nil {
 				return nil, fmt.Errorf("failed to initialise signature: %w", err)
@@ -224,7 +226,7 @@ func ParseEthTransaction(data []byte) (EthTransaction, error) {
 		if data[0] > 0x7f {
 			tx, err := parseLegacyTx(data)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse legacy homestead transaction: %w", err)
+				return nil, fmt.Errorf("failed to parse legacy transaction: %w", err)
 			}
 			return tx, nil
 		}
@@ -516,6 +518,78 @@ func parseLegacyTx(data []byte) (EthTransaction, error) {
 	}
 
 	return &EthLegacy155TxArgs{
-		legacyTx: tx,
+		LegacyTx: tx,
 	}, nil
+}
+
+type RlpPackable interface {
+	packTxFields() ([]interface{}, error)
+}
+
+func toRlpUnsignedMsg(tx RlpPackable) ([]byte, error) {
+	packedFields, err := tx.packTxFields()
+	if err != nil {
+		return nil, err
+	}
+	encoded, err := EncodeRLP(packedFields)
+	if err != nil {
+		return nil, err
+	}
+	return encoded, nil
+}
+
+func toRlpSignedMsg(tx RlpPackable, V, R, S big.Int) ([]byte, error) {
+	packed1, err := tx.packTxFields()
+	if err != nil {
+		return nil, err
+	}
+
+	packed2, err := packSigFields(V, R, S)
+	if err != nil {
+		return nil, err
+	}
+
+	encoded, err := EncodeRLP(append(packed1, packed2...))
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode rlp signed msg: %w", err)
+	}
+	return encoded, nil
+}
+
+func sender(tx EthTransaction) (address.Address, error) {
+	msg, err := tx.ToRlpUnsignedMsg()
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get rlp unsigned msg: %w", err)
+	}
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(msg)
+	hash := hasher.Sum(nil)
+
+	sig, err := tx.Signature()
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get signature: %w", err)
+	}
+
+	sigData, err := tx.ToVerifiableSignature(sig.Data)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get verifiable signature: %w", err)
+	}
+
+	pubk, err := gocrypto.EcRecover(hash, sigData)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to recover pubkey: %w", err)
+	}
+
+	ethAddr, err := EthAddressFromPubKey(pubk)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get eth address from pubkey: %w", err)
+	}
+
+	ea, err := CastEthAddress(ethAddr)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to cast eth address: %w", err)
+	}
+
+	return ea.ToFilecoinAddress()
 }

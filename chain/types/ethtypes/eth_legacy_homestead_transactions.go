@@ -3,11 +3,9 @@ package ethtypes
 import (
 	"fmt"
 
-	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	gocrypto "github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/go-state-types/big"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
@@ -106,15 +104,7 @@ func (tx *EthLegacyHomesteadTxArgs) ToVerifiableSignature(sig []byte) ([]byte, e
 }
 
 func (tx *EthLegacyHomesteadTxArgs) ToRlpUnsignedMsg() ([]byte, error) {
-	packedFields, err := tx.packTxFields()
-	if err != nil {
-		return nil, err
-	}
-	encoded, err := EncodeRLP(packedFields)
-	if err != nil {
-		return nil, err
-	}
-	return encoded, nil
+	return toRlpUnsignedMsg(tx)
 }
 
 func (tx *EthLegacyHomesteadTxArgs) TxHash() (EthHash, error) {
@@ -126,21 +116,7 @@ func (tx *EthLegacyHomesteadTxArgs) TxHash() (EthHash, error) {
 }
 
 func (tx *EthLegacyHomesteadTxArgs) ToRlpSignedMsg() ([]byte, error) {
-	packed1, err := tx.packTxFields()
-	if err != nil {
-		return nil, err
-	}
-
-	packed2, err := packSigFields(tx.V, tx.R, tx.S)
-	if err != nil {
-		return nil, err
-	}
-
-	encoded, err := EncodeRLP(append(packed1, packed2...))
-	if err != nil {
-		return nil, err
-	}
-	return encoded, nil
+	return toRlpSignedMsg(tx, tx.V, tx.R, tx.S)
 }
 
 func (tx *EthLegacyHomesteadTxArgs) Signature() (*typescrypto.Signature, error) {
@@ -172,41 +148,7 @@ func (tx *EthLegacyHomesteadTxArgs) Signature() (*typescrypto.Signature, error) 
 }
 
 func (tx *EthLegacyHomesteadTxArgs) Sender() (address.Address, error) {
-	msg, err := tx.ToRlpUnsignedMsg()
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to get rlp unsigned msg: %w", err)
-	}
-
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write(msg)
-	hash := hasher.Sum(nil)
-
-	sig, err := tx.Signature()
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to get signature: %w", err)
-	}
-
-	sigData, err := tx.ToVerifiableSignature(sig.Data)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to get verifiable signature: %w", err)
-	}
-
-	pubk, err := gocrypto.EcRecover(hash, sigData)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to recover pubkey: %w", err)
-	}
-
-	ethAddr, err := EthAddressFromPubKey(pubk)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to get eth address from pubkey: %w", err)
-	}
-
-	ea, err := CastEthAddress(ethAddr)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to cast eth address: %w", err)
-	}
-
-	return ea.ToFilecoinAddress()
+	return sender(tx)
 }
 
 func (tx *EthLegacyHomesteadTxArgs) InitialiseSignature(sig typescrypto.Signature) error {
