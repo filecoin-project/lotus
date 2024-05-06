@@ -55,8 +55,6 @@ func (e *EVM) SignLegacyEIP155Transaction(tx *ethtypes.EthLegacy155TxArgs, privK
 
 	signature.Data = append([]byte{ethtypes.EthLegacy155TxSignaturePrefix}, signature.Data...)
 
-	fmt.Println(build.Eip155ChainId)
-
 	chainIdMul := big.Mul(chainID, big.NewInt(2))
 	vVal := big.Add(chainIdMul, big.NewIntUnsigned(35))
 
