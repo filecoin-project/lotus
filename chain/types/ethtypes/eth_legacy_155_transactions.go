@@ -15,6 +15,10 @@ var _ EthTransaction = (*EthLegacy155TxArgs)(nil)
 
 // EthLegacy155TxArgs is a legacy Ethereum transaction that uses the EIP-155 chain replay protection mechanism
 // by incorporating the chainId in the signature.
+// See how the `V` value in the signature is derived from the chainId at
+// https://github.com/ethereum/go-ethereum/blob/86a1f0c39494c8f5caddf6bd9fbddd4bdfa944fd/core/types/transaction_signing.go#L424
+// For EthLegacy155TxArgs, the digest that is used to create a signed transaction includes the `ChainID` but the serialised RLP transaction
+// does not include the `ChainID` as an explicit field. Instead, the `ChainID` is included in the V value of the signature as mentioned above.
 type EthLegacy155TxArgs struct {
 	LegacyTx *EthLegacyHomesteadTxArgs
 }
@@ -141,6 +145,7 @@ func (tx *EthLegacy155TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) 
 	// Extract the 'v' value from the signature
 	vValue := big.NewFromGo(big.NewInt(0).SetBytes(sig[64:]))
 
+	// See https://github.com/ethereum/go-ethereum/blob/86a1f0c39494c8f5caddf6bd9fbddd4bdfa944fd/core/types/transaction_signing.go#L424
 	chainIdMul := big.Mul(big.NewIntUnsigned(build.Eip155ChainId), big.NewInt(2))
 	vValue = big.Sub(vValue, chainIdMul)
 	vValue = big.Sub(vValue, big8)
