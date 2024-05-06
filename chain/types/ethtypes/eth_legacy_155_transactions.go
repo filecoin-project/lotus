@@ -145,6 +145,10 @@ func (tx *EthLegacy155TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) 
 	// Extract the 'v' value from the signature
 	vValue := big.NewFromGo(big.NewInt(0).SetBytes(sig[64:]))
 
+	if err := validateEIP155ChainId(vValue); err != nil {
+		return nil, fmt.Errorf("failed to validate EIP155 chain id: %w", err)
+	}
+
 	// See https://github.com/ethereum/go-ethereum/blob/86a1f0c39494c8f5caddf6bd9fbddd4bdfa944fd/core/types/transaction_signing.go#L424
 	chainIdMul := big.Mul(big.NewIntUnsigned(build.Eip155ChainId), big.NewInt(2))
 	vValue = big.Sub(vValue, chainIdMul)
