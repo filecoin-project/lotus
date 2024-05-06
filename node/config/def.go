@@ -331,7 +331,7 @@ const (
 func DefaultCurioConfig() *CurioConfig {
 	return &CurioConfig{
 		Subsystems: CurioSubsystemsConfig{
-			GuiAddress:    ":4701",
+			GuiAddress:    "127.0.0.1:4701",
 			BoostAdapters: []string{},
 		},
 		Fees: CurioFees{

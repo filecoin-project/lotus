@@ -223,6 +223,9 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		if err != nil {
 			return xerrors.Errorf("populate config: %w", err)
 		}
+		if cctx.IsSet("gui-listen") {
+			deps.Cfg.Subsystems.GuiAddress = cctx.String("gui-listen")
+		}
 	}
 
 	log.Debugw("config", "config", deps.Cfg)

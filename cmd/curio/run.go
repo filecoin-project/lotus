@@ -37,6 +37,12 @@ var runCmd = &cli.Command{
 			Value:   "0.0.0.0:12300",
 			EnvVars: []string{"LOTUS_WORKER_LISTEN"},
 		},
+		&cli.StringFlag{
+			Name:   "gui-listen",
+			Usage:  "host address and port the gui will listen on",
+			Value:  "127.0.0.1:4701",
+			Hidden: true,
+		},
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
@@ -156,7 +162,7 @@ var webCmd = &cli.Command{
 	This creates the 'web' layer if it does not exist, then calls run with that layer.`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "listen",
+			Name:  "gui-listen",
 			Usage: "Address to listen on",
 			Value: "127.0.0.1:4701",
 		},
