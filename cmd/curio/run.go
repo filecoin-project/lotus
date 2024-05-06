@@ -40,7 +40,6 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:   "gui-listen",
 			Usage:  "host address and port the gui will listen on",
-			Value:  "127.0.0.1:4701",
 			Hidden: true,
 		},
 		&cli.BoolFlag{
