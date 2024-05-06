@@ -1,85 +1,106 @@
 package ethtypes
 
 import (
-	"encoding/hex"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/lotus/lib/sigs"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 )
 
-func TestEthLegacy155TxArgs(t *testing.T) {
-	testcases := []struct {
-		RawTx            string
-		ExpectedNonce    uint64
-		ExpectedTo       string
-		ExpectedInput    string
-		ExpectedGasPrice big.Int
-		ExpectedGasLimit int
+func TestEIP155Tx(t *testing.T) {
+	txStr := "f86680843b9aca00835dc1ba94c2dca9a18d4a4057921d1bcb22da05e68e46b1d06480820297a0f91ee69c4603c4f21131467ee9e06ad4a96d0a29fa8064db61f3adaea0eb6e92a07181e306bb8f773d94cc3b75e9835de00c004e072e6630c0c46971d38706bb01"
 
-		ExpectErr bool
-	}{
-		{
-			"0xf8708310aa048504a817c80083015f9094f8c911c68f6a6b912fe735bbd953c3379336cbf3880e19fb7ff12c8c308025a09abb6d2bb66c9520f76391169e1155e8426e41ce9888e16d93512083038de023a020bbd446f8dcbdd996a5e1d0663ec8e28c33d5cb254e323855331be71bc8b0fb",
-			0x0,
-			"0x095e7baea6a6c7c4c2dfeb977efac326af552d87",
-			"0xdeadbeef0000000101010010101010101010101010101aaabbbbbbcccccccddddddddd",
-			big.NewInt(1),
-			0x5408,
-			false,
-		},
-		/*{
-			"0xf85f030182520794b94f5374fce5edbc8e2a8697c15331677e6ebf0b0a801ba098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa07778cde41a8a37f6a087622b38bc201bd3e7df06dce067569d4def1b53dba98c",
-			0x3,
-			"0xb94f5374fce5edbc8e2a8697c15331677e6ebf0b",
-			"0x",
-			big.NewInt(1),
-			0x5207,
-			false,
-		},
-		*/
-	}
+	bz := mustDecodeHex(txStr)
 
-	for i, tc := range testcases {
-		// parse txargs
-		tx, err := parseLegacyTx(mustDecodeHex(tc.RawTx))
-		require.NoError(t, err)
+	tx, err := parseLegacyTx(bz)
+	require.NoError(t, err)
 
-		msgRecovered, err := tx.ToRlpUnsignedMsg()
-		require.NoError(t, err)
+	eth155Tx, ok := tx.(*EthLegacy155TxArgs)
+	require.True(t, ok)
 
-		// verify signatures
-		from, err := tx.Sender()
-		require.NoError(t, err)
+	// Verify nonce
+	require.EqualValues(t, 0, eth155Tx.LegacyTx.Nonce)
 
-		smsg, err := ToSignedFilecoinMessage(tx)
-		require.NoError(t, err)
+	// Verify recipient address
+	expectedToAddr, err := ParseEthAddress("0xc2dca9a18d4a4057921d1bcb22da05e68e46b1d0")
+	require.NoError(t, err)
+	require.EqualValues(t, expectedToAddr, *eth155Tx.LegacyTx.To)
 
-		sig := smsg.Signature.Data[:]
-		sig = sig[1:]
-		vValue := big.NewInt(0).SetBytes(sig[64:])
-		vValue_ := big.Sub(big.NewFromGo(vValue), big.NewInt(27))
-		sig[64] = byte(vValue_.Uint64())
-		smsg.Signature.Data = sig
+	// Verify sender address
+	expectedFromAddr, err := ParseEthAddress("0xA2BBB73aC59b256415e91A820b224dbAF2C268FA")
+	require.NoError(t, err)
+	sender, err := eth155Tx.Sender()
+	require.NoError(t, err)
+	expectedFromFilecoinAddr, err := expectedFromAddr.ToFilecoinAddress()
+	require.NoError(t, err)
+	require.EqualValues(t, expectedFromFilecoinAddr, sender)
 
-		err = sigs.Verify(&smsg.Signature, from, msgRecovered)
-		require.NoError(t, err)
+	// Verify transaction value
+	expectedValue, ok := big.NewInt(0).SetString("100", 10)
+	require.True(t, ok)
+	require.True(t, eth155Tx.LegacyTx.Value.Cmp(expectedValue) == 0)
 
-		txArgs := tx.(*EthLegacyHomesteadTxArgs)
-		// verify data
-		require.EqualValues(t, tc.ExpectedNonce, txArgs.Nonce, i)
+	// Verify gas limit and gas price
+	expectedGasPrice, ok := big.NewInt(0).SetString("1000000000", 10)
+	require.True(t, ok)
+	require.EqualValues(t, 6144442, eth155Tx.LegacyTx.GasLimit)
+	require.True(t, eth155Tx.LegacyTx.GasPrice.Cmp(expectedGasPrice) == 0)
 
-		expectedTo, err := ParseEthAddress(tc.ExpectedTo)
-		require.NoError(t, err)
-		require.EqualValues(t, expectedTo, *txArgs.To, i)
-		require.EqualValues(t, tc.ExpectedInput, "0x"+hex.EncodeToString(txArgs.Input))
-		require.EqualValues(t, tc.ExpectedGasPrice, txArgs.GasPrice)
-		require.EqualValues(t, tc.ExpectedGasLimit, txArgs.GasLimit)
-	}
+	require.Empty(t, eth155Tx.LegacyTx.Input)
+
+	// Verify signature values (v, r, s)
+	expectedV, ok := big.NewInt(0).SetString("0297", 16)
+	require.True(t, ok)
+	require.True(t, eth155Tx.LegacyTx.V.Cmp(expectedV) == 0)
+
+	expectedR, ok := big.NewInt(0).SetString("f91ee69c4603c4f21131467ee9e06ad4a96d0a29fa8064db61f3adaea0eb6e92", 16)
+	require.True(t, ok)
+	require.True(t, eth155Tx.LegacyTx.R.Cmp(expectedR) == 0)
+
+	expectedS, ok := big.NewInt(0).SetString("7181e306bb8f773d94cc3b75e9835de00c004e072e6630c0c46971d38706bb01", 16)
+	require.True(t, ok)
+	require.True(t, eth155Tx.LegacyTx.S.Cmp(expectedS) == 0)
+
+	// Convert to signed Filecoin message and verify fields
+	smsg, err := ToSignedFilecoinMessage(eth155Tx)
+	require.NoError(t, err)
+
+	require.EqualValues(t, smsg.Message.From, sender)
+
+	expectedToFilecoinAddr, err := eth155Tx.LegacyTx.To.ToFilecoinAddress()
+	require.NoError(t, err)
+	require.EqualValues(t, smsg.Message.To, expectedToFilecoinAddr)
+	require.EqualValues(t, smsg.Message.Value, eth155Tx.LegacyTx.Value)
+	require.EqualValues(t, smsg.Message.GasLimit, eth155Tx.LegacyTx.GasLimit)
+	require.EqualValues(t, smsg.Message.GasFeeCap, eth155Tx.LegacyTx.GasPrice)
+	require.EqualValues(t, smsg.Message.GasPremium, eth155Tx.LegacyTx.GasPrice)
+	require.EqualValues(t, smsg.Message.Nonce, eth155Tx.LegacyTx.Nonce)
+	require.Empty(t, smsg.Message.Params)
+	require.EqualValues(t, smsg.Message.Method, builtintypes.MethodsEVM.InvokeContract)
+
+	// Convert signed Filecoin message back to Ethereum transaction and verify equality
+	ethTx, err := EthTransactionFromSignedFilecoinMessage(smsg)
+	require.NoError(t, err)
+	convertedLegacyTx, ok := ethTx.(*EthLegacy155TxArgs)
+	require.True(t, ok)
+	eth155Tx.LegacyTx.Input = nil
+	require.EqualValues(t, convertedLegacyTx, eth155Tx)
+
+	// Verify EthTx fields
+	ethTxVal, err := eth155Tx.ToEthTx(smsg)
+	require.NoError(t, err)
+	expectedHash, err := eth155Tx.TxHash()
+	require.NoError(t, err)
+	require.EqualValues(t, ethTxVal.Hash, expectedHash)
+	require.Nil(t, ethTxVal.MaxFeePerGas)
+	require.Nil(t, ethTxVal.MaxPriorityFeePerGas)
+	require.EqualValues(t, ethTxVal.Gas, eth155Tx.LegacyTx.GasLimit)
+	require.EqualValues(t, ethTxVal.Value, eth155Tx.LegacyTx.Value)
+	require.EqualValues(t, ethTxVal.Nonce, eth155Tx.LegacyTx.Nonce)
+	require.EqualValues(t, ethTxVal.To, eth155Tx.LegacyTx.To)
+	require.EqualValues(t, ethTxVal.From, expectedFromAddr)
 }
 
 func TestDeriveEIP155ChainId(t *testing.T) {
@@ -118,7 +139,7 @@ func TestDeriveEIP155ChainId(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := deriveEIP155ChainId(tt.v)
-			assert.True(t, result.Equals(tt.expectedChainId), "Expected %s, got %s for V=%s", tt.expectedChainId.String(), result.String(), tt.v.String())
+			require.True(t, result.Equals(tt.expectedChainId), "Expected %s, got %s for V=%s", tt.expectedChainId.String(), result.String(), tt.v.String())
 		})
 	}
 }

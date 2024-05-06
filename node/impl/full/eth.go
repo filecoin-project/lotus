@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -819,7 +820,7 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	log.Warnw("raw tx", "raw", rawTx)
+	fmt.Println("raw tx", hex.EncodeToString(rawTx))
 
 	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
