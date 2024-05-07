@@ -6,13 +6,13 @@
 
 ## Improvements
 
-# v1.27.0-rc1 / 2024-04-30
+# v1.27.0-rc2 / 2024-05-07
 
-This is the first release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release, check out the Curio Beta release section for how you can get started with Curio.
+This is the second release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release. Check out the Curio Beta release section for how you can get started with Curio.
 
 ## ☢️ Upgrade Warnings ☢️
 
-- This feature release drops the Raft cluster code experiment from the codebase. This Raft cluster never graduated beyond an experiment, had poor UX (e.g. no way to manage a running cluster, so it didn't provide High Availability, and pulled in a lot of heavy dependencies. We keep the multi-node RPC feature, it is not perfect, but it is useful.
+- This feature release drops the Raft cluster code experiment from the codebase. This Raft cluster never graduated beyond an experiment, had poor UX (e.g. no way to manage a running cluster, so it didn't provide High Availability), and pulled in a lot of heavy dependencies. We keep the multi-node RPC feature, it is not perfect, but it is useful.
 - Event Database: Two sequential migrations will adjust indexes without altering data or columns, ensuring minimal invasiveness when upgrading to this release. However, these migrations may be time-consuming for nodes with extensive event databases.
 
 ## Indexers, RPC- and ETH RPC-providers improvements
@@ -37,7 +37,7 @@ This release includes a lot of improvements and fixes for indexers, RPC- and ETH
 - **Node Heartbeat**: Each Curio node in a cluster must post a heartbeat message every 10 minutes in HarmonyDB updating its status. If a heartbeat is missed, the node is considered lost and all tasks can now be scheduled on remaining nodes.
 - **Task Retry**: Each task in Curio has a limit on how many times it should be tried before being declared lost. This ensures that Curio does not keep retrying bad tasks indefinitely. This safeguards against lost computation time and storage.
 - **Polling**: Curio avoids overloading nodes with a polling system. Nodes check for tasks they can handle, prioritizing idle nodes for even workload distribution.
-- **Simple Configuration Management**: The configuration is stored in the database in the forms of layers. These layers can be stacked on top of each other create a final configuration. Users can reuse these layers to control the behaviour of multiple machines without needing to maintain the configuration of each node. Start the binary with the appropriate flags to connect with YugabyteDB and specify which configuration layers to use to get desired behaviour.
+- **Simple Configuration Management**: The configuration is stored in the database in the forms of layers. These layers can be stacked on top of each other to create a final configuration. Users can reuse these layers to control the behavior of multiple machines without needing to maintain the configuration of each node. Start the binary with the appropriate flags to connect with YugabyteDB and specify which configuration layers to use to get desired behaviour.
 
 ### Getting Started with Curio
 
@@ -135,6 +135,9 @@ Visit the Curio Official Website insert link
 - deps: multiaddress ([filecoin-project/lotus#11558](https://github.com/filecoin-project/lotus/pull/11558))
 - chore:libp2p: update libp2p deps in master ([filecoin-project/lotus#11522](https://github.com/filecoin-project/lotus/pull/11522))
 - dep: go-multi-address ([filecoin-project/lotus#11563](https://github.com/filecoin-project/lotus/pull/11563))
+- github.com/filecoin-project/go-amt-ipld/ (v4.2.0 -> v4.3.0)
+- github.com/filecoin-project/go-state-types (v0.13.1 -> v0.13.3)
+- github.com/libp2p/go-libp2p-pubsub (v0.10.0 -> v0.10.1)
 
 
 ## Others
