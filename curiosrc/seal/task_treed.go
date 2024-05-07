@@ -32,6 +32,9 @@ type TreeDTask struct {
 }
 
 func (t *TreeDTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+	if isDevnet {
+		return &ids[0], nil
+	}
 	if engine.Resources().Gpu > 0 {
 		return &ids[0], nil
 	}

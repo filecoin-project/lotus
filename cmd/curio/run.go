@@ -35,7 +35,7 @@ var runCmd = &cli.Command{
 			Name:    "listen",
 			Usage:   "host address and port the worker api will listen on",
 			Value:   "0.0.0.0:12300",
-			EnvVars: []string{"LOTUS_WORKER_LISTEN"},
+			EnvVars: []string{"CURIO_LISTEN"},
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
