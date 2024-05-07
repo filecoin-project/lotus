@@ -17746,7 +17746,7 @@
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
-                            22
+                            23
                         ],
                         "type": [
                             "number"
@@ -17798,7 +17798,7 @@
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
-                            22
+                            23
                         ],
                         "type": [
                             "number"
@@ -20569,7 +20569,8 @@
                                 "UpgradeThunderHeight": 10101,
                                 "UpgradeWatermelonHeight": 10101,
                                 "UpgradeDragonHeight": 10101,
-                                "UpgradePhoenixHeight": 10101
+                                "UpgradePhoenixHeight": 10101,
+                                "UpgradeAussieHeight": 10101
                             },
                             "Eip155ChainID": 123
                         }
@@ -20596,6 +20597,10 @@
                                     "type": "number"
                                 },
                                 "UpgradeAssemblyHeight": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "UpgradeAussieHeight": {
                                     "title": "number",
                                     "type": "number"
                                 },
@@ -23732,7 +23737,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        22
+                        23
                     ],
                     "type": [
                         "number"
