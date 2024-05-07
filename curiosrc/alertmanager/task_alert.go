@@ -110,7 +110,9 @@ func (a *AlertTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 				details[k] = v.err.Error()
 				continue
 			}
-			details[k] = v.alertString
+			if v.alertString != "" {
+				details[k] = v.alertString
+			}
 		}
 	}
 

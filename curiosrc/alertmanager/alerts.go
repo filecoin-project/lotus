@@ -28,98 +28,13 @@ func balanceCheck(al *alerts) {
 	Name := "Balance Check"
 	al.alertMap[Name] = &alertOut{}
 
-	// MachineDetails represents the structure of data received from the SQL query.
-	type machineDetail struct {
-		ID          int
-		HostAndPort string
-		Layers      string
-	}
-	var machineDetails []machineDetail
+	var ret string
 
-	// Get all layers in use
-	err := al.db.Select(al.ctx, &machineDetails, `
-				SELECT m.id, m.host_and_port, d.layers
-				FROM harmony_machines m
-				LEFT JOIN harmony_machine_details d ON m.id = d.machine_id;`)
+	uniqueAddrs, _, err := al.getAddresses()
 	if err != nil {
-		al.alertMap[Name].err = xerrors.Errorf("getting config layers for all machines: %w", err)
+		al.alertMap[Name].err = err
 		return
 	}
-
-	// UniqueLayers takes an array of MachineDetails and returns a slice of unique layers.
-
-	layerMap := make(map[string]bool)
-	var uniqueLayers []string
-
-	// Get unique layers in use
-	for _, machine := range machineDetails {
-		machine := machine
-		// Split the Layers field into individual layers
-		layers := strings.Split(machine.Layers, ",")
-		for _, layer := range layers {
-			layer = strings.TrimSpace(layer)
-			if _, exists := layerMap[layer]; !exists && layer != "" {
-				layerMap[layer] = true
-				uniqueLayers = append(uniqueLayers, layer)
-			}
-		}
-	}
-
-	addrMap := make(map[string]bool)
-	var uniqueAddrs []string
-
-	// Get all unique addresses
-	for _, layer := range uniqueLayers {
-		text := ""
-		cfg := config.DefaultCurioConfig()
-		err := al.db.QueryRow(al.ctx, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
-		if err != nil {
-			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
-				al.alertMap[Name].err = xerrors.Errorf("missing layer '%s' ", layer)
-				return
-			}
-			al.alertMap[Name].err = fmt.Errorf("could not read layer '%s': %w", layer, err)
-			return
-		}
-
-		_, err = toml.Decode(text, cfg)
-		if err != nil {
-			al.alertMap[Name].err = fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
-			return
-		}
-
-		for i := range cfg.Addresses {
-			prec := cfg.Addresses[i].PreCommitControl
-			com := cfg.Addresses[i].CommitControl
-			term := cfg.Addresses[i].TerminateControl
-			if prec != nil {
-				for j := range prec {
-					if _, ok := addrMap[prec[j]]; !ok && prec[j] != "" {
-						addrMap[prec[j]] = true
-						uniqueAddrs = append(uniqueAddrs, prec[j])
-					}
-				}
-			}
-			if com != nil {
-				for j := range com {
-					if _, ok := addrMap[com[j]]; !ok && com[j] != "" {
-						addrMap[com[j]] = true
-						uniqueAddrs = append(uniqueAddrs, com[j])
-					}
-				}
-			}
-			if term != nil {
-				for j := range term {
-					if _, ok := addrMap[term[j]]; !ok && term[j] != "" {
-						addrMap[term[j]] = true
-						uniqueAddrs = append(uniqueAddrs, term[j])
-					}
-				}
-			}
-		}
-	}
-
-	var ret string
 
 	for _, addrStr := range uniqueAddrs {
 		addr, err := address.NewFromString(addrStr)
@@ -173,7 +88,7 @@ func taskFailureCheck(al *alerts) {
 								WHERE result = FALSE
 								  AND work_end >= NOW() - $1::interval
 								GROUP BY completed_by_host_and_port, name
-								ORDER BY completed_by_host_and_port, name;`, AlertMangerInterval.Minutes())
+								ORDER BY completed_by_host_and_port, name;`, fmt.Sprintf("%f Minutes", AlertMangerInterval.Minutes()))
 	if err != nil {
 		al.alertMap[Name].err = xerrors.Errorf("getting failed task count: %w", err)
 		return
@@ -229,10 +144,12 @@ func taskFailureCheck(al *alerts) {
 	return
 }
 
-// permanentStorageCheck checks the available storage space for sealing sectors.
-// It retrieves the storage paths and the sectors being sealed from the database.
-// It calculates the total required storage space by summing the sector sizes of the sectors being sealed.
-// It compares the total required space with the total available space.
+// permanentStorageCheck retrieves the storage details from the database and checks if there is sufficient space for sealing sectors.
+// It queries the database for the available storage for all storage paths that can store data.
+// It queries the database for sectors being sealed that have not been finalized yet.
+// For each sector, it calculates the required space for sealing based on the sector size.
+// It checks if there is enough available storage for each sector and updates the sectorMap accordingly.
+// If any sectors are unaccounted for, it calculates the total missing space and adds an alert to the alert map.
 func permanentStorageCheck(al *alerts) {
 	Name := "PermanentStorageSpace"
 	// Get all storage path for permanent storages
@@ -263,7 +180,7 @@ func permanentStorageCheck(al *alerts) {
 	err = al.db.Select(al.ctx, &sectors, `
 								SELECT sp_id, sector_number, reg_seal_proof
 								FROM sectors_sdr_pipeline
-								WHERE after_finalize = FALSE;`)
+								WHERE after_move_storage = FALSE;`)
 	if err != nil {
 		al.alertMap[Name].err = xerrors.Errorf("getting sectors being sealed: %w", err)
 		return
@@ -308,4 +225,108 @@ func permanentStorageCheck(al *alerts) {
 	if missingSpace.GreaterThan(big.NewInt(0)) {
 		al.alertMap[Name].alertString = fmt.Sprintf("Insufficient storage space for sealing sectors. Additional %s required.", humanize.Bytes(missingSpace.Uint64()))
 	}
+}
+
+// getAddresses retrieves machine details from the database, stores them in an array and compares layers for uniqueness.
+// It employs addrMap to handle unique addresses, and generated slices for configuration fields and MinerAddresses.
+// The function iterates over layers, storing decoded configuration and verifying address existence in addrMap.
+// It ends by returning unique addresses and miner slices.
+func (al *alerts) getAddresses() ([]string, []string, error) {
+	// MachineDetails represents the structure of data received from the SQL query.
+	type machineDetail struct {
+		ID          int
+		HostAndPort string
+		Layers      string
+	}
+	var machineDetails []machineDetail
+
+	// Get all layers in use
+	err := al.db.Select(al.ctx, &machineDetails, `
+				SELECT m.id, m.host_and_port, d.layers
+				FROM harmony_machines m
+				LEFT JOIN harmony_machine_details d ON m.id = d.machine_id;`)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("getting config layers for all machines: %w", err)
+	}
+
+	// UniqueLayers takes an array of MachineDetails and returns a slice of unique layers.
+
+	layerMap := make(map[string]bool)
+	var uniqueLayers []string
+
+	// Get unique layers in use
+	for _, machine := range machineDetails {
+		machine := machine
+		// Split the Layers field into individual layers
+		layers := strings.Split(machine.Layers, ",")
+		for _, layer := range layers {
+			layer = strings.TrimSpace(layer)
+			if _, exists := layerMap[layer]; !exists && layer != "" {
+				layerMap[layer] = true
+				uniqueLayers = append(uniqueLayers, layer)
+			}
+		}
+	}
+
+	addrMap := make(map[string]bool)
+	var uniqueAddrs []string
+	var miners []string
+
+	// Get all unique addresses
+	for _, layer := range uniqueLayers {
+		text := ""
+		cfg := config.DefaultCurioConfig()
+		err := al.db.QueryRow(al.ctx, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
+		if err != nil {
+			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
+				return nil, nil, xerrors.Errorf("missing layer '%s' ", layer)
+			}
+			return nil, nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
+		}
+
+		_, err = toml.Decode(text, cfg)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not read layer, bad toml %s: %w", layer, err)
+		}
+
+		for i := range cfg.Addresses {
+			prec := cfg.Addresses[i].PreCommitControl
+			com := cfg.Addresses[i].CommitControl
+			term := cfg.Addresses[i].TerminateControl
+			miner := cfg.Addresses[i].MinerAddresses
+			if prec != nil {
+				for j := range prec {
+					if _, ok := addrMap[prec[j]]; !ok && prec[j] != "" {
+						addrMap[prec[j]] = true
+						uniqueAddrs = append(uniqueAddrs, prec[j])
+					}
+				}
+			}
+			if com != nil {
+				for j := range com {
+					if _, ok := addrMap[com[j]]; !ok && com[j] != "" {
+						addrMap[com[j]] = true
+						uniqueAddrs = append(uniqueAddrs, com[j])
+					}
+				}
+			}
+			if term != nil {
+				for j := range term {
+					if _, ok := addrMap[term[j]]; !ok && term[j] != "" {
+						addrMap[term[j]] = true
+						uniqueAddrs = append(uniqueAddrs, term[j])
+					}
+				}
+			}
+			if miner != nil {
+				for j := range miner {
+					if _, ok := addrMap[miner[j]]; !ok && miner[j] != "" {
+						addrMap[miner[j]] = true
+						miners = append(miners, miner[j])
+					}
+				}
+			}
+		}
+	}
+	return uniqueAddrs, miners, nil
 }
