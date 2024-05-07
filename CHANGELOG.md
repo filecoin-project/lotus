@@ -6,9 +6,9 @@
 
 ## Improvements
 
-# v1.27.0-rc1 / 2024-04-30
+# v1.27.0-rc2 / 2024-05-07
 
-This is the first release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release, check out the Curio Beta release section for how you can get started with Curio.
+This is the second release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release, check out the Curio Beta release section for how you can get started with Curio.
 
 ## ☢️ Upgrade Warnings ☢️
 
