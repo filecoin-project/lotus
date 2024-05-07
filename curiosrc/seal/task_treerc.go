@@ -153,13 +153,17 @@ func (t *TreeRCTask) TypeDetails() harmonytask.TaskTypeDetails {
 	if isDevnet {
 		ssize = abi.SectorSize(2 << 20)
 	}
+	gpu := 1.0
+	if isDevnet {
+		gpu = 0
+	}
 
 	return harmonytask.TaskTypeDetails{
 		Max:  t.max,
 		Name: "TreeRC",
 		Cost: resources.Resources{
 			Cpu:     1,
-			Gpu:     1,
+			Gpu:     gpu,
 			Ram:     8 << 30,
 			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing, paths.MinFreeStoragePercentage),
 		},
