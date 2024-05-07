@@ -64,12 +64,6 @@ type pdPayload struct {
 	CustomDetails interface{} `json:"custom_details,omitempty"`
 }
 
-type pdData struct {
-	RoutingKey  string     `json:"routing_key"`
-	EventAction string     `json:"event_action"`
-	Payload     *pdPayload `json:"payload"`
-}
-
 type alertFunc func(al *alerts)
 
 var alertFuncs = []alertFunc{
@@ -87,6 +81,11 @@ func NewAlertTask(api AlertAPI, db *harmonydb.DB, alertingCfg config.CurioAlerti
 }
 
 func (a *AlertTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+	if a.cfg.PageDutyIntegrationKey == "" {
+		log.Warnf("PageDutyIntegrationKey is empty, not sending an alert")
+		return true, nil
+	}
+
 	ctx := context.Background()
 
 	alMap := make(map[string]*alertOut)
@@ -167,6 +166,12 @@ var _ harmonytask.TaskInterface = &AlertTask{}
 // If all retries fail, it returns an error indicating the last network error encountered.
 func (a *AlertTask) sendAlert(data *pdPayload) error {
 
+	type pdData struct {
+		RoutingKey  string     `json:"routing_key"`
+		EventAction string     `json:"event_action"`
+		Payload     *pdPayload `json:"payload"`
+	}
+
 	payload := &pdData{
 		RoutingKey:  a.cfg.PageDutyIntegrationKey,
 		EventAction: "trigger",
@@ -178,7 +183,7 @@ func (a *AlertTask) sendAlert(data *pdPayload) error {
 		return fmt.Errorf("error marshaling JSON: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", a.cfg.PagerDutyEventURL.String(), bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", a.cfg.PagerDutyEventURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}

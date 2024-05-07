@@ -6,10 +6,12 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/dustin/go-humanize"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/node/config"
 )
@@ -20,7 +22,7 @@ import (
 // It queries the database for the configuration of each layer and decodes it using the toml.Decode function.
 // It then iterates over the addresses in the configuration and curates a list of unique addresses.
 // If an address is not found in the chain node, it adds an alert to the alert map.
-// If the balance of an address is below 5 Fil, it adds an alert to the alert map.
+// If the balance of an address is below MinimumWalletBalance, it adds an alert to the alert map.
 // If there are any errors encountered during the process, the err field of the alert map is populated.
 func balanceCheck(al *alerts) {
 	Name := "Balance Check"
@@ -267,22 +269,43 @@ func permanentStorageCheck(al *alerts) {
 		return
 	}
 
-	var totalRequiredSpace int64
+	type sm struct {
+		s    sector
+		size int64
+	}
+
+	sectorMap := make(map[sm]bool)
+
 	for _, sec := range sectors {
+		space := int64(0)
 		sec := sec
 		sectorSize, err := sec.Proof.SectorSize()
 		if err != nil {
-			totalRequiredSpace += int64(64 << 30)
+			space = int64(64<<30)*2 + int64(200<<20) // Assume 64 GiB sector
+		} else {
+			space = int64(sectorSize)*2 + int64(200<<20) // sealed + unsealed + cache
 		}
-		totalRequiredSpace += int64(sectorSize)
+
+		key := sm{s: sec, size: space}
+
+		sectorMap[key] = false
+
+		for _, strg := range storages {
+			if space > strg.Available {
+				strg.Available -= space
+				sectorMap[key] = true
+			}
+		}
 	}
 
-	var totalAvailableSpace int64
-	for _, storage := range storages {
-		totalAvailableSpace += storage.Available
+	missingSpace := big.NewInt(0)
+	for sec, accounted := range sectorMap {
+		if !accounted {
+			big.Add(missingSpace, big.NewInt(sec.size))
+		}
 	}
 
-	if totalAvailableSpace < totalRequiredSpace {
-		al.alertMap[Name].alertString = fmt.Sprintf("Insufficient storage space for sealing sectors. Required: %d bytes, Available: %d bytes", totalRequiredSpace, totalAvailableSpace)
+	if missingSpace.GreaterThan(big.NewInt(0)) {
+		al.alertMap[Name].alertString = fmt.Sprintf("Insufficient storage space for sealing sectors. Additional %s required.", humanize.Bytes(missingSpace.Uint64()))
 	}
 }

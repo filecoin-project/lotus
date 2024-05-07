@@ -1,8 +1,6 @@
 package config
 
 import (
-	"net/url"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -1114,12 +1112,12 @@ type FaultReporterConfig struct {
 }
 
 type CurioAlerting struct {
-	// PagerDutyEventURL is URL for PagerDuty's Events API v2 URL. Events sent to this API URL are ultimately
-	// routed to a PagerDuty service and processed.
-	// The default is sufficient for integration with the stock commercial Pager Duty company's service.
-	PagerDutyEventURL *url.URL
+	// PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+	// routed to a PagerDuty.com service and processed.
+	// The default is sufficient for integration with the stock commercial PagerDuty.com company's service.
+	PagerDutyEventURL string
 
-	// PageDutyIntegrationKey is the integration key for a pager duty service. You can find this unique service
+	// PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
 	// identifier in the integration page for the service.
 	PageDutyIntegrationKey string
 
