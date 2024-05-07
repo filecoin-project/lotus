@@ -279,7 +279,22 @@ func configToDB(d *MigrationData) {
 
 	chainApiInfo := fmt.Sprintf("%s:%s", string(token), ainfo.Addr)
 
-	d.MinerID, err = SaveConfigToLayer(d.MinerConfigPath, chainApiInfo)
+	shouldErrPrompt := func() bool {
+		i, _, err := (&promptui.Select{
+			Label: d.T("Unmigratable sectors found. Do you want to continue?"),
+			Items: []string{
+				d.T("Yes, continue"),
+				d.T("No, abort")},
+			Templates: d.selectTemplates,
+		}).Run()
+		if err != nil {
+			d.say(notice, "Aborting migration.", err.Error())
+			os.Exit(1)
+		}
+		return i == 1
+	}
+
+	d.MinerID, err = SaveConfigToLayerMigrateSectors(d.MinerConfigPath, chainApiInfo, shouldErrPrompt)
 	if err != nil {
 		d.say(notice, "Error saving config to layer: %s. Aborting Migration", err.Error())
 		os.Exit(1)
