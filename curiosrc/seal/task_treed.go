@@ -246,7 +246,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_tree_d = true, tree_d_cid = $3 WHERE sp_id = $1 AND sector_number = $2`,
+		SET after_tree_d = true, tree_d_cid = $3, task_id_tree_d = NULL WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, commd)
 	if err != nil {
 		return false, xerrors.Errorf("store TreeD success: updating pipeline: %w", err)
