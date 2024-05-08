@@ -188,6 +188,44 @@
             "fuzzy": true
         },
         {
+            "id": "Unmigratable sectors found. Do you want to continue?",
+            "message": "Unmigratable sectors found. Do you want to continue?",
+            "translation": "Unmigratable sectors found. Do you want to continue?",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Yes, continue",
+            "message": "Yes, continue",
+            "translation": "Yes, continue",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "No, abort",
+            "message": "No, abort",
+            "translation": "No, abort",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Aborting migration.",
+            "message": "Aborting migration.",
+            "translation": "Aborting migration.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]v",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
             "id": "Error saving config to layer: {Error}. Aborting Migration",
             "message": "Error saving config to layer: {Error}. Aborting Migration",
             "translation": "Error saving config to layer: {Error}. Aborting Migration",
@@ -599,13 +637,6 @@
             "id": "Press return to continue",
             "message": "Press return to continue",
             "translation": "Press return to continue",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Aborting migration.",
-            "message": "Aborting migration.",
-            "translation": "Aborting migration.",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -1548,6 +1579,23 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Migrating metadata for {NSectors} sectors.",
+            "message": "Migrating metadata for {NSectors} sectors.",
+            "translation": "Migrating metadata for {NSectors} sectors.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "NSectors",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "nSectors"
                 }
             ],
             "fuzzy": true

@@ -1071,6 +1071,30 @@
       "translation": "'base'配置已创建，以类似于这个lotus-miner的config.toml。",
       "message": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
       "placeholder": null
+    },
+    {
+      "id": "Unmigratable sectors found. Do you want to continue?",
+      "translation": "发现无法迁移的扇区。您想要继续吗？",
+      "message": "Unmigratable sectors found. Do you want to continue?",
+      "placeholder": null
+    },
+    {
+      "id": "Yes, continue",
+      "translation": "是的，继续",
+      "message": "Yes, continue",
+      "placeholder": null
+    },
+    {
+      "id": "No, abort",
+      "translation": "不，中止",
+      "message": "No, abort",
+      "placeholder": null
+    },
+    {
+      "id": "Migrating metadata for {NSectors} sectors.",
+      "translation": "正在迁移{NSectors}个扇区的元数据。",
+      "message": "Migrating metadata for {NSectors} sectors.",
+      "placeholder": null
     }
   ]
 }

@@ -183,6 +183,30 @@ over the worker address if this flag is set.`,
 			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
 		},
 	},
+	"CurioAlerting": {
+		{
+			Name: "PagerDutyEventURL",
+			Type: "string",
+
+			Comment: `PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+routed to a PagerDuty.com service and processed.
+The default is sufficient for integration with the stock commercial PagerDuty.com company's service.`,
+		},
+		{
+			Name: "PageDutyIntegrationKey",
+			Type: "string",
+
+			Comment: `PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
+identifier in the integration page for the service.`,
+		},
+		{
+			Name: "MinimumWalletBalance",
+			Type: "types.FIL",
+
+			Comment: `MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+alerts will be triggered for the wallet`,
+		},
+	},
 	"CurioConfig": {
 		{
 			Name: "Subsystems",
@@ -223,6 +247,12 @@ over the worker address if this flag is set.`,
 		{
 			Name: "Apis",
 			Type: "ApisConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Alerting",
+			Type: "CurioAlerting",
 
 			Comment: ``,
 		},
