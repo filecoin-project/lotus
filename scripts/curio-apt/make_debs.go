@@ -54,8 +54,15 @@ func part2(base, product, extra string) {
 
 	// This ENV is only for fixing this script. It will result in a bad build.
 	if os.Getenv("CURIO_DEB_NOBUILD") != "1" {
+		// FUTURE: Use cross-compilation to cover more arch and run anywhere.
+		// FUTURE: Use RUST & Go PGO.
 		OrPanic(sess.Command("make", "clean", "all").Run())
 	}
+
+	// strip binaries
+	OrPanic(sh.Command("strip", "curio").Run())
+	OrPanic(sh.Command("strip", "sptool").Run())
+
 	fmt.Println("copying")
 	{
 		base := path.Join(dir, "usr", "local", "bin")
