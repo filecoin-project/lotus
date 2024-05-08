@@ -1,5 +1,5 @@
 // Run from lotus root.
-// requires packages: dpkg-dev, dpkg-deb
+// requires packages: dpkg-dev
 // Usage:
 // ~/GitHub/lotus$ go run scripts/curio-apt/make_debs.go 0.9.7 ~/apt-private.asc
 package main
