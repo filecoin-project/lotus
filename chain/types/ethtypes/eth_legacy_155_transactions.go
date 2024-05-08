@@ -229,7 +229,7 @@ func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
 		return nil, err
 	}
 
-	chainIdBigInt := deriveEIP155ChainId(tx.LegacyTx.V)
+	chainIdBigInt := big.NewIntUnsigned(build.Eip155ChainId)
 	chainId, err := formatBigInt(chainIdBigInt)
 	if err != nil {
 		return nil, err
