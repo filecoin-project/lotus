@@ -1101,6 +1101,30 @@
             "translation": "'base' 설정이 이 lotus-miner의 config.toml과 유사하게 만들어졌습니다.",
             "message": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
             "placeholder": null
+        },
+        {
+            "id": "Unmigratable sectors found. Do you want to continue?",
+            "translation": "이동할 수 없는 섹터가 발견되었습니다. 계속하시겠습니까?",
+            "message": "Unmigratable sectors found. Do you want to continue?",
+            "placeholder": null
+        },
+        {
+            "id": "Yes, continue",
+            "translation": "예, 계속",
+            "message": "Yes, continue",
+            "placeholder": null
+        },
+        {
+            "id": "No, abort",
+            "translation": "아니오, 중단",
+            "message": "No, abort",
+            "placeholder": null
+        },
+        {
+            "id": "Migrating metadata for {NSectors} sectors.",
+            "translation": "{NSectors} 섹터의 메타데이터를 이동 중입니다.",
+            "message": "Migrating metadata for {NSectors} sectors.",
+            "placeholder": null
         }
     ]
 }

@@ -57,7 +57,7 @@ var _ Filter = (*eventFilter)(nil)
 type CollectedEvent struct {
 	Entries     []types.EventEntry
 	EmitterAddr address.Address // address of emitter
-	EventIdx    int             // index of the event within the list of emitted events
+	EventIdx    int             // index of the event within the list of emitted events in a given tipset
 	Reverted    bool
 	Height      abi.ChainEpoch
 	TipSetKey   types.TipSetKey // tipset that contained the message
@@ -94,8 +94,11 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	if err != nil {
 		return xerrors.Errorf("load executed messages: %w", err)
 	}
+
+	eventCount := 0
+
 	for msgIdx, em := range ems {
-		for evIdx, ev := range em.Events() {
+		for _, ev := range em.Events() {
 			// lookup address corresponding to the actor id
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
@@ -119,7 +122,7 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			cev := &CollectedEvent{
 				Entries:     ev.Entries,
 				EmitterAddr: addr,
-				EventIdx:    evIdx,
+				EventIdx:    eventCount,
 				Reverted:    revert,
 				Height:      te.msgTs.Height(),
 				TipSetKey:   te.msgTs.Key(),
@@ -141,6 +144,7 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			}
 			f.collected = append(f.collected, cev)
 			f.mu.Unlock()
+			eventCount++
 		}
 	}
 
@@ -375,6 +379,10 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
 	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (EventFilter, error) {
 	m.mu.Lock()
+	if m.currentHeight == 0 {
+		// sync in progress, we haven't had an Apply
+		m.currentHeight = m.ChainStore.GetHeaviestTipSet().Height()
+	}
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
 

@@ -7,7 +7,7 @@ USAGE:
    curio [global options] command [command options] [arguments...]
 
 VERSION:
-   1.27.0-dev
+   1.27.1-dev
 
 COMMANDS:
    cli           Execute cli commands
@@ -241,7 +241,7 @@ USAGE:
    curio run [command options] [arguments...]
 
 OPTIONS:
-   --listen value                                                                       host address and port the worker api will listen on (default: "0.0.0.0:12300") [$LOTUS_WORKER_LISTEN]
+   --listen value                                                                       host address and port the worker api will listen on (default: "0.0.0.0:12300") [$CURIO_LISTEN]
    --nosync                                                                             don't check full-node sync status (default: false)
    --manage-fdlimit                                                                     manage open file limit (default: true)
    --storage-json value                                                                 path to json file containing storage config (default: "~/.curio/storage.json")

@@ -53,3 +53,11 @@ func SDRLayers(spt abi.RegisteredSealProof) (int, error) {
 		return 0, fmt.Errorf("unsupported proof type: %v", spt)
 	}
 }
+
+func IsTreeRCFile(baseName string) bool {
+	return IsFileTreeRLast(baseName) || IsFileTreeC(baseName)
+}
+
+func IsTreeDFile(baseName string) bool {
+	return IsFileTreeD(baseName)
+}

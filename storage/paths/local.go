@@ -36,6 +36,8 @@ type LocalStorage interface {
 
 const MetaFile = "sectorstore.json"
 
+const MinFreeStoragePercentage = float64(0)
+
 type Local struct {
 	localStorage LocalStorage
 	index        SectorIndex
@@ -460,43 +462,24 @@ func (st *Local) reportStorage(ctx context.Context) {
 	}
 }
 
-func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (release func(), err error) {
+func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType,
+	storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, minFreePercentage float64) (func(), error) {
 	ssize, err := sid.ProofType.SectorSize()
 	if err != nil {
 		return nil, err
 	}
+	release := func() {}
 
 	st.localLk.Lock()
 
-	var releaseCalled bool
-
-	// double release debug guard
-	var firstDonebuf []byte
-	var releaseFuncs []func()
-
-	release = func() {
-		for _, releaseFunc := range releaseFuncs {
-			releaseFunc()
-		}
-
-		// debug guard against double release call
-		if releaseCalled {
-			curStack := make([]byte, 20480)
-			curStack = curStack[:runtime.Stack(curStack, false)]
-
-			log.Errorw("double release call", "sector", sid, "fileType", ft, "prevStack", string(firstDonebuf), "curStack", string(curStack))
-		}
-
-		firstDonebuf = make([]byte, 20480)
-		firstDonebuf = firstDonebuf[:runtime.Stack(firstDonebuf, false)]
-
-		releaseCalled = true
-	}
-
-	cleanupOnError := func() { release() }
 	defer func() {
 		st.localLk.Unlock()
-		cleanupOnError()
+		if err != nil {
+			release()
+			release = func() {}
+		} else {
+			release = DoubleCallWrap(release)
+		}
 	}()
 
 	for _, fileType := range ft.AllSet() {
@@ -520,8 +503,16 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 			resvOnDisk = overhead
 		}
 
-		if stat.Available < overhead-resvOnDisk {
+		overheadOnDisk := overhead - resvOnDisk
+
+		if stat.Available < overheadOnDisk {
 			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), only %d available", overhead, p.local, id, stat.Available))
+		}
+
+		freePercentag := (float64(stat.Available-overheadOnDisk) / float64(stat.Available)) * 100.0
+
+		if freePercentag < minFreePercentage {
+			return nil, storiface.Err(storiface.ErrTempAllocateSpace, xerrors.Errorf("can't reserve %d bytes in '%s' (id:%s), free disk percentage %f will be lower than minimum %f", overhead, p.local, id, freePercentag, minFreePercentage))
 		}
 
 		resID := sectorFile{sid.ID, fileType}
@@ -531,21 +522,33 @@ func (st *Local) Reserve(ctx context.Context, sid storiface.SectorRef, ft storif
 		p.reserved += overhead
 		p.reservations[resID] = overhead
 
-		releaseFuncs = append(releaseFuncs, func() {
+		old_r := release
+		release = func() {
+			old_r()
 			st.localLk.Lock()
 			defer st.localLk.Unlock()
-
 			log.Debugw("reserve release", "id", id, "sector", sid, "fileType", fileType, "overhead", overhead, "reserved-before", p.reserved, "reserved-after", p.reserved-overhead)
-
 			p.reserved -= overhead
 			delete(p.reservations, resID)
-		})
+		}
 	}
 
-	// no errors, don't cleanup, caller will call release
-	cleanupOnError = func() {}
-
 	return release, nil
+}
+
+// DoubleCallWrap wraps a function to make sure it's not called twice
+func DoubleCallWrap(f func()) func() {
+	var stack []byte
+	return func() {
+		curStack := make([]byte, 20480)
+		curStack = curStack[:runtime.Stack(curStack, false)]
+		if len(stack) > 0 {
+			log.Warnf("double call from:\n%s\nBut originally from:\n%s", curStack, stack)
+			return
+		}
+		stack = curStack
+		f()
+	}
 }
 
 func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType, op storiface.AcquireMode, opts ...storiface.AcquireOption) (storiface.SectorPaths, storiface.SectorPaths, error) {

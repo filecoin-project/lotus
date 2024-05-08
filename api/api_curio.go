@@ -17,6 +17,7 @@ type Curio interface {
 
 	AllocatePieceToSector(ctx context.Context, maddr address.Address, piece PieceDealInfo, rawSize int64, source url.URL, header http.Header) (SectorOffset, error) //perm:write
 
+	StorageInit(ctx context.Context, path string, opts storiface.LocalStorageMeta) error                                                                                   //perm:admin
 	StorageAddLocal(ctx context.Context, path string) error                                                                                                                //perm:admin
 	StorageDetachLocal(ctx context.Context, path string) error                                                                                                             //perm:admin
 	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                            //perm:admin

@@ -340,6 +340,62 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 			}()
 		}
 
+		{
+			// piece park is either done or currently happening from another AP call
+			// now we need to make sure that the piece is definitely parked successfully
+			// - in case of errors we return, and boost should be able to retry the call
+
+			// * If piece is completed, return
+			// * If piece is not completed but has null taskID, wait
+			// * If piece has a non-null taskID
+			//   * If the task is in harmony_tasks, wait
+			//   * Otherwise look for an error in harmony_task_history and return that
+
+			for {
+				var taskID *int64
+				var complete bool
+				err := db.QueryRow(ctx, `SELECT task_id, complete FROM parked_pieces WHERE id = $1`, refID).Scan(&taskID, &complete)
+				if err != nil {
+					return api.SectorOffset{}, xerrors.Errorf("getting piece park status: %w", err)
+				}
+
+				if complete {
+					break
+				}
+
+				if taskID == nil {
+					// piece is not parked yet
+					time.Sleep(5 * time.Second)
+					continue
+				}
+
+				// check if task is in harmony_tasks
+				var taskName string
+				err = db.QueryRow(ctx, `SELECT name FROM harmony_task WHERE id = $1`, *taskID).Scan(&taskName)
+				if err == nil {
+					// task is in harmony_tasks, wait
+					time.Sleep(5 * time.Second)
+					continue
+				}
+				if err != pgx.ErrNoRows {
+					return api.SectorOffset{}, xerrors.Errorf("checking park-piece task in harmony_tasks: %w", err)
+				}
+
+				// task is not in harmony_tasks, check harmony_task_history (latest work_end)
+				var taskError string
+				var taskResult bool
+				err = db.QueryRow(ctx, `SELECT result, err FROM harmony_task_history WHERE task_id = $1 ORDER BY work_end DESC LIMIT 1`, *taskID).Scan(&taskResult, &taskError)
+				if err != nil {
+					return api.SectorOffset{}, xerrors.Errorf("checking park-piece task history: %w", err)
+				}
+				if !taskResult {
+					return api.SectorOffset{}, xerrors.Errorf("park-piece task failed: %s", taskError)
+				} else {
+					return api.SectorOffset{}, xerrors.Errorf("park task succeeded but piece is not marked as complete")
+				}
+			}
+		}
+
 		pieceIDUrl := url.URL{
 			Scheme: "pieceref",
 			Opaque: fmt.Sprintf("%d", refID),

@@ -98,6 +98,9 @@ const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 // 2024-04-03T11:00:00Z
 const UpgradeCalibrationDragonFixHeight = 1493854
 
+// ?????
+const UpgradeAussieHeight = 999999999999999
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,

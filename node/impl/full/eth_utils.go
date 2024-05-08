@@ -392,7 +392,7 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 	}
 
 	// Otherwise, resolve the ID addr.
-	idAddr, err := st.LookupID(addr)
+	idAddr, err := st.LookupIDAddress(addr)
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
