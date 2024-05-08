@@ -112,8 +112,9 @@ func (tx *EthLegacy155TxArgs) Signature() (*typescrypto.Signature, error) {
 	// pre-pend a one byte marker so nodes know that this is a legacy transaction
 	sig = append([]byte{EthLegacy155TxSignaturePrefix}, sig...)
 
-	if len(sig) != EthLegacy155TxSignatureLen {
-		return nil, fmt.Errorf("signature is not %d bytes; it is %d bytes", EthLegacy155TxSignatureLen, len(sig))
+	if len(sig) != EthLegacy155TxSignatureLen0 && len(sig) != EthLegacy155TxSignatureLen1 {
+		return nil, fmt.Errorf("signature is not %d OR %d bytes; it is %d bytes", EthLegacy155TxSignatureLen0, EthLegacy155TxSignatureLen1,
+			len(sig))
 	}
 
 	return &typescrypto.Signature{
@@ -131,9 +132,9 @@ func (tx *EthLegacy155TxArgs) Sender() (address.Address, error) {
 var big8 = big.NewInt(8)
 
 func (tx *EthLegacy155TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
-	if len(sig) != EthLegacy155TxSignatureLen {
-		return nil, fmt.Errorf("signature should be %d bytes long (1 byte metadata, %d bytes sig data), but got %d bytes",
-			EthLegacy155TxSignatureLen, EthLegacy155TxSignatureLen-1, len(sig))
+	if len(sig) != EthLegacy155TxSignatureLen0 && len(sig) != EthLegacy155TxSignatureLen1 {
+		return nil, fmt.Errorf("signature should be %d or %d bytes long but got %d bytes",
+			EthLegacy155TxSignatureLen0, EthLegacy155TxSignatureLen1, len(sig))
 	}
 	if sig[0] != EthLegacy155TxSignaturePrefix {
 		return nil, fmt.Errorf("expected signature prefix 0x%x, but got 0x%x", EthLegacy155TxSignaturePrefix, sig[0])
@@ -171,15 +172,16 @@ func (tx *EthLegacy155TxArgs) InitialiseSignature(sig typescrypto.Signature) err
 		return fmt.Errorf("RecoverSignature only supports Delegated signature")
 	}
 
-	if len(sig.Data) != EthLegacy155TxSignatureLen {
-		return fmt.Errorf("signature should be %d bytes long, but got %d bytes", EthLegacy155TxSignatureLen, len(sig.Data))
+	if len(sig.Data) != EthLegacy155TxSignatureLen0 && len(sig.Data) != EthLegacy155TxSignatureLen1 {
+		return fmt.Errorf("signature should be %d or %d bytes long, but got %d bytes", EthLegacy155TxSignatureLen0,
+			EthLegacy155TxSignatureLen1, len(sig.Data))
 	}
 
 	if sig.Data[0] != EthLegacy155TxSignaturePrefix {
 		return fmt.Errorf("expected signature prefix 0x01, but got 0x%x", sig.Data[0])
 	}
 
-	// ignore the first byte of the tx as it's only used for legacy transaction identification
+	// ignore the first byte of the signature as it's only used for legacy transaction identification
 	r_, err := parseBigInt(sig.Data[1:33])
 	if err != nil {
 		return fmt.Errorf("cannot parse r into EthBigInt: %w", err)
@@ -227,7 +229,7 @@ func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
 		return nil, err
 	}
 
-	chainIdBigInt := big.NewIntUnsigned(build.Eip155ChainId)
+	chainIdBigInt := deriveEIP155ChainId(tx.LegacyTx.V)
 	chainId, err := formatBigInt(chainIdBigInt)
 	if err != nil {
 		return nil, err
@@ -278,9 +280,9 @@ func deriveEIP155ChainId(v big.Int) big.Int {
 	return big.Div(v, big.NewInt(2))
 }
 
-func calcEIP155TxSignatureLen(chain uint64) int {
+func calcEIP155TxSignatureLen(chain uint64, v int) int {
 	chainId := big.NewIntUnsigned(chain)
-	vVal := big.Add(big.Mul(chainId, big.NewInt(2)), big.NewInt(36))
+	vVal := big.Add(big.Mul(chainId, big.NewInt(2)), big.NewInt(int64(v)))
 	vLen := len(vVal.Int.Bytes())
 
 	// EthLegacyHomesteadTxSignatureLen includes the 1 byte legacy tx marker prefix and also 1 byte for the V value.

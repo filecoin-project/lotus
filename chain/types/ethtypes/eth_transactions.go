@@ -35,11 +35,13 @@ const (
 )
 
 var (
-	EthLegacy155TxSignatureLen int
+	EthLegacy155TxSignatureLen0 int
+	EthLegacy155TxSignatureLen1 int
 )
 
 func init() {
-	EthLegacy155TxSignatureLen = calcEIP155TxSignatureLen(build.Eip155ChainId)
+	EthLegacy155TxSignatureLen0 = calcEIP155TxSignatureLen(build.Eip155ChainId, 35)
+	EthLegacy155TxSignatureLen1 = calcEIP155TxSignatureLen(build.Eip155ChainId, 36)
 }
 
 // EthTransaction defines the interface for Ethereum-like transactions.
@@ -155,7 +157,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 		}
 		return &tx, nil
 
-	case EthLegacyHomesteadTxSignatureLen, EthLegacy155TxSignatureLen:
+	case EthLegacyHomesteadTxSignatureLen, EthLegacy155TxSignatureLen0, EthLegacy155TxSignatureLen1:
 		legacyTx := &EthLegacyHomesteadTxArgs{
 			Nonce:    int(smsg.Message.Nonce),
 			To:       to,

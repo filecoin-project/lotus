@@ -164,7 +164,7 @@ func (tx *EthLegacyHomesteadTxArgs) InitialiseSignature(sig typescrypto.Signatur
 		return fmt.Errorf("expected signature prefix 0x01, but got 0x%x", sig.Data[0])
 	}
 
-	// ignore the first byte of the tx as it's only used for legacy transaction identification
+	// ignore the first byte of the signature as it's only used for legacy transaction identification
 	r_, err := parseBigInt(sig.Data[1:33])
 	if err != nil {
 		return fmt.Errorf("cannot parse r into EthBigInt: %w", err)

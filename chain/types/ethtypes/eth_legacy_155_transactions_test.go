@@ -179,7 +179,7 @@ func TestCalcEIP155TxSignatureLen(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calcEIP155TxSignatureLen(tt.chainID)
+			result := calcEIP155TxSignatureLen(tt.chainID, 1)
 			if result != tt.expected {
 				t.Errorf("calcEIP155TxSignatureLen(%d) = %d, want %d", tt.chainID, result, tt.expected)
 			}
