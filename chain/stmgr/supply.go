@@ -303,11 +303,14 @@ func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmoun
 	return pst.TotalLocked()
 }
 
-func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
-
-	filMarketLocked, err := getFilMarketLocked(ctx, st)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+func GetFilLocked(ctx context.Context, st *state.StateTree, height abi.ChainEpoch) (abi.TokenAmount, error) {
+	filMarketLocked := big.Zero()
+	if height <= build.UpgradeAussieHeight {
+		var err error
+		filMarketLocked, err = getFilMarketLocked(ctx, st)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+		}
 	}
 
 	filPowerLocked, err := getFilPowerLocked(ctx, st)
@@ -360,7 +363,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
-	filLocked, err := GetFilLocked(ctx, st)
+	filLocked, err := GetFilLocked(ctx, st, height)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}
