@@ -69,6 +69,7 @@ func part2(base, product, extra string) {
 	f = []byte(strings.ReplaceAll(string(f), "$PACKAGE", product))
 	f = []byte(strings.ReplaceAll(string(f), "$VERSION", version))
 	os.WriteFile(path.Join(dir, "DEBIAN", "control"), f, 0644)
+	fullname := product + "-" + version + "_amd64.deb"
 
 	// Option 1: piece by piece. Maybe could work, but it is complex.
 	// Build a .changes file
@@ -83,11 +84,13 @@ func part2(base, product, extra string) {
 	//sh.Command("dpkg-buildpackage", "--build=binary").SetDir(dir).Run()
 
 	// Option 3: Use new helpler commands outside of regular DEB stuff.
-	OrPanic(sh.NewSession().SetDir(base).Command("dpkg-deb", "--build", product).Run())
+	OrPanic(sh.NewSession().SetDir(base).Command("dpkg-deb", "-Z", "xz", "--build", product, fullname).Run())
+
+	OrPanic(sh.NewSession().SetDir(base).Call("mv", product+".deb", fullname))
 
 	// Sign the DEB we built.
 	OrPanic(sh.NewSession().SetDir(base).Command(
-		"dpkg-sig", "--sign builder", "-k", "B751F6AC4FA6D98F", product+".deb").Run())
+		"dpkg-sig", "--sign", "builder", "-k", "B751F6AC4FA6D98F", fullname).Run())
 }
 
 func copyFile(src, dest string) error {
