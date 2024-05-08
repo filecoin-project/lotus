@@ -6,11 +6,10 @@ Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.0
 Homepage: github.com/filecoin-project/lotus
 Rules-Requires-Root: no
-
 Package: $PACKAGE
 Version: $VERSION
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: hwloc, mesa-opencl-icd
 Description: A Filecoin Storage Provider implementation.
  This Filecoin Storage Provider implementation is a fork of the Lotus project.
  It improves upon the previous by solving more complete problem sets including
