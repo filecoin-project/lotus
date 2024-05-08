@@ -75,7 +75,7 @@ func part2(base, product, extra string) {
 	OrPanic(err)
 	f = []byte(strings.ReplaceAll(string(f), "$PACKAGE", product))
 	f = []byte(strings.ReplaceAll(string(f), "$VERSION", version))
-	os.WriteFile(path.Join(dir, "DEBIAN", "control"), f, 0644)
+	OrPanic(os.WriteFile(path.Join(dir, "DEBIAN", "control"), f, 0644))
 	fullname := product + "-" + version + "_amd64.deb"
 
 	// Option 1: piece by piece. Maybe could work, but it is complex.
