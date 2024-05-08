@@ -10,7 +10,7 @@ case "$1" in
             # This is an initial installation
             systemctl enable curio.service
             if [ ! -f "/etc/curio.env" ]; then
-              echo "CURIO_LAYERS=gui,post\nCURIO_DB_ALL_FIELDS_ARE_OPTIONAL=true\nCURIO_DB_HOST=yugabyte\nCURIO_DB_USER=yugabyte\nCURIO_DB_PASSWORD=yugabyte\nCURIO_DB_PORT=5433\nCURIO_DB_NAME=yugabyte\n" >/etc/curio.env
+              echo "CURIO_LAYERS=gui,post\nCURIO_ALL_REMAINING_FIELDS_ARE_OPTIONAL=true\nCURIO_DB_HOST=yugabyte\nCURIO_DB_USER=yugabyte\nCURIO_DB_PASSWORD=yugabyte\nCURIO_DB_PORT=5433\nCURIO_DB_NAME=yugabyte\nCURIO_REPO_PATH=~/.curio" >/etc/curio.env
               echo "setup /etc/curio.env then run: systemctl start curio.service"
             fi
         else

@@ -17,4 +17,4 @@ Description: A Filecoin Storage Provider implementation.
  more robust and scalable solution.
  It needs to be run in conjunction with the Filecoin network daemon and requires
  setup of a Miner-ID and a Wallet-ID. See documentation on the website for more
- information.
+ information: curiostorage.org

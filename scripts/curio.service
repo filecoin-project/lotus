@@ -1,7 +1,6 @@
 [Unit]
 Description=Curio
 After=network.target
-# After=lotus-daemon.service  # Should not be on the same machine.
 
 [Service]
 ExecStart=/usr/local/bin/curio run
@@ -9,7 +8,7 @@ Environment=GOLOG_FILE="/var/log/curio/curio.log"
 Environment=GOLOG_LOG_FMT="json"
 LimitNOFILE=1000000
 Restart=always
-RestartSec=2
+RestartSec=10
 EnvironmentFile=/etc/curio.env
 
 [Install]
