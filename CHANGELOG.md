@@ -6,6 +6,31 @@
 
 ## Improvements
 
+### JSON-RPC 2.0 Specification Conformance
+
+The JSON-RPC 2.0 specification requires that a `"result"` property be present in the case of no error from an API call. This release ensures that all API calls that return a result have a `"result"` property in the response. This is a behaviour change over Lotus v1.26 and will impact any API call that only has a single error return value, where no error has occurred.
+
+For example, a successful `WalletSetDefault` in v1.26 would return:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+As of this change, in conformance with the JSON-RPC 2.0 specification it will return:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": null
+}
+```
+
+There is no change in the behaviour when a call returns an error, as the error object will still be present in the response.
+
 # v1.26.3 / 2024-04-22
 
 **This is a patch release that addresses high memory load concerns for the Lotus daemon in the coming network migration for network version 22, scheduled on epoch `3855360 - 2024-04-24 - 14:00:00Z`.**
