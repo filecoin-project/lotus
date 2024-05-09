@@ -77,6 +77,7 @@ type CurioConfig struct {
 	Ingest    CurioIngestConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
+	Alerting  CurioAlerting
 }
 
 type ApisConfig struct {
@@ -1117,4 +1118,19 @@ type FaultReporterConfig struct {
 	// ReportConsensusFault messages. It will pay for gas fees, and receive any
 	// rewards. This address should have adequate funds to cover gas fees.
 	ConsensusFaultReporterAddress string
+}
+
+type CurioAlerting struct {
+	// PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+	// routed to a PagerDuty.com service and processed.
+	// The default is sufficient for integration with the stock commercial PagerDuty.com company's service.
+	PagerDutyEventURL string
+
+	// PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
+	// identifier in the integration page for the service.
+	PageDutyIntegrationKey string
+
+	// MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+	// alerts will be triggered for the wallet
+	MinimumWalletBalance types.FIL
 }

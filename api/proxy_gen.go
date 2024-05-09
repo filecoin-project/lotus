@@ -721,6 +721,8 @@ type GatewayMethods struct {
 
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) ``
 
+	EthAddressToFilecoinAddress func(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) ``
+
 	EthBlockNumber func(p0 context.Context) (ethtypes.EthUint64, error) ``
 
 	EthCall func(p0 context.Context, p1 ethtypes.EthCall, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) ``
@@ -790,6 +792,8 @@ type GatewayMethods struct {
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) ``
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) ``
+
+	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) ``
 
 	GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
 
@@ -4608,6 +4612,17 @@ func (s *GatewayStub) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, er
 	return *new([]ethtypes.EthAddress), ErrNotSupported
 }
 
+func (s *GatewayStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
+	if s.Internal.EthAddressToFilecoinAddress == nil {
+		return *new(address.Address), ErrNotSupported
+	}
+	return s.Internal.EthAddressToFilecoinAddress(p0, p1)
+}
+
+func (s *GatewayStub) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
+	return *new(address.Address), ErrNotSupported
+}
+
 func (s *GatewayStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthBlockNumber == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -4991,6 +5006,17 @@ func (s *GatewayStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscr
 
 func (s *GatewayStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	if s.Internal.FilecoinAddressToEthAddress == nil {
+		return *new(ethtypes.EthAddress), ErrNotSupported
+	}
+	return s.Internal.FilecoinAddressToEthAddress(p0, p1)
+}
+
+func (s *GatewayStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	return *new(ethtypes.EthAddress), ErrNotSupported
 }
 
 func (s *GatewayStruct) GasEstimateGasPremium(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) {

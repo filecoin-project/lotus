@@ -207,7 +207,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}
 	}
 
-	if deps.Cfg == nil {
+	if deps.DB == nil {
 		deps.DB, err = MakeDB(cctx)
 		if err != nil {
 			return err

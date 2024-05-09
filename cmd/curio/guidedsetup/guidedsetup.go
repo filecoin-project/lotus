@@ -250,7 +250,7 @@ func complete(d *MigrationData) {
 
 func completeInit(d *MigrationData) {
 	stepCompleted(d, d.T("New Miner initialization complete."))
-	d.say(plain, "Try the web interface with %s for further guided improvements.", "--layers=gui")
+	d.say(plain, "Try the web interface with %s for further guided improvements.", code.Render("curio run --layers=gui"))
 }
 
 func configToDB(d *MigrationData) {

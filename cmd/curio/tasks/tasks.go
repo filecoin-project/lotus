@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
+	"github.com/filecoin-project/lotus/curiosrc/alertmanager"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/curiosrc/gc"
@@ -143,6 +144,9 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		storageEndpointGcTask := gc.NewStorageEndpointGC(si, stor, db)
 		activeTasks = append(activeTasks, storageEndpointGcTask)
 	}
+
+	amTask := alertmanager.NewAlertTask(full, db, cfg.Alerting)
+	activeTasks = append(activeTasks, amTask)
 
 	if needProofParams {
 		for spt := range dependencies.ProofTypes {

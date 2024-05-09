@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/filecoin-project/lotus/lib/filler"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -34,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/filler"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )

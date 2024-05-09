@@ -370,5 +370,10 @@ func DefaultCurioConfig() *CurioConfig {
 			MaxQueuePoRep:      0, // default don't use this limit
 			MaxDealWaitTime:    Duration(1 * time.Hour),
 		},
+		Alerting: CurioAlerting{
+			PagerDutyEventURL:      "https://events.pagerduty.com/v2/enqueue",
+			PageDutyIntegrationKey: "",
+			MinimumWalletBalance:   types.MustParseFIL("5"),
+		},
 	}
 }
