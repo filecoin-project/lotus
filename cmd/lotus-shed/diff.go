@@ -253,9 +253,8 @@ var diffStateTrees = &cli.Command{
 			if ok {
 				diff(stateA, stateB)
 				continue
-			} else {
-				fmt.Printf("  actor does not exist in second state-tree (%s)\n", rootB)
 			}
+			fmt.Printf("  actor does not exist in second state-tree (%s)\n", rootB)
 			fmt.Println()
 			delete(changedB, addr)
 		}
@@ -265,9 +264,8 @@ var diffStateTrees = &cli.Command{
 			if ok {
 				diff(stateA, stateB)
 				continue
-			} else {
-				fmt.Printf("  actor does not exist in first state-tree (%s)\n", rootA)
 			}
+			fmt.Printf("  actor does not exist in first state-tree (%s)\n", rootA)
 			fmt.Println()
 		}
 		return nil

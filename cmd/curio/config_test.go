@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 )
 
-var baseText string = `
+var baseText = `
 [Subsystems]
   # EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
   # with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple

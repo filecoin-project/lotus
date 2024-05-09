@@ -166,5 +166,5 @@ const BootstrapPeerThreshold = 4
 // As per https://github.com/ethereum-lists/chains
 const Eip155ChainId = 314
 
-// we skip checks on message validity in this block to sidestep the zero-bls signature
+// WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")

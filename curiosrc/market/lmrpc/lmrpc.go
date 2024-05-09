@@ -390,9 +390,8 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 				}
 				if !taskResult {
 					return api.SectorOffset{}, xerrors.Errorf("park-piece task failed: %s", taskError)
-				} else {
-					return api.SectorOffset{}, xerrors.Errorf("park task succeeded but piece is not marked as complete")
 				}
+				return api.SectorOffset{}, xerrors.Errorf("park task succeeded but piece is not marked as complete")
 			}
 		}
 

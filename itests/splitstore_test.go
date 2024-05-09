@@ -413,9 +413,8 @@ func (g *Garbager) Exists(ctx context.Context, c cid.Cid) bool {
 	} else if err != nil {
 		g.t.Fatalf("ChainReadObj failure on existence check: %s", err)
 		return false // unreachable
-	} else {
-		return true
 	}
+	return true
 }
 
 func (g *Garbager) newPeerID(ctx context.Context) abi.ChainEpoch {
