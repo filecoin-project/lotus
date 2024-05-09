@@ -121,8 +121,11 @@ create table sectors_sdr_initial_pieces (
     -- direct_end_epoch bigint,
     -- direct_piece_activation_manifest jsonb,
 
-    -- created_at added in 20240430-init-piece-createdat.sql
+    -- created_at added in 20240508-open-deal-sectors.sql
     -- created_at timestamp,
+
+    -- open_sector_pieces table is a copy of this
+    -- all alters should happen on both tables except constraints
 
     -- foreign key
     foreign key (sp_id, sector_number) references sectors_sdr_pipeline (sp_id, sector_number) on delete cascade,

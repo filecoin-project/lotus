@@ -112,9 +112,9 @@ func (p *PoRepTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 	proof, err := p.sc.PoRepSnark(ctx, sr, sealed, unsealed, sectorParams.TicketValue, abi.InteractiveSealRandomness(rand))
 	if err != nil {
-		end, err := p.recoverErrors(ctx, sectorParams.SpID, sectorParams.SectorNumber, err)
-		if err != nil {
-			return false, xerrors.Errorf("recover errors: %w", err)
+		end, rerr := p.recoverErrors(ctx, sectorParams.SpID, sectorParams.SectorNumber, err)
+		if rerr != nil {
+			return false, xerrors.Errorf("recover errors: %w", rerr)
 		}
 		if end {
 			// done, but the error handling has stored a different than success state
@@ -190,31 +190,37 @@ func (p *PoRepTask) recoverErrors(ctx context.Context, spid, snum int64, cerr er
 
 	switch {
 	case strings.Contains(cerr.Error(), errstrInvalidCommD):
-		fallthrough
+		log.Warnf("PoRep error recovery: PoRep failed with %s for sector %d of miner %d", errstrInvalidCommD, snum, spid)
+		return p.resetSector(ctx, spid, snum)
 	case strings.Contains(cerr.Error(), errstrInvalidCommR):
 		// todo: it might be more optimal to just retry the Trees compute first.
 		//  Invalid CommD/R likely indicates a problem with the data computed in that step
 		//  For now for simplicity just retry the whole thing
-		fallthrough
+		log.Warnf("PoRep error recovery: PoRep failed with %s for sector %d of miner %d", errstrInvalidCommR, snum, spid)
+		return p.resetSector(ctx, spid, snum)
 	case strings.Contains(cerr.Error(), errstrInvalidEncoding):
-		n, err := p.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_porep = FALSE, after_sdr = FALSE, after_tree_d = FALSE,
-		    after_tree_r = FALSE, after_tree_c = FALSE
-		WHERE sp_id = $1 AND sector_number = $2`,
-			spid, snum)
-		if err != nil {
-			return false, xerrors.Errorf("store sdr success: updating pipeline: %w", err)
-		}
-		if n != 1 {
-			return false, xerrors.Errorf("store sdr success: updated %d rows", n)
-		}
-
-		return true, nil
+		log.Warnf("PoRep error recovery: PoRep failed with %s for sector %d of miner %d", errstrInvalidEncoding, snum, spid)
+		return p.resetSector(ctx, spid, snum)
 
 	default:
 		// if end is false the original error will be returned by the caller
 		return false, nil
 	}
+}
+
+func (p *PoRepTask) resetSector(ctx context.Context, spid, snum int64) (bool, error) {
+	n, err := p.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
+		SET after_porep = FALSE, after_sdr = FALSE, after_tree_d = FALSE,
+		    after_tree_r = FALSE, after_tree_c = FALSE
+		WHERE sp_id = $1 AND sector_number = $2`,
+		spid, snum)
+	if err != nil {
+		return false, xerrors.Errorf("store sdr success: updating pipeline: %w", err)
+	}
+	if n != 1 {
+		return false, xerrors.Errorf("store sdr success: updated %d rows", n)
+	}
+	return true, nil
 }
 
 var _ harmonytask.TaskInterface = &PoRepTask{}

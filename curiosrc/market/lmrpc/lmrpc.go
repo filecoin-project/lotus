@@ -500,7 +500,7 @@ func maybeApplyBackpressure(tx *harmonydb.Tx, cfg config.CurioIngestConfig, ssiz
     (SELECT buffered_sdr_count FROM BufferedSDR) AS total_buffered_sdr,
     (SELECT buffered_trees_count FROM BufferedTrees) AS buffered_trees_count,
     (SELECT buffered_porep_count FROM BufferedPoRep) AS buffered_porep_count,
-    (SELECT wait_deal_sectors_count FROM WaitDealSectors) AS wait_deal_sectors_count,
+    (SELECT wait_deal_sectors_count FROM WaitDealSectors) AS wait_deal_sectors_count
 `).Scan(&bufferedSDR, &bufferedTrees, &bufferedPoRep, &waitDealSectors)
 	if err != nil {
 		return false, xerrors.Errorf("counting buffered sectors: %w", err)

@@ -133,7 +133,14 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		}
 
 		err = s.db.Select(ctx, &pieces, `
-		SELECT piece_index, piece_cid, piece_size, f05_deal_id, f05_deal_end_epoch, f05_deal_start_epoch, direct_start_epoch, direct_end_epoch
+               SELECT piece_index,
+                      piece_cid,
+                      piece_size,
+                      f05_deal_id,
+                      COALESCE(f05_deal_end_epoch, 0) AS  f05_deal_end_epoch,
+                      COALESCE(f05_deal_start_epoch, 0) AS f05_deal_start_epoch,
+                      COALESCE(direct_start_epoch, 0) AS direct_start_epoch,
+                      COALESCE(direct_end_epoch, 0) AS direct_end_epoch
 		FROM sectors_sdr_initial_pieces
 		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index ASC`, sectorParams.SpID, sectorParams.SectorNumber)
 		if err != nil {

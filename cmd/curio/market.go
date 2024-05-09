@@ -129,7 +129,7 @@ var marketSealCmd = &cli.Command{
 		}
 
 		ainfo := cliutil.ParseApiInfo(info)
-		addr, err := ainfo.DialArgs("0")
+		addr, err := ainfo.DialArgs("v0")
 		if err != nil {
 			return xerrors.Errorf("could not get DialArgs: %w", err)
 		}

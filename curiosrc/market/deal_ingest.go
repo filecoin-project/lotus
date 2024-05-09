@@ -66,8 +66,8 @@ type PieceIngester struct {
 type pieceDetails struct {
 	Sector    abi.SectorNumber    `db:"sector_number"`
 	Size      abi.PaddedPieceSize `db:"piece_size"`
-	f05Epoch  abi.ChainEpoch      `db:"f05_deal_start_epoch"`
-	ddoEpoch  abi.ChainEpoch      `db:"direct_start_epoch"`
+	F05Epoch  abi.ChainEpoch      `db:"f05_deal_start_epoch"`
+	DdoEpoch  abi.ChainEpoch      `db:"direct_start_epoch"`
 	Index     uint64              `db:"piece_index"`
 	CreatedAt *time.Time          `db:"created_at"`
 }
@@ -84,6 +84,7 @@ func NewPieceIngester(ctx context.Context, db *harmonydb.DB, api PieceIngesterAp
 	}
 
 	pi := &PieceIngester{
+		ctx:                 ctx,
 		db:                  db,
 		api:                 api,
 		sealRightNow:        sealRightNow,
@@ -128,6 +129,26 @@ func (p *PieceIngester) Seal() error {
 		return xerrors.Errorf("getting seal proof type: %w", err)
 	}
 
+	shouldSeal := func(sector *openSector) bool {
+		// Start sealing a sector if
+		// 1. If sector is full
+		// 2. We have been waiting for MaxWaitDuration
+		// 3. StartEpoch is less than 8 hours // todo: make this config?
+		if sector.currentSize == abi.PaddedPieceSize(p.sectorSize) {
+			log.Debugf("start sealing sector %d of miner %d: %s", sector.number, p.miner.String(), "sector full")
+			return true
+		}
+		if time.Since(*sector.openedAt) > p.maxWaitTime {
+			log.Debugf("start sealing sector %d of miner %d: %s", sector.number, p.miner.String(), "MaxWaitTime reached")
+			return true
+		}
+		if sector.earliestEpoch < head.Height()+abi.ChainEpoch(960) {
+			log.Debugf("start sealing sector %d of miner %d: %s", sector.number, p.miner.String(), "earliest start epoch")
+			return true
+		}
+		return false
+	}
+
 	comm, err := p.db.BeginTransaction(p.ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 
 		openSectors, err := p.getOpenSectors(tx)
@@ -137,23 +158,24 @@ func (p *PieceIngester) Seal() error {
 
 		for _, sector := range openSectors {
 			sector := sector
-			// Start sealing a sector if
-			// 1. If sector is full
-			// 2. We have been waiting for MaxWaitDuration
-			// 3. StartEpoch is less than 8 hours // todo: make this config?
-			if sector.currentSize == abi.PaddedPieceSize(p.sectorSize) || time.Since(*sector.openedAt) >= p.maxWaitTime || sector.earliestEpoch > head.Height()+abi.ChainEpoch(960) {
+			if shouldSeal(sector) {
 				// Start sealing the sector
-				cn, err := p.db.Exec(p.ctx, `
-					INSERT INTO sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) VALUES ($1, $2, $3);`, p.mid, sector.number, spt)
+				cn, err := tx.Exec(`INSERT INTO sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) VALUES ($1, $2, $3);`, p.mid, sector.number, spt)
 
 				if err != nil {
 					return false, xerrors.Errorf("adding sector to pipeline: %w", err)
 				}
 
 				if cn != 1 {
-					return false, xerrors.Errorf("incorrect number of rows returned")
+					return false, xerrors.Errorf("adding sector to pipeline: incorrect number of rows returned")
+				}
+
+				_, err = tx.Exec("SELECT transfer_and_delete_open_piece($1, $2)", p.mid, sector.number)
+				if err != nil {
+					return false, xerrors.Errorf("adding sector to pipeline: %w", err)
 				}
 			}
+
 		}
 		return true, nil
 	}, harmonydb.OptionRetry())
@@ -172,10 +194,6 @@ func (p *PieceIngester) Seal() error {
 func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece lpiece.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
 	if maddr != p.miner {
 		return api.SectorOffset{}, xerrors.Errorf("miner address doesn't match")
-	}
-
-	if piece.DealProposal.PieceSize != abi.PaddedPieceSize(p.sectorSize) {
-		return api.SectorOffset{}, xerrors.Errorf("only full sector pieces supported for now")
 	}
 
 	// check raw size
@@ -232,7 +250,7 @@ func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address
 		} else {
 			_, err = tx.Exec(`SELECT insert_sector_ddo_piece($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 				p.mid, n, 0,
-				piece.DealProposal.PieceCID, piece.DealProposal.PieceSize,
+				piece.PieceActivationManifest.CID, piece.PieceActivationManifest.Size,
 				source.String(), dataHdrJson, rawSize, !piece.KeepUnsealed,
 				piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch, propJson)
 			if err != nil {
@@ -312,7 +330,7 @@ func (p *PieceIngester) allocateToExisting(ctx context.Context, piece lpiece.Pie
 					for {
 						cn, err := tx.Exec(`SELECT insert_sector_ddo_piece($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 							p.mid, sec.number, sec.index+1,
-							piece.DealProposal.PieceCID, piece.DealProposal.PieceSize,
+							piece.PieceActivationManifest.CID, piece.PieceActivationManifest.Size,
 							source.String(), dataHdrJson, rawSize, !piece.KeepUnsealed,
 							piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch, propJson)
 
@@ -364,23 +382,18 @@ func (p *PieceIngester) SectorStartSealing(ctx context.Context, sector abi.Secto
 		var pieces []pieceDetails
 		err = tx.Select(&pieces, `
 					SELECT
-					    ssip.sector_number,
-						ssip.piece_size,
-						ssip.piece_index,
-						ssip.f05_deal_start_epoch,
-						ssip.direct_start_epoch,
-						ssip.created_at
+					    sector_number,
+						piece_size,
+						piece_index,
+						COALESCE(f05_deal_start_epoch, 0) AS f05_deal_start_epoch,
+						COALESCE(direct_start_epoch, 0) AS direct_start_epoch,
+						created_at
 					FROM
-						sectors_sdr_initial_pieces ssip
-					JOIN
-						(SELECT sector_number
-						 FROM sectors_sdr_initial_pieces sip
-						 LEFT JOIN sectors_sdr_pipeline sp ON sip.sp_id = sp.sp_id AND sip.sector_number = sp.sector_number
-						 WHERE sp.sector_number IS NULL AND sip.sp_id = $1) as filtered ON ssip.sector_number = filtered.sector_number
+						open_sector_pieces
 					WHERE
-						ssip.sp_id = $1 AND ssip.sector_number = $2
+						sp_id = $1 AND sector_number = $2
 					ORDER BY
-						ssip.piece_index DESC;`, p.mid, sector)
+						piece_index DESC;`, p.mid, sector)
 		if err != nil {
 			return false, xerrors.Errorf("getting open sectors from DB")
 		}
@@ -389,8 +402,7 @@ func (p *PieceIngester) SectorStartSealing(ctx context.Context, sector abi.Secto
 			return false, xerrors.Errorf("sector %d is not waiting to be sealed", sector)
 		}
 
-		cn, err := p.db.Exec(p.ctx, `
-					INSERT INTO sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) VALUES ($1, $2, $3);`, p.mid, sector, spt)
+		cn, err := tx.Exec(`INSERT INTO sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) VALUES ($1, $2, $3);`, p.mid, sector, spt)
 
 		if err != nil {
 			return false, xerrors.Errorf("adding sector to pipeline: %w", err)
@@ -398,6 +410,11 @@ func (p *PieceIngester) SectorStartSealing(ctx context.Context, sector abi.Secto
 
 		if cn != 1 {
 			return false, xerrors.Errorf("incorrect number of rows returned")
+		}
+
+		_, err = tx.Exec("SELECT transfer_and_delete_open_piece($1, $2)", p.mid, sector)
+		if err != nil {
+			return false, xerrors.Errorf("adding sector to pipeline: %w", err)
 		}
 
 		return true, nil
@@ -420,33 +437,28 @@ func (p *PieceIngester) getOpenSectors(tx *harmonydb.Tx) ([]*openSector, error) 
 	var pieces []pieceDetails
 	err := tx.Select(&pieces, `
 					SELECT
-					    ssip.sector_number,
-						ssip.piece_size,
-						ssip.piece_index,
-						ssip.f05_deal_start_epoch,
-						ssip.direct_start_epoch,
-						ssip.created_at
+					    sector_number,
+						piece_size,
+						piece_index,
+						COALESCE(f05_deal_start_epoch, 0) AS f05_deal_start_epoch,
+						COALESCE(direct_start_epoch, 0) AS direct_start_epoch,
+						created_at
 					FROM
-						sectors_sdr_initial_pieces ssip
-					JOIN
-						(SELECT sector_number
-						 FROM sectors_sdr_initial_pieces sip
-						 LEFT JOIN sectors_sdr_pipeline sp ON sip.sp_id = sp.sp_id AND sip.sector_number = sp.sector_number
-						 WHERE sp.sector_number IS NULL AND sip.sp_id = $1) as filtered ON ssip.sector_number = filtered.sector_number
+						open_sector_pieces
 					WHERE
-						ssip.sp_id = $1
+						sp_id = $1
 					ORDER BY
-						ssip.piece_index DESC;`, p.mid)
+						piece_index DESC;`, p.mid)
 	if err != nil {
 		return nil, xerrors.Errorf("getting open sectors from DB")
 	}
 
 	getEpoch := func(piece pieceDetails, cur abi.ChainEpoch) abi.ChainEpoch {
 		var ret abi.ChainEpoch
-		if piece.ddoEpoch > 0 {
-			ret = piece.ddoEpoch
+		if piece.DdoEpoch > 0 {
+			ret = piece.DdoEpoch
 		} else {
-			ret = piece.f05Epoch
+			ret = piece.F05Epoch
 		}
 		if cur > 0 && cur < ret {
 			return cur
@@ -474,6 +486,7 @@ func (p *PieceIngester) getOpenSectors(tx *harmonydb.Tx) ([]*openSector, error) 
 				openedAt:      pi.CreatedAt,
 			}
 			sector = sectorMap[pi.Sector]
+			continue
 		}
 		sector.currentSize += pi.Size
 		sector.earliestEpoch = getEpoch(pi, sector.earliestEpoch)

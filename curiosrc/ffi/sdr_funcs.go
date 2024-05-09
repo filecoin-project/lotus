@@ -648,7 +648,7 @@ func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, unse
 	}
 
 	if treeDUnsealed != unsealed {
-		return xerrors.Errorf("tree-d cid mismatch with supplied unsealed cid")
+		return xerrors.Errorf("tree-d cid %s mismatch with supplied unsealed cid %s", treeDUnsealed, unsealed)
 	}
 
 	if err := sb.ensureOneCopy(ctx, sector.ID, pathIDs, storiface.FTCache); err != nil {

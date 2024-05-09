@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -164,20 +165,35 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}()
 
 	if len(pieces) > 0 {
-		pieceInfos := make([]abi.PieceInfo, len(pieces))
-		pieceReaders := make([]io.Reader, len(pieces))
+		var pieceInfos []abi.PieceInfo
+		var pieceReaders []io.Reader
+		var offset abi.UnpaddedPieceSize
 
-		for i, p := range pieces {
+		for _, p := range pieces {
 			// make pieceInfo
 			c, err := cid.Parse(p.PieceCID)
 			if err != nil {
 				return false, xerrors.Errorf("parsing piece cid: %w", err)
 			}
 
-			pieceInfos[i] = abi.PieceInfo{
+			pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), abi.PaddedPieceSize(p.PieceSize))
+			offset += padLength.Unpadded()
+
+			for _, pad := range pads {
+				padCid := zerocomm.ZeroPieceCommitment(pad.Unpadded())
+				pieceInfos = append(pieceInfos, abi.PieceInfo{
+					Size:     pad,
+					PieceCID: padCid,
+				})
+				pieceReaders = append(pieceReaders, nullreader.NewNullReader(pad.Unpadded()))
+			}
+
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(p.PieceSize),
 				PieceCID: c,
-			}
+			})
+
+			offset += abi.PaddedPieceSize(p.PieceSize).Unpadded()
 
 			// make pieceReader
 			if p.DataUrl != nil {
@@ -216,17 +232,29 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 					closers = append(closers, pr)
 
-					pieceReaders[i], _ = padreader.New(pr, uint64(*p.DataRawSize))
+					reader, _ := padreader.New(pr, uint64(*p.DataRawSize))
+					pieceReaders = append(pieceReaders, reader)
 				} else {
-					pieceReaders[i], _ = padreader.New(&UrlPieceReader{
+					reader, _ := padreader.New(&UrlPieceReader{
 						Url:     dataUrl,
 						RawSize: *p.DataRawSize,
 					}, uint64(*p.DataRawSize))
+					pieceReaders = append(pieceReaders, reader)
 				}
 
 			} else { // padding piece (w/o fr32 padding, added in TreeD)
-				pieceReaders[i] = nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded())
+				pieceReaders = append(pieceReaders, nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded()))
 			}
+		}
+
+		if offset.Padded() < abi.PaddedPieceSize(ssize) {
+			fillerSize := abi.PaddedPieceSize(ssize) - offset.Padded()
+			filler := nullreader.NewNullReader(fillerSize.Unpadded())
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
+				Size:     fillerSize,
+				PieceCID: zerocomm.ZeroPieceCommitment(fillerSize.Unpadded()),
+			})
+			pieceReaders = append(pieceReaders, filler)
 		}
 
 		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)
