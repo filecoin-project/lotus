@@ -685,7 +685,7 @@ var chainPledgeCmd = &cli.Command{
 	},
 	ArgsUsage: "[stateroot epoch]",
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR")
+		_ = logging.SetLogLevel("badger", "ERROR")
 		ctx := context.TODO()
 
 		if !cctx.Args().Present() {
@@ -916,13 +916,13 @@ var fillBalancesCmd = &cli.Command{
 		}
 
 		w := csv.NewWriter(os.Stdout)
-		w.Write(append([]string{"Wallet Address"}, datestrs...)) // nolint:errcheck
+		_ = w.Write(append([]string{"Wallet Address"}, datestrs...))
 		for i := 0; i < len(addrs); i++ {
 			row := []string{addrs[i].String()}
 			for _, b := range balances[i] {
 				row = append(row, types.FIL(b).String())
 			}
-			w.Write(row) // nolint:errcheck
+			_ = w.Write(row)
 		}
 		w.Flush()
 		return nil

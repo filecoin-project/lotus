@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("stores", "DEBUG")
+	_ = logging.SetLogLevel("stores", "DEBUG")
 }
 
 func newTestStorage() storiface.StorageInfo {

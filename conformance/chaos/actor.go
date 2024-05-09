@@ -274,9 +274,8 @@ type AbortWithArgs struct {
 func (a Actor) AbortWith(rt runtime2.Runtime, args *AbortWithArgs) *abi.EmptyValue {
 	if args.Uncontrolled { // uncontrolled abort: directly panic
 		panic(args.Message)
-	} else {
-		rt.Abortf(args.Code, args.Message)
 	}
+	rt.Abortf(args.Code, args.Message)
 	return nil
 }
 

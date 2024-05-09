@@ -85,7 +85,7 @@ type syncTestUtil struct {
 }
 
 func prepSyncTest(t testing.TB, h int) *syncTestUtil {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	g, err := gen.NewGenerator()
 	if err != nil {
@@ -115,7 +115,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 }
 
 func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syncTestUtil {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	sched := stmgr.UpgradeSchedule{{
 		// prepare for upgrade.

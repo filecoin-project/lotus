@@ -129,9 +129,9 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 
 	// Check that the data length is correct
 	//stm: @MARKET_DAGSTORE_GET_UNPADDED_CAR_SIZE_001
-	len, err := api.GetUnpaddedCARSize(ctx, cid1)
+	l, err := api.GetUnpaddedCARSize(ctx, cid1)
 	require.NoError(t, err)
-	require.EqualValues(t, 10, len)
+	require.EqualValues(t, 10, l)
 }
 
 func TestThrottle(t *testing.T) {

@@ -202,7 +202,7 @@ func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr ad
 				Proofs:            postOut,
 				ChallengedSectors: sinfos,
 				Prover:            abi.ActorID(mid),
-			}); err != nil {
+			}); err != nil { // revive:disable-line:empty-block
 				/*log.Errorw("window post verification failed", "post", postOut, "error", err)
 				time.Sleep(5 * time.Second)
 				continue todo retry loop */
@@ -337,7 +337,7 @@ func (t *WdPostTask) sectorsForProof(ctx context.Context, maddr address.Address,
 }
 
 func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
-	var retErr error = nil
+	var retErr error
 	randomness[31] &= 0x3f
 
 	out := make([]proof.PoStProof, 0)

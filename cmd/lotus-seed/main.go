@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("lotus-seed")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	local := []*cli.Command{
 		genesisCmd,
