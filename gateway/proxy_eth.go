@@ -90,7 +90,7 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 			return err
 		}
 
-		var num ethtypes.EthUint64 = 0
+		var num ethtypes.EthUint64
 		if blkParam.PredefinedBlock != nil {
 			if *blkParam.PredefinedBlock == "earliest" {
 				return fmt.Errorf("block param \"earliest\" is not supported")

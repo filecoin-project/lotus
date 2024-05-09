@@ -709,9 +709,9 @@ func (n *Ensemble) Start() *Ensemble {
 
 		var mineBlock = make(chan lotusminer.MineReq)
 
-		copy := *m.FullNode
-		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
-		m.FullNode = &copy
+		minerCopy := *m.FullNode
+		minerCopy.FullNode = modules.MakeUuidWrapper(minerCopy.FullNode)
+		m.FullNode = &minerCopy
 
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),

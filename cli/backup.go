@@ -24,7 +24,7 @@ type BackupApiFn func(ctx *cli.Context) (BackupAPI, jsonrpc.ClientCloser, error)
 
 func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Command {
 	var offlineBackup = func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+		_ = logging.SetLogLevel("badger", "ERROR")
 
 		repoPath := cctx.String(repoFlag)
 		r, err := repo.NewFS(repoPath)

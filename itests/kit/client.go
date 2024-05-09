@@ -141,7 +141,7 @@ func createRandomFile(rseed, size int) ([]byte, string, error) {
 		size = 1600
 	}
 	data := make([]byte, size)
-	rand.New(rand.NewSource(int64(rseed))).Read(data)
+	_, _ = rand.New(rand.NewSource(int64(rseed))).Read(data)
 
 	dir, err := os.MkdirTemp(os.TempDir(), "test-make-deal-")
 	if err != nil {

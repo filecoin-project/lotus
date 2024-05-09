@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var RecoveringSectorLimit uint64 = 0
+var RecoveringSectorLimit uint64
 
 func init() {
 	if rcl := os.Getenv("LOTUS_RECOVERING_SECTOR_LIMIT"); rcl != "" {

@@ -56,7 +56,7 @@ func (ps *poStScheduler) MaybeAddWorker(wid storiface.WorkerID, tasks map[sealta
 func (ps *poStScheduler) delWorker(wid storiface.WorkerID) *WorkerHandle {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
-	var w *WorkerHandle = nil
+	var w *WorkerHandle
 	if wh, ok := ps.workers[wid]; ok {
 		w = wh
 		delete(ps.workers, wid)

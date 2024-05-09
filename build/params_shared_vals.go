@@ -124,6 +124,7 @@ const MinimumBaseFee = 100
 const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
 
+// revive:disable-next-line:exported
 // Actor consts
 // TODO: pieceSize unused from actors
 var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
