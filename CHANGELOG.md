@@ -6,6 +6,12 @@
 
 ## Improvements
 
+# v1.26.4 / 2024-05-09
+
+This is a patch relases that fixes some bugs and issues that was missed in previous release version. 
+
+The `ListClaimsCmd` has been refined to correctly filter out expired claims, the `SectorOnChainInfo` in `lotus/chain/actors/builtin/miner` pointing to v13. As well as smaller updates to error messages and parts missed in the release engineering process.
+
 # v1.26.3 / 2024-04-22
 
 **This is a patch release that addresses high memory load concerns for the Lotus daemon in the coming network migration for network version 22, scheduled on epoch `3855360 - 2024-04-24 - 14:00:00Z`.**

@@ -115,7 +115,7 @@ require (
 	github.com/libp2p/go-libp2p-consensus v0.0.1
 	github.com/libp2p/go-libp2p-gorpc v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.25.2
-	github.com/libp2p/go-libp2p-pubsub v0.10.0
+	github.com/libp2p/go-libp2p-pubsub v0.10.1
 	github.com/libp2p/go-libp2p-raft v0.4.0
 	github.com/libp2p/go-libp2p-record v0.2.0
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3
