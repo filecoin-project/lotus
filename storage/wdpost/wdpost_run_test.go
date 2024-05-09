@@ -16,6 +16,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -73,13 +74,13 @@ func (m *mockStorageMinerAPI) StateMinerPartitions(ctx context.Context, a addres
 	return m.partitions, nil
 }
 
-func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, snos *bitfield.BitField, key types.TipSetKey) ([]*minertypes.SectorOnChainInfo, error) {
-	var sis []*minertypes.SectorOnChainInfo
+func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, snos *bitfield.BitField, key types.TipSetKey) ([]*minertypes13.SectorOnChainInfo, error) {
+	var sis []*minertypes13.SectorOnChainInfo
 	if snos == nil {
 		panic("unsupported")
 	}
 	_ = snos.ForEach(func(i uint64) error {
-		sis = append(sis, &minertypes.SectorOnChainInfo{
+		sis = append(sis, &minertypes13.SectorOnChainInfo{
 			SectorNumber: abi.SectorNumber(i),
 		})
 		return nil

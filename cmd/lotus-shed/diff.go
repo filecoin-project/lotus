@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-hamt-ipld/v3"
 	"github.com/filecoin-project/go-state-types/abi"
+	miner13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -149,7 +150,7 @@ var diffMinerStates = &cli.Command{
 						fmt.Println("sector snapshots have different lengts!")
 					}
 
-					var infoA miner9.SectorOnChainInfo
+					var infoA miner13.SectorOnChainInfo
 					err = sectorsSnapshotA.ForEach(&infoA, func(i int64) error {
 						infoB, ok, err := sectorsSnapshotB.Get(abi.SectorNumber(i))
 						if err != nil {

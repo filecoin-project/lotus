@@ -153,7 +153,7 @@ type Partition interface {
 	UnprovenSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = minertypes.SectorOnChainInfo
+type SectorOnChainInfo = minertypes13.SectorOnChainInfo
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof, configWantSynthetic bool) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -256,6 +256,7 @@ type ProveCommitSectors3Params = minertypes13.ProveCommitSectors3Params
 type SectorActivationManifest = minertypes13.SectorActivationManifest
 type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
 type SectorUpdateManifest = minertypes13.SectorUpdateManifest
+type SectorOnChainInfoFlags = minertypes13.SectorOnChainInfoFlags
 
 var QAPowerMax = minertypes.QAPowerMax
 

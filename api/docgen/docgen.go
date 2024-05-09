@@ -146,6 +146,7 @@ func init() {
 	allocationId := verifreg.AllocationId(0)
 	addExample(allocationId)
 	addExample(&allocationId)
+	addExample(miner.SectorOnChainInfoFlags(0))
 	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
 	claimId := verifreg.ClaimId(0)
 	addExample(claimId)
