@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -163,8 +164,8 @@ func traceErrMsg(et *types.ExecutionTrace) string {
 }
 
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
-func buildTraces(env *environment, addr []int, et *types.ExecutionTrace) error {
-	trace, recurseInto, err := buildTrace(env, addr, et)
+func buildTraces(env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*cid.Cid) error {
+	trace, recurseInto, err := buildTrace(env, addr, et, deployedCode)
 	if err != nil {
 		return xerrors.Errorf("at trace %v: %w", addr, err)
 	}
@@ -188,7 +189,7 @@ func buildTraces(env *environment, addr []int, et *types.ExecutionTrace) error {
 	// end up repeatedly mutating previous paths.
 	addr = addr[:len(addr):len(addr)]
 	for i := range recurseInto.Subcalls {
-		err := buildTraces(subEnv, append(addr, subEnv.subtraceCount), &recurseInto.Subcalls[i])
+		err := buildTraces(subEnv, append(addr, subEnv.subtraceCount), &recurseInto.Subcalls[i], deployedCode)
 		if err != nil {
 			return err
 		}
@@ -202,7 +203,7 @@ func buildTraces(env *environment, addr []int, et *types.ExecutionTrace) error {
 // buildTrace processes the passed execution trace and updates the environment, if necessary.
 //
 // On success, it returns a trace to add (or nil to skip) and the trace recurse into (or nil to skip).
-func buildTrace(env *environment, addr []int, et *types.ExecutionTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+func buildTrace(env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*cid.Cid) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	// This function first assumes that the call is a "native" call, then handles all the "not
 	// native" cases. If we get any unexpected results in any of these special cases, we just
 	// keep the "native" interpretation and move on.
@@ -256,7 +257,7 @@ func buildTrace(env *environment, addr []int, et *types.ExecutionTrace) (*ethtyp
 	case builtin.EthereumAddressManagerActorAddr:
 		switch et.Msg.Method {
 		case builtin.MethodsEAM.Create, builtin.MethodsEAM.Create2, builtin.MethodsEAM.CreateExternal:
-			return traceEthCreate(env, addr, et)
+			return traceEthCreate(env, addr, et, deployedCode)
 		}
 	}
 
@@ -421,39 +422,39 @@ var _ *eam12.Return = (*eam12.Return)((*eam12.CreateExternalReturn)(nil))
 // Decode the parameters and return value of an EVM smart contract creation through the EAM. This
 // should only be called with an ExecutionTrace for a Create, Create2, or CreateExternal method
 // invocation on the EAM.
-func decodeCreateViaEAM(et *types.ExecutionTrace) (initcode []byte, addr *ethtypes.EthAddress, err error) {
+func decodeCreateViaEAM(et *types.ExecutionTrace) (initcode []byte, addr *ethtypes.EthAddress, id uint64, err error) {
 	switch et.Msg.Method {
 	case builtin.MethodsEAM.Create:
 		params, err := decodeParams[eam12.CreateParams](&et.Msg)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, 0, err
 		}
 		initcode = params.Initcode
 	case builtin.MethodsEAM.Create2:
 		params, err := decodeParams[eam12.Create2Params](&et.Msg)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, 0, err
 		}
 		initcode = params.Initcode
 	case builtin.MethodsEAM.CreateExternal:
 		input, err := decodePayload(et.Msg.Params, et.Msg.ParamsCodec)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, 0, err
 		}
 		initcode = input
 	default:
-		return nil, nil, xerrors.Errorf("unexpected CREATE method %d", et.Msg.Method)
+		return nil, nil, 0, xerrors.Errorf("unexpected CREATE method %d", et.Msg.Method)
 	}
 	ret, err := decodeReturn[eam12.CreateReturn](&et.MsgRct)
 	if err != nil {
-		return nil, (*ethtypes.EthAddress)(&ret.EthAddress), err
+		return nil, (*ethtypes.EthAddress)(&ret.EthAddress), 0, err
 	}
-	return initcode, (*ethtypes.EthAddress)(&ret.EthAddress), nil
+	return initcode, (*ethtypes.EthAddress)(&ret.EthAddress), ret.ActorID, nil
 }
 
 // Build an EthTrace for an EVM "create" operation. This should only be called with an
 // ExecutionTrace for a Create, Create2, or CreateExternal method invocation on the EAM.
-func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*cid.Cid) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	// Same as the Init actor case above, see the comment there.
 	if et.Msg.ReadOnly {
 		return nil, nil, nil
@@ -484,7 +485,7 @@ func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace) (*et
 	}
 
 	// Decode inputs & determine create type.
-	initcode, createdAddr, err := decodeCreateViaEAM(et)
+	initcode, createdAddr, id, err := decodeCreateViaEAM(et)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("EAM called with invalid params or returned an invalid result, but it still tried to construct the contract: %w", err)
 	}
@@ -498,6 +499,13 @@ func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace) (*et
 		// So we don't try and include a sentinel "impossible bytecode"
 		// value (the value specified by EIP-3541).
 		output = []byte{0xFE}
+		if deployedCode != nil {
+			var getBytecodeReturn evm12.GetBytecodeReturn
+			if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(et.MsgRct.Return)); err == nil && getBytecodeReturn.Cid != nil {
+				deployedCode[abi.ActorID(id)] = getBytecodeReturn.Cid
+			}
+		}
+
 	case 33: // Reverted, parse the revert message.
 		// If we managed to call the constructor, parse/return its revert message. If we
 		// fail, we just return no output.

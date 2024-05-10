@@ -855,18 +855,20 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
 	}
 
-	cid, err := ts.Key().Cid()
+	tsCid, err := ts.Key().Cid()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
-	blkHash, err := ethtypes.EthHashFromCid(cid)
+	blkHash, err := ethtypes.EthHashFromCid(tsCid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse eth hash from cid: %w", err)
 	}
 
 	allTraces := make([]*ethtypes.EthTraceBlock, 0, len(trace))
 	msgIdx := 0
+	deployedCode := make(map[abi.ActorID]*cid.Cid)
+
 	for _, ir := range trace {
 		// ignore messages from system actor
 		if ir.Msg.From == builtinactors.SystemActorAddr {
@@ -888,7 +890,12 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
 
-		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		var deployed map[abi.ActorID]*cid.Cid
+		if ir.MsgRct.ExitCode.IsSuccess() {
+			deployed = deployedCode
+		}
+
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace, deployed)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
 		}
@@ -904,7 +911,60 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 		}
 	}
 
+	var ethTraces []*ethtypes.EthTrace
+	for _, trace := range allTraces {
+		trace := trace
+		ethTraces = append(ethTraces, trace.EthTrace)
+	}
+
+	if err := a.updateContractAddresses(ctx, ts, ethTraces, deployedCode); err != nil {
+		return nil, xerrors.Errorf("failed to update contract addresses: %w", err)
+	}
+
 	return allTraces, nil
+}
+
+func (a *EthModule) updateContractAddresses(ctx context.Context, ts *types.TipSet, allTraces []*ethtypes.EthTrace, deployedCode map[abi.ActorID]*cid.Cid) error {
+	// Update Contract Addresses if contract still exists
+	for _, trace := range allTraces {
+		switch r := trace.Result.(type) {
+		case *ethtypes.EthCreateTraceResult:
+			contractAddr := r.Address
+			to, err := contractAddr.ToFilecoinAddress()
+			if err != nil {
+				return xerrors.Errorf("cannot get Filecoin address: %w", err)
+			}
+
+			actor, err := a.StateManager.LoadActor(ctx, to, ts)
+			if err != nil {
+				// failed to look up contract
+				continue
+			}
+			// Not a contract.
+			if !builtinactors.IsEvmActor(actor.Code) {
+				continue
+			}
+
+			id, err := a.StateManager.LookupID(ctx, to, ts)
+			if err != nil {
+				// mapping does not exist anymore
+				continue
+			}
+
+			codeCid, ok := deployedCode[id]
+			if !ok {
+				continue
+			}
+
+			blk, err := a.Chain.StateBlockstore().Get(ctx, *codeCid)
+			if blk == nil || err != nil {
+				continue
+			}
+
+			r.Code = blk.RawData()
+		}
+	}
+	return nil
 }
 
 func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
@@ -927,6 +987,8 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
 	}
 
+	deployedCode := make(map[abi.ActorID]*cid.Cid)
+
 	allTraces := make([]*ethtypes.EthTraceReplayBlockTransaction, 0, len(trace))
 	for _, ir := range trace {
 		// ignore messages from system actor
@@ -947,7 +1009,12 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
 
-		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		var deployed map[abi.ActorID]*cid.Cid
+		if ir.MsgRct.ExitCode.IsSuccess() {
+			deployed = deployedCode
+		}
+
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace, deployed)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
 		}
@@ -969,6 +1036,16 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 			StateDiff:       nil,
 			VmTrace:         nil,
 		})
+	}
+
+	var ethTraces []*ethtypes.EthTrace
+	for _, trace := range allTraces {
+		trace := trace
+		ethTraces = append(ethTraces, trace.Trace...)
+	}
+
+	if err := a.updateContractAddresses(ctx, ts, ethTraces, deployedCode); err != nil {
+		return nil, xerrors.Errorf("failed to update contract addresses: %w", err)
 	}
 
 	return allTraces, nil
