@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/api"
@@ -303,14 +304,13 @@ func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmoun
 	return pst.TotalLocked()
 }
 
-func GetFilLocked(ctx context.Context, st *state.StateTree, height abi.ChainEpoch) (abi.TokenAmount, error) {
-	filMarketLocked := big.Zero()
-	if height <= build.UpgradeAussieHeight {
-		var err error
-		filMarketLocked, err = getFilMarketLocked(ctx, st)
-		if err != nil {
-			return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
-		}
+func GetFilLocked(ctx context.Context, st *state.StateTree, nv network.Version) (abi.TokenAmount, error) {
+	if nv >= network.Version23 {
+		return getFilPowerLocked(ctx, st)
+	}
+	filMarketLocked, err := getFilMarketLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
 	}
 
 	filPowerLocked, err := getFilPowerLocked(ctx, st)
@@ -340,6 +340,7 @@ func (sm *StateManager) GetVMCirculatingSupply(ctx context.Context, height abi.C
 }
 
 func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
+	nv := sm.GetNetworkVersion(ctx, height)
 	filVested, err := sm.GetFilVested(ctx, height)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
@@ -363,7 +364,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
-	filLocked, err := GetFilLocked(ctx, st, height)
+	filLocked, err := GetFilLocked(ctx, st, nv)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}
