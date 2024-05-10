@@ -298,7 +298,7 @@ func (p *PieceIngester) allocateToExisting(ctx context.Context, piece lpiece.Pie
 			if sec.currentSize+pieceSize < abi.PaddedPieceSize(p.sectorSize) {
 
 				ret.Sector = sec.number
-				ret.Offset = sec.currentSize + 1 // Current filled up size + 1
+				ret.Offset = sec.currentSize
 
 				// Insert market deal to DB for the sector
 				if piece.DealProposal != nil {

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/filecoin-project/lotus/lib/filler"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -180,10 +181,9 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 			offset += padLength.Unpadded()
 
 			for _, pad := range pads {
-				padCid := zerocomm.ZeroPieceCommitment(pad.Unpadded())
 				pieceInfos = append(pieceInfos, abi.PieceInfo{
 					Size:     pad,
-					PieceCID: padCid,
+					PieceCID: zerocomm.ZeroPieceCommitment(pad.Unpadded()),
 				})
 				pieceReaders = append(pieceReaders, nullreader.NewNullReader(pad.Unpadded()))
 			}
@@ -193,7 +193,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 				PieceCID: c,
 			})
 
-			offset += abi.PaddedPieceSize(p.PieceSize).Unpadded()
+			offset += abi.UnpaddedPieceSize(*p.DataRawSize)
 
 			// make pieceReader
 			if p.DataUrl != nil {
@@ -248,13 +248,17 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		}
 
 		if offset.Padded() < abi.PaddedPieceSize(ssize) {
-			fillerSize := abi.PaddedPieceSize(ssize) - offset.Padded()
-			filler := nullreader.NewNullReader(fillerSize.Unpadded())
-			pieceInfos = append(pieceInfos, abi.PieceInfo{
-				Size:     fillerSize,
-				PieceCID: zerocomm.ZeroPieceCommitment(fillerSize.Unpadded()),
-			})
-			pieceReaders = append(pieceReaders, filler)
+			fillerSize, err := filler.FillersFromRem(abi.PaddedPieceSize(ssize).Unpadded() - offset)
+			if err != nil {
+				return false, xerrors.Errorf("failed to calculate the final padding: %w", err)
+			}
+			for _, fil := range fillerSize {
+				pieceInfos = append(pieceInfos, abi.PieceInfo{
+					Size:     fil.Padded(),
+					PieceCID: zerocomm.ZeroPieceCommitment(fil),
+				})
+				pieceReaders = append(pieceReaders, nullreader.NewNullReader(fil))
+			}
 		}
 
 		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)
