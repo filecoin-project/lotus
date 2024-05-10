@@ -3,11 +3,9 @@ package ethtypes
 import (
 	"fmt"
 
-	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	gocrypto "github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/go-state-types/big"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
@@ -55,16 +53,11 @@ func (tx *Eth1559TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types
 }
 
 func (tx *Eth1559TxArgs) ToRlpUnsignedMsg() ([]byte, error) {
-	packed, err := tx.packTxFields()
+	encoded, err := toRlpUnsignedMsg(tx)
 	if err != nil {
 		return nil, err
 	}
-
-	encoded, err := EncodeRLP(packed)
-	if err != nil {
-		return nil, err
-	}
-	return append([]byte{Eip1559TxType}, encoded...), nil
+	return append([]byte{EIP1559TxType}, encoded...), nil
 }
 
 func (tx *Eth1559TxArgs) TxHash() (EthHash, error) {
@@ -77,21 +70,11 @@ func (tx *Eth1559TxArgs) TxHash() (EthHash, error) {
 }
 
 func (tx *Eth1559TxArgs) ToRlpSignedMsg() ([]byte, error) {
-	packed1, err := tx.packTxFields()
+	encoded, err := toRlpSignedMsg(tx, tx.V, tx.R, tx.S)
 	if err != nil {
 		return nil, err
 	}
-
-	packed2, err := packSigFields(tx.V, tx.R, tx.S)
-	if err != nil {
-		return nil, err
-	}
-
-	encoded, err := EncodeRLP(append(packed1, packed2...))
-	if err != nil {
-		return nil, err
-	}
-	return append([]byte{0x02}, encoded...), nil
+	return append([]byte{EIP1559TxType}, encoded...), nil
 }
 
 func (tx *Eth1559TxArgs) Signature() (*typescrypto.Signature, error) {
@@ -116,36 +99,7 @@ func (tx *Eth1559TxArgs) Signature() (*typescrypto.Signature, error) {
 }
 
 func (tx *Eth1559TxArgs) Sender() (address.Address, error) {
-	msg, err := tx.ToRlpUnsignedMsg()
-	if err != nil {
-		return address.Undef, err
-	}
-
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write(msg)
-	hash := hasher.Sum(nil)
-
-	sig, err := tx.Signature()
-	if err != nil {
-		return address.Undef, err
-	}
-
-	pubk, err := gocrypto.EcRecover(hash, sig.Data)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	ethAddr, err := EthAddressFromPubKey(pubk)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	ea, err := CastEthAddress(ethAddr)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return ea.ToFilecoinAddress()
+	return sender(tx)
 }
 
 func (tx *Eth1559TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
@@ -166,7 +120,7 @@ func (tx *Eth1559TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
 
 	ethTx := EthTx{
 		ChainID:              EthUint64(build.Eip155ChainId),
-		Type:                 Eip1559TxType,
+		Type:                 EIP1559TxType,
 		Nonce:                EthUint64(tx.Nonce),
 		Hash:                 hash,
 		To:                   tx.To,
@@ -189,7 +143,7 @@ func (tx *Eth1559TxArgs) InitialiseSignature(sig typescrypto.Signature) error {
 		return xerrors.Errorf("RecoverSignature only supports Delegated signature")
 	}
 
-	if len(sig.Data) != 65 {
+	if len(sig.Data) != EthEIP1559TxSignatureLen {
 		return xerrors.Errorf("signature should be 65 bytes long, but got %d bytes", len(sig.Data))
 	}
 
@@ -261,8 +215,8 @@ func (tx *Eth1559TxArgs) packTxFields() ([]interface{}, error) {
 }
 
 func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
-	if data[0] != Eip1559TxType {
-		return nil, xerrors.Errorf(fmt.Sprintf("not an EIP-1559 transaction: first byte is not %d", Eip1559TxType))
+	if data[0] != EIP1559TxType {
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not %d", EIP1559TxType)
 	}
 
 	d, err := DecodeRLP(data[1:])

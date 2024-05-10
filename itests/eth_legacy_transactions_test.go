@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -41,6 +43,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 
 	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
+	fmt.Println("gas limit is", gaslimit)
 
 	tx := ethtypes.EthLegacyHomesteadTxArgs{
 		Value:    big.NewInt(100),
@@ -53,7 +56,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 		S:        big.Zero(),
 	}
 
-	client.EVM().SignLegacyTransaction(&tx, key.PrivateKey)
+	client.EVM().SignLegacyHomesteadTransaction(&tx, key.PrivateKey)
 	// Mangle signature
 	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
 
@@ -64,7 +67,7 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.Error(t, err)
 
 	// Submit transaction with valid signature
-	client.EVM().SignLegacyTransaction(&tx, key.PrivateKey)
+	client.EVM().SignLegacyHomesteadTransaction(&tx, key.PrivateKey)
 
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 
@@ -99,6 +102,95 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, tx.V, ethTx.V)
 }
 
+func TestLegacyEIP155ValueTransferValidSignature(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	_, ethAddr2, _ := client.EVM().NewAccount()
+
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From:  &ethAddr,
+		To:    &ethAddr2,
+		Value: ethtypes.EthBigInt(big.NewInt(100)),
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	legacyTx := &ethtypes.EthLegacyHomesteadTxArgs{
+		Value:    big.NewInt(100),
+		Nonce:    0,
+		To:       &ethAddr2,
+		GasPrice: types.NanoFil,
+		GasLimit: int(gaslimit),
+		V:        big.Zero(),
+		R:        big.Zero(),
+		S:        big.Zero(),
+	}
+	tx := &ethtypes.EthLegacy155TxArgs{
+		LegacyTx: legacyTx,
+	}
+
+	client.EVM().SignLegacyEIP155Transaction(tx, key.PrivateKey, big.NewInt(build.Eip155ChainId))
+	// Mangle signature
+	tx.LegacyTx.V.Int.Xor(tx.LegacyTx.V.Int, big.NewInt(1).Int)
+
+	signed, err := tx.ToRawTxBytesSigned()
+	require.NoError(t, err)
+	// Submit transaction with bad signature
+	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
+	require.Error(t, err)
+
+	// Submit transaction with valid signature but incorrect chain ID
+	client.EVM().SignLegacyEIP155Transaction(tx, key.PrivateKey, big.NewInt(build.Eip155ChainId))
+
+	signed, err = tx.ToRawTxBytesSigned()
+	require.NoError(t, err)
+
+	hash, err := client.EVM().EthSendRawTransaction(ctx, signed)
+	require.NoError(t, err)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, ethAddr, receipt.From)
+	require.EqualValues(t, ethAddr2, *receipt.To)
+	require.EqualValues(t, hash, receipt.TransactionHash)
+
+	// Success.
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	// Validate that we sent the expected transaction.
+	ethTx, err := client.EthGetTransactionByHash(ctx, &hash)
+	require.NoError(t, err)
+	require.Nil(t, ethTx.MaxPriorityFeePerGas)
+	require.Nil(t, ethTx.MaxFeePerGas)
+
+	require.EqualValues(t, ethAddr, ethTx.From)
+	require.EqualValues(t, ethAddr2, *ethTx.To)
+	require.EqualValues(t, tx.LegacyTx.Nonce, ethTx.Nonce)
+	require.EqualValues(t, hash, ethTx.Hash)
+	require.EqualValues(t, tx.LegacyTx.Value, ethTx.Value)
+	require.EqualValues(t, 0, ethTx.Type)
+	require.EqualValues(t, build.Eip155ChainId, ethTx.ChainID)
+	require.EqualValues(t, ethtypes.EthBytes{}, ethTx.Input)
+	require.EqualValues(t, tx.LegacyTx.GasLimit, ethTx.Gas)
+	require.EqualValues(t, tx.LegacyTx.GasPrice, *ethTx.GasPrice)
+	require.EqualValues(t, tx.LegacyTx.R, ethTx.R)
+	require.EqualValues(t, tx.LegacyTx.S, ethTx.S)
+	require.EqualValues(t, tx.LegacyTx.V, ethTx.V)
+}
+
 func TestLegacyContractInvocation(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
@@ -117,7 +209,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 	tx, err := deployLegacyContractTx(t, ctx, client, ethAddr)
 	require.NoError(t, err)
 
-	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
+	client.EVM().SignLegacyHomesteadTransaction(tx, key.PrivateKey)
 	// Mangle signature
 	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
 
@@ -128,7 +220,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 	require.Error(t, err)
 
 	// Submit transaction with valid signature
-	client.EVM().SignLegacyTransaction(tx, key.PrivateKey)
+	client.EVM().SignLegacyHomesteadTransaction(tx, key.PrivateKey)
 
 	hash := client.EVM().SubmitTransaction(ctx, tx)
 
@@ -173,7 +265,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 		S:        big.Zero(),
 	}
 
-	client.EVM().SignLegacyTransaction(&invokeTx, key.PrivateKey)
+	client.EVM().SignLegacyHomesteadTransaction(&invokeTx, key.PrivateKey)
 	// Mangle signature
 	invokeTx.V.Int.Xor(invokeTx.V.Int, big.NewInt(1).Int)
 
@@ -184,7 +276,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 	require.Error(t, err)
 
 	// Submit transaction with valid signature
-	client.EVM().SignLegacyTransaction(&invokeTx, key.PrivateKey)
+	client.EVM().SignLegacyHomesteadTransaction(&invokeTx, key.PrivateKey)
 	hash = client.EVM().SubmitTransaction(ctx, &invokeTx)
 
 	receipt, err = client.EVM().WaitTransaction(ctx, hash)

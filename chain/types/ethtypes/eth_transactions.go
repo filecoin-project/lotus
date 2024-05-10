@@ -8,8 +8,10 @@ import (
 	mathbig "math/big"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
+	gocrypto "github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -20,15 +22,27 @@ import (
 )
 
 const (
-	EIP1559EthTxSignatureLen = 65
-	LegacyEthTxSignatureLen  = 66
-	// LegacyHomesteadEthTxSignaturePrefix defines the prefix byte used to identify the signature of a legacy Homestead Ethereum transaction.
-	LegacyHomesteadEthTxSignaturePrefix = 0x01
-	Eip1559TxType                       = 0x02
-
-	ethLegacyHomesteadTxType    = 0x00
-	ethLegacyHomesteadTxChainID = 0x00
+	EthLegacyTxType = 0x00
+	EIP1559TxType   = 0x02
 )
+
+const (
+	EthEIP1559TxSignatureLen            = 65
+	EthLegacyHomesteadTxSignatureLen    = 66
+	EthLegacyHomesteadTxSignaturePrefix = 0x01
+	EthLegacy155TxSignaturePrefix       = 0x02
+	EthLegacyHomesteadTxChainID         = 0x00
+)
+
+var (
+	EthLegacy155TxSignatureLen0 int
+	EthLegacy155TxSignatureLen1 int
+)
+
+func init() {
+	EthLegacy155TxSignatureLen0 = calcEIP155TxSignatureLen(build.Eip155ChainId, 35)
+	EthLegacy155TxSignatureLen1 = calcEIP155TxSignatureLen(build.Eip155ChainId, 36)
+}
 
 // EthTransaction defines the interface for Ethereum-like transactions.
 // It provides methods to convert transactions to various formats,
@@ -125,26 +139,9 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 		return nil, fmt.Errorf("unsupported msg version: %d", smsg.Message.Version)
 	}
 
-	// Process based on the signature data length.
+	// Determine the type of transaction based on the signature length
 	switch len(smsg.Signature.Data) {
-	case LegacyEthTxSignatureLen: // Legacy Homestead transaction
-		if smsg.Signature.Data[0] != LegacyHomesteadEthTxSignaturePrefix {
-			return nil, fmt.Errorf("unsupported legacy transaction; first byte of signature is %d",
-				smsg.Signature.Data[0])
-		}
-		tx := EthLegacyHomesteadTxArgs{
-			Nonce:    int(smsg.Message.Nonce),
-			To:       to,
-			Value:    smsg.Message.Value,
-			Input:    params,
-			GasPrice: smsg.Message.GasFeeCap,
-			GasLimit: int(smsg.Message.GasLimit),
-		}
-		if err := tx.InitialiseSignature(smsg.Signature); err != nil {
-			return nil, fmt.Errorf("failed to initialise signature: %w", err)
-		}
-		return &tx, nil
-	case EIP1559EthTxSignatureLen: // EIP-1559 transaction
+	case EthEIP1559TxSignatureLen:
 		tx := Eth1559TxArgs{
 			ChainID:              build.Eip155ChainId,
 			Nonce:                int(smsg.Message.Nonce),
@@ -159,8 +156,37 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 			return nil, fmt.Errorf("failed to initialise signature: %w", err)
 		}
 		return &tx, nil
+
+	case EthLegacyHomesteadTxSignatureLen, EthLegacy155TxSignatureLen0, EthLegacy155TxSignatureLen1:
+		legacyTx := &EthLegacyHomesteadTxArgs{
+			Nonce:    int(smsg.Message.Nonce),
+			To:       to,
+			Value:    smsg.Message.Value,
+			Input:    params,
+			GasPrice: smsg.Message.GasFeeCap,
+			GasLimit: int(smsg.Message.GasLimit),
+		}
+		// Process based on the first byte of the signature
+		switch smsg.Signature.Data[0] {
+		case EthLegacyHomesteadTxSignaturePrefix:
+			if err := legacyTx.InitialiseSignature(smsg.Signature); err != nil {
+				return nil, fmt.Errorf("failed to initialise signature: %w", err)
+			}
+			return legacyTx, nil
+		case EthLegacy155TxSignaturePrefix:
+			tx := &EthLegacy155TxArgs{
+				LegacyTx: legacyTx,
+			}
+			if err := tx.InitialiseSignature(smsg.Signature); err != nil {
+				return nil, fmt.Errorf("failed to initialise signature: %w", err)
+			}
+			return tx, nil
+		default:
+			return nil, fmt.Errorf("unsupported legacy transaction; first byte of signature is %d", smsg.Signature.Data[0])
+		}
+
 	default:
-		return nil, fmt.Errorf("unsupported signature length: %d", len(smsg.Signature.Data))
+		return nil, fmt.Errorf("unsupported signature length")
 	}
 }
 
@@ -195,14 +221,14 @@ func ParseEthTransaction(data []byte) (EthTransaction, error) {
 	case 1:
 		// EIP-2930
 		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
-	case Eip1559TxType:
+	case EIP1559TxType:
 		// EIP-1559
 		return parseEip1559Tx(data)
 	default:
 		if data[0] > 0x7f {
-			tx, err := parseLegacyHomesteadTx(data)
+			tx, err := parseLegacyTx(data)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse legacy homestead transaction: %w", err)
+				return nil, fmt.Errorf("failed to parse legacy transaction: %w", err)
 			}
 			return tx, nil
 		}
@@ -402,4 +428,170 @@ func getEthParamsAndRecipient(msg *types.Message) (params []byte, to *EthAddress
 	}
 
 	return params, to, nil
+}
+
+func parseLegacyTx(data []byte) (EthTransaction, error) {
+	if data[0] <= 0x7f {
+		return nil, fmt.Errorf("not a legacy eth transaction")
+	}
+
+	d, err := DecodeRLP(data)
+	if err != nil {
+		return nil, err
+	}
+	decoded, ok := d.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("not a Legacy transaction: decoded data is not a list")
+	}
+
+	if len(decoded) != 9 {
+		return nil, fmt.Errorf("not a Legacy transaction: should have 9 elements in the rlp list")
+	}
+
+	nonce, err := parseInt(decoded[0])
+	if err != nil {
+		return nil, err
+	}
+
+	gasPrice, err := parseBigInt(decoded[1])
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit, err := parseInt(decoded[2])
+	if err != nil {
+		return nil, err
+	}
+
+	to, err := parseEthAddr(decoded[3])
+	if err != nil {
+		return nil, err
+	}
+
+	value, err := parseBigInt(decoded[4])
+	if err != nil {
+		return nil, err
+	}
+
+	input, ok := decoded[5].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("input is not a byte slice")
+	}
+
+	v, err := parseBigInt(decoded[6])
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := parseBigInt(decoded[7])
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := parseBigInt(decoded[8])
+	if err != nil {
+		return nil, err
+	}
+
+	tx := &EthLegacyHomesteadTxArgs{
+		Nonce:    nonce,
+		GasPrice: gasPrice,
+		GasLimit: gasLimit,
+		To:       to,
+		Value:    value,
+		Input:    input,
+		V:        v,
+		R:        r,
+		S:        s,
+	}
+
+	chainId := deriveEIP155ChainId(v)
+	if chainId.Equals(big.NewInt(0)) {
+		// This is a legacy Homestead transaction
+		if !v.Equals(big.NewInt(27)) && !v.Equals(big.NewInt(28)) {
+			return nil, fmt.Errorf("legacy homestead transactions only support 27 or 28 for v, got %d", v.Uint64())
+		}
+		return tx, nil
+	}
+
+	// This is a EIP-155 transaction -> ensure chainID protection
+	if err := validateEIP155ChainId(v); err != nil {
+		return nil, fmt.Errorf("failed to validate EIP155 chain id: %w", err)
+	}
+
+	return &EthLegacy155TxArgs{
+		LegacyTx: tx,
+	}, nil
+}
+
+type RlpPackable interface {
+	packTxFields() ([]interface{}, error)
+}
+
+func toRlpUnsignedMsg(tx RlpPackable) ([]byte, error) {
+	packedFields, err := tx.packTxFields()
+	if err != nil {
+		return nil, err
+	}
+	encoded, err := EncodeRLP(packedFields)
+	if err != nil {
+		return nil, err
+	}
+	return encoded, nil
+}
+
+func toRlpSignedMsg(tx RlpPackable, V, R, S big.Int) ([]byte, error) {
+	packed1, err := tx.packTxFields()
+	if err != nil {
+		return nil, err
+	}
+
+	packed2, err := packSigFields(V, R, S)
+	if err != nil {
+		return nil, err
+	}
+
+	encoded, err := EncodeRLP(append(packed1, packed2...))
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode rlp signed msg: %w", err)
+	}
+	return encoded, nil
+}
+
+func sender(tx EthTransaction) (address.Address, error) {
+	msg, err := tx.ToRlpUnsignedMsg()
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get rlp unsigned msg: %w", err)
+	}
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(msg)
+	hash := hasher.Sum(nil)
+
+	sig, err := tx.Signature()
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get signature: %w", err)
+	}
+
+	sigData, err := tx.ToVerifiableSignature(sig.Data)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get verifiable signature: %w", err)
+	}
+
+	pubk, err := gocrypto.EcRecover(hash, sigData)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to recover pubkey: %w", err)
+	}
+
+	ethAddr, err := EthAddressFromPubKey(pubk)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get eth address from pubkey: %w", err)
+	}
+
+	ea, err := CastEthAddress(ethAddr)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to cast eth address: %w", err)
+	}
+
+	return ea.ToFilecoinAddress()
 }

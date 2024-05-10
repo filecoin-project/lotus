@@ -543,7 +543,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),
-		Type:                 ethtypes.Eip1559TxType,
+		Type:                 ethtypes.EIP1559TxType,
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
 		MaxFeePerGas:         &maxFeePerGas,
 		MaxPriorityFeePerGas: &maxPriorityFeePerGas,
