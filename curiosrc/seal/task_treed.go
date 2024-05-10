@@ -169,6 +169,7 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		var pieceInfos []abi.PieceInfo
 		var pieceReaders []io.Reader
 		var offset abi.UnpaddedPieceSize
+		var allocated abi.UnpaddedPieceSize
 
 		for _, p := range pieces {
 			// make pieceInfo
@@ -176,6 +177,8 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 			if err != nil {
 				return false, xerrors.Errorf("parsing piece cid: %w", err)
 			}
+
+			allocated += abi.UnpaddedPieceSize(*p.DataRawSize)
 
 			pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), abi.PaddedPieceSize(p.PieceSize))
 			offset += padLength.Unpadded()
@@ -247,18 +250,16 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 			}
 		}
 
-		if offset.Padded() < abi.PaddedPieceSize(ssize) {
-			fillerSize, err := filler.FillersFromRem(abi.PaddedPieceSize(ssize).Unpadded() - offset)
-			if err != nil {
-				return false, xerrors.Errorf("failed to calculate the final padding: %w", err)
-			}
-			for _, fil := range fillerSize {
-				pieceInfos = append(pieceInfos, abi.PieceInfo{
-					Size:     fil.Padded(),
-					PieceCID: zerocomm.ZeroPieceCommitment(fil),
-				})
-				pieceReaders = append(pieceReaders, nullreader.NewNullReader(fil))
-			}
+		fillerSize, err := filler.FillersFromRem(abi.PaddedPieceSize(ssize).Unpadded() - allocated)
+		if err != nil {
+			return false, xerrors.Errorf("failed to calculate the final padding: %w", err)
+		}
+		for _, fil := range fillerSize {
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
+				Size:     fil.Padded(),
+				PieceCID: zerocomm.ZeroPieceCommitment(fil),
+			})
+			pieceReaders = append(pieceReaders, nullreader.NewNullReader(fil))
 		}
 
 		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)

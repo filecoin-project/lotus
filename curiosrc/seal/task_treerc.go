@@ -71,9 +71,13 @@ func (t *TreeRCTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	}
 
 	// R / C
-	sealed, _, err := t.sc.TreeRC(ctx, &taskID, sref, commd)
+	sealed, unsealed, err := t.sc.TreeRC(ctx, &taskID, sref, commd)
 	if err != nil {
 		return false, xerrors.Errorf("computing tree r and c: %w", err)
+	}
+
+	if unsealed != commd {
+		return false, xerrors.Errorf("commd %s does match unsealed %s", commd.String(), unsealed.String())
 	}
 
 	// todo synth porep

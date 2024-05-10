@@ -365,7 +365,7 @@ func DefaultCurioConfig() *CurioConfig {
 		},
 		Ingest: CurioIngestConfig{
 			MaxQueueDealSector: 8, // default to 8 sectors open(or in process of opening) for deals
-			MaxQueueSDR:        0, // default don't use this limit
+			MaxQueueSDR:        8, // default to 8 (will cause backpressure even if deal sectors are 0)
 			MaxQueueTrees:      0, // default don't use this limit
 			MaxQueuePoRep:      0, // default don't use this limit
 			MaxDealWaitTime:    Duration(1 * time.Hour),

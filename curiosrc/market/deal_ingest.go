@@ -3,14 +3,12 @@ package market
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/lib/pq" // PostgreSQL driver for errors
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -66,8 +64,7 @@ type PieceIngester struct {
 type pieceDetails struct {
 	Sector    abi.SectorNumber    `db:"sector_number"`
 	Size      abi.PaddedPieceSize `db:"piece_size"`
-	F05Epoch  abi.ChainEpoch      `db:"f05_deal_start_epoch"`
-	DdoEpoch  abi.ChainEpoch      `db:"direct_start_epoch"`
+	Epoch     abi.ChainEpoch      `db:"deal_start_epoch"`
 	Index     uint64              `db:"piece_index"`
 	CreatedAt *time.Time          `db:"created_at"`
 }
@@ -295,61 +292,42 @@ func (p *PieceIngester) allocateToExisting(ctx context.Context, piece lpiece.Pie
 		pieceSize := piece.Size()
 		for _, sec := range openSectors {
 			sec := sec
-			if sec.currentSize+pieceSize < abi.PaddedPieceSize(p.sectorSize) {
+			if sec.currentSize+pieceSize <= abi.PaddedPieceSize(p.sectorSize) {
 
 				ret.Sector = sec.number
 				ret.Offset = sec.currentSize
 
 				// Insert market deal to DB for the sector
 				if piece.DealProposal != nil {
-					for {
-						cn, err := tx.Exec(`SELECT insert_sector_market_piece($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-							p.mid, sec.number, sec.index+1,
-							piece.DealProposal.PieceCID, piece.DealProposal.PieceSize,
-							source.String(), dataHdrJson, rawSize, !piece.KeepUnsealed,
-							piece.PublishCid, piece.DealID, propJson, piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch)
+					cn, err := tx.Exec(`SELECT insert_sector_market_piece($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+						p.mid, sec.number, sec.index+1,
+						piece.DealProposal.PieceCID, piece.DealProposal.PieceSize,
+						source.String(), dataHdrJson, rawSize, !piece.KeepUnsealed,
+						piece.PublishCid, piece.DealID, propJson, piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch)
 
-						if err != nil {
-							var pqErr *pq.Error
-							ok := errors.As(err, &pqErr)
-							if ok && pqErr.Code == "P0001" {
-								sec.index++ // Increase 'sec.index' if sql exception 'P0001' raised
-								continue    // Retry the transaction
-							}
-							return false, fmt.Errorf("adding deal to sector: %v", err)
-						}
+					if err != nil {
+						return false, fmt.Errorf("adding deal to sector: %v", err)
+					}
 
-						if cn != 1 {
-							return false, xerrors.Errorf("expected one piece")
-						}
-
-						break // Break loop on successful transaction
+					if cn != 1 {
+						return false, xerrors.Errorf("expected one piece")
 					}
 
 				} else { // Insert DDO deal to DB for the sector
-					for {
-						cn, err := tx.Exec(`SELECT insert_sector_ddo_piece($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-							p.mid, sec.number, sec.index+1,
-							piece.PieceActivationManifest.CID, piece.PieceActivationManifest.Size,
-							source.String(), dataHdrJson, rawSize, !piece.KeepUnsealed,
-							piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch, propJson)
+					cn, err := tx.Exec(`SELECT insert_sector_ddo_piece($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+						p.mid, sec.number, sec.index+1,
+						piece.PieceActivationManifest.CID, piece.PieceActivationManifest.Size,
+						source.String(), dataHdrJson, rawSize, !piece.KeepUnsealed,
+						piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch, propJson)
 
-						if err != nil {
-							var pqErr *pq.Error
-							ok := errors.As(err, &pqErr)
-							if ok && pqErr.Code == "P0001" {
-								sec.index++ // Increase 'sec.index' if sql exception 'P0001' raised
-								continue    // Retry the transaction
-							}
-							return false, fmt.Errorf("adding deal to sector: %v", err)
-						}
-
-						if cn != 1 {
-							return false, xerrors.Errorf("expected one piece")
-						}
-
-						break // Break loop on successful transaction
+					if err != nil {
+						return false, fmt.Errorf("adding deal to sector: %v", err)
 					}
+
+					if cn != 1 {
+						return false, xerrors.Errorf("expected one piece")
+					}
+
 				}
 				allocated = true
 				break
@@ -385,8 +363,7 @@ func (p *PieceIngester) SectorStartSealing(ctx context.Context, sector abi.Secto
 					    sector_number,
 						piece_size,
 						piece_index,
-						COALESCE(f05_deal_start_epoch, 0) AS f05_deal_start_epoch,
-						COALESCE(direct_start_epoch, 0) AS direct_start_epoch,
+						COALESCE(direct_start_epoch, f05_deal_start_epoch, 0) AS deal_start_epoch,
 						created_at
 					FROM
 						open_sector_pieces
@@ -440,8 +417,7 @@ func (p *PieceIngester) getOpenSectors(tx *harmonydb.Tx) ([]*openSector, error) 
 					    sector_number,
 						piece_size,
 						piece_index,
-						COALESCE(f05_deal_start_epoch, 0) AS f05_deal_start_epoch,
-						COALESCE(direct_start_epoch, 0) AS direct_start_epoch,
+						COALESCE(direct_start_epoch, f05_deal_start_epoch, 0) AS deal_start_epoch,
 						created_at
 					FROM
 						open_sector_pieces
@@ -454,16 +430,10 @@ func (p *PieceIngester) getOpenSectors(tx *harmonydb.Tx) ([]*openSector, error) 
 	}
 
 	getEpoch := func(piece pieceDetails, cur abi.ChainEpoch) abi.ChainEpoch {
-		var ret abi.ChainEpoch
-		if piece.DdoEpoch > 0 {
-			ret = piece.DdoEpoch
-		} else {
-			ret = piece.F05Epoch
-		}
-		if cur > 0 && cur < ret {
+		if cur > 0 && cur < piece.Epoch {
 			return cur
 		}
-		return ret
+		return piece.Epoch
 	}
 
 	getOpenedAt := func(piece pieceDetails, cur *time.Time) *time.Time {

@@ -124,12 +124,10 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 			PieceCID   string `db:"piece_cid"`
 			PieceSize  int64  `db:"piece_size"`
 
-			F05DealID         int64 `db:"f05_deal_id"`
-			F05DealEndEpoch   int64 `db:"f05_deal_end_epoch"`
-			F05DealStartEpoch int64 `db:"f05_deal_start_epoch"`
+			F05DealID int64 `db:"f05_deal_id"`
 
-			DDODealStartEpoch int64 `db:"direct_start_epoch"`
-			DDODealEndEpoch   int64 `db:"direct_end_epoch"`
+			DealStartEpoch int64 `db:"deal_start_epoch"`
+			DealEndEpoch   int64 `db:"deal_end_epoch"`
 		}
 
 		err = s.db.Select(ctx, &pieces, `
@@ -137,10 +135,8 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
                       piece_cid,
                       piece_size,
                       f05_deal_id,
-                      COALESCE(f05_deal_end_epoch, 0) AS  f05_deal_end_epoch,
-                      COALESCE(f05_deal_start_epoch, 0) AS f05_deal_start_epoch,
-                      COALESCE(direct_start_epoch, 0) AS direct_start_epoch,
-                      COALESCE(direct_end_epoch, 0) AS direct_end_epoch
+                      COALESCE(f05_deal_end_epoch, direct_end_epoch, 0) AS deal_end_epoch,
+                      COALESCE(f05_deal_start_epoch, direct_start_epoch, 0) AS deal_start_epoch
 		FROM sectors_sdr_initial_pieces
 		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index ASC`, sectorParams.SpID, sectorParams.SectorNumber)
 		if err != nil {
@@ -151,7 +147,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 			params.Sectors[0].UnsealedCid = &unsealedCID
 
 			for _, p := range pieces {
-				if (p.DDODealStartEpoch > 0 && abi.ChainEpoch(p.DDODealStartEpoch) < head.Height()) || (p.F05DealEndEpoch > 0 && abi.ChainEpoch(p.F05DealStartEpoch) < head.Height()) {
+				if p.DealStartEpoch > 0 && abi.ChainEpoch(p.DealStartEpoch) < head.Height() {
 					// deal start epoch is in the past, can't precommit this sector anymore
 					_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
 					SET failed = TRUE, failed_at = NOW(), failed_reason = 'past-start-epoch', failed_reason_msg = 'precommit: start epoch is in the past'
@@ -164,11 +160,8 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 				if p.F05DealID > 0 {
 					params.Sectors[0].DealIDs = append(params.Sectors[0].DealIDs, abi.DealID(p.F05DealID))
 				}
-				if p.F05DealEndEpoch > 0 && abi.ChainEpoch(p.F05DealEndEpoch) > params.Sectors[0].Expiration {
-					params.Sectors[0].Expiration = abi.ChainEpoch(p.F05DealEndEpoch)
-				}
-				if p.DDODealEndEpoch > 0 && abi.ChainEpoch(p.DDODealEndEpoch) > params.Sectors[0].Expiration {
-					params.Sectors[0].Expiration = abi.ChainEpoch(p.DDODealEndEpoch)
+				if p.DealEndEpoch > 0 && abi.ChainEpoch(p.DealEndEpoch) > params.Sectors[0].Expiration {
+					params.Sectors[0].Expiration = abi.ChainEpoch(p.DealEndEpoch)
 				}
 			}
 		}

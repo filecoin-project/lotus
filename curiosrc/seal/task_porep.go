@@ -112,14 +112,14 @@ func (p *PoRepTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 	proof, err := p.sc.PoRepSnark(ctx, sr, sealed, unsealed, sectorParams.TicketValue, abi.InteractiveSealRandomness(rand))
 	if err != nil {
-		end, rerr := p.recoverErrors(ctx, sectorParams.SpID, sectorParams.SectorNumber, err)
-		if rerr != nil {
-			return false, xerrors.Errorf("recover errors: %w", rerr)
-		}
-		if end {
-			// done, but the error handling has stored a different than success state
-			return true, nil
-		}
+		//end, rerr := p.recoverErrors(ctx, sectorParams.SpID, sectorParams.SectorNumber, err)
+		//if rerr != nil {
+		//	return false, xerrors.Errorf("recover errors: %w", rerr)
+		//}
+		//if end {
+		//	// done, but the error handling has stored a different than success state
+		//	return true, nil
+		//}
 
 		return false, xerrors.Errorf("failed to compute seal proof: %w", err)
 	}

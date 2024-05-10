@@ -374,7 +374,10 @@ func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *
 			for {
 				var taskID *int64
 				var complete bool
-				err := db.QueryRow(ctx, `SELECT task_id, complete FROM parked_pieces WHERE id = $1`, refID).Scan(&taskID, &complete)
+				err := db.QueryRow(ctx, `SELECT pp.task_id, pp.complete
+												FROM curio.parked_pieces pp
+												JOIN curio.parked_piece_refs ppr ON pp.id = ppr.piece_id
+												WHERE ppr.ref_id = $1;`, refID).Scan(&taskID, &complete)
 				if err != nil {
 					return api.SectorOffset{}, xerrors.Errorf("getting piece park status: %w", err)
 				}
@@ -575,7 +578,7 @@ func maybeApplyBackpressure(tx *harmonydb.Tx, cfg config.CurioIngestConfig, ssiz
 		return true, nil
 	}
 
-	if cfg.MaxQueueSDR != 0 && bufferedSDR > cfg.MaxQueueSDR {
+	if bufferedSDR > cfg.MaxQueueSDR {
 		log.Debugw("backpressure", "reason", "too many SDR tasks", "buffered", bufferedSDR, "max", cfg.MaxQueueSDR)
 		return true, nil
 	}
