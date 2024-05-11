@@ -6,6 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -13,12 +17,10 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCirciulationSupplyUpgrade(t *testing.T) {
@@ -134,17 +136,17 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 	ts1, err := fullNode1.ChainGetTipSetByHeight(ctx, max, types.EmptyTSK)
 	require.NoError(t, err)
 
-	nv22Supply, err := fullNode0.StateCirculatingSupply(ctx, ts0.Key())
+	nv22Supply, err := fullNode0.StateVMCirculatingSupplyInternal(ctx, ts0.Key())
 	require.NoError(t, err, "Failed to fetch nv22 circulating supply")
-	nv23Supply, err := fullNode1.StateCirculatingSupply(ctx, ts1.Key())
+	nv23Supply, err := fullNode1.StateVMCirculatingSupplyInternal(ctx, ts1.Key())
 	require.NoError(t, err, "Failed to fetch nv23 circulating supply")
 
 	// Unfortunately there's still some non-determinism in supply dynamics so check for equality within a tolerance
 	tolerance := big.Mul(abi.NewTokenAmount(100), abi.NewTokenAmount(1e18))
 	totalLocked := big.Sum(lockedClientBalance, lockedProviderBalance)
 	diff := big.Sub(
-		big.Sum(totalLocked, nv22Supply),
-		nv23Supply,
+		big.Sum(totalLocked, nv22Supply.FilCirculating),
+		nv23Supply.FilCirculating,
 	)
 	assert.Equal(t, -1, big.Cmp(
 		diff.Abs(),
