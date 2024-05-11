@@ -308,6 +308,7 @@ func GetFilLocked(ctx context.Context, st *state.StateTree, nv network.Version) 
 	if nv >= network.Version23 {
 		return getFilPowerLocked(ctx, st)
 	}
+
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
@@ -391,6 +392,8 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	circ := big.Zero()
 	unCirc := big.Zero()
+	nv := sm.GetNetworkVersion(ctx, height)
+
 	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
 		// this can be a lengthy operation, we need to cancel early when
 		// the context is cancelled to avoid resource exhaustion
@@ -419,18 +422,22 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			unCirc = big.Add(unCirc, actor.Balance)
 
 		case a == market.Address:
-			mst, err := market.Load(sm.cs.ActorStore(ctx), actor)
-			if err != nil {
-				return err
-			}
+			if nv >= network.Version23 {
+				circ = big.Add(circ, actor.Balance)
+			} else {
+				mst, err := market.Load(sm.cs.ActorStore(ctx), actor)
+				if err != nil {
+					return err
+				}
 
-			lb, err := mst.TotalLocked()
-			if err != nil {
-				return err
-			}
+				lb, err := mst.TotalLocked()
+				if err != nil {
+					return err
+				}
 
-			circ = big.Add(circ, big.Sub(actor.Balance, lb))
-			unCirc = big.Add(unCirc, lb)
+				circ = big.Add(circ, big.Sub(actor.Balance, lb))
+				unCirc = big.Add(unCirc, lb)
+			}
 
 		case builtin.IsAccountActor(actor.Code) ||
 			builtin.IsPaymentChannelActor(actor.Code) ||

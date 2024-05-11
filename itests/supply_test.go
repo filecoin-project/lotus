@@ -3,7 +3,6 @@ package itests
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,10 +52,6 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 		require.NoError(t, err)
 		fullNode0.WaitMsg(ctx, c01)
 
-		prePSDSupply, err := fullNode0.StateCirculatingSupply(ctx, types.EmptyTSK)
-		require.NoError(t, err, "Failed to fetch pre-upgrade circulating supply")
-		fmt.Printf("\n\n\n\n------prePSDSupply: %v\n\n\n\n", prePSDSupply)
-
 		psd0, err := fullNode0.MpoolPushMessage(ctx,
 			makePSDMessage(
 				t,
@@ -75,7 +71,6 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 		require.NoError(t, err)
 		height0 = head.Height()
 	}
-	fmt.Printf("height0: %v\n", height0)
 
 	// Lock collateral in market on nv23 network
 	fullNode1, blockMiner1, ens1 := kit.EnsembleMinimal(t,
@@ -96,10 +91,6 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 		require.NoError(t, err)
 		fullNode1.WaitMsg(ctx, c11)
 
-		prePSDSupply, err := fullNode1.StateCirculatingSupply(ctx, types.EmptyTSK)
-		require.NoError(t, err, "Failed to fetch pre-upgrade circulating supply")
-		fmt.Printf("\n\n\n\n------prePSDSupply: %v\n\n\n\n", prePSDSupply)
-
 		psd1, err := fullNode1.MpoolPushMessage(ctx,
 			makePSDMessage(
 				t,
@@ -119,7 +110,6 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 		require.NoError(t, err)
 		height1 = head.Height()
 	}
-	fmt.Printf("height1: %v\n", height1)
 
 	// Measure each circulating supply at the latest height where market balance was locked
 	// This allows us to normalize against fluctuations in circulating supply based on the underlying
@@ -149,21 +139,15 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 	nv23Supply, err := fullNode1.StateCirculatingSupply(ctx, ts1.Key())
 	require.NoError(t, err, "Failed to fetch nv23 circulating supply")
 
-	fmt.Printf("\n\n\n\n\n\n------------------before %v, after %v, diff: %v----------------\n\n\n\n\n", nv22Supply, nv23Supply, big.Sub(nv23Supply, nv22Supply))
-	nv22, err := fullNode0.StateNetworkVersion(ctx, ts0.Key())
-	require.NoError(t, err)
-	nv23, err := fullNode1.StateNetworkVersion(ctx, ts1.Key())
-	require.NoError(t, err)
-	fmt.Printf("\n\n\n\n\n\n------------------nv22: %v, nv23: %v----------------\n\n\n\n\n", nv22, nv23)
-
 	// Unfortunately there's still some non-determinism in supply dynamics so check for equality within a tolerance
 	tolerance := big.Mul(abi.NewTokenAmount(100), abi.NewTokenAmount(1e18))
 	totalLocked := big.Sum(lockedClientBalance, lockedProviderBalance)
-	require.Equal(t, -1, big.Cmp(
-		big.Sub(
-			big.Sum(totalLocked, nv23Supply),
-			nv22Supply,
-		),
+	diff := big.Sub(
+		big.Sum(totalLocked, nv22Supply),
+		nv23Supply,
+	)
+	assert.Equal(t, -1, big.Cmp(
+		diff.Abs(),
 		tolerance), "Supply difference exceeds tolerance")
 }
 
