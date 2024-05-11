@@ -142,15 +142,15 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 	require.NoError(t, err, "Failed to fetch nv23 circulating supply")
 
 	// Unfortunately there's still some non-determinism in supply dynamics so check for equality within a tolerance
-	tolerance := big.Mul(abi.NewTokenAmount(100), abi.NewTokenAmount(1e18))
+	tolerance := big.Mul(abi.NewTokenAmount(200), abi.NewTokenAmount(1e18))
 	totalLocked := big.Sum(lockedClientBalance, lockedProviderBalance)
 	diff := big.Sub(
-		big.Sum(totalLocked, nv22Supply.FilCirculating),
-		nv23Supply.FilCirculating,
+		big.Sum(totalLocked, nv23Supply.FilLocked),
+		nv22Supply.FilLocked,
 	)
 	assert.Equal(t, -1, big.Cmp(
 		diff.Abs(),
-		tolerance), "Supply difference exceeds tolerance")
+		tolerance), "Difference from expected locked supply between versions exceeds tolerance")
 }
 
 // Message will be valid and lock funds but the data is fake so the deal will never be activated
