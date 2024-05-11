@@ -27,6 +27,7 @@ import (
 // TODO(TEST): missing test coverage.
 
 const ProtocolID = "/fil/hello/1.0.0"
+const StreamReadTimeout = 10 * time.Second
 
 var log = logging.Logger("hello")
 
@@ -70,6 +71,7 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, co
 
 func (hs *Service) HandleStream(s inet.Stream) {
 	var hmsg HelloMessage
+	_ = s.SetReadDeadline(build.Clock.Now().Add(StreamReadTimeout))
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message, disconnecting", "error", err)
 		_ = s.Conn().Close()
@@ -166,7 +168,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		defer s.Close() //nolint:errcheck
 
 		lmsg := &LatencyMessage{}
-		_ = s.SetReadDeadline(build.Clock.Now().Add(10 * time.Second))
+		_ = s.SetReadDeadline(build.Clock.Now().Add(StreamReadTimeout))
 		err := cborutil.ReadCborRPC(s, lmsg)
 		if err != nil {
 			log.Debugw("reading latency message", "error", err)
