@@ -40,11 +40,11 @@ type msgChain struct {
 }
 
 func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
-	mp.curTsLk.RLock()
-	defer mp.curTsLk.RUnlock()
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
 
-	mp.lk.RLock()
-	defer mp.lk.RUnlock()
+	mp.stateLk.Lock()
+	defer mp.stateLk.Unlock()
 
 	// See if we need to prune before selection; excessive buildup can lead to slow selection,
 	// so prune if we have too many messages (ignoring the cooldown).

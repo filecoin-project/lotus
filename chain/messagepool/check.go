@@ -32,10 +32,12 @@ func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*api.MessageP
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
 func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]api.MessageCheckStatus, error) {
 	var msgs []*types.Message
-	mp.lk.RLock()
+
+	mp.stateLk.RLock()
+	defer mp.stateLk.RUnlock()
+
 	mset, ok, err := mp.getPendingMset(ctx, from)
 	if err != nil {
-		mp.lk.RUnlock()
 		return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 	}
 	if ok {
@@ -44,7 +46,6 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 			msgs = append(msgs, &sm.Message)
 		}
 	}
-	mp.lk.RUnlock()
 
 	if len(msgs) == 0 {
 		return nil, nil
@@ -63,7 +64,9 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 	msgMap := make(map[address.Address]map[uint64]*types.Message)
 	count := 0
 
-	mp.lk.RLock()
+	mp.stateLk.RLock()
+	defer mp.stateLk.RUnlock()
+
 	for _, m := range replace {
 		mmap, ok := msgMap[m.From]
 		if !ok {
@@ -71,7 +74,6 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 			msgMap[m.From] = mmap
 			mset, ok, err := mp.getPendingMset(ctx, m.From)
 			if err != nil {
-				mp.lk.RUnlock()
 				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 			}
 			if ok {
@@ -85,7 +87,6 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 		}
 		mmap[m.Nonce] = m
 	}
-	mp.lk.RUnlock()
 
 	msgs := make([]*types.Message, 0, count)
 	start := 0
@@ -112,10 +113,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	if mp.api.IsLite() {
 		return nil, nil
 	}
-	mp.curTsLk.RLock()
-	curTs := mp.curTs
-	mp.curTsLk.RUnlock()
+	mp.stateLk.RLock()
+	defer mp.stateLk.RUnlock()
 
+	curTs := mp.curTs
 	epoch := curTs.Height() + 1
 
 	var baseFee big.Int
@@ -152,10 +153,8 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 
 		st, ok := state[m.From]
 		if !ok {
-			mp.lk.RLock()
 			mset, ok, err := mp.getPendingMset(ctx, m.From)
 			if err != nil {
-				mp.lk.RUnlock()
 				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 			}
 			if ok && !interned {
@@ -164,14 +163,12 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
 				}
 				state[m.From] = st
-				mp.lk.RUnlock()
 
 				check.OK = true
 				check.Hint = map[string]interface{}{
 					"nonce": st.nextNonce,
 				}
 			} else {
-				mp.lk.RUnlock()
 
 				stateNonce, err := mp.getStateNonce(ctx, m.From, curTs)
 				if err != nil {
