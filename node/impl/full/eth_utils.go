@@ -396,19 +396,20 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 		return ethtypes.EthAddress{}, err
 	}
 
+	// revive:disable:empty-block easier to grok when the cases are explicit
+
 	// Lookup on the target actor and try to get an f410 address.
-	if actor, err := st.GetActor(idAddr); !errors.Is(err, types.ErrActorNotFound) {
-		if err != nil {
-			// Any other error -> fail.
-			return ethtypes.EthAddress{}, err
-		}
-		if actor.Address != nil {
-			if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
-				// Conversable into an eth address, use it.
-				return ethAddr, nil
-			}
-		} // else no delegated address -> use masked ID address.
-	} // else not found -> use a masked ID address
+	if actor, err := st.GetActor(idAddr); errors.Is(err, types.ErrActorNotFound) {
+		// Not found -> use a masked ID address
+	} else if err != nil {
+		// Any other error -> fail.
+		return ethtypes.EthAddress{}, err
+	} else if actor.Address == nil {
+		// No delegated address -> use masked ID address.
+	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+		// Conversable into an eth address, use it.
+		return ethAddr, nil
+	}
 
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
@@ -816,8 +817,8 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	if len(data)%EVM_WORD_SIZE != 0 {
 		totalWords++
 	}
-	l := totalWords * EVM_WORD_SIZE
-	buf := make([]byte, l)
+	sz := totalWords * EVM_WORD_SIZE
+	buf := make([]byte, sz)
 	offset := 0
 	// Below, we use copy instead of "appending" to preserve all the zero padding.
 	for _, arg := range staticArgs {
