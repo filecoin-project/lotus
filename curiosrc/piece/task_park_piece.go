@@ -34,7 +34,7 @@ type ParkPieceTask struct {
 	max int
 }
 
-func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) *ParkPieceTask {
+func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) (*ParkPieceTask, error) {
 	pt := &ParkPieceTask{
 		db: db,
 		sc: sc,
@@ -42,8 +42,20 @@ func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) *ParkPieceTa
 		max: max,
 	}
 
-	go pt.pollPieceTasks(context.Background())
-	return pt
+	ctx := context.Background()
+
+	// We should delete all incomplete pieces before we start
+	// as we would have lost reader for these. The RPC caller will get an error
+	// when Curio shuts down before parking a piece. They can always retry.
+	// Leaving these pieces we utilise unnecessary resources in the form of ParkPieceTask
+
+	_, err := db.Exec(ctx, `DELETE FROM parked_pieces WHERE complete = FALSE AND task_id IS NULL`)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to delete incomplete parked pieces: %w", err)
+	}
+
+	go pt.pollPieceTasks(ctx)
+	return pt, nil
 }
 
 func (p *ParkPieceTask) pollPieceTasks(ctx context.Context) {

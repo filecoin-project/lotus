@@ -336,7 +336,7 @@
   # possible that this queue grows more than this limit, the backpressure is only applied to sectors entering the pipeline.
   #
   # type: int
-  #MaxQueueSDR = 0
+  #MaxQueueSDR = 8
 
   # Maximum number of sectors that can be queued waiting for SDRTrees to start processing.
   # 0 = unlimited
