@@ -154,8 +154,9 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 }
 
 // Message will be valid and lock funds but the data is fake so the deal will never be activated
-func makePSDMessage(t *testing.T,
+func makePSDMessage(
 	ctx context.Context,
+	t *testing.T,
 	provider,
 	worker,
 	client address.Address,
