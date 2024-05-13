@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var log = logging.Logger("lppiece")
+var log = logging.Logger("cu-piece")
 var PieceParkPollInterval = time.Second * 15
 
 // ParkPieceTask gets a piece from some origin, and parks it in storage

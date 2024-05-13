@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/promise"
 )
 
-var log = logging.Logger("lpseal")
+var log = logging.Logger("cu/seal")
 
 const (
 	pollerSDR = iota

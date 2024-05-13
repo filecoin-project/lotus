@@ -125,13 +125,13 @@ type Ensemble struct {
 
 	inactive struct {
 		fullnodes     []*TestFullNode
-		providernodes []*TestProviderNode
+		providernodes []*TestCurioNode
 		miners        []*TestMiner
 		workers       []*TestWorker
 	}
 	active struct {
 		fullnodes     []*TestFullNode
-		providernodes []*TestProviderNode
+		providernodes []*TestCurioNode
 		miners        []*TestMiner
 		workers       []*TestWorker
 		bms           map[*TestMiner]*BlockMiner
@@ -227,17 +227,17 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	return n
 }
 
-// FullNode enrolls a new Provider node.
-func (n *Ensemble) Provider(lp *TestProviderNode, opts ...NodeOpt) *Ensemble {
+// FullNode enrolls a new Curio node.
+func (n *Ensemble) Curio(cu *TestCurioNode, opts ...NodeOpt) *Ensemble {
 	options := DefaultNodeOpts
 	for _, o := range opts {
 		err := o(&options)
 		require.NoError(n.t, err)
 	}
 
-	*lp = TestProviderNode{t: n.t, options: options, Deps: &deps.Deps{}}
+	*cu = TestCurioNode{t: n.t, options: options, Deps: &deps.Deps{}}
 
-	n.inactive.providernodes = append(n.inactive.providernodes, lp)
+	n.inactive.providernodes = append(n.inactive.providernodes, cu)
 	return n
 }
 
