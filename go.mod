@@ -19,6 +19,7 @@ require (
 	github.com/buger/goterm v1.0.3
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/chzyer/readline v1.5.1
+	github.com/codeskyblue/go-sh v0.0.0-20200712050446-30169cf553fe
 	github.com/containerd/cgroups v1.1.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
@@ -190,6 +191,7 @@ require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
+	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20231225121904-e25f5bc08668 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
