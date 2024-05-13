@@ -119,8 +119,10 @@ const UpgradeWatermelonFix2Height = -2
 const UpgradeCalibrationDragonFixHeight = -3
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
-	abi.RegisteredSealProof_StackedDrg32GiBV1,
-	abi.RegisteredSealProof_StackedDrg64GiBV1,
+	abi.RegisteredSealProof_StackedDrg32GiBV1_1,
+	abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep,
+	abi.RegisteredSealProof_StackedDrg64GiBV1_1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
@@ -166,5 +168,5 @@ const BootstrapPeerThreshold = 4
 // As per https://github.com/ethereum-lists/chains
 const Eip155ChainId = 314
 
-// we skip checks on message validity in this block to sidestep the zero-bls signature
+// WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")

@@ -93,7 +93,7 @@ type Commit2In struct {
 }
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	log.Info("Starting lotus-bench")
 

@@ -92,9 +92,8 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, chain *store.ChainStor
 				return nil, fmt.Errorf("cannot get parent tipset")
 			}
 			return parent, nil
-		} else {
-			return nil, fmt.Errorf("unknown predefined block %s", *predefined)
 		}
+		return nil, fmt.Errorf("unknown predefined block %s", *predefined)
 	}
 
 	if blkParam.BlockNumber != nil {
@@ -298,7 +297,7 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs *store.ChainStore, 
 const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
 const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
 // Eth ABI (solidity) panic codes.
-var panicErrorCodes map[uint64]string = map[uint64]string{
+var panicErrorCodes = map[uint64]string{
 	0x00: "Panic()",
 	0x01: "Assert()",
 	0x11: "ArithmeticOverflow()",
@@ -397,6 +396,8 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 		return ethtypes.EthAddress{}, err
 	}
 
+	// revive:disable:empty-block easier to grok when the cases are explicit
+
 	// Lookup on the target actor and try to get an f410 address.
 	if actor, err := st.GetActor(idAddr); errors.Is(err, types.ErrActorNotFound) {
 		// Not found -> use a masked ID address
@@ -410,7 +411,6 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 		return ethAddr, nil
 	}
 
-	// Otherwise, use the masked address.
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
@@ -456,9 +456,9 @@ func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, er
 		return tx.TxHash()
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
 		return ethtypes.EthHashFromCid(smsg.Cid())
-	} else { // BLS message
-		return ethtypes.EthHashFromCid(smsg.Message.Cid())
 	}
+	// else BLS message
+	return ethtypes.EthHashFromCid(smsg.Message.Cid())
 }
 
 func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (ethtypes.EthTx, error) {
@@ -817,8 +817,8 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	if len(data)%EVM_WORD_SIZE != 0 {
 		totalWords++
 	}
-	len := totalWords * EVM_WORD_SIZE
-	buf := make([]byte, len)
+	sz := totalWords * EVM_WORD_SIZE
+	buf := make([]byte, sz)
 	offset := 0
 	// Below, we use copy instead of "appending" to preserve all the zero padding.
 	for _, arg := range staticArgs {

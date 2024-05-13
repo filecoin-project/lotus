@@ -965,9 +965,8 @@ func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Addres
 		return a.stateComputeDataCIDv1(ctx, maddr, sectorType, deals, tsk)
 	} else if nv < network.Version21 {
 		return a.stateComputeDataCIDv2(ctx, maddr, sectorType, deals, tsk)
-	} else {
-		return a.stateComputeDataCIDv3(ctx, maddr, sectorType, deals, tsk)
 	}
+	return a.stateComputeDataCIDv3(ctx, maddr, sectorType, deals, tsk)
 }
 
 func (a *StateAPI) stateComputeDataCIDv1(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {

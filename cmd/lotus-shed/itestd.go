@@ -64,7 +64,7 @@ var itestdCmd = &cli.Command{
 		cs := readline.NewCancelableStdin(os.Stdin)
 		go func() {
 			<-cctx.Done()
-			cs.Close() // nolint:errcheck
+			_ = cs.Close()
 		}()
 
 		rl := bufio.NewReader(cs)

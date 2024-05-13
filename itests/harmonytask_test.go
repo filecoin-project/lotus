@@ -32,7 +32,7 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 		kit.MockProofs(),
 		kit.WithSectorIndexDB(),
 	)
-	logging.SetLogLevel("harmonytask", "debug")
+	_ = logging.SetLogLevel("harmonytask", "debug")
 
 	f(miner)
 }

@@ -38,7 +38,7 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 
 		log.Info("libp2p resource manager is enabled")
 		// enable debug logs for rcmgr
-		logging.SetLogLevel("rcmgr", "debug")
+		_ = logging.SetLogLevel("rcmgr", "debug")
 
 		// Adjust default defaultLimits
 		// - give it more memory, up to 4G, min of 1G

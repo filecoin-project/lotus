@@ -579,7 +579,7 @@ func TestTxReceiptBloom(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
-	logging.SetLogLevel("fullnode", "DEBUG")
+	_ = logging.SetLogLevel("fullnode", "DEBUG")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

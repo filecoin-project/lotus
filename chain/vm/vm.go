@@ -336,9 +336,7 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				if vm.networkVersion <= network.Version3 {
-					// Leave the rt.Message as is
-				} else {
+				if vm.networkVersion > network.Version3 {
 					nmsg := Message{
 						msg: types.Message{
 							To:    aid,
@@ -346,9 +344,8 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 							Value: rt.Message.ValueReceived(),
 						},
 					}
-
 					rt.Message = &nmsg
-				}
+				} // else leave the rt.Message as is
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}

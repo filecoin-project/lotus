@@ -5,15 +5,12 @@ linters:
     - govet
     - goimports
     - misspell
-    - goconst
-    - golint
+    - revive
     - errcheck
     - gosec
     - unconvert
     - staticcheck
-    - varcheck
-    - deadcode
-    - scopelint
+    - exportloopref
     - unused
 
 # We don't want to skip builtin/
@@ -25,36 +22,35 @@ skip-dirs:
 
 issues:
   exclude:
-    - "by other packages, and that stutters; consider calling this"
-    - "Potential file inclusion via variable"
-    - "should have( a package)? comment"
-    - "Error return value of `logging.SetLogLevel` is not checked"
-    - "comment on exported"
-    - "(func|method) \\w+ should be \\w+"
-    - "(type|var|struct field|(method|func) parameter) `\\w+` should be `\\w+`"
-    - "(G306|G301|G307|G108|G302|G204|G104)"
-    - "don't use ALL_CAPS in Go names"
-    - "string .* has .* occurrences, make it a constant"
-    - "a blank import should be only in a main or test package, or have a comment justifying it"
-    - "package comment should be of the form"
-    - "Potential hardcoded credentials"
-    - "Use of weak random number generator"
-    - "xerrors.* is deprecated"
+    # gosec
+    - "^G101: Potential hardcoded credentials"
+    - "^G108: Profiling endpoint is automatically exposed on /debug/pprof"
+    - "^G204: Subprocess launched with (variable|a potential tainted input or cmd arguments)"
+    - "^G301: Expect directory permissions to be 0750 or less"
+    - "^G302: Expect file permissions to be 0600 or less"
+    - "^G304: Potential file inclusion via variable"
+    - "^G306: Expect WriteFile permissions to be 0600 or less"
+    - "^G404: Use of weak random number generator"
+    # staticcheck
+    - "^SA1019: xerrors.* is deprecated: As of Go 1.13, use errors"
+    # revive
+    - "^blank-imports: a blank import should be only in a main or test package, or have a comment justifying it"
+    - "^dot-imports: should not use dot imports"
+    - "^exported: (func|type) name will be used as [^\\s]+ by other packages, and that stutters; consider calling this \\w+"
+    - "^exported: comment on exported (const|function|method|type|var) [^\\s]+ should be of the form \"\\w+ ...\""
+    - "^exported: exported (const|function|method|type|var) [^\\s]+ should have comment (\\(or a comment on this block\\) )?or be unexported"
+    - "^indent-error-flow: if block ends with a return statement, so drop this else and outdent its block \\(move short variable declaration to its own line if necessary\\)"
+    - "^package-comments: package comment should be of the form \"Package \\w+ ...\""
+    - "^package-comments: should have a package comment"
+    - "^unexported-return: exported func \\w+ returns unexported type [^\\s]+, which can be annoying to use"
+    - "^unused-parameter: parameter '\\w+' seems to be unused, consider removing or renaming it as _"
+    - "^var-naming: (const|func|type|var|struct field|(method|func|interface method) parameter) [A-Z]\\w+ should be"
+    - "^var-naming: (method|range var) \\w*(Api|Http|Id|Rpc|Url)[^\\s]* should be \\w*(API|HTTP|ID|RPC|URL)"
+    - "^var-naming: don't use underscores in Go names"
+    - "^var-naming: don't use ALL_CAPS in Go names; use CamelCase"
 
   exclude-use-default: false
   exclude-rules:
-
-    - path: node/modules/lp2p
-      linters:
-        - golint
-
-    - path: build/params_.*\.go
-      linters:
-        - golint
-
-    - path: api/apistruct/struct.go
-      linters:
-        - golint
 
     - path: .*_test.go
       linters:
@@ -67,12 +63,3 @@ issues:
     - path: cmd/lotus-bench/.*
       linters:
         - gosec
-
-    - path: api/test/.*
-      text: "context.Context should be the first parameter"
-      linters:
-        - golint
-
-linters-settings:
-  goconst:
-    min-occurrences: 6

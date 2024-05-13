@@ -667,7 +667,7 @@ func (t *WinPostTask) computeTicket(ctx context.Context, maddr address.Address, 
 
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
-	rand.Reader.Read(buf) //nolint:errcheck
+	_, _ = rand.Reader.Read(buf)
 	val := time.Duration(binary.BigEndian.Uint64(buf) % uint64(width))
 
 	return val - (width / 2)
