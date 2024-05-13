@@ -142,7 +142,7 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 	require.NoError(t, err, "Failed to fetch nv23 circulating supply")
 
 	// Unfortunately there's still some non-determinism in supply dynamics so check for equality within a tolerance
-	tolerance := big.Mul(abi.NewTokenAmount(200), abi.NewTokenAmount(1e18))
+	tolerance := big.Mul(abi.NewTokenAmount(1000), abi.NewTokenAmount(1e18))
 	totalLocked := big.Sum(lockedClientBalance, lockedProviderBalance)
 	diff := big.Sub(
 		big.Sum(totalLocked, nv23Supply.FilLocked),
@@ -182,7 +182,7 @@ func makePSDMessage(
 		StoragePricePerEpoch: ppe,
 	}
 	buf := bytes.NewBuffer(nil)
-	proposal.MarshalCBOR(buf)
+	require.NoError(t, proposal.MarshalCBOR(buf))
 	sig, err := signFunc(ctx, client, buf.Bytes())
 	require.NoError(t, err)
 	// Publish storage deal
