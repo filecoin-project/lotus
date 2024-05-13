@@ -56,8 +56,8 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 
 		psd0, err := fullNode0.MpoolPushMessage(ctx,
 			makePSDMessage(
-				t,
 				ctx,
+				t,
 				blockMiner0.ActorAddr,
 				worker0,
 				wallet0,
@@ -95,8 +95,8 @@ func TestCirciulationSupplyUpgrade(t *testing.T) {
 
 		psd1, err := fullNode1.MpoolPushMessage(ctx,
 			makePSDMessage(
-				t,
 				ctx,
+				t,
 				blockMiner1.ActorAddr,
 				worker1,
 				wallet1,
