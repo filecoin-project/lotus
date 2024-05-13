@@ -88,10 +88,8 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
-	abi.RegisteredSealProof_StackedDrg2KiBV1_1,
-	abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep,
-	abi.RegisteredSealProof_StackedDrg8MiBV1_1,
-	abi.RegisteredSealProof_StackedDrg8MiBV1_1_Feat_SyntheticPoRep,
+	abi.RegisteredSealProof_StackedDrg2KiBV1,
+	abi.RegisteredSealProof_StackedDrg8MiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(2048)
 var MinVerifiedDealSize = abi.NewStoragePower(256)

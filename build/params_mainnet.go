@@ -119,10 +119,8 @@ const UpgradeWatermelonFix2Height = -2
 const UpgradeCalibrationDragonFixHeight = -3
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
-	abi.RegisteredSealProof_StackedDrg32GiBV1_1,
-	abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep,
-	abi.RegisteredSealProof_StackedDrg64GiBV1_1,
-	abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep,
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
