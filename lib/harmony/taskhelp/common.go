@@ -1,6 +1,6 @@
 package taskhelp
 
-// SubsetIf returns a subset of the slice for which the predicate is true.
+// SliceIfFound returns a subset of the slice for which the predicate is true.
 // It does not allocate memory, but rearranges the list in place.
 // A non-zero list input will always return a non-zero list.
 // The return value is the subset and a boolean indicating whether the subset was sliced.
