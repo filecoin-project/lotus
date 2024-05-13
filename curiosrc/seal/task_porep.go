@@ -3,7 +3,6 @@ package seal
 import (
 	"bytes"
 	"context"
-	"strings"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -173,54 +172,6 @@ func (p *PoRepTask) TypeDetails() harmonytask.TaskTypeDetails {
 
 func (p *PoRepTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 	p.sp.pollers[pollerPoRep].Set(taskFunc)
-}
-
-func (p *PoRepTask) recoverErrors(ctx context.Context, spid, snum int64, cerr error) (end bool, err error) {
-	const (
-		// rust-fil-proofs error strings
-		// https://github.com/filecoin-project/rust-fil-proofs/blob/3f018b51b6327b135830899d237a7ba181942d7e/storage-proofs-porep/src/stacked/vanilla/proof.rs#L454C1-L463
-		errstrInvalidCommD    = "Invalid comm_d detected at challenge_index"
-		errstrInvalidCommR    = "Invalid comm_r detected at challenge_index"
-		errstrInvalidEncoding = "Invalid encoding proof generated at layer"
-	)
-
-	if cerr == nil {
-		return false, xerrors.Errorf("nil error")
-	}
-
-	switch {
-	case strings.Contains(cerr.Error(), errstrInvalidCommD):
-		log.Warnf("PoRep error recovery: PoRep failed with %s for sector %d of miner %d", errstrInvalidCommD, snum, spid)
-		return p.resetSector(ctx, spid, snum)
-	case strings.Contains(cerr.Error(), errstrInvalidCommR):
-		// todo: it might be more optimal to just retry the Trees compute first.
-		//  Invalid CommD/R likely indicates a problem with the data computed in that step
-		//  For now for simplicity just retry the whole thing
-		log.Warnf("PoRep error recovery: PoRep failed with %s for sector %d of miner %d", errstrInvalidCommR, snum, spid)
-		return p.resetSector(ctx, spid, snum)
-	case strings.Contains(cerr.Error(), errstrInvalidEncoding):
-		log.Warnf("PoRep error recovery: PoRep failed with %s for sector %d of miner %d", errstrInvalidEncoding, snum, spid)
-		return p.resetSector(ctx, spid, snum)
-
-	default:
-		// if end is false the original error will be returned by the caller
-		return false, nil
-	}
-}
-
-func (p *PoRepTask) resetSector(ctx context.Context, spid, snum int64) (bool, error) {
-	n, err := p.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_porep = FALSE, after_sdr = FALSE, after_tree_d = FALSE,
-		    after_tree_r = FALSE, after_tree_c = FALSE
-		WHERE sp_id = $1 AND sector_number = $2`,
-		spid, snum)
-	if err != nil {
-		return false, xerrors.Errorf("store sdr success: updating pipeline: %w", err)
-	}
-	if n != 1 {
-		return false, xerrors.Errorf("store sdr success: updated %d rows", n)
-	}
-	return true, nil
 }
 
 var _ harmonytask.TaskInterface = &PoRepTask{}

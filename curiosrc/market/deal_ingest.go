@@ -455,7 +455,6 @@ func (p *PieceIngester) getOpenSectors(tx *harmonydb.Tx) ([]*openSector, error) 
 				index:         pi.Index,
 				openedAt:      pi.CreatedAt,
 			}
-			sector = sectorMap[pi.Sector]
 			continue
 		}
 		sector.currentSize += pi.Size

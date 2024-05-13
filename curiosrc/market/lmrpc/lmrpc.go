@@ -413,9 +413,8 @@ func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *
 				}
 				if !taskResult {
 					return api.SectorOffset{}, xerrors.Errorf("park-piece task failed: %s", taskError)
-				} else {
-					return api.SectorOffset{}, xerrors.Errorf("park task succeeded but piece is not marked as complete")
 				}
+				return api.SectorOffset{}, xerrors.Errorf("park task succeeded but piece is not marked as complete")
 			}
 		}
 
