@@ -14,6 +14,7 @@ import (
 	"github.com/puzpuzpuz/xsync/v2"
 	"golang.org/x/xerrors"
 
+	// TODO everywhere here that we call this we should call our proxy instead.
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
