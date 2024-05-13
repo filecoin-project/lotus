@@ -967,6 +967,12 @@ workflows:
           suite: itest-splitstore
           target: "./itests/splitstore_test.go"
       - test:
+          name: test-itest-supply
+          requires:
+            - build
+          suite: itest-supply
+          target: "./itests/supply_test.go"
+      - test:
           name: test-itest-verifreg
           requires:
             - build
