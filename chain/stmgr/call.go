@@ -25,6 +25,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
+type execMessageStrategy int
+
+const (
+	execNoMessages         execMessageStrategy = iota // apply no prior or current tipset messages
+	execAllMessages                                   // apply all prior and current tipset messages
+	execSameSenderMessages                            // apply all prior messages and any current tipset messages from the same sender
+)
+
 var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at epoch")
 
 // Call applies the given message to the given tipset's parent state, at the epoch following the
@@ -48,17 +56,24 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		msg.Value = types.NewInt(0)
 	}
 
-	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, false, false)
+	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, execSameSenderMessages)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
 func (sm *StateManager) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, false, true)
+	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
 func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, applyTsMessages, false)
+	var strategy execMessageStrategy
+	if applyTsMessages {
+		strategy = execAllMessages
+	} else {
+		strategy = execSameSenderMessages
+	}
+
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, strategy)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -69,13 +84,14 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 	nvGetter := func(context.Context, abi.ChainEpoch) network.Version {
 		return v
 	}
-	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, false, false)
+	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
-func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid, nvGetter rand.NetworkVersionGetter, checkGas, applyTsMessages bool, noReExec bool) (*api.InvocResult, error) {
+func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid,
+	nvGetter rand.NetworkVersionGetter, checkGas bool, strategy execMessageStrategy) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -156,15 +172,17 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
 
-	if !noReExec {
+	switch strategy {
+	case execNoMessages:
+		// Do nothing
+	case execAllMessages, execSameSenderMessages:
 		tsMsgs, err := sm.cs.MessagesForTipset(ctx, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to lookup messages for parent tipset: %w", err)
 		}
-
-		if applyTsMessages {
+		if strategy == execAllMessages {
 			priorMsgs = append(tsMsgs, priorMsgs...)
-		} else {
+		} else if strategy == execSameSenderMessages {
 			var filteredTsMsgs []types.ChainMsg
 			for _, tsMsg := range tsMsgs {
 				//TODO we should technically be normalizing the filecoin address of from when we compare here
