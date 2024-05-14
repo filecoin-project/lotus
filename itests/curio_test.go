@@ -95,7 +95,6 @@ func TestCurioHappyPath(t *testing.T) {
 
 	full, miner, esemble := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
-		kit.MockProofs(),
 		kit.WithSectorIndexDB(),
 	)
 
@@ -123,7 +122,7 @@ func TestCurioHappyPath(t *testing.T) {
 	require.NotContains(t, titles, "base")
 
 	addr := miner.OwnerKey.Address
-	sectorSizeInt, err := units.RAMInBytes("8MiB")
+	sectorSizeInt, err := units.RAMInBytes("2KiB")
 	require.NoError(t, err)
 
 	maddr, err := spcli.CreateStorageMiner(ctx, full, addr, addr, addr, abi.SectorSize(sectorSizeInt), 0)
