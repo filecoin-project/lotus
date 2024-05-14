@@ -560,6 +560,7 @@ workflows:
             - build
           suite: itest-curio
           target: "./itests/curio_test.go"
+          get-params: true
       - test:
           name: test-itest-deadlines
           requires:
