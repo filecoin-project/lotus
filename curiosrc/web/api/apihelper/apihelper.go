@@ -7,7 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var log = logging.Logger("lp/web/apihelper")
+var log = logging.Logger("cu/web/apihelper")
 
 func OrHTTPFail(w http.ResponseWriter, err error) {
 	if err != nil {

@@ -55,8 +55,8 @@ type TestFullNode struct {
 	options nodeOpts
 }
 
-// TestProviderNode represents a Provider node enrolled in an Ensemble.
-type TestProviderNode struct {
+// TestCurioNode represents a Curio node enrolled in an Ensemble.
+type TestCurioNode struct {
 	v1api.CurioStruct
 
 	t *testing.T
