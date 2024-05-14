@@ -40,11 +40,15 @@ func (s *server) HandleStream(stream inet.Stream) {
 
 	defer stream.Close() //nolint:errcheck
 
+	_ = stream.SetReadDeadline(time.Now().Add(streamReadDeadline))
 	var req Request
 	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
+		_ = stream.SetReadDeadline(time.Time{})
 		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
+	_ = stream.SetReadDeadline(time.Time{})
+
 	log.Debugw("block sync request",
 		"start", req.Head, "len", req.Length)
 

@@ -38,6 +38,7 @@ const (
 	ReadResMinSpeed     = 50 << 10
 	ShufflePeersPrefix  = 16
 	WriteResDeadline    = 60 * time.Second
+	streamReadDeadline  = 30 * time.Second
 )
 
 // FIXME: Rename. Make private.
