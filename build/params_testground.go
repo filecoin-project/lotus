@@ -35,10 +35,8 @@ var (
 	PropagationDelaySecs  = uint64(6)
 	EquivocationDelaySecs = uint64(2)
 	SupportedProofTypes   = []abi.RegisteredSealProof{
-		abi.RegisteredSealProof_StackedDrg32GiBV1_1,
-		abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep,
-		abi.RegisteredSealProof_StackedDrg64GiBV1_1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep,
+		abi.RegisteredSealProof_StackedDrg32GiBV1,
+		abi.RegisteredSealProof_StackedDrg64GiBV1,
 	}
 	ConsensusMinerMinPower  = abi.NewStoragePower(10 << 40)
 	PreCommitChallengeDelay = abi.ChainEpoch(150)

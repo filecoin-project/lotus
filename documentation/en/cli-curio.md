@@ -246,7 +246,7 @@ OPTIONS:
    --manage-fdlimit                                                                     manage open file limit (default: true)
    --storage-json value                                                                 path to json file containing storage config (default: "~/.curio/storage.json")
    --journal value                                                                      path to journal files (default: "~/.curio/")
-   --layers value, -l value, --layer value [ --layers value, -l value, --layer value ]  list of layers to be interpreted (atop defaults). Default: base
+   --layers value, -l value, --layer value [ --layers value, -l value, --layer value ]  list of layers to be interpreted (atop defaults). Default: base [$CURIO_LAYERS]
    --help, -h                                                                           show help
 ```
 

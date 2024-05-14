@@ -63,8 +63,9 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringSliceFlag{
 			Name:    "layers",
-			Aliases: []string{"l", "layer"},
 			Usage:   "list of layers to be interpreted (atop defaults). Default: base",
+			EnvVars: []string{"CURIO_LAYERS"},
+			Aliases: []string{"l", "layer"},
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
