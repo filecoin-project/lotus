@@ -980,25 +980,32 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 		return nil, xerrors.Errorf("cannot get tipset: %w", err)
 	}
 
-	// Try calling until we find a height with no migration.
-	for {
-		st, _, err := a.StateManager.TipSetState(ctx, ts)
-		if err != nil {
-			return nil, xerrors.Errorf("cannot get tipset state: %w", err)
-		}
-
-		res, err = a.StateManager.ApplyOnStateWithGas(ctx, st, msg, ts)
-		if err != stmgr.ErrExpensiveFork {
-			break
-		}
-		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+	// Walk back until we find a tipset where no state migration is needed
+	if ts.Height() > 0 {
+		for {
+			pts, err := a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+			}
+			if !a.StateManager.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+				break
+			}
+			ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+			if err != nil {
+				return nil, xerrors.Errorf("getting parent tipset: %w", err)
+			}
 		}
 	}
+
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get tipset state: %w", err)
+	}
+	res, err = a.StateManager.ApplyOnStateWithGas(ctx, st, msg, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("ApplyWithGasOnState failed: %w", err)
 	}
+
 	if res.MsgRct.ExitCode.IsError() {
 		reason := parseEthRevert(res.MsgRct.Return)
 		return nil, xerrors.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)

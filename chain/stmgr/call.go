@@ -115,7 +115,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
 			// Checks for expensive forks from the parents to the tipset, including nil tipsets
-			if !sm.hasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			if !sm.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
 				break
 			}
 
@@ -126,7 +126,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 		}
-		if sm.hasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+		if sm.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
 			return nil, ErrExpensiveFork
 		}
 	}
