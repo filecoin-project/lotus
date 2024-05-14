@@ -102,10 +102,8 @@ const UpgradeCalibrationDragonFixHeight = 1493854
 const UpgradeAussieHeight = 999999999999999
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
-	abi.RegisteredSealProof_StackedDrg32GiBV1_1,
-	abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep,
-	abi.RegisteredSealProof_StackedDrg64GiBV1_1,
-	abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep,
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
 var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
