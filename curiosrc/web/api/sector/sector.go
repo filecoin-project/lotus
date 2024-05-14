@@ -271,6 +271,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+			sectors[i].IsFilPlus = vp > dw
 			if dw > 0 {
 				sectors[i].DealWeight = fmt.Sprintf("%s", units.BytesSize(dw))
 			} else if vp > 0 {

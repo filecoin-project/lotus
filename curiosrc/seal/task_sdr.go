@@ -251,7 +251,7 @@ func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
 
 	if isDevnet {
 		res.Cost.Ram = 1 << 30
-		res.Cost.Cpu = 1
+		res.Cost.Cpu = 0
 	}
 
 	return res
