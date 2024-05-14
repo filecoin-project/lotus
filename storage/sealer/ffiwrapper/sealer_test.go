@@ -37,7 +37,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
+	_ = logging.SetLogLevel("*", "DEBUG")
 }
 
 var sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1

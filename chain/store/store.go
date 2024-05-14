@@ -305,6 +305,7 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 			// Unsubscribe.
 			cs.bestTips.Unsub(subch)
 
+			// revive:disable-next-line:empty-block
 			// Drain the channel.
 			for range subch {
 			}
@@ -752,7 +753,7 @@ func FlushValidationCache(ctx context.Context, ds dstore.Batching) error {
 	for _, k := range allKeys {
 		if strings.HasPrefix(k.Key, blockValidationCacheKeyPrefix.String()) {
 			delCnt++
-			batch.Delete(ctx, dstore.RawKey(k.Key)) // nolint:errcheck
+			_ = batch.Delete(ctx, dstore.RawKey(k.Key))
 		}
 	}
 

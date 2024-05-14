@@ -1305,14 +1305,11 @@ var sectorsBatchingPendingCommit = &cli.Command{
 				return cctx.Command.Action(cctx)
 			} else if userInput == "no" {
 				return nil
-			} else {
-				fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
-				return nil
 			}
-
-		} else {
-			fmt.Println("No sectors queued to be committed")
+			fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
+			return nil
 		}
+		fmt.Println("No sectors queued to be committed")
 		return nil
 	},
 }
@@ -1384,14 +1381,11 @@ var sectorsBatchingPendingPreCommit = &cli.Command{
 				return cctx.Command.Action(cctx)
 			} else if userInput == "no" {
 				return nil
-			} else {
-				fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
-				return nil
 			}
-
-		} else {
-			fmt.Println("No sectors queued to be committed")
+			fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
+			return nil
 		}
+		fmt.Println("No sectors queued to be committed")
 		return nil
 	},
 }

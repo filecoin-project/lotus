@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
+	"github.com/filecoin-project/lotus/curiosrc/alertmanager"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/curiosrc/gc"
@@ -114,9 +115,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, sdrTask)
 		}
 		if cfg.Subsystems.EnableSealSDRTrees {
-			treesTask := seal.NewTreesTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeDTask := seal.NewTreeDTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeRCTask := seal.NewTreeRCTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
 			finalizeTask := seal.NewFinalizeTask(cfg.Subsystems.FinalizeMaxTasks, sp, slr, db)
-			activeTasks = append(activeTasks, treesTask, finalizeTask)
+			activeTasks = append(activeTasks, treeDTask, treeRCTask, finalizeTask)
 		}
 		if cfg.Subsystems.EnableSendPrecommitMsg {
 			precommitTask := seal.NewSubmitPrecommitTask(sp, db, full, sender, as, cfg.Fees.MaxPreCommitGasFee)
@@ -142,6 +144,9 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		storageEndpointGcTask := gc.NewStorageEndpointGC(si, stor, db)
 		activeTasks = append(activeTasks, storageEndpointGcTask)
 	}
+
+	amTask := alertmanager.NewAlertTask(full, db, cfg.Alerting)
+	activeTasks = append(activeTasks, amTask)
 
 	if needProofParams {
 		for spt := range dependencies.ProofTypes {

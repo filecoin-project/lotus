@@ -22,6 +22,7 @@
         this.loadData();
         this.message = this.readCookie('message');
         this.eraseCookie('message');
+        this.addName = '';
       }
       static get styles() {
         return [css`
@@ -38,7 +39,7 @@
           <table>
               ${this.layers.map((layer, index) => html`
                   <tr>
-                    <td><a href="/config/edit.html?layer=${layer}"><button>${layer}</button></a></td>
+                    <td style="width: 50%"><a href="/config/edit.html?layer=${layer}"><button>${layer}</button></a></td>
                     <td>
                     Used By: ${(f=> f.length?f.map(topo => html`${topo.Server}`):'-')(
                       this.topo.filter(topo => topo.LayersCSV.split(",").includes(layer)))} 
@@ -46,6 +47,13 @@
                   </tr>
               `)}
           </table>
+            <input autofocus type="text" id="layername" placeholder="Layer Name" @change=${this.updateName}>
+            <button class="button" @click=${this.addLayer}>Add Layer</button>
+          <hr>
+          <span>
+            To delete a layer, use ysqlsh to issue the following command:<br>
+            <code lang=sql>DELETE FROM curio.harmony_config WHERE title = 'my_layer_name';</code>
+          </span>
         `;
       }
       loadData() {
@@ -77,12 +85,40 @@
       eraseCookie(name) {
         document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       }
+
+      updateName(e) {
+        this.addName = e.target.value;
+      }
+      addLayer() {
+        // get a name
+        var v = this.addName;
+        if (v === '') {
+          alert('Error: Layer name cannot be empty');
+          return;
+        }
+
+        axios.post('/api/config/addlayer', { name: v })
+          .then(response => {
+            window.location.href = '/config/edit.html?layer=' + v;
+          })
+          .catch(error => {
+            alert('Error adding layer:', error);
+          });
+      }
     });
   </script>
   <curio-ux>
-    <h1>Configuration Editor</h1>
-    <h3>Click on a layer to edit its configuration</h3>
-    <config-list></config-list>
+    <div class="row">
+      <div class="col-md-3">
+      </div>
+      <div class="col-md-3" style="width: 70%">
+        <h1 style="text-wrap: none">Configuration Editor</h1>
+        <h3 style="text-wrap: none">Click on a layer to edit its configuration</h3>
+        <config-list></config-list>
+      </div>
+      <div class="col-md-3">
+      </div>
+    </div>
   </curio-ux>
 </body>
 

@@ -644,8 +644,8 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 		bw := bufio.NewWriterSize(w, 1<<20)
 
 		err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw)
-		bw.Flush()            //nolint:errcheck // it is a write to a pipe
-		w.CloseWithError(err) //nolint:errcheck // it is a pipe
+		_ = bw.Flush()            // it is a write to a pipe
+		_ = w.CloseWithError(err) // it is a pipe
 	}()
 
 	go func() {

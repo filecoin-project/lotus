@@ -25,15 +25,15 @@ func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) e
 	}
 
 	hts := syncer.ChainStore().GetHeaviestTipSet()
-	if hts.Equals(ts) {
-		// Current head, no need to switch.
-	} else if anc, err := syncer.store.IsAncestorOf(ctx, ts, hts); err != nil {
-		return xerrors.Errorf("failed to walk the chain when checkpointing: %w", err)
-	} else if anc {
-		// New checkpoint is on the current chain, we definitely have the tipsets.
-	} else if err := syncer.collectChain(ctx, ts, hts, true); err != nil {
-		return xerrors.Errorf("failed to collect chain for checkpoint: %w", err)
-	}
+	if !hts.Equals(ts) {
+		if anc, err := syncer.store.IsAncestorOf(ctx, ts, hts); err != nil {
+			return xerrors.Errorf("failed to walk the chain when checkpointing: %w", err)
+		} else if !anc {
+			if err := syncer.collectChain(ctx, ts, hts, true); err != nil {
+				return xerrors.Errorf("failed to collect chain for checkpoint: %w", err)
+			}
+		} // else new checkpoint is on the current chain, we definitely have the tipsets.
+	} // else current head, no need to switch.
 
 	if err := syncer.ChainStore().SetCheckpoint(ctx, ts); err != nil {
 		return xerrors.Errorf("failed to set the chain checkpoint: %w", err)

@@ -184,9 +184,8 @@ func (sr *stateRand) GetBeaconRandomness(ctx context.Context, filecoinEpoch abi.
 		return sr.getBeaconRandomnessV3(ctx, filecoinEpoch)
 	} else if nv == network.Version13 {
 		return sr.getBeaconRandomnessV2(ctx, filecoinEpoch)
-	} else {
-		return sr.getBeaconRandomnessV1(ctx, filecoinEpoch)
 	}
+	return sr.getBeaconRandomnessV1(ctx, filecoinEpoch)
 }
 
 func (sr *stateRand) DrawChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {

@@ -183,6 +183,30 @@ over the worker address if this flag is set.`,
 			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
 		},
 	},
+	"CurioAlerting": {
+		{
+			Name: "PagerDutyEventURL",
+			Type: "string",
+
+			Comment: `PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+routed to a PagerDuty.com service and processed.
+The default is sufficient for integration with the stock commercial PagerDuty.com company's service.`,
+		},
+		{
+			Name: "PageDutyIntegrationKey",
+			Type: "string",
+
+			Comment: `PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
+identifier in the integration page for the service.`,
+		},
+		{
+			Name: "MinimumWalletBalance",
+			Type: "types.FIL",
+
+			Comment: `MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+alerts will be triggered for the wallet`,
+		},
+	},
 	"CurioConfig": {
 		{
 			Name: "Subsystems",
@@ -223,6 +247,12 @@ over the worker address if this flag is set.`,
 		{
 			Name: "Apis",
 			Type: "ApisConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Alerting",
+			Type: "CurioAlerting",
 
 			Comment: ``,
 		},
@@ -584,8 +614,8 @@ uses all available network (or disk) bandwidth on the machine without causing bo
 
 			Comment: `BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
 This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
-Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
-Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+Strings should be in the format "actor:ip:port". IP cannot be 0.0.0.0. We recommend using a private IP.
+Example: "f0123:127.0.0.1:32100". Multiple addresses can be specified.
 
 When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
 deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one

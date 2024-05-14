@@ -927,7 +927,7 @@ func NewEthBlockNumberOrHashFromNumber(number EthUint64) EthBlockNumberOrHash {
 
 func NewEthBlockNumberOrHashFromHexString(str string) (EthBlockNumberOrHash, error) {
 	// check if block param is a number (decimal or hex)
-	var num EthUint64 = 0
+	var num EthUint64
 	err := num.UnmarshalJSON([]byte(str))
 	if err != nil {
 		return NewEthBlockNumberOrHashFromNumber(0), err

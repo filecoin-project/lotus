@@ -154,16 +154,16 @@ func (mr *MockStoreMockRecorder) RemoveCopies(arg0, arg1, arg2 interface{}) *gom
 }
 
 // Reserve mocks base method.
-func (m *MockStore) Reserve(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType, arg3 storiface.SectorPaths, arg4 map[storiface.SectorFileType]int) (func(), error) {
+func (m *MockStore) Reserve(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType, arg3 storiface.SectorPaths, arg4 map[storiface.SectorFileType]int, arg5 float64) (func(), error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Reserve", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "Reserve", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(func())
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Reserve indicates an expected call of Reserve.
-func (mr *MockStoreMockRecorder) Reserve(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) Reserve(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reserve", reflect.TypeOf((*MockStore)(nil).Reserve), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reserve", reflect.TypeOf((*MockStore)(nil).Reserve), arg0, arg1, arg2, arg3, arg4, arg5)
 }

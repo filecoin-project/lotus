@@ -335,7 +335,7 @@ type FullNode interface {
 	WalletVerify(context.Context, address.Address, []byte, *crypto.Signature) (bool, error) //perm:read
 	// WalletDefaultAddress returns the address marked as default in the wallet.
 	WalletDefaultAddress(context.Context) (address.Address, error) //perm:write
-	// WalletSetDefault marks the given address as as the default one.
+	// WalletSetDefault marks the given address as the default one.
 	WalletSetDefault(context.Context, address.Address) error //perm:write
 	// WalletExport returns the private key of an address in the wallet.
 	WalletExport(context.Context, address.Address) (*types.KeyInfo, error) //perm:admin

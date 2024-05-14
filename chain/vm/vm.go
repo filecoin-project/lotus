@@ -336,9 +336,7 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				if vm.networkVersion <= network.Version3 {
-					// Leave the rt.Message as is
-				} else {
+				if vm.networkVersion > network.Version3 {
 					nmsg := Message{
 						msg: types.Message{
 							To:    aid,
@@ -346,9 +344,8 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 							Value: rt.Message.ValueReceived(),
 						},
 					}
-
 					rt.Message = &nmsg
-				}
+				} // else leave the rt.Message as is
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
@@ -902,7 +899,7 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
 		}
 
-		fromID, err = vm.cstate.LookupID(from)
+		fromID, err = vm.cstate.LookupIDAddress(from)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
 		}
@@ -921,7 +918,7 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return nil
 		}
 
-		toID, err = vm.cstate.LookupID(to)
+		toID, err = vm.cstate.LookupIDAddress(to)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
 		}
@@ -935,12 +932,12 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return nil
 		}
 
-		fromID, err = vm.cstate.LookupID(from)
+		fromID, err = vm.cstate.LookupIDAddress(from)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
 		}
 
-		toID, err = vm.cstate.LookupID(to)
+		toID, err = vm.cstate.LookupIDAddress(to)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
 		}

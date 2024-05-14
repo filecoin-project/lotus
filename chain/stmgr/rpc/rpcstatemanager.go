@@ -44,7 +44,7 @@ func (s *RPCStateManager) LoadActorTsk(ctx context.Context, addr address.Address
 	return s.gapi.StateGetActor(ctx, addr, tsk)
 }
 
-func (s *RPCStateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (s *RPCStateManager) LookupIDAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	return s.gapi.StateLookupID(ctx, addr, ts.Key())
 }
 

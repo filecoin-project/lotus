@@ -88,6 +88,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 		//ExpectedDayReward abi.TokenAmount
 		//SealProof         abi.RegisteredSealProof
 	}
+
 	type piece struct {
 		Size     int64           `db:"piece_size"`
 		DealID   uint64          `db:"f05_deal_id"`
@@ -151,6 +152,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 				if st.Expiration < head.Height() {
 					sectors[i].Flag = true // Flag expired sectors
 				}
+
 				dw, vp := .0, .0
 				f05, ddo := 0, 0
 				var pi []piece
@@ -186,6 +188,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 					for _, deal := range st.DealIDs {
+
 						if deal > 0 {
 							f05++
 						}
