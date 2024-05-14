@@ -15,19 +15,22 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
+	ma "github.com/multiformats/go-multiaddr"
+	madns "github.com/multiformats/go-multiaddr-dns"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var rcmgrMetricsOnce sync.Once
 
-func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
-	return func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
+func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo, bs dtypes.BootstrapPeers) (network.ResourceManager, error) {
+	return func(lc fx.Lifecycle, repo repo.LockedRepo, bs dtypes.BootstrapPeers) (network.ResourceManager, error) {
 		isFullNode := repo.RepoType().Type() == "FullNode"
 		envvar := os.Getenv("LOTUS_RCMGR")
 		if (isFullNode && envvar == "0") || // only set NullResourceManager if envvar is explicitly "0"
@@ -132,6 +135,20 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 			traceFile := filepath.Join(debugPath, "rcmgr.json.gz")
 			opts = append(opts, rcmgr.WithTrace(traceFile))
 		}
+
+		resolver := madns.DefaultResolver
+		var bootstrapperMaddrs []ma.Multiaddr
+		for _, pi := range bs {
+			for _, addr := range pi.Addrs {
+				resolved, err := resolver.Resolve(context.Background(), addr)
+				if err != nil {
+					continue
+				}
+				bootstrapperMaddrs = append(bootstrapperMaddrs, resolved...)
+			}
+		}
+
+		opts = append(opts, rcmgr.WithAllowlistedMultiaddrs(bootstrapperMaddrs))
 
 		mgr, err := rcmgr.NewResourceManager(limiter, opts...)
 		if err != nil {
