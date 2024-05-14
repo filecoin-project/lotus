@@ -29,7 +29,7 @@ import (
 const ProtocolID = "/fil/hello/1.0.0"
 
 var log = logging.Logger("hello")
-var streamDeadline = 30 * time.Second
+var streamDeadline = 10 * time.Second
 
 type HelloMessage struct {
 	HeaviestTipSet       []cid.Cid
