@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	ma "github.com/multiformats/go-multiaddr"
+	madns "github.com/multiformats/go-multiaddr-dns"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -135,9 +136,16 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo,
 			opts = append(opts, rcmgr.WithTrace(traceFile))
 		}
 
+		resolver := madns.DefaultResolver
 		var bootstrapperMaddrs []ma.Multiaddr
 		for _, pi := range bs {
-			bootstrapperMaddrs = append(bootstrapperMaddrs, pi.Addrs...)
+			for _, addr := range pi.Addrs {
+				resolved, err := resolver.Resolve(context.Background(), addr)
+				if err != nil {
+					continue
+				}
+				bootstrapperMaddrs = append(bootstrapperMaddrs, resolved...)
+			}
 		}
 
 		opts = append(opts, rcmgr.WithAllowlistedMultiaddrs(bootstrapperMaddrs))
