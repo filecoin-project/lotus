@@ -137,7 +137,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, moveStorageTask)
 		}
 		if cfg.Subsystems.EnableSendCommitMsg {
-			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg.Fees.MaxCommitGasFee)
+			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg)
 			activeTasks = append(activeTasks, commitTask)
 		}
 	}

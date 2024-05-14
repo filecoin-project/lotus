@@ -39,7 +39,9 @@ var marketRPCInfoCmd = &cli.Command{
 			return err
 		}
 
-		cfg, err := deps.GetConfig(cctx, db)
+		layers := cctx.StringSlice("layers")
+
+		cfg, err := deps.GetConfig(cctx.Context, layers, db)
 		if err != nil {
 			return xerrors.Errorf("get config: %w", err)
 		}
@@ -113,7 +115,9 @@ var marketSealCmd = &cli.Command{
 			return err
 		}
 
-		cfg, err := deps.GetConfig(cctx, db)
+		layers := cctx.StringSlice("layers")
+
+		cfg, err := deps.GetConfig(cctx.Context, layers, db)
 		if err != nil {
 			return xerrors.Errorf("get config: %w", err)
 		}

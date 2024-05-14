@@ -28,6 +28,14 @@ import (
 
 var isDevnet = build.BlockDelaySecs < 30
 
+func SetDevnet(value bool) {
+	isDevnet = value
+}
+
+func GetDevnet() bool {
+	return isDevnet
+}
+
 type SDRAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	StateGetRandomnessFromTickets(context.Context, crypto.DomainSeparationTag, abi.ChainEpoch, []byte, types.TipSetKey) (abi.Randomness, error)

@@ -220,7 +220,8 @@ var configViewCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		curioConfig, err := deps.GetConfig(cctx, db)
+		layers := cctx.StringSlice("layers")
+		curioConfig, err := deps.GetConfig(cctx.Context, layers, db)
 		if err != nil {
 			return err
 		}

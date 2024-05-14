@@ -34,7 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
+	lpiece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -306,8 +306,8 @@ type pieceInfo struct {
 	done chan struct{}
 }
 
-func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *config.CurioConfig, pieceInfoLk *sync.Mutex, pieceInfos map[uuid.UUID][]pieceInfo, pin *cumarket.PieceIngester, db *harmonydb.DB, ssize abi.SectorSize) func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
-	return func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal piece.PieceDealInfo) (api.SectorOffset, error) {
+func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *config.CurioConfig, pieceInfoLk *sync.Mutex, pieceInfos map[uuid.UUID][]pieceInfo, pin *cumarket.PieceIngester, db *harmonydb.DB, ssize abi.SectorSize) func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal lpiece.PieceDealInfo) (api.SectorOffset, error) {
+	return func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal lpiece.PieceDealInfo) (api.SectorOffset, error) {
 		if (deal.PieceActivationManifest == nil && deal.DealProposal == nil) || (deal.PieceActivationManifest != nil && deal.DealProposal != nil) {
 			return api.SectorOffset{}, xerrors.Errorf("deal info must have either deal proposal or piece manifest")
 		}
@@ -333,7 +333,9 @@ func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *
 
 		pieceUUID := uuid.New()
 
-		log.Infow("piece assign request", "piece_cid", deal.DealProposal.PieceCID, "provider", deal.DealProposal.Provider, "piece_uuid", pieceUUID)
+		if deal.DealProposal != nil {
+			log.Infow("piece assign request", "piece_cid", deal.PieceCID().String(), "provider", deal.DealProposal.Provider, "piece_uuid", pieceUUID)
+		}
 
 		pieceInfoLk.Lock()
 		pieceInfos[pieceUUID] = append(pieceInfos[pieceUUID], pi)
@@ -429,13 +431,13 @@ func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *
 			return api.SectorOffset{}, err
 		}
 
-		log.Infow("piece assigned to sector", "piece_cid", deal.DealProposal.PieceCID, "sector", so.Sector, "offset", so.Offset)
+		log.Infow("piece assigned to sector", "piece_cid", deal.PieceCID().String(), "sector", so.Sector, "offset", so.Offset)
 
 		return so, nil
 	}
 }
 
-func addPieceEntry(ctx context.Context, db *harmonydb.DB, conf *config.CurioConfig, deal api.PieceDealInfo, pieceSize abi.UnpaddedPieceSize, dataUrl url.URL, ssize abi.SectorSize) (int64, bool, error) {
+func addPieceEntry(ctx context.Context, db *harmonydb.DB, conf *config.CurioConfig, deal lpiece.PieceDealInfo, pieceSize abi.UnpaddedPieceSize, dataUrl url.URL, ssize abi.SectorSize) (int64, bool, error) {
 	var refID int64
 	var pieceWasCreated bool
 
@@ -455,7 +457,7 @@ func addPieceEntry(ctx context.Context, db *harmonydb.DB, conf *config.CurioConf
 
 			var pieceID int64
 			// Attempt to select the piece ID first
-			err = tx.QueryRow(`SELECT id FROM parked_pieces WHERE piece_cid = $1`, deal.DealProposal.PieceCID.String()).Scan(&pieceID)
+			err = tx.QueryRow(`SELECT id FROM parked_pieces WHERE piece_cid = $1`, deal.PieceCID().String()).Scan(&pieceID)
 
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
@@ -464,7 +466,7 @@ func addPieceEntry(ctx context.Context, db *harmonydb.DB, conf *config.CurioConf
 							INSERT INTO parked_pieces (piece_cid, piece_padded_size, piece_raw_size)
 							VALUES ($1, $2, $3)
 							ON CONFLICT (piece_cid) DO NOTHING
-							RETURNING id`, deal.DealProposal.PieceCID.String(), int64(pieceSize.Padded()), int64(pieceSize)).Scan(&pieceID)
+							RETURNING id`, deal.PieceCID().String(), int64(pieceSize.Padded()), int64(pieceSize)).Scan(&pieceID)
 					if err != nil {
 						return false, xerrors.Errorf("inserting new parked piece and getting id: %w", err)
 					}

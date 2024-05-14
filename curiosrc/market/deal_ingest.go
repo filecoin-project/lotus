@@ -194,7 +194,7 @@ func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address
 	}
 
 	// check raw size
-	if piece.DealProposal.PieceSize != padreader.PaddedSize(uint64(rawSize)).Padded() {
+	if piece.Size() != padreader.PaddedSize(uint64(rawSize)).Padded() {
 		return api.SectorOffset{}, xerrors.Errorf("raw size doesn't match padded piece size")
 	}
 

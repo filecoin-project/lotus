@@ -126,7 +126,12 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 
 	// Get all pieces
 	apihelper.OrHTTPFail(w, c.DB.Select(r.Context(), &pieces, `SELECT 
-										sp_id, sector_number, piece_size, f05_deal_id, f05_deal_proposal, direct_piece_activation_manifest  
+										sp_id,
+										sector_number,
+										piece_size,
+										COALESCE(f05_deal_id, 0) AS f05_deal_id,
+										f05_deal_proposal,
+										direct_piece_activation_manifest  
 										FROM sectors_sdr_initial_pieces 
 										ORDER BY sp_id, sector_number`))
 	pieceIndex := map[sectorID][]int{}
@@ -187,22 +192,13 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
 					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
-					for _, deal := range st.DealIDs {
-
-						if deal > 0 {
-							f05++
-						}
-					}
-					// DDO info is not on chain
-					for _, piece := range pieces {
-						if piece.Manifest != nil {
-							//var pam *miner.PieceActivationManifest
-							//apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, pam))
-							//dw += float64(pam.Size)
-							//if pam.VerifiedAllocationKey != nil {
-							//	vp += float64(pam.Size) * verifiedPowerGainMul
-							//}
+					// DDO sectors don't have deal info on chain
+					for _, p := range pi {
+						if p.Manifest != nil {
 							ddo++
+						}
+						if p.Proposal != nil {
+							f05++
 						}
 					}
 				}
@@ -254,19 +250,19 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if len(pi) > 0 {
-				for _, piece := range pi {
-					if piece.Proposal != nil {
+				for _, p := range pi {
+					if p.Proposal != nil {
 						var prop *market.DealProposal
-						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Proposal, &prop))
+						apihelper.OrHTTPFail(w, json.Unmarshal(p.Proposal, &prop))
 						dw += float64(prop.PieceSize)
 						if prop.VerifiedDeal {
 							vp += float64(prop.PieceSize) * verifiedPowerGainMul
 						}
 						f05++
 					}
-					if piece.Manifest != nil {
+					if p.Manifest != nil {
 						var pam *miner.PieceActivationManifest
-						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, &pam))
+						apihelper.OrHTTPFail(w, json.Unmarshal(p.Manifest, &pam))
 						dw += float64(pam.Size)
 						if pam.VerifiedAllocationKey != nil {
 							vp += float64(pam.Size) * verifiedPowerGainMul

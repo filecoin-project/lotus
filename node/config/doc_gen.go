@@ -606,6 +606,18 @@ also be bounded by resources available on the machine.`,
 from this curio instance.`,
 		},
 		{
+			Name: "RequireActivationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireNotificationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).`,
+		},
+		{
 			Name: "EnableMoveStorage",
 			Type: "bool",
 

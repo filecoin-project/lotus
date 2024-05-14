@@ -190,6 +190,11 @@ type CurioSubsystemsConfig struct {
 	// from this curio instance.
 	EnableSendCommitMsg bool
 
+	// Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).
+	RequireActivationSuccess bool
+	// Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).
+	RequireNotificationSuccess bool
+
 	// EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
 	// This tasks should only be enabled on nodes with long-term storage.
 	//
