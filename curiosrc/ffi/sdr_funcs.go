@@ -21,6 +21,7 @@ import (
 	proof2 "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/curiosrc/proof"
+	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
@@ -38,6 +39,7 @@ type ExternPrecommit2 func(ctx context.Context, sector storiface.SectorRef, cach
 */
 type SealCalls struct {
 	sectors *storageProvider
+	ffiselect.FFICallWrapper
 
 	/*// externCalls cointain overrides for calling alternative sealing logic
 	externCalls ExternalSealer*/
@@ -50,6 +52,7 @@ func NewSealCalls(st *paths.Remote, ls *paths.Local, si paths.SectorIndex) *Seal
 			localStore:          ls,
 			sindex:              si,
 			storageReservations: xsync.NewIntegerMapOf[harmonytask.TaskID, *StorageReservation](),
+			FFICallWrapper:      ffiselect.FFICallWrapper{},
 		},
 	}
 }

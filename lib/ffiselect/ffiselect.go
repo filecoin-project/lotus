@@ -2,40 +2,48 @@ package ffiselect
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"os"
 	"os/exec"
 	"strconv"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/proof"
+
+	"github.com/filecoin-project/lotus/curiosrc/build"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-// TODO set this appropriately based on the compile-time environment variables
-// THEN  build-out the FFI caller.
-var isCuda = false
+var IsCuda = build.IsOpencl != "1"
 
 // Get all devices from ffi
-var devices = []string{}
-var ch chan int
+var ch chan string
 
 func init() {
-	var err error
-	devices, err = ffi.GetGPUDevices()
+	devices, err := ffi.GetGPUDevices()
 	if err != nil {
 		panic(err)
 	}
-	ch = make(chan int, len(devices))
+	ch = make(chan string, len(devices))
 	for i := 0; i < len(devices); i++ {
-		ch <- i
+		ch <- strconv.Itoa(i)
 	}
 }
 
 type ValErr struct {
-	Val interface{}
+	Val []interface{}
 	Err error
 }
 
-func Call(fn string, args ...interface{}) (interface{}, error) {
+type FFICall struct {
+	Fn       string
+	Args     []interface{}
+	StorPath string
+}
+
+func call(storPath string, fn string, args ...interface{}) ([]interface{}, error) {
 	// get dOrdinal
 	dOrdinal := <-ch
 	defer func() {
@@ -47,34 +55,78 @@ func Call(fn string, args ...interface{}) (interface{}, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command(p, "ffi", "fn")
+	cmd := exec.Command(p, "ffi")
 
 	// Set Visible Devices for CUDA and OpenCL
 	cmd.Env = append(os.Environ(),
 		func(isCuda bool) string {
 			if isCuda {
-				return "CUDA_VISIBLE_DEVICES=" + devices[dOrdinal]
+				return "CUDA_VISIBLE_DEVICES=" + dOrdinal
 			}
-			return "GPU_DEVICE_ORDINAL=" + strconv.Itoa(dOrdinal)
-		}(isCuda))
+			return "GPU_DEVICE_ORDINAL=" + dOrdinal
+		}(IsCuda))
 
 	cmd.Stderr = os.Stderr
-	var gobber bytes.Buffer
-	err = gob.NewEncoder(&gobber).Encode(args)
+	cmd.Stdout = os.Stdout
+	outFile, err := os.CreateTemp("", "out")
 	if err != nil {
 		return nil, err
 	}
-	cmd.Stdin = &gobber
-	var out bytes.Buffer
-	cmd.Stdout = &out
+	cmd.ExtraFiles = []*os.File{outFile}
+	var gobber bytes.Buffer
+	err = gob.NewEncoder(&gobber).Encode(FFICall{
+		Fn:       fn,
+		Args:     args,
+		StorPath: storPath,
+	})
+	if err != nil {
+		return nil, err
+	}
 	err = cmd.Run()
 	if err != nil {
 		return nil, err
 	}
 	var ve ValErr
-	err = gob.NewDecoder(&out).Decode(&ve)
+	err = gob.NewDecoder(outFile).Decode(&ve)
 	if err != nil {
 		return nil, err
 	}
 	return ve.Val, ve.Err
+}
+
+// FUTURE?: be snazzy and generate + reflect all FFIWrapper methods.
+type FFICallWrapper struct {
+	StorePath string
+}
+
+func (fcw *FFICallWrapper) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error) {
+	res, err := call(fcw.StorePath, "GenerateWinningPoStWithVanilla", proofType, minerID, randomness, vanillas)
+	if err != nil {
+		return nil, err
+	}
+	return res[0].([]proof.PoStProof), res[1].(error)
+}
+
+func (fcw *FFICallWrapper) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
+	res, err := call(fcw.StorePath, "GenerateWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIdx)
+	if err != nil {
+		return proof.PoStProof{}, err
+	}
+	return res[0].(proof.PoStProof), res[1].(error)
+}
+
+func (fcw *FFICallWrapper) SealCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.Proof, error) {
+	res, err := call(fcw.StorePath, "SealCommit2", sector, phase1Out)
+	if err != nil {
+		return storiface.Proof{}, err
+	}
+	return res[0].(storiface.Proof), res[1].(error)
+}
+
+func (fcw *FFICallWrapper) SealPreCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.PreCommit1Out) (storiface.SectorCids, error) {
+	res, err := call(fcw.StorePath, "SealPreCommit2", sector, phase1Out)
+	if err != nil {
+		return storiface.SectorCids{}, err
+	}
+	return res[0].(storiface.SectorCids), res[1].(error)
 }

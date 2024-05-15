@@ -59,6 +59,7 @@ func main() {
 		sealCmd,
 		marketCmd,
 		fetchParamCmd,
+		ffiCmd,
 	}
 
 	jaeger := tracing.SetupJaegerTracing("curio")
