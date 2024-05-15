@@ -90,6 +90,11 @@ func (c *CleanupPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool)
 	}
 
 	if n == 0 {
+		_, err = c.db.Exec(ctx, `UPDATE parked_pieces SET cleanup_task_id = NULL WHERE id = $1`, pieceID)
+		if err != nil {
+			return false, xerrors.Errorf("marking piece as complete: %w", err)
+		}
+
 		return true, nil
 	}
 

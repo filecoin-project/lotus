@@ -159,7 +159,7 @@ func (p *ParkPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (d
 		}
 
 		// Update the piece as complete after a successful write.
-		_, err = p.db.Exec(ctx, `UPDATE parked_pieces SET complete = TRUE WHERE id = $1`, pieceData.PieceID)
+		_, err = p.db.Exec(ctx, `UPDATE parked_pieces SET complete = TRUE, task_id = NULL WHERE id = $1`, pieceData.PieceID)
 		if err != nil {
 			return false, xerrors.Errorf("marking piece as complete: %w", err)
 		}

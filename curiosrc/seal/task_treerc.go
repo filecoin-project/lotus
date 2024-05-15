@@ -81,7 +81,7 @@ func (t *TreeRCTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	// todo porep challenge check
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_tree_r = true, after_tree_c = true, tree_r_cid = $3 
+		SET after_tree_r = true, after_tree_c = true, tree_r_cid = $3, task_id_tree_r = NULL, task_id_tree_c = NULL
 		WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, sealed)
 	if err != nil {

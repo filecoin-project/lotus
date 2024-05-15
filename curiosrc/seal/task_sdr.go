@@ -154,7 +154,7 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 
 	// store success!
 	n, err := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_sdr = true, ticket_epoch = $3, ticket_value = $4
+		SET after_sdr = true, ticket_epoch = $3, ticket_value = $4, task_id_sdr = NULL
 		WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, ticketEpoch, []byte(ticket))
 	if err != nil {

@@ -148,7 +148,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 			if abi.ChainEpoch(pieces[0].F05DealStartEpoch) < head.Height() {
 				// deal start epoch is in the past, can't precommit this sector anymore
 				_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-					SET failed = TRUE, failed_at = NOW(), failed_reason = 'past-start-epoch', failed_reason_msg = 'precommit: start epoch is in the past'
+					SET failed = TRUE, failed_at = NOW(), failed_reason = 'past-start-epoch', failed_reason_msg = 'precommit: start epoch is in the past', task_id_precommit_msg = NULL
 					WHERE task_id_precommit_msg = $1`, taskID)
 				if perr != nil {
 					return false, xerrors.Errorf("persisting precommit start epoch expiry: %w", perr)
@@ -186,7 +186,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		if err != nil {
 			if record {
 				_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-					SET failed = TRUE, failed_at = NOW(), failed_reason = 'precommit-check', failed_reason_msg = $1
+					SET failed = TRUE, failed_at = NOW(), failed_reason = 'precommit-check', failed_reason_msg = $1, task_id_precommit_msg = NULL
 					WHERE task_id_precommit_msg = $2`, err.Error(), taskID)
 				if perr != nil {
 					return false, xerrors.Errorf("persisting precommit check error: %w", perr)
@@ -238,7 +238,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 
 	// set precommit_msg_cid
 	_, err = s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET precommit_msg_cid = $1, after_precommit_msg = TRUE
+		SET precommit_msg_cid = $1, after_precommit_msg = TRUE, task_id_precommit_msg = NULL
 		WHERE task_id_precommit_msg = $2`, mcid, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("updating precommit_msg_cid: %w", err)
