@@ -101,6 +101,11 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 
 	// 2. Prepare message params
 
+	head, err := s.api.ChainHead(ctx)
+	if err != nil {
+		return false, xerrors.Errorf("getting chain head: %w", err)
+	}
+
 	params := miner.PreCommitSectorBatchParams2{}
 
 	expiration := sectorParams.TicketEpoch + miner12.MaxSectorExpirationExtension
@@ -119,12 +124,13 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 			PieceCID   string `db:"piece_cid"`
 			PieceSize  int64  `db:"piece_size"`
 
-			F05DealID       int64 `db:"f05_deal_id"`
-			F05DealEndEpoch int64 `db:"f05_deal_end_epoch"`
+			F05DealID         int64 `db:"f05_deal_id"`
+			F05DealEndEpoch   int64 `db:"f05_deal_end_epoch"`
+			F05DealStartEpoch int64 `db:"f05_deal_start_epoch"`
 		}
 
 		err = s.db.Select(ctx, &pieces, `
-		SELECT piece_index, piece_cid, piece_size, f05_deal_id, f05_deal_end_epoch
+		SELECT piece_index, piece_cid, piece_size, f05_deal_id, f05_deal_end_epoch, f05_deal_start_epoch
 		FROM sectors_sdr_initial_pieces
 		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index ASC`, sectorParams.SpID, sectorParams.SectorNumber)
 		if err != nil {
@@ -138,6 +144,17 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		if len(pieces) > 0 {
 			params.Sectors[0].UnsealedCid = &unsealedCID
 			params.Sectors[0].Expiration = abi.ChainEpoch(pieces[0].F05DealEndEpoch)
+
+			if abi.ChainEpoch(pieces[0].F05DealStartEpoch) < head.Height() {
+				// deal start epoch is in the past, can't precommit this sector anymore
+				_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
+					SET failed = TRUE, failed_at = NOW(), failed_reason = 'past-start-epoch', failed_reason_msg = 'precommit: start epoch is in the past', task_id_precommit_msg = NULL
+					WHERE task_id_precommit_msg = $1`, taskID)
+				if perr != nil {
+					return false, xerrors.Errorf("persisting precommit start epoch expiry: %w", perr)
+				}
+				return true, xerrors.Errorf("deal start epoch is in the past")
+			}
 
 			for _, p := range pieces {
 				params.Sectors[0].DealIDs = append(params.Sectors[0].DealIDs, abi.DealID(p.F05DealID))
@@ -169,7 +186,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 		if err != nil {
 			if record {
 				_, perr := s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-					SET failed = TRUE, failed_at = NOW(), failed_reason = 'precommit-check', failed_reason_msg = $1
+					SET failed = TRUE, failed_at = NOW(), failed_reason = 'precommit-check', failed_reason_msg = $1, task_id_precommit_msg = NULL
 					WHERE task_id_precommit_msg = $2`, err.Error(), taskID)
 				if perr != nil {
 					return false, xerrors.Errorf("persisting precommit check error: %w", perr)
@@ -221,7 +238,7 @@ func (s *SubmitPrecommitTask) Do(taskID harmonytask.TaskID, stillOwned func() bo
 
 	// set precommit_msg_cid
 	_, err = s.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET precommit_msg_cid = $1, after_precommit_msg = TRUE
+		SET precommit_msg_cid = $1, after_precommit_msg = TRUE, task_id_precommit_msg = NULL
 		WHERE task_id_precommit_msg = $2`, mcid, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("updating precommit_msg_cid: %w", err)

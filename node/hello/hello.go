@@ -29,6 +29,7 @@ import (
 const ProtocolID = "/fil/hello/1.0.0"
 
 var log = logging.Logger("hello")
+var streamDeadline = 10 * time.Second
 
 type HelloMessage struct {
 	HeaviestTipSet       []cid.Cid
@@ -70,11 +71,15 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, co
 
 func (hs *Service) HandleStream(s inet.Stream) {
 	var hmsg HelloMessage
+	_ = s.SetReadDeadline(time.Now().Add(streamDeadline))
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
+		_ = s.SetReadDeadline(time.Time{})
 		log.Infow("failed to read hello message, disconnecting", "error", err)
 		_ = s.Conn().Close()
 		return
 	}
+	_ = s.SetReadDeadline(time.Time{})
+
 	arrived := build.Clock.Now()
 
 	log.Debugw("genesis from hello",
@@ -95,9 +100,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 			TArrival: arrived.UnixNano(),
 			TSent:    sent.UnixNano(),
 		}
+		_ = s.SetWriteDeadline(time.Now().Add(streamDeadline))
 		if err := cborutil.WriteCborRPC(s, msg); err != nil {
 			log.Debugf("error while responding to latency: %v", err)
 		}
+		_ = s.SetWriteDeadline(time.Time{})
 	}()
 
 	protos, err := hs.h.Peerstore().GetProtocols(s.Conn().RemotePeer())
@@ -155,9 +162,12 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	log.Debug("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
 
 	t0 := build.Clock.Now()
+	_ = s.SetWriteDeadline(time.Now().Add(streamDeadline))
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
+		_ = s.SetWriteDeadline(time.Time{})
 		return xerrors.Errorf("writing rpc to peer: %w", err)
 	}
+	_ = s.SetWriteDeadline(time.Time{})
 	if err := s.CloseWrite(); err != nil {
 		log.Warnw("CloseWrite err", "error", err)
 	}

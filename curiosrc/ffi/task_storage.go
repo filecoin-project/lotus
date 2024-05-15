@@ -2,6 +2,7 @@ package ffi
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -42,6 +43,9 @@ type TaskStorage struct {
 	pathType        storiface.PathType
 
 	taskToSectorRef func(taskID harmonytask.TaskID) (SectorRef, error)
+
+	// Minimum free storage percentage cutoff for reservation rejection
+	MinFreeStoragePercentage float64
 }
 
 type ReleaseStorageFunc func() // free storage reservation
@@ -55,14 +59,15 @@ type StorageReservation struct {
 	Alloc, Existing storiface.SectorFileType
 }
 
-func (sb *SealCalls) Storage(taskToSectorRef func(taskID harmonytask.TaskID) (SectorRef, error), alloc, existing storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) *TaskStorage {
+func (sb *SealCalls) Storage(taskToSectorRef func(taskID harmonytask.TaskID) (SectorRef, error), alloc, existing storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, MinFreeStoragePercentage float64) *TaskStorage {
 	return &TaskStorage{
-		sc:              sb,
-		alloc:           alloc,
-		existing:        existing,
-		ssize:           ssize,
-		pathType:        pathType,
-		taskToSectorRef: taskToSectorRef,
+		sc:                       sb,
+		alloc:                    alloc,
+		existing:                 existing,
+		ssize:                    ssize,
+		pathType:                 pathType,
+		taskToSectorRef:          taskToSectorRef,
+		MinFreeStoragePercentage: MinFreeStoragePercentage,
 	}
 }
 
@@ -165,14 +170,19 @@ func (t *TaskStorage) Claim(taskID int) error {
 	}
 
 	// reserve the space
-	release, err := t.sc.sectors.localStore.Reserve(ctx, sectorRef.Ref(), requestedTypes, pathIDs, storiface.FSOverheadSeal)
+	release, err := t.sc.sectors.localStore.Reserve(ctx, sectorRef.Ref(), requestedTypes, pathIDs, storiface.FSOverheadSeal, t.MinFreeStoragePercentage)
 	if err != nil {
 		return err
 	}
 
+	var releaseOnce sync.Once
+	releaseFunc := func() {
+		releaseOnce.Do(release)
+	}
+
 	sres := &StorageReservation{
 		SectorRef: sectorRef,
-		Release:   release,
+		Release:   releaseFunc,
 		Paths:     pathsFs,
 		PathIDs:   pathIDs,
 

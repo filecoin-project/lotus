@@ -587,6 +587,7 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		{{if (ge .v 12)}}
 		PowerBaseEpoch:        v{{.v}}.PowerBaseEpoch,
 		ReplacedDayReward:     v{{.v}}.ReplacedDayReward,
+		Flags:                 SectorOnChainInfoFlags(v{{.v}}.Flags),
                 {{end}}
 	}
 	return info

@@ -52,7 +52,7 @@ func TestChainCheckpoint(t *testing.T) {
 	head = cs.GetHeaviestTipSet()
 	require.True(t, head.Equals(checkpoint))
 
-	// Let the second miner miner mine a fork
+	// Let the second miner mine a fork
 	last = checkpointParents
 	for i := 0; i < 4; i++ {
 		ts, err := cg.NextTipSetFromMiners(last, cg.Miners[1:], 0)

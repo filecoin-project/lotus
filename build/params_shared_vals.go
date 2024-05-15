@@ -30,7 +30,7 @@ const AllowableClockDriftSecs = uint64(1)
 /* inline-gen template
 const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 /* inline-gen start */
-const TestNetworkVersion = network.Version22
+const TestNetworkVersion = network.Version23
 
 /* inline-gen end */
 
@@ -124,6 +124,7 @@ const MinimumBaseFee = 100
 const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
 
+// revive:disable-next-line:exported
 // Actor consts
 // TODO: pieceSize unused from actors
 var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)

@@ -37,6 +37,8 @@ type minimalActorInfo struct {
 	}
 }
 
+var startedAt = time.Now()
+
 func (a *app) updateActor(ctx context.Context) error {
 	a.rpcInfoLk.Lock()
 	api := a.workingApi
@@ -45,7 +47,9 @@ func (a *app) updateActor(ctx context.Context) error {
 	stor := store.ActorStore(ctx, blockstore.NewReadCachedBlockstore(blockstore.NewAPIBlockstore(a.workingApi), ChainBlockCache))
 
 	if api == nil {
-		log.Warnw("no working api yet")
+		if time.Since(startedAt) > time.Second*10 {
+			log.Warnw("no working api yet")
+		}
 		return nil
 	}
 
@@ -161,6 +165,8 @@ func (a *app) updateActor(ctx context.Context) error {
 		if err != nil {
 			return xerrors.Errorf("getting worker balance: %w", err)
 		}
+
+		sort.Strings(cnames)
 
 		actorInfos = append(actorInfos, actorInfo{
 			Address:              addr.String(),

@@ -165,6 +165,7 @@ func GetDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 }
 
 type Deps struct {
+	Layers     []string
 	Cfg        *config.CurioConfig // values
 	DB         *harmonydb.DB       // has itest capability
 	Full       api.FullNode
@@ -206,11 +207,14 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}
 	}
 
-	if deps.Cfg == nil {
+	if deps.DB == nil {
 		deps.DB, err = MakeDB(cctx)
 		if err != nil {
 			return err
 		}
+	}
+	if deps.Layers == nil {
+		deps.Layers = append([]string{"base"}, cctx.StringSlice("layers")...) // Always stack on top of "base" layer
 	}
 
 	if deps.Cfg == nil {

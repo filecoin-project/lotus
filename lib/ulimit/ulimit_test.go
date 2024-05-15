@@ -46,8 +46,8 @@ func TestManageInvalidNFds(t *testing.T) {
 
 	t.Logf("setting ulimit to %d, max %d, cur %d", value, rlimit.Max, rlimit.Cur)
 
-	if changed, new, err := ManageFdLimit(); err == nil {
-		t.Errorf("ManageFdLimit should return an error: changed %t, new: %d", changed, new)
+	if changed, isNew, err := ManageFdLimit(); err == nil {
+		t.Errorf("ManageFdLimit should return an error: changed %t, new: %d", changed, isNew)
 	} else if err != nil {
 		flag := strings.Contains(err.Error(),
 			"failed to raise ulimit to LOTUS_FD_MAX")

@@ -1077,6 +1077,54 @@
             "translation": "기본 구성을 구문 분석하는 데 실패했습니다: {Error}",
             "message": "Failed to parse base config: {Error}",
             "placeholder": null
+        },
+        {
+            "id": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
+            "translation": "{Rendercurio_run___layersgui}를 사용하여 웹 인터페이스를 시도하고 더 나은 안내된 개선을 진행하세요.",
+            "message": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
+            "placeholder": null
+        },
+        {
+            "id": "Now shut down lotus-miner and lotus-worker and use run {Rendercurio_run} instead.",
+            "translation": "이제 lotus-miner와 lotus-worker를 종료하고 {Rendercurio_run}을 실행하세요.",
+            "message": "Now shut down lotus-miner and lotus-worker and use run {Rendercurio_run} instead.",
+            "placeholder": null
+        },
+        {
+            "id": "Configuration 'base' was updated to include this miner's address ({MinerAddress}) and its wallet setup.",
+            "translation": "기본 설정 'base'가 이 마이너의 주소({MinerAddress}) 및 지갑 설정을 포함하도록 업데이트되었습니다.",
+            "message": "Configuration 'base' was updated to include this miner's address ({MinerAddress}) and its wallet setup.",
+            "placeholder": null
+        },
+        {
+            "id": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
+            "translation": "'base' 설정이 이 lotus-miner의 config.toml과 유사하게 만들어졌습니다.",
+            "message": "Configuration 'base' was created to resemble this lotus-miner's config.toml .",
+            "placeholder": null
+        },
+        {
+            "id": "Unmigratable sectors found. Do you want to continue?",
+            "translation": "이동할 수 없는 섹터가 발견되었습니다. 계속하시겠습니까?",
+            "message": "Unmigratable sectors found. Do you want to continue?",
+            "placeholder": null
+        },
+        {
+            "id": "Yes, continue",
+            "translation": "예, 계속",
+            "message": "Yes, continue",
+            "placeholder": null
+        },
+        {
+            "id": "No, abort",
+            "translation": "아니오, 중단",
+            "message": "No, abort",
+            "placeholder": null
+        },
+        {
+            "id": "Migrating metadata for {NSectors} sectors.",
+            "translation": "{NSectors} 섹터의 메타데이터를 이동 중입니다.",
+            "message": "Migrating metadata for {NSectors} sectors.",
+            "placeholder": null
         }
     ]
 }

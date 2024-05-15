@@ -92,7 +92,7 @@ func main() {
 		mismatchesCmd,
 		blockCmd,
 		adlCmd,
-		lpUtilCmd,
+		curioUtilCmd,
 	}
 
 	app := &cli.App{

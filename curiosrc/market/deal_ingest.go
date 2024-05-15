@@ -113,7 +113,8 @@ func (p *PieceIngester) AllocatePieceToSector(ctx context.Context, maddr address
 			mid, n, 0,
 			piece.DealProposal.PieceCID, piece.DealProposal.PieceSize,
 			source.String(), dataHdrJson, rawSize, !piece.KeepUnsealed,
-			piece.PublishCid, piece.DealID, dealProposalJson, piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch)
+			piece.PublishCid, piece.DealID, dealProposalJson,
+			piece.DealSchedule.StartEpoch, piece.DealSchedule.EndEpoch)
 		if err != nil {
 			return false, xerrors.Errorf("inserting into sectors_sdr_initial_pieces: %w", err)
 		}

@@ -392,7 +392,7 @@ func (s *walkScheduler) Wait() error {
 		log.Errorw("error writing to CAR file", "error", err)
 		return errWrite
 	}
-	s.workerTasks.Close() //nolint:errcheck
+	_ = s.workerTasks.Close()
 	return err
 }
 

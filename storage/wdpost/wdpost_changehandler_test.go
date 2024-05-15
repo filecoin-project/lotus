@@ -84,10 +84,10 @@ func (m *mockAPI) setDeadline(di *dline.Info) {
 }
 
 func (m *mockAPI) getDeadline(currentEpoch abi.ChainEpoch) *dline.Info {
-	close := minertypes.WPoStChallengeWindow - 1
+	closeEpoch := minertypes.WPoStChallengeWindow - 1
 	dlIdx := uint64(0)
-	for close < currentEpoch {
-		close += minertypes.WPoStChallengeWindow
+	for closeEpoch < currentEpoch {
+		closeEpoch += minertypes.WPoStChallengeWindow
 		dlIdx++
 	}
 	return NewDeadlineInfo(0, dlIdx, currentEpoch)

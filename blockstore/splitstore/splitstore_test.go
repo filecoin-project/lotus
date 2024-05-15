@@ -32,7 +32,7 @@ func init() {
 	CompactionBoundary = 2
 	WarmupBoundary = 0
 	SyncWaitTime = time.Millisecond
-	logging.SetLogLevel("splitstore", "DEBUG")
+	_ = logging.SetLogLevel("splitstore", "DEBUG")
 }
 
 func testSplitStore(t *testing.T, cfg *Config) {

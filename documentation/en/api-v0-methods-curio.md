@@ -4,11 +4,15 @@
   * [Version](#Version)
 * [Allocate](#Allocate)
   * [AllocatePieceToSector](#AllocatePieceToSector)
+* [Log](#Log)
+  * [LogList](#LogList)
+  * [LogSetLevel](#LogSetLevel)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageDetachLocal](#StorageDetachLocal)
   * [StorageFindSector](#StorageFindSector)
   * [StorageInfo](#StorageInfo)
+  * [StorageInit](#StorageInit)
   * [StorageList](#StorageList)
   * [StorageLocal](#StorageLocal)
   * [StorageStat](#StorageStat)
@@ -109,6 +113,38 @@ Response:
   "Offset": 1032
 }
 ```
+
+## Log
+
+
+### LogList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "string value"
+]
+```
+
+### LogSetLevel
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
 
 ## Storage
 
@@ -233,6 +269,45 @@ Response:
   ]
 }
 ```
+
+### StorageInit
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  {
+    "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+    "Weight": 42,
+    "CanSeal": true,
+    "CanStore": true,
+    "MaxStorage": 42,
+    "Groups": [
+      "string value"
+    ],
+    "AllowTo": [
+      "string value"
+    ],
+    "AllowTypes": [
+      "string value"
+    ],
+    "DenyTypes": [
+      "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
+      "string value"
+    ]
+  }
+]
+```
+
+Response: `{}`
 
 ### StorageList
 

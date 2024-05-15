@@ -177,7 +177,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s storiface.SectorRef, exist
 		// If any path types weren't found in local storage, try fetching them
 
 		// First reserve storage
-		releaseStorage, err := r.local.Reserve(ctx, s, toFetch, fetchIDs, overheadTable)
+		releaseStorage, err := r.local.Reserve(ctx, s, toFetch, fetchIDs, overheadTable, MinFreeStoragePercentage)
 		if err != nil {
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.Errorf("reserving storage space: %w", err)
 		}
@@ -416,47 +416,53 @@ func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, er
 	}
 
 	for _, urlStr := range si.URLs {
-		rl, err := url.Parse(urlStr)
+		out, err := r.StatUrl(ctx, urlStr, id)
 		if err != nil {
-			log.Warnw("failed to parse URL", "url", urlStr, "error", err)
-			continue // Try the next URL
+			log.Warnw("stat url failed", "url", urlStr, "error", err)
+			continue
 		}
 
-		rl.Path = gopath.Join(rl.Path, "stat", string(id))
-
-		req, err := http.NewRequest("GET", rl.String(), nil)
-		if err != nil {
-			log.Warnw("creating request failed", "url", rl.String(), "error", err)
-			continue // Try the next URL
-		}
-		req.Header = r.auth
-		req = req.WithContext(ctx)
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			log.Warnw("request failed", "url", rl.String(), "error", err)
-			continue // Try the next URL
-		}
-
-		if resp.StatusCode == 200 {
-			var out fsutil.FsStat
-			if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-				_ = resp.Body.Close()
-				log.Warnw("decoding response failed", "url", rl.String(), "error", err)
-				continue // Try the next URL
-			}
-			_ = resp.Body.Close()
-			return out, nil // Successfully decoded, return the result
-		}
-
-		// non-200 status code
-		b, _ := io.ReadAll(resp.Body) // Best-effort read the body for logging
-		log.Warnw("request to endpoint failed", "url", rl.String(), "statusCode", resp.StatusCode, "response", string(b))
-		_ = resp.Body.Close()
-		// Continue to try the next URL, don't return here as we want to try all URLs
+		return out, nil
 	}
 
 	return fsutil.FsStat{}, xerrors.Errorf("all endpoints failed for remote storage %s", id)
+}
+
+func (r *Remote) StatUrl(ctx context.Context, urlStr string, id storiface.ID) (fsutil.FsStat, error) {
+	rl, err := url.Parse(urlStr)
+	if err != nil {
+		return fsutil.FsStat{}, xerrors.Errorf("parsing URL: %w", err)
+	}
+
+	rl.Path = gopath.Join(rl.Path, "stat", string(id))
+
+	req, err := http.NewRequest("GET", rl.String(), nil)
+	if err != nil {
+		return fsutil.FsStat{}, xerrors.Errorf("creating request failed: %w", err)
+	}
+	req.Header = r.auth
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fsutil.FsStat{}, xerrors.Errorf("do request: %w", err)
+	}
+
+	if resp.StatusCode == 200 {
+		var out fsutil.FsStat
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			_ = resp.Body.Close()
+			return fsutil.FsStat{}, xerrors.Errorf("decoding response failed: %w", err)
+		}
+		_ = resp.Body.Close()
+		return out, nil // Successfully decoded, return the result
+	}
+
+	// non-200 status code
+	b, _ := io.ReadAll(resp.Body) // Best-effort read the body for logging
+	_ = resp.Body.Close()
+
+	return fsutil.FsStat{}, xerrors.Errorf("endpoint failed %s: %d %s", rl.String(), resp.StatusCode, string(b))
 }
 
 func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
@@ -806,7 +812,7 @@ func (r *Remote) ReaderSeq(ctx context.Context, s storiface.SectorRef, ft storif
 	return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
 }
 
-func (r *Remote) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+func (r *Remote) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, minFreePercentage float64) (func(), error) {
 	log.Warnf("reserve called on remote store, sectorID: %v", sid.ID)
 	return func() {
 

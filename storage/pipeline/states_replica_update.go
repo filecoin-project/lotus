@@ -174,6 +174,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 	nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
 	if err != nil {
 		log.Errorf("failed to get network version: %+v", err)
+		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
 	pams, deals, err := m.processPieces(ctx.Context(), sector, nv >= network.Version22)

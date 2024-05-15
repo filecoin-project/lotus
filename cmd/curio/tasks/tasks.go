@@ -3,15 +3,23 @@ package tasks
 
 import (
 	"context"
+	"sort"
+	"strings"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
+	"golang.org/x/exp/maps"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
+	"github.com/filecoin-project/lotus/curiosrc/alertmanager"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
+	"github.com/filecoin-project/lotus/curiosrc/gc"
 	"github.com/filecoin-project/lotus/curiosrc/message"
 	"github.com/filecoin-project/lotus/curiosrc/piece"
 	"github.com/filecoin-project/lotus/curiosrc/seal"
@@ -20,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/lazy"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("curio/deps")
@@ -106,9 +115,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, sdrTask)
 		}
 		if cfg.Subsystems.EnableSealSDRTrees {
-			treesTask := seal.NewTreesTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeDTask := seal.NewTreeDTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeRCTask := seal.NewTreeRCTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
 			finalizeTask := seal.NewFinalizeTask(cfg.Subsystems.FinalizeMaxTasks, sp, slr, db)
-			activeTasks = append(activeTasks, treesTask, finalizeTask)
+			activeTasks = append(activeTasks, treeDTask, treeRCTask, finalizeTask)
 		}
 		if cfg.Subsystems.EnableSendPrecommitMsg {
 			precommitTask := seal.NewSubmitPrecommitTask(sp, db, full, sender, as, cfg.Fees.MaxPreCommitGasFee)
@@ -129,6 +139,15 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
+	if hasAnySealingTask {
+		// Sealing nodes maintain storage index when bored
+		storageEndpointGcTask := gc.NewStorageEndpointGC(si, stor, db)
+		activeTasks = append(activeTasks, storageEndpointGcTask)
+	}
+
+	amTask := alertmanager.NewAlertTask(full, db, cfg.Alerting)
+	activeTasks = append(activeTasks, amTask)
+
 	if needProofParams {
 		for spt := range dependencies.ProofTypes {
 			if err := modules.GetParams(true)(spt); err != nil {
@@ -137,8 +156,13 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 	}
 
-	log.Infow("This lotus_provider instance handles",
-		"miner_addresses", maddrs,
+	minerAddresses := make([]string, 0, len(maddrs))
+	for k := range maddrs {
+		minerAddresses = append(minerAddresses, address.Address(k).String())
+	}
+
+	log.Infow("This Curio instance handles",
+		"miner_addresses", minerAddresses,
 		"tasks", lo.Map(activeTasks, func(t harmonytask.TaskInterface, _ int) string { return t.TypeDetails().Name }))
 
 	// harmony treats the first task as highest priority, so reverse the order
@@ -150,6 +174,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	if err != nil {
 		return nil, err
 	}
+	go machineDetails(dependencies, activeTasks, ht.ResourcesAvailable().MachineID)
 
 	if hasAnySealingTask {
 		watcher, err := message.NewMessageWatcher(db, ht, chainSched, full)
@@ -164,4 +189,57 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	}
 
 	return ht, nil
+}
+
+func machineDetails(deps *deps.Deps, activeTasks []harmonytask.TaskInterface, machineID int) {
+	taskNames := lo.Map(activeTasks, func(item harmonytask.TaskInterface, _ int) string {
+		return item.TypeDetails().Name
+	})
+
+	miners := lo.Map(maps.Keys(deps.Maddrs), func(item dtypes.MinerAddress, _ int) string {
+		return address.Address(item).String()
+	})
+	sort.Strings(miners)
+
+	_, err := deps.DB.Exec(context.Background(), `INSERT INTO harmony_machine_details 
+		(tasks, layers, startup_time, miners, machine_id) VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (machine_id) DO UPDATE SET tasks=$1, layers=$2, startup_time=$3, miners=$4`,
+		strings.Join(taskNames, ","), strings.Join(deps.Layers, ","),
+		time.Now(), strings.Join(miners, ","), machineID)
+
+	if err != nil {
+		log.Errorf("failed to update machine details: %s", err)
+		return
+	}
+
+	// maybePostWarning
+	if !lo.Contains(taskNames, "WdPost") && !lo.Contains(taskNames, "WinPost") {
+		// Maybe we aren't running a PoSt for these miners?
+		var allMachines []struct {
+			MachineID int    `db:"machine_id"`
+			Miners    string `db:"miners"`
+			Tasks     string `db:"tasks"`
+		}
+		err := deps.DB.Select(context.Background(), &allMachines, `SELECT machine_id, miners, tasks FROM harmony_machine_details`)
+		if err != nil {
+			log.Errorf("failed to get machine details: %s", err)
+			return
+		}
+
+		for _, miner := range miners {
+			var myPostIsHandled bool
+			for _, m := range allMachines {
+				if !lo.Contains(strings.Split(m.Miners, ","), miner) {
+					continue
+				}
+				if lo.Contains(strings.Split(m.Tasks, ","), "WdPost") && lo.Contains(strings.Split(m.Tasks, ","), "WinPost") {
+					myPostIsHandled = true
+					break
+				}
+			}
+			if !myPostIsHandled {
+				log.Errorf("No PoSt tasks are running for miner %s. Start handling PoSts immediately with:\n\tcurio run --layers=\"post\" ", miner)
+			}
+		}
+	}
 }

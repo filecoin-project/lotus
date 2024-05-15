@@ -35,7 +35,7 @@ var runCmd = &cli.Command{
 			Name:    "listen",
 			Usage:   "host address and port the worker api will listen on",
 			Value:   "0.0.0.0:12300",
-			EnvVars: []string{"LOTUS_WORKER_LISTEN"},
+			EnvVars: []string{"CURIO_LISTEN"},
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
@@ -62,8 +62,10 @@ var runCmd = &cli.Command{
 			Value: "~/.curio/",
 		},
 		&cli.StringSliceFlag{
-			Name:  "layers",
-			Usage: "list of layers to be interpreted (atop defaults). Default: base",
+			Name:    "layers",
+			Usage:   "list of layers to be interpreted (atop defaults). Default: base",
+			EnvVars: []string{"CURIO_LAYERS"},
+			Aliases: []string{"l", "layer"},
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
@@ -131,13 +133,13 @@ var runCmd = &cli.Command{
 		}
 		defer taskEngine.GracefullyTerminate()
 
+		if err := lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg); err != nil {
+			return xerrors.Errorf("starting market RPCs: %w", err)
+		}
+
 		err = rpc.ListenAndServe(ctx, dependencies, shutdownChan) // Monitor for shutdown.
 		if err != nil {
 			return err
-		}
-
-		if err := lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg); err != nil {
-			return xerrors.Errorf("starting market RPCs: %w", err)
 		}
 
 		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
@@ -169,6 +171,7 @@ var webCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+
 		db, err := deps.MakeDB(cctx)
 		if err != nil {
 			return err

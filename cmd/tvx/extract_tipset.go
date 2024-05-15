@@ -57,7 +57,7 @@ func doExtractTipset(opts extractOpts) error {
 			return err
 		}
 
-		// are are squashing all tipsets into a single multi-tipset vector?
+		// are squashing all tipsets into a single multi-tipset vector?
 		if opts.squash {
 			vector, err := extractTipsets(ctx, tss...)
 			if err != nil {

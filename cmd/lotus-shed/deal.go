@@ -30,15 +30,15 @@ import (
 	"github.com/filecoin-project/lotus/lib/must"
 )
 
-var lpUtilCmd = &cli.Command{
+var curioUtilCmd = &cli.Command{
 	Name:  "curio-util",
 	Usage: "curio utility commands",
 	Subcommands: []*cli.Command{
-		lpUtilStartDealCmd,
+		curioStartDealCmd,
 	},
 }
 
-var lpUtilStartDealCmd = &cli.Command{
+var curioStartDealCmd = &cli.Command{
 	Name:      "start-deal",
 	Usage:     "start a deal with a specific curio instance",
 	ArgsUsage: "[dataFile] [miner]",
