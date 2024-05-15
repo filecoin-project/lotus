@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var log = logging.Logger("lppiece")
+var log = logging.Logger("cu-piece")
 var PieceParkPollInterval = time.Second * 15
 
 // ParkPieceTask gets a piece from some origin, and parks it in storage
@@ -174,7 +174,7 @@ func (p *ParkPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (d
 			}
 
 			// Update the piece as complete after a successful write.
-			_, err = p.db.Exec(ctx, `UPDATE parked_pieces SET complete = TRUE WHERE id = $1`, pieceData.PieceID)
+			_, err = p.db.Exec(ctx, `UPDATE parked_pieces SET complete = TRUE task_id = NULL WHERE id = $1`, pieceData.PieceID)
 			if err != nil {
 				return false, xerrors.Errorf("marking piece as complete: %w", err)
 			}
