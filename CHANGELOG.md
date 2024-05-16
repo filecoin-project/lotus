@@ -6,9 +6,9 @@
 
 ## Improvements
 
-# v1.27.0-rc2 / 2024-05-07
+# v1.27.0-rc3 / 2024-05-16
 
-This is the second release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release. Check out the Curio Beta release section for how you can get started with Curio.
+This is the third release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release. Check out the Curio Beta release section for how you can get started with Curio.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -84,6 +84,7 @@ Visit the Curio Official Website insert link
 - feat: curioweb: Sector info page (#11846) ([filecoin-project/lotus#11846](https://github.com/filecoin-project/lotus/pull/11846))
 - feat: curio web: node info page (#11745) ([filecoin-project/lotus#11745](https://github.com/filecoin-project/lotus/pull/11745))
 - feat: fvm: optimize FVM lanes a bit (#11875) ([filecoin-project/lotus#11875](https://github.com/filecoin-project/lotus/pull/11875))
+- feat: Gateway API: Add ETH -> FIL and FIL -> ETH address conversion APIs to the Gateway (#11979) ([filecoin-project/lotus#11979](https://github.com/filecoin-project/lotus/pull/11979))
 
 ## Improvements
 
@@ -126,7 +127,9 @@ Visit the Curio Official Website insert link
 - fix: docs: Modify generate-lotus-cli.py to ignoring aliases. ([filecoin-project/lotus#11535](https://github.com/filecoin-project/lotus/pull/11535))
 - fix: eth: decode as actor creation iff "to" is the EAM (#11520) ([filecoin-project/lotus#11520](https://github.com/filecoin-project/lotus/pull/11520))
 - fix(events): properly decorate events db errors (#11856) ([filecoin-project/lotus#11856](https://github.com/filecoin-project/lotus/pull/11856))
-- fix: CLI: adjust TermMax for extend-claim used by a different client (#11764) ([filecoin-project/lotus#11764](https://github.com/filecoin-project/lotus/pull/11764))
+- fix: CLI: adjust TermMax for extend-claim used by a different client (#11764) ([filecoin-project/lotus#11764](https://github.com/filecoin-project/lotus/pull/111764))
+- fix: copy Flags field from SectorOnChainInfo (#11963) ([filecoin-project/lotus#11963](https://github.com/filecoin-project/lotus/pull/11963))
+- feat: libp2p: Lotus stream cleanup (#11993) ([filecoin-project/lotus#11993](https://github.com/filecoin-project/lotus/pull/11993))
 
 ## Dependencies
 
@@ -135,6 +138,7 @@ Visit the Curio Official Website insert link
 - deps: multiaddress ([filecoin-project/lotus#11558](https://github.com/filecoin-project/lotus/pull/11558))
 - chore:libp2p: update libp2p deps in master ([filecoin-project/lotus#11522](https://github.com/filecoin-project/lotus/pull/11522))
 - dep: go-multi-address ([filecoin-project/lotus#11563](https://github.com/filecoin-project/lotus/pull/11563))
+- chore: update go-data-transfer and go-graphsync (#12000) ([filecoin-project/lotus#12000](https://github.com/filecoin-project/lotus/pull/2000))
 - github.com/filecoin-project/go-amt-ipld/ (v4.2.0 -> v4.3.0)
 - github.com/filecoin-project/go-state-types (v0.13.1 -> v0.13.3)
 - github.com/libp2p/go-libp2p-pubsub (v0.10.0 -> v0.10.1)
@@ -161,6 +165,7 @@ Visit the Curio Official Website insert link
 - chore: build: update minimum go version to 1.21.7 (#11652) ([filecoin-project/lotus#11652](https://github.com/filecoin-project/lotus/pull/11652))
 - chore: docs: nv-skeleton documentation (#11065) ([filecoin-project/lotus#11065](https://github.com/filecoin-project/lotus/pull/11065))
 - chore: Add v13 support to invariants-checker (#11931) ([filecoin-project/lotus#11931](https://github.com/filecoin-project/lotus/pull/11931))
+- chore: remove unmaintained bootstrappers (#11983) ([filecoin-project/lotus#11983](https://github.com/filecoin-project/lotus/pull/11983))
 
 ## Contributors
 
