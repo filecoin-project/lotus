@@ -9,6 +9,11 @@ if [ -z "${GITHUB_TOKEN}" ]; then
   exit 1
 fi
 
+if [ "$GITHUB_REF" != refs/tags/* ]; then
+  echo "$GITHUB_REF is not a tag, publish failed"
+  exit 1
+fi
+
 REQUIRED=(
     "jq"
     "curl"
@@ -18,12 +23,14 @@ do
     command -v "${REQUIRE}" >/dev/null 2>&1 || echo >&2 "'${REQUIRE}' must be installed"
 done
 
+GITHUB_TAG="${GITHUB_REF#refs/tags/}"
+
 #see if the release already exists by tag
 RELEASE_RESPONSE=`
   curl \
     --fail \
     --header "Authorization: token ${GITHUB_TOKEN}" \
-    "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/releases/tags/${CIRCLE_TAG}"
+    "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_TAG}"
 `
 RELEASE_ID=`echo "${RELEASE_RESPONSE}" | jq '.id'`
 
@@ -32,16 +39,16 @@ if [ "${RELEASE_ID}" = "null" ]; then
 
   COND_CREATE_DISCUSSION=""
   PRERELEASE=true
-  if [[ ${CIRCLE_TAG} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if [[ ${GITHUB_TAG} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     COND_CREATE_DISCUSSION="\"discussion_category_name\": \"announcement\","
     PRERELEASE=false
   fi
 
   RELEASE_DATA="{
-    \"tag_name\": \"${CIRCLE_TAG}\",
-    \"target_commitish\": \"${CIRCLE_SHA1}\",
+    \"tag_name\": \"${GITHUB_TAG}\",
+    \"target_commitish\": \"${GITHUB_SHA}\",
     ${COND_CREATE_DISCUSSION}
-    \"name\": \"${CIRCLE_TAG}\",
+    \"name\": \"${GITHUB_TAG}\",
     \"body\": \"\",
     \"prerelease\": ${PRERELEASE}
   }"
@@ -54,7 +61,7 @@ if [ "${RELEASE_ID}" = "null" ]; then
         --header "Authorization: token ${GITHUB_TOKEN}" \
         --header "Content-Type: application/json" \
         --data "${RELEASE_DATA}" \
-        "https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/${CIRCLE_PROJECT_REPONAME}/releases"
+        "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases"
   `
 else
   echo "release already exists"

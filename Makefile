@@ -343,7 +343,7 @@ actors-code-gen:
 	$(GOCC) run ./chain/actors/agen
 	$(GOCC) fmt ./...
 
-actors-gen: actors-code-gen 
+actors-gen: actors-code-gen
 	$(GOCC) run ./scripts/fiximports
 .PHONY: actors-gen
 
@@ -406,7 +406,7 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 fiximports:
 	$(GOCC) run ./scripts/fiximports
 
-gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci
+gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
 	$(GOCC) run ./scripts/fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
 .PHONY: gen
@@ -428,5 +428,32 @@ docsgen-cli: lotus lotus-miner lotus-worker curio sptool
 print-%:
 	@echo $*=$($*)
 
-circleci:
-	go generate -x ./.circleci
+### Curio devnet images
+curio_docker_user?=curio
+curio_base_image=$(curio_docker_user)/curio-all-in-one:latest-debug
+ffi_from_source?=0
+
+curio-devnet: lotus lotus-miner lotus-shed lotus-seed curio sptool
+.PHONY: curio-devnet
+
+curio_docker_build_cmd=docker build --build-arg CURIO_TEST_IMAGE=$(curio_base_image) \
+	--build-arg FFI_BUILD_FROM_SOURCE=$(ffi_from_source) $(docker_args)
+
+docker/curio-all-in-one:
+	$(curio_docker_build_cmd) -f Dockerfile.curio --target curio-all-in-one \
+		-t $(curio_base_image) --build-arg GOFLAGS=-tags=debug .
+.PHONY: docker/curio-all-in-one
+
+docker/%:
+	cd curiosrc/docker/$* && DOCKER_BUILDKIT=1 $(curio_docker_build_cmd) -t $(curio_docker_user)/$*-dev:dev \
+		--build-arg BUILD_VERSION=dev .
+
+docker/curio-devnet: $(lotus_build_cmd) \
+	docker/curio-all-in-one docker/lotus docker/lotus-miner docker/curio docker/yugabyte
+.PHONY: docker/curio-devnet
+
+curio-devnet/up:
+	rm -rf ./curiosrc/docker/data && docker compose -f ./curiosrc/docker/docker-compose.yaml up -d
+
+curio-devnet/down:
+	docker compose -f ./curiosrc/docker/docker-compose.yaml down --rmi=local && sleep 2 && rm -rf ./curiosrc/docker/data
