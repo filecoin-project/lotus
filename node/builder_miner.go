@@ -2,16 +2,9 @@ package node
 
 import (
 	"errors"
-	"time"
-
-	provider "github.com/ipni/index-provider"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -20,12 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/markets/dagstore"
-	"github.com/filecoin-project/lotus/markets/dealfilter"
-	"github.com/filecoin-project/lotus/markets/idxprov"
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
-	"github.com/filecoin-project/lotus/markets/sectoraccessor"
-	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -75,8 +62,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
 	}
 
-	enableLibp2pNode := cfg.Subsystems.EnableMarkets // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
-
 	return Options(
 
 		Override(new(v1api.FullNode), modules.MakeUuidWrapper),
@@ -84,7 +69,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
-		ConfigCommon(&cfg.Common, enableLibp2pNode),
+		ConfigCommon(&cfg.Common, cfg.EnableLibp2p),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
@@ -164,7 +149,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(paths.SectorIndex), From(new(modules.MinerSealingService))),
 		),
 
-		If(cfg.Subsystems.EnableMarkets,
+		/*If(cfg.Subsystems.EnableMarkets,
 
 			// Alert that legacy-markets is being deprecated
 			Override(LegacyMarketsEOL, modules.LegacyMarketsEOL),
@@ -244,7 +229,7 @@ func ConfigStorageMiner(c interface{}) Option {
 				StartEpochSealingBuffer: cfg.Dealmaking.StartEpochSealingBuffer,
 			})),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
-		),
+		),*/
 
 		Override(new(config.SealerConfig), cfg.Storage),
 		Override(new(config.ProvingConfig), cfg.Proving),
@@ -254,7 +239,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	)
 }
 
-func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConfig) Option {
+func StorageMiner(out *api.StorageMiner, enableLibp2pNode bool) Option {
 	return Options(
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the StorageMiner option must be set before Config option")),
@@ -262,7 +247,7 @@ func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConf
 
 		func(s *Settings) error {
 			s.nodeType = repo.StorageMiner
-			s.enableLibp2pNode = subsystemsCfg.EnableMarkets
+			s.enableLibp2pNode = enableLibp2pNode
 			return nil
 		},
 

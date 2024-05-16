@@ -1266,8 +1266,6 @@ func ExtractEnabledMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.Min
 	if cfg.EnableSectorStorage {
 		res = append(res, api.SubsystemSectorStorage)
 	}
-	if cfg.EnableMarkets {
-		res = append(res, api.SubsystemMarkets)
-	}
+
 	return res
 }

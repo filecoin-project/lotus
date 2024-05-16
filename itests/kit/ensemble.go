@@ -54,8 +54,6 @@ import (
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/markets/idxprov"
-	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -623,12 +621,12 @@ func (n *Ensemble) Start() *Ensemble {
 			n.t.Fatalf("invalid config from repo, got: %T", c)
 		}
 		cfg.Common.API.RemoteListenAddress = m.RemoteListener.Addr().String()
-		cfg.Subsystems.EnableMarkets = m.options.subsystems.Has(SMarkets)
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
 		cfg.Subsystems.EnableSectorIndexDB = m.options.subsystems.Has(SHarmony)
 		cfg.Dealmaking.MaxStagingDealsBytes = m.options.maxStagingDealsBytes
+		cfg.EnableLibp2p = true
 
 		if m.options.mainMiner != nil {
 			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions)
@@ -714,7 +712,7 @@ func (n *Ensemble) Start() *Ensemble {
 		m.FullNode = &minerCopy
 
 		opts := []node.Option{
-			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
+			node.StorageMiner(&m.StorageMiner, true),
 			node.Base(),
 			node.Repo(r),
 			node.Test(),
@@ -757,13 +755,6 @@ func (n *Ensemble) Start() *Ensemble {
 				}
 			}),
 		}
-
-		if m.options.subsystems.Has(SMarkets) {
-			opts = append(opts,
-				node.Override(new(idxprov.MeshCreator), idxprov_test.NewNoopMeshCreator),
-			)
-		}
-
 		// append any node builder options.
 		opts = append(opts, m.options.extraNodeOpts...)
 

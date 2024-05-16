@@ -63,7 +63,8 @@ type StorageMiner struct {
 	Addresses     MinerAddressConfig
 	DAGStore      DAGStoreConfig
 
-	HarmonyDB HarmonyDB
+	HarmonyDB    HarmonyDB
+	EnableLibp2p bool
 }
 
 type CurioConfig struct {
@@ -272,7 +273,6 @@ type MinerSubsystemConfig struct {
 	EnableMining        bool
 	EnableSealing       bool
 	EnableSectorStorage bool
-	EnableMarkets       bool
 
 	// When enabled, the sector index will reside in an external database
 	// as opposed to the local KV store in the miner process

@@ -238,9 +238,10 @@ func DefaultStorageMiner() *StorageMiner {
 			EnableMining:        true,
 			EnableSealing:       true,
 			EnableSectorStorage: true,
-			EnableMarkets:       false,
 			EnableSectorIndexDB: false,
 		},
+
+		EnableLibp2p: false,
 
 		Fees: MinerFeeConfig{
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),

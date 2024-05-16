@@ -48,7 +48,6 @@ services:
       - LOTUS_API_REMOTELISTENADDRESS=lotus-miner:2345
       - LOTUS_SEALING_BATCHPRECOMMITS=false
       - LOTUS_SEALING_AGGREGATECOMMITS=false
-      - LOTUS_SUBSYSTEMS_ENABLEMARKETS=false
       - LOTUS_SEALING_WAITDEALSDELAY=20s
     restart: unless-stopped
     logging: *default-logging
