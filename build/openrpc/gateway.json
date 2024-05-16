@@ -242,7 +242,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4416"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4051"
             }
         },
         {
@@ -473,7 +473,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4427"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4062"
             }
         },
         {
@@ -572,7 +572,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4438"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4073"
             }
         },
         {
@@ -604,7 +604,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4449"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4084"
             }
         },
         {
@@ -710,7 +710,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4460"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4095"
             }
         },
         {
@@ -803,7 +803,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4471"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4106"
             }
         },
         {
@@ -887,7 +887,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4482"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4117"
             }
         },
         {
@@ -987,7 +987,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4493"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4128"
             }
         },
         {
@@ -1043,7 +1043,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4504"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4139"
             }
         },
         {
@@ -1116,7 +1116,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4515"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4150"
             }
         },
         {
@@ -1189,7 +1189,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4526"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4161"
             }
         },
         {
@@ -1236,7 +1236,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4537"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4172"
             }
         },
         {
@@ -1268,7 +1268,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4548"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4183"
             }
         },
         {
@@ -1305,7 +1305,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4570"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4205"
             }
         },
         {
@@ -1352,7 +1352,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4581"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4216"
             }
         },
         {
@@ -1392,7 +1392,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4592"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4227"
             }
         },
         {
@@ -1439,7 +1439,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4603"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4238"
             }
         },
         {
@@ -1494,7 +1494,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4614"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4249"
             }
         },
         {
@@ -1523,7 +1523,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4625"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4260"
             }
         },
         {
@@ -1660,7 +1660,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4636"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4271"
             }
         },
         {
@@ -1689,7 +1689,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4647"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4282"
             }
         },
         {
@@ -1743,7 +1743,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4658"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4293"
             }
         },
         {
@@ -1834,7 +1834,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4669"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4304"
             }
         },
         {
@@ -1862,7 +1862,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4680"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4315"
             }
         },
         {
@@ -1952,7 +1952,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4691"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4326"
             }
         },
         {
@@ -2208,7 +2208,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4702"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4337"
             }
         },
         {
@@ -2453,7 +2453,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4713"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4348"
             }
         },
         {
@@ -2509,7 +2509,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4724"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4359"
             }
         },
         {
@@ -2556,7 +2556,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4735"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4370"
             }
         },
         {
@@ -2654,7 +2654,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4746"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4381"
             }
         },
         {
@@ -2720,7 +2720,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4757"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4392"
             }
         },
         {
@@ -2786,7 +2786,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4768"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4403"
             }
         },
         {
@@ -2895,7 +2895,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4779"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4414"
             }
         },
         {
@@ -2953,7 +2953,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4790"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4425"
             }
         },
         {
@@ -3075,7 +3075,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4801"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4436"
             }
         },
         {
@@ -3262,7 +3262,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4812"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4447"
             }
         },
         {
@@ -3466,7 +3466,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4823"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4458"
             }
         },
         {
@@ -3557,7 +3557,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4834"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4469"
             }
         },
         {
@@ -3615,7 +3615,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4845"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4480"
             }
         },
         {
@@ -3873,7 +3873,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4856"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4491"
             }
         },
         {
@@ -4148,7 +4148,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4867"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4502"
             }
         },
         {
@@ -4176,7 +4176,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4878"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4513"
             }
         },
         {
@@ -4214,7 +4214,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4889"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4524"
             }
         },
         {
@@ -4322,7 +4322,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4900"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4535"
             }
         },
         {
@@ -4360,7 +4360,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4911"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4546"
             }
         },
         {
@@ -4389,7 +4389,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4922"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4557"
             }
         },
         {
@@ -4452,7 +4452,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4933"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4568"
             }
         },
         {
@@ -4515,7 +4515,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4944"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4579"
             }
         },
         {
@@ -4560,7 +4560,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4955"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4590"
             }
         },
         {
@@ -4682,7 +4682,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4966"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4601"
             }
         },
         {
@@ -4837,7 +4837,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4977"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4612"
             }
         },
         {
@@ -4891,7 +4891,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4988"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4623"
             }
         },
         {
@@ -4945,7 +4945,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4999"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4634"
             }
         },
         {
@@ -5000,7 +5000,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5010"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4645"
             }
         },
         {
@@ -5102,7 +5102,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5021"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4656"
             }
         },
         {
@@ -5325,7 +5325,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5032"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4667"
             }
         },
         {
@@ -5508,7 +5508,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5043"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4678"
             }
         },
         {
@@ -5702,7 +5702,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5054"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4689"
             }
         },
         {
@@ -5748,7 +5748,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5065"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4700"
             }
         },
         {
@@ -5898,7 +5898,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5076"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4711"
             }
         },
         {
@@ -6035,7 +6035,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5087"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4722"
             }
         },
         {
@@ -6103,7 +6103,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5098"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4733"
             }
         },
         {
@@ -6220,7 +6220,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5109"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4744"
             }
         },
         {
@@ -6311,7 +6311,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5120"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4755"
             }
         },
         {
@@ -6397,7 +6397,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5131"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4766"
             }
         },
         {
@@ -6424,7 +6424,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5142"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4777"
             }
         },
         {
@@ -6451,7 +6451,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5153"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4788"
             }
         },
         {
@@ -6519,7 +6519,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5164"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4799"
             }
         },
         {
@@ -7025,7 +7025,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5175"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4810"
             }
         },
         {
@@ -7122,7 +7122,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5186"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4821"
             }
         },
         {
@@ -7222,7 +7222,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5197"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4832"
             }
         },
         {
@@ -7322,7 +7322,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5208"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4843"
             }
         },
         {
@@ -7447,7 +7447,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5219"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4854"
             }
         },
         {
@@ -7556,7 +7556,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5230"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4865"
             }
         },
         {
@@ -7659,7 +7659,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5241"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4876"
             }
         },
         {
@@ -7789,7 +7789,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5252"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4887"
             }
         },
         {
@@ -7896,7 +7896,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5263"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4898"
             }
         },
         {
@@ -7957,7 +7957,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5274"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4909"
             }
         },
         {
@@ -8025,7 +8025,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5285"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4920"
             }
         },
         {
@@ -8106,7 +8106,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5296"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4931"
             }
         },
         {
@@ -8265,7 +8265,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5307"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4942"
             }
         },
         {
@@ -8358,7 +8358,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5318"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4953"
             }
         },
         {
@@ -8559,7 +8559,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5329"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4964"
             }
         },
         {
@@ -8670,7 +8670,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5340"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4975"
             }
         },
         {
@@ -8801,7 +8801,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5351"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4986"
             }
         },
         {
@@ -8887,7 +8887,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5362"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L4997"
             }
         },
         {
@@ -8914,7 +8914,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5373"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5008"
             }
         },
         {
@@ -8967,7 +8967,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5384"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5019"
             }
         },
         {
@@ -9055,7 +9055,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5395"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5030"
             }
         },
         {
@@ -9506,7 +9506,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5406"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5041"
             }
         },
         {
@@ -9673,7 +9673,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5417"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5052"
             }
         },
         {
@@ -9846,7 +9846,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5428"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5063"
             }
         },
         {
@@ -9914,7 +9914,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5439"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5074"
             }
         },
         {
@@ -9982,7 +9982,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5450"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5085"
             }
         },
         {
@@ -10143,7 +10143,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5461"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5096"
             }
         },
         {
@@ -10188,7 +10188,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5483"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5118"
             }
         },
         {
@@ -10233,7 +10233,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5494"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5129"
             }
         },
         {
@@ -10260,7 +10260,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5505"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5140"
             }
         }
     ]

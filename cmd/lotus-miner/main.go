@@ -187,11 +187,6 @@ func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Addr
 	return maddr, nil
 }
 
-func setHidden(cmd *cli.Command) *cli.Command {
-	cmd.Hidden = true
-	return cmd
-}
-
 func LMActorOrEnvGetter(cctx *cli.Context) (address.Address, error) {
 	return getActorAddress(cctx.Context, cctx)
 }

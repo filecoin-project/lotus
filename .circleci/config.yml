@@ -543,18 +543,6 @@ workflows:
           suite: itest-api
           target: "./itests/api_test.go"
       - test:
-          name: test-itest-batch_deal
-          requires:
-            - build
-          suite: itest-batch_deal
-          target: "./itests/batch_deal_test.go"
-      - test:
-          name: test-itest-cli
-          requires:
-            - build
-          suite: itest-cli
-          target: "./itests/cli_test.go"
-      - test:
           name: test-itest-curio
           requires:
             - build
@@ -567,96 +555,11 @@ workflows:
           suite: itest-deadlines
           target: "./itests/deadlines_test.go"
       - test:
-          name: test-itest-deals_512mb
-          requires:
-            - build
-          suite: itest-deals_512mb
-          target: "./itests/deals_512mb_test.go"
-      - test:
-          name: test-itest-deals_anycid
-          requires:
-            - build
-          suite: itest-deals_anycid
-          target: "./itests/deals_anycid_test.go"
-      - test:
-          name: test-itest-deals_concurrent
-          requires:
-            - build
-          suite: itest-deals_concurrent
-          target: "./itests/deals_concurrent_test.go"
-          resource_class: 2xlarge
-      - test:
           name: test-itest-deals_invalid_utf8_label
           requires:
             - build
           suite: itest-deals_invalid_utf8_label
           target: "./itests/deals_invalid_utf8_label_test.go"
-      - test:
-          name: test-itest-deals_max_staging_deals
-          requires:
-            - build
-          suite: itest-deals_max_staging_deals
-          target: "./itests/deals_max_staging_deals_test.go"
-      - test:
-          name: test-itest-deals_offline
-          requires:
-            - build
-          suite: itest-deals_offline
-          target: "./itests/deals_offline_test.go"
-      - test:
-          name: test-itest-deals_padding
-          requires:
-            - build
-          suite: itest-deals_padding
-          target: "./itests/deals_padding_test.go"
-      - test:
-          name: test-itest-deals_partial_retrieval_dm-level
-          requires:
-            - build
-          suite: itest-deals_partial_retrieval_dm-level
-          target: "./itests/deals_partial_retrieval_dm-level_test.go"
-      - test:
-          name: test-itest-deals_partial_retrieval
-          requires:
-            - build
-          suite: itest-deals_partial_retrieval
-          target: "./itests/deals_partial_retrieval_test.go"
-      - test:
-          name: test-itest-deals_power
-          requires:
-            - build
-          suite: itest-deals_power
-          target: "./itests/deals_power_test.go"
-      - test:
-          name: test-itest-deals_pricing
-          requires:
-            - build
-          suite: itest-deals_pricing
-          target: "./itests/deals_pricing_test.go"
-      - test:
-          name: test-itest-deals_publish
-          requires:
-            - build
-          suite: itest-deals_publish
-          target: "./itests/deals_publish_test.go"
-      - test:
-          name: test-itest-deals_remote_retrieval
-          requires:
-            - build
-          suite: itest-deals_remote_retrieval
-          target: "./itests/deals_remote_retrieval_test.go"
-      - test:
-          name: test-itest-deals_retry_deal_no_funds
-          requires:
-            - build
-          suite: itest-deals_retry_deal_no_funds
-          target: "./itests/deals_retry_deal_no_funds_test.go"
-      - test:
-          name: test-itest-deals
-          requires:
-            - build
-          suite: itest-deals
-          target: "./itests/deals_test.go"
       - test:
           name: test-itest-decode_params
           requires:
@@ -868,12 +771,6 @@ workflows:
           suite: itest-path_detach_redeclare
           target: "./itests/path_detach_redeclare_test.go"
       - test:
-          name: test-itest-path_type_filters
-          requires:
-            - build
-          suite: itest-path_type_filters
-          target: "./itests/path_type_filters_test.go"
-      - test:
           name: test-itest-paych_api
           requires:
             - build
@@ -903,12 +800,6 @@ workflows:
             - build
           suite: itest-sealing_resources
           target: "./itests/sealing_resources_test.go"
-      - test:
-          name: test-itest-sector_finalize_early
-          requires:
-            - build
-          suite: itest-sector_finalize_early
-          target: "./itests/sector_finalize_early_test.go"
       - test:
           name: test-itest-sector_import_full
           requires:
@@ -1018,12 +909,6 @@ workflows:
           suite: itest-worker
           target: "./itests/worker_test.go"
           resource_class: 2xlarge
-      - test:
-          name: test-itest-worker_upgrade
-          requires:
-            - build
-          suite: itest-worker_upgrade
-          target: "./itests/worker_upgrade_test.go"
       - test:
           name: test-unit-cli
           requires:

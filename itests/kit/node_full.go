@@ -86,22 +86,6 @@ func (f TestFullNode) Shutdown(ctx context.Context) error {
 	return f.Stop(ctx)
 }
 
-func (f *TestFullNode) ClientImportCARFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, carv1FilePath string, origFilePath string) {
-	carv1FilePath, origFilePath = CreateRandomCARv1(f.t, rseed, size)
-	res, err := f.ClientImport(ctx, api.FileRef{Path: carv1FilePath, IsCAR: true})
-	require.NoError(f.t, err)
-	return res, carv1FilePath, origFilePath
-}
-
-// CreateImportFile creates a random file with the specified seed and size, and
-// imports it into the full node.
-func (f *TestFullNode) CreateImportFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, path string) {
-	path = CreateRandomFile(f.t, rseed, size)
-	res, err := f.ClientImport(ctx, api.FileRef{Path: path})
-	require.NoError(f.t, err)
-	return res, path
-}
-
 // WaitTillChain waits until a specified chain condition is met. It returns
 // the first tipset where the condition is met.
 func (f *TestFullNode) WaitTillChain(ctx context.Context, pred ChainPredicate) *types.TipSet {

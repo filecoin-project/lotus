@@ -29,17 +29,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/sub/ratelimit"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/unixfs"
 	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
 var log = logging.Logger("sub")
+var DefaultHashFunction = unixfs.DefaultHashFunction
 
 var msgCidPrefix = cid.Prefix{
 	Version:  1,
 	Codec:    cid.DagCBOR,
-	MhType:   client.DefaultHashFunction,
+	MhType:   DefaultHashFunction,
 	MhLength: 32,
 }
 

@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/market"
@@ -25,7 +24,6 @@ type FullNodeAPI struct {
 	common.CommonAPI
 	net.NetAPI
 	full.ChainAPI
-	client.API
 	full.MpoolAPI
 	full.GasAPI
 	market.MarketAPI

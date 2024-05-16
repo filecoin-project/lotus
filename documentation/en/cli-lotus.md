@@ -870,9 +870,8 @@ USAGE:
    lotus paych add-funds [command options] [fromAddress toAddress amount]
 
 OPTIONS:
-   --restart-retrievals  restart stalled retrieval deals on this payment channel (default: true)
-   --reserve             mark funds as reserved (default: false)
-   --help, -h            show help
+   --reserve   mark funds as reserved (default: false)
+   --help, -h  show help
 ```
 
 ### lotus paych list
