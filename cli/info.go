@@ -3,9 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
-	"math"
 	"os"
-	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -14,7 +12,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -155,57 +152,6 @@ func infoCmdAct(cctx *cli.Context) error {
 		fmt.Printf("Payment Channels: %v channels\n", len(chs))
 	}
 	fmt.Println()
-
-	localDeals, err := fullapi.ClientListDeals(ctx)
-	if err != nil {
-		return err
-	}
-
-	var totalSize uint64
-	byState := map[storagemarket.StorageDealStatus][]uint64{}
-	for _, deal := range localDeals {
-		totalSize += deal.Size
-		byState[deal.State] = append(byState[deal.State], deal.Size)
-	}
-
-	fmt.Printf("Deals: %d, %s\n", len(localDeals), types.SizeStr(types.NewInt(totalSize)))
-
-	type stateStat struct {
-		state storagemarket.StorageDealStatus
-		count int
-		bytes uint64
-	}
-
-	stateStats := make([]stateStat, 0, len(byState))
-	for state, deals := range byState {
-		if state == storagemarket.StorageDealActive {
-			state = math.MaxUint64 // for sort
-		}
-
-		st := stateStat{
-			state: state,
-			count: len(deals),
-		}
-		for _, b := range deals {
-			st.bytes += b
-		}
-
-		stateStats = append(stateStats, st)
-	}
-
-	sort.Slice(stateStats, func(i, j int) bool {
-		return int64(stateStats[i].state) < int64(stateStats[j].state)
-	})
-
-	for _, st := range stateStats {
-		if st.state == math.MaxUint64 {
-			st.state = storagemarket.StorageDealActive
-		}
-		fmt.Printf("      %s: %d deals, %s\n", storagemarket.DealStates[st.state], st.count, types.SizeStr(types.NewInt(st.bytes)))
-	}
-
-	fmt.Println()
-
 	tw := tabwriter.NewWriter(os.Stdout, 6, 6, 2, ' ', 0)
 
 	s, err := fullapi.NetBandwidthStats(ctx)

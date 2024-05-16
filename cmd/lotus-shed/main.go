@@ -48,7 +48,6 @@ func main() {
 		proofsCmd,
 		verifRegCmd,
 		marketCmd,
-		miscCmd,
 		mpoolCmd,
 		helloCmd,
 		genesisVerifyCmd,
