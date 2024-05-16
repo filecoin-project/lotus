@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
@@ -408,9 +409,14 @@ func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredP
 				})
 			}
 
-			pr, err := t.prover.GenerateWindowPoStAdv(cctx, ppt, minerID, sectors, int(partIdx), randomness, true)
-			sk := pr.Skipped
-
+			sectorInfo := lo.Map(sectors, func(s storiface.PostSectorChallenge, i int) proof.ExtendedSectorInfo {
+				return proof.ExtendedSectorInfo{
+					SectorNumber: s.SectorNumber,
+					SealProof:    s.SealProof,
+					SealedCID:    s.SealedCID,
+				}
+			})
+			postProofs, sk, err := t.curioFfiWrap.GenerateWindowPoSt(cctx, minerID, ppt, sectorInfo, randomness)
 			if err != nil || len(sk) > 0 {
 				log.Errorf("generateWindowPost part:%d, skipped:%d, sectors: %d, err: %+v", partIdx, len(sk), len(sectors), err)
 				flk.Lock()
@@ -422,7 +428,8 @@ func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredP
 				flk.Unlock()
 			}
 
-			proofList[partIdx] = ffi.PartitionProof(pr.PoStProofs)
+			// @magik6k help! postProofs is a []proof.PoStProof, but ffi.PartitionProof wants only 1.
+			proofList[partIdx] = ffi.PartitionProof(postProofs[0])
 		}(partIdx)
 	}
 

@@ -6,8 +6,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -17,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/proof"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/api"
@@ -24,11 +27,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -38,8 +43,9 @@ type WinPostTask struct {
 	max int
 	db  *harmonydb.DB
 
-	prover   ProverWinningPoSt
-	verifier storiface.Verifier
+	curioFfiWrap *ffiselect.CurioFFIWrap
+	paths        *paths.Local
+	verifier     storiface.Verifier
 
 	api    WinPostAPI
 	actors map[dtypes.MinerAddress]bool
@@ -66,18 +72,15 @@ type WinPostAPI interface {
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
 
-type ProverWinningPoSt interface {
-	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, error)
-}
-
-func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
+func NewWinPostTask(max int, db *harmonydb.DB, curioFfiWrap *ffiselect.CurioFFIWrap, pl *paths.Local, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
 	t := &WinPostTask{
-		max:      max,
-		db:       db,
-		prover:   prover,
-		verifier: verifier,
-		api:      api,
-		actors:   actors,
+		max:          max,
+		db:           db,
+		curioFfiWrap: curioFfiWrap,
+		paths:        pl,
+		verifier:     verifier,
+		api:          api,
+		actors:       actors,
 	}
 	// TODO: run warmup
 
@@ -272,7 +275,8 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 			}
 		}
 
-		wpostProof, err = t.prover.GenerateWinningPoSt(ctx, ppt, abi.ActorID(details.SpID), sectorChallenges, prand)
+		t.generateWinningPost(ctx, ppt, abi.ActorID(details.SpID), sectorChallenges, prand)
+		//wpostProof, err = t.prover.GenerateWinningPoSt(ctx, ppt, abi.ActorID(details.SpID), sectorChallenges, prand)
 		if err != nil {
 			err = xerrors.Errorf("failed to compute winning post proof: %w", err)
 			return false, err
@@ -431,6 +435,47 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	}
 
 	return true, nil
+}
+
+func (t *WinPostTask) generateWinningPost(
+	ctx context.Context,
+	ppt abi.RegisteredPoStProof,
+	mid abi.ActorID,
+	sectors []storiface.PostSectorChallenge,
+	randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+
+	// don't throttle winningPoSt
+	// * Always want it done asap
+	// * It's usually just one sector
+	var wg sync.WaitGroup
+	wg.Add(len(sectors))
+
+	vproofs := make([][]byte, len(sectors))
+	var rerr error
+
+	for i, s := range sectors {
+		go func(i int, s storiface.PostSectorChallenge) {
+			defer wg.Done()
+
+			vanilla, err := t.paths.GenerateSingleVanillaProof(ctx, mid, s, ppt)
+			if err != nil {
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila failed: %w", s.SectorNumber, err))
+				return
+			}
+			if vanilla == nil {
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila is nil", s.SectorNumber))
+			}
+			vproofs[i] = vanilla
+		}(i, s)
+	}
+	wg.Wait()
+
+	if rerr != nil {
+		return nil, rerr
+	}
+
+	return t.curioFfiWrap.GenerateWinningPoStWithVanilla(ctx, ppt, mid, randomness, vproofs)
+
 }
 
 func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {

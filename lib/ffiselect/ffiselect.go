@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -37,13 +38,13 @@ type ValErr struct {
 	Err error
 }
 
+// This is not the one you're looking for.
 type FFICall struct {
-	Fn       string
-	Args     []interface{}
-	StorPath string
+	Fn   string
+	Args []interface{}
 }
 
-func call(storPath string, fn string, args ...interface{}) ([]interface{}, error) {
+func call(layers []string, fn string, args ...interface{}) ([]interface{}, error) {
 	// get dOrdinal
 	dOrdinal := <-ch
 	defer func() {
@@ -55,7 +56,11 @@ func call(storPath string, fn string, args ...interface{}) ([]interface{}, error
 		return nil, err
 	}
 
-	cmd := exec.Command(p, "ffi")
+	commandAry := []string{"ffi"}
+	if len(layers) > 0 {
+		commandAry = append(commandAry, "--layers="+strings.Join(layers, ","))
+	}
+	cmd := exec.Command(p, commandAry...)
 
 	// Set Visible Devices for CUDA and OpenCL
 	cmd.Env = append(os.Environ(),
@@ -75,9 +80,8 @@ func call(storPath string, fn string, args ...interface{}) ([]interface{}, error
 	cmd.ExtraFiles = []*os.File{outFile}
 	var gobber bytes.Buffer
 	err = gob.NewEncoder(&gobber).Encode(FFICall{
-		Fn:       fn,
-		Args:     args,
-		StorPath: storPath,
+		Fn:   fn,
+		Args: args,
 	})
 	if err != nil {
 		return nil, err
@@ -95,38 +99,57 @@ func call(storPath string, fn string, args ...interface{}) ([]interface{}, error
 }
 
 // FUTURE?: be snazzy and generate + reflect all FFIWrapper methods.
-type FFICallWrapper struct {
-	StorePath string
+type CurioFFIWrap struct {
+	Layers []string
 }
 
-func (fcw *FFICallWrapper) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error) {
-	res, err := call(fcw.StorePath, "GenerateWinningPoStWithVanilla", proofType, minerID, randomness, vanillas)
+func (fcw *CurioFFIWrap) GenerateSingleVanillaProof(
+	replica ffi.PrivateSectorInfo,
+	challenges []uint64,
+) ([]byte, error) {
+	res, err := call(fcw.Layers, "GenerateSingleVanillaProof", replica, challenges)
+	if err != nil {
+		return nil, err
+	}
+	return res[0].([]byte), res[1].(error)
+}
+
+func (fcw *CurioFFIWrap) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error) {
+	res, err := call(fcw.Layers, "GenerateWinningPoStWithVanilla", proofType, minerID, randomness, vanillas)
 	if err != nil {
 		return nil, err
 	}
 	return res[0].([]proof.PoStProof), res[1].(error)
 }
 
-func (fcw *FFICallWrapper) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
-	res, err := call(fcw.StorePath, "GenerateWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIdx)
+func (fcw *CurioFFIWrap) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
+	res, err := call(fcw.Layers, "GenerateWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIdx)
 	if err != nil {
 		return proof.PoStProof{}, err
 	}
 	return res[0].(proof.PoStProof), res[1].(error)
 }
 
-func (fcw *FFICallWrapper) SealCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.Proof, error) {
-	res, err := call(fcw.StorePath, "SealCommit2", sector, phase1Out)
+func (fcw *CurioFFIWrap) SealCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.Proof, error) {
+	res, err := call(fcw.Layers, "SealCommit2", sector, phase1Out)
 	if err != nil {
 		return storiface.Proof{}, err
 	}
 	return res[0].(storiface.Proof), res[1].(error)
 }
 
-func (fcw *FFICallWrapper) SealPreCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.PreCommit1Out) (storiface.SectorCids, error) {
-	res, err := call(fcw.StorePath, "SealPreCommit2", sector, phase1Out)
+func (fcw *CurioFFIWrap) SealPreCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.PreCommit1Out) (storiface.SectorCids, error) {
+	res, err := call(fcw.Layers, "SealPreCommit2", sector, phase1Out)
 	if err != nil {
 		return storiface.SectorCids{}, err
 	}
 	return res[0].(storiface.SectorCids), res[1].(error)
+}
+
+func (fcw *CurioFFIWrap) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, postProofType abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
+	res, err := call(fcw.Layers, "GenerateWindowPoSt", minerID, postProofType, sectorInfo, randomness)
+	if err != nil {
+		return nil, nil, err
+	}
+	return res[0].([]proof.PoStProof), res[1].([]abi.SectorID), res[2].(error)
 }

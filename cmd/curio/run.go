@@ -150,6 +150,11 @@ var runCmd = &cli.Command{
 	},
 }
 
+var layersFlag = &cli.StringSliceFlag{
+	Name:  "layers",
+	Usage: "list of layers to be interpreted (atop defaults). Default: base",
+}
+
 var webCmd = &cli.Command{
 	Name:  "web",
 	Usage: "Start Curio web interface",
@@ -165,10 +170,7 @@ var webCmd = &cli.Command{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
 		},
-		&cli.StringSliceFlag{
-			Name:  "layers",
-			Usage: "list of layers to be interpreted (atop defaults). Default: base",
-		},
+		layersFlag,
 	},
 	Action: func(cctx *cli.Context) error {
 

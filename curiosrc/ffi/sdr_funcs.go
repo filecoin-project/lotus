@@ -39,21 +39,21 @@ type ExternPrecommit2 func(ctx context.Context, sector storiface.SectorRef, cach
 */
 type SealCalls struct {
 	sectors *storageProvider
-	ffiselect.FFICallWrapper
+	ffiselect.CurioFFIWrap
 
 	/*// externCalls cointain overrides for calling alternative sealing logic
 	externCalls ExternalSealer*/
 }
 
-func NewSealCalls(st *paths.Remote, ls *paths.Local, si paths.SectorIndex) *SealCalls {
+func NewSealCalls(st *paths.Remote, ls *paths.Local, si paths.SectorIndex, cuFFIWrap *ffiselect.CurioFFIWrap) *SealCalls {
 	return &SealCalls{
 		sectors: &storageProvider{
 			storage:             st,
 			localStore:          ls,
 			sindex:              si,
 			storageReservations: xsync.NewIntegerMapOf[harmonytask.TaskID, *StorageReservation](),
-			FFICallWrapper:      ffiselect.FFICallWrapper{},
 		},
+		CurioFFIWrap: *cuFFIWrap,
 	}
 }
 
@@ -260,10 +260,11 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 		}
 	}
 
-	sl, uns, err := ffi.SealPreCommitPhase2(p1o, fspaths.Cache, fspaths.Sealed)
+	cids, err := sb.CurioFFIWrap.SealPreCommit2(ctx, sector, p1o)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
 	}
+	sl, uns := cids.Sealed, cids.Unsealed
 
 	if uns != unsealed {
 		return cid.Undef, cid.Undef, xerrors.Errorf("unsealed cid changed after sealing")
@@ -311,7 +312,7 @@ func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sea
 		return nil, xerrors.Errorf("failed to generate vanilla proof: %w", err)
 	}
 
-	proof, err := ffi.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
+	proof, err := sb.CurioFFIWrap.SealCommit2(ctx, sn, vproof)
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
