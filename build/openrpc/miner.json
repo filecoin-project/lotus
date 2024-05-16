@@ -1327,6 +1327,7 @@
                                     "ClientCollateral": "0"
                                 },
                                 "State": {
+                                    "SectorNumber": 9,
                                     "SectorStartEpoch": 10101,
                                     "LastUpdatedEpoch": 10101,
                                     "SlashEpoch": 10101
@@ -1391,6 +1392,10 @@
                                     "additionalProperties": false,
                                     "properties": {
                                         "LastUpdatedEpoch": {
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "SectorNumber": {
                                             "title": "number",
                                             "type": "number"
                                         },
@@ -2649,6 +2654,7 @@
                                     "ClientCollateral": "0"
                                 },
                                 "State": {
+                                    "SectorNumber": 9,
                                     "SectorStartEpoch": 10101,
                                     "LastUpdatedEpoch": 10101,
                                     "SlashEpoch": 10101
@@ -2713,6 +2719,10 @@
                                     "additionalProperties": false,
                                     "properties": {
                                         "LastUpdatedEpoch": {
+                                            "title": "number",
+                                            "type": "number"
+                                        },
+                                        "SectorNumber": {
                                             "title": "number",
                                             "type": "number"
                                         },
