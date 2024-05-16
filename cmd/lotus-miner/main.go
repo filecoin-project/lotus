@@ -43,16 +43,10 @@ func main() {
 		backupCmd,
 		lcli.WithCategory("chain", actorCmd),
 		lcli.WithCategory("chain", infoCmd),
-		lcli.WithCategory("market", setHidden(storageDealsCmd)),
-		lcli.WithCategory("market", setHidden(retrievalDealsCmd)),
-		lcli.WithCategory("market", setHidden(dataTransfersCmd)),
-		lcli.WithCategory("market", setHidden(dagstoreCmd)),
-		lcli.WithCategory("market", setHidden(indexProvCmd)),
 		lcli.WithCategory("storage", sectorsCmd),
 		lcli.WithCategory("storage", provingCmd),
 		lcli.WithCategory("storage", storageCmd),
 		lcli.WithCategory("storage", sealingCmd),
-		lcli.WithCategory("retrieval", setHidden(piecesCmd)),
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")

@@ -45,7 +45,6 @@ var sectorsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		spcli.SectorsStatusCmd(LMActorOrEnvGetter, getOnDiskInfo),
 		sectorsListCmd,
-		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
 		sectorsNumbersCmd,
@@ -581,32 +580,6 @@ var sectorsListUpgradeBoundsCmd = &cli.Command{
 		}
 
 		return tw.Flush(os.Stdout)
-	},
-}
-
-var sectorsRefsCmd = &cli.Command{
-	Name:  "refs",
-	Usage: "List References to sectors",
-	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
-
-		refs, err := nodeApi.SectorsRefs(ctx)
-		if err != nil {
-			return err
-		}
-
-		for name, refs := range refs {
-			fmt.Printf("Block %s:\n", name)
-			for _, ref := range refs {
-				fmt.Printf("\t%d+%d %d bytes\n", ref.SectorID, ref.Offset, ref.Size)
-			}
-		}
-		return nil
 	},
 }
 
