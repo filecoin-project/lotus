@@ -152,6 +152,7 @@ Visit the Curio Official Website insert link
 - ci: ci: list processes before calling apt-get to enable debugging (#11815) ([filecoin-project/lotus#11815](https://github.com/filecoin-project/lotus/pull/11815))
 - ci: ci: allow master main sync to write to the repository (#11784) ([filecoin-project/lotus#11784](https://github.com/filecoin-project/lotus/pull/11784))
 - ci: ci: create gh workflow that runs go tests (#11762) ([filecoin-project/lotus#11762](https://github.com/filecoin-project/lotus/pull/11762))
+- ci: ci: deprecate circle ci in favour of github actions (#11786) ([filecoin-project/lotus#11786](https://github.com/filecoin-project/lotus/pull/1786))
 - misc: Drop the raft-cluster experiment ([filecoin-project/lotus#11468](https://github.com/filecoin-project/lotus/pull/11468))
 - chore: fix some typos in comments (#11892) ([filecoin-project/lotus#11892](https://github.com/filecoin-project/lotus/pull/11892))
 - chore: fix typos (#11848) ([filecoin-project/lotus#11848](https://github.com/filecoin-project/lotus/pull/11848))
