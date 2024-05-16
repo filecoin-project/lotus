@@ -928,20 +928,6 @@ type StorageMinerMethods struct {
 
 	CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-	DagstoreGC func(p0 context.Context) ([]DagstoreShardResult, error) `perm:"admin"`
-
-	DagstoreInitializeAll func(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) `perm:"write"`
-
-	DagstoreInitializeShard func(p0 context.Context, p1 string) error `perm:"write"`
-
-	DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
-
-	DagstoreLookupPieces func(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) `perm:"admin"`
-
-	DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
-
-	DagstoreRegisterShard func(p0 context.Context, p1 string) error `perm:"admin"`
-
 	DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
 	DealsConsiderOfflineStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
@@ -973,10 +959,6 @@ type StorageMinerMethods struct {
 	DealsSetConsiderVerifiedStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
 
 	DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
-
-	IndexerAnnounceAllDeals func(p0 context.Context) error `perm:"admin"`
-
-	IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
 	MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
@@ -5533,83 +5515,6 @@ func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DagstoreGC(p0 context.Context) ([]DagstoreShardResult, error) {
-	if s.Internal.DagstoreGC == nil {
-		return *new([]DagstoreShardResult), ErrNotSupported
-	}
-	return s.Internal.DagstoreGC(p0)
-}
-
-func (s *StorageMinerStub) DagstoreGC(p0 context.Context) ([]DagstoreShardResult, error) {
-	return *new([]DagstoreShardResult), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) {
-	if s.Internal.DagstoreInitializeAll == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.DagstoreInitializeAll(p0, p1)
-}
-
-func (s *StorageMinerStub) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DagstoreInitializeShard(p0 context.Context, p1 string) error {
-	if s.Internal.DagstoreInitializeShard == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DagstoreInitializeShard(p0, p1)
-}
-
-func (s *StorageMinerStub) DagstoreInitializeShard(p0 context.Context, p1 string) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
-	if s.Internal.DagstoreListShards == nil {
-		return *new([]DagstoreShardInfo), ErrNotSupported
-	}
-	return s.Internal.DagstoreListShards(p0)
-}
-
-func (s *StorageMinerStub) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
-	return *new([]DagstoreShardInfo), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {
-	if s.Internal.DagstoreLookupPieces == nil {
-		return *new([]DagstoreShardInfo), ErrNotSupported
-	}
-	return s.Internal.DagstoreLookupPieces(p0, p1)
-}
-
-func (s *StorageMinerStub) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {
-	return *new([]DagstoreShardInfo), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string) error {
-	if s.Internal.DagstoreRecoverShard == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DagstoreRecoverShard(p0, p1)
-}
-
-func (s *StorageMinerStub) DagstoreRecoverShard(p0 context.Context, p1 string) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DagstoreRegisterShard(p0 context.Context, p1 string) error {
-	if s.Internal.DagstoreRegisterShard == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DagstoreRegisterShard(p0, p1)
-}
-
-func (s *StorageMinerStub) DagstoreRegisterShard(p0 context.Context, p1 string) error {
-	return ErrNotSupported
-}
-
 func (s *StorageMinerStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
 	if s.Internal.DealsConsiderOfflineRetrievalDeals == nil {
 		return false, ErrNotSupported
@@ -5783,28 +5688,6 @@ func (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []
 }
 
 func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) IndexerAnnounceAllDeals(p0 context.Context) error {
-	if s.Internal.IndexerAnnounceAllDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.IndexerAnnounceAllDeals(p0)
-}
-
-func (s *StorageMinerStub) IndexerAnnounceAllDeals(p0 context.Context) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {
-	if s.Internal.IndexerAnnounceDeal == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.IndexerAnnounceDeal(p0, p1)
-}
-
-func (s *StorageMinerStub) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {
 	return ErrNotSupported
 }
 

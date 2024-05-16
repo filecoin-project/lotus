@@ -271,12 +271,6 @@ func DefaultStorageMiner() *StorageMiner {
 			DealPublishControl: []string{},
 		},
 
-		DAGStore: DAGStoreConfig{
-			MaxConcurrentIndex:         5,
-			MaxConcurrencyStorageCalls: 100,
-			MaxConcurrentUnseals:       5,
-			GCInterval:                 Duration(1 * time.Minute),
-		},
 		HarmonyDB: HarmonyDB{
 			Hosts:    []string{"127.0.0.1"},
 			Username: "yugabyte",

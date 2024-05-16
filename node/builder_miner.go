@@ -2,6 +2,7 @@ package node
 
 import (
 	"errors"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 

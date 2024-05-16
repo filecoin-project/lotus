@@ -49,7 +49,6 @@ USAGE:
 
 COMMANDS:
    restore  Initialize a lotus miner repo from a backup
-   service  Initialize a lotus miner sub-service
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
@@ -82,23 +81,6 @@ OPTIONS:
    --config value          config file (config.toml)
    --storage-config value  storage paths config (storage.json)
    --help, -h              show help
-```
-
-### lotus-miner init service
-```
-NAME:
-   lotus-miner init service - Initialize a lotus miner sub-service
-
-USAGE:
-   lotus-miner init service [command options] [backupFile]
-
-OPTIONS:
-   --config value                 config file (config.toml)
-   --nosync                       don't check full-node sync status (default: false)
-   --type value [ --type value ]  type of service to be enabled
-   --api-sealer value             sealer API info (lotus-miner auth api-info --perm=admin)
-   --api-sector-index value       sector Index API info (lotus-miner auth api-info --perm=admin)
-   --help, -h                     show help
 ```
 
 ## lotus-miner run

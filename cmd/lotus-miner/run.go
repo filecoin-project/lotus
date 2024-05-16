@@ -120,10 +120,6 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		c, err := lr.Config()
-		if err != nil {
-			return err
-		}
 
 		err = lr.Close()
 		if err != nil {

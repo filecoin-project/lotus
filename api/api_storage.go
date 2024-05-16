@@ -238,61 +238,6 @@ type StorageMiner interface {
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
 	MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error                                                           //perm:admin
 
-	// DagstoreListShards returns information about all shards known to the
-	// DAG store. Only available on nodes running the markets subsystem.
-	DagstoreListShards(ctx context.Context) ([]DagstoreShardInfo, error) //perm:read
-
-	// DagstoreInitializeShard initializes an uninitialized shard.
-	//
-	// Initialization consists of fetching the shard's data (deal payload) from
-	// the storage subsystem, generating an index, and persisting the index
-	// to facilitate later retrievals, and/or to publish to external sources.
-	//
-	// This operation is intended to complement the initial migration. The
-	// migration registers a shard for every unique piece CID, with lazy
-	// initialization. Thus, shards are not initialized immediately to avoid
-	// IO activity competing with proving. Instead, shard are initialized
-	// when first accessed. This method forces the initialization of a shard by
-	// accessing it and immediately releasing it. This is useful to warm up the
-	// cache to facilitate subsequent retrievals, and to generate the indexes
-	// to publish them externally.
-	//
-	// This operation fails if the shard is not in ShardStateNew state.
-	// It blocks until initialization finishes.
-	DagstoreInitializeShard(ctx context.Context, key string) error //perm:write
-
-	// DagstoreRecoverShard attempts to recover a failed shard.
-	//
-	// This operation fails if the shard is not in ShardStateErrored state.
-	// It blocks until recovery finishes. If recovery failed, it returns the
-	// error.
-	DagstoreRecoverShard(ctx context.Context, key string) error //perm:write
-
-	// DagstoreInitializeAll initializes all uninitialized shards in bulk,
-	// according to the policy passed in the parameters.
-	//
-	// It is recommended to set a maximum concurrency to avoid extreme
-	// IO pressure if the storage subsystem has a large amount of deals.
-	//
-	// It returns a stream of events to report progress.
-	DagstoreInitializeAll(ctx context.Context, params DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) //perm:write
-
-	// DagstoreGC runs garbage collection on the DAG store.
-	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
-
-	// DagstoreRegisterShard registers a shard manually with dagstore with given pieceCID
-	DagstoreRegisterShard(ctx context.Context, key string) error //perm:admin
-
-	// IndexerAnnounceDeal informs indexer nodes that a new deal was received,
-	// so they can download its index
-	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error //perm:admin
-
-	// IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
-	IndexerAnnounceAllDeals(ctx context.Context) error //perm:admin
-
-	// DagstoreLookupPieces returns information about shards that contain the given CID.
-	DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]DagstoreShardInfo, error) //perm:admin
-
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
@@ -469,37 +414,6 @@ type PendingDealInfo struct {
 type SectorOffset struct {
 	Sector abi.SectorNumber
 	Offset abi.PaddedPieceSize
-}
-
-// DagstoreShardInfo is the serialized form of dagstore.DagstoreShardInfo that
-// we expose through JSON-RPC to avoid clients having to depend on the
-// dagstore lib.
-type DagstoreShardInfo struct {
-	Key   string
-	State string
-	Error string
-}
-
-// DagstoreShardResult enumerates results per shard.
-type DagstoreShardResult struct {
-	Key     string
-	Success bool
-	Error   string
-}
-
-type DagstoreInitializeAllParams struct {
-	MaxConcurrency int
-	IncludeSealed  bool
-}
-
-// DagstoreInitializeAllEvent represents an initialization event.
-type DagstoreInitializeAllEvent struct {
-	Key     string
-	Event   string // "start", "end"
-	Success bool
-	Error   string
-	Total   int
-	Current int
 }
 
 type NumAssignerMeta struct {

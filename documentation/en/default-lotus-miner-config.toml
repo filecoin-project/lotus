@@ -1,3 +1,8 @@
+# type: bool
+# env var: LOTUS__ENABLELIBP2P
+#EnableLibp2p = false
+
+
 [API]
   # Binding address for the Lotus API
   #
@@ -890,63 +895,6 @@
   # type: bool
   # env var: LOTUS_ADDRESSES_DISABLEWORKERFALLBACK
   #DisableWorkerFallback = false
-
-
-[DAGStore]
-  # Path to the dagstore root directory. This directory contains three
-  # subdirectories, which can be symlinked to alternative locations if
-  # need be:
-  # - ./transients: caches unsealed deals that have been fetched from the
-  # storage subsystem for serving retrievals.
-  # - ./indices: stores shard indices.
-  # - ./datastore: holds the KV store tracking the state of every shard
-  # known to the DAG store.
-  # Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
-  # <LOTUS_MINER_PATH>/dagstore (monolith deployment)
-  #
-  # type: string
-  # env var: LOTUS_DAGSTORE_ROOTDIR
-  #RootDir = ""
-
-  # The maximum amount of indexing jobs that can run simultaneously.
-  # 0 means unlimited.
-  # Default value: 5.
-  #
-  # type: int
-  # env var: LOTUS_DAGSTORE_MAXCONCURRENTINDEX
-  #MaxConcurrentIndex = 5
-
-  # The maximum amount of unsealed deals that can be fetched simultaneously
-  # from the storage subsystem. 0 means unlimited.
-  # Default value: 0 (unlimited).
-  #
-  # type: int
-  # env var: LOTUS_DAGSTORE_MAXCONCURRENTREADYFETCHES
-  #MaxConcurrentReadyFetches = 0
-
-  # The maximum amount of unseals that can be processed simultaneously
-  # from the storage subsystem. 0 means unlimited.
-  # Default value: 0 (unlimited).
-  #
-  # type: int
-  # env var: LOTUS_DAGSTORE_MAXCONCURRENTUNSEALS
-  #MaxConcurrentUnseals = 5
-
-  # The maximum number of simultaneous inflight API calls to the storage
-  # subsystem.
-  # Default value: 100.
-  #
-  # type: int
-  # env var: LOTUS_DAGSTORE_MAXCONCURRENCYSTORAGECALLS
-  #MaxConcurrencyStorageCalls = 100
-
-  # The time between calls to periodic dagstore GC, in time.Duration string
-  # representation, e.g. 1m, 5m, 1h.
-  # Default value: 1 minute.
-  #
-  # type: Duration
-  # env var: LOTUS_DAGSTORE_GCINTERVAL
-  #GCInterval = "1m0s"
 
 
 [HarmonyDB]

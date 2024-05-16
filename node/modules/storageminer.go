@@ -18,7 +18,6 @@ import (
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
-	provider "github.com/ipni/index-provider"
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
@@ -28,20 +27,16 @@ import (
 	dtimpl "github.com/filecoin-project/go-data-transfer/v2/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/v2/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/v2/transport/graphsync"
-	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
@@ -56,8 +51,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
-	"github.com/filecoin-project/lotus/markets/dagstore"
-	"github.com/filecoin-project/lotus/markets/idxprov"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/pricing"
 	lotusminer "github.com/filecoin-project/lotus/miner"
@@ -651,52 +644,6 @@ func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter)
 	}
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress,
-	storedAsk *storedask.StoredAsk,
-	h host.Host, ds dtypes.MetadataDS,
-	r repo.LockedRepo,
-	pieceStore dtypes.ProviderPieceStore,
-	indexer provider.Interface,
-	dataTransfer dtypes.ProviderDataTransfer,
-	spn storagemarket.StorageProviderNode,
-	df dtypes.StorageDealFilter,
-	dsw *dagstore.Wrapper,
-	meshCreator idxprov.MeshCreator,
-) (storagemarket.StorageProvider, error) {
-	net := smnet.NewFromLibp2pHost(h)
-
-	dir := filepath.Join(r.Path(), StagingAreaDirName)
-
-	// migrate temporary files that were created directly under the repo, by
-	// moving them to the new directory and symlinking them.
-	oldDir := r.Path()
-	if err := migrateDealStaging(oldDir, dir); err != nil {
-		return nil, xerrors.Errorf("failed to make deal staging directory %w", err)
-	}
-
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(dir))
-	if err != nil {
-		return nil, err
-	}
-
-	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
-
-	return storageimpl.NewProvider(
-		net,
-		namespace.Wrap(ds, datastore.NewKey("/deals/provider")),
-		store,
-		dsw,
-		indexer,
-		pieceStore,
-		dataTransfer,
-		spn,
-		address.Address(minerAddress),
-		storedAsk,
-		meshCreator,
-		opt,
-	)
-}
-
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -746,37 +693,6 @@ func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnl
 
 		return retrievalimpl.DefaultPricingFunc(cfg.RetrievalPricing.Default.VerifiedDealsFreeTransfer)
 	}
-}
-
-// RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(
-	maddr dtypes.MinerAddress,
-	adapter retrievalmarket.RetrievalProviderNode,
-	sa retrievalmarket.SectorAccessor,
-	netwk rmnet.RetrievalMarketNetwork,
-	ds dtypes.MetadataDS,
-	pieceStore dtypes.ProviderPieceStore,
-	dt dtypes.ProviderDataTransfer,
-	pricingFnc dtypes.RetrievalPricingFunc,
-	userFilter dtypes.RetrievalDealFilter,
-	dagStore *dagstore.Wrapper,
-) (retrievalmarket.RetrievalProvider, error) {
-	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-
-	retrievalmarket.DefaultPricePerByte = big.Zero() // todo: for whatever reason this is a global var in markets
-
-	return retrievalimpl.NewProvider(
-		address.Address(maddr),
-		adapter,
-		sa,
-		netwk,
-		pieceStore,
-		dagStore,
-		dt,
-		namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
-		retrievalimpl.RetrievalPricingFunc(pricingFnc),
-		opt,
-	)
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
