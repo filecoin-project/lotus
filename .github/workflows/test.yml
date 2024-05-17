@@ -58,14 +58,6 @@ jobs:
           #   to extend the available runner capacity (60 default hosted runners).
           # We use self-hosted 4xlarge (16 CPU, 32 RAM; and 2xlarge - 8 CPU, 16 RAM) self-hosted
           #   to support resource intensive jobs.
-          # In CircleCI, the jobs defaulted to running on medium+ runners (3 CPU, 6 RAM).
-          # The following jobs were scheduled to run on 2xlarge runners (16 CPU, 32 RAM):
-          # - itest-deals_concurrent (✅)
-          # - itest-sector_pledge (✅)
-          # - itest-wdpost_worker_config (❌)
-          # - itest-worker (✅)
-          # - unit-cli (❌)
-          # - unit-rest (❌)
           runners: |
             {
               "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
@@ -122,15 +114,9 @@ jobs:
               "unit-node": ["self-hosted", "linux", "x64", "xlarge"]
             }
           # A list of test groups that require YugabyteDB to be running
-          # In CircleCI, all jobs had yugabytedb running as a sidecar.
           yugabytedb: |
             ["itest-harmonydb", "itest-harmonytask", "itest-curio"]
           # A list of test groups that require Proof Parameters to be fetched
-          # In CircleCI, only the following jobs had get-params set:
-          # - unit-cli (✅)
-          # - unit-storage (✅)
-          # - itest-sector_pledge (✅)
-          # - itest-wdpost (✅)
           parameters: |
             [
               "conformance",
