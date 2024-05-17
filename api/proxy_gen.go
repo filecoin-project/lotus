@@ -20,8 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -926,61 +924,9 @@ type StorageMinerMethods struct {
 
 	CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-	DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
-
-	DealsConsiderOfflineStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
-
-	DealsConsiderOnlineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
-
-	DealsConsiderOnlineStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
-
-	DealsConsiderUnverifiedStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
-
-	DealsConsiderVerifiedStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
-
-	DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
-
 	DealsList func(p0 context.Context) ([]*MarketDeal, error) `perm:"admin"`
 
-	DealsPieceCidBlocklist func(p0 context.Context) ([]cid.Cid, error) `perm:"admin"`
-
-	DealsSetConsiderOfflineRetrievalDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
-
-	DealsSetConsiderOfflineStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
-
-	DealsSetConsiderOnlineRetrievalDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
-
-	DealsSetConsiderOnlineStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
-
-	DealsSetConsiderUnverifiedStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
-
-	DealsSetConsiderVerifiedStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
-
-	DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
-
-	MarketGetAsk func(p0 context.Context) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
-
-	MarketGetDealUpdates func(p0 context.Context) (<-chan storagemarket.MinerDeal, error) `perm:"read"`
-
-	MarketGetRetrievalAsk func(p0 context.Context) (*retrievalmarket.Ask, error) `perm:"read"`
-
-	MarketImportDealData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"write"`
-
 	MarketListDeals func(p0 context.Context) ([]*MarketDeal, error) `perm:"read"`
-
-	MarketListIncompleteDeals func(p0 context.Context) ([]storagemarket.MinerDeal, error) `perm:"read"`
-
-	MarketListRetrievalDeals func(p0 context.Context) ([]struct{}, error) `perm:"read"`
-
-	MarketPendingDeals func(p0 context.Context) (PendingDealInfo, error) `perm:"write"`
-
-	MarketPublishPendingDeals func(p0 context.Context) error `perm:"admin"`
-
-	MarketRetryPublishDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
-
-	MarketSetAsk func(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error `perm:"admin"`
-
-	MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) error `perm:"admin"`
 
 	MiningBase func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
@@ -5495,83 +5441,6 @@ func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
-	if s.Internal.DealsConsiderOfflineRetrievalDeals == nil {
-		return false, ErrNotSupported
-	}
-	return s.Internal.DealsConsiderOfflineRetrievalDeals(p0)
-}
-
-func (s *StorageMinerStub) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
-	return false, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
-	if s.Internal.DealsConsiderOfflineStorageDeals == nil {
-		return false, ErrNotSupported
-	}
-	return s.Internal.DealsConsiderOfflineStorageDeals(p0)
-}
-
-func (s *StorageMinerStub) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
-	return false, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
-	if s.Internal.DealsConsiderOnlineRetrievalDeals == nil {
-		return false, ErrNotSupported
-	}
-	return s.Internal.DealsConsiderOnlineRetrievalDeals(p0)
-}
-
-func (s *StorageMinerStub) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
-	return false, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
-	if s.Internal.DealsConsiderOnlineStorageDeals == nil {
-		return false, ErrNotSupported
-	}
-	return s.Internal.DealsConsiderOnlineStorageDeals(p0)
-}
-
-func (s *StorageMinerStub) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
-	return false, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
-	if s.Internal.DealsConsiderUnverifiedStorageDeals == nil {
-		return false, ErrNotSupported
-	}
-	return s.Internal.DealsConsiderUnverifiedStorageDeals(p0)
-}
-
-func (s *StorageMinerStub) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
-	return false, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
-	if s.Internal.DealsConsiderVerifiedStorageDeals == nil {
-		return false, ErrNotSupported
-	}
-	return s.Internal.DealsConsiderVerifiedStorageDeals(p0)
-}
-
-func (s *StorageMinerStub) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
-	return false, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	if s.Internal.DealsImportData == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsImportData(p0, p1, p2)
-}
-
-func (s *StorageMinerStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	return ErrNotSupported
-}
-
 func (s *StorageMinerStruct) DealsList(p0 context.Context) ([]*MarketDeal, error) {
 	if s.Internal.DealsList == nil {
 		return *new([]*MarketDeal), ErrNotSupported
@@ -5583,138 +5452,6 @@ func (s *StorageMinerStub) DealsList(p0 context.Context) ([]*MarketDeal, error) 
 	return *new([]*MarketDeal), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
-	if s.Internal.DealsPieceCidBlocklist == nil {
-		return *new([]cid.Cid), ErrNotSupported
-	}
-	return s.Internal.DealsPieceCidBlocklist(p0)
-}
-
-func (s *StorageMinerStub) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
-	return *new([]cid.Cid), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
-	if s.Internal.DealsSetConsiderOfflineRetrievalDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsSetConsiderOfflineRetrievalDeals(p0, p1)
-}
-
-func (s *StorageMinerStub) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
-	if s.Internal.DealsSetConsiderOfflineStorageDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsSetConsiderOfflineStorageDeals(p0, p1)
-}
-
-func (s *StorageMinerStub) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
-	if s.Internal.DealsSetConsiderOnlineRetrievalDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsSetConsiderOnlineRetrievalDeals(p0, p1)
-}
-
-func (s *StorageMinerStub) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
-	if s.Internal.DealsSetConsiderOnlineStorageDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsSetConsiderOnlineStorageDeals(p0, p1)
-}
-
-func (s *StorageMinerStub) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
-	if s.Internal.DealsSetConsiderUnverifiedStorageDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsSetConsiderUnverifiedStorageDeals(p0, p1)
-}
-
-func (s *StorageMinerStub) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
-	if s.Internal.DealsSetConsiderVerifiedStorageDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsSetConsiderVerifiedStorageDeals(p0, p1)
-}
-
-func (s *StorageMinerStub) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
-	if s.Internal.DealsSetPieceCidBlocklist == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.DealsSetPieceCidBlocklist(p0, p1)
-}
-
-func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
-	if s.Internal.MarketGetAsk == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.MarketGetAsk(p0)
-}
-
-func (s *StorageMinerStub) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
-	if s.Internal.MarketGetDealUpdates == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.MarketGetDealUpdates(p0)
-}
-
-func (s *StorageMinerStub) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
-	if s.Internal.MarketGetRetrievalAsk == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.MarketGetRetrievalAsk(p0)
-}
-
-func (s *StorageMinerStub) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	if s.Internal.MarketImportDealData == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.MarketImportDealData(p0, p1, p2)
-}
-
-func (s *StorageMinerStub) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	return ErrNotSupported
-}
-
 func (s *StorageMinerStruct) MarketListDeals(p0 context.Context) ([]*MarketDeal, error) {
 	if s.Internal.MarketListDeals == nil {
 		return *new([]*MarketDeal), ErrNotSupported
@@ -5724,83 +5461,6 @@ func (s *StorageMinerStruct) MarketListDeals(p0 context.Context) ([]*MarketDeal,
 
 func (s *StorageMinerStub) MarketListDeals(p0 context.Context) ([]*MarketDeal, error) {
 	return *new([]*MarketDeal), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
-	if s.Internal.MarketListIncompleteDeals == nil {
-		return *new([]storagemarket.MinerDeal), ErrNotSupported
-	}
-	return s.Internal.MarketListIncompleteDeals(p0)
-}
-
-func (s *StorageMinerStub) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
-	return *new([]storagemarket.MinerDeal), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketListRetrievalDeals(p0 context.Context) ([]struct{}, error) {
-	if s.Internal.MarketListRetrievalDeals == nil {
-		return *new([]struct{}), ErrNotSupported
-	}
-	return s.Internal.MarketListRetrievalDeals(p0)
-}
-
-func (s *StorageMinerStub) MarketListRetrievalDeals(p0 context.Context) ([]struct{}, error) {
-	return *new([]struct{}), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketPendingDeals(p0 context.Context) (PendingDealInfo, error) {
-	if s.Internal.MarketPendingDeals == nil {
-		return *new(PendingDealInfo), ErrNotSupported
-	}
-	return s.Internal.MarketPendingDeals(p0)
-}
-
-func (s *StorageMinerStub) MarketPendingDeals(p0 context.Context) (PendingDealInfo, error) {
-	return *new(PendingDealInfo), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketPublishPendingDeals(p0 context.Context) error {
-	if s.Internal.MarketPublishPendingDeals == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.MarketPublishPendingDeals(p0)
-}
-
-func (s *StorageMinerStub) MarketPublishPendingDeals(p0 context.Context) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {
-	if s.Internal.MarketRetryPublishDeal == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.MarketRetryPublishDeal(p0, p1)
-}
-
-func (s *StorageMinerStub) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
-	if s.Internal.MarketSetAsk == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5)
-}
-
-func (s *StorageMinerStub) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
-	if s.Internal.MarketSetRetrievalAsk == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.MarketSetRetrievalAsk(p0, p1)
-}
-
-func (s *StorageMinerStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
-	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MiningBase(p0 context.Context) (*types.TipSet, error) {

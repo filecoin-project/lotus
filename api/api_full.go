@@ -12,8 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -1045,25 +1043,6 @@ type MarketDeal struct {
 	State    MarketDealState
 }
 
-type RetrievalOrder struct {
-	Root         cid.Cid
-	Piece        *cid.Cid
-	DataSelector *Selector
-
-	// todo: Size/Total are only used for calculating price per byte; we should let users just pass that
-	Size  uint64
-	Total types.BigInt
-
-	UnsealPrice             types.BigInt
-	PaymentInterval         uint64
-	PaymentIntervalIncrease uint64
-	Client                  address.Address
-	Miner                   address.Address
-	MinerPeer               *retrievalmarket.RetrievalPeer
-
-	RemoteStore *RemoteStoreID `json:"RemoteStore,omitempty"`
-}
-
 type RemoteStoreID = uuid.UUID
 
 type InvocResult struct {
@@ -1079,34 +1058,6 @@ type InvocResult struct {
 type MethodCall struct {
 	types.MessageReceipt
 	Error string
-}
-
-type StartDealParams struct {
-	Data               *storagemarket.DataRef
-	Wallet             address.Address
-	Miner              address.Address
-	EpochPrice         types.BigInt
-	MinBlocksDuration  uint64
-	ProviderCollateral big.Int
-	DealStartEpoch     abi.ChainEpoch
-	FastRetrieval      bool
-	VerifiedDeal       bool
-}
-
-func (s *StartDealParams) UnmarshalJSON(raw []byte) (err error) {
-	type sdpAlias StartDealParams
-
-	sdp := sdpAlias{
-		FastRetrieval: true,
-	}
-
-	if err := json.Unmarshal(raw, &sdp); err != nil {
-		return err
-	}
-
-	*s = StartDealParams(sdp)
-
-	return nil
 }
 
 type IpldObject struct {

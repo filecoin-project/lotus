@@ -10,8 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -212,41 +210,13 @@ type StorageMiner interface {
 	StorageDetachLocal(ctx context.Context, path string) error                           //perm:admin
 	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin
 
-	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error //perm:write
-	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                   //perm:read
-
-	// MarketListRetrievalDeals is deprecated, returns empty list
-	MarketListRetrievalDeals(ctx context.Context) ([]struct{}, error)                                                                                                                    //perm:read
-	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                    //perm:read
-	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                                    //perm:read
-	MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
-	MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error)                                                                                                           //perm:read
-	MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error                                                                                                          //perm:admin
-	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                                             //perm:read
-	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                                                                                     //perm:write
-	MarketPublishPendingDeals(ctx context.Context) error                                                                                                                                 //perm:admin
-	MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error                                                                                                                   //perm:admin
+	MarketListDeals(ctx context.Context) ([]*MarketDeal, error) //perm:read
 
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
 
-	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
-	DealsList(ctx context.Context) ([]*MarketDeal, error)                        //perm:admin
-	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
-	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
-	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error            //perm:admin
-	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)                   //perm:admin
-	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error                  //perm:admin
-	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)              //perm:admin
-	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error             //perm:admin
-	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)            //perm:admin
-	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error           //perm:admin
-	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error            //perm:admin
-	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
-	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
+	DealsList(ctx context.Context) ([]*MarketDeal, error) //perm:admin
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus-miner is running with the

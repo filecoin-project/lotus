@@ -5,20 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -34,7 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -63,12 +58,7 @@ type StorageMinerAPI struct {
 	RemoteStore *paths.Remote
 
 	// Markets
-	StorageProvider   storagemarket.StorageProvider     `optional:"true"`
-	RetrievalProvider retrievalmarket.RetrievalProvider `optional:"true"`
-	SectorAccessor    retrievalmarket.SectorAccessor    `optional:"true"`
-	DealPublisher     *storageadapter.DealPublisher     `optional:"true"`
-	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
-	Host              host.Host                         `optional:"true"`
+	SectorBlocks *sectorblocks.SectorBlocks `optional:"true"`
 
 	// Miner / storage
 	Miner       *sealing.Sealing     `optional:"true"`
@@ -87,24 +77,10 @@ type StorageMinerAPI struct {
 	// StorageService is populated when we're not the main storage node (e.g. we're a markets node)
 	StorageService modules.MinerStorageService `optional:"true"`
 
-	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
-	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc     `optional:"true"`
-	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc      `optional:"true"`
-	SetConsiderOnlineRetrievalDealsConfigFunc   dtypes.SetConsiderOnlineRetrievalDealsConfigFunc   `optional:"true"`
-	StorageDealPieceCidBlocklistConfigFunc      dtypes.StorageDealPieceCidBlocklistConfigFunc      `optional:"true"`
-	SetStorageDealPieceCidBlocklistConfigFunc   dtypes.SetStorageDealPieceCidBlocklistConfigFunc   `optional:"true"`
-	ConsiderOfflineStorageDealsConfigFunc       dtypes.ConsiderOfflineStorageDealsConfigFunc       `optional:"true"`
-	SetConsiderOfflineStorageDealsConfigFunc    dtypes.SetConsiderOfflineStorageDealsConfigFunc    `optional:"true"`
-	ConsiderOfflineRetrievalDealsConfigFunc     dtypes.ConsiderOfflineRetrievalDealsConfigFunc     `optional:"true"`
-	SetConsiderOfflineRetrievalDealsConfigFunc  dtypes.SetConsiderOfflineRetrievalDealsConfigFunc  `optional:"true"`
-	ConsiderVerifiedStorageDealsConfigFunc      dtypes.ConsiderVerifiedStorageDealsConfigFunc      `optional:"true"`
-	SetConsiderVerifiedStorageDealsConfigFunc   dtypes.SetConsiderVerifiedStorageDealsConfigFunc   `optional:"true"`
-	ConsiderUnverifiedStorageDealsConfigFunc    dtypes.ConsiderUnverifiedStorageDealsConfigFunc    `optional:"true"`
-	SetConsiderUnverifiedStorageDealsConfigFunc dtypes.SetConsiderUnverifiedStorageDealsConfigFunc `optional:"true"`
-	SetSealingConfigFunc                        dtypes.SetSealingConfigFunc                        `optional:"true"`
-	GetSealingConfigFunc                        dtypes.GetSealingConfigFunc                        `optional:"true"`
-	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc                 `optional:"true"`
-	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc                 `optional:"true"`
+	SetSealingConfigFunc        dtypes.SetSealingConfigFunc        `optional:"true"`
+	GetSealingConfigFunc        dtypes.GetSealingConfigFunc        `optional:"true"`
+	GetExpectedSealDurationFunc dtypes.GetExpectedSealDurationFunc `optional:"true"`
+	SetExpectedSealDurationFunc dtypes.SetExpectedSealDurationFunc `optional:"true"`
 
 	HarmonyDB *harmonydb.DB `optional:"true"`
 }
@@ -514,16 +490,6 @@ func (sm *StorageMinerAPI) SealingRemoveRequest(ctx context.Context, schedId uui
 	return sm.StorageMgr.RemoveSchedRequest(ctx, schedId)
 }
 
-func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
-	fi, err := os.Open(path)
-	if err != nil {
-		return xerrors.Errorf("failed to open file: %w", err)
-	}
-	defer fi.Close() //nolint:errcheck
-
-	return sm.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
-}
-
 func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]*api.MarketDeal, error) {
 	ts, err := sm.Full.ChainHead(ctx)
 	if err != nil {
@@ -550,127 +516,8 @@ func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]*api.MarketDe
 	return sm.listDeals(ctx)
 }
 
-func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]struct{}, error) {
-	return []struct{}{}, nil
-}
-
-func (sm *StorageMinerAPI) MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error) {
-	results := make(chan storagemarket.MinerDeal)
-	unsub := sm.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
-		select {
-		case results <- deal:
-		case <-ctx.Done():
-		}
-	})
-	go func() {
-		<-ctx.Done()
-		unsub()
-		close(results)
-	}()
-	return results, nil
-}
-
-func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
-	return sm.StorageProvider.ListLocalDeals()
-}
-
-func (sm *StorageMinerAPI) MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
-	options := []storagemarket.StorageAskOption{
-		storagemarket.MinPieceSize(minPieceSize),
-		storagemarket.MaxPieceSize(maxPieceSize),
-	}
-
-	return sm.StorageProvider.SetAsk(price, verifiedPrice, duration, options...)
-}
-
-func (sm *StorageMinerAPI) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
-	return sm.StorageProvider.GetAsk(), nil
-}
-
-func (sm *StorageMinerAPI) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {
-	sm.RetrievalProvider.SetAsk(rask)
-	return nil
-}
-
-func (sm *StorageMinerAPI) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
-	return sm.RetrievalProvider.GetAsk(), nil
-}
-
-func (sm *StorageMinerAPI) MarketPendingDeals(ctx context.Context) (api.PendingDealInfo, error) {
-	return sm.DealPublisher.PendingDeals(), nil
-}
-
-func (sm *StorageMinerAPI) MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error {
-	return sm.StorageProvider.RetryDealPublishing(propcid)
-}
-
-func (sm *StorageMinerAPI) MarketPublishPendingDeals(ctx context.Context) error {
-	sm.DealPublisher.ForcePublishPendingDeals()
-	return nil
-}
-
-func (sm *StorageMinerAPI) IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error {
-	return sm.StorageProvider.AnnounceDealToIndexer(ctx, proposalCid)
-}
-
-func (sm *StorageMinerAPI) IndexerAnnounceAllDeals(ctx context.Context) error {
-	return sm.StorageProvider.AnnounceAllDealsToIndexer(ctx)
-}
-
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]*api.MarketDeal, error) {
 	return sm.listDeals(ctx)
-}
-
-func (sm *StorageMinerAPI) RetrievalDealsList(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]retrievalmarket.ProviderDealState, error) {
-	return sm.RetrievalProvider.ListDeals(), nil
-}
-
-func (sm *StorageMinerAPI) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
-	return sm.ConsiderOnlineStorageDealsConfigFunc()
-}
-
-func (sm *StorageMinerAPI) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
-	return sm.SetConsiderOnlineStorageDealsConfigFunc(b)
-}
-
-func (sm *StorageMinerAPI) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
-	return sm.ConsiderOnlineRetrievalDealsConfigFunc()
-}
-
-func (sm *StorageMinerAPI) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
-	return sm.SetConsiderOnlineRetrievalDealsConfigFunc(b)
-}
-
-func (sm *StorageMinerAPI) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
-	return sm.ConsiderOfflineStorageDealsConfigFunc()
-}
-
-func (sm *StorageMinerAPI) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
-	return sm.SetConsiderOfflineStorageDealsConfigFunc(b)
-}
-
-func (sm *StorageMinerAPI) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
-	return sm.ConsiderOfflineRetrievalDealsConfigFunc()
-}
-
-func (sm *StorageMinerAPI) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
-	return sm.SetConsiderOfflineRetrievalDealsConfigFunc(b)
-}
-
-func (sm *StorageMinerAPI) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
-	return sm.ConsiderVerifiedStorageDealsConfigFunc()
-}
-
-func (sm *StorageMinerAPI) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
-	return sm.SetConsiderVerifiedStorageDealsConfigFunc(b)
-}
-
-func (sm *StorageMinerAPI) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
-	return sm.ConsiderUnverifiedStorageDealsConfigFunc()
-}
-
-func (sm *StorageMinerAPI) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
-	return sm.SetConsiderUnverifiedStorageDealsConfigFunc(b)
 }
 
 func (sm *StorageMinerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context) (time.Duration, error) {
@@ -679,24 +526,6 @@ func (sm *StorageMinerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context)
 
 func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context, d time.Duration) error {
 	return sm.SetExpectedSealDurationFunc(d)
-}
-
-func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
-	fi, err := os.Open(fname)
-	if err != nil {
-		return xerrors.Errorf("failed to open given file: %w", err)
-	}
-	defer fi.Close() //nolint:errcheck
-
-	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
-}
-
-func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
-	return sm.StorageDealPieceCidBlocklistConfigFunc()
-}
-
-func (sm *StorageMinerAPI) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
-	return sm.SetStorageDealPieceCidBlocklistConfigFunc(cids)
 }
 
 func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {
