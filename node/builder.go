@@ -88,7 +88,6 @@ const (
 	CheckFDLimit
 	CheckFvmConcurrency
 	CheckUDPBufferSize
-	LegacyMarketsEOL
 
 	// libp2p
 	PstoreAddSelfKeysKey
@@ -393,7 +392,6 @@ func Test() Option {
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
 		Override(new(beacon.Schedule), testing.RandomBeacon),
-		//Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
 		Override(new(index.MsgIndex), modules.DummyMsgIndex),
 	)
 }

@@ -297,7 +297,6 @@ func init() {
 		api.SubsystemMining,
 		api.SubsystemSealing,
 		api.SubsystemSectorStorage,
-		api.SubsystemMarkets,
 	})
 
 	addExample(storiface.ResourceTable)

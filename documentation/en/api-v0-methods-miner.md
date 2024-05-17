@@ -1720,8 +1720,7 @@ Response:
 [
   "Mining",
   "Sealing",
-  "SectorStorage",
-  "Markets"
+  "SectorStorage"
 ]
 ```
 
