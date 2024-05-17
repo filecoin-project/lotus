@@ -363,8 +363,6 @@ func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredP
 
 	var skipped []abi.SectorID
 	var flk sync.Mutex
-	cctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	sort.Slice(sectorInfo, func(i, j int) bool {
 		return sectorInfo[i].SectorNumber < sectorInfo[j].SectorNumber
@@ -409,18 +407,29 @@ func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredP
 				})
 			}
 
-			sectorInfo := lo.Map(sectors, func(s storiface.PostSectorChallenge, i int) proof.ExtendedSectorInfo {
-				return proof.ExtendedSectorInfo{
-					SectorNumber: s.SectorNumber,
-					SealProof:    s.SealProof,
-					SealedCID:    s.SealedCID,
+			priSectors := lo.Map(sectors, func(s storiface.PostSectorChallenge, i int) ffi.PrivateSectorInfo {
+				return ffi.PrivateSectorInfo{
+					SectorInfo: proof.SectorInfo{
+						SectorNumber: s.SectorNumber,
+						SealProof:    s.SealProof,
+						SealedCID:    s.SealedCID,
+					},
+					CacheDirPath:     sectorCacheDirPath,
+					PoStProofType:    winningPostProofType,
+					SealedSectorPath: sealedSectorFile.Name(),
 				}
 			})
-			postProofs, sk, err := t.curioFfiWrap.GenerateWindowPoSt(cctx, minerID, ppt, sectorInfo, randomness)
-			if err != nil || len(sk) > 0 {
-				log.Errorf("generateWindowPost part:%d, skipped:%d, sectors: %d, err: %+v", partIdx, len(sk), len(sectors), err)
+			privateInfo := ffi.NewSortedPrivateSectorInfo(priSectors...)
+
+			postProofs, sectorNumbers, err := t.curioFfiWrap.GenerateWindowPoSt(minerID, privateInfo, randomness)
+
+			if err != nil || len(sectorNumbers) > 0 {
+				log.Errorf("generateWindowPost part:%d, skipped:%d, sectors: %d, err: %+v", partIdx, len(sectorNumbers), len(sectors), err)
 				flk.Lock()
-				skipped = append(skipped, sk...)
+				sectorIDs := lo.Map(sectorNumbers, func(s abi.SectorNumber, i int) abi.SectorID {
+					return abi.SectorID{Miner: minerID, Number: s}
+				})
+				skipped = append(skipped, sectorIDs...)
 
 				if err != nil {
 					retErr = multierr.Append(retErr, xerrors.Errorf("partitionIndex:%d err:%+v", partIdx, err))

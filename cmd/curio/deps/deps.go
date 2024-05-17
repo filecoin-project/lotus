@@ -308,7 +308,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 	}
 
 	if deps.CurioFfiWrap == nil {
-		deps.CurioFfiWrap = &ffiselect.CurioFFIWrap{Layers: deps.Layers}
+		deps.CurioFfiWrap = &ffiselect.CurioFFIWrap{}
 	}
 	if deps.Maddrs == nil {
 		deps.Maddrs = map[dtypes.MinerAddress]bool{}
