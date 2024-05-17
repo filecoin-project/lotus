@@ -27,7 +27,7 @@ func WindowPostScheduler(ctx context.Context, fc config.CurioFees, pc config.Cur
 	// todo config
 	ft := window.NewSimpleFaultTracker(stor, idx, pc.ParallelCheckLimit, time.Duration(pc.SingleCheckTimeout), time.Duration(pc.PartitionCheckTimeout))
 
-	computeTask, err := window.NewWdPostTask(db, api, ft, curioFFIWrap, verif, chainSched, addresses, max)
+	computeTask, err := window.NewWdPostTask(db, api, ft, stor, verif, chainSched, addresses, max)
 	if err != nil {
 		return nil, nil, nil, err
 	}

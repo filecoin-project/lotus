@@ -23,13 +23,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
-	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/harmony/taskhelp"
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -66,7 +66,7 @@ type WdPostTask struct {
 	db  *harmonydb.DB
 
 	faultTracker sealer.FaultTracker
-	curioFfiWrap *ffiselect.CurioFFIWrap
+	storage      paths.Store
 	verifier     storiface.Verifier
 
 	windowPoStTF promise.Promise[harmonytask.AddTaskFunc]
@@ -85,7 +85,7 @@ type wdTaskIdentity struct {
 func NewWdPostTask(db *harmonydb.DB,
 	api WDPoStAPI,
 	faultTracker sealer.FaultTracker,
-	curioFFIWrap *ffiselect.CurioFFIWrap,
+	storage paths.Store,
 	verifier storiface.Verifier,
 	pcs *chainsched.CurioChainSched,
 	actors map[dtypes.MinerAddress]bool,
@@ -96,7 +96,7 @@ func NewWdPostTask(db *harmonydb.DB,
 		api: api,
 
 		faultTracker: faultTracker,
-		curioFfiWrap: curioFFIWrap,
+		storage:      storage,
 		verifier:     verifier,
 
 		actors: actors,

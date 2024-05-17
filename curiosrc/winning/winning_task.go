@@ -474,7 +474,7 @@ func (t *WinPostTask) generateWinningPost(
 		return nil, rerr
 	}
 
-	return t.curioFfiWrap.GenerateWinningPoStWithVanilla(ctx, ppt, mid, randomness, vproofs)
+	return ffiselect.GenerateWinningPoStWithVanilla(ppt, mid, randomness, vproofs)
 
 }
 

@@ -97,26 +97,24 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 type CurioFFIWrap struct {
 }
 
-func (CurioFFIWrap) GenerateWindowPoSt(
+func GenerateSinglePartitionWindowPoStWithVanilla(
+	proofType abi.RegisteredPoStProof,
 	minerID abi.ActorID,
-	privateSectorInfo ffi.SortedPrivateSectorInfo,
 	randomness abi.PoStRandomness,
-) ([]proof.PoStProof, []abi.SectorNumber, error) {
-	val, err := call("GenerateWindowPoSt", minerID, privateSectorInfo, randomness)
-	if err != nil {
-		return nil, nil, err
-	}
-	return val[0].([]proof.PoStProof), val[1].([]abi.SectorNumber), val[2].(error)
-}
-func (CurioFFIWrap) GenerateWinningPoSt(minerID abi.ActorID, privateSectorInfo ffi.SortedPrivateSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
-	val, err := call("GenerateWinningPoSt", minerID, privateSectorInfo, randomness)
+	proofs [][]byte,
+	partitionIndex uint,
+) (*ffi.PartitionProof, error) {
+	val, err := call("GenerateSinglePartitionWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIndex)
 	if err != nil {
 		return nil, err
 	}
-	return val[0].([]proof.PoStProof), val[1].(error)
+	return val[0].(*ffi.PartitionProof), val[1].(error)
 }
-
-func (CurioFFIWrap) SealPreCommitPhase2(phase1Output []byte, cacheDirPath string, sealedSectorPath string) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+func SealPreCommitPhase2(
+	phase1Output []byte,
+	cacheDirPath string,
+	sealedSectorPath string,
+) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
 	val, err := call("SealPreCommitPhase2", phase1Output, cacheDirPath, sealedSectorPath)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
@@ -124,10 +122,29 @@ func (CurioFFIWrap) SealPreCommitPhase2(phase1Output []byte, cacheDirPath string
 	return val[0].(cid.Cid), val[1].(cid.Cid), val[2].(error)
 }
 
-func (CurioFFIWrap) SealCommitPhase2(phase1Output []byte, sectorNum abi.SectorNumber, minerID abi.ActorID) ([]byte, error) {
+func SealCommitPhase2(
+	phase1Output []byte,
+	sectorNum abi.SectorNumber,
+	minerID abi.ActorID,
+) ([]byte, error) {
 	val, err := call("SealCommitPhase2", phase1Output, sectorNum, minerID)
 	if err != nil {
 		return nil, err
 	}
 	return val[0].([]byte), val[1].(error)
 }
+
+func GenerateWinningPoStWithVanilla(
+	proofType abi.RegisteredPoStProof,
+	minerID abi.ActorID,
+	randomness abi.PoStRandomness,
+	proofs [][]byte,
+) ([]proof.PoStProof, error) {
+	val, err := call("GenerateWinningPoStWithVanilla", proofType, minerID, randomness, proofs)
+	if err != nil {
+		return nil, err
+	}
+	return val[0].([]proof.PoStProof), val[1].(error)
+}
+
+// //////////////////////////
