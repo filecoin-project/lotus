@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 )
 
-// This allow reflection accesss to the FFI functions.
+// This allow reflection access to the FFI functions.
 type FFI struct{}
 
 func (FFI) GenerateSinglePartitionWindowPoStWithVanilla(

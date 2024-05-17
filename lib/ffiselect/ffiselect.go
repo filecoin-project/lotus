@@ -91,7 +91,10 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ve.Val, ve.Err
+	if ve.Val[len(ve.Val)-1].(error) != nil {
+		return nil, ve.Val[len(ve.Val)-1].(error)
+	}
+	return ve.Val, nil
 }
 
 ///////////Funcs reachable by the GPU selector.///////////
@@ -108,7 +111,7 @@ func GenerateSinglePartitionWindowPoStWithVanilla(
 	if err != nil {
 		return nil, err
 	}
-	return val[0].(*ffi.PartitionProof), val[1].(error)
+	return val[0].(*ffi.PartitionProof), nil
 }
 func SealPreCommitPhase2(
 	phase1Output []byte,
@@ -119,7 +122,7 @@ func SealPreCommitPhase2(
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
-	return val[0].(cid.Cid), val[1].(cid.Cid), val[2].(error)
+	return val[0].(cid.Cid), val[1].(cid.Cid), nil
 }
 
 func SealCommitPhase2(
@@ -131,6 +134,7 @@ func SealCommitPhase2(
 	if err != nil {
 		return nil, err
 	}
+
 	return val[0].([]byte), val[1].(error)
 }
 
@@ -144,7 +148,7 @@ func GenerateWinningPoStWithVanilla(
 	if err != nil {
 		return nil, err
 	}
-	return val[0].([]proof.PoStProof), val[1].(error)
+	return val[0].([]proof.PoStProof), nil
 }
 
 // //////////////////////////
