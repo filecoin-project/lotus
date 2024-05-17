@@ -6452,6 +6452,7 @@ Response:
       "ClientCollateral": "0"
     },
     "State": {
+      "SectorNumber": 9,
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
       "SlashEpoch": 10101
@@ -6530,6 +6531,7 @@ Response:
     "ClientCollateral": "0"
   },
   "State": {
+    "SectorNumber": 9,
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
     "SlashEpoch": 10101

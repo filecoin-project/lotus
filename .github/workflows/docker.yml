@@ -35,9 +35,7 @@ jobs:
           - image: lotus
             network: mainnet
     env:
-      # Do not publish until CircleCI is deprecated
-      PUBLISH: false
-      # PUBLISH: ${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}
+      PUBLISH: ${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}
     steps:
       - id: channel
         env:

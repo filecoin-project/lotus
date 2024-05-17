@@ -32,8 +32,8 @@ function validate_lotus_version_matches_tag(){
 
 _lotus_path=$1
 
-if [[ ! -z "${CIRCLE_TAG}" ]]; then
-  validate_lotus_version_matches_tag "${_lotus_path}" "${CIRCLE_TAG}"
+if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+  validate_lotus_version_matches_tag "${_lotus_path}" "${GITHUB_REF#refs/tags/}"
 else
-  echo "No CI tag found. Skipping version check."
+  echo "$GITHUB_REF is not a tag, skipping version check"
 fi
