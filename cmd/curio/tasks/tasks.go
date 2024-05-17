@@ -60,8 +60,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 
 		if cfg.Subsystems.EnableWindowPost {
 			wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := curio.WindowPostScheduler(
-				ctx, cfg.Fees, cfg.Proving, full, verif, dependencies.CurioFfiWrap, sender, chainSched,
-				as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
+				ctx, cfg.Fees, cfg.Proving, full, verif, sender, chainSched,
+				as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks, dependencies.Cfg.Proving.ParallelCheckLimit)
 
 			if err != nil {
 				return nil, err
@@ -72,14 +72,14 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 
 		if cfg.Subsystems.EnableWinningPost {
 			pl := dependencies.LocalStore
-			winPoStTask := winning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, dependencies.CurioFfiWrap, pl, verif, full, maddrs)
+			winPoStTask := winning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, pl, verif, full, maddrs)
 			activeTasks = append(activeTasks, winPoStTask)
 			needProofParams = true
 		}
 	}
 
 	slrLazy := lazy.MakeLazy(func() (*ffi.SealCalls, error) {
-		return ffi.NewSealCalls(stor, lstor, si, dependencies.CurioFfiWrap), nil
+		return ffi.NewSealCalls(stor, lstor, si), nil
 	})
 
 	{

@@ -93,9 +93,8 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 	return ve.Val, ve.Err
 }
 
-// FUTURE?: be snazzy and generate + reflect all FFIWrapper methods.
-type CurioFFIWrap struct {
-}
+///////////Funcs reachable by the GPU selector.///////////
+// NOTE: Changes here MUST also change ffi-direct.go
 
 func GenerateSinglePartitionWindowPoStWithVanilla(
 	proofType abi.RegisteredPoStProof,

@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
-	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -163,20 +162,19 @@ func GetDeps(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 }
 
 type Deps struct {
-	Layers       []string
-	Cfg          *config.CurioConfig // values
-	DB           *harmonydb.DB       // has itest capability
-	Full         api.FullNode
-	Verif        storiface.Verifier
-	As           *multictladdr.MultiAddressSelector
-	Maddrs       map[dtypes.MinerAddress]bool
-	ProofTypes   map[abi.RegisteredSealProof]bool
-	Stor         *paths.Remote
-	Si           *paths.DBIndex
-	LocalStore   *paths.Local
-	LocalPaths   *paths.BasicLocalStorage
-	ListenAddr   string
-	CurioFfiWrap *ffiselect.CurioFFIWrap
+	Layers     []string
+	Cfg        *config.CurioConfig // values
+	DB         *harmonydb.DB       // has itest capability
+	Full       api.FullNode
+	Verif      storiface.Verifier
+	As         *multictladdr.MultiAddressSelector
+	Maddrs     map[dtypes.MinerAddress]bool
+	ProofTypes map[abi.RegisteredSealProof]bool
+	Stor       *paths.Remote
+	Si         *paths.DBIndex
+	LocalStore *paths.Local
+	LocalPaths *paths.BasicLocalStorage
+	ListenAddr string
 }
 
 const (
@@ -307,9 +305,6 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 		deps.Stor = paths.NewRemote(deps.LocalStore, deps.Si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 	}
 
-	if deps.CurioFfiWrap == nil {
-		deps.CurioFfiWrap = &ffiselect.CurioFFIWrap{}
-	}
 	if deps.Maddrs == nil {
 		deps.Maddrs = map[dtypes.MinerAddress]bool{}
 	}

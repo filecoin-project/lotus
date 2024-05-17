@@ -43,9 +43,8 @@ type WinPostTask struct {
 	max int
 	db  *harmonydb.DB
 
-	curioFfiWrap *ffiselect.CurioFFIWrap
-	paths        *paths.Local
-	verifier     storiface.Verifier
+	paths    *paths.Local
+	verifier storiface.Verifier
 
 	api    WinPostAPI
 	actors map[dtypes.MinerAddress]bool
@@ -72,15 +71,14 @@ type WinPostAPI interface {
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
 
-func NewWinPostTask(max int, db *harmonydb.DB, curioFfiWrap *ffiselect.CurioFFIWrap, pl *paths.Local, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
+func NewWinPostTask(max int, db *harmonydb.DB, pl *paths.Local, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
 	t := &WinPostTask{
-		max:          max,
-		db:           db,
-		curioFfiWrap: curioFfiWrap,
-		paths:        pl,
-		verifier:     verifier,
-		api:          api,
-		actors:       actors,
+		max:      max,
+		db:       db,
+		paths:    pl,
+		verifier: verifier,
+		api:      api,
+		actors:   actors,
 	}
 	// TODO: run warmup
 

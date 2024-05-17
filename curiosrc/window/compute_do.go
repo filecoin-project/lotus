@@ -33,11 +33,6 @@ import (
 const disablePreChecks = false // todo config
 
 // TODO Surface into config?
-const MaxParallelChallengeReads = 32
-
-var challengeThrottle = make(chan struct{}, MaxParallelChallengeReads)
-
-// TODO Surface into config?
 const challengeReadTimeout = 0
 
 func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr address.Address, di *dline.Info, partIdx uint64) (out *miner2.SubmitWindowedPoStParams, err error) {
@@ -461,17 +456,21 @@ func (t *WdPostTask) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Register
 	vproofs := make([][]byte, len(sectors))
 
 	for i, s := range sectors {
-		select {
-		case challengeThrottle <- struct{}{}:
-		case <-ctx.Done():
-			return storiface.WindowPoStResult{}, xerrors.Errorf("context error waiting on challengeThrottle")
+		if t.parallel != nil {
+			select {
+			case t.parallel <- struct{}{}:
+			case <-ctx.Done():
+				return storiface.WindowPoStResult{}, xerrors.Errorf("context error waiting on challengeThrottle")
+			}
 		}
 
 		go func(i int, s storiface.PostSectorChallenge) {
 			defer wg.Done()
-			defer func() {
-				<-challengeThrottle
-			}()
+			if t.parallel != nil {
+				defer func() {
+					<-t.parallel
+				}()
+			}
 
 			if challengeReadTimeout > 0 {
 				var cancel context.CancelFunc

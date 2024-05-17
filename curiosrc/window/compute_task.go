@@ -71,8 +71,9 @@ type WdPostTask struct {
 
 	windowPoStTF promise.Promise[harmonytask.AddTaskFunc]
 
-	actors map[dtypes.MinerAddress]bool
-	max    int
+	actors   map[dtypes.MinerAddress]bool
+	max      int
+	parallel chan struct{}
 }
 
 type wdTaskIdentity struct {
@@ -90,6 +91,7 @@ func NewWdPostTask(db *harmonydb.DB,
 	pcs *chainsched.CurioChainSched,
 	actors map[dtypes.MinerAddress]bool,
 	max int,
+	parallel int,
 ) (*WdPostTask, error) {
 	t := &WdPostTask{
 		db:  db,
@@ -101,6 +103,9 @@ func NewWdPostTask(db *harmonydb.DB,
 
 		actors: actors,
 		max:    max,
+	}
+	if parallel > 0 {
+		t.parallel = make(chan struct{}, parallel)
 	}
 
 	if pcs != nil {

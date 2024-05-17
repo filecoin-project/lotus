@@ -39,13 +39,12 @@ type ExternPrecommit2 func(ctx context.Context, sector storiface.SectorRef, cach
 */
 type SealCalls struct {
 	sectors *storageProvider
-	ffiselect.CurioFFIWrap
 
 	/*// externCalls cointain overrides for calling alternative sealing logic
 	externCalls ExternalSealer*/
 }
 
-func NewSealCalls(st *paths.Remote, ls *paths.Local, si paths.SectorIndex, cuFFIWrap *ffiselect.CurioFFIWrap) *SealCalls {
+func NewSealCalls(st *paths.Remote, ls *paths.Local, si paths.SectorIndex) *SealCalls {
 	return &SealCalls{
 		sectors: &storageProvider{
 			storage:             st,
@@ -53,7 +52,6 @@ func NewSealCalls(st *paths.Remote, ls *paths.Local, si paths.SectorIndex, cuFFI
 			sindex:              si,
 			storageReservations: xsync.NewIntegerMapOf[harmonytask.TaskID, *StorageReservation](),
 		},
-		CurioFFIWrap: *cuFFIWrap,
 	}
 }
 

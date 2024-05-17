@@ -168,7 +168,7 @@ It will not send any messages to the chain. Since it can compute any deadline, o
 		}
 
 		wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := curio.WindowPostScheduler(
-			ctx, deps.Cfg.Fees, deps.Cfg.Proving, deps.Full, deps.Verif, deps.CurioFfiWrap, nil, nil,
+			ctx, deps.Cfg.Fees, deps.Cfg.Proving, deps.Full, deps.Verif, nil, nil,
 			deps.As, deps.Maddrs, deps.DB, deps.Stor, deps.Si, deps.Cfg.Subsystems.WindowPostMaxTasks)
 		if err != nil {
 			return err
