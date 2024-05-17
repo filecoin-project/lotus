@@ -491,27 +491,6 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 	}, nil
 }
 
-func NewSetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.SetExpectedSealDurationFunc, error) {
-	return func(delay time.Duration) (err error) {
-		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
-			cfg := c.GetDealmakingConfig()
-			cfg.ExpectedSealDuration = config.Duration(delay)
-			c.SetDealmakingConfig(cfg)
-		})
-		return
-	}, nil
-}
-
-func NewGetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.GetExpectedSealDurationFunc, error) {
-	return func() (out time.Duration, err error) {
-		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
-			cfg := c.GetDealmakingConfig()
-			out = time.Duration(cfg.ExpectedSealDuration)
-		})
-		return
-	}, nil
-}
-
 func readSealingCfg(r repo.LockedRepo, accessor func(config.DealmakingConfiger, config.SealingConfiger)) error {
 	raw, err := r.Config()
 	if err != nil {
@@ -540,38 +519,6 @@ func mutateSealingCfg(r repo.LockedRepo, mutator func(config.SealingConfiger)) e
 		cfg, ok := raw.(config.SealingConfiger)
 		if !ok {
 			typeErr = errors.New("expected config with sealing config trait")
-			return
-		}
-
-		mutator(cfg)
-	})
-
-	return multierr.Combine(typeErr, setConfigErr)
-}
-
-func readDealmakingCfg(r repo.LockedRepo, accessor func(config.DealmakingConfiger)) error {
-	raw, err := r.Config()
-	if err != nil {
-		return err
-	}
-
-	cfg, ok := raw.(config.DealmakingConfiger)
-	if !ok {
-		return xerrors.New("expected config with dealmaking config trait")
-	}
-
-	accessor(cfg)
-
-	return nil
-}
-
-func mutateDealmakingCfg(r repo.LockedRepo, mutator func(config.DealmakingConfiger)) error {
-	var typeErr error
-
-	setConfigErr := r.SetConfig(func(raw interface{}) {
-		cfg, ok := raw.(config.DealmakingConfiger)
-		if !ok {
-			typeErr = errors.New("expected config with dealmaking config trait")
 			return
 		}
 

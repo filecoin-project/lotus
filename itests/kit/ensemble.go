@@ -625,7 +625,6 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
 		cfg.Subsystems.EnableSectorIndexDB = m.options.subsystems.Has(SHarmony)
-		cfg.Dealmaking.MaxStagingDealsBytes = m.options.maxStagingDealsBytes
 		cfg.EnableLibp2p = true
 
 		if m.options.mainMiner != nil {
