@@ -291,6 +291,9 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 			}
 		}
 	}
+	if cctx.IsSet("gui-listen") {
+		deps.Cfg.Subsystems.GuiAddress = cctx.String("gui-listen")
+	}
 	if deps.LocalStore == nil {
 		deps.LocalStore, err = paths.NewLocal(ctx, deps.LocalPaths, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
 		if err != nil {
