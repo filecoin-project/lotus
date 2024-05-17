@@ -7,10 +7,11 @@ import (
 	"os/exec"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/curiosrc/build"
 )

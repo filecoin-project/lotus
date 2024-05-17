@@ -9,9 +9,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
-	ffidirect "github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
-
 	"github.com/filecoin-project/lotus/lib/ffiselect"
+	ffidirect "github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
 )
 
 var ffiCmd = &cli.Command{
