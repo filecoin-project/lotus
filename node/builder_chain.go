@@ -6,9 +6,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/discovery"
-	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/api"
@@ -104,9 +101,6 @@ var ChainNode = Options(
 	Override(new(*messagepool.MessagePool), modules.MessagePool),
 	Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
-	// Shared graphsync (markets, serving chain)
-	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultFullNode().Client.SimultaneousTransfersForStorage, config.DefaultFullNode().Client.SimultaneousTransfersForRetrieval)),
-
 	// Service: Wallet
 	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
 	Override(new(messagesigner.MsgSigner), func(ms *messagesigner.MessageSigner) *messagesigner.MessageSigner { return ms }),
@@ -121,21 +115,9 @@ var ChainNode = Options(
 	Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
 	Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
 
-	// Markets (common)
-	Override(new(*discoveryimpl.Local), modules.NewLocalDiscovery),
-
-	// Markets (retrieval)
-	Override(new(discovery.PeerResolver), modules.RetrievalResolver),
-	Override(new(retrievalmarket.BlockstoreAccessor), modules.RetrievalBlockstoreAccessor),
-	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(false)),
-	Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
-
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
-	Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
-	Override(new(storagemarket.BlockstoreAccessor), modules.StorageBlockstoreAccessor),
 	Override(new(*retrievaladapter.APIBlockstoreAccessor), retrievaladapter.NewAPIBlockstoreAdapter),
-	Override(new(storagemarket.StorageClient), modules.StorageClient),
 	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
 
@@ -223,14 +205,6 @@ func ConfigFullNode(c interface{}) Option {
 		// This is the case even if real-time and historic filtering are disabled,
 		// as it enables us to serve logs in eth_getTransactionReceipt.
 		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI, Override(StoreEventsKey, modules.EnableStoringEvents)),
-
-		Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
-
-		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-
-		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfersForStorage, cfg.Client.SimultaneousTransfersForRetrieval)),
-
-		Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(cfg.Client.OffChainRetrieval)),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),

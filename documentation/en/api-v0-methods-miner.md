@@ -47,20 +47,15 @@
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
-  * [MarketCancelDataTransfer](#MarketCancelDataTransfer)
-  * [MarketDataTransferDiagnostics](#MarketDataTransferDiagnostics)
-  * [MarketDataTransferUpdates](#MarketDataTransferUpdates)
   * [MarketGetAsk](#MarketGetAsk)
   * [MarketGetDealUpdates](#MarketGetDealUpdates)
   * [MarketGetRetrievalAsk](#MarketGetRetrievalAsk)
   * [MarketImportDealData](#MarketImportDealData)
-  * [MarketListDataTransfers](#MarketListDataTransfers)
   * [MarketListDeals](#MarketListDeals)
   * [MarketListIncompleteDeals](#MarketListIncompleteDeals)
   * [MarketListRetrievalDeals](#MarketListRetrievalDeals)
   * [MarketPendingDeals](#MarketPendingDeals)
   * [MarketPublishPendingDeals](#MarketPublishPendingDeals)
-  * [MarketRestartDataTransfer](#MarketRestartDataTransfer)
   * [MarketRetryPublishDeal](#MarketRetryPublishDeal)
   * [MarketSetAsk](#MarketSetAsk)
   * [MarketSetRetrievalAsk](#MarketSetRetrievalAsk)
@@ -90,11 +85,6 @@
   * [NetPubsubScores](#NetPubsubScores)
   * [NetSetLimit](#NetSetLimit)
   * [NetStat](#NetStat)
-* [Pieces](#Pieces)
-  * [PiecesGetCIDInfo](#PiecesGetCIDInfo)
-  * [PiecesGetPieceInfo](#PiecesGetPieceInfo)
-  * [PiecesListCidInfos](#PiecesListCidInfos)
-  * [PiecesListPieces](#PiecesListPieces)
 * [Pledge](#Pledge)
   * [PledgeSector](#PledgeSector)
 * [Recover](#Recover)
@@ -849,170 +839,6 @@ Response: `{}`
 ## Market
 
 
-### MarketCancelDataTransfer
-MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  3,
-  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  true
-]
-```
-
-Response: `{}`
-
-### MarketDataTransferDiagnostics
-MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-]
-```
-
-Response:
-```json
-{
-  "ReceivingTransfers": [
-    {
-      "RequestID": {},
-      "RequestState": "string value",
-      "IsCurrentChannelRequest": true,
-      "ChannelID": {
-        "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-        "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-        "ID": 3
-      },
-      "ChannelState": {
-        "TransferID": 3,
-        "Status": 1,
-        "BaseCID": {
-          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-        },
-        "IsInitiator": true,
-        "IsSender": true,
-        "Voucher": "string value",
-        "Message": "string value",
-        "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-        "Transferred": 42,
-        "Stages": {
-          "Stages": [
-            {
-              "Name": "string value",
-              "Description": "string value",
-              "CreatedTime": "0001-01-01T00:00:00Z",
-              "UpdatedTime": "0001-01-01T00:00:00Z",
-              "Logs": [
-                {
-                  "Log": "string value",
-                  "UpdatedTime": "0001-01-01T00:00:00Z"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "Diagnostics": [
-        "string value"
-      ]
-    }
-  ],
-  "SendingTransfers": [
-    {
-      "RequestID": {},
-      "RequestState": "string value",
-      "IsCurrentChannelRequest": true,
-      "ChannelID": {
-        "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-        "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-        "ID": 3
-      },
-      "ChannelState": {
-        "TransferID": 3,
-        "Status": 1,
-        "BaseCID": {
-          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-        },
-        "IsInitiator": true,
-        "IsSender": true,
-        "Voucher": "string value",
-        "Message": "string value",
-        "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-        "Transferred": 42,
-        "Stages": {
-          "Stages": [
-            {
-              "Name": "string value",
-              "Description": "string value",
-              "CreatedTime": "0001-01-01T00:00:00Z",
-              "UpdatedTime": "0001-01-01T00:00:00Z",
-              "Logs": [
-                {
-                  "Log": "string value",
-                  "UpdatedTime": "0001-01-01T00:00:00Z"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "Diagnostics": [
-        "string value"
-      ]
-    }
-  ]
-}
-```
-
-### MarketDataTransferUpdates
-
-
-Perms: write
-
-Inputs: `null`
-
-Response:
-```json
-{
-  "TransferID": 3,
-  "Status": 1,
-  "BaseCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "IsInitiator": true,
-  "IsSender": true,
-  "Voucher": "string value",
-  "Message": "string value",
-  "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Transferred": 42,
-  "Stages": {
-    "Stages": [
-      {
-        "Name": "string value",
-        "Description": "string value",
-        "CreatedTime": "0001-01-01T00:00:00Z",
-        "UpdatedTime": "0001-01-01T00:00:00Z",
-        "Logs": [
-          {
-            "Log": "string value",
-            "UpdatedTime": "0001-01-01T00:00:00Z"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
 ### MarketGetAsk
 
 
@@ -1144,48 +970,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-### MarketListDataTransfers
-
-
-Perms: write
-
-Inputs: `null`
-
-Response:
-```json
-[
-  {
-    "TransferID": 3,
-    "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
-    "Voucher": "string value",
-    "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42,
-    "Stages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    }
-  }
-]
-```
 
 ### MarketListDeals
 
@@ -1354,23 +1138,6 @@ Response:
 Perms: admin
 
 Inputs: `null`
-
-Response: `{}`
-
-### MarketRestartDataTransfer
-MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  3,
-  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  true
-]
-```
 
 Response: `{}`
 
@@ -1948,104 +1715,6 @@ Response:
     }
   }
 }
-```
-
-## Pieces
-
-
-### PiecesGetCIDInfo
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
-]
-```
-
-Response:
-```json
-{
-  "CID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "PieceBlockLocations": [
-    {
-      "RelOffset": 42,
-      "BlockSize": 42,
-      "PieceCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
-    }
-  ]
-}
-```
-
-### PiecesGetPieceInfo
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
-]
-```
-
-Response:
-```json
-{
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Deals": [
-    {
-      "DealID": 5432,
-      "SectorID": 9,
-      "Offset": 1032,
-      "Length": 1032
-    }
-  ]
-}
-```
-
-### PiecesListCidInfos
-
-
-Perms: read
-
-Inputs: `null`
-
-Response:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
-]
-```
-
-### PiecesListPieces
-
-
-Perms: read
-
-Inputs: `null`
-
-Response:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
-]
 ```
 
 ## Pledge

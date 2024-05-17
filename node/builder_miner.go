@@ -79,7 +79,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(*paths.Local), modules.LocalStorage),
 		Override(new(*paths.Remote), modules.RemoteStorage),
 		Override(new(paths.Store), From(new(*paths.Remote))),
-		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(cfg.Subsystems.EnableMining || cfg.Subsystems.EnableSealing,
 			Override(GetParamsKey, modules.GetParams(!cfg.Proving.DisableBuiltinWindowPoSt || !cfg.Proving.DisableBuiltinWinningPoSt || cfg.Storage.AllowCommit || cfg.Storage.AllowProveReplicaUpdate2)),

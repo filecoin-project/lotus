@@ -7,12 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -226,17 +223,9 @@ type StorageMiner interface {
 	MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error)                                                                                                           //perm:read
 	MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error                                                                                                          //perm:admin
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                                             //perm:read
-	MarketListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)                                                                                                          //perm:write
-	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)                                                                                                   //perm:write
-	// MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync
-	MarketDataTransferDiagnostics(ctx context.Context, p peer.ID) (*TransferDiagnostics, error) //perm:write
-	// MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
-	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
-	// MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
-	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
-	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                             //perm:write
-	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
-	MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error                                                           //perm:admin
+	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                                                                                     //perm:write
+	MarketPublishPendingDeals(ctx context.Context) error                                                                                                                                 //perm:admin
+	MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error                                                                                                                   //perm:admin
 
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
@@ -258,11 +247,6 @@ type StorageMiner interface {
 	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error            //perm:admin
 	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
 	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
-
-	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)                                 //perm:read
-	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)                               //perm:read
-	PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) //perm:read
-	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)   //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus-miner is running with the

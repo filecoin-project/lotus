@@ -302,5 +302,3 @@ func (p *pieceReader) readInto(b []byte, off int64) (n int, err error) {
 
 	return n, cerr
 }
-
-var _ Reader = (*pieceReader)(nil)

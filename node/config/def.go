@@ -90,10 +90,7 @@ func DefaultFullNode() *FullNode {
 		Fees: FeeConfig{
 			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
-		Client: Client{
-			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
-			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
-		},
+
 		Chainstore: Chainstore{
 			EnableSplitstore: true,
 			Splitstore: Splitstore{

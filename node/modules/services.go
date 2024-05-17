@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -16,9 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-fil-markets/discovery"
-	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -34,7 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -222,24 +216,6 @@ func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkN
 
 	log.Infof("relaying messages for pubsub topic %s", topicName)
 	return nil
-}
-
-func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
-	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
-	if err != nil {
-		return nil, err
-	}
-	local.OnReady(marketevents.ReadyLogger("discovery"))
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return local.Start(ctx)
-		},
-	})
-	return local, nil
-}
-
-func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
-	return discoveryimpl.Multi(l)
 }
 
 type RandomBeaconParams struct {

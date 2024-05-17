@@ -20,8 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -960,12 +958,6 @@ type StorageMinerMethods struct {
 
 	DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
 
-	MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
-
-	MarketDataTransferDiagnostics func(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) `perm:"write"`
-
-	MarketDataTransferUpdates func(p0 context.Context) (<-chan DataTransferChannel, error) `perm:"write"`
-
 	MarketGetAsk func(p0 context.Context) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 
 	MarketGetDealUpdates func(p0 context.Context) (<-chan storagemarket.MinerDeal, error) `perm:"read"`
@@ -973,8 +965,6 @@ type StorageMinerMethods struct {
 	MarketGetRetrievalAsk func(p0 context.Context) (*retrievalmarket.Ask, error) `perm:"read"`
 
 	MarketImportDealData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"write"`
-
-	MarketListDataTransfers func(p0 context.Context) ([]DataTransferChannel, error) `perm:"write"`
 
 	MarketListDeals func(p0 context.Context) ([]*MarketDeal, error) `perm:"read"`
 
@@ -986,8 +976,6 @@ type StorageMinerMethods struct {
 
 	MarketPublishPendingDeals func(p0 context.Context) error `perm:"admin"`
 
-	MarketRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
-
 	MarketRetryPublishDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
 	MarketSetAsk func(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error `perm:"admin"`
@@ -995,14 +983,6 @@ type StorageMinerMethods struct {
 	MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) error `perm:"admin"`
 
 	MiningBase func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
-
-	PiecesGetCIDInfo func(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
-
-	PiecesGetPieceInfo func(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) `perm:"read"`
-
-	PiecesListCidInfos func(p0 context.Context) ([]cid.Cid, error) `perm:"read"`
-
-	PiecesListPieces func(p0 context.Context) ([]cid.Cid, error) `perm:"read"`
 
 	PledgeSector func(p0 context.Context) (abi.SectorID, error) `perm:"write"`
 
@@ -5691,39 +5671,6 @@ func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []ci
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	if s.Internal.MarketCancelDataTransfer == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)
-}
-
-func (s *StorageMinerStub) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketDataTransferDiagnostics(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) {
-	if s.Internal.MarketDataTransferDiagnostics == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.MarketDataTransferDiagnostics(p0, p1)
-}
-
-func (s *StorageMinerStub) MarketDataTransferDiagnostics(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {
-	if s.Internal.MarketDataTransferUpdates == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.MarketDataTransferUpdates(p0)
-}
-
-func (s *StorageMinerStub) MarketDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {
-	return nil, ErrNotSupported
-}
-
 func (s *StorageMinerStruct) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
 	if s.Internal.MarketGetAsk == nil {
 		return nil, ErrNotSupported
@@ -5766,17 +5713,6 @@ func (s *StorageMinerStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid
 
 func (s *StorageMinerStub) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
 	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) MarketListDataTransfers(p0 context.Context) ([]DataTransferChannel, error) {
-	if s.Internal.MarketListDataTransfers == nil {
-		return *new([]DataTransferChannel), ErrNotSupported
-	}
-	return s.Internal.MarketListDataTransfers(p0)
-}
-
-func (s *StorageMinerStub) MarketListDataTransfers(p0 context.Context) ([]DataTransferChannel, error) {
-	return *new([]DataTransferChannel), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketListDeals(p0 context.Context) ([]*MarketDeal, error) {
@@ -5834,17 +5770,6 @@ func (s *StorageMinerStub) MarketPublishPendingDeals(p0 context.Context) error {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	if s.Internal.MarketRestartDataTransfer == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.MarketRestartDataTransfer(p0, p1, p2, p3)
-}
-
-func (s *StorageMinerStub) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return ErrNotSupported
-}
-
 func (s *StorageMinerStruct) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {
 	if s.Internal.MarketRetryPublishDeal == nil {
 		return ErrNotSupported
@@ -5887,50 +5812,6 @@ func (s *StorageMinerStruct) MiningBase(p0 context.Context) (*types.TipSet, erro
 
 func (s *StorageMinerStub) MiningBase(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
-	if s.Internal.PiecesGetCIDInfo == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.PiecesGetCIDInfo(p0, p1)
-}
-
-func (s *StorageMinerStub) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
-	if s.Internal.PiecesGetPieceInfo == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.PiecesGetPieceInfo(p0, p1)
-}
-
-func (s *StorageMinerStub) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
-	if s.Internal.PiecesListCidInfos == nil {
-		return *new([]cid.Cid), ErrNotSupported
-	}
-	return s.Internal.PiecesListCidInfos(p0)
-}
-
-func (s *StorageMinerStub) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
-	return *new([]cid.Cid), ErrNotSupported
-}
-
-func (s *StorageMinerStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
-	if s.Internal.PiecesListPieces == nil {
-		return *new([]cid.Cid), ErrNotSupported
-	}
-	return s.Internal.PiecesListPieces(p0)
-}
-
-func (s *StorageMinerStub) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
-	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) PledgeSector(p0 context.Context) (abi.SectorID, error) {

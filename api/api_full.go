@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -33,7 +32,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_full.go -package=mocks . FullNode
@@ -869,17 +867,6 @@ type EthSubscriber interface {
 	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error // rpc_method:eth_subscription notify:true
 }
 
-type StorageAsk struct {
-	Response *storagemarket.StorageAsk
-
-	DealProtocols []string
-}
-
-type FileRef struct {
-	Path  string
-	IsCAR bool
-}
-
 type MinerSectors struct {
 	// Live sectors that should be proven.
 	Live uint64
@@ -887,55 +874,6 @@ type MinerSectors struct {
 	Active uint64
 	// Sectors with failed proofs.
 	Faulty uint64
-}
-
-type ImportRes struct {
-	Root     cid.Cid
-	ImportID imports.ID
-}
-
-type Import struct {
-	Key imports.ID
-	Err string
-
-	Root *cid.Cid
-
-	// Source is the provenance of the import, e.g. "import", "unknown", else.
-	// Currently useless but may be used in the future.
-	Source string
-
-	// FilePath is the path of the original file. It is important that the file
-	// is retained at this path, because it will be referenced during
-	// the transfer (when we do the UnixFS chunking, we don't duplicate the
-	// leaves, but rather point to chunks of the original data through
-	// positional references).
-	FilePath string
-
-	// CARPath is the path of the CAR file containing the DAG for this import.
-	CARPath string
-}
-
-type DealInfo struct {
-	ProposalCid cid.Cid
-	State       storagemarket.StorageDealStatus
-	Message     string // more information about deal state, particularly errors
-	DealStages  *storagemarket.DealStages
-	Provider    address.Address
-
-	DataRef  *storagemarket.DataRef
-	PieceCID cid.Cid
-	Size     uint64
-
-	PricePerEpoch types.BigInt
-	Duration      uint64
-
-	DealID abi.DealID
-
-	CreationTime time.Time
-	Verified     bool
-
-	TransferChannelID *datatransfer.ChannelID
-	DataTransfer      *DataTransferChannel
 }
 
 type MsgLookup struct {
@@ -1057,38 +995,6 @@ type MinerPower struct {
 	MinerPower  power.Claim
 	TotalPower  power.Claim
 	HasMinPower bool
-}
-
-type QueryOffer struct {
-	Err string
-
-	Root  cid.Cid
-	Piece *cid.Cid
-
-	Size                    uint64
-	MinPrice                types.BigInt
-	UnsealPrice             types.BigInt
-	PricePerByte            abi.TokenAmount
-	PaymentInterval         uint64
-	PaymentIntervalIncrease uint64
-	Miner                   address.Address
-	MinerPeer               retrievalmarket.RetrievalPeer
-}
-
-func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
-	return RetrievalOrder{
-		Root:                    o.Root,
-		Piece:                   o.Piece,
-		Size:                    o.Size,
-		Total:                   o.MinPrice,
-		UnsealPrice:             o.UnsealPrice,
-		PaymentInterval:         o.PaymentInterval,
-		PaymentIntervalIncrease: o.PaymentIntervalIncrease,
-		Client:                  client,
-
-		Miner:     o.Miner,
-		MinerPeer: &o.MinerPeer,
-	}
 }
 
 type MarketBalance struct {
