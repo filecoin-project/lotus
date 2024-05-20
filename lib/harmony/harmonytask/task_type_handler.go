@@ -105,7 +105,8 @@ canAcceptAgain:
 	releaseStorage := func() {
 	}
 	if h.TaskTypeDetails.Cost.Storage != nil {
-		if err = h.TaskTypeDetails.Cost.Storage.Claim(int(*tID)); err != nil {
+		markComplete, err := h.TaskTypeDetails.Cost.Storage.Claim(int(*tID))
+		if err != nil {
 			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
 
 			if len(ids) > 1 {
@@ -122,7 +123,7 @@ canAcceptAgain:
 			return false
 		}
 		releaseStorage = func() {
-			if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(int(*tID)); err != nil {
+			if err := markComplete(); err != nil {
 				log.Errorw("Could not release storage", "error", err)
 			}
 		}

@@ -115,7 +115,7 @@ func (t *TaskStorage) HasCapacity() bool {
 	return false // no path found
 }
 
-func (t *TaskStorage) Claim(taskID int) error {
+func (t *TaskStorage) Claim(taskID int) (func() error, error) {
 	// TaskStorage Claim Attempts to reserve storage for the task
 	// A: Create a reservation for files to be allocated
 	// B: Create a reservation for existing files to be fetched into local storage
@@ -125,7 +125,7 @@ func (t *TaskStorage) Claim(taskID int) error {
 
 	sectorRef, err := t.taskToSectorRef(harmonytask.TaskID(taskID))
 	if err != nil {
-		return xerrors.Errorf("getting sector ref: %w", err)
+		return nil, xerrors.Errorf("getting sector ref: %w", err)
 	}
 
 	// storage writelock sector
@@ -147,12 +147,12 @@ func (t *TaskStorage) Claim(taskID int) error {
 
 	if err := t.sc.sectors.sindex.StorageLock(lkctx, sectorRef.ID(), storiface.FTNone, requestedTypes); err != nil {
 		// timer will expire
-		return xerrors.Errorf("claim StorageLock: %w", err)
+		return nil, xerrors.Errorf("claim StorageLock: %w", err)
 	}
 
 	if !lockAcquireTimer.Stop() {
 		// timer expired, so lkctx is done, and that means the lock was acquired and dropped..
-		return xerrors.Errorf("failed to acquire lock")
+		return nil, xerrors.Errorf("failed to acquire lock")
 	}
 	defer func() {
 		// make sure we release the sector lock
@@ -166,13 +166,13 @@ func (t *TaskStorage) Claim(taskID int) error {
 	// paths to be used.
 	pathsFs, pathIDs, err := t.sc.sectors.localStore.AcquireSector(ctx, sectorRef.Ref(), storiface.FTNone, requestedTypes, t.pathType, storiface.AcquireMove)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// reserve the space
 	release, err := t.sc.sectors.localStore.Reserve(ctx, sectorRef.Ref(), requestedTypes, pathIDs, storiface.FSOverheadSeal, t.MinFreeStoragePercentage)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var releaseOnce sync.Once
@@ -197,18 +197,15 @@ func (t *TaskStorage) Claim(taskID int) error {
 	// note: we drop the sector writelock on return; THAT IS INTENTIONAL, this code runs in CanAccept, which doesn't
 	// guarantee that the work for this sector will happen on this node; SDR CanAccept just ensures that the node can
 	// run the job, harmonytask is what ensures that only one SDR runs at a time
-	return nil
+	return func() error {
+		return t.markComplete(taskID, sectorRef)
+	}, nil
 }
 
-func (t *TaskStorage) MarkComplete(taskID int) error {
+func (t *TaskStorage) markComplete(taskID int, sectorRef SectorRef) error {
 	// MarkComplete is ALWAYS called after the task is done or not scheduled
 	// If Claim is called and returns without errors, MarkComplete with the same
 	// taskID is guaranteed to eventually be called
-
-	sectorRef, err := t.taskToSectorRef(harmonytask.TaskID(taskID))
-	if err != nil {
-		return xerrors.Errorf("getting sector ref: %w", err)
-	}
 
 	sres, ok := t.sc.sectors.storageReservations.Load(harmonytask.TaskID(taskID))
 	if !ok {
