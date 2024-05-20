@@ -97,6 +97,7 @@ jobs:
               "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-manual_onboarding": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
