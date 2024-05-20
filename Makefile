@@ -343,7 +343,7 @@ actors-code-gen:
 	$(GOCC) run ./chain/actors/agen
 	$(GOCC) fmt ./...
 
-actors-gen: actors-code-gen 
+actors-gen: actors-code-gen
 	$(GOCC) run ./scripts/fiximports
 .PHONY: actors-gen
 
@@ -406,7 +406,7 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 fiximports:
 	$(GOCC) run ./scripts/fiximports
 
-gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci
+gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
 	$(GOCC) run ./scripts/fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
 .PHONY: gen
@@ -427,9 +427,6 @@ docsgen-cli: lotus lotus-miner lotus-worker curio sptool
 
 print-%:
 	@echo $*=$($*)
-
-circleci:
-	go generate -x ./.circleci
 
 ### Curio devnet images
 curio_docker_user?=curio

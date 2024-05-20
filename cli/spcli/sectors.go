@@ -159,6 +159,11 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 					return err
 				}
 
+				if status == nil {
+					fmt.Println("Sector status not found on chain")
+					return nil
+				}
+
 				mid, err := address.IDFromAddress(maddr)
 				if err != nil {
 					return err

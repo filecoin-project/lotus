@@ -122,7 +122,7 @@ func (a *app) pipelinePorepSectors(w http.ResponseWriter, r *http.Request) {
 
 		mbf, ok := minerBitfieldCache[addr]
 		if !ok {
-			mbf, err := a.getMinerBitfields(ctx, addr, a.stor)
+			mbf, err = a.getMinerBitfields(ctx, addr, a.stor)
 			if err != nil {
 				http.Error(w, xerrors.Errorf("failed to load miner bitfields: %w", err).Error(), http.StatusInternalServerError)
 				return
