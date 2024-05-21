@@ -1,5 +1,5 @@
 ALTER TABLE sectors_sdr_initial_pieces
-    ADD COLUMN created_at TIMESTAMP;
+    ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT current_timestamp;
 
 create table open_sector_pieces (
     sp_id bigint not null,
@@ -29,7 +29,7 @@ create table open_sector_pieces (
     direct_piece_activation_manifest jsonb,
 
     -- created_at added in 20240508-open-deal-sectors.sql
-    created_at timestamp,
+    created_at timestamp NOT NULL DEFAULT current_timestamp,
 
     -- sectors_sdr_initial_pieces table is a copy of this
     -- all alters should happen on both tables except constraints

@@ -1268,6 +1268,11 @@ var ActorNewMinerCmd = &cli.Command{
 			Name:  "sector-size",
 			Usage: "specify sector size to use for new miner initialisation",
 		},
+		&cli.IntFlag{
+			Name:  "confidence",
+			Usage: "number of block confirmations to wait for",
+			Value: int(build.MessageConfidence),
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context

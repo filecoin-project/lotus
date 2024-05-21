@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"sort"
 	"strconv"
 
@@ -12,10 +11,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api/client"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/filecoin-project/lotus/curiosrc/market/lmrpc"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
 
 var marketCmd = &cli.Command{
@@ -92,6 +93,11 @@ var marketSealCmd = &cli.Command{
 			Name:  "layers",
 			Usage: "list of layers to be interpreted (atop defaults). Default: base",
 		},
+		&cli.BoolFlag{
+			Name:  "synthetic",
+			Usage: "Use synthetic PoRep",
+			Value: false, // todo implement synthetic
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		act, err := address.NewFromString(cctx.String("actor"))
@@ -110,50 +116,86 @@ var marketSealCmd = &cli.Command{
 			return xerrors.Errorf("failed to parse the sector number: %w", err)
 		}
 
-		db, err := deps.MakeDB(cctx)
+		ctx := lcli.ReqContext(cctx)
+		dep, err := deps.GetDepsCLI(ctx, cctx)
 		if err != nil {
 			return err
 		}
 
-		layers := cctx.StringSlice("layers")
-
-		cfg, err := deps.GetConfig(cctx.Context, layers, db)
+		mid, err := address.IDFromAddress(act)
 		if err != nil {
-			return xerrors.Errorf("get config: %w", err)
+			return xerrors.Errorf("getting miner id: %w", err)
 		}
 
-		ts, err := lmrpc.MakeTokens(cfg)
+		mi, err := dep.Full.StateMinerInfo(ctx, act, types.EmptyTSK)
 		if err != nil {
-			return xerrors.Errorf("make tokens: %w", err)
+			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		info, ok := ts[act]
-		if !ok {
-			return xerrors.Errorf("no market configuration found for actor %s in the specified config layers", act)
-		}
-
-		ainfo := cliutil.ParseApiInfo(info)
-		addr, err := ainfo.DialArgs("v0")
+		nv, err := dep.Full.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
-			return xerrors.Errorf("could not get DialArgs: %w", err)
+			return xerrors.Errorf("getting network version: %w", err)
 		}
 
-		type httpHead struct {
-			addr   string
-			header http.Header
-		}
-
-		head := httpHead{
-			addr:   addr,
-			header: ainfo.AuthHeader(),
-		}
-
-		market, closer, err := client.NewStorageMinerRPCV0(cctx.Context, head.addr, head.header)
+		wpt := mi.WindowPoStProofType
+		spt, err := miner.PreferredSealProofTypeFromWindowPoStType(nv, wpt, cctx.Bool("synthetic"))
 		if err != nil {
-			return xerrors.Errorf("failed to get market API: %w", err)
+			return xerrors.Errorf("getting seal proof type: %w", err)
 		}
-		defer closer()
 
-		return market.SectorStartSealing(cctx.Context, abi.SectorNumber(sector))
+		comm, err := dep.DB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+			// Get current open sector pieces from DB
+			var pieces []struct {
+				Sector abi.SectorNumber    `db:"sector_number"`
+				Size   abi.PaddedPieceSize `db:"piece_size"`
+				Index  uint64              `db:"piece_index"`
+			}
+			err = tx.Select(&pieces, `
+					SELECT
+					    sector_number,
+						piece_size,
+						piece_index,
+					FROM
+						open_sector_pieces
+					WHERE
+						sp_id = $1 AND sector_number = $2
+					ORDER BY
+						piece_index DESC;`, mid, sector)
+			if err != nil {
+				return false, xerrors.Errorf("getting open sectors from DB")
+			}
+
+			if len(pieces) < 1 {
+				return false, xerrors.Errorf("sector %d is not waiting to be sealed", sector)
+			}
+
+			cn, err := tx.Exec(`INSERT INTO sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) VALUES ($1, $2, $3);`, mid, sector, spt)
+
+			if err != nil {
+				return false, xerrors.Errorf("adding sector to pipeline: %w", err)
+			}
+
+			if cn != 1 {
+				return false, xerrors.Errorf("incorrect number of rows returned")
+			}
+
+			_, err = tx.Exec("SELECT transfer_and_delete_open_piece($1, $2)", mid, sector)
+			if err != nil {
+				return false, xerrors.Errorf("adding sector to pipeline: %w", err)
+			}
+
+			return true, nil
+
+		}, harmonydb.OptionRetry())
+
+		if err != nil {
+			return xerrors.Errorf("start sealing sector: %w", err)
+		}
+
+		if !comm {
+			return xerrors.Errorf("start sealing sector: commit failed")
+		}
+
+		return nil
 	},
 }

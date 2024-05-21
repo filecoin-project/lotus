@@ -562,6 +562,7 @@ USAGE:
 OPTIONS:
    --actor value                      Specify actor address to start sealing sectors for
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --synthetic                        Use synthetic PoRep (default: false)
    --help, -h                         show help
 ```
 

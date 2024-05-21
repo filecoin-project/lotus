@@ -377,8 +377,8 @@ func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *
 				var taskID *int64
 				var complete bool
 				err := db.QueryRow(ctx, `SELECT pp.task_id, pp.complete
-												FROM curio.parked_pieces pp
-												JOIN curio.parked_piece_refs ppr ON pp.id = ppr.piece_id
+												FROM parked_pieces pp
+												JOIN parked_piece_refs ppr ON pp.id = ppr.piece_id
 												WHERE ppr.ref_id = $1;`, refID).Scan(&taskID, &complete)
 				if err != nil {
 					return api.SectorOffset{}, xerrors.Errorf("getting piece park status: %w", err)
@@ -568,7 +568,7 @@ func maybeApplyBackpressure(tx *harmonydb.Tx, cfg config.CurioIngestConfig, ssiz
 
 	var pieceSizes []abi.PaddedPieceSize
 
-	err = tx.Select(&pieceSizes, `SELECT piece_padded_size FROM curio.parked_pieces WHERE complete = false;`)
+	err = tx.Select(&pieceSizes, `SELECT piece_padded_size FROM parked_pieces WHERE complete = false;`)
 	if err != nil {
 		return false, xerrors.Errorf("getting in-process pieces")
 	}

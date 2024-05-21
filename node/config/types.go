@@ -845,8 +845,9 @@ type CurioIngestConfig struct {
 	// Maximum number of sectors that can be queued waiting for SDR to start processing.
 	// 0 = unlimited
 	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-	// The SDR queue includes deals which are in the process of entering the sealing pipeline. In case of the trees tasks it is
-	// possible that this queue grows more than this limit, the backpressure is only applied to sectors entering the pipeline.
+	// The SDR queue includes deals which are in the process of entering the sealing pipeline. In case of the SDR tasks it is
+	// possible that this queue grows more than this limit(CC sectors), the backpressure is only applied to sectors
+	// entering the pipeline.
 	MaxQueueSDR int
 
 	// Maximum number of sectors that can be queued waiting for SDRTrees to start processing.

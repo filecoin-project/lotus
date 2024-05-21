@@ -20,10 +20,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	miner2 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli/spcli"
@@ -142,8 +144,6 @@ func TestCurioHappyPath(t *testing.T) {
 	_, err = deps.LoadConfigWithUpgrades(baseText, baseCfg)
 	require.NoError(t, err)
 
-	storageSecret := baseCfg.Apis.StorageRPCSecret
-
 	require.NotNil(t, baseCfg.Addresses)
 	require.GreaterOrEqual(t, len(baseCfg.Addresses), 1)
 
@@ -156,43 +156,9 @@ func TestCurioHappyPath(t *testing.T) {
 		_ = os.Remove(dir)
 	}()
 
-	cctx, err := createCliContext(dir)
-	require.NoError(t, err)
-
-	shutdownChan := make(chan struct{})
-	{
-		var ctxclose func()
-		ctx, ctxclose = context.WithCancel(ctx)
-		go func() {
-			<-shutdownChan
-			ctxclose()
-		}()
-	}
-
-	dependencies := &deps.Deps{}
-	dependencies.DB = db
-	dependencies.Full = full
-	seal.SetDevnet(true)
-	err = os.Setenv("CURIO_REPO_PATH", dir)
-	require.NoError(t, err)
-	err = dependencies.PopulateRemainingDeps(ctx, cctx, false)
-	require.NoError(t, err)
-
-	taskEngine, err := tasks.StartTasks(ctx, dependencies)
-	require.NoError(t, err)
-
-	defer taskEngine.GracefullyTerminate()
-
-	dependencies.Cfg.Subsystems.BoostAdapters = []string{fmt.Sprintf("%s:127.0.0.1:32000", maddr)}
-	err = lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg)
-	require.NoError(t, err)
-
-	go func() {
-		err = rpc.ListenAndServe(ctx, dependencies, shutdownChan) // Monitor for shutdown.
-		require.NoError(t, err)
-	}()
-
-	finishCh := node.MonitorShutdown(shutdownChan)
+	capi, enginerTerm, closure, finishCh := ConstructCurioTest(ctx, t, dir, db, full, maddr, baseCfg)
+	defer enginerTerm()
+	defer closure()
 
 	mid, err := address.IDFromAddress(maddr)
 	require.NoError(t, err)
@@ -206,60 +172,6 @@ func TestCurioHappyPath(t *testing.T) {
 	wpt := mi.WindowPoStProofType
 	spt, err := miner2.PreferredSealProofTypeFromWindowPoStType(nv, wpt, false)
 	require.NoError(t, err)
-
-	var machines []string
-	err = db.Select(ctx, &machines, `select host_and_port from harmony_machines`)
-	require.NoError(t, err)
-
-	require.Len(t, machines, 1)
-	laddr, err := net.ResolveTCPAddr("tcp", machines[0])
-	require.NoError(t, err)
-
-	ma, err := manet.FromNetAddr(laddr)
-	require.NoError(t, err)
-
-	var apiToken []byte
-	{
-		type jwtPayload struct {
-			Allow []auth.Permission
-		}
-
-		p := jwtPayload{
-			Allow: api.AllPermissions,
-		}
-
-		sk, err := base64.StdEncoding.DecodeString(storageSecret)
-		require.NoError(t, err)
-
-		apiToken, err = jwt.Sign(&p, jwt.NewHS256(sk))
-		require.NoError(t, err)
-	}
-
-	ctoken := fmt.Sprintf("%s:%s", string(apiToken), ma)
-	err = os.Setenv("CURIO_API_INFO", ctoken)
-	require.NoError(t, err)
-
-	capi, ccloser, err := rpc.GetCurioAPI(&cli.Context{})
-	require.NoError(t, err)
-	defer ccloser()
-
-	scfg := storiface.LocalStorageMeta{
-		ID:         storiface.ID(uuid.New().String()),
-		Weight:     10,
-		CanSeal:    true,
-		CanStore:   true,
-		MaxStorage: 0,
-		Groups:     []string{},
-		AllowTo:    []string{},
-	}
-
-	err = capi.StorageInit(ctx, dir, scfg)
-	require.NoError(t, err)
-
-	err = capi.StorageAddLocal(ctx, dir)
-	require.NoError(t, err)
-
-	err = capi.LogSetLevel(ctx, "harmonytask", "DEBUG")
 
 	num, err := seal.AllocateSectorNumbers(ctx, full, db, maddr, 1, func(tx *harmonydb.Tx, numbers []abi.SectorNumber) (bool, error) {
 		for _, n := range numbers {
@@ -377,4 +289,98 @@ func createCliContext(dir string) (*cli.Context, error) {
 	ctx.Command = command
 
 	return ctx, nil
+}
+
+func ConstructCurioTest(ctx context.Context, t *testing.T, dir string, db *harmonydb.DB, full v1api.FullNode, maddr address.Address, cfg *config.CurioConfig) (api.Curio, func(), jsonrpc.ClientCloser, <-chan struct{}) {
+	cctx, err := createCliContext(dir)
+	require.NoError(t, err)
+
+	shutdownChan := make(chan struct{})
+
+	{
+		var ctxclose func()
+		ctx, ctxclose = context.WithCancel(ctx)
+		go func() {
+			<-shutdownChan
+			ctxclose()
+		}()
+	}
+
+	dependencies := &deps.Deps{}
+	dependencies.DB = db
+	dependencies.Full = full
+	seal.SetDevnet(true)
+	err = os.Setenv("CURIO_REPO_PATH", dir)
+	require.NoError(t, err)
+	err = dependencies.PopulateRemainingDeps(ctx, cctx, false)
+	require.NoError(t, err)
+
+	taskEngine, err := tasks.StartTasks(ctx, dependencies)
+	require.NoError(t, err)
+
+	dependencies.Cfg.Subsystems.BoostAdapters = []string{fmt.Sprintf("%s:127.0.0.1:32000", maddr)}
+	err = lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg)
+	require.NoError(t, err)
+
+	go func() {
+		err = rpc.ListenAndServe(ctx, dependencies, shutdownChan) // Monitor for shutdown.
+		require.NoError(t, err)
+	}()
+
+	finishCh := node.MonitorShutdown(shutdownChan)
+
+	var machines []string
+	err = db.Select(ctx, &machines, `select host_and_port from harmony_machines`)
+	require.NoError(t, err)
+
+	require.Len(t, machines, 1)
+	laddr, err := net.ResolveTCPAddr("tcp", machines[0])
+	require.NoError(t, err)
+
+	ma, err := manet.FromNetAddr(laddr)
+	require.NoError(t, err)
+
+	var apiToken []byte
+	{
+		type jwtPayload struct {
+			Allow []auth.Permission
+		}
+
+		p := jwtPayload{
+			Allow: api.AllPermissions,
+		}
+
+		sk, err := base64.StdEncoding.DecodeString(cfg.Apis.StorageRPCSecret)
+		require.NoError(t, err)
+
+		apiToken, err = jwt.Sign(&p, jwt.NewHS256(sk))
+		require.NoError(t, err)
+	}
+
+	ctoken := fmt.Sprintf("%s:%s", string(apiToken), ma)
+	err = os.Setenv("CURIO_API_INFO", ctoken)
+	require.NoError(t, err)
+
+	capi, ccloser, err := rpc.GetCurioAPI(&cli.Context{})
+	require.NoError(t, err)
+
+	scfg := storiface.LocalStorageMeta{
+		ID:         storiface.ID(uuid.New().String()),
+		Weight:     10,
+		CanSeal:    true,
+		CanStore:   true,
+		MaxStorage: 0,
+		Groups:     []string{},
+		AllowTo:    []string{},
+	}
+
+	err = capi.StorageInit(ctx, dir, scfg)
+	require.NoError(t, err)
+
+	err = capi.StorageAddLocal(ctx, dir)
+	require.NoError(t, err)
+
+	err = capi.LogSetLevel(ctx, "harmonytask", "DEBUG")
+
+	return capi, taskEngine.GracefullyTerminate, ccloser, finishCh
 }

@@ -149,7 +149,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 			if i, ok := sectorIdx[sectorID{minerID, uint64(st.SectorNumber)}]; ok {
 				sectors[i].IsOnChain = true
 				sectors[i].ExpiresAt = st.Expiration
-				sectors[i].IsFilPlus = st.VerifiedDealWeight.GreaterThan(st.DealWeight)
+				sectors[i].IsFilPlus = st.VerifiedDealWeight.GreaterThan(big.NewInt(0))
 				if ss, err := st.SealProof.SectorSize(); err == nil {
 					sectors[i].SealInfo = ss.ShortString()
 				}
@@ -217,7 +217,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					SectorNum: int64(chainy.onChain.SectorNumber),
 					IsOnChain: true,
 					ExpiresAt: chainy.onChain.Expiration,
-					IsFilPlus: chainy.onChain.VerifiedDealWeight.GreaterThan(chainy.onChain.DealWeight),
+					IsFilPlus: chainy.onChain.VerifiedDealWeight.GreaterThan(big.NewInt(0)),
 					Proving:   chainy.active,
 					Flag:      true, // All such sectors should be flagged to be terminated
 				}
@@ -271,7 +271,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			sectors[i].IsFilPlus = vp > dw
+			sectors[i].IsFilPlus = vp > 0
 			if dw > 0 {
 				sectors[i].DealWeight = fmt.Sprintf("%s", units.BytesSize(dw))
 			} else if vp > 0 {
