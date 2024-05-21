@@ -66,6 +66,12 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 			}
 			return "GPU_DEVICE_ORDINAL=" + dOrdinal
 		}(IsCuda))
+	tmpDir, err := os.MkdirTemp("", "rust-fil-proofs")
+	if err != nil {
+		return nil, err
+	}
+	cmd.Env = append(cmd.Env, "TMPDIR="+tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
