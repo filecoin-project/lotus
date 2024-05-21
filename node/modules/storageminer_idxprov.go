@@ -26,8 +26,8 @@ type IdxProv struct {
 	Datastore dtypes.MetadataDS
 }
 
-func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, dt dtypes.ProviderDataTransfer, maddr dtypes.MinerAddress, ps *pubsub.PubSub, nn dtypes.NetworkName) (provider.Interface, error) {
-	return func(args IdxProv, marketHost host.Host, dt dtypes.ProviderDataTransfer, maddr dtypes.MinerAddress, ps *pubsub.PubSub, nn dtypes.NetworkName) (provider.Interface, error) {
+func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, maddr dtypes.MinerAddress, ps *pubsub.PubSub, nn dtypes.NetworkName) (provider.Interface, error) {
+	return func(args IdxProv, marketHost host.Host, maddr dtypes.MinerAddress, ps *pubsub.PubSub, nn dtypes.NetworkName) (provider.Interface, error) {
 		topicName := cfg.TopicName
 		// If indexer topic name is left empty, infer it from the network name.
 		if topicName == "" {
@@ -77,7 +77,6 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 			ma := address.Address(maddr)
 			opts = append(opts,
 				engine.WithPublisherKind(engine.DataTransferPublisher),
-				engine.WithDataTransfer(dt),
 				engine.WithExtraGossipData(ma.Bytes()),
 				engine.WithTopic(t),
 			)
