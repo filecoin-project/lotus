@@ -711,10 +711,17 @@ func (a *app) porepPipelineSummary(ctx context.Context) ([]porepPipelineSummary,
 	var summaries []porepPipelineSummary
 	for rows.Next() {
 		var summary porepPipelineSummary
-		if err := rows.Scan(&summary.Actor, &summary.CountSDR, &summary.CountTrees, &summary.CountPrecommitMsg, &summary.CountWaitSeed, &summary.CountPoRep, &summary.CountCommitMsg, &summary.CountDone, &summary.CountFailed); err != nil {
+		var actor int64
+		if err := rows.Scan(&actor, &summary.CountSDR, &summary.CountTrees, &summary.CountPrecommitMsg, &summary.CountWaitSeed, &summary.CountPoRep, &summary.CountCommitMsg, &summary.CountDone, &summary.CountFailed); err != nil {
 			return nil, xerrors.Errorf("scan: %w", err)
 		}
-		summary.Actor = "f0" + summary.Actor
+
+		sactor, err := address.NewIDAddress(uint64(actor))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create actor address: %w", err)
+		}
+
+		summary.Actor = sactor.String()
 
 		summaries = append(summaries, summary)
 	}

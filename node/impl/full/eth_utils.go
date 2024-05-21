@@ -411,6 +411,7 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 		return ethAddr, nil
 	}
 
+	// Otherwise, use the masked address.
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
