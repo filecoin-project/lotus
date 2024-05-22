@@ -179,7 +179,7 @@
   # The address that should listen for Web GUI requests.
   #
   # type: string
-  #GuiAddress = ":4701"
+  #GuiAddress = "0.0.0.0:4701"
 
 
 [Fees]
