@@ -258,7 +258,7 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 		}
 	}
 
-	sl, uns, err := ffiselect.SealPreCommitPhase2(p1o, fspaths.Cache, fspaths.Sealed)
+	sl, uns, err := ffiselect.SealPreCommitPhase2(sector.ID, p1o, fspaths.Cache, fspaths.Sealed)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
 	}

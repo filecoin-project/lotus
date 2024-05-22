@@ -3,19 +3,22 @@ package ffiselect
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
+
+	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
+	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/curiosrc/build"
+	"github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
 )
 
 var IsCuda = build.IsOpencl != "1"
@@ -45,7 +48,11 @@ type FFICall struct {
 	Args []interface{}
 }
 
-func call(fn string, args ...interface{}) ([]interface{}, error) {
+func subStrInSet(set []string, sub string) bool {
+	return lo.Reduce(set, func(agg bool, item string, _ int) bool { return agg || strings.Contains(item, "RUST_LOG") }, false)
+}
+
+func call(logctx []any, fn string, args ...interface{}) ([]interface{}, error) {
 	// get dOrdinal
 	dOrdinal := <-ch
 	defer func() {
@@ -73,9 +80,22 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 		return nil, err
 	}
 	cmd.Env = append(cmd.Env, "TMPDIR="+tmpDir)
+
+	if !subStrInSet(cmd.Env, "RUST_LOG") {
+		cmd.Env = append(cmd.Env, "RUST_LOG=debug")
+	}
+	if !subStrInSet(cmd.Env, "FIL_PROOFS_USE_GPU_COLUMN_BUILDER") {
+		cmd.Env = append(cmd.Env, "FIL_PROOFS_USE_GPU_COLUMN_BUILDER=1")
+	}
+	if !subStrInSet(cmd.Env, "FIL_PROOFS_USE_GPU_TREE_BUILDER") {
+		cmd.Env = append(cmd.Env, "FIL_PROOFS_USE_GPU_TREE_BUILDER=1")
+	}
+
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	cmd.Stderr = os.Stderr
+	lw := NewLogWriter(logctx, os.Stderr)
+
+	cmd.Stderr = lw
 	cmd.Stdout = os.Stdout
 	outFile, err := os.CreateTemp("", "out")
 	if err != nil {
@@ -124,18 +144,23 @@ func GenerateSinglePartitionWindowPoStWithVanilla(
 	proofs [][]byte,
 	partitionIndex uint,
 ) (*ffi.PartitionProof, error) {
-	val, err := call("GenerateSinglePartitionWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIndex)
+	logctx := []any{"spid", minerID, "proof_count", len(proofs), "partition_index", partitionIndex}
+
+	val, err := call(logctx, "GenerateSinglePartitionWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIndex)
 	if err != nil {
 		return nil, err
 	}
 	return val[0].(*ffi.PartitionProof), nil
 }
 func SealPreCommitPhase2(
+	sid abi.SectorID,
 	phase1Output []byte,
 	cacheDirPath string,
 	sealedSectorPath string,
 ) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
-	val, err := call("SealPreCommitPhase2", phase1Output, cacheDirPath, sealedSectorPath)
+	logctx := []any{"sector", sid}
+
+	val, err := call(logctx, "SealPreCommitPhase2", phase1Output, cacheDirPath, sealedSectorPath)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
@@ -147,7 +172,9 @@ func SealCommitPhase2(
 	sectorNum abi.SectorNumber,
 	minerID abi.ActorID,
 ) ([]byte, error) {
-	val, err := call("SealCommitPhase2", phase1Output, sectorNum, minerID)
+	logctx := []any{"sector", abi.SectorID{Miner: minerID, Number: sectorNum}}
+
+	val, err := call(logctx, "SealCommitPhase2", phase1Output, sectorNum, minerID)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +188,9 @@ func GenerateWinningPoStWithVanilla(
 	randomness abi.PoStRandomness,
 	proofs [][]byte,
 ) ([]proof.PoStProof, error) {
-	val, err := call("GenerateWinningPoStWithVanilla", proofType, minerID, randomness, proofs)
+	logctx := []any{"proof_type", proofType, "miner_id", minerID}
+
+	val, err := call(logctx, "GenerateWinningPoStWithVanilla", proofType, minerID, randomness, proofs)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +198,7 @@ func GenerateWinningPoStWithVanilla(
 }
 
 func SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
-	val, err := call("SelfTest", val1, val2)
+	val, err := call([]any{"selftest", "true"}, "SelfTest", val1, val2)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
