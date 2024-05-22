@@ -51,6 +51,7 @@ var helloCmd = &cli.Command{
 
 func HandleStream(s inet.Stream) {
 	var hmsg hello.HelloMessage
+	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message, disconnecting", "error", err)
 		_ = s.Conn().Close()

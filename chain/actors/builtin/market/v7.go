@@ -188,6 +188,12 @@ type dealStateV7 struct {
 	ds7 market7.DealState
 }
 
+func (d dealStateV7) SectorNumber() abi.SectorNumber {
+
+	return 0
+
+}
+
 func (d dealStateV7) SectorStartEpoch() abi.ChainEpoch {
 	return d.ds7.SectorStartEpoch
 }

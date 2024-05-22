@@ -126,7 +126,7 @@ func (p *PoRepTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 	// store success!
 	n, err := p.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_porep = TRUE, seed_value = $3, porep_proof = $4
+		SET after_porep = TRUE, seed_value = $3, porep_proof = $4, task_id_porep = NULL
 		WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, []byte(rand), proof)
 	if err != nil {

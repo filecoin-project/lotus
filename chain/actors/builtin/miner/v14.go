@@ -548,6 +548,7 @@ func fromV14SectorOnChainInfo(v14 miner14.SectorOnChainInfo) SectorOnChainInfo {
 
 		PowerBaseEpoch:    v14.PowerBaseEpoch,
 		ReplacedDayReward: v14.ReplacedDayReward,
+		Flags:             SectorOnChainInfoFlags(v14.Flags),
 	}
 	return info
 }
