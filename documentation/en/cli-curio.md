@@ -469,7 +469,7 @@ DESCRIPTION:
      This creates the 'web' layer if it does not exist, then calls run with that layer.
 
 OPTIONS:
-   --listen value                     Address to listen on (default: "127.0.0.1:4701")
+   --gui-listen value                 Address to listen for the GUI on (default: "0.0.0.0:4701")
    --nosync                           don't check full-node sync status (default: false)
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
    --help, -h                         show help
