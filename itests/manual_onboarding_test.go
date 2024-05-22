@@ -117,8 +117,8 @@ func TestManualCCOnboarding(t *testing.T) {
 				sealedSectorPath = filepath.Join(tmpDir, "sealed")
 
 				sealTickets, sealedCid, unsealedCid = manualOnboardingGeneratePreCommit(
-					t,
 					ctx,
+					t,
 					client,
 					cacheDirPath,
 					unsealedSectorPath,
@@ -171,8 +171,8 @@ func TestManualCCOnboarding(t *testing.T) {
 				sectorProof = []byte{0xde, 0xad, 0xbe, 0xef}
 			} else {
 				sectorProof = manualOnboardingGenerateProveCommit(
-					t,
 					ctx,
+					t,
 					client,
 					cacheDirPath,
 					sealedSectorPath,
@@ -252,7 +252,7 @@ func TestManualCCOnboarding(t *testing.T) {
 			if withMockProofs {
 				proofBytes = []byte{0xde, 0xad, 0xbe, 0xef}
 			} else {
-				proofBytes = manualOnboardingGenerateWindowPost(t, ctx, client, cacheDirPath, sealedSectorPath, mAddrB, bSectorNum, sealedCid)
+				proofBytes = manualOnboardingGenerateWindowPost(ctx, t, client, cacheDirPath, sealedSectorPath, mAddrB, bSectorNum, sealedCid)
 			}
 
 			t.Log("Submitting WindowedPoSt...")
@@ -286,7 +286,7 @@ func TestManualCCOnboarding(t *testing.T) {
 
 			if !withMockProofs {
 				// Dispute the PoSt to confirm the validity of the PoSt since PoSt acceptance is optimistic
-				manualOnboardingDisputeWindowPost(t, ctx, client, mAddrB, bSectorNum)
+				manualOnboardingDisputeWindowPost(ctx, t, client, mAddrB, bSectorNum)
 			}
 
 			t.Log("Checking power after PoSt ...")
@@ -302,8 +302,8 @@ func TestManualCCOnboarding(t *testing.T) {
 }
 
 func manualOnboardingGeneratePreCommit(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client api.FullNode,
 	cacheDirPath,
 	unsealedSectorPath,
@@ -366,8 +366,8 @@ func manualOnboardingGeneratePreCommit(
 }
 
 func manualOnboardingGenerateProveCommit(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client api.FullNode,
 	cacheDirPath,
 	sealedSectorPath string,
@@ -424,8 +424,8 @@ func manualOnboardingGenerateProveCommit(
 }
 
 func manualOnboardingGenerateWindowPost(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client api.FullNode,
 	cacheDirPath string,
 	sealedSectorPath string,
@@ -490,8 +490,8 @@ func manualOnboardingGenerateWindowPost(
 }
 
 func manualOnboardingDisputeWindowPost(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	client kit.TestFullNode,
 	minerAddr address.Address,
 	sectorNumber abi.SectorNumber,
