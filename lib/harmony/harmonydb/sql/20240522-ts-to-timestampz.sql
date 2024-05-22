@@ -6,24 +6,32 @@ ALTER COLUMN last_contact TYPE TIMESTAMPTZ
 -- Convert timestamps in harmony_task table
 ALTER TABLE harmony_task
 ALTER COLUMN update_time TYPE TIMESTAMPTZ
-    USING update_time AT TIME ZONE 'UTC',
-    ALTER COLUMN posted_time TYPE TIMESTAMPTZ
+    USING update_time AT TIME ZONE 'UTC';
+
+ALTER TABLE harmony_task
+ALTER COLUMN posted_time TYPE TIMESTAMPTZ
     USING posted_time AT TIME ZONE 'UTC';
 
 -- Convert timestamps in harmony_task_history table
 ALTER TABLE harmony_task_history
 ALTER COLUMN posted TYPE TIMESTAMPTZ
-    USING posted AT TIME ZONE 'UTC',
-    ALTER COLUMN work_start TYPE TIMESTAMPTZ
-    USING work_start AT TIME ZONE 'UTC',
-    ALTER COLUMN work_end TYPE TIMESTAMPTZ
+    USING posted AT TIME ZONE 'UTC';
+
+ALTER TABLE harmony_task_history
+ALTER COLUMN work_start TYPE TIMESTAMPTZ
+    USING work_start AT TIME ZONE 'UTC';
+
+ALTER TABLE harmony_task_history
+ALTER COLUMN work_end TYPE TIMESTAMPTZ
     USING work_end AT TIME ZONE 'UTC';
 
 -- Convert timestamps in sector_location table
 ALTER TABLE sector_location
 ALTER COLUMN read_ts TYPE TIMESTAMPTZ
-    USING read_ts AT TIME ZONE 'UTC',
-    ALTER COLUMN write_ts TYPE TIMESTAMPTZ
+    USING read_ts AT TIME ZONE 'UTC';
+
+ALTER TABLE sector_location
+ALTER COLUMN write_ts TYPE TIMESTAMPTZ
     USING write_ts AT TIME ZONE 'UTC';
 
 -- Convert timestamps in storage_path table
@@ -34,10 +42,14 @@ ALTER COLUMN last_heartbeat TYPE TIMESTAMPTZ
 -- Convert timestamps in mining_tasks table
 ALTER TABLE mining_tasks
 ALTER COLUMN base_compute_time TYPE TIMESTAMPTZ
-    USING base_compute_time AT TIME ZONE 'UTC',
-    ALTER COLUMN mined_at TYPE TIMESTAMPTZ
-    USING mined_at AT TIME ZONE 'UTC',
-    ALTER COLUMN submitted_at TYPE TIMESTAMPTZ
+    USING base_compute_time AT TIME ZONE 'UTC';
+
+ALTER TABLE mining_tasks
+ALTER COLUMN mined_at TYPE TIMESTAMPTZ
+    USING mined_at AT TIME ZONE 'UTC';
+
+ALTER TABLE mining_tasks
+ALTER COLUMN submitted_at TYPE TIMESTAMPTZ
     USING submitted_at AT TIME ZONE 'UTC';
 
 -- Convert timestamps in itest_scratch table
@@ -63,10 +75,14 @@ ALTER COLUMN last_run_time TYPE TIMESTAMPTZ
 -- Convert timestamps in sector_path_url_liveness table
 ALTER TABLE sector_path_url_liveness
 ALTER COLUMN last_checked TYPE TIMESTAMPTZ
-    USING last_checked AT TIME ZONE 'UTC',
-    ALTER COLUMN last_live TYPE TIMESTAMPTZ
-    USING last_live AT TIME ZONE 'UTC',
-    ALTER COLUMN last_dead TYPE TIMESTAMPTZ
+    USING last_checked AT TIME ZONE 'UTC';
+
+ALTER TABLE sector_path_url_liveness
+ALTER COLUMN last_live TYPE TIMESTAMPTZ
+    USING last_live AT TIME ZONE 'UTC';
+
+ALTER TABLE sector_path_url_liveness
+ALTER COLUMN last_dead TYPE TIMESTAMPTZ
     USING last_dead AT TIME ZONE 'UTC';
 
 -- Convert timestamps in harmony_machine_details table
@@ -87,8 +103,10 @@ ALTER COLUMN created_at TYPE TIMESTAMPTZ
 -- Convert timestamps in sectors_sdr_pipeline table
 ALTER TABLE sectors_sdr_pipeline
 ALTER COLUMN create_time TYPE TIMESTAMPTZ
-    USING create_time AT TIME ZONE 'UTC',
-    ALTER COLUMN failed_at TYPE TIMESTAMPTZ
+    USING create_time AT TIME ZONE 'UTC';
+
+ALTER TABLE sectors_sdr_pipeline
+ALTER COLUMN failed_at TYPE TIMESTAMPTZ
     USING failed_at AT TIME ZONE 'UTC';
 
 -- Convert timestamps in sectors_sdr_initial_pieces table
