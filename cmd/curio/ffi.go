@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/ffiselect"
 	ffidirect "github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
@@ -36,7 +37,7 @@ var ffiCmd = &cli.Command{
 		}()
 		var callInfo ffiselect.FFICall
 		if err := gob.NewDecoder(os.Stdin).Decode(&callInfo); err != nil {
-			return err
+			return xerrors.Errorf("ffi subprocess can not decode: %w", err)
 		}
 
 		args := lo.Map(callInfo.Args, func(arg any, i int) reflect.Value {
@@ -51,7 +52,11 @@ var ffiCmd = &cli.Command{
 			return res.Interface()
 		})
 
-		return gob.NewEncoder(output).Encode(ffiselect.ValErr{Val: res, Err: nil})
+		err = gob.NewEncoder(output).Encode(ffiselect.ValErr{Val: res, Err: nil})
+		if err != nil {
+			return xerrors.Errorf("ffi subprocess can not encode: %w", err)
+		}
+		return nil
 	},
 }
 

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -86,7 +87,7 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 		Args: args,
 	})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("subprocess caller cannot encode: %w", err)
 	}
 	err = cmd.Run()
 	if err != nil {
@@ -95,7 +96,7 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 	var ve ValErr
 	err = gob.NewDecoder(outFile).Decode(&ve)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("subprocess caller cannot decode: %w", err)
 	}
 	if ve.Val[len(ve.Val)-1].(error) != nil {
 		return nil, ve.Val[len(ve.Val)-1].(error)
@@ -166,3 +167,16 @@ func SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
 }
 
 // //////////////////////////
+
+func init() {
+	gob.Register(ValErr{})
+	gob.Register(FFICall{})
+	gob.Register(cid.Cid{})
+	gob.Register(abi.RegisteredPoStProof(0))
+	gob.Register(abi.ActorID(0))
+	gob.Register(abi.PoStRandomness{})
+	gob.Register(abi.SectorNumber(0))
+	gob.Register(ffi.PartitionProof{})
+	gob.Register(proof.PoStProof{})
+	gob.Register(abi.RegisteredPoStProof(0))
+}
