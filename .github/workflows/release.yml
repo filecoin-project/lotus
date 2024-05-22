@@ -47,18 +47,26 @@ jobs:
           fi
       - uses: actions/checkout@v4
         with:
+          path: actions
+      - uses: actions/checkout@v4
+        with:
           submodules: 'recursive'
           ref: ${{ inputs.ref || github.ref }}
-      - uses: ./.github/actions/install-system-dependencies
-      - uses: ./.github/actions/install-go
+          path: lotus
+      - uses: ./actions/.github/actions/install-system-dependencies
+      - uses: ./actions/.github/actions/install-go
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: make deps lotus lotus-miner lotus-worker
+        working-directory: lotus
       - if: runner.os == 'macOS'
         run: otool -hv lotus
-      - run: ./scripts/version-check.sh ./lotus
-        env:
-          GITHUB_REF: ${{ inputs.ref || github.ref }}
+        working-directory: lotus
+      - run: |
+          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
+          ../actions/scripts/version-check.sh ./lotus
+        working-directory: lotus
+      - run: mv ./lotus/lotus ./lotus/lotus-miner ./lotus/lotus-worker .
       - uses: actions/upload-artifact@v4
         with:
           name: lotus-${{ matrix.os }}-${{ matrix.arch }}
@@ -78,6 +86,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          path: actions
+      - uses: actions/checkout@v4
+        with:
           submodules: 'recursive'
           fetch-depth: 0
           path: lotus
@@ -94,7 +105,7 @@ jobs:
         with:
           name: lotus-macOS-ARM64
           path: darwin_arm64
-      - uses: ./lotus/.github/actions/install-go
+      - uses: ./actions/.github/actions/install-go
         with:
           working-directory: lotus
       - uses: ipfs/download-ipfs-distribution-action@v1
@@ -110,13 +121,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
-      - run: ./scripts/generate-checksums.sh
-        env:
-          GITHUB_REF: ${{ inputs.ref || github.ref }}
+      - run: |
+          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
+          ../actions/scripts/generate-checksums.sh
         working-directory: lotus
       - if: env.PUBLISH == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_REF: ${{ inputs.ref || github.ref }}
-        run: ./scripts/publish-checksums.sh
+        run: |
+          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
+          ../actions/scripts/publish-checksums.sh
         working-directory: lotus
