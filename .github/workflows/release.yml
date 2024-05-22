@@ -73,6 +73,7 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
+          path: lotus
       - uses: actions/download-artifact@v4
         with:
           name: lotus-Linux-X64
@@ -95,11 +96,14 @@ jobs:
           distribution: goreleaser-pro
           version: latest
           args: release --clean --debug ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
+          workdir: lotus
         env:
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
       - run: ./scripts/generate-checksums.sh
+        working-directory: lotus
       - if: env.PUBLISH == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/publish-checksums.sh
+        working-directory: lotus
