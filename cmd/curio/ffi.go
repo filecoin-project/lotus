@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/ffiselect"
 	ffidirect "github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 var ffiCmd = &cli.Command{
@@ -29,7 +30,7 @@ var ffiCmd = &cli.Command{
 				err = fmt.Errorf("panic: %v", r)
 			}
 			if err != nil {
-				err = gob.NewEncoder(output).Encode(ffiselect.ValErr{Val: nil, Err: err})
+				err = gob.NewEncoder(output).Encode(ffiselect.ValErr{Val: nil, Err: err.Error()})
 				if err != nil {
 					panic(err)
 				}
@@ -44,24 +45,22 @@ var ffiCmd = &cli.Command{
 			return reflect.ValueOf(arg)
 		})
 
-		// All methods 1st arg is a context, not passed in.
-		args = append([]reflect.Value{reflect.ValueOf(cctx.Context)}, args...)
-
 		resAry := reflect.ValueOf(ffidirect.FFI{}).MethodByName(callInfo.Fn).Call(args)
 		res := lo.Map(resAry, func(res reflect.Value, i int) any {
 			return res.Interface()
 		})
 
-		err = gob.NewEncoder(output).Encode(ffiselect.ValErr{Val: res, Err: nil})
+		err = gob.NewEncoder(output).Encode(ffiselect.ValErr{Val: res, Err: ""})
 		if err != nil {
 			return xerrors.Errorf("ffi subprocess can not encode: %w", err)
 		}
-		return nil
+
+		return output.Close()
 	},
 }
 
 func ffiSelfTest() {
-	val1, val2 := 12345678, cid.NewCidV1(cid.Undef.Type(), []byte("abcdef"))
+	val1, val2 := 12345678, must.One(cid.Parse("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"))
 	ret1, ret2, err := ffiselect.SelfTest(val1, val2)
 	if err != nil {
 		panic("ffi self test failed:" + err.Error())

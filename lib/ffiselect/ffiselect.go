@@ -3,12 +3,13 @@ package ffiselect
 import (
 	"bytes"
 	"encoding/gob"
+	"github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
-
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -35,7 +36,7 @@ func init() {
 
 type ValErr struct {
 	Val []interface{}
-	Err error
+	Err string
 }
 
 // This is not the one you're looking for.
@@ -81,25 +82,34 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 		return nil, err
 	}
 	cmd.ExtraFiles = []*os.File{outFile}
-	var gobber bytes.Buffer
-	err = gob.NewEncoder(&gobber).Encode(FFICall{
+	var encArgs bytes.Buffer
+	err = gob.NewEncoder(&encArgs).Encode(FFICall{
 		Fn:   fn,
 		Args: args,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("subprocess caller cannot encode: %w", err)
 	}
+
+	cmd.Stdin = &encArgs
 	err = cmd.Run()
 	if err != nil {
 		return nil, err
 	}
+
+	// seek to start
+	outFile.Seek(0, io.SeekStart)
+
 	var ve ValErr
 	err = gob.NewDecoder(outFile).Decode(&ve)
 	if err != nil {
 		return nil, xerrors.Errorf("subprocess caller cannot decode: %w", err)
 	}
-	if ve.Val[len(ve.Val)-1].(error) != nil {
-		return nil, ve.Val[len(ve.Val)-1].(error)
+	if ve.Err != "" {
+		return nil, xerrors.Errorf("subprocess failure: %s", ve.Err)
+	}
+	if ve.Val[len(ve.Val)-1].(ffidirect.ErrorString) != "" {
+		return nil, xerrors.Errorf("subprocess call error: %s", ve.Val[len(ve.Val)-1].(ffidirect.ErrorString))
 	}
 	return ve.Val, nil
 }
