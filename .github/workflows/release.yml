@@ -64,7 +64,9 @@ jobs:
       - if: runner.os == 'macOS'
         run: otool -hv lotus
         working-directory: lotus
-      - run: |
+      - env:
+          INPUTS_REF: ${{ inputs.ref }}
+        run: |
           export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
           ../actions/scripts/version-check.sh ./lotus
         working-directory: lotus
@@ -122,13 +124,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
-      - run: |
+      - env:
+          INPUTS_REF: ${{ inputs.ref }}
+        run: |
           export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
           ../actions/scripts/generate-checksums.sh
         working-directory: lotus
       - if: env.PUBLISH == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          INPUTS_REF: ${{ inputs.ref }}
         run: |
           export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
           ../actions/scripts/publish-checksums.sh
