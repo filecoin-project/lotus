@@ -62,7 +62,7 @@ var ffiCmd = &cli.Command{
 
 func ffiSelfTest() {
 	val1, val2 := 12345678, cid.NewCidV1(cid.Undef.Type(), []byte("abcdef"))
-	ret1, ret2, err := ffiselect.SelfTest(val1, val2)
+	ret1, ret2, err := ffiselect.FFISelect{}.SelfTest(val1, val2)
 	if err != nil {
 		panic("ffi self test failed:" + err.Error())
 	}

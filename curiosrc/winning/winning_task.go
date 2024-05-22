@@ -466,7 +466,7 @@ func (t *WinPostTask) generateWinningPost(
 		return nil, err
 	}
 
-	return ffiselect.GenerateWinningPoStWithVanilla(ppt, mid, randomness, vproofs)
+	return ffiselect.FFISelect{}.GenerateWinningPoStWithVanilla(ppt, mid, randomness, vproofs)
 
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"os"
 	"os/exec"
+	"reflect"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/curiosrc/build"
+	"github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
 )
 
 var IsCuda = build.IsOpencl != "1"
@@ -107,7 +109,9 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 ///////////Funcs reachable by the GPU selector.///////////
 // NOTE: Changes here MUST also change ffi-direct.go
 
-func GenerateSinglePartitionWindowPoStWithVanilla(
+type FFISelect struct{}
+
+func (FFISelect) GenerateSinglePartitionWindowPoStWithVanilla(
 	proofType abi.RegisteredPoStProof,
 	minerID abi.ActorID,
 	randomness abi.PoStRandomness,
@@ -120,7 +124,7 @@ func GenerateSinglePartitionWindowPoStWithVanilla(
 	}
 	return val[0].(*ffi.PartitionProof), nil
 }
-func SealPreCommitPhase2(
+func (FFISelect) SealPreCommitPhase2(
 	phase1Output []byte,
 	cacheDirPath string,
 	sealedSectorPath string,
@@ -132,7 +136,7 @@ func SealPreCommitPhase2(
 	return val[0].(cid.Cid), val[1].(cid.Cid), nil
 }
 
-func SealCommitPhase2(
+func (FFISelect) SealCommitPhase2(
 	phase1Output []byte,
 	sectorNum abi.SectorNumber,
 	minerID abi.ActorID,
@@ -145,7 +149,7 @@ func SealCommitPhase2(
 	return val[0].([]byte), nil
 }
 
-func GenerateWinningPoStWithVanilla(
+func (FFISelect) GenerateWinningPoStWithVanilla(
 	proofType abi.RegisteredPoStProof,
 	minerID abi.ActorID,
 	randomness abi.PoStRandomness,
@@ -158,7 +162,7 @@ func GenerateWinningPoStWithVanilla(
 	return val[0].([]proof.PoStProof), nil
 }
 
-func SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
+func (FFISelect) SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
 	val, err := call("SelfTest", val1, val2)
 	if err != nil {
 		return 0, cid.Undef, err
@@ -169,14 +173,60 @@ func SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
 // //////////////////////////
 
 func init() {
-	gob.Register(ValErr{})
-	gob.Register(FFICall{})
-	gob.Register(cid.Cid{})
-	gob.Register(abi.RegisteredPoStProof(0))
-	gob.Register(abi.ActorID(0))
-	gob.Register(abi.PoStRandomness{})
-	gob.Register(abi.SectorNumber(0))
-	gob.Register(ffi.PartitionProof{})
-	gob.Register(proof.PoStProof{})
-	gob.Register(abi.RegisteredPoStProof(0))
+	registeredTypes := []any{
+		ValErr{},
+		FFICall{},
+		cid.Cid{},
+		abi.RegisteredPoStProof(0),
+		abi.ActorID(0),
+		abi.PoStRandomness{},
+		abi.SectorNumber(0),
+		ffi.PartitionProof{},
+		proof.PoStProof{},
+		abi.RegisteredPoStProof(0),
+	}
+	var registeredTypeNames = make(map[string]struct{})
+
+	//Ensure all methods are implemented:
+	// This is designed to fail for happy-path runs
+	//  and should never actually impact curio users.
+	for _, t := range registeredTypes {
+		gob.Register(t)
+		registeredTypeNames[reflect.TypeOf(t).PkgPath()+"."+reflect.TypeOf(t).Name()] = struct{}{}
+	}
+
+	from := reflect.TypeOf(FFISelect{})
+	to := reflect.TypeOf(ffidirect.FFI{})
+	for m := 0; m < from.NumMethod(); m++ {
+		fm := from.Method(m)
+		tm, ok := to.MethodByName(fm.Name)
+		if !ok {
+			panic("ffiSelect: method not found: " + fm.Name)
+		}
+		ff, tf := fm.Func, tm.Func
+		//Ensure they have the same types of input and output args:
+		if ff.Type().NumIn() != tf.Type().NumIn() || ff.Type().NumOut() != tf.Type().NumOut() {
+			panic("ffiSelect: mismatched number of args or return values: " + fm.Name)
+		}
+		for i := 1; i < ff.Type().NumIn(); i++ { // skipping first arg (struct type)
+			in := ff.Type().In(i)
+			nm := in.PkgPath() + "." + in.Name()
+			if in != tf.Type().In(i) {
+				panic("ffiSelect: mismatched arg types: " + nm + " Number: " + strconv.Itoa(i) + " " + in.String() + " != " + tf.Type().In(i).String())
+			}
+			if _, ok := registeredTypeNames[nm]; in.PkgPath() != "" && !ok { // built-ins ok
+				panic("ffiSelect: unregistered type: " + nm + " from " + fm.Name + " arg: " + strconv.Itoa(i))
+			}
+		}
+		for i := 0; i < ff.Type().NumOut(); i++ {
+			out := ff.Type().Out(i)
+			nm := out.PkgPath() + "." + out.Name()
+			if out != tf.Type().Out(i) {
+				panic("ffiSelect: mismatched return types: " + nm + " Number: " + strconv.Itoa(i) + " " + out.String() + " != " + tf.Type().Out(i).String())
+			}
+			if _, ok := registeredTypeNames[nm]; out.PkgPath() != "" && !ok { // built-ins ok
+				panic("ffiSelect: unregistered type: " + nm + " from " + fm.Name + " arg: " + strconv.Itoa(i))
+			}
+		}
+	}
 }

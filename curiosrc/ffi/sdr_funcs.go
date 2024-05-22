@@ -258,7 +258,7 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 		}
 	}
 
-	sl, uns, err := ffiselect.SealPreCommitPhase2(p1o, fspaths.Cache, fspaths.Sealed)
+	sl, uns, err := ffiselect.FFISelect{}.SealPreCommitPhase2(p1o, fspaths.Cache, fspaths.Sealed)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
 	}
@@ -309,7 +309,7 @@ func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sea
 		return nil, xerrors.Errorf("failed to generate vanilla proof: %w", err)
 	}
 
-	proof, err := ffiselect.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
+	proof, err := ffiselect.FFISelect{}.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
