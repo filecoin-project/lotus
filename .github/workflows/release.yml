@@ -57,6 +57,8 @@ jobs:
       - if: runner.os == 'macOS'
         run: otool -hv lotus
       - run: ./scripts/version-check.sh ./lotus
+        env:
+          GITHUB_REF: ${{ inputs.ref || github.ref }}
       - uses: actions/upload-artifact@v4
         with:
           name: lotus-${{ matrix.os }}-${{ matrix.arch }}
@@ -109,9 +111,12 @@ jobs:
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
       - run: ./scripts/generate-checksums.sh
+        env:
+          GITHUB_REF: ${{ inputs.ref || github.ref }}
         working-directory: lotus
       - if: env.PUBLISH == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REF: ${{ inputs.ref || github.ref }}
         run: ./scripts/publish-checksums.sh
         working-directory: lotus
