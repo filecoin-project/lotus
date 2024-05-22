@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -33,7 +34,7 @@ type ParkPieceTask struct {
 	max int
 }
 
-func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) *ParkPieceTask {
+func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) (*ParkPieceTask, error) {
 	pt := &ParkPieceTask{
 		db: db,
 		sc: sc,
@@ -41,8 +42,20 @@ func NewParkPieceTask(db *harmonydb.DB, sc *ffi.SealCalls, max int) *ParkPieceTa
 		max: max,
 	}
 
-	go pt.pollPieceTasks(context.Background())
-	return pt
+	ctx := context.Background()
+
+	// We should delete all incomplete pieces before we start
+	// as we would have lost reader for these. The RPC caller will get an error
+	// when Curio shuts down before parking a piece. They can always retry.
+	// Leaving these pieces we utilise unnecessary resources in the form of ParkPieceTask
+
+	_, err := db.Exec(ctx, `DELETE FROM parked_pieces WHERE complete = FALSE AND task_id IS NULL`)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to delete incomplete parked pieces: %w", err)
+	}
+
+	go pt.pollPieceTasks(ctx)
+	return pt, nil
 }
 
 func (p *ParkPieceTask) pollPieceTasks(ctx context.Context) {
@@ -126,9 +139,7 @@ func (p *ParkPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (d
 	err = p.db.Select(ctx, &refData, `
         SELECT data_url, data_headers
         FROM parked_piece_refs
-        WHERE piece_id = $1 AND data_url IS NOT NULL
-        LIMIT 1
-    `, pieceData.PieceID)
+        WHERE piece_id = $1 AND data_url IS NOT NULL`, pieceData.PieceID)
 	if err != nil {
 		return false, xerrors.Errorf("fetching reference data: %w", err)
 	}
@@ -143,28 +154,34 @@ func (p *ParkPieceTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (d
 		return false, xerrors.Errorf("parsing piece raw size: %w", err)
 	}
 
-	if refData[0].DataURL != "" {
-		upr := &seal.UrlPieceReader{
-			Url:     refData[0].DataURL,
-			RawSize: pieceRawSize,
+	var merr error
+
+	for i := range refData {
+		if refData[i].DataURL != "" {
+			upr := &seal.UrlPieceReader{
+				Url:     refData[0].DataURL,
+				RawSize: pieceRawSize,
+			}
+			defer func() {
+				_ = upr.Close()
+			}()
+
+			pnum := storiface.PieceNumber(pieceData.PieceID)
+
+			if err := p.sc.WritePiece(ctx, &taskID, pnum, pieceRawSize, upr); err != nil {
+				merr = multierror.Append(merr, xerrors.Errorf("write piece: %w", err))
+				continue
+			}
+
+			// Update the piece as complete after a successful write.
+			_, err = p.db.Exec(ctx, `UPDATE parked_pieces SET complete = TRUE task_id = NULL WHERE id = $1`, pieceData.PieceID)
+			if err != nil {
+				return false, xerrors.Errorf("marking piece as complete: %w", err)
+			}
+
+			return true, nil
 		}
-		defer func() {
-			_ = upr.Close()
-		}()
-
-		pnum := storiface.PieceNumber(pieceData.PieceID)
-
-		if err := p.sc.WritePiece(ctx, &taskID, pnum, pieceRawSize, upr); err != nil {
-			return false, xerrors.Errorf("write piece: %w", err)
-		}
-
-		// Update the piece as complete after a successful write.
-		_, err = p.db.Exec(ctx, `UPDATE parked_pieces SET complete = TRUE, task_id = NULL WHERE id = $1`, pieceData.PieceID)
-		if err != nil {
-			return false, xerrors.Errorf("marking piece as complete: %w", err)
-		}
-
-		return true, nil
+		return false, merr
 	}
 
 	// If no URL is found, this indicates an issue since at least one URL is expected.

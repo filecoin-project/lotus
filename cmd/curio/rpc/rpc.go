@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -154,10 +155,23 @@ func (p *CurioAPI) StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsS
 	return p.Stor.FsStat(ctx, id)
 }
 
-func (p *CurioAPI) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece api.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
-	di := market.NewPieceIngester(p.Deps.DB, p.Deps.Full)
+func (p *CurioAPI) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece piece.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
+	di, err := market.NewPieceIngester(ctx, p.Deps.DB, p.Deps.Full, maddr, true, time.Minute)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("failed to create a piece ingestor")
+	}
 
-	return di.AllocatePieceToSector(ctx, maddr, piece, rawSize, source, header)
+	sector, err := di.AllocatePieceToSector(ctx, maddr, piece, rawSize, source, header)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("failed to add piece to a sector")
+	}
+
+	err = di.Seal()
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("failed to start sealing the sector %d for actor %s", sector.Sector, maddr)
+	}
+
+	return sector, nil
 }
 
 // Trigger shutdown

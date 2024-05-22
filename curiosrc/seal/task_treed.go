@@ -16,10 +16,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
+	"github.com/filecoin-project/lotus/lib/filler"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -164,20 +166,37 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}()
 
 	if len(pieces) > 0 {
-		pieceInfos := make([]abi.PieceInfo, len(pieces))
-		pieceReaders := make([]io.Reader, len(pieces))
+		var pieceInfos []abi.PieceInfo
+		var pieceReaders []io.Reader
+		var offset abi.UnpaddedPieceSize
+		var allocated abi.UnpaddedPieceSize
 
-		for i, p := range pieces {
+		for _, p := range pieces {
 			// make pieceInfo
 			c, err := cid.Parse(p.PieceCID)
 			if err != nil {
 				return false, xerrors.Errorf("parsing piece cid: %w", err)
 			}
 
-			pieceInfos[i] = abi.PieceInfo{
+			allocated += abi.UnpaddedPieceSize(*p.DataRawSize)
+
+			pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), abi.PaddedPieceSize(p.PieceSize))
+			offset += padLength.Unpadded()
+
+			for _, pad := range pads {
+				pieceInfos = append(pieceInfos, abi.PieceInfo{
+					Size:     pad,
+					PieceCID: zerocomm.ZeroPieceCommitment(pad.Unpadded()),
+				})
+				pieceReaders = append(pieceReaders, nullreader.NewNullReader(pad.Unpadded()))
+			}
+
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(p.PieceSize),
 				PieceCID: c,
-			}
+			})
+
+			offset += abi.UnpaddedPieceSize(*p.DataRawSize)
 
 			// make pieceReader
 			if p.DataUrl != nil {
@@ -216,17 +235,31 @@ func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 					closers = append(closers, pr)
 
-					pieceReaders[i], _ = padreader.New(pr, uint64(*p.DataRawSize))
+					reader, _ := padreader.New(pr, uint64(*p.DataRawSize))
+					pieceReaders = append(pieceReaders, reader)
 				} else {
-					pieceReaders[i], _ = padreader.New(&UrlPieceReader{
+					reader, _ := padreader.New(&UrlPieceReader{
 						Url:     dataUrl,
 						RawSize: *p.DataRawSize,
 					}, uint64(*p.DataRawSize))
+					pieceReaders = append(pieceReaders, reader)
 				}
 
 			} else { // padding piece (w/o fr32 padding, added in TreeD)
-				pieceReaders[i] = nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded())
+				pieceReaders = append(pieceReaders, nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded()))
 			}
+		}
+
+		fillerSize, err := filler.FillersFromRem(abi.PaddedPieceSize(ssize).Unpadded() - allocated)
+		if err != nil {
+			return false, xerrors.Errorf("failed to calculate the final padding: %w", err)
+		}
+		for _, fil := range fillerSize {
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
+				Size:     fil.Padded(),
+				PieceCID: zerocomm.ZeroPieceCommitment(fil),
+			})
+			pieceReaders = append(pieceReaders, nullreader.NewNullReader(fil))
 		}
 
 		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)

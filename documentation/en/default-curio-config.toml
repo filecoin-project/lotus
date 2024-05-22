@@ -123,6 +123,16 @@
   # type: bool
   #EnableSendCommitMsg = false
 
+  # Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).
+  #
+  # type: bool
+  #RequireActivationSuccess = true
+
+  # Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).
+  #
+  # type: bool
+  #RequireNotificationSuccess = true
+
   # EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
   # This tasks should only be enabled on nodes with long-term storage.
   # 
@@ -319,13 +329,22 @@
 
 
 [Ingest]
+  # Maximum number of sectors that can be queued waiting for deals to start processing.
+  # 0 = unlimited
+  # Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+  # The DealSector queue includes deals which are ready to enter the sealing pipeline but are not yet part of it -
+  # size of this queue will also impact the maximum number of ParkPiece tasks which can run concurrently.
+  # DealSector queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
+  #
+  # type: int
+  #MaxQueueDealSector = 8
+
   # Maximum number of sectors that can be queued waiting for SDR to start processing.
   # 0 = unlimited
   # Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-  # The SDR queue includes deals which are in the process of entering the sealing pipeline - size of this queue
-  # will also impact the maximum number of ParkPiece tasks which can run concurrently.
-  # 
-  # SDR queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
+  # The SDR queue includes deals which are in the process of entering the sealing pipeline. In case of the SDR tasks it is
+  # possible that this queue grows more than this limit(CC sectors), the backpressure is only applied to sectors
+  # entering the pipeline.
   #
   # type: int
   #MaxQueueSDR = 8
@@ -347,6 +366,11 @@
   #
   # type: int
   #MaxQueuePoRep = 0
+
+  # Maximum time an open deal sector should wait for more deal before it starts sealing
+  #
+  # type: Duration
+  #MaxDealWaitTime = "1h0m0s"
 
 
 [Journal]

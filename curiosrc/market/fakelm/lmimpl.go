@@ -18,12 +18,12 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/curiosrc/market"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	lpiece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -64,17 +64,79 @@ func (l *LMRPCProvider) WorkerJobs(ctx context.Context) (map[uuid.UUID][]storifa
 }
 
 func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
-	si, err := l.si.StorageFindSector(ctx, abi.SectorID{Miner: l.minerID, Number: sid}, storiface.FTSealed|storiface.FTCache, 0, false)
-	if err != nil {
-		return api.SectorInfo{}, err
-	}
-
 	var ssip []struct {
 		PieceCID *string `db:"piece_cid"`
 		DealID   *int64  `db:"f05_deal_id"`
+		Complete bool    `db:"after_commit_msg_success"`
+		Failed   bool    `db:"failed"`
+		SDR      bool    `db:"after_sdr"`
+		PoRep    bool    `db:"after_porep"`
 	}
 
-	err = l.db.Select(ctx, &ssip, "SELECT ssip.piece_cid, ssip.f05_deal_id FROM sectors_sdr_pipeline p LEFT JOIN sectors_sdr_initial_pieces ssip ON p.sp_id = ssip.sp_id AND p.sector_number = ssip.sector_number WHERE p.sp_id = $1 AND p.sector_number = $2", l.minerID, sid)
+	err := l.db.Select(ctx, &ssip, `
+						WITH CheckCommit AS (
+						SELECT
+							sp_id,
+							sector_number,
+							after_commit_msg,
+							failed,
+							after_sdr,
+							after_porep,
+							after_commit_msg_success
+						FROM
+							sectors_sdr_pipeline
+						WHERE
+							sp_id = $1 AND sector_number = $2
+						),
+						MetaPieces AS (
+							SELECT
+								mp.piece_cid,
+								mp.f05_deal_id,
+								cc.after_commit_msg_success,
+								cc.failed,
+								cc.after_sdr,
+								cc.after_porep
+							FROM
+								sectors_meta_pieces mp
+							INNER JOIN
+								CheckCommit cc ON mp.sp_id = cc.sp_id AND mp.sector_num = cc.sector_number
+							WHERE
+								cc.after_commit_msg IS TRUE
+						),
+						InitialPieces AS (
+							SELECT
+								ip.piece_cid,
+								ip.f05_deal_id,
+								cc.after_commit_msg_success,
+								cc.failed,
+								cc.after_sdr,
+								cc.after_porep
+							FROM
+								sectors_sdr_initial_pieces ip
+							INNER JOIN
+								CheckCommit cc ON ip.sp_id = cc.sp_id AND ip.sector_number = cc.sector_number
+							WHERE
+								cc.after_commit_msg IS FALSE
+						),
+						FallbackPieces AS (
+							SELECT
+								op.piece_cid,
+								op.f05_deal_id,
+								FALSE as after_commit_msg_success,
+								FALSE as failed,
+								FALSE as after_sdr,
+								FALSE as after_porep
+							FROM
+								open_sector_pieces op
+							WHERE
+								op.sp_id = $1 AND op.sector_number = $2
+								AND NOT EXISTS (SELECT 1 FROM sectors_sdr_pipeline sp WHERE sp.sp_id = op.sp_id AND sp.sector_number = op.sector_number)
+						)
+						SELECT * FROM MetaPieces
+						UNION ALL
+						SELECT * FROM InitialPieces
+						UNION ALL
+						SELECT * FROM FallbackPieces;`, l.minerID, sid)
 	if err != nil {
 		return api.SectorInfo{}, err
 	}
@@ -86,15 +148,6 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 				deals = append(deals, abi.DealID(*d.DealID))
 			}
 		}
-	} else {
-		osi, err := l.full.StateSectorGetInfo(ctx, l.maddr, sid, types.EmptyTSK)
-		if err != nil {
-			return api.SectorInfo{}, err
-		}
-
-		if osi != nil {
-			deals = osi.DealIDs
-		}
 	}
 
 	spt, err := miner.SealProofTypeFromSectorSize(l.ssize, network.Version20, false) // good enough, just need this for ssize anyways
@@ -102,49 +155,8 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		return api.SectorInfo{}, err
 	}
 
-	if len(si) == 0 {
-		state := api.SectorState(sealing.UndefinedSectorState)
-		if len(ssip) > 0 {
-			state = api.SectorState(sealing.PreCommit1)
-		}
-
-		return api.SectorInfo{
-			SectorID:             sid,
-			State:                state,
-			CommD:                nil,
-			CommR:                nil,
-			Proof:                nil,
-			Deals:                deals,
-			Pieces:               nil,
-			Ticket:               api.SealTicket{},
-			Seed:                 api.SealSeed{},
-			PreCommitMsg:         nil,
-			CommitMsg:            nil,
-			Retries:              0,
-			ToUpgrade:            false,
-			ReplicaUpdateMessage: nil,
-			LastErr:              "",
-			Log:                  nil,
-			SealProof:            spt,
-			Activation:           0,
-			Expiration:           0,
-			DealWeight:           big.Zero(),
-			VerifiedDealWeight:   big.Zero(),
-			InitialPledge:        big.Zero(),
-			OnTime:               0,
-			Early:                0,
-		}, nil
-	}
-
-	var state = api.SectorState(sealing.Proving)
-	if !si[0].CanStore {
-		state = api.SectorState(sealing.PreCommit2)
-	}
-
-	// todo improve this with on-chain info
-	return api.SectorInfo{
+	ret := api.SectorInfo{
 		SectorID:             sid,
-		State:                state,
 		CommD:                nil,
 		CommR:                nil,
 		Proof:                nil,
@@ -159,16 +171,37 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		ReplicaUpdateMessage: nil,
 		LastErr:              "",
 		Log:                  nil,
+		SealProof:            spt,
+		Activation:           0,
+		Expiration:           0,
+		DealWeight:           big.Zero(),
+		VerifiedDealWeight:   big.Zero(),
+		InitialPledge:        big.Zero(),
+		OnTime:               0,
+		Early:                0,
+	}
 
-		SealProof:          spt,
-		Activation:         0,
-		Expiration:         0,
-		DealWeight:         big.Zero(),
-		VerifiedDealWeight: big.Zero(),
-		InitialPledge:      big.Zero(),
-		OnTime:             0,
-		Early:              0,
-	}, nil
+	// If no rows found i.e. sector doesn't exist in DB
+	//assign ssip[0] to a local variable for easier reading.
+	currentSSIP := ssip[0]
+
+	switch {
+	case len(ssip) == 0:
+		ret.State = api.SectorState(sealing.UndefinedSectorState)
+	case currentSSIP.Failed:
+		ret.State = api.SectorState(sealing.FailedUnrecoverable)
+	case !currentSSIP.SDR:
+		ret.State = api.SectorState(sealing.WaitDeals)
+	case currentSSIP.SDR && !currentSSIP.PoRep:
+		ret.State = api.SectorState(sealing.PreCommit1)
+	case currentSSIP.SDR && currentSSIP.PoRep && !currentSSIP.Complete:
+		ret.State = api.SectorState(sealing.PreCommit2)
+	case currentSSIP.Complete:
+		ret.State = api.SectorState(sealing.Proving)
+	default:
+		return api.SectorInfo{}, nil
+	}
+	return ret, nil
 }
 
 func (l *LMRPCProvider) SectorsList(ctx context.Context) ([]abi.SectorNumber, error) {
@@ -324,7 +357,7 @@ func (l *LMRPCProvider) SectorAddPieceToAny(ctx context.Context, size abi.Unpadd
 	return api.SectorOffset{}, xerrors.Errorf("not supported, use AllocatePieceToSector")
 }
 
-func (l *LMRPCProvider) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece api.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
+func (l *LMRPCProvider) AllocatePieceToSector(ctx context.Context, maddr address.Address, piece lpiece.PieceDealInfo, rawSize int64, source url.URL, header http.Header) (api.SectorOffset, error) {
 	return l.pi.AllocatePieceToSector(ctx, maddr, piece, rawSize, source, header)
 }
 
