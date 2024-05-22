@@ -129,6 +129,7 @@ jobs:
               "itest-deals",
               "itest-direct_data_onboard_verified",
               "itest-direct_data_onboard",
+              "itest-manual_onboarding",
               "itest-net",
               "itest-path_detach_redeclare",
               "itest-path_type_filters",
