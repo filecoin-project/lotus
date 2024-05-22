@@ -55,6 +55,8 @@ jobs:
           path: lotus
       - uses: ./actions/.github/actions/install-system-dependencies
       - uses: ./actions/.github/actions/install-go
+        with:
+          working-directory: lotus
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: make deps lotus lotus-miner lotus-worker
