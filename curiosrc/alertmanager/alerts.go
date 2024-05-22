@@ -1,8 +1,10 @@
 package alertmanager
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -13,6 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -329,4 +333,121 @@ func (al *alerts) getAddresses() ([]string, []string, error) {
 		}
 	}
 	return uniqueAddrs, miners, nil
+}
+
+func wdPostCheck(al *alerts) {
+	Name := "WindowPost"
+
+	head, err := al.api.ChainHead(al.ctx)
+	if err != nil {
+		al.alertMap[Name].err = err
+		return
+	}
+
+	from := head.Height() - abi.ChainEpoch(math.Ceil(float64(AlertMangerInterval)/float64(build.BlockDelaySecs))) - 1
+
+	var wdDetails []struct {
+		Miner     int64          `db:"sp_id"`
+		Deadline  int64          `db:"deadline"`
+		Partition int64          `db:"partition"`
+		Epoch     abi.ChainEpoch `db:"submit_at_epoch"`
+		Proof     []byte         `db:"proof_params"`
+	}
+
+	err = al.db.Select(al.ctx, &wdDetails, `
+				SELECT sp_id, submit_at_epoch, proof_params, partition, deadline
+				FROM wdpost_proofs 
+				WHERE submit_at_epoch > $1;`, from)
+	if err != nil {
+		al.alertMap[Name].err = xerrors.Errorf("getting windowPost details from database: %w", err)
+		return
+	}
+
+	for _, detail := range wdDetails {
+		var postOut *miner.SubmitWindowedPoStParams
+		err = postOut.UnmarshalCBOR(bytes.NewReader(detail.Proof))
+		if err != nil {
+			al.alertMap[Name].err = xerrors.Errorf("unmarshaling windowPost proof params: %w", err)
+			return
+		}
+
+		for i := range postOut.Partitions {
+			c, err := postOut.Partitions[i].Skipped.Count()
+			if err != nil {
+				al.alertMap[Name].err = xerrors.Errorf("getting skipped sector count: %w", err)
+				return
+			}
+			if c > 0 {
+				al.alertMap[Name].alertString += fmt.Sprintf("Skipped %d sectors in deadline %d partition %d. ", c, postOut.Deadline, postOut.Partitions[i].Index)
+			}
+		}
+	}
+}
+
+func wnPostCheck(al *alerts) {
+	Name := "WinningPost"
+	head, err := al.api.ChainHead(al.ctx)
+	if err != nil {
+		al.alertMap[Name].err = err
+		return
+	}
+
+	from := head.Height() - abi.ChainEpoch(math.Ceil(float64(AlertMangerInterval)/float64(build.BlockDelaySecs))) - 1
+
+	var wnDetails []struct {
+		Miner int64          `db:"sp_id"`
+		Block string         `db:"mined_cid"`
+		Epoch abi.ChainEpoch `db:"epoch"`
+	}
+
+	err = al.db.Select(al.ctx, &wnDetails, `
+			SELECT sp_id, mined_cid, epoch
+			FROM mining_tasks 
+			WHERE epoch > $1 AND won = TRUE
+			ORDER BY epoch;`, from)
+	if err != nil {
+		al.alertMap[Name].err = xerrors.Errorf("getting winningPost details from database: %w", err)
+		return
+	}
+
+	to := wnDetails[len(wnDetails)-1].Epoch
+
+	epochMap := make(map[abi.ChainEpoch]string)
+
+	for head.Height() >= to {
+		epochMap[head.Height()] = head.String()
+		head, err = al.api.ChainGetTipSet(al.ctx, head.Parents())
+		if err != nil {
+			al.alertMap[Name].err = xerrors.Errorf("getting tipset: %w", err)
+		}
+		if head == nil {
+			al.alertMap[Name].err = xerrors.Errorf("tipset is nil")
+			return
+		}
+	}
+
+	winMap := make(map[abi.ChainEpoch]struct {
+		won bool
+		cid string
+	})
+
+	for _, wn := range wnDetails {
+		if strings.Contains(epochMap[wn.Epoch], wn.Block) {
+			winMap[wn.Epoch] = struct {
+				won bool
+				cid string
+			}{won: true, cid: wn.Block}
+			continue
+		}
+		winMap[wn.Epoch] = struct {
+			won bool
+			cid string
+		}{won: false, cid: wn.Block}
+	}
+
+	for epoch, st := range winMap {
+		if !st.won {
+			al.alertMap[Name].alertString += fmt.Sprintf("Epoch %d: does not contain our block %s", epoch, st.cid)
+		}
+	}
 }

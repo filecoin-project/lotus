@@ -32,6 +32,8 @@ var log = logging.Logger("curio/alertmanager")
 
 type AlertAPI interface {
 	ctladdr.NodeApi
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error)
 }
 
@@ -70,6 +72,8 @@ var alertFuncs = []alertFunc{
 	balanceCheck,
 	taskFailureCheck,
 	permanentStorageCheck,
+	wdPostCheck,
+	wnPostCheck,
 }
 
 func NewAlertTask(api AlertAPI, db *harmonydb.DB, alertingCfg config.CurioAlerting) *AlertTask {
