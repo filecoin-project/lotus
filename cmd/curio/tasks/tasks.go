@@ -61,7 +61,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		if cfg.Subsystems.EnableWindowPost {
 			wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := curio.WindowPostScheduler(
 				ctx, cfg.Fees, cfg.Proving, full, verif, sender, chainSched,
-				as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks, dependencies.Cfg.Proving.ParallelCheckLimit)
+				as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
 
 			if err != nil {
 				return nil, err

@@ -47,3 +47,7 @@ func (FFI) GenerateWinningPoStWithVanilla(
 ) ([]proof.PoStProof, error) {
 	return ffi.GenerateWinningPoStWithVanilla(proofType, minerID, randomness, proofs)
 }
+
+func (FFI) SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
+	return val1, val2, nil
+}

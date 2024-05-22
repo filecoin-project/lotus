@@ -32,9 +32,6 @@ import (
 
 const disablePreChecks = false // todo config
 
-// TODO Surface into config?
-const challengeReadTimeout = 0
-
 func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr address.Address, di *dline.Info, partIdx uint64) (out *miner2.SubmitWindowedPoStParams, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -472,9 +469,9 @@ func (t *WdPostTask) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Register
 				}()
 			}
 
-			if challengeReadTimeout > 0 {
+			if t.challengeReadTimeout > 0 {
 				var cancel context.CancelFunc
-				ctx, cancel = context.WithTimeout(ctx, challengeReadTimeout)
+				ctx, cancel = context.WithTimeout(ctx, t.challengeReadTimeout)
 				defer cancel()
 			}
 

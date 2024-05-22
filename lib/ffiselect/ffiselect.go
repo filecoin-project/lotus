@@ -141,7 +141,7 @@ func SealCommitPhase2(
 		return nil, err
 	}
 
-	return val[0].([]byte), val[1].(error)
+	return val[0].([]byte), nil
 }
 
 func GenerateWinningPoStWithVanilla(
@@ -155,6 +155,14 @@ func GenerateWinningPoStWithVanilla(
 		return nil, err
 	}
 	return val[0].([]proof.PoStProof), nil
+}
+
+func SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
+	val, err := call("SelfTest", val1, val2)
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+	return val[0].(int), val[1].(cid.Cid), nil
 }
 
 // //////////////////////////

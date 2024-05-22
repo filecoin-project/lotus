@@ -126,6 +126,8 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		go ffiSelfTest()
+
 		taskEngine, err := tasks.StartTasks(ctx, dependencies)
 
 		if err != nil {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
@@ -52,4 +53,15 @@ var ffiCmd = &cli.Command{
 
 		return gob.NewEncoder(output).Encode(ffiselect.ValErr{Val: res, Err: nil})
 	},
+}
+
+func ffiSelfTest() {
+	val1, val2 := 12345678, cid.NewCidV1(cid.Undef.Type(), []byte("abcdef"))
+	ret1, ret2, err := ffiselect.SelfTest(val1, val2)
+	if err != nil {
+		panic("ffi self test failed:" + err.Error())
+	}
+	if ret1 != val1 || !val2.Equals(ret2) {
+		panic(fmt.Sprint("ffi self test failed: values do not match: ", val1, val2, ret1, ret2))
+	}
 }

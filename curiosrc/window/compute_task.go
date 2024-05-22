@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
@@ -71,9 +72,10 @@ type WdPostTask struct {
 
 	windowPoStTF promise.Promise[harmonytask.AddTaskFunc]
 
-	actors   map[dtypes.MinerAddress]bool
-	max      int
-	parallel chan struct{}
+	actors               map[dtypes.MinerAddress]bool
+	max                  int
+	parallel             chan struct{}
+	challengeReadTimeout time.Duration
 }
 
 type wdTaskIdentity struct {
@@ -92,6 +94,7 @@ func NewWdPostTask(db *harmonydb.DB,
 	actors map[dtypes.MinerAddress]bool,
 	max int,
 	parallel int,
+	challengeReadTimeout time.Duration,
 ) (*WdPostTask, error) {
 	t := &WdPostTask{
 		db:  db,
@@ -101,8 +104,9 @@ func NewWdPostTask(db *harmonydb.DB,
 		storage:      storage,
 		verifier:     verifier,
 
-		actors: actors,
-		max:    max,
+		actors:               actors,
+		max:                  max,
+		challengeReadTimeout: challengeReadTimeout,
 	}
 	if parallel > 0 {
 		t.parallel = make(chan struct{}, parallel)
