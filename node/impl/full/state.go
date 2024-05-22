@@ -1624,7 +1624,7 @@ func (a *StateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.
 	return mas.IsAllocated(s)
 }
 
-// StateVerifiedClientStatus returns the data cap for the given address.
+// StateVerifierStatus returns the data cap for the given address.
 // Returns zero if there is no entry in the data cap table for the
 // address.
 func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
