@@ -9,7 +9,7 @@ if [ -z "${GITHUB_TOKEN}" ]; then
   exit 1
 fi
 
-if [ "$GITHUB_REF" != refs/tags/* ]; then
+if [[ "$GITHUB_REF" != refs/tags/* ]]; then
   echo "$GITHUB_REF is not a tag, publish failed"
   exit 1
 fi
