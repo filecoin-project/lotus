@@ -68,14 +68,13 @@ jobs:
           export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
           ../actions/scripts/version-check.sh ./lotus
         working-directory: lotus
-      - run: mv ./lotus/lotus ./lotus/lotus-miner ./lotus/lotus-worker .
       - uses: actions/upload-artifact@v4
         with:
           name: lotus-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            lotus
-            lotus-miner
-            lotus-worker
+            lotus/lotus
+            lotus/lotus-miner
+            lotus/lotus-worker
   release:
     name: Release [publish=${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}]
     permissions:
