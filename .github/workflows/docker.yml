@@ -45,7 +45,7 @@ jobs:
         env:
           IS_MASTER: ${{ (inputs.ref || github.ref) == 'refs/heads/master' }}
           IS_TAG: ${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}
-          IS_RC: ${{ endsWith(inputs.ref || github.ref, '-rc') }}
+          IS_RC: ${{ contains(inputs.ref || github.ref, '-rc') }}
           IS_SCHEDULED: ${{ github.event_name == 'schedule' }}
         run: |
           channel=''
