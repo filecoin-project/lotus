@@ -1,4 +1,4 @@
-package sealing
+package filler
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 )
 
 func testFill(t *testing.T, n abi.UnpaddedPieceSize, exp []abi.UnpaddedPieceSize) {
-	f, err := fillersFromRem(n)
+	f, err := FillersFromRem(n)
 	assert.NoError(t, err)
 	assert.Equal(t, exp, f)
 

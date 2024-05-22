@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
+	lpiece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -120,7 +121,7 @@ type CurioStruct struct {
 }
 
 type CurioMethods struct {
-	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
+	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 lpiece.PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
 
 	LogList func(p0 context.Context) ([]string, error) `perm:"read"`
 
@@ -1498,14 +1499,14 @@ func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
 	return *new(APIVersion), ErrNotSupported
 }
 
-func (s *CurioStruct) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+func (s *CurioStruct) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 lpiece.PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
 	if s.Internal.AllocatePieceToSector == nil {
 		return *new(SectorOffset), ErrNotSupported
 	}
 	return s.Internal.AllocatePieceToSector(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *CurioStub) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+func (s *CurioStub) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 lpiece.PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
 	return *new(SectorOffset), ErrNotSupported
 }
 

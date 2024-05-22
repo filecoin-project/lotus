@@ -331,8 +331,10 @@ const (
 func DefaultCurioConfig() *CurioConfig {
 	return &CurioConfig{
 		Subsystems: CurioSubsystemsConfig{
-			GuiAddress:    ":4701",
-			BoostAdapters: []string{},
+			GuiAddress:                 ":4701",
+			BoostAdapters:              []string{},
+			RequireActivationSuccess:   true,
+			RequireNotificationSuccess: true,
 		},
 		Fees: CurioFees{
 			DefaultMaxFee:      DefaultDefaultMaxFee(),
@@ -364,9 +366,11 @@ func DefaultCurioConfig() *CurioConfig {
 			SingleCheckTimeout:    Duration(10 * time.Minute),
 		},
 		Ingest: CurioIngestConfig{
-			MaxQueueSDR:   8, // default to 8 sectors before sdr
-			MaxQueueTrees: 0, // default don't use this limit
-			MaxQueuePoRep: 0, // default don't use this limit
+			MaxQueueDealSector: 8, // default to 8 sectors open(or in process of opening) for deals
+			MaxQueueSDR:        8, // default to 8 (will cause backpressure even if deal sectors are 0)
+			MaxQueueTrees:      0, // default don't use this limit
+			MaxQueuePoRep:      0, // default don't use this limit
+			MaxDealWaitTime:    Duration(1 * time.Hour),
 		},
 		Alerting: CurioAlerting{
 			PagerDutyEventURL:      "https://events.pagerduty.com/v2/enqueue",

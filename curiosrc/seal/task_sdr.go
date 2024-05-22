@@ -17,14 +17,24 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
+	"github.com/filecoin-project/lotus/lib/filler"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var isDevnet = build.BlockDelaySecs < 30
+
+func SetDevnet(value bool) {
+	isDevnet = value
+}
+
+func GetDevnet() bool {
+	return isDevnet
+}
 
 type SDRAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
@@ -74,13 +84,14 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 	sectorParams := sectorParamsArr[0]
 
 	var pieces []struct {
-		PieceIndex int64  `db:"piece_index"`
-		PieceCID   string `db:"piece_cid"`
-		PieceSize  int64  `db:"piece_size"`
+		PieceIndex  int64  `db:"piece_index"`
+		PieceCID    string `db:"piece_cid"`
+		PieceSize   int64  `db:"piece_size"`
+		DataRawSize *int64 `db:"data_raw_size"`
 	}
 
 	err = s.db.Select(ctx, &pieces, `
-		SELECT piece_index, piece_cid, piece_size
+		SELECT piece_index, piece_cid, piece_size, data_raw_size
 		FROM sectors_sdr_initial_pieces
 		WHERE sp_id = $1 AND sector_number = $2 ORDER BY piece_index ASC`, sectorParams.SpID, sectorParams.SectorNumber)
 	if err != nil {
@@ -94,18 +105,45 @@ func (s *SDRTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bo
 
 	var commd cid.Cid
 
+	var offset abi.UnpaddedPieceSize
+	var allocated abi.UnpaddedPieceSize
+	var pieceInfos []abi.PieceInfo
+
 	if len(pieces) > 0 {
-		pieceInfos := make([]abi.PieceInfo, len(pieces))
-		for i, p := range pieces {
+		for _, p := range pieces {
 			c, err := cid.Parse(p.PieceCID)
 			if err != nil {
 				return false, xerrors.Errorf("parsing piece cid: %w", err)
 			}
 
-			pieceInfos[i] = abi.PieceInfo{
+			allocated += abi.UnpaddedPieceSize(*p.DataRawSize)
+
+			pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), abi.PaddedPieceSize(p.PieceSize))
+			offset += padLength.Unpadded()
+
+			for _, pad := range pads {
+				pieceInfos = append(pieceInfos, abi.PieceInfo{
+					Size:     pad,
+					PieceCID: zerocomm.ZeroPieceCommitment(pad.Unpadded()),
+				})
+			}
+
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(p.PieceSize),
 				PieceCID: c,
-			}
+			})
+			offset += abi.UnpaddedPieceSize(*p.DataRawSize)
+		}
+
+		fillerSize, err := filler.FillersFromRem(abi.PaddedPieceSize(ssize).Unpadded() - allocated)
+		if err != nil {
+			return false, xerrors.Errorf("failed to calculate the final padding: %w", err)
+		}
+		for _, fil := range fillerSize {
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
+				Size:     fil.Padded(),
+				PieceCID: zerocomm.ZeroPieceCommitment(fil),
+			})
 		}
 
 		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)
@@ -213,6 +251,7 @@ func (s *SDRTask) TypeDetails() harmonytask.TaskTypeDetails {
 
 	if isDevnet {
 		res.Cost.Ram = 1 << 30
+		res.Cost.Cpu = 1
 	}
 
 	return res

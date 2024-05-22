@@ -85,7 +85,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	{
 		// Piece handling
 		if cfg.Subsystems.EnableParkPiece {
-			parkPieceTask := piece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
+			parkPieceTask, err := piece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
+			if err != nil {
+				return nil, err
+			}
 			cleanupPieceTask := piece.NewCleanupPieceTask(db, must.One(slrLazy.Val()), 0)
 			activeTasks = append(activeTasks, parkPieceTask, cleanupPieceTask)
 		}
@@ -134,7 +137,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, moveStorageTask)
 		}
 		if cfg.Subsystems.EnableSendCommitMsg {
-			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg.Fees.MaxCommitGasFee)
+			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg)
 			activeTasks = append(activeTasks, commitTask)
 		}
 	}

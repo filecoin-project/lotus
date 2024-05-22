@@ -126,7 +126,12 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 
 	// Get all pieces
 	apihelper.OrHTTPFail(w, c.DB.Select(r.Context(), &pieces, `SELECT 
-										sp_id, sector_number, piece_size, f05_deal_id, f05_deal_proposal, direct_piece_activation_manifest  
+										sp_id,
+										sector_number,
+										piece_size,
+										COALESCE(f05_deal_id, 0) AS f05_deal_id,
+										f05_deal_proposal,
+										direct_piece_activation_manifest  
 										FROM sectors_sdr_initial_pieces 
 										ORDER BY sp_id, sector_number`))
 	pieceIndex := map[sectorID][]int{}
@@ -144,7 +149,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 			if i, ok := sectorIdx[sectorID{minerID, uint64(st.SectorNumber)}]; ok {
 				sectors[i].IsOnChain = true
 				sectors[i].ExpiresAt = st.Expiration
-				sectors[i].IsFilPlus = st.VerifiedDealWeight.GreaterThan(st.DealWeight)
+				sectors[i].IsFilPlus = st.VerifiedDealWeight.GreaterThan(big.NewInt(0))
 				if ss, err := st.SealProof.SectorSize(); err == nil {
 					sectors[i].SealInfo = ss.ShortString()
 				}
@@ -187,22 +192,13 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
 					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
-					for _, deal := range st.DealIDs {
-
-						if deal > 0 {
-							f05++
-						}
-					}
-					// DDO info is not on chain
-					for _, piece := range pieces {
-						if piece.Manifest != nil {
-							//var pam *miner.PieceActivationManifest
-							//apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, pam))
-							//dw += float64(pam.Size)
-							//if pam.VerifiedAllocationKey != nil {
-							//	vp += float64(pam.Size) * verifiedPowerGainMul
-							//}
+					// DDO sectors don't have deal info on chain
+					for _, p := range pi {
+						if p.Manifest != nil {
 							ddo++
+						}
+						if p.Proposal != nil {
+							f05++
 						}
 					}
 				}
@@ -221,7 +217,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					SectorNum: int64(chainy.onChain.SectorNumber),
 					IsOnChain: true,
 					ExpiresAt: chainy.onChain.Expiration,
-					IsFilPlus: chainy.onChain.VerifiedDealWeight.GreaterThan(chainy.onChain.DealWeight),
+					IsFilPlus: chainy.onChain.VerifiedDealWeight.GreaterThan(big.NewInt(0)),
 					Proving:   chainy.active,
 					Flag:      true, // All such sectors should be flagged to be terminated
 				}
@@ -254,19 +250,19 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if len(pi) > 0 {
-				for _, piece := range pi {
-					if piece.Proposal != nil {
+				for _, p := range pi {
+					if p.Proposal != nil {
 						var prop *market.DealProposal
-						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Proposal, &prop))
+						apihelper.OrHTTPFail(w, json.Unmarshal(p.Proposal, &prop))
 						dw += float64(prop.PieceSize)
 						if prop.VerifiedDeal {
 							vp += float64(prop.PieceSize) * verifiedPowerGainMul
 						}
 						f05++
 					}
-					if piece.Manifest != nil {
+					if p.Manifest != nil {
 						var pam *miner.PieceActivationManifest
-						apihelper.OrHTTPFail(w, json.Unmarshal(piece.Manifest, &pam))
+						apihelper.OrHTTPFail(w, json.Unmarshal(p.Manifest, &pam))
 						dw += float64(pam.Size)
 						if pam.VerifiedAllocationKey != nil {
 							vp += float64(pam.Size) * verifiedPowerGainMul
@@ -275,6 +271,7 @@ func (c *cfg) getSectors(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+			sectors[i].IsFilPlus = vp > 0
 			if dw > 0 {
 				sectors[i].DealWeight = fmt.Sprintf("%s", units.BytesSize(dw))
 			} else if vp > 0 {
