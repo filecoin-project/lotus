@@ -8,6 +8,10 @@ on:
     tags:
       - v*
   workflow_dispatch:
+    inputs:
+      ref:
+        description: The GitHub ref (e.g. refs/tags/v1.0.0) to release
+        required: false
 
 defaults:
   run:
@@ -44,6 +48,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          ref: ${{ inputs.ref || github.ref }}
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
       - env:
@@ -60,20 +65,21 @@ jobs:
             lotus-miner
             lotus-worker
   release:
-    name: Release [publish=${{ startsWith(github.ref, 'refs/tags/') }}]
+    name: Release [publish=${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
     runs-on: ubuntu-latest
     needs: [build]
     env:
-      PUBLISH: ${{ startsWith(github.ref, 'refs/tags/') }}
+      PUBLISH: ${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
           path: lotus
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/download-artifact@v4
         with:
           name: lotus-Linux-X64
