@@ -3,12 +3,15 @@ package ffiselect
 import (
 	"bytes"
 	"encoding/gob"
+	"io"
 	"os"
 	"os/exec"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -37,7 +40,7 @@ func init() {
 
 type ValErr struct {
 	Val []interface{}
-	Err error
+	Err string
 }
 
 // This is not the one you're looking for.
@@ -46,7 +49,11 @@ type FFICall struct {
 	Args []interface{}
 }
 
-func call(fn string, args ...interface{}) ([]interface{}, error) {
+func subStrInSet(set []string, sub string) bool {
+	return lo.Reduce(set, func(agg bool, item string, _ int) bool { return agg || strings.Contains(item, "RUST_LOG") }, false)
+}
+
+func call(logctx []any, fn string, args ...interface{}) ([]interface{}, error) {
 	// get dOrdinal
 	dOrdinal := <-ch
 	defer func() {
@@ -74,34 +81,58 @@ func call(fn string, args ...interface{}) ([]interface{}, error) {
 		return nil, err
 	}
 	cmd.Env = append(cmd.Env, "TMPDIR="+tmpDir)
+
+	if !subStrInSet(cmd.Env, "RUST_LOG") {
+		cmd.Env = append(cmd.Env, "RUST_LOG=debug")
+	}
+	if !subStrInSet(cmd.Env, "FIL_PROOFS_USE_GPU_COLUMN_BUILDER") {
+		cmd.Env = append(cmd.Env, "FIL_PROOFS_USE_GPU_COLUMN_BUILDER=1")
+	}
+	if !subStrInSet(cmd.Env, "FIL_PROOFS_USE_GPU_TREE_BUILDER") {
+		cmd.Env = append(cmd.Env, "FIL_PROOFS_USE_GPU_TREE_BUILDER=1")
+	}
+
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	cmd.Stderr = os.Stderr
+	lw := NewLogWriter(logctx, os.Stderr)
+
+	cmd.Stderr = lw
 	cmd.Stdout = os.Stdout
 	outFile, err := os.CreateTemp("", "out")
 	if err != nil {
 		return nil, err
 	}
 	cmd.ExtraFiles = []*os.File{outFile}
-	var gobber bytes.Buffer
-	err = gob.NewEncoder(&gobber).Encode(FFICall{
+	var encArgs bytes.Buffer
+	err = gob.NewEncoder(&encArgs).Encode(FFICall{
 		Fn:   fn,
 		Args: args,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("subprocess caller cannot encode: %w", err)
 	}
+
+	cmd.Stdin = &encArgs
 	err = cmd.Run()
 	if err != nil {
 		return nil, err
 	}
+
+	// seek to start
+	if _, err := outFile.Seek(0, io.SeekStart); err != nil {
+		return nil, xerrors.Errorf("failed to seek to beginning of output file: %w", err)
+	}
+
 	var ve ValErr
 	err = gob.NewDecoder(outFile).Decode(&ve)
 	if err != nil {
 		return nil, xerrors.Errorf("subprocess caller cannot decode: %w", err)
 	}
-	if ve.Val[len(ve.Val)-1].(error) != nil {
-		return nil, ve.Val[len(ve.Val)-1].(error)
+	if ve.Err != "" {
+		return nil, xerrors.Errorf("subprocess failure: %s", ve.Err)
+	}
+	if ve.Val[len(ve.Val)-1].(ffidirect.ErrorString) != "" {
+		return nil, xerrors.Errorf("subprocess call error: %s", ve.Val[len(ve.Val)-1].(ffidirect.ErrorString))
 	}
 	return ve.Val, nil
 }
@@ -118,18 +149,23 @@ func (FFISelect) GenerateSinglePartitionWindowPoStWithVanilla(
 	proofs [][]byte,
 	partitionIndex uint,
 ) (*ffi.PartitionProof, error) {
-	val, err := call("GenerateSinglePartitionWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIndex)
+	logctx := []any{"spid", minerID, "proof_count", len(proofs), "partition_index", partitionIndex}
+
+	val, err := call(logctx, "GenerateSinglePartitionWindowPoStWithVanilla", proofType, minerID, randomness, proofs, partitionIndex)
 	if err != nil {
 		return nil, err
 	}
 	return val[0].(*ffi.PartitionProof), nil
 }
 func (FFISelect) SealPreCommitPhase2(
+	sid abi.SectorID,
 	phase1Output []byte,
 	cacheDirPath string,
 	sealedSectorPath string,
 ) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
-	val, err := call("SealPreCommitPhase2", phase1Output, cacheDirPath, sealedSectorPath)
+	logctx := []any{"sector", sid}
+
+	val, err := call(logctx, "SealPreCommitPhase2", phase1Output, cacheDirPath, sealedSectorPath)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
@@ -141,7 +177,9 @@ func (FFISelect) SealCommitPhase2(
 	sectorNum abi.SectorNumber,
 	minerID abi.ActorID,
 ) ([]byte, error) {
-	val, err := call("SealCommitPhase2", phase1Output, sectorNum, minerID)
+	logctx := []any{"sector", abi.SectorID{Miner: minerID, Number: sectorNum}}
+
+	val, err := call(logctx, "SealCommitPhase2", phase1Output, sectorNum, minerID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +193,9 @@ func (FFISelect) GenerateWinningPoStWithVanilla(
 	randomness abi.PoStRandomness,
 	proofs [][]byte,
 ) ([]proof.PoStProof, error) {
-	val, err := call("GenerateWinningPoStWithVanilla", proofType, minerID, randomness, proofs)
+	logctx := []any{"proof_type", proofType, "miner_id", minerID}
+
+	val, err := call(logctx, "GenerateWinningPoStWithVanilla", proofType, minerID, randomness, proofs)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +203,7 @@ func (FFISelect) GenerateWinningPoStWithVanilla(
 }
 
 func (FFISelect) SelfTest(val1 int, val2 cid.Cid) (int, cid.Cid, error) {
-	val, err := call("SelfTest", val1, val2)
+	val, err := call([]any{"selftest", "true"}, "SelfTest", val1, val2)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
