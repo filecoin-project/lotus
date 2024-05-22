@@ -118,7 +118,9 @@ func call(logctx []any, fn string, args ...interface{}) ([]interface{}, error) {
 	}
 
 	// seek to start
-	outFile.Seek(0, io.SeekStart)
+	if _, err := outFile.Seek(0, io.SeekStart); err != nil {
+		return nil, xerrors.Errorf("failed to seek to beginning of output file: %w", err)
+	}
 
 	var ve ValErr
 	err = gob.NewDecoder(outFile).Decode(&ve)
