@@ -93,6 +93,8 @@ jobs:
           name: lotus-macOS-ARM64
           path: darwin_arm64
       - uses: ./lotus/.github/actions/install-go
+        with:
+          working-directory: lotus
       - uses: ipfs/download-ipfs-distribution-action@v1
         with:
           name: kubo
