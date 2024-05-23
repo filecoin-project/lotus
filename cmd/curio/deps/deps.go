@@ -18,8 +18,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/gbrlsnchs/jwt/v3"
-	ds "github.com/ipfs/go-datastore"
-	dssync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
@@ -28,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -170,7 +167,6 @@ type Deps struct {
 	DB         *harmonydb.DB       // has itest capability
 	Full       api.FullNode
 	Verif      storiface.Verifier
-	LW         *sealer.LocalWorker
 	As         *multictladdr.MultiAddressSelector
 	Maddrs     map[dtypes.MinerAddress]bool
 	ProofTypes map[abi.RegisteredSealProof]bool
@@ -311,16 +307,7 @@ Get it with: jq .PrivateKey ~/.lotus-miner/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU`,
 	if deps.Stor == nil {
 		deps.Stor = paths.NewRemote(deps.LocalStore, deps.Si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 	}
-	if deps.LW == nil {
-		wstates := statestore.New(dssync.MutexWrap(ds.NewMapDatastore()))
 
-		// todo localWorker isn't the abstraction layer we want to use here, we probably want to go straight to ffiwrapper
-		//  maybe with a curio specific abstraction. LocalWorker does persistent call tracking which we probably
-		//  don't need (ehh.. maybe we do, the async callback system may actually work decently well with harmonytask)
-		deps.LW = sealer.NewLocalWorker(sealer.WorkerConfig{
-			MaxParallelChallengeReads: deps.Cfg.Proving.ParallelCheckLimit,
-		}, deps.Stor, deps.LocalStore, deps.Si, nil, wstates)
-	}
 	if deps.Maddrs == nil {
 		deps.Maddrs = map[dtypes.MinerAddress]bool{}
 	}

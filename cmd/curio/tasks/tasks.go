@@ -38,7 +38,6 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	db := dependencies.DB
 	full := dependencies.Full
 	verif := dependencies.Verif
-	lw := dependencies.LW
 	as := dependencies.As
 	maddrs := dependencies.Maddrs
 	stor := dependencies.Stor
@@ -61,7 +60,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 
 		if cfg.Subsystems.EnableWindowPost {
 			wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := curio.WindowPostScheduler(
-				ctx, cfg.Fees, cfg.Proving, full, verif, lw, sender, chainSched,
+				ctx, cfg.Fees, cfg.Proving, full, verif, sender, chainSched,
 				as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
 
 			if err != nil {
@@ -72,7 +71,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 
 		if cfg.Subsystems.EnableWinningPost {
-			winPoStTask := winning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
+			pl := dependencies.LocalStore
+			winPoStTask := winning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, pl, verif, full, maddrs)
 			activeTasks = append(activeTasks, winPoStTask)
 			needProofParams = true
 		}
