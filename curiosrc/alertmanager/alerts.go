@@ -520,7 +520,7 @@ func wnPostCheck(al *alerts) {
 	}
 
 	if epochs != count[0]+1 && epochs != count[0]-1 && epochs != count[0] {
-		al.alertMap[Name].alertString += fmt.Sprintf("Expected %d WinningPost task and found %d in DB ", epochs, count)
+		al.alertMap[Name].alertString += fmt.Sprintf("Expected %d WinningPost task and found %d in DB ", epochs, count[0])
 	}
 
 	if len(wnDetails) < 1 {
