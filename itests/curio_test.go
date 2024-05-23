@@ -54,7 +54,7 @@ func TestCurioNewActor(t *testing.T) {
 
 	esemble.Start()
 	blockTime := 100 * time.Millisecond
-	esemble.BeginMining(blockTime)
+	esemble.BeginMiningMustPost(blockTime)
 
 	db := miner.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 
@@ -98,6 +98,7 @@ func TestCurioHappyPath(t *testing.T) {
 	full, miner, esemble := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
 		kit.WithSectorIndexDB(),
+		kit.PresealSectors(32),
 	)
 
 	esemble.Start()
