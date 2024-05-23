@@ -36,7 +36,7 @@ func main() {
 	app := &cli.App{
 		Name:     "lotus-health",
 		Usage:    "Tools for monitoring lotus daemon health",
-		Version:  build.UserVersion(),
+		Version:  string(build.NodeUserVersion()),
 		Commands: local,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
