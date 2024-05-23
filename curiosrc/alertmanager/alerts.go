@@ -82,7 +82,7 @@ func taskFailureCheck(al *alerts) {
 	type taskFailure struct {
 		Machine  string `db:"completed_by_host_and_port"`
 		Name     string `db:"name"`
-		Failures int    `db:"failed_tasks_count"`
+		Failures int    `db:"failed_count"`
 	}
 
 	var taskFailures []taskFailure
@@ -157,6 +157,7 @@ func taskFailureCheck(al *alerts) {
 // If any sectors are unaccounted for, it calculates the total missing space and adds an alert to the alert map.
 func permanentStorageCheck(al *alerts) {
 	Name := "PermanentStorageSpace"
+	al.alertMap[Name] = &alertOut{}
 	// Get all storage path for permanent storages
 	type storage struct {
 		ID        string `db:"storage_id"`
@@ -338,14 +339,19 @@ func (al *alerts) getAddresses() ([]string, []string, error) {
 
 func wdPostCheck(al *alerts) {
 	Name := "WindowPost"
-
+	al.alertMap[Name] = &alertOut{}
 	head, err := al.api.ChainHead(al.ctx)
 	if err != nil {
 		al.alertMap[Name].err = err
 		return
 	}
 
-	from := head.Height() - abi.ChainEpoch(math.Ceil(float64(AlertMangerInterval)/float64(build.BlockDelaySecs))) - 1
+	from := head.Height() - abi.ChainEpoch(math.Ceil(AlertMangerInterval.Seconds()/float64(build.BlockDelaySecs))) - 1
+	if from < 0 {
+		from = 0
+	}
+
+	log.Infof("ALERTMANAGER: FROM: %d", from)
 
 	_, miners, err := al.getAddresses()
 	if err != nil {
@@ -369,15 +375,18 @@ func wdPostCheck(al *alerts) {
 				al.alertMap[Name].err = err
 				return
 			}
-			deadlineInfo, err := al.api.StateMinerProvingDeadline(al.ctx, maddr, head.Key())
+			deadlineInfo, err := al.api.StateMinerProvingDeadline(al.ctx, maddr, h.Key())
 			if err != nil {
 				al.alertMap[Name].err = xerrors.Errorf("getting miner deadline: %w", err)
 				return
 			}
-			partitions, err := al.api.StateMinerPartitions(al.ctx, maddr, deadlineInfo.Index, head.Key())
+			partitions, err := al.api.StateMinerPartitions(al.ctx, maddr, deadlineInfo.Index, h.Key())
 			if err != nil {
 				al.alertMap[Name].err = xerrors.Errorf("getting miner partitions: %w", err)
 				return
+			}
+			if _, ok := msgCheck[maddr]; !ok {
+				msgCheck[maddr] = make(map[uint64]*partSent)
 			}
 			if _, ok := msgCheck[maddr][deadlineInfo.Index]; !ok {
 				msgCheck[maddr][deadlineInfo.Index] = &partSent{
@@ -390,6 +399,12 @@ func wdPostCheck(al *alerts) {
 		if err != nil {
 			al.alertMap[Name].err = err
 			return
+		}
+	}
+
+	for maddr, deadlines := range msgCheck {
+		for deadlineIndex, ps := range deadlines {
+			log.Infof("ALERTMANAGER: Address: %s, DEADLINE: %d, Partitions: %d", maddr.String(), deadlineIndex, ps.parts)
 		}
 	}
 
@@ -410,6 +425,10 @@ func wdPostCheck(al *alerts) {
 		return
 	}
 
+	if len(wdDetails) < 1 {
+		return
+	}
+
 	for _, detail := range wdDetails {
 		addr, err := address.NewIDAddress(uint64(detail.Miner))
 		if err != nil {
@@ -417,12 +436,12 @@ func wdPostCheck(al *alerts) {
 			return
 		}
 		if _, ok := msgCheck[addr][uint64(detail.Deadline)]; !ok {
-			al.alertMap[Name].err = xerrors.Errorf("unknown WindowPost jobs for miner %s deadline %d partition %d found", addr.String(), detail.Deadline, detail.Partition)
-			return
+			al.alertMap[Name].alertString += fmt.Sprintf("unknown WindowPost jobs for miner %s deadline %d partition %d found. ", addr.String(), detail.Deadline, detail.Partition)
+			continue
 		}
 		msgCheck[addr][uint64(detail.Deadline)].sent = true
 
-		var postOut *miner.SubmitWindowedPoStParams
+		var postOut miner.SubmitWindowedPoStParams
 		err = postOut.UnmarshalCBOR(bytes.NewReader(detail.Proof))
 		if err != nil {
 			al.alertMap[Name].err = xerrors.Errorf("unmarshaling windowPost proof params: %w", err)
@@ -442,8 +461,8 @@ func wdPostCheck(al *alerts) {
 	}
 
 	for maddr, deadlines := range msgCheck {
-		for deadlineIndex, partSent := range deadlines {
-			if !partSent.sent {
+		for deadlineIndex, ps := range deadlines {
+			if !ps.sent {
 				al.alertMap[Name].alertString += fmt.Sprintf("No WindowPost jobs found for miner %s deadline %d. ", maddr.String(), deadlineIndex)
 			}
 		}
@@ -452,13 +471,17 @@ func wdPostCheck(al *alerts) {
 
 func wnPostCheck(al *alerts) {
 	Name := "WinningPost"
+	al.alertMap[Name] = &alertOut{}
 	head, err := al.api.ChainHead(al.ctx)
 	if err != nil {
 		al.alertMap[Name].err = err
 		return
 	}
 
-	from := head.Height() - abi.ChainEpoch(math.Ceil(float64(AlertMangerInterval)/float64(build.BlockDelaySecs))) - 1
+	from := head.Height() - abi.ChainEpoch(math.Ceil(AlertMangerInterval.Seconds()/float64(build.BlockDelaySecs))) - 1
+	if from < 0 {
+		from = 0
+	}
 
 	var wnDetails []struct {
 		Miner int64          `db:"sp_id"`
@@ -467,28 +490,40 @@ func wnPostCheck(al *alerts) {
 	}
 
 	err = al.db.Select(al.ctx, &wnDetails, `
-			SELECT sp_id, mined_cid, epoch
+			SELECT sp_id, mined_cid, epoch 
 			FROM mining_tasks 
-			WHERE epoch > $1 AND won = TRUE
+			WHERE epoch > $1 AND won = TRUE 
 			ORDER BY epoch;`, from)
 	if err != nil {
 		al.alertMap[Name].err = xerrors.Errorf("getting winningPost details from database: %w", err)
 		return
 	}
 
-	var count int
+	var count []int64
 	err = al.db.Select(al.ctx, &count, `
 			SELECT COUNT(*)
 			FROM mining_tasks 
-			WHERE epoch > $1
-			ORDER BY epoch;`, from)
+			WHERE epoch > $1;`, from)
 	if err != nil {
-		al.alertMap[Name].err = xerrors.Errorf("getting winningPost details from database: %w", err)
+		al.alertMap[Name].err = xerrors.Errorf("getting winningPost count details from database: %w", err)
 		return
 	}
 
-	if count == 0 {
+	if count[0] == 0 {
 		al.alertMap[Name].alertString += "No winningPost tasks found in the last " + humanize.Time(time.Now().Add(-AlertMangerInterval))
+		return
+	}
+
+	epochs := int64(math.Ceil(AlertMangerInterval.Seconds() / float64(build.BlockDelaySecs)))
+	if (head.Height() - abi.ChainEpoch(epochs)) < 0 {
+		epochs = int64(head.Height())
+	}
+
+	if epochs != count[0]+1 && epochs != count[0]-1 && epochs != count[0] {
+		al.alertMap[Name].alertString += fmt.Sprintf("Expected %d WinningPost task and found %d in DB ", epochs, count)
+	}
+
+	if len(wnDetails) < 1 {
 		return
 	}
 
@@ -506,18 +541,15 @@ func wnPostCheck(al *alerts) {
 			al.alertMap[Name].err = xerrors.Errorf("tipset is nil")
 			return
 		}
+		if head.Height() == 0 {
+			break
+		}
 	}
 
 	winMap := make(map[abi.ChainEpoch]struct {
 		won bool
 		cid string
 	})
-
-	epochs := int(math.Ceil(float64(AlertMangerInterval) / float64(build.BlockDelaySecs)))
-
-	if epochs != count+1 && epochs != count-1 && epochs != count {
-		al.alertMap[Name].alertString += fmt.Sprintf("Expected %d WinningPost task and found %d in DB ", epochs, count)
-	}
 
 	for _, wn := range wnDetails {
 		if strings.Contains(epochMap[wn.Epoch], wn.Block) {
