@@ -32,7 +32,7 @@ func TestManualCCOnboarding(t *testing.T) {
 	req := require.New(t)
 
 	for _, withMockProofs := range []bool{true, false} {
-		testName := "WithoutMockProofs"
+		testName := "WithRealProofs"
 		if withMockProofs {
 			testName = "WithMockProofs"
 		}
@@ -508,7 +508,7 @@ func manualOnboardingDisputeWindowPost(
 	di, err := client.StateMinerProvingDeadline(ctx, minerAddr, head.Key())
 	req.NoError(err)
 
-	disputeEpoch := di.Challenge + miner14.WPoStDisputeWindow + 5
+	disputeEpoch := di.Close + 5
 	t.Logf("Waiting %d until epoch %d to submit dispute", disputeEpoch-head.Height(), disputeEpoch)
 
 	client.WaitTillChain(ctx, kit.HeightAtLeast(disputeEpoch))
