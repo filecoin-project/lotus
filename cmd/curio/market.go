@@ -127,12 +127,12 @@ var marketSealCmd = &cli.Command{
 			return xerrors.Errorf("getting miner id: %w", err)
 		}
 
-		mi, err := dep.Full.StateMinerInfo(ctx, act, types.EmptyTSK)
+		mi, err := dep.DaemonApi.StateMinerInfo(ctx, act, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		nv, err := dep.Full.StateNetworkVersion(ctx, types.EmptyTSK)
+		nv, err := dep.DaemonApi.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting network version: %w", err)
 		}

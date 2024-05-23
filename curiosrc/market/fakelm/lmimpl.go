@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/curiosrc/api/daemonapi"
 	"github.com/filecoin-project/lotus/curiosrc/market"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/config"
@@ -28,8 +29,8 @@ import (
 )
 
 type LMRPCProvider struct {
-	si   paths.SectorIndex
-	full api.FullNode
+	si     paths.SectorIndex
+	daemon daemonapi.Daemon
 
 	maddr   address.Address // lotus-miner RPC is single-actor
 	minerID abi.ActorID
@@ -41,10 +42,10 @@ type LMRPCProvider struct {
 	conf *config.CurioConfig
 }
 
-func NewLMRPCProvider(si paths.SectorIndex, full api.FullNode, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi market.Ingester, db *harmonydb.DB, conf *config.CurioConfig) *LMRPCProvider {
+func NewLMRPCProvider(si paths.SectorIndex, daemon daemonapi.Daemon, maddr address.Address, minerID abi.ActorID, ssize abi.SectorSize, pi market.Ingester, db *harmonydb.DB, conf *config.CurioConfig) *LMRPCProvider {
 	return &LMRPCProvider{
 		si:      si,
-		full:    full,
+		daemon:  daemon,
 		maddr:   maddr,
 		minerID: minerID,
 		ssize:   ssize,
