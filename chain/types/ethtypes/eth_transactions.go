@@ -48,6 +48,7 @@ func init() {
 // It provides methods to convert transactions to various formats,
 // retrieve transaction details, and manipulate transaction signatures.
 type EthTransaction interface {
+	Type() int
 	Sender() (address.Address, error)
 	Signature() (*typescrypto.Signature, error)
 	InitialiseSignature(sig typescrypto.Signature) error
@@ -175,7 +176,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 			return legacyTx, nil
 		case EthLegacy155TxSignaturePrefix:
 			tx := &EthLegacy155TxArgs{
-				LegacyTx: legacyTx,
+				legacyTx: legacyTx,
 			}
 			if err := tx.InitialiseSignature(smsg.Signature); err != nil {
 				return nil, fmt.Errorf("failed to initialise signature: %w", err)
@@ -520,7 +521,7 @@ func parseLegacyTx(data []byte) (EthTransaction, error) {
 	}
 
 	return &EthLegacy155TxArgs{
-		LegacyTx: tx,
+		legacyTx: tx,
 	}, nil
 }
 

@@ -16,7 +16,7 @@ import (
 // SignedMessage was signed by the indicated Address, computing the correct
 // signature payload depending on the signature type. The supplied Address type
 // must be recognized by the registered verifier for the signature type.
-func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error {
+func AuthenticateMessage(msg *types.SignedMessage, signer address.Address, nv network.Version) error {
 	var digest []byte
 	signatureType := msg.Signature.Type
 	signatureCopy := msg.Signature
@@ -29,6 +29,14 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct Ethereum transaction: %w", err)
 		}
+
+		if ethTx.Type() != ethtypes.EIP1559TxType {
+			if nv < network.Version23 {
+				return xerrors.Errorf("Legacy ETH tx message not supported in network version %d,"+
+					"need version %d", nv, network.Version23)
+			}
+		}
+
 		filecoinMsg, err := ethTx.ToUnsignedFilecoinMessage(msg.Message.From)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct Filecoin message: %w", err)

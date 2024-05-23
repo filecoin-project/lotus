@@ -287,7 +287,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}
 
-		if err := AuthenticateMessage(m, kaddr); err != nil {
+		if err := AuthenticateMessage(m, kaddr, nv); err != nil {
 			return xerrors.Errorf("failed to validate signature: %w", err)
 		}
 

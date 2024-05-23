@@ -137,13 +137,12 @@ func TestLegacyEIP155ValueTransferValidSignature(t *testing.T) {
 		R:        big.Zero(),
 		S:        big.Zero(),
 	}
-	tx := &ethtypes.EthLegacy155TxArgs{
-		LegacyTx: legacyTx,
-	}
+	tx := ethtypes.NewEthLegacy155TxArgs(legacyTx)
 
 	client.EVM().SignLegacyEIP155Transaction(tx, key.PrivateKey, big.NewInt(build.Eip155ChainId))
 	// Mangle signature
-	tx.LegacyTx.V.Int.Xor(tx.LegacyTx.V.Int, big.NewInt(1).Int)
+	innerTx := tx.GetLegacyTx()
+	innerTx.V.Int.Xor(innerTx.V.Int, big.NewInt(1).Int)
 
 	signed, err := tx.ToRawTxBytesSigned()
 	require.NoError(t, err)
@@ -176,19 +175,20 @@ func TestLegacyEIP155ValueTransferValidSignature(t *testing.T) {
 	require.Nil(t, ethTx.MaxPriorityFeePerGas)
 	require.Nil(t, ethTx.MaxFeePerGas)
 
+	innerTx = tx.GetLegacyTx()
 	require.EqualValues(t, ethAddr, ethTx.From)
 	require.EqualValues(t, ethAddr2, *ethTx.To)
-	require.EqualValues(t, tx.LegacyTx.Nonce, ethTx.Nonce)
+	require.EqualValues(t, innerTx.Nonce, ethTx.Nonce)
 	require.EqualValues(t, hash, ethTx.Hash)
-	require.EqualValues(t, tx.LegacyTx.Value, ethTx.Value)
+	require.EqualValues(t, innerTx.Value, ethTx.Value)
 	require.EqualValues(t, 0, ethTx.Type)
 	require.EqualValues(t, build.Eip155ChainId, ethTx.ChainID)
 	require.EqualValues(t, ethtypes.EthBytes{}, ethTx.Input)
-	require.EqualValues(t, tx.LegacyTx.GasLimit, ethTx.Gas)
-	require.EqualValues(t, tx.LegacyTx.GasPrice, *ethTx.GasPrice)
-	require.EqualValues(t, tx.LegacyTx.R, ethTx.R)
-	require.EqualValues(t, tx.LegacyTx.S, ethTx.S)
-	require.EqualValues(t, tx.LegacyTx.V, ethTx.V)
+	require.EqualValues(t, innerTx.GasLimit, ethTx.Gas)
+	require.EqualValues(t, innerTx.GasPrice, *ethTx.GasPrice)
+	require.EqualValues(t, innerTx.R, ethTx.R)
+	require.EqualValues(t, innerTx.S, ethTx.S)
+	require.EqualValues(t, innerTx.V, ethTx.V)
 }
 
 func TestLegacyContractInvocation(t *testing.T) {

@@ -20,7 +20,15 @@ var _ EthTransaction = (*EthLegacy155TxArgs)(nil)
 // For EthLegacy155TxArgs, the digest that is used to create a signed transaction includes the `ChainID` but the serialised RLP transaction
 // does not include the `ChainID` as an explicit field. Instead, the `ChainID` is included in the V value of the signature as mentioned above.
 type EthLegacy155TxArgs struct {
-	LegacyTx *EthLegacyHomesteadTxArgs
+	legacyTx *EthLegacyHomesteadTxArgs
+}
+
+func NewEthLegacy155TxArgs(tx *EthLegacyHomesteadTxArgs) *EthLegacy155TxArgs {
+	return &EthLegacy155TxArgs{legacyTx: tx}
+}
+
+func (tx *EthLegacy155TxArgs) GetLegacyTx() *EthLegacyHomesteadTxArgs {
+	return tx.legacyTx
 }
 
 func (tx *EthLegacy155TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
@@ -33,31 +41,31 @@ func (tx *EthLegacy155TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) 
 		return EthTx{}, fmt.Errorf("failed to get tx hash: %w", err)
 	}
 
-	gasPrice := EthBigInt(tx.LegacyTx.GasPrice)
+	gasPrice := EthBigInt(tx.legacyTx.GasPrice)
 	ethTx := EthTx{
 		ChainID:  build.Eip155ChainId,
 		Type:     EthLegacyTxType,
-		Nonce:    EthUint64(tx.LegacyTx.Nonce),
+		Nonce:    EthUint64(tx.legacyTx.Nonce),
 		Hash:     hash,
-		To:       tx.LegacyTx.To,
-		Value:    EthBigInt(tx.LegacyTx.Value),
-		Input:    tx.LegacyTx.Input,
-		Gas:      EthUint64(tx.LegacyTx.GasLimit),
+		To:       tx.legacyTx.To,
+		Value:    EthBigInt(tx.legacyTx.Value),
+		Input:    tx.legacyTx.Input,
+		Gas:      EthUint64(tx.legacyTx.GasLimit),
 		GasPrice: &gasPrice,
 		From:     from,
-		R:        EthBigInt(tx.LegacyTx.R),
-		S:        EthBigInt(tx.LegacyTx.S),
-		V:        EthBigInt(tx.LegacyTx.V),
+		R:        EthBigInt(tx.legacyTx.R),
+		S:        EthBigInt(tx.legacyTx.S),
+		V:        EthBigInt(tx.legacyTx.V),
 	}
 
 	return ethTx, nil
 }
 
 func (tx *EthLegacy155TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
-	if err := validateEIP155ChainId(tx.LegacyTx.V); err != nil {
+	if err := validateEIP155ChainId(tx.legacyTx.V); err != nil {
 		return nil, fmt.Errorf("failed to validate EIP155 chain id: %w", err)
 	}
-	return tx.LegacyTx.ToUnsignedFilecoinMessage(from)
+	return tx.legacyTx.ToUnsignedFilecoinMessage(from)
 }
 
 func (tx *EthLegacy155TxArgs) ToRlpUnsignedMsg() ([]byte, error) {
@@ -81,7 +89,7 @@ func (tx *EthLegacy155TxArgs) ToRawTxBytesSigned() ([]byte, error) {
 
 	packed1 = packed1[:len(packed1)-3] // remove chainId, r and s as they are only used for signature verification
 
-	packed2, err := packSigFields(tx.LegacyTx.V, tx.LegacyTx.R, tx.LegacyTx.S)
+	packed2, err := packSigFields(tx.legacyTx.V, tx.legacyTx.R, tx.legacyTx.S)
 	if err != nil {
 		return nil, err
 	}
@@ -94,16 +102,16 @@ func (tx *EthLegacy155TxArgs) ToRawTxBytesSigned() ([]byte, error) {
 }
 
 func (tx *EthLegacy155TxArgs) ToRlpSignedMsg() ([]byte, error) {
-	return toRlpSignedMsg(tx, tx.LegacyTx.V, tx.LegacyTx.R, tx.LegacyTx.S)
+	return toRlpSignedMsg(tx, tx.legacyTx.V, tx.legacyTx.R, tx.legacyTx.S)
 }
 
 func (tx *EthLegacy155TxArgs) Signature() (*typescrypto.Signature, error) {
-	if err := validateEIP155ChainId(tx.LegacyTx.V); err != nil {
+	if err := validateEIP155ChainId(tx.legacyTx.V); err != nil {
 		return nil, fmt.Errorf("failed to validate EIP155 chain id: %w", err)
 	}
-	r := tx.LegacyTx.R.Int.Bytes()
-	s := tx.LegacyTx.S.Int.Bytes()
-	v := tx.LegacyTx.V.Int.Bytes()
+	r := tx.legacyTx.R.Int.Bytes()
+	s := tx.legacyTx.S.Int.Bytes()
+	v := tx.legacyTx.V.Int.Bytes()
 
 	sig := append([]byte{}, padLeadingZeros(r, 32)...)
 	sig = append(sig, padLeadingZeros(s, 32)...)
@@ -123,10 +131,14 @@ func (tx *EthLegacy155TxArgs) Signature() (*typescrypto.Signature, error) {
 }
 
 func (tx *EthLegacy155TxArgs) Sender() (address.Address, error) {
-	if err := validateEIP155ChainId(tx.LegacyTx.V); err != nil {
+	if err := validateEIP155ChainId(tx.legacyTx.V); err != nil {
 		return address.Address{}, fmt.Errorf("failed to validate EIP155 chain id: %w", err)
 	}
 	return sender(tx)
+}
+
+func (tx *EthLegacy155TxArgs) Type() int {
+	return EthLegacyTxType
 }
 
 var big8 = big.NewInt(8)
@@ -201,30 +213,30 @@ func (tx *EthLegacy155TxArgs) InitialiseSignature(sig typescrypto.Signature) err
 		return fmt.Errorf("failed to validate EIP155 chain id: %w", err)
 	}
 
-	tx.LegacyTx.R = r_
-	tx.LegacyTx.S = s_
-	tx.LegacyTx.V = v_
+	tx.legacyTx.R = r_
+	tx.legacyTx.S = s_
+	tx.legacyTx.V = v_
 	return nil
 }
 
 func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
-	nonce, err := formatInt(tx.LegacyTx.Nonce)
+	nonce, err := formatInt(tx.legacyTx.Nonce)
 	if err != nil {
 		return nil, err
 	}
 
 	// format gas price
-	gasPrice, err := formatBigInt(tx.LegacyTx.GasPrice)
+	gasPrice, err := formatBigInt(tx.legacyTx.GasPrice)
 	if err != nil {
 		return nil, err
 	}
 
-	gasLimit, err := formatInt(tx.LegacyTx.GasLimit)
+	gasLimit, err := formatInt(tx.legacyTx.GasLimit)
 	if err != nil {
 		return nil, err
 	}
 
-	value, err := formatBigInt(tx.LegacyTx.Value)
+	value, err := formatBigInt(tx.legacyTx.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -249,9 +261,9 @@ func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
 		nonce,
 		gasPrice,
 		gasLimit,
-		formatEthAddr(tx.LegacyTx.To),
+		formatEthAddr(tx.legacyTx.To),
 		value,
-		tx.LegacyTx.Input,
+		tx.legacyTx.Input,
 		chainId,
 		r, s,
 	}

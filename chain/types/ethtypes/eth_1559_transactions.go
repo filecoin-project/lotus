@@ -102,6 +102,10 @@ func (tx *Eth1559TxArgs) Sender() (address.Address, error) {
 	return sender(tx)
 }
 
+func (tx *Eth1559TxArgs) Type() int {
+	return EIP1559TxType
+}
+
 func (tx *Eth1559TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) {
 	return sig, nil
 }

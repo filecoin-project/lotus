@@ -824,7 +824,16 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if err := consensus.AuthenticateMessage(m, m.Message.From); err != nil {
+	mp.curTsLk.RLock()
+	curTs := mp.curTs
+	mp.curTsLk.RUnlock()
+	epoch := curTs.Height() + 1
+	nv, err := mp.getNtwkVersion(epoch)
+	if err != nil {
+		return xerrors.Errorf("failed to get network version: %w", err)
+	}
+
+	if err := consensus.AuthenticateMessage(m, m.Message.From, nv); err != nil {
 		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
 

@@ -151,6 +151,10 @@ func (tx *EthLegacyHomesteadTxArgs) Sender() (address.Address, error) {
 	return sender(tx)
 }
 
+func (tx *EthLegacyHomesteadTxArgs) Type() int {
+	return EthLegacyTxType
+}
+
 func (tx *EthLegacyHomesteadTxArgs) InitialiseSignature(sig typescrypto.Signature) error {
 	if sig.Type != typescrypto.SigTypeDelegated {
 		return fmt.Errorf("RecoverSignature only supports Delegated signature")
