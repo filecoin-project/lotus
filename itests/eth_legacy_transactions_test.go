@@ -268,7 +268,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
 	// DEPLOY CONTRACT
-	tx, err := deployLegacyContractTx(t, ctx, client, ethAddr)
+	tx, err := deployLegacyContractTx(ctx, t, client, ethAddr)
 	require.NoError(t, err)
 
 	client.EVM().SignLegacyHomesteadTransaction(tx, key.PrivateKey)
@@ -360,7 +360,7 @@ func TestLegacyContractInvocation(t *testing.T) {
 	require.EqualValues(t, effectiveGasPrice, big.Int(receipt.EffectiveGasPrice))
 }
 
-func deployLegacyContractTx(t *testing.T, ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress) (*ethtypes.EthLegacyHomesteadTxArgs, error) {
+func deployLegacyContractTx(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress) (*ethtypes.EthLegacyHomesteadTxArgs, error) {
 	// install contract
 	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
 	require.NoError(t, err)
