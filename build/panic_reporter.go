@@ -28,13 +28,31 @@ var PanicReportingPath = "panic-reports"
 // the lotus journal to be included in the panic report.
 var PanicReportJournalTail = defaultJournalTail
 
-// GeneratePanicReport produces a timestamped dump of the application state
+// GenerateNodePanicReport produces a timestamped dump of the application state
 // for inspection and debugging purposes. Call this function from any place
 // where a panic or severe error needs to be examined. `persistPath` is the
 // path where the reports should be saved. `repoPath` is the path where the
 // journal should be read from. `label` is an optional string to include
 // next to the report timestamp.
-func GeneratePanicReport(persistPath, repoPath, label string) {
+//
+// This function should be called for panics originating from the Lotus daemon.
+func GenerateNodePanicReport(persistPath, repoPath, label string) {
+	generatePanicReport(NodeUserVersion(), persistPath, repoPath, label)
+}
+
+// GenerateMinerPanicReport produces a timestamped dump of the application state
+// for inspection and debugging purposes. Call this function from any place
+// where a panic or severe error needs to be examined. `persistPath` is the
+// path where the reports should be saved. `repoPath` is the path where the
+// journal should be read from. `label` is an optional string to include
+// next to the report timestamp.
+//
+// This function should be called for panics originating from the Lotus miner.
+func GenerateMinerPanicReport(persistPath, repoPath, label string) {
+	generatePanicReport(MinerUserVersion(), persistPath, repoPath, label)
+}
+
+func generatePanicReport(buildVersion BuildVersion, persistPath, repoPath, label string) {
 	// make sure we always dump the latest logs on the way out
 	// especially since we're probably panicking
 	defer panicLog.Sync() //nolint:errcheck
@@ -64,21 +82,21 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 		return
 	}
 
-	writeAppVersion(filepath.Join(reportPath, "version"))
+	writeAppVersion(buildVersion, filepath.Join(reportPath, "version"))
 	writeStackTrace(filepath.Join(reportPath, "stacktrace.dump"))
 	writeProfile("goroutines", filepath.Join(reportPath, "goroutines.pprof.gz"))
 	writeProfile("heap", filepath.Join(reportPath, "heap.pprof.gz"))
 	writeJournalTail(PanicReportJournalTail, repoPath, filepath.Join(reportPath, "journal.ndjson"))
 }
 
-func writeAppVersion(file string) {
+func writeAppVersion(buildVersion BuildVersion, file string) {
 	f, err := os.Create(file)
 	if err != nil {
 		panicLog.Error(err.Error())
 	}
 	defer f.Close() //nolint:errcheck
 
-	versionString := []byte(BuildVersion + BuildTypeString() + CurrentCommit + "\n")
+	versionString := []byte(string(buildVersion) + BuildTypeString() + CurrentCommit + "\n")
 	if _, err := f.Write(versionString); err != nil {
 		panicLog.Error(err.Error())
 	}

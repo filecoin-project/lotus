@@ -97,7 +97,7 @@ func main() {
 	app := &cli.App{
 		Name:     "lotus-shed",
 		Usage:    "A place for all the lotus tools",
-		Version:  build.UserVersion(),
+		Version:  string(build.NodeUserVersion()),
 		Commands: local,
 		Flags: []cli.Flag{
 			&cli.StringFlag{

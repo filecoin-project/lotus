@@ -100,7 +100,7 @@ func main() {
 	app := &cli.App{
 		Name:                      "lotus-bench",
 		Usage:                     "Benchmark performance of lotus on your hardware",
-		Version:                   build.UserVersion(),
+		Version:                   string(build.NodeUserVersion()),
 		DisableSliceFlagSeparator: true,
 		Commands: []*cli.Command{
 			proveCmd,
