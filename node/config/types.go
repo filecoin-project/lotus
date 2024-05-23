@@ -77,6 +77,7 @@ type CurioConfig struct {
 	Ingest    CurioIngestConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
+	Alerting  CurioAlerting
 }
 
 type ApisConfig struct {
@@ -189,6 +190,11 @@ type CurioSubsystemsConfig struct {
 	// from this curio instance.
 	EnableSendCommitMsg bool
 
+	// Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).
+	RequireActivationSuccess bool
+	// Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).
+	RequireNotificationSuccess bool
+
 	// EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
 	// This tasks should only be enabled on nodes with long-term storage.
 	//
@@ -203,8 +209,8 @@ type CurioSubsystemsConfig struct {
 
 	// BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
 	// This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
-	// Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
-	// Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+	// Strings should be in the format "actor:ip:port". IP cannot be 0.0.0.0. We recommend using a private IP.
+	// Example: "f0123:127.0.0.1:32100". Multiple addresses can be specified.
 	//
 	// When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
 	// deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
@@ -828,13 +834,20 @@ type CurioProvingConfig struct {
 }
 
 type CurioIngestConfig struct {
+	// Maximum number of sectors that can be queued waiting for deals to start processing.
+	// 0 = unlimited
+	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+	// The DealSector queue includes deals which are ready to enter the sealing pipeline but are not yet part of it -
+	// size of this queue will also impact the maximum number of ParkPiece tasks which can run concurrently.
+	// DealSector queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
+	MaxQueueDealSector int
+
 	// Maximum number of sectors that can be queued waiting for SDR to start processing.
 	// 0 = unlimited
 	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-	// The SDR queue includes deals which are in the process of entering the sealing pipeline - size of this queue
-	// will also impact the maximum number of ParkPiece tasks which can run concurrently.
-	//
-	// SDR queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
+	// The SDR queue includes deals which are in the process of entering the sealing pipeline. In case of the SDR tasks it is
+	// possible that this queue grows more than this limit(CC sectors), the backpressure is only applied to sectors
+	// entering the pipeline.
 	MaxQueueSDR int
 
 	// Maximum number of sectors that can be queued waiting for SDRTrees to start processing.
@@ -850,6 +863,9 @@ type CurioIngestConfig struct {
 	// Like with the trees tasks, it is possible that this queue grows more than this limit, the backpressure is only
 	// applied to sectors entering the pipeline.
 	MaxQueuePoRep int
+
+	// Maximum time an open deal sector should wait for more deal before it starts sealing
+	MaxDealWaitTime Duration
 }
 
 // API contains configs for API endpoint
@@ -1108,4 +1124,19 @@ type FaultReporterConfig struct {
 	// ReportConsensusFault messages. It will pay for gas fees, and receive any
 	// rewards. This address should have adequate funds to cover gas fees.
 	ConsensusFaultReporterAddress string
+}
+
+type CurioAlerting struct {
+	// PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+	// routed to a PagerDuty.com service and processed.
+	// The default is sufficient for integration with the stock commercial PagerDuty.com company's service.
+	PagerDutyEventURL string
+
+	// PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
+	// identifier in the integration page for the service.
+	PageDutyIntegrationKey string
+
+	// MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+	// alerts will be triggered for the wallet
+	MinimumWalletBalance types.FIL
 }

@@ -114,6 +114,10 @@ func (d dbscanRows) Columns() ([]string, error) {
 	}), nil
 }
 
+func (d dbscanRows) NextResultSet() bool {
+	return false
+}
+
 /*
 Select multiple rows into a slice using name matching
 Ex:

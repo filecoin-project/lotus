@@ -201,7 +201,5 @@ func (m *minerAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (ui
 		return 0, xerrors.Errorf("no storage deals found for piece %s", pieceCid)
 	}
 
-	len := pieceInfo.Deals[0].Length
-
-	return uint64(len), nil
+	return uint64(pieceInfo.Deals[0].Length), nil
 }

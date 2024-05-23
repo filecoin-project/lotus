@@ -6302,7 +6302,7 @@ Perms: read
 Inputs:
 ```json
 [
-  22
+  23
 ]
 ```
 
@@ -6317,7 +6317,7 @@ Perms: read
 Inputs:
 ```json
 [
-  22
+  23
 ]
 ```
 
@@ -7227,7 +7227,8 @@ Response:
     "UpgradeThunderHeight": 10101,
     "UpgradeWatermelonHeight": 10101,
     "UpgradeDragonHeight": 10101,
-    "UpgradePhoenixHeight": 10101
+    "UpgradePhoenixHeight": 10101,
+    "UpgradeAussieHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -7532,6 +7533,7 @@ Response:
       "ClientCollateral": "0"
     },
     "State": {
+      "SectorNumber": 9,
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
       "SlashEpoch": 10101
@@ -7610,6 +7612,7 @@ Response:
     "ClientCollateral": "0"
   },
   "State": {
+    "SectorNumber": 9,
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
     "SlashEpoch": 10101
@@ -8205,7 +8208,7 @@ Inputs:
 ]
 ```
 
-Response: `22`
+Response: `23`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

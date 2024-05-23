@@ -278,7 +278,8 @@ func (db *DB) upgrade() error {
 			logger.Error("weird embed file read err")
 			return err
 		}
-		for _, s := range strings.Split(string(file), ";") { // Implement the changes.
+
+		for _, s := range parseSQLStatements(string(file)) { // Implement the changes.
 			if len(strings.TrimSpace(s)) == 0 {
 				continue
 			}
@@ -298,4 +299,41 @@ func (db *DB) upgrade() error {
 		}
 	}
 	return nil
+}
+
+func parseSQLStatements(sqlContent string) []string {
+	var statements []string
+	var currentStatement strings.Builder
+
+	lines := strings.Split(sqlContent, "\n")
+	var inFunction bool
+
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "--") {
+			// Skip empty lines and comments.
+			continue
+		}
+
+		// Detect function blocks starting or ending.
+		if strings.Contains(trimmedLine, "$$") {
+			inFunction = !inFunction
+		}
+
+		// Add the line to the current statement.
+		currentStatement.WriteString(line + "\n")
+
+		// If we're not in a function and the line ends with a semicolon, or we just closed a function block.
+		if (!inFunction && strings.HasSuffix(trimmedLine, ";")) || (strings.Contains(trimmedLine, "$$") && !inFunction) {
+			statements = append(statements, currentStatement.String())
+			currentStatement.Reset()
+		}
+	}
+
+	// Add any remaining statement not followed by a semicolon (should not happen in well-formed SQL but just in case).
+	if currentStatement.Len() > 0 {
+		statements = append(statements, currentStatement.String())
+	}
+
+	return statements
 }

@@ -170,6 +170,15 @@ func (ds *PieceDealInfo) String() string {
 	}
 }
 
+func (ds *PieceDealInfo) Size() abi.PaddedPieceSize {
+	switch {
+	case ds.isBuiltinMarketDeal():
+		return ds.DealProposal.PieceSize
+	default:
+		return ds.PieceActivationManifest.Size
+	}
+}
+
 func (ds *PieceDealInfo) KeepUnsealedRequested() bool {
 	return ds.KeepUnsealed
 }

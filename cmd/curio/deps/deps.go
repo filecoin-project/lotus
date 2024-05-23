@@ -207,7 +207,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 		}
 	}
 
-	if deps.Cfg == nil {
+	if deps.DB == nil {
 		deps.DB, err = MakeDB(cctx)
 		if err != nil {
 			return err
@@ -219,7 +219,7 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 
 	if deps.Cfg == nil {
 		// The config feeds into task runners & their helpers
-		deps.Cfg, err = GetConfig(cctx, deps.DB)
+		deps.Cfg, err = GetConfig(cctx.Context, cctx.StringSlice("layers"), deps.DB)
 		if err != nil {
 			return xerrors.Errorf("populate config: %w", err)
 		}
@@ -290,6 +290,9 @@ func (deps *Deps) PopulateRemainingDeps(ctx context.Context, cctx *cli.Context, 
 				deps.ListenAddr = rip + ":" + addressSlice[1]
 			}
 		}
+	}
+	if cctx.IsSet("gui-listen") {
+		deps.Cfg.Subsystems.GuiAddress = cctx.String("gui-listen")
 	}
 	if deps.LocalStore == nil {
 		deps.LocalStore, err = paths.NewLocal(ctx, deps.LocalPaths, deps.Si, []string{"http://" + deps.ListenAddr + "/remote"})
@@ -371,13 +374,13 @@ func LoadConfigWithUpgrades(text string, curioConfigWithDefaults *config.CurioCo
 	}
 	return meta, err
 }
-func GetConfig(cctx *cli.Context, db *harmonydb.DB) (*config.CurioConfig, error) {
+func GetConfig(ctx context.Context, layers []string, db *harmonydb.DB) (*config.CurioConfig, error) {
 	curioConfig := config.DefaultCurioConfig()
 	have := []string{}
-	layers := append([]string{"base"}, cctx.StringSlice("layers")...) // Always stack on top of "base" layer
+	layers = append([]string{"base"}, layers...) // Always stack on top of "base" layer
 	for _, layer := range layers {
 		text := ""
-		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
+		err := db.QueryRow(ctx, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
 		if err != nil {
 			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
 				return nil, fmt.Errorf("missing layer '%s' ", layer)
@@ -420,7 +423,9 @@ func GetDepsCLI(ctx context.Context, cctx *cli.Context) (*Deps, error) {
 		return nil, err
 	}
 
-	cfg, err := GetConfig(cctx, db)
+	layers := cctx.StringSlice("layers")
+
+	cfg, err := GetConfig(cctx.Context, layers, db)
 	if err != nil {
 		return nil, err
 	}

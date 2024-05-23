@@ -220,7 +220,8 @@ var configViewCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		curioConfig, err := deps.GetConfig(cctx, db)
+		layers := cctx.StringSlice("layers")
+		curioConfig, err := deps.GetConfig(cctx.Context, layers, db)
 		if err != nil {
 			return err
 		}
@@ -289,12 +290,12 @@ var configEditCmd = &cli.Command{
 		}
 
 		if cctx.IsSet("source") && source != layer && !cctx.Bool("no-interpret-source") {
-			lp := config.DefaultCurioConfig()
-			if _, err := toml.Decode(sourceConfig, lp); err != nil {
+			curioCfg := config.DefaultCurioConfig()
+			if _, err := toml.Decode(sourceConfig, curioCfg); err != nil {
 				return xerrors.Errorf("parsing source config: %w", err)
 			}
 
-			cb, err := config.ConfigUpdate(lp, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
+			cb, err := config.ConfigUpdate(curioCfg, config.DefaultCurioConfig(), config.Commented(true), config.DefaultKeepUncommented(), config.NoEnv())
 			if err != nil {
 				return xerrors.Errorf("interpreting source config: %w", err)
 			}
@@ -353,20 +354,20 @@ var configEditCmd = &cli.Command{
 }
 
 func diff(sourceConf, newConf string) (string, error) {
-	lpSrc := config.DefaultCurioConfig()
-	lpNew := config.DefaultCurioConfig()
+	fromSrc := config.DefaultCurioConfig()
+	fromNew := config.DefaultCurioConfig()
 
-	_, err := toml.Decode(sourceConf, lpSrc)
+	_, err := toml.Decode(sourceConf, fromSrc)
 	if err != nil {
 		return "", xerrors.Errorf("decoding source config: %w", err)
 	}
 
-	_, err = toml.Decode(newConf, lpNew)
+	_, err = toml.Decode(newConf, fromNew)
 	if err != nil {
 		return "", xerrors.Errorf("decoding new config: %w", err)
 	}
 
-	cb, err := config.ConfigUpdate(lpNew, lpSrc, config.Commented(true), config.NoEnv())
+	cb, err := config.ConfigUpdate(fromNew, fromSrc, config.Commented(true), config.NoEnv())
 	if err != nil {
 		return "", xerrors.Errorf("interpreting source config: %w", err)
 	}

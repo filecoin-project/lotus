@@ -1321,7 +1321,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		mustAdd(t, mp, m)
 	}
 
-	logging.SetLogLevel("messagepool", "error")
+	_ = logging.SetLogLevel("messagepool", "error")
 
 	// 1. greedy selection
 	gm, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
@@ -1414,7 +1414,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	t.Logf("Average reward boost: %f", rewardBoost)
 	t.Logf("Average best tq reward: %f", totalBestTQReward/runs/1e12)
 
-	logging.SetLogLevel("messagepool", "info")
+	_ = logging.SetLogLevel("messagepool", "info")
 
 	return capacityBoost, rewardBoost, totalBestTQReward / runs / 1e12
 }

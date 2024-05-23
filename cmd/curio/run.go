@@ -35,7 +35,12 @@ var runCmd = &cli.Command{
 			Name:    "listen",
 			Usage:   "host address and port the worker api will listen on",
 			Value:   "0.0.0.0:12300",
-			EnvVars: []string{"LOTUS_WORKER_LISTEN"},
+			EnvVars: []string{"CURIO_LISTEN"},
+		},
+		&cli.StringFlag{
+			Name:   "gui-listen",
+			Usage:  "host address and port the gui will listen on",
+			Hidden: true,
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
@@ -63,8 +68,9 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringSliceFlag{
 			Name:    "layers",
-			Aliases: []string{"l", "layer"},
 			Usage:   "list of layers to be interpreted (atop defaults). Default: base",
+			EnvVars: []string{"CURIO_LAYERS"},
+			Aliases: []string{"l", "layer"},
 		},
 	},
 	Action: func(cctx *cli.Context) (err error) {
@@ -156,9 +162,9 @@ var webCmd = &cli.Command{
 	This creates the 'web' layer if it does not exist, then calls run with that layer.`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "listen",
-			Usage: "Address to listen on",
-			Value: "127.0.0.1:4701",
+			Name:  "gui-listen",
+			Usage: "Address to listen for the GUI on",
+			Value: "0.0.0.0:4701",
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",

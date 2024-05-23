@@ -5,5 +5,5 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("watchdog", "ERROR")
+	_ = logging.SetLogLevel("watchdog", "ERROR")
 }

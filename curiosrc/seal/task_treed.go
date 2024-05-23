@@ -16,14 +16,16 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
+	"github.com/filecoin-project/lotus/lib/filler"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-type TreesTask struct {
+type TreeDTask struct {
 	sp *SealPoller
 	db *harmonydb.DB
 	sc *ffi.SealCalls
@@ -31,8 +33,57 @@ type TreesTask struct {
 	max int
 }
 
-func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *ffi.SealCalls, maxTrees int) *TreesTask {
-	return &TreesTask{
+func (t *TreeDTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+	if isDevnet {
+		return &ids[0], nil
+	}
+	if engine.Resources().Gpu > 0 {
+		return &ids[0], nil
+	}
+	return nil, nil
+}
+
+func (t *TreeDTask) TypeDetails() harmonytask.TaskTypeDetails {
+	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
+	if isDevnet {
+		ssize = abi.SectorSize(2 << 20)
+	}
+
+	return harmonytask.TaskTypeDetails{
+		Max:  t.max,
+		Name: "TreeD",
+		Cost: resources.Resources{
+			Cpu:     1,
+			Ram:     1 << 30,
+			Gpu:     0,
+			Storage: t.sc.Storage(t.taskToSector, storiface.FTNone, storiface.FTCache, ssize, storiface.PathSealing, 1.0),
+		},
+		MaxFailures: 3,
+		Follows:     nil,
+	}
+}
+
+func (t *TreeDTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
+	var refs []ffi.SectorRef
+
+	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_d = $1`, id)
+	if err != nil {
+		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
+	}
+
+	if len(refs) != 1 {
+		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
+	}
+
+	return refs[0], nil
+}
+
+func (t *TreeDTask) Adder(taskFunc harmonytask.AddTaskFunc) {
+	t.sp.pollers[pollerTreeD].Set(taskFunc)
+}
+
+func NewTreeDTask(sp *SealPoller, db *harmonydb.DB, sc *ffi.SealCalls, maxTrees int) *TreeDTask {
+	return &TreeDTask{
 		sp: sp,
 		db: db,
 		sc: sc,
@@ -41,7 +92,7 @@ func NewTreesTask(sp *SealPoller, db *harmonydb.DB, sc *ffi.SealCalls, maxTrees 
 	}
 }
 
-func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *TreeDTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	ctx := context.Background()
 
 	var sectorParamsArr []struct {
@@ -53,7 +104,7 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	err = t.db.Select(ctx, &sectorParamsArr, `
 		SELECT sp_id, sector_number, reg_seal_proof
 		FROM sectors_sdr_pipeline
-		WHERE task_id_tree_r = $1 AND task_id_tree_c = $1 AND task_id_tree_d = $1`, taskID)
+		WHERE task_id_tree_d = $1`, taskID)
 	if err != nil {
 		return false, xerrors.Errorf("getting sector params: %w", err)
 	}
@@ -62,6 +113,21 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		return false, xerrors.Errorf("expected 1 sector params, got %d", len(sectorParamsArr))
 	}
 	sectorParams := sectorParamsArr[0]
+
+	sref := storiface.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(sectorParams.SpID),
+			Number: abi.SectorNumber(sectorParams.SectorNumber),
+		},
+		ProofType: sectorParams.RegSealProof,
+	}
+
+	// Fetch the Sector to local storage
+	fsPaths, pathIds, release, err := t.sc.PreFetch(ctx, sref, &taskID)
+	if err != nil {
+		return false, xerrors.Errorf("failed to prefetch sectors: %w", err)
+	}
+	defer release()
 
 	var pieces []struct {
 		PieceIndex int64  `db:"piece_index"`
@@ -100,20 +166,37 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 	}()
 
 	if len(pieces) > 0 {
-		pieceInfos := make([]abi.PieceInfo, len(pieces))
-		pieceReaders := make([]io.Reader, len(pieces))
+		var pieceInfos []abi.PieceInfo
+		var pieceReaders []io.Reader
+		var offset abi.UnpaddedPieceSize
+		var allocated abi.UnpaddedPieceSize
 
-		for i, p := range pieces {
+		for _, p := range pieces {
 			// make pieceInfo
 			c, err := cid.Parse(p.PieceCID)
 			if err != nil {
 				return false, xerrors.Errorf("parsing piece cid: %w", err)
 			}
 
-			pieceInfos[i] = abi.PieceInfo{
+			allocated += abi.UnpaddedPieceSize(*p.DataRawSize)
+
+			pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), abi.PaddedPieceSize(p.PieceSize))
+			offset += padLength.Unpadded()
+
+			for _, pad := range pads {
+				pieceInfos = append(pieceInfos, abi.PieceInfo{
+					Size:     pad,
+					PieceCID: zerocomm.ZeroPieceCommitment(pad.Unpadded()),
+				})
+				pieceReaders = append(pieceReaders, nullreader.NewNullReader(pad.Unpadded()))
+			}
+
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(p.PieceSize),
 				PieceCID: c,
-			}
+			})
+
+			offset += abi.UnpaddedPieceSize(*p.DataRawSize)
 
 			// make pieceReader
 			if p.DataUrl != nil {
@@ -152,17 +235,31 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 					closers = append(closers, pr)
 
-					pieceReaders[i], _ = padreader.New(pr, uint64(*p.DataRawSize))
+					reader, _ := padreader.New(pr, uint64(*p.DataRawSize))
+					pieceReaders = append(pieceReaders, reader)
 				} else {
-					pieceReaders[i], _ = padreader.New(&UrlPieceReader{
+					reader, _ := padreader.New(&UrlPieceReader{
 						Url:     dataUrl,
 						RawSize: *p.DataRawSize,
 					}, uint64(*p.DataRawSize))
+					pieceReaders = append(pieceReaders, reader)
 				}
 
 			} else { // padding piece (w/o fr32 padding, added in TreeD)
-				pieceReaders[i] = nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded())
+				pieceReaders = append(pieceReaders, nullreader.NewNullReader(abi.PaddedPieceSize(p.PieceSize).Unpadded()))
 			}
+		}
+
+		fillerSize, err := filler.FillersFromRem(abi.PaddedPieceSize(ssize).Unpadded() - allocated)
+		if err != nil {
+			return false, xerrors.Errorf("failed to calculate the final padding: %w", err)
+		}
+		for _, fil := range fillerSize {
+			pieceInfos = append(pieceInfos, abi.PieceInfo{
+				Size:     fil.Padded(),
+				PieceCID: zerocomm.ZeroPieceCommitment(fil),
+			})
+			pieceReaders = append(pieceReaders, nullreader.NewNullReader(fil))
 		}
 
 		commd, err = nonffi.GenerateUnsealedCID(sectorParams.RegSealProof, pieceInfos)
@@ -178,80 +275,23 @@ func (t *TreesTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 		unpaddedData = false // nullreader includes fr32 zero bits
 	}
 
-	sref := storiface.SectorRef{
-		ID: abi.SectorID{
-			Miner:  abi.ActorID(sectorParams.SpID),
-			Number: abi.SectorNumber(sectorParams.SectorNumber),
-		},
-		ProofType: sectorParams.RegSealProof,
-	}
-
-	// D / R / C
-	sealed, unsealed, err := t.sc.TreeDRC(ctx, &taskID, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData)
+	// Generate Tree D
+	err = t.sc.TreeD(ctx, sref, commd, abi.PaddedPieceSize(ssize), dataReader, unpaddedData, fsPaths, pathIds)
 	if err != nil {
-		return false, xerrors.Errorf("computing tree d, r and c: %w", err)
+		return false, xerrors.Errorf("failed to generate TreeD: %w", err)
 	}
-
-	// todo synth porep
-
-	// todo porep challenge check
 
 	n, err := t.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_tree_r = true, after_tree_c = true, after_tree_d = true, tree_r_cid = $3, tree_d_cid = $4
-		WHERE sp_id = $1 AND sector_number = $2`,
-		sectorParams.SpID, sectorParams.SectorNumber, sealed, unsealed)
+		SET after_tree_d = true, tree_d_cid = $3, task_id_tree_d = NULL WHERE sp_id = $1 AND sector_number = $2`,
+		sectorParams.SpID, sectorParams.SectorNumber, commd)
 	if err != nil {
-		return false, xerrors.Errorf("store sdr-trees success: updating pipeline: %w", err)
+		return false, xerrors.Errorf("store TreeD success: updating pipeline: %w", err)
 	}
 	if n != 1 {
-		return false, xerrors.Errorf("store sdr-trees success: updated %d rows", n)
+		return false, xerrors.Errorf("store TreeD success: updated %d rows", n)
 	}
 
 	return true, nil
-}
-
-func (t *TreesTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-	id := ids[0]
-	return &id, nil
-}
-
-func (t *TreesTask) TypeDetails() harmonytask.TaskTypeDetails {
-	ssize := abi.SectorSize(32 << 30) // todo task details needs taskID to get correct sector size
-	if isDevnet {
-		ssize = abi.SectorSize(2 << 20)
-	}
-
-	return harmonytask.TaskTypeDetails{
-		Max:  t.max,
-		Name: "SDRTrees",
-		Cost: resources.Resources{
-			Cpu:     1,
-			Gpu:     1,
-			Ram:     8000 << 20, // todo
-			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing),
-		},
-		MaxFailures: 3,
-		Follows:     nil,
-	}
-}
-
-func (t *TreesTask) Adder(taskFunc harmonytask.AddTaskFunc) {
-	t.sp.pollers[pollerTrees].Set(taskFunc)
-}
-
-func (t *TreesTask) taskToSector(id harmonytask.TaskID) (ffi.SectorRef, error) {
-	var refs []ffi.SectorRef
-
-	err := t.db.Select(context.Background(), &refs, `SELECT sp_id, sector_number, reg_seal_proof FROM sectors_sdr_pipeline WHERE task_id_tree_r = $1`, id)
-	if err != nil {
-		return ffi.SectorRef{}, xerrors.Errorf("getting sector ref: %w", err)
-	}
-
-	if len(refs) != 1 {
-		return ffi.SectorRef{}, xerrors.Errorf("expected 1 sector ref, got %d", len(refs))
-	}
-
-	return refs[0], nil
 }
 
 type UrlPieceReader struct {
@@ -323,4 +363,4 @@ func (u *UrlPieceReader) Close() error {
 	return nil
 }
 
-var _ harmonytask.TaskInterface = &TreesTask{}
+var _ harmonytask.TaskInterface = &TreeDTask{}

@@ -58,14 +58,6 @@ jobs:
           #   to extend the available runner capacity (60 default hosted runners).
           # We use self-hosted 4xlarge (16 CPU, 32 RAM; and 2xlarge - 8 CPU, 16 RAM) self-hosted
           #   to support resource intensive jobs.
-          # In CircleCI, the jobs defaulted to running on medium+ runners (3 CPU, 6 RAM).
-          # The following jobs were scheduled to run on 2xlarge runners (16 CPU, 32 RAM):
-          # - itest-deals_concurrent (✅)
-          # - itest-sector_pledge (✅)
-          # - itest-wdpost_worker_config (❌)
-          # - itest-worker (✅)
-          # - unit-cli (❌)
-          # - unit-rest (❌)
           runners: |
             {
               "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
@@ -77,6 +69,7 @@ jobs:
               "itest-sector_import_simple": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
               "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
+              "itest-curio": ["self-hosted", "linux", "x64", "2xlarge"],
 
               "itest-batch_deal": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-cli": ["self-hosted", "linux", "x64", "xlarge"],
@@ -122,15 +115,9 @@ jobs:
               "unit-node": ["self-hosted", "linux", "x64", "xlarge"]
             }
           # A list of test groups that require YugabyteDB to be running
-          # In CircleCI, all jobs had yugabytedb running as a sidecar.
           yugabytedb: |
             ["itest-harmonydb", "itest-harmonytask", "itest-curio"]
           # A list of test groups that require Proof Parameters to be fetched
-          # In CircleCI, only the following jobs had get-params set:
-          # - unit-cli (✅)
-          # - unit-storage (✅)
-          # - itest-sector_pledge (✅)
-          # - itest-wdpost (✅)
           parameters: |
             [
               "conformance",
@@ -158,7 +145,8 @@ jobs:
               "itest-worker",
               "multicore-sdr",
               "unit-cli",
-              "unit-storage"
+              "unit-storage",
+              "itest-curio"
             ]
         run: |
           # Create a list of integration test groups
@@ -217,7 +205,7 @@ jobs:
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
       - id: make_deps
         env:
-          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./extern/filecoin-ffi/install-filcrypto') }}-${{ hashFiles('./extern/filecoin-ffi/rust/rustc-target-features-optimized.json') }}
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
           CACHE_PATH: |
             ./extern/filecoin-ffi/filcrypto.h
             ./extern/filecoin-ffi/libfilcrypto.a

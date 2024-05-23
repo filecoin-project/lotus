@@ -226,8 +226,8 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 
 		// Insert storage id
 		_, err = tx.Exec(
-			"INSERT INTO storage_path "+
-				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), $16, $17)",
+			"INSERT INTO storage_path (storage_id, urls, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types, capacity, available, fs_available, reserved, used, last_heartbeat, heartbeat_err, allow_miners, deny_miners)"+
+				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NULL, $16, $17)",
 			si.ID,
 			strings.Join(si.URLs, ","),
 			si.Weight,
@@ -406,7 +406,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 			}
 		} else {
 			_, err = tx.Exec(
-				"INSERT INTO sector_location "+
+				"INSERT INTO sector_location (miner_id, sector_num, sector_filetype, storage_id, is_primary)"+
 					"values($1, $2, $3, $4, $5)",
 				s.Miner, s.Number, ft, storageID, primary)
 			if err != nil {

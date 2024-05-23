@@ -270,7 +270,7 @@ func (c *CMD) startWorker(qpsTicker *time.Ticker) {
 
 		start := time.Now()
 
-		var statusCode int = 0
+		var statusCode int
 
 		arr := strings.Fields(c.cmd)
 
