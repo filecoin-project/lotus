@@ -1268,11 +1268,6 @@ var ActorNewMinerCmd = &cli.Command{
 			Name:  "sector-size",
 			Usage: "specify sector size to use for new miner initialisation",
 		},
-		&cli.IntFlag{
-			Name:  "confidence",
-			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -1320,7 +1315,7 @@ var ActorNewMinerCmd = &cli.Command{
 		}
 		ssize := abi.SectorSize(sectorSizeInt)
 
-		_, err = CreateStorageMiner(ctx, full, owner, worker, sender, ssize, cctx.Uint64("confidence"))
+		_, err = CreateStorageMiner(ctx, full, owner, worker, sender, ssize)
 		if err != nil {
 			return err
 		}
@@ -1328,7 +1323,9 @@ var ActorNewMinerCmd = &cli.Command{
 	},
 }
 
-func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, worker, sender address.Address, ssize abi.SectorSize, confidence uint64) (address.Address, error) {
+const confidence = 5
+
+func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, worker, sender address.Address, ssize abi.SectorSize) (address.Address, error) {
 	// make sure the sender account exists on chain
 	_, err := fullNode.StateLookupID(ctx, owner, types.EmptyTSK)
 	if err != nil {

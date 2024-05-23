@@ -26,7 +26,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/docker/go-units"
 	"github.com/manifoldco/promptui"
 	"github.com/mitchellh/go-homedir"
 	"github.com/samber/lo"
@@ -237,7 +236,7 @@ type MigrationData struct {
 	owner           address.Address
 	worker          address.Address
 	sender          address.Address
-	ssize           abi.SectorSize
+	ssize           string
 	confidence      uint64
 	init            bool
 }
@@ -608,15 +607,15 @@ func stepCompleted(d *MigrationData, step string) {
 func stepCreateActor(d *MigrationData) {
 	d.say(plain, "Initializing a new miner actor.")
 
+	d.ssize = "32 GiB"
 	for {
 		i, _, err := (&promptui.Select{
 			Label: d.T("Enter the info to create a new miner"),
 			Items: []string{
-				d.T("Owner Address: %s", d.owner.String()),
-				d.T("Worker Address: %s", d.worker.String()),
-				d.T("Sender Address: %s", d.sender.String()),
+				d.T("Owner Wallet: %s", d.owner.String()),
+				d.T("Worker Wallet: %s", d.worker.String()),
+				d.T("Sender Wallet: %s", d.sender.String()),
 				d.T("Sector Size: %d", d.ssize),
-				d.T("Confidence epochs: %d", d.confidence),
 				d.T("Continue to verify the addresses and create a new miner actor.")},
 			Size:      6,
 			Templates: d.selectTemplates,
@@ -660,21 +659,24 @@ func stepCreateActor(d *MigrationData) {
 			}
 			continue
 		case 3:
-			val, err := (&promptui.Prompt{
-				Label: d.T("Enter the sector size"),
+			i, _, err := (&promptui.Select{
+				Label: d.T("Select the Sector Size"),
+				Items: []string{
+					d.T("64 GiB"),
+					d.T("32 GiB"),
+					d.T("8 MiB"),
+					d.T("2 KiB"),
+				},
+				Size:      4,
+				Templates: d.selectTemplates,
 			}).Run()
 			if err != nil {
-				d.say(notice, "No value provided")
-				continue
+				d.say(notice, "Sector selection failed: %s ", err.Error())
+				os.Exit(1)
 			}
-			sectorSize, err := units.RAMInBytes(val)
-			if err != nil {
-				d.say(notice, "Failed to parse sector size: %s", err.Error())
-				continue
-			}
-			d.ssize = abi.SectorSize(sectorSize)
+
+			d.ssize = []string{"64 GiB", "32 GiB", "8 MiB", "2 KiB"}[i]
 			continue
-		case 4:
 			confidenceStr, err := (&promptui.Prompt{
 				Label:   d.T("Confidence epochs"),
 				Default: strconv.Itoa(5),
@@ -694,7 +696,9 @@ func stepCreateActor(d *MigrationData) {
 	}
 
 minerInit:
-	miner, err := spcli.CreateStorageMiner(d.ctx, d.full, d.owner, d.worker, d.sender, d.ssize, d.confidence)
+	var ss abi.SectorSize
+
+	miner, err := spcli.CreateStorageMiner(d.ctx, d.full, d.owner, d.worker, d.sender, ss)
 	if err != nil {
 		d.say(notice, "Failed to create the miner actor: %s", err.Error())
 		os.Exit(1)
