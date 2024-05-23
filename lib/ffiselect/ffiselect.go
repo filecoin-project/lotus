@@ -50,7 +50,7 @@ type FFICall struct {
 }
 
 func subStrInSet(set []string, sub string) bool {
-	return lo.Reduce(set, func(agg bool, item string, _ int) bool { return agg || strings.Contains(item, "RUST_LOG") }, false)
+	return lo.Reduce(set, func(agg bool, item string, _ int) bool { return agg || strings.Contains(item, sub) }, false)
 }
 
 func call(logctx []any, fn string, args ...interface{}) ([]interface{}, error) {
@@ -235,37 +235,22 @@ func init() {
 		registeredTypeNames[reflect.TypeOf(t).PkgPath()+"."+reflect.TypeOf(t).Name()] = struct{}{}
 	}
 
-	from := reflect.TypeOf(FFISelect{})
 	to := reflect.TypeOf(ffidirect.FFI{})
-	for m := 0; m < from.NumMethod(); m++ {
-		fm := from.Method(m)
-		tm, ok := to.MethodByName(fm.Name)
-		if !ok {
-			panic("ffiSelect: method not found: " + fm.Name)
-		}
-		ff, tf := fm.Func, tm.Func
-		//Ensure they have the same types of input and output args:
-		if ff.Type().NumIn() != tf.Type().NumIn() || ff.Type().NumOut() != tf.Type().NumOut() {
-			panic("ffiSelect: mismatched number of args or return values: " + fm.Name)
-		}
-		for i := 1; i < ff.Type().NumIn(); i++ { // skipping first arg (struct type)
-			in := ff.Type().In(i)
+	for m := 0; m < to.NumMethod(); m++ {
+		tm := to.Method(m)
+		tf := tm.Func
+		for i := 1; i < tf.Type().NumIn(); i++ { // skipping first arg (struct type)
+			in := tf.Type().In(i)
 			nm := in.PkgPath() + "." + in.Name()
-			if in != tf.Type().In(i) {
-				panic("ffiSelect: mismatched arg types: " + nm + " Number: " + strconv.Itoa(i) + " " + in.String() + " != " + tf.Type().In(i).String())
-			}
 			if _, ok := registeredTypeNames[nm]; in.PkgPath() != "" && !ok { // built-ins ok
-				panic("ffiSelect: unregistered type: " + nm + " from " + fm.Name + " arg: " + strconv.Itoa(i))
+				panic("ffiSelect: unregistered type: " + nm + " from " + tm.Name + " arg: " + strconv.Itoa(i))
 			}
 		}
-		for i := 0; i < ff.Type().NumOut(); i++ {
-			out := ff.Type().Out(i)
+		for i := 0; i < tf.Type().NumOut(); i++ {
+			out := tf.Type().Out(i)
 			nm := out.PkgPath() + "." + out.Name()
-			if out != tf.Type().Out(i) {
-				panic("ffiSelect: mismatched return types: " + nm + " Number: " + strconv.Itoa(i) + " " + out.String() + " != " + tf.Type().Out(i).String())
-			}
 			if _, ok := registeredTypeNames[nm]; out.PkgPath() != "" && !ok { // built-ins ok
-				panic("ffiSelect: unregistered type: " + nm + " from " + fm.Name + " arg: " + strconv.Itoa(i))
+				panic("ffiSelect: unregistered type: " + nm + " from " + tm.Name + " arg: " + strconv.Itoa(i))
 			}
 		}
 	}
