@@ -12,6 +12,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -29,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -303,6 +305,29 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	partDone = func() time.Duration { return time.Duration(0) }
 
 	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
+
+	{
+		start := time.Now()
+		powerActor, err := sm.LoadActor(ctx, power.Address, ts)
+		if err != nil {
+			panic("err")
+		}
+		state, err := power.Load(sm.ChainStore().ActorStore(ctx), powerActor)
+		if err != nil {
+			panic("err")
+		}
+		var powerTable []power.Claim
+		err = state.ForEachClaim(func(miner address.Address, claim power.Claim) error {
+			powerTable = append(powerTable, claim)
+			return nil
+		})
+		if err != nil {
+			panic("err")
+		}
+		duration := time.Since(start)
+
+		log.Infow("Power Walk Time", "duration", duration, "count", len(powerTable))
+	}
 
 	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
 		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))))
