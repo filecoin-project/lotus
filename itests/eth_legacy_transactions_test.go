@@ -5,6 +5,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"os"
 	"testing"
 	"time"
@@ -100,6 +104,64 @@ func TestLegacyValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, tx.R, ethTx.R)
 	require.EqualValues(t, tx.S, ethTx.S)
 	require.EqualValues(t, tx.V, ethTx.V)
+}
+
+func TestLegacyEIP155ValueTransferValidSignatureFailsNV22(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+
+	nv23Height := 10
+	// We will move to NV23 at epoch 10
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.UpgradeSchedule(stmgr.Upgrade{
+		Network: network.Version22,
+		Height:  -1,
+	}, stmgr.Upgrade{
+		Network:   network.Version23,
+		Height:    abi.ChainEpoch(nv23Height),
+		Migration: filcns.UpgradeActorsV13,
+	}))
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	_, ethAddr2, _ := client.EVM().NewAccount()
+
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
+
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+		From:  &ethAddr,
+		To:    &ethAddr2,
+		Value: ethtypes.EthBigInt(big.NewInt(100)),
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	legacyTx := &ethtypes.EthLegacyHomesteadTxArgs{
+		Value:    big.NewInt(100),
+		Nonce:    0,
+		To:       &ethAddr2,
+		GasPrice: types.NanoFil,
+		GasLimit: int(gaslimit),
+		V:        big.Zero(),
+		R:        big.Zero(),
+		S:        big.Zero(),
+	}
+	tx := ethtypes.NewEthLegacy155TxArgs(legacyTx)
+
+	// TX will fail as we're still at NV22
+	client.EVM().SignLegacyEIP155Transaction(tx, key.PrivateKey, big.NewInt(build.Eip155ChainId))
+
+	signed, err := tx.ToRawTxBytesSigned()
+	require.NoError(t, err)
+
+	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Legacy ETH tx message not supported in network version 22,need version 23")
 }
 
 func TestLegacyEIP155ValueTransferValidSignature(t *testing.T) {

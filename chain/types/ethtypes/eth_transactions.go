@@ -424,8 +424,8 @@ func getEthParamsAndRecipient(msg *types.Message) (params []byte, to *EthAddress
 		to = &addr
 	} else {
 		return nil, nil,
-			fmt.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
-				msg.Method, builtintypes.MethodsEVM.InvokeContract)
+			fmt.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d) or CreateExternal(%d)",
+				msg.Method, builtintypes.MethodsEVM.InvokeContract, builtintypes.MethodsEAM.CreateExternal)
 	}
 
 	return params, to, nil
