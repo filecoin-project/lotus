@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
 )
 
+var IsTest = false
 var IsCuda = build.IsOpencl != "1"
 
 // Get all devices from ffi
@@ -59,6 +60,10 @@ func call(logctx []any, fn string, args ...interface{}) ([]interface{}, error) {
 	defer func() {
 		ch <- dOrdinal
 	}()
+
+	if IsTest {
+		return callTest(logctx, fn, args...)
+	}
 
 	p, err := os.Executable()
 	if err != nil {

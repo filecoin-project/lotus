@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/curiosrc/market/lmrpc"
 	"github.com/filecoin-project/lotus/curiosrc/seal"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -99,6 +100,7 @@ func TestCurioHappyPath(t *testing.T) {
 		kit.LatestActorsAt(-1),
 		kit.WithSectorIndexDB(),
 		kit.PresealSectors(32),
+		kit.ThroughRPC(),
 	)
 
 	esemble.Start()
@@ -293,6 +295,8 @@ func createCliContext(dir string) (*cli.Context, error) {
 }
 
 func ConstructCurioTest(ctx context.Context, t *testing.T, dir string, db *harmonydb.DB, full v1api.FullNode, maddr address.Address, cfg *config.CurioConfig) (api.Curio, func(), jsonrpc.ClientCloser, <-chan struct{}) {
+	ffiselect.IsTest = true
+
 	cctx, err := createCliContext(dir)
 	require.NoError(t, err)
 
