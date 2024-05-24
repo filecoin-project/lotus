@@ -11,8 +11,10 @@ create table parked_pieces (
 
     cleanup_task_id bigint default null,
 
-    foreign key (task_id) references harmony_task (id) on delete set null,
-    foreign key (cleanup_task_id) references harmony_task (id) on delete set null,
+    -- NOTE: Following keys were dropped in 20240507-sdr-pipeline-fk-drop.sql
+    foreign key (task_id) references harmony_task (id) on delete set null, -- dropped
+    foreign key (cleanup_task_id) references harmony_task (id) on delete set null, -- dropped
+
     unique (piece_cid)
 );
 

@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DataDog/zstd"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-car"
+	"github.com/klauspost/compress/zstd"
 	"golang.org/x/xerrors"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -145,10 +145,10 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 	)
 
 	if !strings.HasPrefix(bundle, "v") {
-		return nil, xerrors.Errorf("bundle bundle '%q' doesn't start with a 'v'", bundle)
+		return nil, xerrors.Errorf("bundle '%q' doesn't start with a 'v'", bundle)
 	}
 	if !strings.HasSuffix(bundle, archiveExt) {
-		return nil, xerrors.Errorf("bundle bundle '%q' doesn't end with '%s'", bundle, archiveExt)
+		return nil, xerrors.Errorf("bundle '%q' doesn't end with '%s'", bundle, archiveExt)
 	}
 	version, err := strconv.ParseInt(bundle[1:len(bundle)-len(archiveExt)], 10, 0)
 	if err != nil {
@@ -160,7 +160,10 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 	}
 	defer fi.Close() //nolint
 
-	uncompressed := zstd.NewReader(fi)
+	uncompressed, err := zstd.NewReader(fi)
+	if err != nil {
+		return nil, err
+	}
 	defer uncompressed.Close() //nolint
 
 	var bundles []*BuiltinActorsMetadata
@@ -255,7 +258,10 @@ func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version, networkBundleNa
 	}
 	defer fi.Close() //nolint
 
-	uncompressed := zstd.NewReader(fi)
+	uncompressed, err := zstd.NewReader(fi)
+	if err != nil {
+		return nil, false
+	}
 	defer uncompressed.Close() //nolint
 
 	tarReader := tar.NewReader(uncompressed)

@@ -191,6 +191,12 @@ type dealStateV2 struct {
 	ds2 market2.DealState
 }
 
+func (d dealStateV2) SectorNumber() abi.SectorNumber {
+
+	return 0
+
+}
+
 func (d dealStateV2) SectorStartEpoch() abi.ChainEpoch {
 	return d.ds2.SectorStartEpoch
 }

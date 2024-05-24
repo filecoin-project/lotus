@@ -288,7 +288,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 	}
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
-	err = os.MkdirAll(fsr.path, 0755) //nolint: gosec
+	err = os.MkdirAll(fsr.path, 0755)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}

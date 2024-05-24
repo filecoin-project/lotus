@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -202,7 +203,7 @@ func (t *WdPostTask) DoPartition(ctx context.Context, ts *types.TipSet, maddr ad
 				Proofs:            postOut,
 				ChallengedSectors: sinfos,
 				Prover:            abi.ActorID(mid),
-			}); err != nil {
+			}); err != nil { // revive:disable-line:empty-block
 				/*log.Errorw("window post verification failed", "post", postOut, "error", err)
 				time.Sleep(5 * time.Second)
 				continue todo retry loop */
@@ -337,7 +338,7 @@ func (t *WdPostTask) sectorsForProof(ctx context.Context, maddr address.Address,
 }
 
 func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
-	var retErr error = nil
+	var retErr error
 	randomness[31] &= 0x3f
 
 	out := make([]proof.PoStProof, 0)
@@ -408,7 +409,7 @@ func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredP
 				})
 			}
 
-			pr, err := t.prover.GenerateWindowPoStAdv(cctx, ppt, minerID, sectors, int(partIdx), randomness, true)
+			pr, err := t.GenerateWindowPoStAdv(cctx, ppt, minerID, sectors, int(partIdx), randomness, true)
 			sk := pr.Skipped
 
 			if err != nil || len(sk) > 0 {
@@ -439,4 +440,108 @@ func (t *WdPostTask) generateWindowPoSt(ctx context.Context, ppt abi.RegisteredP
 
 	out = append(out, *postProofs)
 	return out, skipped, retErr
+}
+
+func (t *WdPostTask) GenerateWindowPoStAdv(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness, allowSkip bool) (storiface.WindowPoStResult, error) {
+
+	var slk sync.Mutex
+	var skipped []abi.SectorID
+
+	var wg sync.WaitGroup
+	wg.Add(len(sectors))
+
+	vproofs := make([][]byte, len(sectors))
+
+	for i, s := range sectors {
+		if t.parallel != nil {
+			select {
+			case t.parallel <- struct{}{}:
+			case <-ctx.Done():
+				return storiface.WindowPoStResult{}, xerrors.Errorf("context error waiting on challengeThrottle")
+			}
+		}
+
+		go func(i int, s storiface.PostSectorChallenge) {
+			defer wg.Done()
+			if t.parallel != nil {
+				defer func() {
+					<-t.parallel
+				}()
+			}
+
+			if t.challengeReadTimeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, t.challengeReadTimeout)
+				defer cancel()
+			}
+
+			vanilla, err := t.storage.GenerateSingleVanillaProof(ctx, mid, s, ppt)
+			slk.Lock()
+			defer slk.Unlock()
+
+			if err != nil || vanilla == nil {
+				skipped = append(skipped, abi.SectorID{
+					Miner:  mid,
+					Number: s.SectorNumber,
+				})
+				log.Errorf("reading PoSt challenge for sector %d, vlen:%d, err: %s", s.SectorNumber, len(vanilla), err)
+				return
+			}
+
+			vproofs[i] = vanilla
+		}(i, s)
+	}
+	wg.Wait()
+
+	if len(skipped) > 0 && !allowSkip {
+		// This should happen rarely because before entering GenerateWindowPoSt we check all sectors by reading challenges.
+		// When it does happen, window post runner logic will just re-check sectors, and retry with newly-discovered-bad sectors skipped
+		log.Errorf("couldn't read some challenges (skipped %d)", len(skipped))
+
+		// note: can't return an error as this in an jsonrpc call
+		return storiface.WindowPoStResult{Skipped: skipped}, nil
+	}
+
+	// compact skipped sectors
+	var skippedSoFar int
+	for i := range vproofs {
+		if len(vproofs[i]) == 0 {
+			skippedSoFar++
+			continue
+		}
+
+		if skippedSoFar > 0 {
+			vproofs[i-skippedSoFar] = vproofs[i]
+		}
+	}
+
+	vproofs = vproofs[:len(vproofs)-skippedSoFar]
+
+	// compute the PoSt!
+	res, err := t.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
+	r := storiface.WindowPoStResult{
+		PoStProofs: res,
+		Skipped:    skipped,
+	}
+	if err != nil {
+		log.Errorw("generating window PoSt failed", "error", err)
+		return r, xerrors.Errorf("generate window PoSt with vanilla proofs: %w", err)
+	}
+	return r, nil
+}
+
+func (t *WdPostTask) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
+	pp, err := ffiselect.FFISelect{}.GenerateSinglePartitionWindowPoStWithVanilla(proofType, minerID, randomness, proofs, uint(partitionIdx))
+	if err != nil {
+		return proof.PoStProof{}, err
+	}
+	if pp == nil {
+		// should be impossible, but just in case do not panic
+		return proof.PoStProof{}, xerrors.New("postproof was nil")
+	}
+
+	return proof.PoStProof{
+		PoStProof:  pp.PoStProof,
+		ProofBytes: pp.ProofBytes,
+	}, nil
 }

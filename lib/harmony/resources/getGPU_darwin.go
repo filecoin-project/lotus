@@ -4,5 +4,5 @@
 package resources
 
 func getGPUDevices() float64 {
-	return 10000.0 // unserious value intended for non-production use.
+	return 1.0 // likely-true value intended for non-production use.
 }

@@ -486,7 +486,7 @@ func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, t
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	ret, err := m.StateManager.LookupID(ctx, addr, ts)
+	ret, err := m.StateManager.LookupIDAddress(ctx, addr, ts)
 	if err != nil && xerrors.Is(err, types.ErrActorNotFound) {
 		return address.Undef, &api.ErrActorNotFound{}
 	}
@@ -965,9 +965,8 @@ func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Addres
 		return a.stateComputeDataCIDv1(ctx, maddr, sectorType, deals, tsk)
 	} else if nv < network.Version21 {
 		return a.stateComputeDataCIDv2(ctx, maddr, sectorType, deals, tsk)
-	} else {
-		return a.stateComputeDataCIDv3(ctx, maddr, sectorType, deals, tsk)
 	}
+	return a.stateComputeDataCIDv3(ctx, maddr, sectorType, deals, tsk)
 }
 
 func (a *StateAPI) stateComputeDataCIDv1(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
@@ -1625,7 +1624,7 @@ func (a *StateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.
 	return mas.IsAllocated(s)
 }
 
-// StateVerifiedClientStatus returns the data cap for the given address.
+// StateVerifierStatus returns the data cap for the given address.
 // Returns zero if there is no entry in the data cap table for the
 // address.
 func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
@@ -1963,6 +1962,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeWatermelonHeight:  build.UpgradeWatermelonHeight,
 			UpgradeDragonHeight:      build.UpgradeDragonHeight,
 			UpgradePhoenixHeight:     build.UpgradePhoenixHeight,
+			UpgradeAussieHeight:      build.UpgradeAussieHeight,
 		},
 	}, nil
 }

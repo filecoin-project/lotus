@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -24,6 +25,14 @@ import (
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
 	return []ethtypes.EthAddress{}, nil
+}
+
+func (gw *Node) EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) {
+	return gw.target.EthAddressToFilecoinAddress(ctx, ethAddress)
+}
+
+func (gw *Node) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) {
+	return gw.target.FilecoinAddressToEthAddress(ctx, filecoinAddress)
 }
 
 func (gw *Node) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
@@ -81,7 +90,7 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 			return err
 		}
 
-		var num ethtypes.EthUint64 = 0
+		var num ethtypes.EthUint64
 		if blkParam.PredefinedBlock != nil {
 			if *blkParam.PredefinedBlock == "earliest" {
 				return fmt.Errorf("block param \"earliest\" is not supported")

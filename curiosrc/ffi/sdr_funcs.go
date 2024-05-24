@@ -14,19 +14,21 @@ import (
 	"github.com/puzpuzpuz/xsync/v2"
 	"golang.org/x/xerrors"
 
+	// TODO everywhere here that we call this we should call our proxy instead.
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	proof2 "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/curiosrc/proof"
+	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var log = logging.Logger("lpffi")
+var log = logging.Logger("cu/ffi")
 
 /*
 type ExternPrecommit2 func(ctx context.Context, sector storiface.SectorRef, cache, sealed string, pc1out storiface.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error)
@@ -61,7 +63,7 @@ type storageProvider struct {
 }
 
 func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask.TaskID, sector storiface.SectorRef, existing, allocate storiface.SectorFileType, sealing storiface.PathType) (fspaths, ids storiface.SectorPaths, release func(), err error) {
-	var paths, storageIDs storiface.SectorPaths
+	var sectorPaths, storageIDs storiface.SectorPaths
 	var releaseStorage func()
 
 	var ok bool
@@ -77,7 +79,7 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 
 		log.Debugw("using existing storage reservation", "task", taskID, "sector", sector, "existing", existing, "allocate", allocate)
 
-		paths = resv.Paths
+		sectorPaths = resv.Paths
 		storageIDs = resv.PathIDs
 		releaseStorage = resv.Release
 
@@ -87,7 +89,7 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 			// present locally. Note that we do not care about 'allocate' reqeuests, those files don't exist, and are just
 			// proposed paths with a reservation of space.
 
-			_, checkPathIDs, err := l.storage.AcquireSector(ctx, sector, existing, storiface.FTNone, sealing, storiface.AcquireMove, storiface.AcquireInto(storiface.PathsWithIDs{Paths: paths, IDs: storageIDs}))
+			_, checkPathIDs, err := l.storage.AcquireSector(ctx, sector, existing, storiface.FTNone, sealing, storiface.AcquireMove, storiface.AcquireInto(storiface.PathsWithIDs{Paths: sectorPaths, IDs: storageIDs}))
 			if err != nil {
 				return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, xerrors.Errorf("acquire reserved existing files: %w", err)
 			}
@@ -101,20 +103,20 @@ func (l *storageProvider) AcquireSector(ctx context.Context, taskID *harmonytask
 		// No related reservation, acquire storage as usual
 
 		var err error
-		paths, storageIDs, err = l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
+		sectorPaths, storageIDs, err = l.storage.AcquireSector(ctx, sector, existing, allocate, sealing, storiface.AcquireMove)
 		if err != nil {
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, err
 		}
 
-		releaseStorage, err = l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal)
+		releaseStorage, err = l.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal, paths.MinFreeStoragePercentage)
 		if err != nil {
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
 		}
 	}
 
-	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
+	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, sectorPaths)
 
-	return paths, storageIDs, func() {
+	return sectorPaths, storageIDs, func() {
 		releaseStorage()
 
 		for _, fileType := range storiface.PathTypes {
@@ -194,13 +196,13 @@ func (sb *SealCalls) ensureOneCopy(ctx context.Context, sid abi.SectorID, pathID
 	return nil
 }
 
-func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool) (scid cid.Cid, ucid cid.Cid, err error) {
+func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, sector storiface.SectorRef, unsealed cid.Cid) (scid cid.Cid, ucid cid.Cid, err error) {
 	p1o, err := sb.makePhase1Out(unsealed, sector.ProofType)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("make phase1 output: %w", err)
 	}
 
-	paths, pathIDs, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	fspaths, pathIDs, releaseSector, err := sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -208,66 +210,55 @@ func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sect
 
 	defer func() {
 		if err != nil {
-			clerr := removeDRCTrees(paths.Cache)
+			clerr := removeDRCTrees(fspaths.Cache, false)
 			if clerr != nil {
-				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", paths.Cache)
+				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", fspaths.Cache)
 			}
 		}
 	}()
 
-	treeDUnsealed, err := proof.BuildTreeD(data, unpaddedData, filepath.Join(paths.Cache, proofpaths.TreeDName), size)
+	// create sector-sized file at paths.Sealed; PC2 transforms it into a sealed sector in-place
+	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("building tree-d: %w", err)
-	}
-
-	if treeDUnsealed != unsealed {
-		return cid.Undef, cid.Undef, xerrors.Errorf("tree-d cid mismatch with supplied unsealed cid")
+		return cid.Undef, cid.Undef, xerrors.Errorf("getting sector size: %w", err)
 	}
 
 	{
-		// create sector-sized file at paths.Sealed; PC2 transforms it into a sealed sector in-place
-		ssize, err := sector.ProofType.SectorSize()
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("getting sector size: %w", err)
-		}
+		// copy TreeD prefix to sealed sector, SealPreCommitPhase2 will mutate it in place into the sealed sector
 
-		{
-			// copy TreeD prefix to sealed sector, SealPreCommitPhase2 will mutate it in place into the sealed sector
+		// first try reflink + truncate, that should be way faster
+		err := reflink.Always(filepath.Join(fspaths.Cache, proofpaths.TreeDName), fspaths.Sealed)
+		if err == nil {
+			err = os.Truncate(fspaths.Sealed, int64(ssize))
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("truncating reflinked sealed file: %w", err)
+			}
+		} else {
+			log.Errorw("reflink treed -> sealed failed, falling back to slow copy, use single scratch btrfs or xfs filesystem", "error", err, "sector", sector, "cache", fspaths.Cache, "sealed", fspaths.Sealed)
 
-			// first try reflink + truncate, that should be way faster
-			err := reflink.Always(filepath.Join(paths.Cache, proofpaths.TreeDName), paths.Sealed)
-			if err == nil {
-				err = os.Truncate(paths.Sealed, int64(ssize))
-				if err != nil {
-					return cid.Undef, cid.Undef, xerrors.Errorf("truncating reflinked sealed file: %w", err)
-				}
-			} else {
-				log.Errorw("reflink treed -> sealed failed, falling back to slow copy, use single scratch btrfs or xfs filesystem", "error", err, "sector", sector, "cache", paths.Cache, "sealed", paths.Sealed)
+			// fallback to slow copy, copy ssize bytes from treed to sealed
+			dst, err := os.OpenFile(fspaths.Sealed, os.O_WRONLY|os.O_CREATE, 0644)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("opening sealed sector file: %w", err)
+			}
+			src, err := os.Open(filepath.Join(fspaths.Cache, proofpaths.TreeDName))
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("opening treed sector file: %w", err)
+			}
 
-				// fallback to slow copy, copy ssize bytes from treed to sealed
-				dst, err := os.OpenFile(paths.Sealed, os.O_WRONLY|os.O_CREATE, 0644)
-				if err != nil {
-					return cid.Undef, cid.Undef, xerrors.Errorf("opening sealed sector file: %w", err)
-				}
-				src, err := os.Open(filepath.Join(paths.Cache, proofpaths.TreeDName))
-				if err != nil {
-					return cid.Undef, cid.Undef, xerrors.Errorf("opening treed sector file: %w", err)
-				}
-
-				_, err = io.CopyN(dst, src, int64(ssize))
-				derr := dst.Close()
-				_ = src.Close()
-				if err != nil {
-					return cid.Undef, cid.Undef, xerrors.Errorf("copying treed -> sealed: %w", err)
-				}
-				if derr != nil {
-					return cid.Undef, cid.Undef, xerrors.Errorf("closing sealed file: %w", derr)
-				}
+			_, err = io.CopyN(dst, src, int64(ssize))
+			derr := dst.Close()
+			_ = src.Close()
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("copying treed -> sealed: %w", err)
+			}
+			if derr != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("closing sealed file: %w", derr)
 			}
 		}
 	}
 
-	sl, uns, err := ffi.SealPreCommitPhase2(p1o, paths.Cache, paths.Sealed)
+	sl, uns, err := ffiselect.FFISelect{}.SealPreCommitPhase2(sector.ID, p1o, fspaths.Cache, fspaths.Sealed)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
 	}
@@ -283,22 +274,28 @@ func (sb *SealCalls) TreeDRC(ctx context.Context, task *harmonytask.TaskID, sect
 	return sl, uns, nil
 }
 
-func removeDRCTrees(cache string) error {
-	// list files in cache
+func removeDRCTrees(cache string, isDTree bool) error {
 	files, err := os.ReadDir(cache)
 	if err != nil {
 		return xerrors.Errorf("listing cache: %w", err)
 	}
 
+	var testFunc func(string) bool
+
+	if isDTree {
+		testFunc = proofpaths.IsTreeDFile
+	} else {
+		testFunc = proofpaths.IsTreeRCFile
+	}
+
 	for _, file := range files {
-		if proofpaths.IsTreeFile(file.Name()) {
+		if testFunc(file.Name()) {
 			err := os.Remove(filepath.Join(cache, file.Name()))
 			if err != nil {
 				return xerrors.Errorf("removing tree file: %w", err)
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -312,7 +309,7 @@ func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sea
 		return nil, xerrors.Errorf("failed to generate vanilla proof: %w", err)
 	}
 
-	proof, err := ffi.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
+	proof, err := ffiselect.FFISelect{}.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
@@ -624,4 +621,41 @@ func (sb *SealCalls) sectorStorageType(ctx context.Context, sector storiface.Sec
 	}
 
 	return true, storiface.PathStorage, nil
+}
+
+// PreFetch fetches the sector file to local storage before SDR and TreeRC Tasks
+func (sb *SealCalls) PreFetch(ctx context.Context, sector storiface.SectorRef, task *harmonytask.TaskID) (fsPath, pathID storiface.SectorPaths, releaseSector func(), err error) {
+	fsPath, pathID, releaseSector, err = sb.sectors.AcquireSector(ctx, task, sector, storiface.FTCache, storiface.FTNone, storiface.PathSealing)
+	if err != nil {
+		return storiface.SectorPaths{}, storiface.SectorPaths{}, nil, xerrors.Errorf("acquiring sector paths: %w", err)
+	}
+	// Don't release the storage locks. They will be released in TreeD func()
+	return
+}
+
+func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, unsealed cid.Cid, size abi.PaddedPieceSize, data io.Reader, unpaddedData bool, fspaths, pathIDs storiface.SectorPaths) error {
+	var err error
+	defer func() {
+		if err != nil {
+			clerr := removeDRCTrees(fspaths.Cache, true)
+			if clerr != nil {
+				log.Errorw("removing tree files after TreeDRC error", "error", clerr, "exec-error", err, "sector", sector, "cache", fspaths.Cache)
+			}
+		}
+	}()
+
+	treeDUnsealed, err := proof.BuildTreeD(data, unpaddedData, filepath.Join(fspaths.Cache, proofpaths.TreeDName), size)
+	if err != nil {
+		return xerrors.Errorf("building tree-d: %w", err)
+	}
+
+	if treeDUnsealed != unsealed {
+		return xerrors.Errorf("tree-d cid %s mismatch with supplied unsealed cid %s", treeDUnsealed, unsealed)
+	}
+
+	if err := sb.ensureOneCopy(ctx, sector.ID, pathIDs, storiface.FTCache); err != nil {
+		return xerrors.Errorf("ensure one copy: %w", err)
+	}
+
+	return nil
 }

@@ -111,12 +111,21 @@ func (p *PoRepTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 	proof, err := p.sc.PoRepSnark(ctx, sr, sealed, unsealed, sectorParams.TicketValue, abi.InteractiveSealRandomness(rand))
 	if err != nil {
+		//end, rerr := p.recoverErrors(ctx, sectorParams.SpID, sectorParams.SectorNumber, err)
+		//if rerr != nil {
+		//	return false, xerrors.Errorf("recover errors: %w", rerr)
+		//}
+		//if end {
+		//	// done, but the error handling has stored a different than success state
+		//	return true, nil
+		//}
+
 		return false, xerrors.Errorf("failed to compute seal proof: %w", err)
 	}
 
 	// store success!
 	n, err := p.db.Exec(ctx, `UPDATE sectors_sdr_pipeline
-		SET after_porep = TRUE, seed_value = $3, porep_proof = $4
+		SET after_porep = TRUE, seed_value = $3, porep_proof = $4, task_id_porep = NULL
 		WHERE sp_id = $1 AND sector_number = $2`,
 		sectorParams.SpID, sectorParams.SectorNumber, []byte(rand), proof)
 	if err != nil {
@@ -137,12 +146,16 @@ func (p *PoRepTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.Task
 }
 
 func (p *PoRepTask) TypeDetails() harmonytask.TaskTypeDetails {
+	gpu := 1.0
+	if isDevnet {
+		gpu = 0
+	}
 	res := harmonytask.TaskTypeDetails{
 		Max:  p.max,
 		Name: "PoRep",
 		Cost: resources.Resources{
 			Cpu:       1,
-			Gpu:       1,
+			Gpu:       gpu,
 			Ram:       50 << 30, // todo correct value
 			MachineID: 0,
 		},

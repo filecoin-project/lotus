@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	curio "github.com/filecoin-project/lotus/curiosrc"
+	"github.com/filecoin-project/lotus/curiosrc/alertmanager"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
 	"github.com/filecoin-project/lotus/curiosrc/gc"
@@ -37,7 +38,6 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	db := dependencies.DB
 	full := dependencies.Full
 	verif := dependencies.Verif
-	lw := dependencies.LW
 	as := dependencies.As
 	maddrs := dependencies.Maddrs
 	stor := dependencies.Stor
@@ -60,7 +60,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 
 		if cfg.Subsystems.EnableWindowPost {
 			wdPostTask, wdPoStSubmitTask, derlareRecoverTask, err := curio.WindowPostScheduler(
-				ctx, cfg.Fees, cfg.Proving, full, verif, lw, sender, chainSched,
+				ctx, cfg.Fees, cfg.Proving, full, verif, sender, chainSched,
 				as, maddrs, db, stor, si, cfg.Subsystems.WindowPostMaxTasks)
 
 			if err != nil {
@@ -71,7 +71,8 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		}
 
 		if cfg.Subsystems.EnableWinningPost {
-			winPoStTask := winning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, lw, verif, full, maddrs)
+			pl := dependencies.LocalStore
+			winPoStTask := winning.NewWinPostTask(cfg.Subsystems.WinningPostMaxTasks, db, pl, verif, full, maddrs)
 			activeTasks = append(activeTasks, winPoStTask)
 			needProofParams = true
 		}
@@ -84,7 +85,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 	{
 		// Piece handling
 		if cfg.Subsystems.EnableParkPiece {
-			parkPieceTask := piece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
+			parkPieceTask, err := piece.NewParkPieceTask(db, must.One(slrLazy.Val()), cfg.Subsystems.ParkPieceMaxTasks)
+			if err != nil {
+				return nil, err
+			}
 			cleanupPieceTask := piece.NewCleanupPieceTask(db, must.One(slrLazy.Val()), 0)
 			activeTasks = append(activeTasks, parkPieceTask, cleanupPieceTask)
 		}
@@ -114,9 +118,10 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, sdrTask)
 		}
 		if cfg.Subsystems.EnableSealSDRTrees {
-			treesTask := seal.NewTreesTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeDTask := seal.NewTreeDTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
+			treeRCTask := seal.NewTreeRCTask(sp, db, slr, cfg.Subsystems.SealSDRTreesMaxTasks)
 			finalizeTask := seal.NewFinalizeTask(cfg.Subsystems.FinalizeMaxTasks, sp, slr, db)
-			activeTasks = append(activeTasks, treesTask, finalizeTask)
+			activeTasks = append(activeTasks, treeDTask, treeRCTask, finalizeTask)
 		}
 		if cfg.Subsystems.EnableSendPrecommitMsg {
 			precommitTask := seal.NewSubmitPrecommitTask(sp, db, full, sender, as, cfg.Fees.MaxPreCommitGasFee)
@@ -132,7 +137,7 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 			activeTasks = append(activeTasks, moveStorageTask)
 		}
 		if cfg.Subsystems.EnableSendCommitMsg {
-			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg.Fees.MaxCommitGasFee)
+			commitTask := seal.NewSubmitCommitTask(sp, db, full, sender, as, cfg)
 			activeTasks = append(activeTasks, commitTask)
 		}
 	}
@@ -142,6 +147,9 @@ func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.Task
 		storageEndpointGcTask := gc.NewStorageEndpointGC(si, stor, db)
 		activeTasks = append(activeTasks, storageEndpointGcTask)
 	}
+
+	amTask := alertmanager.NewAlertTask(full, db, cfg.Alerting)
+	activeTasks = append(activeTasks, amTask)
 
 	if needProofParams {
 		for spt := range dependencies.ProofTypes {

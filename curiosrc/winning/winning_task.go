@@ -10,6 +10,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/proof"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/api"
@@ -24,11 +26,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/promise"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -38,7 +42,7 @@ type WinPostTask struct {
 	max int
 	db  *harmonydb.DB
 
-	prover   ProverWinningPoSt
+	paths    *paths.Local
 	verifier storiface.Verifier
 
 	api    WinPostAPI
@@ -66,15 +70,11 @@ type WinPostAPI interface {
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
 
-type ProverWinningPoSt interface {
-	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, sectorInfo []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, error)
-}
-
-func NewWinPostTask(max int, db *harmonydb.DB, prover ProverWinningPoSt, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
+func NewWinPostTask(max int, db *harmonydb.DB, pl *paths.Local, verifier storiface.Verifier, api WinPostAPI, actors map[dtypes.MinerAddress]bool) *WinPostTask {
 	t := &WinPostTask{
 		max:      max,
 		db:       db,
-		prover:   prover,
+		paths:    pl,
 		verifier: verifier,
 		api:      api,
 		actors:   actors,
@@ -272,7 +272,8 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 			}
 		}
 
-		wpostProof, err = t.prover.GenerateWinningPoSt(ctx, ppt, abi.ActorID(details.SpID), sectorChallenges, prand)
+		_, err = t.generateWinningPost(ctx, ppt, abi.ActorID(details.SpID), sectorChallenges, prand)
+		//wpostProof, err = t.prover.GenerateWinningPoSt(ctx, ppt, abi.ActorID(details.SpID), sectorChallenges, prand)
 		if err != nil {
 			err = xerrors.Errorf("failed to compute winning post proof: %w", err)
 			return false, err
@@ -431,6 +432,42 @@ func (t *WinPostTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (don
 	}
 
 	return true, nil
+}
+
+func (t *WinPostTask) generateWinningPost(
+	ctx context.Context,
+	ppt abi.RegisteredPoStProof,
+	mid abi.ActorID,
+	sectors []storiface.PostSectorChallenge,
+	randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+
+	// don't throttle winningPoSt
+	// * Always want it done asap
+	// * It's usually just one sector
+
+	vproofs := make([][]byte, len(sectors))
+	eg := errgroup.Group{}
+
+	for i, s := range sectors {
+		i, s := i, s
+		eg.Go(func() error {
+			vanilla, err := t.paths.GenerateSingleVanillaProof(ctx, mid, s, ppt)
+			if err != nil {
+				return xerrors.Errorf("get winning sector:%d,vanila failed: %w", s.SectorNumber, err)
+			}
+			if vanilla == nil {
+				return xerrors.Errorf("get winning sector:%d,vanila is nil", s.SectorNumber)
+			}
+			vproofs[i] = vanilla
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	return ffiselect.FFISelect{}.GenerateWinningPoStWithVanilla(ppt, mid, randomness, vproofs)
+
 }
 
 func (t *WinPostTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
@@ -667,7 +704,7 @@ func (t *WinPostTask) computeTicket(ctx context.Context, maddr address.Address, 
 
 func randTimeOffset(width time.Duration) time.Duration {
 	buf := make([]byte, 8)
-	rand.Reader.Read(buf) //nolint:errcheck
+	_, _ = rand.Reader.Read(buf)
 	val := time.Duration(binary.BigEndian.Uint64(buf) % uint64(width))
 
 	return val - (width / 2)

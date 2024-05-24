@@ -335,7 +335,7 @@ type FullNode interface {
 	WalletVerify(context.Context, address.Address, []byte, *crypto.Signature) (bool, error) //perm:read
 	// WalletDefaultAddress returns the address marked as default in the wallet.
 	WalletDefaultAddress(context.Context) (address.Address, error) //perm:write
-	// WalletSetDefault marks the given address as as the default one.
+	// WalletSetDefault marks the given address as the default one.
 	WalletSetDefault(context.Context, address.Address) error //perm:write
 	// WalletExport returns the private key of an address in the wallet.
 	WalletExport(context.Context, address.Address) (*types.KeyInfo, error) //perm:admin
@@ -1166,13 +1166,15 @@ type MarketBalance struct {
 }
 
 type MarketDealState struct {
-	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
-	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
-	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
+	SectorNumber     abi.SectorNumber // 0 if not yet included in proven sector (0 is also a valid sector number).
+	SectorStartEpoch abi.ChainEpoch   // -1 if not yet included in proven sector
+	LastUpdatedEpoch abi.ChainEpoch   // -1 if deal state never updated
+	SlashEpoch       abi.ChainEpoch   // -1 if deal never slashed
 }
 
 func MakeDealState(mds market.DealState) MarketDealState {
 	return MarketDealState{
+		SectorNumber:     mds.SectorNumber(),
 		SectorStartEpoch: mds.SectorStartEpoch(),
 		LastUpdatedEpoch: mds.LastUpdatedEpoch(),
 		SlashEpoch:       mds.SlashEpoch(),
@@ -1181,6 +1183,10 @@ func MakeDealState(mds market.DealState) MarketDealState {
 
 type mstate struct {
 	s MarketDealState
+}
+
+func (m mstate) SectorNumber() abi.SectorNumber {
+	return m.s.SectorNumber
 }
 
 func (m mstate) SectorStartEpoch() abi.ChainEpoch {
