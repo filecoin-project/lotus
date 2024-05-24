@@ -7,7 +7,7 @@ USAGE:
    sptool [global options] command [command options] [arguments...]
 
 VERSION:
-   1.27.0-rc3
+   1.27.0
 
 COMMANDS:
    actor    Manage Filecoin Miner Actor Metadata
