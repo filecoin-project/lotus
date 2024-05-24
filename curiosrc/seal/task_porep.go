@@ -13,9 +13,9 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/curiosrc/ffi"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 

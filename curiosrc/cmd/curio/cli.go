@@ -20,8 +20,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
-	"github.com/filecoin-project/lotus/cmd/curio/rpc"
+	"github.com/filecoin-project/lotus/curiosrc/cmd/curio/rpc"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 )
 
 const providerEnvVar = "CURIO_API_INFO"

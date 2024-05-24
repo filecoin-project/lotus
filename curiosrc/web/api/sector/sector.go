@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli/spcli"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/curiosrc/web/api/apihelper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )

@@ -12,9 +12,9 @@ import (
 	"golang.org/x/xerrors"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
-	"github.com/filecoin-project/lotus/cmd/curio/rpc"
-	"github.com/filecoin-project/lotus/cmd/curio/tasks"
+	"github.com/filecoin-project/lotus/curiosrc/cmd/curio/rpc"
+	"github.com/filecoin-project/lotus/curiosrc/cmd/curio/tasks"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/curiosrc/market/lmrpc"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"

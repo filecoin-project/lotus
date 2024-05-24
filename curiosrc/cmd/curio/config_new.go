@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 

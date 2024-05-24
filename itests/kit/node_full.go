@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/node"
 )

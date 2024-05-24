@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 )
 
 var log = logging.Logger("webrpc")

@@ -20,9 +20,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	harmonytask2 "github.com/filecoin-project/lotus/curiosrc/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
@@ -87,7 +87,7 @@ func NewAlertTask(api AlertAPI, db *harmonydb.DB, alertingCfg config.CurioAlerti
 	}
 }
 
-func (a *AlertTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (a *AlertTask) Do(taskID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error) {
 	if a.cfg.PageDutyIntegrationKey == "" {
 		log.Warnf("PageDutyIntegrationKey is empty, not sending an alert")
 		return true, nil
@@ -143,13 +143,13 @@ func (a *AlertTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done 
 
 }
 
-func (a *AlertTask) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (a *AlertTask) CanAccept(ids []harmonytask2.TaskID, engine *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
 	id := ids[0]
 	return &id, nil
 }
 
-func (a *AlertTask) TypeDetails() harmonytask.TaskTypeDetails {
-	return harmonytask.TaskTypeDetails{
+func (a *AlertTask) TypeDetails() harmonytask2.TaskTypeDetails {
+	return harmonytask2.TaskTypeDetails{
 		Max:  1,
 		Name: "AlertManager",
 		Cost: resources.Resources{
@@ -157,15 +157,15 @@ func (a *AlertTask) TypeDetails() harmonytask.TaskTypeDetails {
 			Ram: 64 << 20,
 			Gpu: 0,
 		},
-		IAmBored: harmonytask.SingletonTaskAdder(AlertMangerInterval, a),
+		IAmBored: harmonytask2.SingletonTaskAdder(AlertMangerInterval, a),
 	}
 }
 
-func (a *AlertTask) Adder(taskFunc harmonytask.AddTaskFunc) {
+func (a *AlertTask) Adder(taskFunc harmonytask2.AddTaskFunc) {
 	return
 }
 
-var _ harmonytask.TaskInterface = &AlertTask{}
+var _ harmonytask2.TaskInterface = &AlertTask{}
 
 // sendAlert sends an alert to PagerDuty with the provided payload data.
 // It creates a PDData struct with the provided routing key, event action and payload.

@@ -11,8 +11,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/ffiselect"
-	ffidirect "github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
+	"github.com/filecoin-project/lotus/curiosrc/ffiselect"
+	"github.com/filecoin-project/lotus/curiosrc/ffiselect/ffidirect"
 	"github.com/filecoin-project/lotus/lib/must"
 )
 

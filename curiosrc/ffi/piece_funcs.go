@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 

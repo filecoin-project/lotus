@@ -19,11 +19,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/resources"
 	"github.com/filecoin-project/lotus/curiosrc/message"
 	"github.com/filecoin-project/lotus/curiosrc/multictladdr"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 

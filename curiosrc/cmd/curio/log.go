@@ -7,7 +7,7 @@ import (
 	"golang.org/x/xerrors"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/cmd/curio/rpc"
+	"github.com/filecoin-project/lotus/curiosrc/cmd/curio/rpc"
 )
 
 var logCmd = &cli.Command{

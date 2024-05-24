@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-statestore"
 
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/config"
