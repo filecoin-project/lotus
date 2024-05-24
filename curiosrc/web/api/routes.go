@@ -4,7 +4,7 @@ package api
 import (
 	"github.com/gorilla/mux"
 
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/curiosrc/web/api/config"
 	"github.com/filecoin-project/lotus/curiosrc/web/api/sector"
 	"github.com/filecoin-project/lotus/curiosrc/web/api/webrpc"

@@ -6,7 +6,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/ffiselect/ffidirect"
+	"github.com/filecoin-project/lotus/curiosrc/ffiselect/ffidirect"
 )
 
 func callTest(logctx []any, fn string, rawargs ...interface{}) ([]interface{}, error) {

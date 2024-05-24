@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"go.opencensus.io/tag"
 
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/curiosrc/web/api"
 	"github.com/filecoin-project/lotus/curiosrc/web/hapi"
 	"github.com/filecoin-project/lotus/metrics"

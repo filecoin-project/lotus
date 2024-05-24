@@ -12,17 +12,17 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
+	harmonytask2 "github.com/filecoin-project/lotus/curiosrc/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/resources"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
 type task1 struct {
 	toAdd               []int
 	myPersonalTableLock sync.Mutex
-	myPersonalTable     map[harmonytask.TaskID]int // This would typically be a DB table
+	myPersonalTable     map[harmonytask2.TaskID]int // This would typically be a DB table
 	WorkCompleted       []string
 }
 
@@ -37,7 +37,7 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 	f(miner)
 }
 
-func (t *task1) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *task1) Do(taskID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error) {
 	if !stillOwned() {
 		return false, errors.New("Why not still owned?")
 	}
@@ -46,11 +46,11 @@ func (t *task1) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool
 	t.WorkCompleted = append(t.WorkCompleted, fmt.Sprintf("taskResult%d", t.myPersonalTable[taskID]))
 	return true, nil
 }
-func (t *task1) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (t *task1) CanAccept(list []harmonytask2.TaskID, e *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
 	return &list[0], nil
 }
-func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
-	return harmonytask.TaskTypeDetails{
+func (t *task1) TypeDetails() harmonytask2.TaskTypeDetails {
+	return harmonytask2.TaskTypeDetails{
 		Max:         100,
 		Name:        "ThingOne",
 		MaxFailures: 1,
@@ -60,10 +60,10 @@ func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
 		},
 	}
 }
-func (t *task1) Adder(add harmonytask.AddTaskFunc) {
+func (t *task1) Adder(add harmonytask2.AddTaskFunc) {
 	for _, vTmp := range t.toAdd {
 		v := vTmp
-		add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+		add(func(tID harmonytask2.TaskID, tx *harmonydb.Tx) (bool, error) {
 			t.myPersonalTableLock.Lock()
 			defer t.myPersonalTableLock.Unlock()
 
@@ -84,10 +84,10 @@ func TestHarmonyTasks(t *testing.T) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		t1 := &task1{
 			toAdd:           []int{56, 73},
-			myPersonalTable: map[harmonytask.TaskID]int{},
+			myPersonalTable: map[harmonytask2.TaskID]int{},
 		}
-		harmonytask.POLL_DURATION = time.Millisecond * 100
-		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1")
+		harmonytask2.POLL_DURATION = time.Millisecond * 100
+		e, err := harmonytask2.New(cdb, []harmonytask2.TaskInterface{t1}, "test:1")
 		require.NoError(t, err)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
 		e.GracefullyTerminate()
@@ -98,41 +98,41 @@ func TestHarmonyTasks(t *testing.T) {
 }
 
 type passthru struct {
-	dtl       harmonytask.TaskTypeDetails
-	do        func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error)
-	canAccept func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error)
-	adder     func(add harmonytask.AddTaskFunc)
+	dtl       harmonytask2.TaskTypeDetails
+	do        func(tID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error)
+	canAccept func(list []harmonytask2.TaskID, e *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error)
+	adder     func(add harmonytask2.AddTaskFunc)
 }
 
-func (t *passthru) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (t *passthru) Do(taskID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error) {
 	return t.do(taskID, stillOwned)
 }
-func (t *passthru) CanAccept(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (t *passthru) CanAccept(list []harmonytask2.TaskID, e *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
 	return t.canAccept(list, e)
 }
-func (t *passthru) TypeDetails() harmonytask.TaskTypeDetails {
+func (t *passthru) TypeDetails() harmonytask2.TaskTypeDetails {
 	return t.dtl
 }
-func (t *passthru) Adder(add harmonytask.AddTaskFunc) {
+func (t *passthru) Adder(add harmonytask2.AddTaskFunc) {
 	if t.adder != nil {
 		t.adder(add)
 	}
 }
 
 // Common stuff
-var dtl = harmonytask.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Resources{}}
+var dtl = harmonytask2.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Resources{}}
 var lettersMutex sync.Mutex
 
 func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 	return &passthru{
 		dtl: dtl,
-		canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+		canAccept: func(list []harmonytask2.TaskID, e *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
 			return nil, nil
 		},
-		adder: func(add harmonytask.AddTaskFunc) {
+		adder: func(add harmonytask2.AddTaskFunc) {
 			for _, vTmp := range []string{"A", "B"} {
 				v := vTmp
-				add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+				add(func(tID harmonytask2.TaskID, tx *harmonydb.Tx) (bool, error) {
 					_, err := tx.Exec("INSERT INTO itest_scratch (some_int, content) VALUES ($1,$2)", tID, v)
 					require.NoError(t, err)
 					return true, nil
@@ -144,10 +144,10 @@ func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 func fooLetterSaver(t *testing.T, cdb *harmonydb.DB, dest *[]string) *passthru {
 	return &passthru{
 		dtl: dtl,
-		canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+		canAccept: func(list []harmonytask2.TaskID, e *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
 			return &list[0], nil
 		},
-		do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+		do: func(tID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error) {
 			var content string
 			err = cdb.QueryRow(context.Background(),
 				"SELECT content FROM itest_scratch WHERE some_int=$1", tID).Scan(&content)
@@ -167,10 +167,10 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 		senderParty := fooLetterAdder(t, cdb)
 		var dest []string
 		workerParty := fooLetterSaver(t, cdb, &dest)
-		harmonytask.POLL_DURATION = time.Millisecond * 100
-		sender, err := harmonytask.New(cdb, []harmonytask.TaskInterface{senderParty}, "test:1")
+		harmonytask2.POLL_DURATION = time.Millisecond * 100
+		sender, err := harmonytask2.New(cdb, []harmonytask2.TaskInterface{senderParty}, "test:1")
 		require.NoError(t, err)
-		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{workerParty}, "test:2")
+		worker, err := harmonytask2.New(cdb, []harmonytask2.TaskInterface{workerParty}, "test:2")
 		require.NoError(t, err)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
 		sender.GracefullyTerminate()
@@ -198,10 +198,10 @@ func TestWorkStealing(t *testing.T) {
 		_, err = cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int, content) VALUES (1234, 'M')")
 		require.ErrorIs(t, err, nil)
 
-		harmonytask.POLL_DURATION = time.Millisecond * 100
-		harmonytask.CLEANUP_FREQUENCY = time.Millisecond * 100
+		harmonytask2.POLL_DURATION = time.Millisecond * 100
+		harmonytask2.CLEANUP_FREQUENCY = time.Millisecond * 100
 		var dest []string
-		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fooLetterSaver(t, cdb, &dest)}, "test:2")
+		worker, err := harmonytask2.New(cdb, []harmonytask2.TaskInterface{fooLetterSaver(t, cdb, &dest)}, "test:2")
 		require.ErrorIs(t, err, nil)
 		time.Sleep(time.Second) // do the work. FLAKYNESS RISK HERE.
 		worker.GracefullyTerminate()
@@ -214,18 +214,18 @@ func TestTaskRetry(t *testing.T) {
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
-		harmonytask.POLL_DURATION = time.Millisecond * 100
-		sender, err := harmonytask.New(cdb, []harmonytask.TaskInterface{senderParty}, "test:1")
+		harmonytask2.POLL_DURATION = time.Millisecond * 100
+		sender, err := harmonytask2.New(cdb, []harmonytask2.TaskInterface{senderParty}, "test:1")
 		require.NoError(t, err)
 
 		alreadyFailed := map[string]bool{}
 		var dest []string
 		fails2xPerMsg := &passthru{
 			dtl: dtl,
-			canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+			canAccept: func(list []harmonytask2.TaskID, e *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
 				return &list[0], nil
 			},
-			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+			do: func(tID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error) {
 				var content string
 				err = cdb.QueryRow(context.Background(),
 					"SELECT content FROM itest_scratch WHERE some_int=$1", tID).Scan(&content)
@@ -240,7 +240,7 @@ func TestTaskRetry(t *testing.T) {
 				return true, nil
 			},
 		}
-		rcv, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fails2xPerMsg}, "test:2")
+		rcv, err := harmonytask2.New(cdb, []harmonytask2.TaskInterface{fails2xPerMsg}, "test:2")
 		require.NoError(t, err)
 		time.Sleep(time.Second)
 		sender.GracefullyTerminate()
@@ -269,33 +269,33 @@ func TestBoredom(t *testing.T) {
 	//t.Parallel()
 	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
-		harmonytask.POLL_DURATION = time.Millisecond * 100
-		var taskID harmonytask.TaskID
+		harmonytask2.POLL_DURATION = time.Millisecond * 100
+		var taskID harmonytask2.TaskID
 		var ran bool
 		boredParty := &passthru{
-			dtl: harmonytask.TaskTypeDetails{
+			dtl: harmonytask2.TaskTypeDetails{
 				Name: "boredTest",
 				Max:  -1,
 				Cost: resources.Resources{},
-				IAmBored: func(add harmonytask.AddTaskFunc) error {
-					add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+				IAmBored: func(add harmonytask2.AddTaskFunc) error {
+					add(func(tID harmonytask2.TaskID, tx *harmonydb.Tx) (bool, error) {
 						taskID = tID
 						return true, nil
 					})
 					return nil
 				},
 			},
-			canAccept: func(list []harmonytask.TaskID, e *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
-				require.Equal(t, harmonytask.WorkSourceIAmBored, e.WorkOrigin)
+			canAccept: func(list []harmonytask2.TaskID, e *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
+				require.Equal(t, harmonytask2.WorkSourceIAmBored, e.WorkOrigin)
 				return &list[0], nil
 			},
-			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+			do: func(tID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error) {
 				require.Equal(t, taskID, tID)
 				ran = true
 				return true, nil
 			},
 		}
-		ht, err := harmonytask.New(cdb, []harmonytask.TaskInterface{boredParty}, "test:1")
+		ht, err := harmonytask2.New(cdb, []harmonytask2.TaskInterface{boredParty}, "test:1")
 		require.NoError(t, err)
 		require.Eventually(t, func() bool { return ran }, time.Second, time.Millisecond*100)
 		ht.GracefullyTerminate()

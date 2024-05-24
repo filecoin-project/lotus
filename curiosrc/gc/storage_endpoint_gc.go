@@ -10,9 +10,9 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/xerrors"
 
+	harmonytask2 "github.com/filecoin-project/lotus/curiosrc/harmony/harmonytask"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
-	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -39,7 +39,7 @@ func NewStorageEndpointGC(si *paths.DBIndex, remote *paths.Remote, db *harmonydb
 	}
 }
 
-func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+func (s *StorageEndpointGC) Do(taskID harmonytask2.TaskID, stillOwned func() bool) (done bool, err error) {
 	/*
 		1. Get all storage paths + urls (endpoints)
 		2. Ping each url, record results
@@ -262,13 +262,13 @@ func (s *StorageEndpointGC) Do(taskID harmonytask.TaskID, stillOwned func() bool
 	return true, nil
 }
 
-func (s *StorageEndpointGC) CanAccept(ids []harmonytask.TaskID, engine *harmonytask.TaskEngine) (*harmonytask.TaskID, error) {
+func (s *StorageEndpointGC) CanAccept(ids []harmonytask2.TaskID, engine *harmonytask2.TaskEngine) (*harmonytask2.TaskID, error) {
 	id := ids[0]
 	return &id, nil
 }
 
-func (s *StorageEndpointGC) TypeDetails() harmonytask.TaskTypeDetails {
-	return harmonytask.TaskTypeDetails{
+func (s *StorageEndpointGC) TypeDetails() harmonytask2.TaskTypeDetails {
+	return harmonytask2.TaskTypeDetails{
 		Max:  1,
 		Name: "StorageMetaGC",
 		Cost: resources.Resources{
@@ -276,13 +276,13 @@ func (s *StorageEndpointGC) TypeDetails() harmonytask.TaskTypeDetails {
 			Ram: 64 << 20,
 			Gpu: 0,
 		},
-		IAmBored: harmonytask.SingletonTaskAdder(StorageEndpointGCInterval, s),
+		IAmBored: harmonytask2.SingletonTaskAdder(StorageEndpointGCInterval, s),
 	}
 }
 
-func (s *StorageEndpointGC) Adder(taskFunc harmonytask.AddTaskFunc) {
+func (s *StorageEndpointGC) Adder(taskFunc harmonytask2.AddTaskFunc) {
 	// lazy endpoint, added when bored
 	return
 }
 
-var _ harmonytask.TaskInterface = &StorageEndpointGC{}
+var _ harmonytask2.TaskInterface = &StorageEndpointGC{}

@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/curiosrc/chainsched"
+	"github.com/filecoin-project/lotus/curiosrc/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 )
 
 const MinConfidence = 6
