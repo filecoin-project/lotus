@@ -55,7 +55,7 @@ func (a *WebRPC) loadConfigs(ctx context.Context) (map[string]string, error) {
 	return configs, nil
 }
 
-type rpcInfo struct {
+type RpcInfo struct {
 	Address   string
 	CLayers   []string
 	Reachable bool
@@ -63,7 +63,7 @@ type rpcInfo struct {
 	Version   string
 }
 
-func (a *WebRPC) SyncerState(ctx context.Context) ([]rpcInfo, error) {
+func (a *WebRPC) SyncerState(ctx context.Context) ([]RpcInfo, error) {
 	type minimalApiInfo struct {
 		Apis struct {
 			ChainApiInfo []string
@@ -93,7 +93,7 @@ func (a *WebRPC) SyncerState(ctx context.Context) ([]rpcInfo, error) {
 
 	dedup := map[string]bool{} // for dedup by address
 
-	infos := map[string]rpcInfo{} // api address -> rpc info
+	infos := map[string]RpcInfo{} // api address -> rpc info
 	var infosLk sync.Mutex
 
 	var wg sync.WaitGroup
@@ -113,7 +113,7 @@ func (a *WebRPC) SyncerState(ctx context.Context) ([]rpcInfo, error) {
 				}
 			}
 
-			myinfo := rpcInfo{
+			myinfo := RpcInfo{
 				Address:   ai.Addr,
 				Reachable: false,
 				CLayers:   clayers,
@@ -160,7 +160,7 @@ func (a *WebRPC) SyncerState(ctx context.Context) ([]rpcInfo, error) {
 				syncState = fmt.Sprintf("behind (%s behind)", time.Since(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
 			}
 
-			myinfo = rpcInfo{
+			myinfo = RpcInfo{
 				Address:   ai.Addr,
 				CLayers:   clayers,
 				Reachable: true,
@@ -171,7 +171,7 @@ func (a *WebRPC) SyncerState(ctx context.Context) ([]rpcInfo, error) {
 	}
 	wg.Wait()
 
-	var infoList []rpcInfo
+	var infoList []RpcInfo
 	for _, i := range infos {
 		infoList = append(infoList, i)
 	}
