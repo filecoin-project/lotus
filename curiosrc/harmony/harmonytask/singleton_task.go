@@ -2,11 +2,11 @@ package harmonytask
 
 import (
 	"errors"
-	"github.com/filecoin-project/lotus/curiosrc/lib/passcall"
 	"time"
 
 	"github.com/yugabyte/pgx/v5"
 
+	"github.com/filecoin-project/lotus/curiosrc/lib/passcall"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
 
