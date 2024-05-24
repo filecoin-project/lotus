@@ -1125,6 +1125,84 @@
             "translation": "{NSectors} 섹터의 메타데이터를 이동 중입니다.",
             "message": "Migrating metadata for {NSectors} sectors.",
             "placeholder": null
-        }
+        },
+        {
+            "id": "Where should we save your database config file?",
+            "translation": "데이터베이스 구성 파일을 어디에 저장해야 하나요?",
+            "message": "Where should we save your database config file?",
+            "placeholder": null
+          },
+          {
+            "id": "Error writing file: {Error}",
+            "translation": "파일 쓰기 오류: {Error}",
+            "message": "Error writing file: {Error}",
+            "placeholder": null
+          },
+          {
+            "id": "Try the web interface with {Rendercurio_run___layersgui}",
+            "translation": "{Rendercurio_run___layersgui}와 함께 웹 인터페이스를 시도해보세요",
+            "message": "Try the web interface with {Rendercurio_run___layersgui}",
+            "placeholder": null
+          },
+          {
+            "id": "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.",
+            "translation": "더 많은 서버를 위해 curio.env를 /etc/curio.env로 복사하고 목적을 할당하기 위해 CURIO_LAYERS 환경 변수를 추가하세요.",
+            "message": "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.",
+            "placeholder": null
+          },
+          {
+            "id": "Owner Wallet: {String}",
+            "translation": "소유자 지갑: {String}",
+            "message": "Owner Wallet: {String}",
+            "placeholder": null
+          },
+          {
+            "id": "Worker Wallet: {String}",
+            "translation": "작업자 지갑: {String}",
+            "message": "Worker Wallet: {String}",
+            "placeholder": null
+          },
+          {
+            "id": "Sender Wallet: {String}",
+            "translation": "발송자 지갑: {String}",
+            "message": "Sender Wallet: {String}",
+            "placeholder": null
+          },
+          {
+            "id": "Select the Sector Size",
+            "translation": "섹터 크기 선택",
+            "message": "Select the Sector Size",
+            "placeholder": null
+          },
+          {
+            "id": "64 GiB",
+            "translation": "64 GiB",
+            "message": "64 GiB",
+            "placeholder": null
+          },
+          {
+            "id": "32 GiB",
+            "translation": "32 GiB",
+            "message": "32 GiB",
+            "placeholder": null
+          },
+          {
+            "id": "8 MiB",
+            "translation": "8 MiB",
+            "message": "8 MiB",
+            "placeholder": null
+          },
+          {
+            "id": "2 KiB",
+            "translation": "2 KiB",
+            "message": "2 KiB",
+            "placeholder": null
+          },
+          {
+            "id": "Sector selection failed: {Error}",
+            "translation": "섹터 선택 실패: {Error}",
+            "message": "Sector selection failed: {Error}",
+            "placeholder": null
+          }
     ]
 }

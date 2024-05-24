@@ -46,6 +46,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -208,6 +209,7 @@ var migrationSteps = []migrationStep{
 	doc,
 	oneLastThing,
 	complete,
+	afterRan,
 }
 
 type newMinerStep func(data *MigrationData)
@@ -219,6 +221,7 @@ var newMinerSteps = []newMinerStep{
 	doc,
 	oneLastThing,
 	completeInit,
+	afterRan,
 }
 
 type MigrationData struct {
@@ -228,6 +231,7 @@ type MigrationData struct {
 	MinerConfigPath string
 	MinerConfig     *config.StorageMiner
 	DB              *harmonydb.DB
+	HarmonyCfg      config.HarmonyDB
 	MinerID         address.Address
 	full            v1api.FullNode
 	cctx            *cli.Context
@@ -243,13 +247,47 @@ type MigrationData struct {
 
 func complete(d *MigrationData) {
 	stepCompleted(d, d.T("Lotus-Miner to Curio Migration."))
-	d.say(plain, "Try the web interface with %s for further guided improvements.", code.Render("curio run --layers=gui"))
+}
+
+var EnvFiles = []string{"/etc/curio/config.env", "./curio/curio.env", "~/config/curio.env"}
+
+func afterRan(d *MigrationData) {
+	// Write curio.env file. TODO!!!!!!!!!!
+	// Inform users they need to copy this to /etc/curio.env or ~/.config/curio.env to run Curio.
+	places := append([]string{"/tmp/curio.env",
+		must.One(os.Getwd()) + "/curio.env",
+		must.One(os.UserHomeDir()) + "/curio.env"}, EnvFiles...)
+saveConfigFile:
+	_, where, err := (&promptui.Select{
+		Label:     d.T("Where should we save your database config file?"),
+		Items:     places,
+		Templates: d.selectTemplates,
+	}).Run()
+	if err != nil {
+		d.say(notice, "Aborting migration.", err.Error())
+		os.Exit(1)
+	}
+	args := []string{fmt.Sprintf("CURIO_DB=postgres://%s:%s@%s:%s/%s",
+		d.HarmonyCfg.Username,
+		d.HarmonyCfg.Password,
+		d.HarmonyCfg.Hosts[0],
+		d.HarmonyCfg.Port,
+		d.HarmonyCfg.Database)}
+
+	// Write the file
+	err = os.WriteFile(where, []byte(strings.Join(args, "\n")), 0644)
+	if err != nil {
+		d.say(notice, "Error writing file: %s", err.Error())
+		goto saveConfigFile
+	}
+
+	d.say(plain, "Try the web interface with %s ", code.Render("curio run --layers=gui"))
+	d.say(plain, "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.")
 	d.say(plain, "You can now migrate your market node (%s), if applicable.", "Boost")
 }
 
 func completeInit(d *MigrationData) {
 	stepCompleted(d, d.T("New Miner initialization complete."))
-	d.say(plain, "Try the web interface with %s for further guided improvements.", code.Render("curio run --layers=gui"))
 }
 
 func configToDB(d *MigrationData) {
@@ -457,6 +495,8 @@ func yugabyteConnect(d *MigrationData) {
 	if err != nil {
 		hcfg := getDBDetails(d)
 		harmonyCfg = *hcfg
+	} else {
+		d.HarmonyCfg = harmonyCfg
 	}
 
 	d.say(plain, "Connected to Yugabyte. Schema is current.")
@@ -894,6 +934,8 @@ func getDBDetails(d *MigrationData) *config.HarmonyDB {
 				continue
 			}
 			d.DB = db
+			d.HarmonyCfg = harmonyCfg
+
 			return &harmonyCfg
 		}
 	}
