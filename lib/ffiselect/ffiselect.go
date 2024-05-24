@@ -55,15 +55,15 @@ func subStrInSet(set []string, sub string) bool {
 }
 
 func call(logctx []any, fn string, args ...interface{}) ([]interface{}, error) {
+	if IsTest {
+		return callTest(logctx, fn, args...)
+	}
+
 	// get dOrdinal
 	dOrdinal := <-ch
 	defer func() {
 		ch <- dOrdinal
 	}()
-
-	if IsTest {
-		return callTest(logctx, fn, args...)
-	}
 
 	p, err := os.Executable()
 	if err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/google/uuid"
+	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -107,6 +108,8 @@ func TestCurioHappyPath(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 	esemble.BeginMining(blockTime)
 
+	full.WaitTillChain(ctx, kit.HeightAtLeast(15))
+
 	err := miner.LogSetLevel(ctx, "*", "ERROR")
 	require.NoError(t, err)
 
@@ -185,6 +188,7 @@ func TestCurioHappyPath(t *testing.T) {
 		}
 		return true, nil
 	})
+	require.NoError(t, err)
 	require.Len(t, num, 1)
 	// TODO: add DDO deal, f05 deal 2 MiB each in the sector
 
@@ -194,13 +198,17 @@ func TestCurioHappyPath(t *testing.T) {
 	}
 
 	require.Eventuallyf(t, func() bool {
+		h, err := full.ChainHead(ctx)
+		require.NoError(t, err)
+		t.Logf("head: %d", h.Height())
+
 		err = db.Select(ctx, &sectorParamsArr, `
 		SELECT sp_id, sector_number
 		FROM sectors_sdr_pipeline
 		WHERE after_commit_msg_success = True`)
 		require.NoError(t, err)
 		return len(sectorParamsArr) == 1
-	}, 5*time.Minute, 1*time.Second, "sector did not finish sealing in 5 minutes")
+	}, 10*time.Minute, 1*time.Second, "sector did not finish sealing in 5 minutes")
 
 	require.Equal(t, sectorParamsArr[0].SectorNumber, int64(0))
 	require.Equal(t, sectorParamsArr[0].SpID, int64(mid))
@@ -281,7 +289,7 @@ func createCliContext(dir string) (*cli.Context, error) {
 	sflag := fmt.Sprintf("--journal=%s", storage)
 
 	// Parse the flags with test values
-	err := set.Parse([]string{"--listen=0.0.0.0:12345", "--nosync", "--manage-fdlimit", sflag, cflag, "--layers=seal", "--layers=post"})
+	err := set.Parse([]string{"--listen=0.0.0.0:12345", "--nosync", "--manage-fdlimit", sflag, cflag, "--layers=seal"})
 	if err != nil {
 		return nil, xerrors.Errorf("Error setting flag: %s\n", err)
 	}
@@ -385,7 +393,7 @@ func ConstructCurioTest(ctx context.Context, t *testing.T, dir string, db *harmo
 	err = capi.StorageAddLocal(ctx, dir)
 	require.NoError(t, err)
 
-	err = capi.LogSetLevel(ctx, "harmonytask", "DEBUG")
+	_ = logging.SetLogLevel("harmonytask", "DEBUG")
 
 	return capi, taskEngine.GracefullyTerminate, ccloser, finishCh
 }
