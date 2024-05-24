@@ -13,15 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/peer"
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
-
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -32,6 +23,13 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
+	"github.com/google/uuid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -46,11 +44,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/cmd/curio/rpc"
-	"github.com/filecoin-project/lotus/cmd/curio/tasks"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
-	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -124,17 +119,15 @@ type Ensemble struct {
 	options      *ensembleOpts
 
 	inactive struct {
-		fullnodes     []*TestFullNode
-		providernodes []*TestCurioNode
-		miners        []*TestMiner
-		workers       []*TestWorker
+		fullnodes []*TestFullNode
+		miners    []*TestMiner
+		workers   []*TestWorker
 	}
 	active struct {
-		fullnodes     []*TestFullNode
-		providernodes []*TestCurioNode
-		miners        []*TestMiner
-		workers       []*TestWorker
-		bms           map[*TestMiner]*BlockMiner
+		fullnodes []*TestFullNode
+		miners    []*TestMiner
+		workers   []*TestWorker
+		bms       map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
 		version  network.Version
@@ -224,20 +217,6 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	*full = TestFullNode{t: n.t, options: options, DefaultKey: key, EthSubRouter: gateway.NewEthSubHandler()}
 
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
-	return n
-}
-
-// FullNode enrolls a new Curio node.
-func (n *Ensemble) Curio(cu *TestCurioNode, opts ...NodeOpt) *Ensemble {
-	options := DefaultNodeOpts
-	for _, o := range opts {
-		err := o(&options)
-		require.NoError(n.t, err)
-	}
-
-	*cu = TestCurioNode{t: n.t, options: options, Deps: &deps.Deps{}}
-
-	n.inactive.providernodes = append(n.inactive.providernodes, cu)
 	return n
 }
 
@@ -902,28 +881,6 @@ func (n *Ensemble) Start() *Ensemble {
 	// to active, so clear the slice.
 	n.inactive.workers = n.inactive.workers[:0]
 
-	for _, p := range n.inactive.providernodes {
-
-		// TODO setup config with options
-		err := p.Deps.PopulateRemainingDeps(context.Background(), &cli.Context{}, false)
-		require.NoError(n.t, err)
-
-		shutdownChan := make(chan struct{})
-		taskEngine, err := tasks.StartTasks(ctx, p.Deps)
-		if err != nil {
-			return nil
-		}
-		defer taskEngine.GracefullyTerminate()
-
-		err = rpc.ListenAndServe(ctx, p.Deps, shutdownChan) // Monitor for shutdown.
-		require.NoError(n.t, err)
-		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
-		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
-
-		<-finishCh
-
-		n.active.providernodes = append(n.active.providernodes, p)
-	}
 	// ---------------------
 	//  MISC
 	// ---------------------

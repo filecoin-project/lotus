@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/curiosrc/deps"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/node"
 )
@@ -51,17 +50,6 @@ type TestFullNode struct {
 	// gateway handler makes it convenient to register callbalks per topic, so we
 	// also use it for tests
 	EthSubRouter *gateway.EthSubHandler
-
-	options nodeOpts
-}
-
-// TestCurioNode represents a Curio node enrolled in an Ensemble.
-type TestCurioNode struct {
-	v1api.CurioStruct
-
-	t *testing.T
-
-	*deps.Deps
 
 	options nodeOpts
 }
