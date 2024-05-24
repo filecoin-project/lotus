@@ -16,6 +16,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -32,7 +33,11 @@ var log = logging.Logger("curio/alertmanager")
 
 type AlertAPI interface {
 	ctladdr.NodeApi
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
+	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]api.Partition, error)
 }
 
 type AlertTask struct {
@@ -70,6 +75,8 @@ var alertFuncs = []alertFunc{
 	balanceCheck,
 	taskFailureCheck,
 	permanentStorageCheck,
+	wdPostCheck,
+	wnPostCheck,
 }
 
 func NewAlertTask(api AlertAPI, db *harmonydb.DB, alertingCfg config.CurioAlerting) *AlertTask {
