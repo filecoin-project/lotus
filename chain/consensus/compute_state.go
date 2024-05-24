@@ -323,7 +323,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		if err != nil {
 			panic("err")
 		}
-		changes, err := power.DiffClaims(stateOld, stateNew)
+		changes, err := stateOld.DiffClaims(stateNew)
 		if err != nil {
 			panic("err")
 		}

@@ -8,6 +8,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
+	hamt "github.com/filecoin-project/go-hamt-ipld/v3"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
@@ -168,6 +169,38 @@ func (s *state9) SetThisEpochRawBytePower(p abi.StoragePower) error {
 
 func (s *state9) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state9) DiffClaims(other State) (*ClaimChanges, error) {
+
+	if o, ok := other.(*state9); ok {
+		diff, err := hamt.Diff(s.store.Context(), s.store, o.store, s.Claims, o.Claims, append(adt9.DefaultHamtOptions, hamt.UseTreeBitWidth(builtin9.DefaultHamtBitwidth))...)
+		if err != nil {
+			return nil, err
+		}
+		differ := claimDiffer{
+			pre:   s,
+			after: o,
+		}
+		for _, change := range diff {
+			switch change.Type {
+			case hamt.Add:
+				err = differ.Add(change.Key, change.After)
+			case hamt.Remove:
+				err = differ.Remove(change.Key, change.Before)
+			case hamt.Modify:
+				err = differ.Modify(change.Key, change.Before, change.After)
+			default:
+				panic("impossible change type")
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+		return differ.Results, nil
+	}
+
+	return DiffClaims(s, other)
 }
 
 func (s *state9) claims() (adt.Map, error) {

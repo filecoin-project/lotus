@@ -174,6 +174,11 @@ func (s *state2) GetState() interface{} {
 	return &s.State
 }
 
+func (s *state2) DiffClaims(other State) (*ClaimChanges, error) {
+
+	return DiffClaims(s, other)
+}
+
 func (s *state2) claims() (adt.Map, error) {
 	return adt2.AsMap(s.store, s.Claims)
 }

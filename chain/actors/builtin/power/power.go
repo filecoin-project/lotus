@@ -161,6 +161,7 @@ type State interface {
 	ListAllMiners() ([]address.Address, error)
 	ForEachClaim(func(miner address.Address, claim Claim) error) error
 	ClaimsChanged(State) (bool, error)
+	DiffClaims(other State) (*ClaimChanges, error)
 
 	// Testing or genesis setup only
 	SetTotalQualityAdjPower(abi.StoragePower) error
