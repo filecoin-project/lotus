@@ -179,8 +179,9 @@ func (s *state13) DiffClaims(other State) (*ClaimChanges, error) {
 			return nil, err
 		}
 		differ := claimDiffer{
-			pre:   s,
-			after: o,
+			Results: new(ClaimChanges),
+			pre:     s,
+			after:   o,
 		}
 		for _, change := range diff {
 			switch change.Type {

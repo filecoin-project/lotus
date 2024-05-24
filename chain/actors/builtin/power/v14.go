@@ -178,7 +178,6 @@ func (s *state14) DiffClaims(other State) (*ClaimChanges, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		differ := claimDiffer{
 			Results: new(ClaimChanges),
 			pre:     s,
