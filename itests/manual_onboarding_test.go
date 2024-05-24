@@ -3,7 +3,6 @@ package itests
 import (
 	"bytes"
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -83,8 +82,7 @@ func TestManualCCOnboarding(t *testing.T) {
 			mAddrBBytes := new(bytes.Buffer)
 			req.NoError(mAddrB.MarshalCBOR(mAddrBBytes))
 
-			head, err := client.ChainHead(ctx)
-			req.NoError(err)
+			head := client.GetChainHead(ctx, t)
 
 			minerBInfo, err := client.StateMinerInfo(ctx, mAddrB, head.Key())
 			req.NoError(err)
@@ -116,67 +114,46 @@ func TestManualCCOnboarding(t *testing.T) {
 				unsealedSectorPath = filepath.Join(tmpDir, "unsealed")
 				sealedSectorPath = filepath.Join(tmpDir, "sealed")
 
-				sealTickets, sealedCid, unsealedCid = manualOnboardingGeneratePreCommit(
+				// To ensure the seal randomness epoch has reached finality, we select an epoch that is 900 epochs prior.
+				// This prevents the need to regenerate the precommit if the chosen epoch is reorganized out of the chain.
+				// The value 900 is derived from `policy.SealRandomnessLookback`, which represents the finality threshold of the chain.
+				sealRandEpoch = client.ChainHeadHeight(ctx, t) - policy.SealRandomnessLookback
+				sealTickets, sealedCid, unsealedCid = minerB.GenerateValidPreCommit(
 					ctx,
 					t,
-					client,
 					cacheDirPath,
 					unsealedSectorPath,
 					sealedSectorPath,
-					mAddrB,
 					bSectorNum,
 					sealRandEpoch,
 				)
 			}
 
+			// MinerB now submits a precommit message for the sector on chain using the proof generated above
 			t.Log("Submitting PreCommitSector ...")
+			pcMsg := minerB.SubmitPrecommit(ctx, t, sealedCid, sealRandEpoch)
 
-			preCommitParams := &miner.PreCommitSectorBatchParams2{
-				Sectors: []miner.SectorPreCommitInfo{{
-					Expiration:    2880 * 300,
-					SectorNumber:  22,
-					SealProof:     kit.TestSpt,
-					SealedCID:     sealedCid,
-					SealRandEpoch: sealRandEpoch,
-				}},
-			}
-
-			enc := new(bytes.Buffer)
-			req.NoError(preCommitParams.MarshalCBOR(enc))
-
-			m, err := client.MpoolPushMessage(ctx, &types.Message{
-				To:     mAddrB,
-				From:   minerB.OwnerKey.Address,
-				Value:  types.FromFil(1),
-				Method: builtin.MethodsMiner.PreCommitSectorBatch2,
-				Params: enc.Bytes(),
-			}, nil)
-			req.NoError(err)
-
-			r, err := client.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
-			req.NoError(err)
-			req.True(r.Receipt.ExitCode.IsSuccess())
-
-			preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, mAddrB, bSectorNum, r.TipSet)
+			preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, mAddrB, bSectorNum, pcMsg.TipSet)
 			req.NoError(err)
 
 			// Run prove commit for the sector on miner B
 
+			// The `WaitSeed` phase mandates a waiting period of at least `GetPreCommitChallengeDelay` epochs post the precommit message's on-chain inclusion before
+			// the Miner can generate and submit a ProveCommit for the sector.
+			// Refer to the `PreCommitChallengeDelay` documentation for a detailed rationale behind this requirement.
 			seedRandomnessHeight := preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
-			t.Logf("Waiting %d epochs for seed randomness at epoch %d (current epoch %d)...", seedRandomnessHeight-r.Height, seedRandomnessHeight, r.Height)
+			t.Logf("Waiting %d epochs for seed randomness at epoch %d (current epoch %d)...", seedRandomnessHeight-pcMsg.Height, seedRandomnessHeight, pcMsg.Height)
 			client.WaitTillChain(ctx, kit.HeightAtLeast(seedRandomnessHeight+5))
 
 			var sectorProof []byte
 			if withMockProofs {
 				sectorProof = []byte{0xde, 0xad, 0xbe, 0xef}
 			} else {
-				sectorProof = manualOnboardingGenerateProveCommit(
+				sectorProof = minerB.GenerateValidProveCommit(
 					ctx,
 					t,
-					client,
 					cacheDirPath,
 					sealedSectorPath,
-					mAddrB,
 					bSectorNum,
 					sealedCid,
 					unsealedCid,
@@ -185,37 +162,19 @@ func TestManualCCOnboarding(t *testing.T) {
 			}
 
 			t.Log("Submitting ProveCommitSector ...")
-
-			proveCommitParams := miner14.ProveCommitSectors3Params{
-				SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: bSectorNum}},
-				SectorProofs:             [][]byte{sectorProof},
-				RequireActivationSuccess: true,
-			}
-
-			enc = new(bytes.Buffer)
-			req.NoError(proveCommitParams.MarshalCBOR(enc))
-
-			m, err = client.MpoolPushMessage(ctx, &types.Message{
-				To:     minerB.ActorAddr,
-				From:   minerB.OwnerKey.Address,
-				Value:  types.FromFil(0),
-				Method: builtin.MethodsMiner.ProveCommitSectors3,
-				Params: enc.Bytes(),
-			}, nil)
-			req.NoError(err)
-
-			r, err = client.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
-			req.NoError(err)
-			req.True(r.Receipt.ExitCode.IsSuccess())
-
-			// Check power after proving, should still be zero until the PoSt is submitted
+			r := minerB.SubmitProveCommit(ctx, t, bSectorNum, sectorProof)
+			// Check power after proving, should still be zero until the PoSt is submitted as miners get power for a sector only after
+			// it is activated i.e. the first `WindowPost` is submitted for the sector
 			p, err = client.StateMinerPower(ctx, mAddrB, r.TipSet)
 			req.NoError(err)
 			t.Logf("MinerB RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
 			req.True(p.MinerPower.RawBytePower.IsZero())
 
-			// Fetch on-chain sector properties
+			// --------------------------------------------------------------------------------------------
+			// The PoRep for the sector has now landed on chain. The sector now needs to be activated
+			// by submitting a `WindowPost` for it in the corresponding deadline.
 
+			// Fetch on-chain sector properties
 			soi, err := client.StateSectorGetInfo(ctx, mAddrB, bSectorNum, r.TipSet)
 			req.NoError(err)
 			t.Logf("SectorOnChainInfo %d: %+v", bSectorNum, soi)
@@ -268,10 +227,10 @@ func TestManualCCOnboarding(t *testing.T) {
 				Proofs:           []proof.PoStProof{{PoStProof: minerBInfo.WindowPoStProofType, ProofBytes: proofBytes}},
 			}
 
-			enc = new(bytes.Buffer)
+			enc := new(bytes.Buffer)
 			req.NoError(postParams.MarshalCBOR(enc))
 
-			m, err = client.MpoolPushMessage(ctx, &types.Message{
+			m, err := client.MpoolPushMessage(ctx, &types.Message{
 				To:     mAddrB,
 				From:   minerB.OwnerKey.Address,
 				Value:  types.NewInt(0),
@@ -299,128 +258,6 @@ func TestManualCCOnboarding(t *testing.T) {
 			req.Equal(uint64(2<<10), p.MinerPower.QualityAdjPower.Uint64()) // 2kiB QaP
 		})
 	}
-}
-
-func manualOnboardingGeneratePreCommit(
-	ctx context.Context,
-	t *testing.T,
-	client api.FullNode,
-	cacheDirPath,
-	unsealedSectorPath,
-	sealedSectorPath string,
-	minerAddr address.Address,
-	sectorNumber abi.SectorNumber,
-	sealRandEpoch abi.ChainEpoch,
-) (abi.SealRandomness, cid.Cid, cid.Cid) {
-
-	req := require.New(t)
-	t.Log("Generating PreCommit ...")
-
-	sectorSize := abi.SectorSize(2 << 10)
-	unsealedSize := abi.PaddedPieceSize(sectorSize).Unpadded()
-	req.NoError(os.WriteFile(unsealedSectorPath, make([]byte, unsealedSize), 0644))
-	req.NoError(os.WriteFile(sealedSectorPath, make([]byte, sectorSize), 0644))
-
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-
-	minerAddrBytes := new(bytes.Buffer)
-	req.NoError(minerAddr.MarshalCBOR(minerAddrBytes))
-
-	rand, err := client.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_SealRandomness, sealRandEpoch, minerAddrBytes.Bytes(), head.Key())
-	req.NoError(err)
-	sealTickets := abi.SealRandomness(rand)
-
-	t.Logf("Running SealPreCommitPhase1 for sector %d...", sectorNumber)
-
-	actorIdNum, err := address.IDFromAddress(minerAddr)
-	req.NoError(err)
-	actorId := abi.ActorID(actorIdNum)
-
-	pc1, err := ffi.SealPreCommitPhase1(
-		kit.TestSpt,
-		cacheDirPath,
-		unsealedSectorPath,
-		sealedSectorPath,
-		sectorNumber,
-		actorId,
-		sealTickets,
-		[]abi.PieceInfo{},
-	)
-	req.NoError(err)
-	req.NotNil(pc1)
-
-	t.Logf("Running SealPreCommitPhase2 for sector %d...", sectorNumber)
-
-	sealedCid, unsealedCid, err := ffi.SealPreCommitPhase2(
-		pc1,
-		cacheDirPath,
-		sealedSectorPath,
-	)
-	req.NoError(err)
-
-	t.Logf("Unsealed CID: %s", unsealedCid)
-	t.Logf("Sealed CID: %s", sealedCid)
-
-	return sealTickets, sealedCid, unsealedCid
-}
-
-func manualOnboardingGenerateProveCommit(
-	ctx context.Context,
-	t *testing.T,
-	client api.FullNode,
-	cacheDirPath,
-	sealedSectorPath string,
-	minerAddr address.Address,
-	sectorNumber abi.SectorNumber,
-	sealedCid, unsealedCid cid.Cid,
-	sealTickets abi.SealRandomness,
-) []byte {
-	req := require.New(t)
-
-	t.Log("Generating Sector Proof ...")
-
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-
-	preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, minerAddr, sectorNumber, head.Key())
-	req.NoError(err)
-
-	seedRandomnessHeight := preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
-
-	minerAddrBytes := new(bytes.Buffer)
-	req.NoError(minerAddr.MarshalCBOR(minerAddrBytes))
-
-	rand, err := client.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, seedRandomnessHeight, minerAddrBytes.Bytes(), head.Key())
-	req.NoError(err)
-	seedRandomness := abi.InteractiveSealRandomness(rand)
-
-	actorIdNum, err := address.IDFromAddress(minerAddr)
-	req.NoError(err)
-	actorId := abi.ActorID(actorIdNum)
-
-	t.Logf("Running SealCommitPhase1 for sector %d...", sectorNumber)
-
-	scp1, err := ffi.SealCommitPhase1(
-		kit.TestSpt,
-		sealedCid,
-		unsealedCid,
-		cacheDirPath,
-		sealedSectorPath,
-		sectorNumber,
-		actorId,
-		sealTickets,
-		seedRandomness,
-		[]abi.PieceInfo{},
-	)
-	req.NoError(err)
-
-	t.Logf("Running SealCommitPhase2 for sector %d...", sectorNumber)
-
-	sectorProof, err := ffi.SealCommitPhase2(scp1, sectorNumber, actorId)
-	req.NoError(err)
-
-	return sectorProof
 }
 
 func manualOnboardingGenerateWindowPost(

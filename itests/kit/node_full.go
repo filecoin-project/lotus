@@ -55,6 +55,18 @@ type TestFullNode struct {
 	options nodeOpts
 }
 
+func (f *TestFullNode) GetChainHead(ctx context.Context, t *testing.T) *types.TipSet {
+	head, err := f.ChainHead(ctx)
+	require.NoError(t, err)
+	return head
+}
+
+func (f *TestFullNode) ChainHeadHeight(ctx context.Context, t *testing.T) abi.ChainEpoch {
+	head, err := f.ChainHead(ctx)
+	require.NoError(t, err)
+	return head.Height()
+}
+
 // TestCurioNode represents a Curio node enrolled in an Ensemble.
 type TestCurioNode struct {
 	v1api.CurioStruct

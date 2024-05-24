@@ -1,9 +1,17 @@
 package kit
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 	"net"
 	"os"
 	"path/filepath"
@@ -11,6 +19,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	minerparams "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/google/uuid"
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
@@ -88,6 +98,178 @@ type TestMiner struct {
 	RemoteListener net.Listener
 
 	options nodeOpts
+}
+
+func (tm *TestMiner) SubmitProveCommit(ctx context.Context, t *testing.T, sectorNumber abi.SectorNumber, sectorProof []byte) *api.MsgLookup {
+	req := require.New(t)
+
+	proveCommitParams := miner14.ProveCommitSectors3Params{
+		SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: sectorNumber}},
+		SectorProofs:             [][]byte{sectorProof},
+		RequireActivationSuccess: true,
+	}
+
+	enc := new(bytes.Buffer)
+	req.NoError(proveCommitParams.MarshalCBOR(enc))
+
+	m, err := tm.FullNode.MpoolPushMessage(ctx, &types.Message{
+		To:     tm.ActorAddr,
+		From:   tm.OwnerKey.Address,
+		Value:  types.FromFil(0),
+		Method: builtin.MethodsMiner.ProveCommitSectors3,
+		Params: enc.Bytes(),
+	}, nil)
+	req.NoError(err)
+
+	r, err := tm.FullNode.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess())
+	return r
+}
+
+func (tm *TestMiner) GenerateValidProveCommit(
+	ctx context.Context,
+	t *testing.T,
+	cacheDirPath,
+	sealedSectorPath string,
+	sectorNumber abi.SectorNumber,
+	sealedCid, unsealedCid cid.Cid,
+	sealTickets abi.SealRandomness,
+) []byte {
+	req := require.New(t)
+
+	t.Log("Generating Sector Proof ...")
+
+	head := tm.FullNode.GetChainHead(ctx, t)
+	preCommitInfo, err := tm.FullNode.StateSectorPreCommitInfo(ctx, tm.ActorAddr, sectorNumber, head.Key())
+	req.NoError(err)
+
+	seedRandomnessHeight := preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
+
+	minerAddrBytes := new(bytes.Buffer)
+	req.NoError(tm.ActorAddr.MarshalCBOR(minerAddrBytes))
+
+	rand, err := tm.FullNode.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, seedRandomnessHeight,
+		minerAddrBytes.Bytes(), head.Key())
+	req.NoError(err)
+	seedRandomness := abi.InteractiveSealRandomness(rand)
+
+	actorIdNum, err := address.IDFromAddress(tm.ActorAddr)
+	req.NoError(err)
+	actorId := abi.ActorID(actorIdNum)
+
+	t.Logf("Running SealCommitPhase1 for sector %d...", sectorNumber)
+
+	scp1, err := ffi.SealCommitPhase1(
+		TestSpt,
+		sealedCid,
+		unsealedCid,
+		cacheDirPath,
+		sealedSectorPath,
+		sectorNumber,
+		actorId,
+		sealTickets,
+		seedRandomness,
+		[]abi.PieceInfo{},
+	)
+	req.NoError(err)
+
+	t.Logf("Running SealCommitPhase2 for sector %d...", sectorNumber)
+
+	sectorProof, err := ffi.SealCommitPhase2(scp1, sectorNumber, actorId)
+	req.NoError(err)
+
+	return sectorProof
+}
+
+func (tm *TestMiner) SubmitPrecommit(ctx context.Context, t *testing.T, sealedCid cid.Cid, sealRandEpoch abi.ChainEpoch) *api.MsgLookup {
+	req := require.New(t)
+	preCommitParams := &minerparams.PreCommitSectorBatchParams2{
+		Sectors: []minerparams.SectorPreCommitInfo{{
+			Expiration:    2880 * 300,
+			SectorNumber:  22,
+			SealProof:     TestSpt,
+			SealedCID:     sealedCid,
+			SealRandEpoch: sealRandEpoch,
+		}},
+	}
+
+	enc := new(bytes.Buffer)
+	req.NoError(preCommitParams.MarshalCBOR(enc))
+
+	m, err := tm.FullNode.MpoolPushMessage(ctx, &types.Message{
+		To:     tm.ActorAddr,
+		From:   tm.OwnerKey.Address,
+		Value:  types.FromFil(1),
+		Method: builtin.MethodsMiner.PreCommitSectorBatch2,
+		Params: enc.Bytes(),
+	}, nil)
+	req.NoError(err)
+
+	r, err := tm.FullNode.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess())
+	return r
+}
+
+func (tm *TestMiner) GenerateValidPreCommit(
+	ctx context.Context,
+	t *testing.T,
+	cacheDirPath,
+	unsealedSectorPath,
+	sealedSectorPath string,
+	sectorNumber abi.SectorNumber,
+	sealRandEpoch abi.ChainEpoch,
+) (abi.SealRandomness, cid.Cid, cid.Cid) {
+	req := require.New(t)
+	t.Log("Generating PreCommit ...")
+
+	sectorSize := abi.SectorSize(2 << 10)
+	unsealedSize := abi.PaddedPieceSize(sectorSize).Unpadded()
+	req.NoError(os.WriteFile(unsealedSectorPath, make([]byte, unsealedSize), 0644))
+	req.NoError(os.WriteFile(sealedSectorPath, make([]byte, sectorSize), 0644))
+
+	head := tm.FullNode.GetChainHead(ctx, t)
+
+	minerAddrBytes := new(bytes.Buffer)
+	req.NoError(tm.ActorAddr.MarshalCBOR(minerAddrBytes))
+
+	rand, err := tm.FullNode.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_SealRandomness, sealRandEpoch, minerAddrBytes.Bytes(), head.Key())
+	req.NoError(err)
+	sealTickets := abi.SealRandomness(rand)
+
+	t.Logf("Running SealPreCommitPhase1 for sector %d...", sectorNumber)
+
+	actorIdNum, err := address.IDFromAddress(tm.ActorAddr)
+	req.NoError(err)
+	actorId := abi.ActorID(actorIdNum)
+
+	pc1, err := ffi.SealPreCommitPhase1(
+		TestSpt,
+		cacheDirPath,
+		unsealedSectorPath,
+		sealedSectorPath,
+		sectorNumber,
+		actorId,
+		sealTickets,
+		[]abi.PieceInfo{},
+	)
+	req.NoError(err)
+	req.NotNil(pc1)
+
+	t.Logf("Running SealPreCommitPhase2 for sector %d...", sectorNumber)
+
+	sealedCid, unsealedCid, err := ffi.SealPreCommitPhase2(
+		pc1,
+		cacheDirPath,
+		sealedSectorPath,
+	)
+	req.NoError(err)
+
+	t.Logf("Unsealed CID: %s", unsealedCid)
+	t.Logf("Sealed CID: %s", sealedCid)
+
+	return sealTickets, sealedCid, unsealedCid
 }
 
 func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNotif <-chan struct{}) {
