@@ -308,25 +308,29 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 	{
 		start := time.Now()
-		powerActor, err := sm.LoadActor(ctx, power.Address, ts)
+		powerActorOld, err := sm.LoadActor(ctx, power.Address, ts)
 		if err != nil {
 			panic("err")
 		}
-		state, err := power.Load(sm.ChainStore().ActorStore(ctx), powerActor)
+		stateOld, err := power.Load(sm.ChainStore().ActorStore(ctx), powerActorOld)
 		if err != nil {
 			panic("err")
 		}
-		var powerTable []power.Claim
-		err = state.ForEachClaim(func(miner address.Address, claim power.Claim) error {
-			powerTable = append(powerTable, claim)
-			return nil
-		})
+		powerActorNew, err := sm.LoadActorRaw(ctx, power.Address, st)
+		if err != nil {
+			panic("err")
+		}
+		stateNew, err := power.Load(sm.ChainStore().ActorStore(ctx), powerActorNew)
+		if err != nil {
+			panic("err")
+		}
+		changes, err := power.DiffClaims(stateOld, stateNew)
 		if err != nil {
 			panic("err")
 		}
 		duration := time.Since(start)
 
-		log.Infow("Power Walk Time", "duration", duration, "count", len(powerTable))
+		log.Infow("Power Diff Time", "duration", duration, "added", len(changes.Added), "removed", len(changes.Removed), "modified", len(changes.Modified))
 	}
 
 	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
