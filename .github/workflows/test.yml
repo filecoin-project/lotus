@@ -63,13 +63,13 @@ jobs:
               "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-curio": ["self-hosted", "linux", "x64", "4xlarge"],
 
               "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-sector_import_simple": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-wdpost": ["self-hosted", "linux", "x64", "2xlarge"],
               "unit-storage": ["self-hosted", "linux", "x64", "2xlarge"],
-              "itest-curio": ["self-hosted", "linux", "x64", "2xlarge"],
 
               "itest-batch_deal": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-cli": ["self-hosted", "linux", "x64", "xlarge"],
