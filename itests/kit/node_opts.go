@@ -52,6 +52,8 @@ type nodeOpts struct {
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(paths.Store) paths.Store
 	workerName       string
+
+	cacheDirPath, unsealedSectorPath, sealedSectorPath string
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -81,6 +83,15 @@ type OptBuilder func(activeNodes []*TestFullNode) node.Option
 
 // NodeOpt is a functional option for test nodes.
 type NodeOpt func(opts *nodeOpts) error
+
+func WithSealingPaths(cacheDirPath, unsealedSectorPath, sealedSectorPath string) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.cacheDirPath = cacheDirPath
+		opts.unsealedSectorPath = unsealedSectorPath
+		opts.sealedSectorPath = sealedSectorPath
+		return nil
+	}
+}
 
 func WithAllSubsystems() NodeOpt {
 	return func(opts *nodeOpts) error {

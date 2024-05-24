@@ -321,6 +321,10 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 		PresealSectors: presealSectors,
 		options:        options,
 		RemoteListener: rl,
+
+		cacheDirPath:       options.cacheDirPath,
+		unsealedSectorPath: options.unsealedSectorPath,
+		sealedSectorPath:   options.sealedSectorPath,
 	}
 
 	minerNode.Libp2p.PeerID = peerId

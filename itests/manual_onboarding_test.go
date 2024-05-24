@@ -10,7 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -40,6 +39,11 @@ func TestManualCCOnboarding(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			cacheDirPath := t.TempDir()
+			tmpDir := t.TempDir()
+			unsealedSectorPath := filepath.Join(tmpDir, "unsealed")
+			sealedSectorPath := filepath.Join(tmpDir, "sealed")
+
 			var (
 				blocktime = 2 * time.Millisecond
 
@@ -47,12 +51,9 @@ func TestManualCCOnboarding(t *testing.T) {
 				minerA kit.TestMiner // A is a standard genesis miner
 				minerB kit.TestMiner // B is a CC miner we will onboard manually
 
-				bSectorNum = abi.SectorNumber(22)
-
-				cacheDirPath                         string
-				unsealedSectorPath, sealedSectorPath string
-				sealedCid, unsealedCid               cid.Cid
-				sealTickets                          abi.SealRandomness
+				bSectorNum             = abi.SectorNumber(22)
+				sealedCid, unsealedCid cid.Cid
+				sealTickets            abi.SealRandomness
 			)
 
 			// Setup and begin mining with a single miner (A)
@@ -69,7 +70,7 @@ func TestManualCCOnboarding(t *testing.T) {
 				InterconnectAll()
 			ens.BeginMining(blocktime)
 
-			nodeOpts = append(nodeOpts, kit.OwnerAddr(client.DefaultKey))
+			nodeOpts = append(nodeOpts, kit.OwnerAddr(client.DefaultKey), kit.WithSealingPaths(cacheDirPath, unsealedSectorPath, sealedSectorPath))
 			ens.Miner(&minerB, &client, nodeOpts...).Start()
 
 			maddrA, err := minerA.ActorAddress(ctx)
@@ -109,11 +110,6 @@ func TestManualCCOnboarding(t *testing.T) {
 			if withMockProofs {
 				sealedCid = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
 			} else {
-				cacheDirPath = t.TempDir()
-				tmpDir := t.TempDir()
-				unsealedSectorPath = filepath.Join(tmpDir, "unsealed")
-				sealedSectorPath = filepath.Join(tmpDir, "sealed")
-
 				// To ensure the seal randomness epoch has reached finality, we select an epoch that is 900 epochs prior.
 				// This prevents the need to regenerate the precommit if the chosen epoch is reorganized out of the chain.
 				// The value 900 is derived from `policy.SealRandomnessLookback`, which represents the finality threshold of the chain.
@@ -121,9 +117,6 @@ func TestManualCCOnboarding(t *testing.T) {
 				sealTickets, sealedCid, unsealedCid = minerB.GenerateValidPreCommit(
 					ctx,
 					t,
-					cacheDirPath,
-					unsealedSectorPath,
-					sealedSectorPath,
 					bSectorNum,
 					sealRandEpoch,
 				)
@@ -152,8 +145,6 @@ func TestManualCCOnboarding(t *testing.T) {
 				sectorProof = minerB.GenerateValidProveCommit(
 					ctx,
 					t,
-					cacheDirPath,
-					sealedSectorPath,
 					bSectorNum,
 					sealedCid,
 					unsealedCid,
@@ -211,7 +202,7 @@ func TestManualCCOnboarding(t *testing.T) {
 			if withMockProofs {
 				proofBytes = []byte{0xde, 0xad, 0xbe, 0xef}
 			} else {
-				proofBytes = manualOnboardingGenerateWindowPost(ctx, t, client, cacheDirPath, sealedSectorPath, mAddrB, bSectorNum, sealedCid)
+				proofBytes = minerB.GenerateWindowPost(ctx, t, bSectorNum, sealedCid)
 			}
 
 			t.Log("Submitting WindowedPoSt...")
@@ -258,72 +249,6 @@ func TestManualCCOnboarding(t *testing.T) {
 			req.Equal(uint64(2<<10), p.MinerPower.QualityAdjPower.Uint64()) // 2kiB QaP
 		})
 	}
-}
-
-func manualOnboardingGenerateWindowPost(
-	ctx context.Context,
-	t *testing.T,
-	client api.FullNode,
-	cacheDirPath string,
-	sealedSectorPath string,
-	minerAddr address.Address,
-	sectorNumber abi.SectorNumber,
-	sealedCid cid.Cid,
-) []byte {
-
-	req := require.New(t)
-
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-
-	minerInfo, err := client.StateMinerInfo(ctx, minerAddr, head.Key())
-	req.NoError(err)
-
-	di, err := client.StateMinerProvingDeadline(ctx, minerAddr, types.EmptyTSK)
-	req.NoError(err)
-
-	minerAddrBytes := new(bytes.Buffer)
-	req.NoError(minerAddr.MarshalCBOR(minerAddrBytes))
-
-	rand, err := client.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, minerAddrBytes.Bytes(), head.Key())
-	req.NoError(err)
-	postRand := abi.PoStRandomness(rand)
-	postRand[31] &= 0x3f // make fr32 compatible
-
-	privateSectorInfo := ffi.PrivateSectorInfo{
-		SectorInfo: proof.SectorInfo{
-			SealProof:    kit.TestSpt,
-			SectorNumber: sectorNumber,
-			SealedCID:    sealedCid,
-		},
-		CacheDirPath:     cacheDirPath,
-		PoStProofType:    minerInfo.WindowPoStProofType,
-		SealedSectorPath: sealedSectorPath,
-	}
-
-	actorIdNum, err := address.IDFromAddress(minerAddr)
-	req.NoError(err)
-	actorId := abi.ActorID(actorIdNum)
-
-	windowProofs, faultySectors, err := ffi.GenerateWindowPoSt(actorId, ffi.NewSortedPrivateSectorInfo(privateSectorInfo), postRand)
-	req.NoError(err)
-	req.Len(faultySectors, 0)
-	req.Len(windowProofs, 1)
-	req.Equal(minerInfo.WindowPoStProofType, windowProofs[0].PoStProof)
-	proofBytes := windowProofs[0].ProofBytes
-
-	info := proof.WindowPoStVerifyInfo{
-		Randomness:        postRand,
-		Proofs:            []proof.PoStProof{{PoStProof: minerInfo.WindowPoStProofType, ProofBytes: proofBytes}},
-		ChallengedSectors: []proof.SectorInfo{{SealProof: kit.TestSpt, SectorNumber: sectorNumber, SealedCID: sealedCid}},
-		Prover:            actorId,
-	}
-
-	verified, err := ffi.VerifyWindowPoSt(info)
-	req.NoError(err)
-	req.True(verified, "window post verification failed")
-
-	return proofBytes
 }
 
 func manualOnboardingDisputeWindowPost(

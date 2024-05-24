@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
@@ -97,6 +98,10 @@ type TestMiner struct {
 
 	RemoteListener net.Listener
 
+	cacheDirPath       string
+	unsealedSectorPath string
+	sealedSectorPath   string
+
 	options nodeOpts
 }
 
@@ -127,11 +132,70 @@ func (tm *TestMiner) SubmitProveCommit(ctx context.Context, t *testing.T, sector
 	return r
 }
 
+func (tm *TestMiner) GenerateWindowPost(
+	ctx context.Context,
+	t *testing.T,
+	sectorNumber abi.SectorNumber,
+	sealedCid cid.Cid,
+) []byte {
+	req := require.New(t)
+
+	head, err := tm.FullNode.ChainHead(ctx)
+	req.NoError(err)
+
+	minerInfo, err := tm.FullNode.StateMinerInfo(ctx, tm.ActorAddr, head.Key())
+	req.NoError(err)
+
+	di, err := tm.FullNode.StateMinerProvingDeadline(ctx, tm.ActorAddr, types.EmptyTSK)
+	req.NoError(err)
+
+	minerAddrBytes := new(bytes.Buffer)
+	req.NoError(tm.ActorAddr.MarshalCBOR(minerAddrBytes))
+
+	rand, err := tm.FullNode.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, minerAddrBytes.Bytes(), head.Key())
+	req.NoError(err)
+	postRand := abi.PoStRandomness(rand)
+	postRand[31] &= 0x3f // make fr32 compatible
+
+	privateSectorInfo := ffi.PrivateSectorInfo{
+		SectorInfo: proof.SectorInfo{
+			SealProof:    TestSpt,
+			SectorNumber: sectorNumber,
+			SealedCID:    sealedCid,
+		},
+		CacheDirPath:     tm.cacheDirPath,
+		PoStProofType:    minerInfo.WindowPoStProofType,
+		SealedSectorPath: tm.sealedSectorPath,
+	}
+
+	actorIdNum, err := address.IDFromAddress(tm.ActorAddr)
+	req.NoError(err)
+	actorId := abi.ActorID(actorIdNum)
+
+	windowProofs, faultySectors, err := ffi.GenerateWindowPoSt(actorId, ffi.NewSortedPrivateSectorInfo(privateSectorInfo), postRand)
+	req.NoError(err)
+	req.Len(faultySectors, 0)
+	req.Len(windowProofs, 1)
+	req.Equal(minerInfo.WindowPoStProofType, windowProofs[0].PoStProof)
+	proofBytes := windowProofs[0].ProofBytes
+
+	info := proof.WindowPoStVerifyInfo{
+		Randomness:        postRand,
+		Proofs:            []proof.PoStProof{{PoStProof: minerInfo.WindowPoStProofType, ProofBytes: proofBytes}},
+		ChallengedSectors: []proof.SectorInfo{{SealProof: TestSpt, SectorNumber: sectorNumber, SealedCID: sealedCid}},
+		Prover:            actorId,
+	}
+
+	verified, err := ffi.VerifyWindowPoSt(info)
+	req.NoError(err)
+	req.True(verified, "window post verification failed")
+
+	return proofBytes
+}
+
 func (tm *TestMiner) GenerateValidProveCommit(
 	ctx context.Context,
 	t *testing.T,
-	cacheDirPath,
-	sealedSectorPath string,
 	sectorNumber abi.SectorNumber,
 	sealedCid, unsealedCid cid.Cid,
 	sealTickets abi.SealRandomness,
@@ -164,8 +228,8 @@ func (tm *TestMiner) GenerateValidProveCommit(
 		TestSpt,
 		sealedCid,
 		unsealedCid,
-		cacheDirPath,
-		sealedSectorPath,
+		tm.cacheDirPath,
+		tm.sealedSectorPath,
 		sectorNumber,
 		actorId,
 		sealTickets,
@@ -215,9 +279,6 @@ func (tm *TestMiner) SubmitPrecommit(ctx context.Context, t *testing.T, sealedCi
 func (tm *TestMiner) GenerateValidPreCommit(
 	ctx context.Context,
 	t *testing.T,
-	cacheDirPath,
-	unsealedSectorPath,
-	sealedSectorPath string,
 	sectorNumber abi.SectorNumber,
 	sealRandEpoch abi.ChainEpoch,
 ) (abi.SealRandomness, cid.Cid, cid.Cid) {
@@ -226,8 +287,8 @@ func (tm *TestMiner) GenerateValidPreCommit(
 
 	sectorSize := abi.SectorSize(2 << 10)
 	unsealedSize := abi.PaddedPieceSize(sectorSize).Unpadded()
-	req.NoError(os.WriteFile(unsealedSectorPath, make([]byte, unsealedSize), 0644))
-	req.NoError(os.WriteFile(sealedSectorPath, make([]byte, sectorSize), 0644))
+	req.NoError(os.WriteFile(tm.unsealedSectorPath, make([]byte, unsealedSize), 0644))
+	req.NoError(os.WriteFile(tm.sealedSectorPath, make([]byte, sectorSize), 0644))
 
 	head := tm.FullNode.GetChainHead(ctx, t)
 
@@ -246,9 +307,9 @@ func (tm *TestMiner) GenerateValidPreCommit(
 
 	pc1, err := ffi.SealPreCommitPhase1(
 		TestSpt,
-		cacheDirPath,
-		unsealedSectorPath,
-		sealedSectorPath,
+		tm.cacheDirPath,
+		tm.unsealedSectorPath,
+		tm.sealedSectorPath,
 		sectorNumber,
 		actorId,
 		sealTickets,
@@ -261,8 +322,8 @@ func (tm *TestMiner) GenerateValidPreCommit(
 
 	sealedCid, unsealedCid, err := ffi.SealPreCommitPhase2(
 		pc1,
-		cacheDirPath,
-		sealedSectorPath,
+		tm.cacheDirPath,
+		tm.sealedSectorPath,
 	)
 	req.NoError(err)
 
