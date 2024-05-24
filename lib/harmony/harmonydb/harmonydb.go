@@ -279,6 +279,8 @@ func (db *DB) upgrade() error {
 			return err
 		}
 
+		logger.Infow("Upgrading", "file", name, "size", len(file))
+
 		for _, s := range parseSQLStatements(string(file)) { // Implement the changes.
 			if len(strings.TrimSpace(s)) == 0 {
 				continue
