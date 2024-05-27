@@ -122,17 +122,19 @@ type Ensemble struct {
 	options      *ensembleOpts
 
 	inactive struct {
-		fullnodes     []*TestFullNode
-		providernodes []*TestCurioNode
-		miners        []*TestMiner
-		workers       []*TestWorker
+		fullnodes       []*TestFullNode
+		providernodes   []*TestCurioNode
+		miners          []*TestMiner
+		unmanagedMiners []*TestUnmanagedMiner
+		workers         []*TestWorker
 	}
 	active struct {
-		fullnodes     []*TestFullNode
-		providernodes []*TestCurioNode
-		miners        []*TestMiner
-		workers       []*TestWorker
-		bms           map[*TestMiner]*BlockMiner
+		fullnodes       []*TestFullNode
+		providernodes   []*TestCurioNode
+		miners          []*TestMiner
+		unmanagedMiners []*TestUnmanagedMiner
+		workers         []*TestWorker
+		bms             map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
 		version  network.Version
@@ -259,9 +261,7 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 	tdir, err := os.MkdirTemp("", "preseal-memgen")
 	require.NoError(n.t, err)
 
-	minerCnt := len(n.inactive.miners) + len(n.active.miners)
-
-	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(minerCnt))
+	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
 	require.NoError(n.t, err)
 
 	if options.mainMiner != nil {
@@ -329,13 +329,56 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 	return n
 }
 
+func (n *Ensemble) UnmanagedMinerEnroll(minerNode *TestUnmanagedMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
+	require.NotNil(n.t, full, "full node required when instantiating miner")
+
+	options := DefaultNodeOpts
+	for _, o := range opts {
+		err := o(&options)
+		require.NoError(n.t, err)
+	}
+
+	privkey, _, err := libp2pcrypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(n.t, err)
+
+	peerId, err := peer.IDFromPrivateKey(privkey)
+	require.NoError(n.t, err)
+
+	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
+	require.NoError(n.t, err)
+
+	require.NotNil(n.t, options.ownerKey, "manual miner key can't be null if initializing a miner after genesis")
+
+	*minerNode = TestUnmanagedMiner{
+		t:         n.t,
+		options:   options,
+		ActorAddr: actorAddr,
+		OwnerKey:  options.ownerKey,
+		FullNode:  full,
+	}
+	minerNode.Libp2p.PeerID = peerId
+	minerNode.Libp2p.PrivKey = privkey
+
+	return n
+}
+
 func (n *Ensemble) AddInactiveMiner(m *TestMiner) {
 	n.inactive.miners = append(n.inactive.miners, m)
+}
+
+func (n *Ensemble) AddInactiveUnmanagedMiner(m *TestUnmanagedMiner) {
+	n.inactive.unmanagedMiners = append(n.inactive.unmanagedMiners, m)
 }
 
 func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	n.MinerEnroll(minerNode, full, opts...)
 	n.AddInactiveMiner(minerNode)
+	return n
+}
+
+func (n *Ensemble) UnmanagedMiner(minerNode *TestUnmanagedMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
+	n.UnmanagedMinerEnroll(minerNode, full, opts...)
+	n.AddInactiveUnmanagedMiner(minerNode)
 	return n
 }
 
@@ -826,6 +869,79 @@ func (n *Ensemble) Start() *Ensemble {
 	// to active, so clear the slice.
 	n.inactive.miners = n.inactive.miners[:0]
 
+	// Create all inactive manual miners.
+	for _, m := range n.inactive.unmanagedMiners {
+		proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize, n.genesis.version)
+		require.NoError(n.t, err)
+
+		params, aerr := actors.SerializeParams(&power3.CreateMinerParams{
+			Owner:               m.OwnerKey.Address,
+			Worker:              m.OwnerKey.Address,
+			WindowPoStProofType: proofType,
+			Peer:                abi.PeerID(m.Libp2p.PeerID),
+		})
+		require.NoError(n.t, aerr)
+
+		createStorageMinerMsg := &types.Message{
+			From:  m.OwnerKey.Address,
+			To:    power.Address,
+			Value: big.Zero(),
+
+			Method: power.Methods.CreateMiner,
+			Params: params,
+		}
+		signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, &api.MessageSendSpec{
+			MsgUuid: uuid.New(),
+		})
+		require.NoError(n.t, err)
+
+		mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		require.NoError(n.t, err)
+		require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
+
+		var retval power3.CreateMinerReturn
+		err = retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return))
+		require.NoError(n.t, err, "failed to create miner")
+
+		m.ActorAddr = retval.IDAddress
+
+		has, err := m.FullNode.WalletHas(ctx, m.OwnerKey.Address)
+		require.NoError(n.t, err)
+
+		// Only import the owner's full key into our companion full node, if we
+		// don't have it still.
+		if !has {
+			_, err = m.FullNode.WalletImport(ctx, &m.OwnerKey.KeyInfo)
+			require.NoError(n.t, err)
+		}
+
+		enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(m.Libp2p.PeerID)})
+		require.NoError(n.t, err)
+
+		msg := &types.Message{
+			From:   m.OwnerKey.Address,
+			To:     m.ActorAddr,
+			Method: builtin.MethodsMiner.ChangePeerID,
+			Params: enc,
+			Value:  types.NewInt(0),
+		}
+
+		_, err2 := m.FullNode.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{
+			MsgUuid: uuid.New(),
+		})
+		require.NoError(n.t, err2)
+
+		minerCopy := *m.FullNode
+		minerCopy.FullNode = modules.MakeUuidWrapper(minerCopy.FullNode)
+		m.FullNode = &minerCopy
+
+		n.active.unmanagedMiners = append(n.active.unmanagedMiners, m)
+	}
+
+	// If we are here, we have processed all inactive manual miners and moved them
+	// to active, so clear the slice.
+	n.inactive.unmanagedMiners = n.inactive.unmanagedMiners[:0]
+
 	// ---------------------
 	//  WORKERS
 	// ---------------------
@@ -1053,6 +1169,10 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 	}
 
 	return bms
+}
+
+func (n *Ensemble) minerCount() uint64 {
+	return uint64(len(n.inactive.miners) + len(n.active.miners) + len(n.inactive.unmanagedMiners) + len(n.active.unmanagedMiners))
 }
 
 func (n *Ensemble) generateGenesis() *genesis.Template {
