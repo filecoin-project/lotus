@@ -1804,7 +1804,9 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 
 	if verbose {
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
+		if _, err := fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n"); err != nil {
+			return err
+		}
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch() != -1 {
@@ -1832,7 +1834,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 				//	transferPct = fmt.Sprintf("%d%%", pct)
 				//}
 			}
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
 				d.LocalDeal.CreationTime.Format(time.Stamp),
 				d.LocalDeal.ProposalCid,
 				d.LocalDeal.DealID,
@@ -1847,7 +1849,9 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 				transferChannelID,
 				transferStatus,
 				d.LocalDeal.Verified,
-				d.LocalDeal.Message)
+				d.LocalDeal.Message); err != nil {
+				return err
+			}
 		}
 		return w.Flush()
 	}
@@ -2329,7 +2333,7 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 	}
 	_ = w.Flush(out)
 
-	fmt.Fprintf(out, "\nReceiving Channels\n\n")
+	_, _ = fmt.Fprintf(out, "\nReceiving Channels\n\n")
 	w = tablewriter.New(tablewriter.Col("ID"),
 		tablewriter.Col("Status"),
 		tablewriter.Col("Receiving From"),

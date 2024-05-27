@@ -68,7 +68,7 @@ func (f FIL) Nano() string {
 func (f FIL) Format(s fmt.State, ch rune) {
 	switch ch {
 	case 's', 'v':
-		fmt.Fprint(s, f.String())
+		_, _ = fmt.Fprint(s, f.String())
 	default:
 		f.Int.Format(s, ch)
 	}

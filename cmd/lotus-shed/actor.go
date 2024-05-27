@@ -719,12 +719,16 @@ var actorControlSet = &cli.Command{
 				return err
 			}
 
-			fmt.Fprintln(cctx.App.Writer, hex.EncodeToString(msgBytes))
+			if _, err := fmt.Fprintln(cctx.App.Writer, hex.EncodeToString(msgBytes)); err != nil {
+				return err
+			}
 			return nil
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action"); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -760,7 +764,9 @@ var actorProposeChangeWorker = &cli.Command{
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action"); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -840,8 +846,9 @@ var actorProposeChangeWorker = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
-
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid()); err != nil {
+			return err
+		}
 		// wait for it to get mined into a block
 		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 		if err != nil {
@@ -850,7 +857,9 @@ var actorProposeChangeWorker = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Propose worker change failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Propose worker change failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -890,7 +899,9 @@ var actorConfirmChangeWorker = &cli.Command{
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action"); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -961,8 +972,9 @@ var actorConfirmChangeWorker = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Confirm Message CID:", smsg.Cid())
-
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Confirm Message CID:", smsg.Cid()); err != nil {
+			return err
+		}
 		// wait for it to get mined into a block
 		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 		if err != nil {
@@ -971,7 +983,9 @@ var actorConfirmChangeWorker = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Worker change failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 

@@ -670,7 +670,9 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			}
 
 			if !cctx.Bool("really-do-it") {
-				fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+				if _, err := fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action"); err != nil {
+					return err
+				}
 				return nil
 			}
 
@@ -695,8 +697,9 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 				return xerrors.Errorf("mpool push: %w", err)
 			}
 
-			fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
-
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid()); err != nil {
+				return err
+			}
 			// wait for it to get mined into a block
 			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 			if err != nil {
@@ -942,7 +945,9 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 
 			// check it executed successfully
 			if wait.Receipt.ExitCode.IsError() {
-				fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
+				if _, err := fmt.Fprintln(cctx.App.Writer, "Worker change failed!"); err != nil {
+					return err
+				}
 				return err
 			}
 

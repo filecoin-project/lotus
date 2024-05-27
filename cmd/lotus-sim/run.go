@@ -56,17 +56,23 @@ Signals:
 			// Print
 			select {
 			case <-ch:
-				fmt.Fprintln(cctx.App.Writer, "---------------------")
+				if _, err := fmt.Fprintln(cctx.App.Writer, "---------------------"); err != nil {
+					return err
+				}
 				if err := printInfo(cctx.Context, sim, cctx.App.Writer); err != nil {
 					fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to print info: %s\n", err)
 				}
-				fmt.Fprintln(cctx.App.Writer, "---------------------")
+				if _, err := fmt.Fprintln(cctx.App.Writer, "---------------------"); err != nil {
+					return err
+				}
 			case <-cctx.Context.Done():
 				return cctx.Err()
 			default:
 			}
 		}
-		fmt.Fprintln(cctx.App.Writer, "simulation done")
+		if _, err := fmt.Fprintln(cctx.App.Writer, "simulation done"); err != nil {
+			return err
+		}
 		return err
 	},
 }

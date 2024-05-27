@@ -168,8 +168,9 @@ var msigCreateCmd = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "actor creation failed!")
-			return err
+			if _, err := fmt.Fprintln(cctx.App.Writer, "actor creation failed!"); err != nil {
+				return err
+			}
 		}
 
 		// get address of newly created miner
@@ -178,8 +179,9 @@ var msigCreateCmd = &cli.Command{
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
-		fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
-
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress); err != nil {
+			return err
+		}
 		// TODO: maybe register this somewhere
 		return nil
 	},
@@ -242,25 +244,35 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Balance: %s\n", types.FIL(act.Balance))
-		fmt.Fprintf(cctx.App.Writer, "Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
+		if _, err := fmt.Fprintf(cctx.App.Writer, "Balance: %s\n", types.FIL(act.Balance)); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(cctx.App.Writer, "Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked))); err != nil {
+			return err
+		}
 
 		if cctx.Bool("vesting") {
 			ib, err := mstate.InitialBalance()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cctx.App.Writer, "InitialBalance: %s\n", types.FIL(ib))
+			if _, err := fmt.Fprintf(cctx.App.Writer, "InitialBalance: %s\n", types.FIL(ib)); err != nil {
+				return err
+			}
 			se, err := mstate.StartEpoch()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cctx.App.Writer, "StartEpoch: %d\n", se)
+			if _, err := fmt.Fprintf(cctx.App.Writer, "StartEpoch: %d\n", se); err != nil {
+				return err
+			}
 			ud, err := mstate.UnlockDuration()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cctx.App.Writer, "UnlockDuration: %d\n", ud)
+			if _, err := fmt.Fprintf(cctx.App.Writer, "UnlockDuration: %d\n", ud); err != nil {
+				return err
+			}
 		}
 
 		signers, err := mstate.Signers()
@@ -271,11 +283,17 @@ var msigInspectCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(cctx.App.Writer, "Threshold: %d / %d\n", threshold, len(signers))
-		fmt.Fprintln(cctx.App.Writer, "Signers:")
+		if _, err := fmt.Fprintf(cctx.App.Writer, "Threshold: %d / %d\n", threshold, len(signers)); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Signers:"); err != nil {
+			return err
+		}
 
 		signerTable := tabwriter.NewWriter(cctx.App.Writer, 8, 4, 2, ' ', 0)
-		fmt.Fprintf(signerTable, "ID\tAddress\n")
+		if _, err := fmt.Fprintf(signerTable, "ID\tAddress\n"); err != nil {
+			return err
+		}
 		for _, s := range signers {
 			signerActor, err := api.StateAccountKey(ctx, s, types.EmptyTSK)
 			if err != nil {
@@ -297,7 +315,9 @@ var msigInspectCmd = &cli.Command{
 		}
 
 		decParams := cctx.Bool("decode-params")
-		fmt.Fprintln(cctx.App.Writer, "Transactions: ", len(pending))
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Transactions: ", len(pending)); err != nil {
+			return err
+		}
 		if len(pending) > 0 {
 			var txids []int64
 			for txid := range pending {
@@ -923,8 +943,9 @@ var msigAddProposeCmd = &cli.Command{
 
 		msgCid := sm.Cid()
 
-		fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid)
-
+		if _, err := fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid); err != nil {
+			return err
+		}
 		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err

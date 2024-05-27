@@ -262,7 +262,9 @@ every day of chain processed.
 				for _, bh := range ts.Blocks() {
 					bms, err := api.ChainGetBlockMessages(ctx, bh.Cid())
 					if err != nil {
-						fmt.Fprintln(os.Stderr, "ERROR: ", err)
+						if _, err := fmt.Fprintln(os.Stderr, "ERROR: ", err); err != nil {
+							fmt.Fprintln(os.Stderr, "Failed to write error message:", err)
+						}
 						return
 					}
 
@@ -295,7 +297,9 @@ every day of chain processed.
 					printLk.Lock()
 					err := encoder.Encode(grouped)
 					if err != nil {
-						fmt.Fprintln(os.Stderr, "ERROR: ", err)
+						if _, err := fmt.Fprintln(os.Stderr, "ERROR: ", err); err != nil {
+							fmt.Fprintln(os.Stderr, "Failed to write error message:", err)
+						}
 					}
 					printLk.Unlock()
 				}

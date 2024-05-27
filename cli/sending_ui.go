@@ -121,7 +121,7 @@ func printChecks(printer io.Writer, checkGroups [][]api.MessageCheckStatus, prot
 
 func askUser(printer io.Writer, q string, def bool) bool {
 	var resp string
-	fmt.Fprint(printer, q)
+	_, _ = fmt.Fprint(printer, q)
 	_, _ = fmt.Scanln(&resp)
 	resp = strings.ToLower(resp)
 	if len(resp) == 0 {

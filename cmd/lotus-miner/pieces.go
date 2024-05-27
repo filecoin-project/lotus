@@ -148,7 +148,9 @@ var piecesInfoCmd = &cli.Command{
 
 		fmt.Println("Piece: ", pi.PieceCID)
 		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "Deals:\nDealID\tSectorID\tLength\tOffset")
+		if _, err := fmt.Fprintln(w, "Deals:\nDealID\tSectorID\tLength\tOffset"); err != nil {
+			return err
+		}
 		for _, d := range pi.Deals {
 			fmt.Fprintf(w, "%d\t%d\t%d\t%d\n", d.DealID, d.SectorID, d.Length, d.Offset)
 		}

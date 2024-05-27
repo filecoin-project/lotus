@@ -93,7 +93,9 @@ var mmProposeWithdrawBalance = &cli.Command{
 			return xerrors.Errorf("proposing message: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid); err != nil {
+			return err
+		}
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
@@ -103,7 +105,9 @@ var mmProposeWithdrawBalance = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Propose owner change tx failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Propose owner change tx failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -172,7 +176,9 @@ var mmApproveWithdrawBalance = &cli.Command{
 			return xerrors.Errorf("approving message: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Approve Message CID:", acid)
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Approve Message CID:", acid); err != nil {
+			return err
+		}
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, acid, build.MessageConfidence)
@@ -182,7 +188,9 @@ var mmApproveWithdrawBalance = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Approve owner change tx failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Approve owner change tx failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -253,7 +261,9 @@ var mmProposeChangeOwner = &cli.Command{
 			return xerrors.Errorf("proposing message: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid); err != nil {
+			return err
+		}
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
@@ -263,7 +273,9 @@ var mmProposeChangeOwner = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Propose owner change tx failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Propose owner change tx failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -343,7 +355,9 @@ var mmApproveChangeOwner = &cli.Command{
 			return xerrors.Errorf("approving message: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Approve Message CID:", acid)
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Approve Message CID:", acid); err != nil {
+			return err
+		}
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, acid, build.MessageConfidence)
@@ -353,7 +367,9 @@ var mmApproveChangeOwner = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Approve owner change tx failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Approve owner change tx failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -416,8 +432,12 @@ var mmProposeChangeWorker = &cli.Command{
 			}
 		} else {
 			if mi.NewWorker == newAddr {
-				fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully proposed.\n", na)
-				fmt.Fprintf(cctx.App.Writer, "Call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch)
+				if _, err := fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully proposed.\n", na); err != nil {
+					return err
+				}
+				if _, err := fmt.Fprintf(cctx.App.Writer, "Call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch); err != nil {
+					return err
+				}
 				return fmt.Errorf("change to worker address %s already pending", na)
 			}
 		}
@@ -427,8 +447,12 @@ var mmProposeChangeWorker = &cli.Command{
 			NewControlAddrs: mi.ControlAddresses,
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "newAddr: %s\n", newAddr)
-		fmt.Fprintf(cctx.App.Writer, "NewControlAddrs: %s\n", mi.ControlAddresses)
+		if _, err := fmt.Fprintf(cctx.App.Writer, "newAddr: %s\n", newAddr); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(cctx.App.Writer, "NewControlAddrs: %s\n", mi.ControlAddresses); err != nil {
+			return err
+		}
 
 		sp, err := actors.SerializeParams(cwp)
 		if err != nil {
@@ -440,7 +464,9 @@ var mmProposeChangeWorker = &cli.Command{
 			return xerrors.Errorf("proposing message: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid); err != nil {
+			return err
+		}
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
@@ -450,7 +476,9 @@ var mmProposeChangeWorker = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -632,7 +660,9 @@ var mmConfirmChangeWorker = &cli.Command{
 			return xerrors.Errorf("proposing message: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid); err != nil {
+			return err
+		}
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
@@ -642,7 +672,9 @@ var mmConfirmChangeWorker = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -839,7 +871,9 @@ var mmProposeControlSet = &cli.Command{
 			return xerrors.Errorf("proposing message: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
+		if _, err := fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid); err != nil {
+			return err
+		}
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
@@ -849,7 +883,9 @@ var mmProposeControlSet = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!")
+			if _, err := fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!"); err != nil {
+				return err
+			}
 			return err
 		}
 

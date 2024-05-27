@@ -98,7 +98,9 @@ var paychAddFundsCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, chAddr)
+		if _, err := fmt.Fprintln(cctx.App.Writer, chAddr); err != nil {
+			return err
+		}
 		restartRetrievals := cctx.Bool("restart-retrievals")
 		if restartRetrievals {
 			return api.ClientRetrieveTryRestartInsufficientFunds(ctx, chAddr)
@@ -177,23 +179,23 @@ var paychStatusCmd = &cli.Command{
 func paychStatus(writer io.Writer, avail *lapi.ChannelAvailableFunds) {
 	if avail.Channel == nil {
 		if avail.PendingWaitSentinel != nil {
-			fmt.Fprint(writer, "Creating channel\n")
-			fmt.Fprintf(writer, "  From:          %s\n", avail.From)
-			fmt.Fprintf(writer, "  To:            %s\n", avail.To)
-			fmt.Fprintf(writer, "  Pending Amt:   %s\n", types.FIL(avail.PendingAmt))
-			fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
+			_, _ = fmt.Fprint(writer, "Creating channel\n")
+			_, _ = fmt.Fprintf(writer, "  From:          %s\n", avail.From)
+			_, _ = fmt.Fprintf(writer, "  To:            %s\n", avail.To)
+			_, _ = fmt.Fprintf(writer, "  Pending Amt:   %s\n", types.FIL(avail.PendingAmt))
+			_, _ = fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
 			return
 		}
-		fmt.Fprint(writer, "Channel does not exist\n")
-		fmt.Fprintf(writer, "  From: %s\n", avail.From)
-		fmt.Fprintf(writer, "  To:   %s\n", avail.To)
+		_, _ = fmt.Fprint(writer, "Channel does not exist\n")
+		_, _ = fmt.Fprintf(writer, "  From: %s\n", avail.From)
+		_, _ = fmt.Fprintf(writer, "  To:   %s\n", avail.To)
 		return
 	}
 
 	if avail.PendingWaitSentinel != nil {
-		fmt.Fprint(writer, "Adding Funds to channel\n")
+		_, _ = fmt.Fprint(writer, "Adding Funds to channel\n")
 	} else {
-		fmt.Fprint(writer, "Channel exists\n")
+		_, _ = fmt.Fprint(writer, "Channel exists\n")
 	}
 
 	nameValues := [][]string{
@@ -213,7 +215,7 @@ func paychStatus(writer io.Writer, avail *lapi.ChannelAvailableFunds) {
 			avail.PendingWaitSentinel.String(),
 		})
 	}
-	fmt.Fprint(writer, formatNameValues(nameValues))
+	_, _ = fmt.Fprint(writer, formatNameValues(nameValues))
 }
 
 func formatNameValues(nameValues [][]string) string {
@@ -249,7 +251,9 @@ var paychListCmd = &cli.Command{
 		}
 
 		for _, v := range chs {
-			fmt.Fprintln(cctx.App.Writer, v.String())
+			if _, err := fmt.Fprintln(cctx.App.Writer, v.String()); err != nil {
+				return err
+			}
 		}
 		return nil
 	},
@@ -398,7 +402,9 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, enc)
+		if _, err := fmt.Fprintln(cctx.App.Writer, enc); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -434,7 +440,9 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "voucher is valid")
+		if _, err := fmt.Fprintln(cctx.App.Writer, "voucher is valid"); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -593,7 +601,9 @@ func outputVoucher(w io.Writer, v *paych.SignedVoucher, export bool) error {
 	if export {
 		fmt.Fprintf(w, "; %s", enc)
 	}
-	fmt.Fprintln(w)
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -638,8 +648,9 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "channel updated successfully")
-
+		if _, err := fmt.Fprintln(cctx.App.Writer, "channel updated successfully"); err != nil {
+			return err
+		}
 		return nil
 	},
 }

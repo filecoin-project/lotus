@@ -81,11 +81,14 @@ func FromReader(reader io.Reader, def interface{}, opts ...LoadCfgOpt) (interfac
 	}
 	for _, d := range movedFields {
 		if md.IsDefined(d.Field...) {
-			fmt.Fprintf(
+			if _, err := fmt.Fprintf(
 				warningOut,
 				"WARNING: Use of deprecated configuration option '%s' will be removed in a future release, use '%s' instead\n",
 				strings.Join(d.Field, "."),
-				strings.Join(d.NewField, "."))
+				strings.Join(d.NewField, "."),
+			); err != nil {
+				return nil, err
+			}
 			if !md.IsDefined(d.NewField...) {
 				// new value isn't set but old is, we should move what the user set there
 				if err := moveFieldValue(cfg, d.Field, d.NewField); err != nil {
