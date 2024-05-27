@@ -52,7 +52,7 @@ func TestManualCCOnboarding(t *testing.T) {
 				client kit.TestFullNode
 				minerA kit.TestMiner          // A is a standard genesis miner
 				minerB kit.TestUnmanagedMiner // B is a CC miner we will onboard manually
-				minerC kit.TestUnmanagedMiner // C is a CC miner we will onboard manually (will be used for NI-PoRep)
+				minerC kit.TestUnmanagedMiner // C is a CC miner we will onboard manually with NI-PoRep
 
 				// TODO: single sector per miner for now, but this isn't going to scale when refactored into
 				// TestUnmanagedMiner - they'll need their own list of sectors and their own copy of each of
@@ -223,11 +223,13 @@ func TestManualCCOnboarding(t *testing.T) {
 				kit.TestSpt,
 			)
 
-			// Miner C (will be used for NI-PoRep)
+			// NI-PoRep
 
 			if withMockProofs {
+				sectorProof = []byte{0xde, 0xad, 0xbe, 0xef}
 				sealedCid[cSectorNum] = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
 			} else {
+				// NI-PoRep compresses precommit and commit into one step
 				cacheDirPath[cSectorNum] = filepath.Join(tmpDir, "cachec")
 				unsealedSectorPath[cSectorNum] = filepath.Join(tmpDir, "unsealedc")
 				sealedSectorPath[cSectorNum] = filepath.Join(tmpDir, "sealedc")
@@ -242,36 +244,9 @@ func TestManualCCOnboarding(t *testing.T) {
 					minerC.ActorAddr,
 					cSectorNum,
 					sealRandEpoch,
-					kit.TestSpt,
+					kit.TestSptNi,
 				)
-			}
 
-			t.Log("Submitting MinerC PreCommitSector ...")
-
-			r, err = manualOnboardingSubmitMessage(ctx, client, minerC, &miner14.PreCommitSectorBatchParams2{
-				Sectors: []miner14.SectorPreCommitInfo{{
-					Expiration:    2880 * 300,
-					SectorNumber:  cSectorNum,
-					SealProof:     kit.TestSpt,
-					SealedCID:     sealedCid[cSectorNum],
-					SealRandEpoch: sealRandEpoch,
-				}},
-			}, 1, builtin.MethodsMiner.PreCommitSectorBatch2)
-			req.NoError(err)
-			req.True(r.Receipt.ExitCode.IsSuccess())
-
-			preCommitInfo, err = client.StateSectorPreCommitInfo(ctx, minerC.ActorAddr, cSectorNum, r.TipSet)
-			req.NoError(err)
-
-			// Run prove commit for the sector on miner C
-
-			seedRandomnessHeight = preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
-			t.Logf("Waiting %d epochs for seed randomness at epoch %d (current epoch %d)...", seedRandomnessHeight-r.Height, seedRandomnessHeight, r.Height)
-			client.WaitTillChain(ctx, kit.HeightAtLeast(seedRandomnessHeight+5))
-
-			if withMockProofs {
-				sectorProof = []byte{0xde, 0xad, 0xbe, 0xef}
-			} else {
 				sectorProof = manualOnboardingGenerateProveCommit(
 					ctx,
 					t,
@@ -283,25 +258,31 @@ func TestManualCCOnboarding(t *testing.T) {
 					sealedCid[cSectorNum],
 					unsealedCid[cSectorNum],
 					sealTickets[cSectorNum],
-					kit.TestSpt,
+					kit.TestSptNi,
 				)
 			}
 
-			t.Log("Submitting MinerC ProveCommitSector ...")
+			t.Log("Submitting MinerC ProveCommitSectorsNI ...")
 
-			r, err = manualOnboardingSubmitMessage(ctx, client, minerC, &miner14.ProveCommitSectors3Params{
-				SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: cSectorNum}},
+			actorIdNum, err := address.IDFromAddress(minerC.ActorAddr)
+			req.NoError(err)
+			actorId := abi.ActorID(actorIdNum)
+
+			r, err = manualOnboardingSubmitMessage(ctx, client, minerC, &miner14.ProveCommitSectorsNIParams{
+				Sectors: []miner14.SectorNIActivationInfo{{
+					SealingNumber: cSectorNum,
+					SealerID:      actorId,
+					SectorNumber:  cSectorNum,
+					SealedCID:     sealedCid[cSectorNum],
+					SealRandEpoch: sealRandEpoch,
+					Expiration:    2880 * 300,
+				}},
+				SealProofType:            kit.TestSptNi,
 				SectorProofs:             [][]byte{sectorProof},
 				RequireActivationSuccess: true,
-			}, 0, builtin.MethodsMiner.ProveCommitSectors3)
+			}, 1, builtin.MethodsMiner.ProveCommitSectorsNI)
 			req.NoError(err)
 			req.True(r.Receipt.ExitCode.IsSuccess())
-
-			// Check power after proving, should still be zero until the PoSt is submitted
-			p, err = client.StateMinerPower(ctx, minerC.ActorAddr, r.TipSet)
-			req.NoError(err)
-			t.Logf("MinerC RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
-			req.True(p.MinerPower.RawBytePower.IsZero())
 
 			// start a background PoST scheduler for miner C
 			cFirstCh, cErrCh := manualOnboardingRunWindowPost(
@@ -313,7 +294,7 @@ func TestManualCCOnboarding(t *testing.T) {
 				cacheDirPath[cSectorNum],
 				sealedSectorPath[cSectorNum],
 				sealedCid[cSectorNum],
-				kit.TestSpt,
+				kit.TestSptNi,
 			)
 
 			checkPostSchedulers := func() {
@@ -480,9 +461,15 @@ func manualOnboardingGenerateProveCommit(
 
 	var seedRandomnessHeight abi.ChainEpoch
 
-	preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, minerAddr, sectorNumber, head.Key())
-	req.NoError(err)
-	seedRandomnessHeight = preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
+	if proofType >= abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_NiPoRep && proofType <= abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_NiPoRep {
+		// this just needs to be somewhere between 6 months and chain finality for NI-PoRep,
+		// and there's no PreCommitInfo becuase it's non-interactive!
+		seedRandomnessHeight = head.Height() - policy.ChainFinality
+	} else {
+		preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, minerAddr, sectorNumber, head.Key())
+		req.NoError(err)
+		seedRandomnessHeight = preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
+	}
 
 	minerAddrBytes := new(bytes.Buffer)
 	req.NoError(minerAddr.MarshalCBOR(minerAddrBytes))
@@ -517,6 +504,11 @@ func manualOnboardingGenerateProveCommit(
 	req.NoError(err)
 
 	t.Logf("Got proof type %d sector proof of length %d", proofType, len(sectorProof))
+
+	/* this variant would be used for aggregating NI-PoRep proofs
+	sectorProof, err := ffi.SealCommitPhase2CircuitProofs(scp1, sectorNumber)
+	req.NoError(err)
+	*/
 
 	return sectorProof
 }
