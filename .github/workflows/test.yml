@@ -63,7 +63,6 @@ jobs:
               "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
-              "itest-curio": ["self-hosted", "linux", "x64", "4xlarge"],
 
               "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
@@ -116,7 +115,7 @@ jobs:
             }
           # A list of test groups that require YugabyteDB to be running
           yugabytedb: |
-            ["itest-harmonydb", "itest-harmonytask", "itest-curio"]
+            ["itest-harmonydb"]
           # A list of test groups that require Proof Parameters to be fetched
           parameters: |
             [
