@@ -822,16 +822,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	mp.curTsLk.RLock()
-	curTs := mp.curTs
-	mp.curTsLk.RUnlock()
-	epoch := curTs.Height() + 1
-	nv, err := mp.getNtwkVersion(epoch)
-	if err != nil {
-		return xerrors.Errorf("failed to get network version: %w", err)
-	}
-
-	if err := consensus.AuthenticateMessage(m, m.Message.From, nv); err != nil {
+	if err := consensus.AuthenticateMessage(m, m.Message.From); err != nil {
 		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
 
@@ -896,6 +887,11 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	nv := mp.api.StateNetworkVersion(ctx, epoch)
 
 	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
+
+	if m.Signature.Type == crypto.SigTypeDelegated && !consensus.IsValidEthTxForSending(nv, m) {
+		return false, xerrors.Errorf("network version should be atleast NV23 for sending legacy ETH transactions; but current network version is %d", nv)
+	}
+
 	if !consensus.IsValidForSending(nv, senderAct) {
 		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}

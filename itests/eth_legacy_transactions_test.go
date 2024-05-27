@@ -161,7 +161,7 @@ func TestLegacyEIP155ValueTransferValidSignatureFailsNV22(t *testing.T) {
 
 	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Legacy ETH tx message not supported in network version 22,need version 23")
+	require.Contains(t, err.Error(), "network version should be atleast NV23 for sending legacy ETH transactions")
 }
 
 func TestLegacyEIP155ValueTransferValidSignature(t *testing.T) {
