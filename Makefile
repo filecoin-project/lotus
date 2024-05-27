@@ -99,7 +99,10 @@ BINS+=lotus-miner
 
 curio: $(BUILD_DEPS)
 	rm -f curio
-	$(GOCC) build $(GOFLAGS) -o curio ./cmd/curio
+	$(GOCC) build $(GOFLAGS) -o curio -ldflags " \
+	-X github.com/filecoin-project/lotus/curiosrc/build.IsOpencl=$(FFI_USE_OPENCL) \
+	-X github.com/filecoin-project/lotus/curiosrc/build.Commit=`git log -1 --format=%h_%cI`" \
+	./cmd/curio 
 .PHONY: curio
 BINS+=curio
 

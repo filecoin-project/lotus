@@ -14,12 +14,14 @@ import (
 	"github.com/puzpuzpuz/xsync/v2"
 	"golang.org/x/xerrors"
 
+	// TODO everywhere here that we call this we should call our proxy instead.
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	proof2 "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/curiosrc/proof"
+	"github.com/filecoin-project/lotus/lib/ffiselect"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
@@ -256,7 +258,7 @@ func (sb *SealCalls) TreeRC(ctx context.Context, task *harmonytask.TaskID, secto
 		}
 	}
 
-	sl, uns, err := ffi.SealPreCommitPhase2(p1o, fspaths.Cache, fspaths.Sealed)
+	sl, uns, err := ffiselect.FFISelect{}.SealPreCommitPhase2(sector.ID, p1o, fspaths.Cache, fspaths.Sealed)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("computing seal proof: %w", err)
 	}
@@ -307,7 +309,7 @@ func (sb *SealCalls) PoRepSnark(ctx context.Context, sn storiface.SectorRef, sea
 		return nil, xerrors.Errorf("failed to generate vanilla proof: %w", err)
 	}
 
-	proof, err := ffi.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
+	proof, err := ffiselect.FFISelect{}.SealCommitPhase2(vproof, sn.ID.Number, sn.ID.Miner)
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
@@ -648,7 +650,7 @@ func (sb *SealCalls) TreeD(ctx context.Context, sector storiface.SectorRef, unse
 	}
 
 	if treeDUnsealed != unsealed {
-		return xerrors.Errorf("tree-d cid mismatch with supplied unsealed cid")
+		return xerrors.Errorf("tree-d cid %s mismatch with supplied unsealed cid %s", treeDUnsealed, unsealed)
 	}
 
 	if err := sb.ensureOneCopy(ctx, sector.ID, pathIDs, storiface.FTCache); err != nil {

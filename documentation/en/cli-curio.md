@@ -469,7 +469,7 @@ DESCRIPTION:
      This creates the 'web' layer if it does not exist, then calls run with that layer.
 
 OPTIONS:
-   --listen value                     Address to listen on (default: "127.0.0.1:4701")
+   --gui-listen value                 Address to listen for the GUI on (default: "0.0.0.0:4701")
    --nosync                           don't check full-node sync status (default: false)
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
    --help, -h                         show help
@@ -531,6 +531,7 @@ USAGE:
 
 COMMANDS:
    rpc-info  
+   seal      start sealing a deal sector early
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
@@ -547,6 +548,21 @@ USAGE:
 
 OPTIONS:
    --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --help, -h                         show help
+```
+
+### curio market seal
+```
+NAME:
+   curio market seal - start sealing a deal sector early
+
+USAGE:
+   curio market seal [command options] [arguments...]
+
+OPTIONS:
+   --actor value                      Specify actor address to start sealing sectors for
+   --layers value [ --layers value ]  list of layers to be interpreted (atop defaults). Default: base
+   --synthetic                        Use synthetic PoRep (default: false)
    --help, -h                         show help
 ```
 

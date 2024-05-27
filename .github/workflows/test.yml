@@ -63,6 +63,7 @@ jobs:
               "itest-deals_concurrent": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-curio": ["self-hosted", "linux", "x64", "4xlarge"],
 
               "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
@@ -144,7 +145,8 @@ jobs:
               "itest-worker",
               "multicore-sdr",
               "unit-cli",
-              "unit-storage"
+              "unit-storage",
+              "itest-curio"
             ]
         run: |
           # Create a list of integration test groups

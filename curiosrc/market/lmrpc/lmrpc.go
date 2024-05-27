@@ -2,11 +2,13 @@ package lmrpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
+	lpiece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -149,7 +152,10 @@ func forEachMarketRPC(cfg *config.CurioConfig, cb func(string, string) error) er
 func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Address, conf *config.CurioConfig, listen string) error {
 	ctx := context.Background()
 
-	pin := cumarket.NewPieceIngester(db, full)
+	pin, err := cumarket.NewPieceIngester(ctx, db, full, maddr, false, time.Duration(conf.Ingest.MaxDealWaitTime))
+	if err != nil {
+		return xerrors.Errorf("starting piece ingestor")
+	}
 
 	si := paths.NewDBIndex(nil, db)
 
@@ -188,8 +194,10 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 		}, nil
 	}
 
-	ast.CommonStruct.Internal.AuthNew = lp.AuthNew
+	pieceInfoLk := new(sync.Mutex)
+	pieceInfos := map[uuid.UUID][]pieceInfo{}
 
+	ast.CommonStruct.Internal.AuthNew = lp.AuthNew
 	ast.Internal.ActorAddress = lp.ActorAddress
 	ast.Internal.WorkerJobs = lp.WorkerJobs
 	ast.Internal.SectorsStatus = lp.SectorsStatus
@@ -198,219 +206,7 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 	ast.Internal.SectorsListInStates = lp.SectorsListInStates
 	ast.Internal.StorageRedeclareLocal = lp.StorageRedeclareLocal
 	ast.Internal.ComputeDataCid = lp.ComputeDataCid
-
-	type pieceInfo struct {
-		data storiface.Data
-		size abi.UnpaddedPieceSize
-
-		done chan struct{}
-	}
-
-	pieceInfoLk := new(sync.Mutex)
-	pieceInfos := map[uuid.UUID][]pieceInfo{}
-
-	ast.Internal.SectorAddPieceToAny = func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
-		origPieceData := pieceData
-		defer func() {
-			closer, ok := origPieceData.(io.Closer)
-			if !ok {
-				log.Warnf("DataCid: cannot close pieceData reader %T because it is not an io.Closer", origPieceData)
-				return
-			}
-			if err := closer.Close(); err != nil {
-				log.Warnw("closing pieceData in DataCid", "error", err)
-			}
-		}()
-
-		pi := pieceInfo{
-			data: pieceData,
-			size: pieceSize,
-
-			done: make(chan struct{}),
-		}
-
-		pieceUUID := uuid.New()
-
-		//color.Blue("%s %s piece assign request with id %s", deal.DealProposal.PieceCID, deal.DealProposal.Provider, pieceUUID)
-		log.Infow("piece assign request", "piece_cid", deal.DealProposal.PieceCID, "provider", deal.DealProposal.Provider, "piece_uuid", pieceUUID)
-
-		pieceInfoLk.Lock()
-		pieceInfos[pieceUUID] = append(pieceInfos[pieceUUID], pi)
-		pieceInfoLk.Unlock()
-
-		// /piece?piece_cid=xxxx
-		dataUrl := rootUrl
-		dataUrl.Path = "/piece"
-		dataUrl.RawQuery = "piece_id=" + pieceUUID.String()
-
-		// add piece entry
-
-		var refID int64
-		var pieceWasCreated bool
-
-		for {
-			var backpressureWait bool
-
-			comm, err := db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
-				// BACKPRESSURE
-				wait, err := maybeApplyBackpressure(tx, conf.Ingest)
-				if err != nil {
-					return false, xerrors.Errorf("backpressure checks: %w", err)
-				}
-				if wait {
-					backpressureWait = true
-					return false, nil
-				}
-
-				var pieceID int64
-				// Attempt to select the piece ID first
-				err = tx.QueryRow(`SELECT id FROM parked_pieces WHERE piece_cid = $1`, deal.DealProposal.PieceCID.String()).Scan(&pieceID)
-
-				if err != nil {
-					if err == pgx.ErrNoRows {
-						// Piece does not exist, attempt to insert
-						err = tx.QueryRow(`
-							INSERT INTO parked_pieces (piece_cid, piece_padded_size, piece_raw_size)
-							VALUES ($1, $2, $3)
-							ON CONFLICT (piece_cid) DO NOTHING
-							RETURNING id`, deal.DealProposal.PieceCID.String(), int64(pieceSize.Padded()), int64(pieceSize)).Scan(&pieceID)
-						if err != nil {
-							return false, xerrors.Errorf("inserting new parked piece and getting id: %w", err)
-						}
-						pieceWasCreated = true // New piece was created
-					} else {
-						// Some other error occurred during select
-						return false, xerrors.Errorf("checking existing parked piece: %w", err)
-					}
-				} else {
-					pieceWasCreated = false // Piece already exists, no new piece was created
-				}
-
-				// Add parked_piece_ref
-				err = tx.QueryRow(`INSERT INTO parked_piece_refs (piece_id, data_url)
-        			VALUES ($1, $2) RETURNING ref_id`, pieceID, dataUrl.String()).Scan(&refID)
-				if err != nil {
-					return false, xerrors.Errorf("inserting parked piece ref: %w", err)
-				}
-
-				// If everything went well, commit the transaction
-				return true, nil // This will commit the transaction
-			}, harmonydb.OptionRetry())
-			if err != nil {
-				return api.SectorOffset{}, xerrors.Errorf("inserting parked piece: %w", err)
-			}
-			if !comm {
-				if backpressureWait {
-					// Backpressure was applied, wait and try again
-					select {
-					case <-time.After(backpressureWaitTime):
-					case <-ctx.Done():
-						return api.SectorOffset{}, xerrors.Errorf("context done while waiting for backpressure: %w", ctx.Err())
-					}
-					continue
-				}
-
-				return api.SectorOffset{}, xerrors.Errorf("piece tx didn't commit")
-			}
-
-			break
-		}
-
-		// wait for piece to be parked
-		if pieceWasCreated {
-			<-pi.done
-		} else {
-			// If the piece was not created, we need to close the done channel
-			close(pi.done)
-
-			go func() {
-				// close the data reader (drain to eof if it's not a closer)
-				if closer, ok := pieceData.(io.Closer); ok {
-					if err := closer.Close(); err != nil {
-						log.Warnw("closing pieceData in DataCid", "error", err)
-					}
-				} else {
-					log.Warnw("pieceData is not an io.Closer", "type", fmt.Sprintf("%T", pieceData))
-
-					_, err := io.Copy(io.Discard, pieceData)
-					if err != nil {
-						log.Warnw("draining pieceData in DataCid", "error", err)
-					}
-				}
-			}()
-		}
-
-		{
-			// piece park is either done or currently happening from another AP call
-			// now we need to make sure that the piece is definitely parked successfully
-			// - in case of errors we return, and boost should be able to retry the call
-
-			// * If piece is completed, return
-			// * If piece is not completed but has null taskID, wait
-			// * If piece has a non-null taskID
-			//   * If the task is in harmony_tasks, wait
-			//   * Otherwise look for an error in harmony_task_history and return that
-
-			for {
-				var taskID *int64
-				var complete bool
-				err := db.QueryRow(ctx, `SELECT task_id, complete FROM parked_pieces WHERE id = $1`, refID).Scan(&taskID, &complete)
-				if err != nil {
-					return api.SectorOffset{}, xerrors.Errorf("getting piece park status: %w", err)
-				}
-
-				if complete {
-					break
-				}
-
-				if taskID == nil {
-					// piece is not parked yet
-					time.Sleep(5 * time.Second)
-					continue
-				}
-
-				// check if task is in harmony_tasks
-				var taskName string
-				err = db.QueryRow(ctx, `SELECT name FROM harmony_task WHERE id = $1`, *taskID).Scan(&taskName)
-				if err == nil {
-					// task is in harmony_tasks, wait
-					time.Sleep(5 * time.Second)
-					continue
-				}
-				if err != pgx.ErrNoRows {
-					return api.SectorOffset{}, xerrors.Errorf("checking park-piece task in harmony_tasks: %w", err)
-				}
-
-				// task is not in harmony_tasks, check harmony_task_history (latest work_end)
-				var taskError string
-				var taskResult bool
-				err = db.QueryRow(ctx, `SELECT result, err FROM harmony_task_history WHERE task_id = $1 ORDER BY work_end DESC LIMIT 1`, *taskID).Scan(&taskResult, &taskError)
-				if err != nil {
-					return api.SectorOffset{}, xerrors.Errorf("checking park-piece task history: %w", err)
-				}
-				if !taskResult {
-					return api.SectorOffset{}, xerrors.Errorf("park-piece task failed: %s", taskError)
-				}
-				return api.SectorOffset{}, xerrors.Errorf("park task succeeded but piece is not marked as complete")
-			}
-		}
-
-		pieceIDUrl := url.URL{
-			Scheme: "pieceref",
-			Opaque: fmt.Sprintf("%d", refID),
-		}
-
-		// make a sector
-		so, err := pin.AllocatePieceToSector(ctx, maddr, deal, int64(pieceSize), pieceIDUrl, nil)
-		if err != nil {
-			return api.SectorOffset{}, err
-		}
-
-		log.Infow("piece assigned to sector", "piece_cid", deal.DealProposal.PieceCID, "sector", so.Sector, "offset", so.Offset)
-
-		return so, nil
-	}
-
+	ast.Internal.SectorAddPieceToAny = sectorAddPieceToAnyOperation(maddr, rootUrl, conf, pieceInfoLk, pieceInfos, pin, db, mi.SectorSize)
 	ast.Internal.StorageList = si.StorageList
 	ast.Internal.StorageDetach = si.StorageDetach
 	ast.Internal.StorageReportHealth = si.StorageReportHealth
@@ -422,6 +218,7 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 	ast.Internal.StorageLock = si.StorageLock
 	ast.Internal.StorageTryLock = si.StorageTryLock
 	ast.Internal.StorageGetLocks = si.StorageGetLocks
+	ast.Internal.SectorStartSealing = pin.SectorStartSealing
 
 	var pieceHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 		// /piece?piece_id=xxxx
@@ -490,7 +287,7 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 
 	mux := http.NewServeMux()
 	mux.Handle("/piece", pieceHandler)
-	mux.Handle("/", mh)
+	mux.Handle("/", mh) // todo: create a method for sealNow for sectors
 
 	server := &http.Server{
 		Addr:         listen,
@@ -502,43 +299,287 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 	return server.ListenAndServe()
 }
 
-func maybeApplyBackpressure(tx *harmonydb.Tx, cfg config.CurioIngestConfig) (wait bool, err error) {
-	var bufferedSDR, bufferedTrees, bufferedPoRep int
-	err = tx.QueryRow(`WITH BufferedSDR AS (
-    SELECT SUM(buffered_count) AS buffered_sdr_count
-    FROM (
-             SELECT COUNT(p.task_id_sdr) - COUNT(t.owner_id) AS buffered_count
-             FROM sectors_sdr_pipeline p
-                      LEFT JOIN harmony_task t ON p.task_id_sdr = t.id
-             WHERE p.after_sdr = false
-             UNION ALL
-             SELECT COUNT(1) AS buffered_count
-             FROM parked_pieces
-             WHERE complete = false
-         ) AS subquery
-),
-     BufferedTrees AS (
-         SELECT COUNT(p.task_id_tree_r) - COUNT(t.owner_id) AS buffered_trees_count
-         FROM sectors_sdr_pipeline p
-                  LEFT JOIN harmony_task t ON p.task_id_tree_r = t.id
-         WHERE p.after_sdr = true AND p.after_tree_r = false
-     ),
-     BufferedPoRep AS (
-         SELECT COUNT(p.task_id_porep) - COUNT(t.owner_id) AS buffered_porep_count
-         FROM sectors_sdr_pipeline p
-                  LEFT JOIN harmony_task t ON p.task_id_porep = t.id
-         WHERE p.after_tree_r = true AND p.after_porep = false
-     )
-SELECT
-    (SELECT buffered_sdr_count FROM BufferedSDR) AS total_buffered,
+type pieceInfo struct {
+	data storiface.Data
+	size abi.UnpaddedPieceSize
+
+	done chan struct{}
+}
+
+func sectorAddPieceToAnyOperation(maddr address.Address, rootUrl url.URL, conf *config.CurioConfig, pieceInfoLk *sync.Mutex, pieceInfos map[uuid.UUID][]pieceInfo, pin *cumarket.PieceIngester, db *harmonydb.DB, ssize abi.SectorSize) func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal lpiece.PieceDealInfo) (api.SectorOffset, error) {
+	return func(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data, deal lpiece.PieceDealInfo) (api.SectorOffset, error) {
+		if (deal.PieceActivationManifest == nil && deal.DealProposal == nil) || (deal.PieceActivationManifest != nil && deal.DealProposal != nil) {
+			return api.SectorOffset{}, xerrors.Errorf("deal info must have either deal proposal or piece manifest")
+		}
+
+		origPieceData := pieceData
+		defer func() {
+			closer, ok := origPieceData.(io.Closer)
+			if !ok {
+				log.Warnf("DataCid: cannot close pieceData reader %T because it is not an io.Closer", origPieceData)
+				return
+			}
+			if err := closer.Close(); err != nil {
+				log.Warnw("closing pieceData in DataCid", "error", err)
+			}
+		}()
+
+		pi := pieceInfo{
+			data: pieceData,
+			size: pieceSize,
+
+			done: make(chan struct{}),
+		}
+
+		pieceUUID := uuid.New()
+
+		if deal.DealProposal != nil {
+			log.Infow("piece assign request", "piece_cid", deal.PieceCID().String(), "provider", deal.DealProposal.Provider, "piece_uuid", pieceUUID)
+		}
+
+		pieceInfoLk.Lock()
+		pieceInfos[pieceUUID] = append(pieceInfos[pieceUUID], pi)
+		pieceInfoLk.Unlock()
+
+		// /piece?piece_cid=xxxx
+		dataUrl := rootUrl
+		dataUrl.Path = "/piece"
+		dataUrl.RawQuery = "piece_id=" + pieceUUID.String()
+
+		// add piece entry
+		refID, pieceWasCreated, err := addPieceEntry(ctx, db, conf, deal, pieceSize, dataUrl, ssize)
+		if err != nil {
+			return api.SectorOffset{}, err
+		}
+
+		// wait for piece to be parked
+		if pieceWasCreated {
+			<-pi.done
+		} else {
+			// If the piece was not created, we need to close the done channel
+			close(pi.done)
+
+			closeDataReader(pieceData)
+		}
+
+		{
+			// piece park is either done or currently happening from another AP call
+			// now we need to make sure that the piece is definitely parked successfully
+			// - in case of errors we return, and boost should be able to retry the call
+
+			// * If piece is completed, return
+			// * If piece is not completed but has null taskID, wait
+			// * If piece has a non-null taskID
+			//   * If the task is in harmony_tasks, wait
+			//   * Otherwise look for an error in harmony_task_history and return that
+
+			for {
+				var taskID *int64
+				var complete bool
+				err := db.QueryRow(ctx, `SELECT pp.task_id, pp.complete
+												FROM parked_pieces pp
+												JOIN parked_piece_refs ppr ON pp.id = ppr.piece_id
+												WHERE ppr.ref_id = $1;`, refID).Scan(&taskID, &complete)
+				if err != nil {
+					return api.SectorOffset{}, xerrors.Errorf("getting piece park status: %w", err)
+				}
+
+				if complete {
+					break
+				}
+
+				if taskID == nil {
+					// piece is not parked yet
+					time.Sleep(5 * time.Second)
+					continue
+				}
+
+				// check if task is in harmony_tasks
+				var taskName string
+				err = db.QueryRow(ctx, `SELECT name FROM harmony_task WHERE id = $1`, *taskID).Scan(&taskName)
+				if err == nil {
+					// task is in harmony_tasks, wait
+					time.Sleep(5 * time.Second)
+					continue
+				}
+				if err != pgx.ErrNoRows {
+					return api.SectorOffset{}, xerrors.Errorf("checking park-piece task in harmony_tasks: %w", err)
+				}
+
+				// task is not in harmony_tasks, check harmony_task_history (latest work_end)
+				var taskError string
+				var taskResult bool
+				err = db.QueryRow(ctx, `SELECT result, err FROM harmony_task_history WHERE task_id = $1 ORDER BY work_end DESC LIMIT 1`, *taskID).Scan(&taskResult, &taskError)
+				if err != nil {
+					return api.SectorOffset{}, xerrors.Errorf("checking park-piece task history: %w", err)
+				}
+				if !taskResult {
+					return api.SectorOffset{}, xerrors.Errorf("park-piece task failed: %s", taskError)
+				}
+				return api.SectorOffset{}, xerrors.Errorf("park task succeeded but piece is not marked as complete")
+			}
+		}
+
+		pieceIDUrl := url.URL{
+			Scheme: "pieceref",
+			Opaque: fmt.Sprintf("%d", refID),
+		}
+
+		// make a sector
+		so, err := pin.AllocatePieceToSector(ctx, maddr, deal, int64(pieceSize), pieceIDUrl, nil)
+		if err != nil {
+			return api.SectorOffset{}, err
+		}
+
+		log.Infow("piece assigned to sector", "piece_cid", deal.PieceCID().String(), "sector", so.Sector, "offset", so.Offset)
+
+		return so, nil
+	}
+}
+
+func addPieceEntry(ctx context.Context, db *harmonydb.DB, conf *config.CurioConfig, deal lpiece.PieceDealInfo, pieceSize abi.UnpaddedPieceSize, dataUrl url.URL, ssize abi.SectorSize) (int64, bool, error) {
+	var refID int64
+	var pieceWasCreated bool
+
+	for {
+		var backpressureWait bool
+
+		comm, err := db.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
+			// BACKPRESSURE
+			wait, err := maybeApplyBackpressure(tx, conf.Ingest, ssize)
+			if err != nil {
+				return false, xerrors.Errorf("backpressure checks: %w", err)
+			}
+			if wait {
+				backpressureWait = true
+				return false, nil
+			}
+
+			var pieceID int64
+			// Attempt to select the piece ID first
+			err = tx.QueryRow(`SELECT id FROM parked_pieces WHERE piece_cid = $1`, deal.PieceCID().String()).Scan(&pieceID)
+
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					// Piece does not exist, attempt to insert
+					err = tx.QueryRow(`
+							INSERT INTO parked_pieces (piece_cid, piece_padded_size, piece_raw_size)
+							VALUES ($1, $2, $3)
+							ON CONFLICT (piece_cid) DO NOTHING
+							RETURNING id`, deal.PieceCID().String(), int64(pieceSize.Padded()), int64(pieceSize)).Scan(&pieceID)
+					if err != nil {
+						return false, xerrors.Errorf("inserting new parked piece and getting id: %w", err)
+					}
+					pieceWasCreated = true // New piece was created
+				} else {
+					// Some other error occurred during select
+					return false, xerrors.Errorf("checking existing parked piece: %w", err)
+				}
+			} else {
+				pieceWasCreated = false // Piece already exists, no new piece was created
+			}
+
+			// Add parked_piece_ref
+			err = tx.QueryRow(`INSERT INTO parked_piece_refs (piece_id, data_url)
+        			VALUES ($1, $2) RETURNING ref_id`, pieceID, dataUrl.String()).Scan(&refID)
+			if err != nil {
+				return false, xerrors.Errorf("inserting parked piece ref: %w", err)
+			}
+
+			// If everything went well, commit the transaction
+			return true, nil // This will commit the transaction
+		}, harmonydb.OptionRetry())
+		if err != nil {
+			return refID, pieceWasCreated, xerrors.Errorf("inserting parked piece: %w", err)
+		}
+		if !comm {
+			if backpressureWait {
+				// Backpressure was applied, wait and try again
+				select {
+				case <-time.After(backpressureWaitTime):
+				case <-ctx.Done():
+					return refID, pieceWasCreated, xerrors.Errorf("context done while waiting for backpressure: %w", ctx.Err())
+				}
+				continue
+			}
+
+			return refID, pieceWasCreated, xerrors.Errorf("piece tx didn't commit")
+		}
+
+		break
+	}
+	return refID, pieceWasCreated, nil
+}
+
+func closeDataReader(pieceData storiface.Data) {
+	go func() {
+		// close the data reader (drain to eof if it's not a closer)
+		if closer, ok := pieceData.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				log.Warnw("closing pieceData in DataCid", "error", err)
+			}
+		} else {
+			log.Warnw("pieceData is not an io.Closer", "type", fmt.Sprintf("%T", pieceData))
+
+			_, err := io.Copy(io.Discard, pieceData)
+			if err != nil {
+				log.Warnw("draining pieceData in DataCid", "error", err)
+			}
+		}
+	}()
+}
+
+func maybeApplyBackpressure(tx *harmonydb.Tx, cfg config.CurioIngestConfig, ssize abi.SectorSize) (wait bool, err error) {
+	var bufferedSDR, bufferedTrees, bufferedPoRep, waitDealSectors int
+	err = tx.QueryRow(`
+	WITH BufferedSDR AS (
+    SELECT COUNT(p.task_id_sdr) - COUNT(t.owner_id) AS buffered_sdr_count
+    FROM sectors_sdr_pipeline p
+    LEFT JOIN harmony_task t ON p.task_id_sdr = t.id
+    WHERE p.after_sdr = false
+	),
+	BufferedTrees AS (
+    SELECT COUNT(p.task_id_tree_r) - COUNT(t.owner_id) AS buffered_trees_count
+    FROM sectors_sdr_pipeline p
+    LEFT JOIN harmony_task t ON p.task_id_tree_r = t.id
+    WHERE p.after_sdr = true AND p.after_tree_r = false
+	),
+	BufferedPoRep AS (
+    SELECT COUNT(p.task_id_porep) - COUNT(t.owner_id) AS buffered_porep_count
+    FROM sectors_sdr_pipeline p
+    LEFT JOIN harmony_task t ON p.task_id_porep = t.id
+    WHERE p.after_tree_r = true AND p.after_porep = false
+	),
+	WaitDealSectors AS (
+    SELECT COUNT(DISTINCT sip.sector_number) AS wait_deal_sectors_count
+    FROM sectors_sdr_initial_pieces sip
+    LEFT JOIN sectors_sdr_pipeline sp ON sip.sp_id = sp.sp_id AND sip.sector_number = sp.sector_number
+    WHERE sp.sector_number IS NULL
+	)
+	SELECT
+    (SELECT buffered_sdr_count FROM BufferedSDR) AS total_buffered_sdr,
     (SELECT buffered_trees_count FROM BufferedTrees) AS buffered_trees_count,
-    (SELECT buffered_porep_count FROM BufferedPoRep) AS buffered_porep_count
-`).Scan(&bufferedSDR, &bufferedTrees, &bufferedPoRep)
+    (SELECT buffered_porep_count FROM BufferedPoRep) AS buffered_porep_count,
+    (SELECT wait_deal_sectors_count FROM WaitDealSectors) AS wait_deal_sectors_count
+`).Scan(&bufferedSDR, &bufferedTrees, &bufferedPoRep, &waitDealSectors)
 	if err != nil {
-		return false, xerrors.Errorf("counting parked pieces: %w", err)
+		return false, xerrors.Errorf("counting buffered sectors: %w", err)
 	}
 
-	if cfg.MaxQueueSDR != 0 && bufferedSDR > cfg.MaxQueueSDR {
+	var pieceSizes []abi.PaddedPieceSize
+
+	err = tx.Select(&pieceSizes, `SELECT piece_padded_size FROM parked_pieces WHERE complete = false;`)
+	if err != nil {
+		return false, xerrors.Errorf("getting in-process pieces")
+	}
+
+	sectors := sectorCount(pieceSizes, abi.PaddedPieceSize(ssize))
+	if cfg.MaxQueueDealSector != 0 && waitDealSectors+sectors > cfg.MaxQueueDealSector {
+		log.Debugw("backpressure", "reason", "too many wait deal sectors", "wait_deal_sectors", waitDealSectors, "max", cfg.MaxQueueDealSector)
+		return true, nil
+	}
+
+	if bufferedSDR > cfg.MaxQueueSDR {
 		log.Debugw("backpressure", "reason", "too many SDR tasks", "buffered", bufferedSDR, "max", cfg.MaxQueueSDR)
 		return true, nil
 	}
@@ -552,4 +593,28 @@ SELECT
 	}
 
 	return false, nil
+}
+
+func sectorCount(sizes []abi.PaddedPieceSize, targetSize abi.PaddedPieceSize) int {
+	sort.Slice(sizes, func(i, j int) bool {
+		return sizes[i] > sizes[j]
+	})
+
+	sectors := make([]abi.PaddedPieceSize, 0)
+
+	for _, size := range sizes {
+		placed := false
+		for i := range sectors {
+			if sectors[i]+size <= targetSize {
+				sectors[i] += size
+				placed = true
+				break
+			}
+		}
+		if !placed {
+			sectors = append(sectors, size)
+		}
+	}
+
+	return len(sectors)
 }

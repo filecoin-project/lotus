@@ -1,6 +1,11 @@
 name: Install Go
 description: Install Go for Filecoin Lotus
 
+inputs:
+  working-directory:
+    description: Specifies the working directory where the command is run.
+    required: false
+
 runs:
   using: composite
   steps:
@@ -10,6 +15,8 @@ runs:
         cache: false
     - id: go-mod
       uses: ipdxco/unified-github-workflows/.github/actions/read-go-mod@main
+      with:
+        working-directory: ${{ inputs.working-directory || github.workspace }}
     - uses: actions/setup-go@v5
       with:
         go-version: ${{ fromJSON(steps.go-mod.outputs.json).Go }}.x

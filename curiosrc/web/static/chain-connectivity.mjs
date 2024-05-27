@@ -1,21 +1,24 @@
 import { LitElement, html, css } from 'https://cdn.jsdelivr.net/gh/lit/dist@3/all/lit-all.min.js';
+import RPCCall from '/lib/jsonrpc.mjs';
+
 window.customElements.define('chain-connectivity', class MyElement extends LitElement {
     constructor() {
         super();
         this.data = [];
         this.loadData();
     }
-    loadData() {
-        const eventSource = new EventSource('/api/debug/chain-state-sse');
-        eventSource.onmessage = (event) => {
-            this.data = JSON.parse(event.data);
-            super.requestUpdate();
-        };
-        eventSource.onerror = (error) => {
-            console.error('Error:', error);
-            loadData();
-        };
+
+    async loadData() {
+        const blockDelay = await RPCCall('BlockDelaySecs')
+        await this.updateData();
+        setInterval(this.update, blockDelay * 1000);
     };
+
+    async updateData() {
+        this.data = await RPCCall('SyncerState');
+        console.log(this.data);
+        super.requestUpdate();
+    }
 
     static get styles() {
         return [css`

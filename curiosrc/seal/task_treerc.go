@@ -71,9 +71,13 @@ func (t *TreeRCTask) Do(taskID harmonytask.TaskID, stillOwned func() bool) (done
 	}
 
 	// R / C
-	sealed, _, err := t.sc.TreeRC(ctx, &taskID, sref, commd)
+	sealed, unsealed, err := t.sc.TreeRC(ctx, &taskID, sref, commd)
 	if err != nil {
 		return false, xerrors.Errorf("computing tree r and c: %w", err)
+	}
+
+	if unsealed != commd {
+		return false, xerrors.Errorf("commd %s does match unsealed %s", commd.String(), unsealed.String())
 	}
 
 	// todo synth porep
@@ -154,8 +158,10 @@ func (t *TreeRCTask) TypeDetails() harmonytask.TaskTypeDetails {
 		ssize = abi.SectorSize(2 << 20)
 	}
 	gpu := 1.0
+	ram := uint64(8 << 30)
 	if isDevnet {
 		gpu = 0
+		ram = 512 << 20
 	}
 
 	return harmonytask.TaskTypeDetails{
@@ -164,7 +170,7 @@ func (t *TreeRCTask) TypeDetails() harmonytask.TaskTypeDetails {
 		Cost: resources.Resources{
 			Cpu:     1,
 			Gpu:     gpu,
-			Ram:     8 << 30,
+			Ram:     ram,
 			Storage: t.sc.Storage(t.taskToSector, storiface.FTSealed, storiface.FTCache, ssize, storiface.PathSealing, paths.MinFreeStoragePercentage),
 		},
 		MaxFailures: 3,
