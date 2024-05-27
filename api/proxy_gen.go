@@ -5,8 +5,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,7 +42,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
-	lpiece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -114,41 +111,6 @@ type CommonNetStub struct {
 	CommonStub
 
 	NetStub
-}
-
-type CurioStruct struct {
-	Internal CurioMethods
-}
-
-type CurioMethods struct {
-	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 lpiece.PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
-
-	LogList func(p0 context.Context) ([]string, error) `perm:"read"`
-
-	LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"admin"`
-
-	Shutdown func(p0 context.Context) error `perm:"admin"`
-
-	StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
-
-	StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
-
-	StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
-
-	StorageInfo func(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) `perm:"admin"`
-
-	StorageInit func(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error `perm:"admin"`
-
-	StorageList func(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) `perm:"admin"`
-
-	StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
-
-	StorageStat func(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) `perm:"admin"`
-
-	Version func(p0 context.Context) (Version, error) `perm:"admin"`
-}
-
-type CurioStub struct {
 }
 
 type EthSubscriberStruct struct {
@@ -1497,149 +1459,6 @@ func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
 
 func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
 	return *new(APIVersion), ErrNotSupported
-}
-
-func (s *CurioStruct) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 lpiece.PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
-	if s.Internal.AllocatePieceToSector == nil {
-		return *new(SectorOffset), ErrNotSupported
-	}
-	return s.Internal.AllocatePieceToSector(p0, p1, p2, p3, p4, p5)
-}
-
-func (s *CurioStub) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 lpiece.PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
-	return *new(SectorOffset), ErrNotSupported
-}
-
-func (s *CurioStruct) LogList(p0 context.Context) ([]string, error) {
-	if s.Internal.LogList == nil {
-		return *new([]string), ErrNotSupported
-	}
-	return s.Internal.LogList(p0)
-}
-
-func (s *CurioStub) LogList(p0 context.Context) ([]string, error) {
-	return *new([]string), ErrNotSupported
-}
-
-func (s *CurioStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
-	if s.Internal.LogSetLevel == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.LogSetLevel(p0, p1, p2)
-}
-
-func (s *CurioStub) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
-	return ErrNotSupported
-}
-
-func (s *CurioStruct) Shutdown(p0 context.Context) error {
-	if s.Internal.Shutdown == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.Shutdown(p0)
-}
-
-func (s *CurioStub) Shutdown(p0 context.Context) error {
-	return ErrNotSupported
-}
-
-func (s *CurioStruct) StorageAddLocal(p0 context.Context, p1 string) error {
-	if s.Internal.StorageAddLocal == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.StorageAddLocal(p0, p1)
-}
-
-func (s *CurioStub) StorageAddLocal(p0 context.Context, p1 string) error {
-	return ErrNotSupported
-}
-
-func (s *CurioStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
-	if s.Internal.StorageDetachLocal == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.StorageDetachLocal(p0, p1)
-}
-
-func (s *CurioStub) StorageDetachLocal(p0 context.Context, p1 string) error {
-	return ErrNotSupported
-}
-
-func (s *CurioStruct) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
-	if s.Internal.StorageFindSector == nil {
-		return *new([]storiface.SectorStorageInfo), ErrNotSupported
-	}
-	return s.Internal.StorageFindSector(p0, p1, p2, p3, p4)
-}
-
-func (s *CurioStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
-	return *new([]storiface.SectorStorageInfo), ErrNotSupported
-}
-
-func (s *CurioStruct) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
-	if s.Internal.StorageInfo == nil {
-		return *new(storiface.StorageInfo), ErrNotSupported
-	}
-	return s.Internal.StorageInfo(p0, p1)
-}
-
-func (s *CurioStub) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
-	return *new(storiface.StorageInfo), ErrNotSupported
-}
-
-func (s *CurioStruct) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
-	if s.Internal.StorageInit == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.StorageInit(p0, p1, p2)
-}
-
-func (s *CurioStub) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
-	return ErrNotSupported
-}
-
-func (s *CurioStruct) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
-	if s.Internal.StorageList == nil {
-		return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
-	}
-	return s.Internal.StorageList(p0)
-}
-
-func (s *CurioStub) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
-	return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
-}
-
-func (s *CurioStruct) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
-	if s.Internal.StorageLocal == nil {
-		return *new(map[storiface.ID]string), ErrNotSupported
-	}
-	return s.Internal.StorageLocal(p0)
-}
-
-func (s *CurioStub) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
-	return *new(map[storiface.ID]string), ErrNotSupported
-}
-
-func (s *CurioStruct) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
-	if s.Internal.StorageStat == nil {
-		return *new(fsutil.FsStat), ErrNotSupported
-	}
-	return s.Internal.StorageStat(p0, p1)
-}
-
-func (s *CurioStub) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
-	return *new(fsutil.FsStat), ErrNotSupported
-}
-
-func (s *CurioStruct) Version(p0 context.Context) (Version, error) {
-	if s.Internal.Version == nil {
-		return *new(Version), ErrNotSupported
-	}
-	return s.Internal.Version(p0)
-}
-
-func (s *CurioStub) Version(p0 context.Context) (Version, error) {
-	return *new(Version), ErrNotSupported
 }
 
 func (s *EthSubscriberStruct) EthSubscription(p0 context.Context, p1 jsonrpc.RawParams) error {
@@ -7739,7 +7558,6 @@ func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)
 var _ CommonNet = new(CommonNetStruct)
-var _ Curio = new(CurioStruct)
 var _ EthSubscriber = new(EthSubscriberStruct)
 var _ FullNode = new(FullNodeStruct)
 var _ Gateway = new(GatewayStruct)
