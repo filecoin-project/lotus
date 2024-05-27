@@ -6,7 +6,7 @@
 
 ## Improvements
 
-# v1.27.0 / 2024-05-24
+# v1.27.0 / 2024-05-27
 
 This is an optional feature release of Lotus. Lotus v1.27.0 includes numerous improvements, bugfixes and enhancements for node operators, RPC- and ETH RPC-providers. This feature release also introduces Curio in a Beta release. Check out the Curio Beta release section for how you can get started with Curio.
 
@@ -141,9 +141,11 @@ Visit the Curio Official Website insert link
 - dep: go-multi-address ([filecoin-project/lotus#11563](https://github.com/filecoin-project/lotus/pull/11563))
 - chore: update go-data-transfer and go-graphsync (#12000) ([filecoin-project/lotus#12000](https://github.com/filecoin-project/lotus/pull/2000))
 - chore: update drand (#12021) ([filecoin-project/lotus#12021](https://github.com/filecoin-project/lotus/pull/12021))
+- chore: libp2p: update to v0.34.1 (12027) ([filecoin-project/lotus#12027](https://github.com/filecoin-project/lotus/pull/12027))
 - github.com/filecoin-project/go-amt-ipld/ (v4.2.0 -> v4.3.0)
 - github.com/filecoin-project/go-state-types (v0.13.1 -> v0.13.3)
 - github.com/libp2p/go-libp2p-pubsub (v0.10.0 -> v0.10.1)
+- github.com/libp2p/go-libp2p (v0.33.2 -> v0.34.1)
 
 
 ## Others
