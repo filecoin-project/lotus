@@ -297,9 +297,13 @@ var msigInspectCmd = &cli.Command{
 		for _, s := range signers {
 			signerActor, err := api.StateAccountKey(ctx, s, types.EmptyTSK)
 			if err != nil {
-				fmt.Fprintf(signerTable, "%s\t%s\n", s, "N/A")
+				if _, err := fmt.Fprintf(signerTable, "%s\t%s\n", s, "N/A"); err != nil {
+					return err
+				}
 			} else {
-				fmt.Fprintf(signerTable, "%s\t%s\n", s, signerActor)
+				if _, err := fmt.Fprintf(signerTable, "%s\t%s\n", s, signerActor); err != nil {
+					return err
+				}
 			}
 		}
 		if err := signerTable.Flush(); err != nil {
