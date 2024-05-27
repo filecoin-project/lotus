@@ -309,39 +309,6 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 	return n
 }
 
-func (n *Ensemble) UnmanagedMinerEnroll(minerNode *TestUnmanagedMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
-	require.NotNil(n.t, full, "full node required when instantiating miner")
-
-	options := DefaultNodeOpts
-	for _, o := range opts {
-		err := o(&options)
-		require.NoError(n.t, err)
-	}
-
-	privkey, _, err := libp2pcrypto.GenerateEd25519Key(rand.Reader)
-	require.NoError(n.t, err)
-
-	peerId, err := peer.IDFromPrivateKey(privkey)
-	require.NoError(n.t, err)
-
-	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
-	require.NoError(n.t, err)
-
-	require.NotNil(n.t, options.ownerKey, "manual miner key can't be null if initializing a miner after genesis")
-
-	*minerNode = TestUnmanagedMiner{
-		t:         n.t,
-		options:   options,
-		ActorAddr: actorAddr,
-		OwnerKey:  options.ownerKey,
-		FullNode:  full,
-	}
-	minerNode.Libp2p.PeerID = peerId
-	minerNode.Libp2p.PrivKey = privkey
-
-	return n
-}
-
 func (n *Ensemble) AddInactiveMiner(m *TestMiner) {
 	n.inactive.miners = append(n.inactive.miners, m)
 }
@@ -356,10 +323,13 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	return n
 }
 
-func (n *Ensemble) UnmanagedMiner(minerNode *TestUnmanagedMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
-	n.UnmanagedMinerEnroll(minerNode, full, opts...)
+func (n *Ensemble) UnmanagedMiner(full *TestFullNode, opts ...NodeOpt) (*TestUnmanagedMiner, *Ensemble) {
+	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
+	require.NoError(n.t, err)
+
+	minerNode := NewTestUnmanagedMiner(n.t, full, actorAddr, opts...)
 	n.AddInactiveUnmanagedMiner(minerNode)
-	return n
+	return minerNode, n
 }
 
 // Worker enrolls a new worker, using the provided full node for chain
