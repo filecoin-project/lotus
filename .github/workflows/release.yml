@@ -123,7 +123,7 @@ jobs:
           args: release --clean --debug ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
           workdir: lotus
         env:
-          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_GITUB_TOKEN || '' }}
+          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_GITUB_TOKEN || github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
       - env:
           INPUTS_REF: ${{ inputs.ref }}
