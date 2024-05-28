@@ -17,7 +17,8 @@ defaults:
   run:
     shell: bash
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   build:
