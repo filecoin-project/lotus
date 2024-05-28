@@ -186,7 +186,7 @@ var simpleAddPiece = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize, false),
+			ProofType: spt(sectorSize, false, false),
 		}
 
 		data, err := os.Open(cctx.Args().First())
@@ -201,7 +201,7 @@ var simpleAddPiece = &cli.Command{
 			return xerrors.Errorf("add piece: %w", err)
 		}
 
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 
 		fmt.Printf("AddPiece %s (%s)\n", took, bps(abi.SectorSize(pi.Size), 1, took))
 		fmt.Printf("%s %d\n", pi.PieceCID, pi.Size)
@@ -226,6 +226,10 @@ var simplePreCommit1 = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "synthetic",
 			Usage: "generate synthetic PoRep proofs",
+		},
+		&cli.BoolFlag{
+			Name:  "non-interactive",
+			Usage: "generate NI-PoRep proofs",
 		},
 	},
 	ArgsUsage: "[unsealed] [sealed] [cache] [[piece cid] [piece size]]...",
@@ -263,7 +267,7 @@ var simplePreCommit1 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
+			ProofType: spt(sectorSize, cctx.Bool("synthetic"), cctx.Bool("non-interactive")),
 		}
 
 		ticket := [32]byte{}
@@ -283,7 +287,7 @@ var simplePreCommit1 = &cli.Command{
 			return xerrors.Errorf("precommit1: %w", err)
 		}
 
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 
 		fmt.Printf("PreCommit1 %s (%s)\n", took, bps(sectorSize, 1, took))
 		fmt.Println(base64.StdEncoding.EncodeToString(p1o))
@@ -307,6 +311,10 @@ var simplePreCommit2 = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "synthetic",
 			Usage: "generate synthetic PoRep proofs",
+		},
+		&cli.BoolFlag{
+			Name:  "non-interactive",
+			Usage: "generate NI-PoRep proofs",
 		},
 		&cli.StringFlag{
 			Name:  "external-pc2",
@@ -388,7 +396,7 @@ Example invocation of lotus-bench as external executor:
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
+			ProofType: spt(sectorSize, cctx.Bool("synthetic"), cctx.Bool("non-interactive")),
 		}
 
 		start := time.Now()
@@ -398,7 +406,7 @@ Example invocation of lotus-bench as external executor:
 			return xerrors.Errorf("precommit2: %w", err)
 		}
 
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 
 		fmt.Printf("PreCommit2 %s (%s)\n", took, bps(sectorSize, 1, took))
 		fmt.Printf("d:%s r:%s\n", p2o.Unsealed, p2o.Sealed)
@@ -422,6 +430,10 @@ var simpleCommit1 = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "synthetic",
 			Usage: "generate synthetic PoRep proofs",
+		},
+		&cli.BoolFlag{
+			Name:  "non-interactive",
+			Usage: "generate NI-PoRep proofs",
 		},
 	},
 	ArgsUsage: "[sealed] [cache] [comm D] [comm R] [c1out.json]",
@@ -458,7 +470,7 @@ var simpleCommit1 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize, cctx.Bool("synthetic")),
+			ProofType: spt(sectorSize, cctx.Bool("synthetic"), cctx.Bool("non-interactive")),
 		}
 
 		start := time.Now()
@@ -493,7 +505,7 @@ var simpleCommit1 = &cli.Command{
 			return xerrors.Errorf("commit1: %w", err)
 		}
 
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 
 		fmt.Printf("Commit1 %s (%s)\n", took, bps(sectorSize, 1, took))
 
@@ -532,6 +544,10 @@ var simpleCommit2 = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "synthetic",
 			Usage: "generate synthetic PoRep proofs",
+		},
+		&cli.BoolFlag{
+			Name:  "non-interactive",
+			Usage: "generate NI-PoRep proofs",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -579,7 +595,7 @@ var simpleCommit2 = &cli.Command{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(c2in.SectorNum),
 			},
-			ProofType: spt(abi.SectorSize(c2in.SectorSize), c.Bool("synthetic")),
+			ProofType: spt(abi.SectorSize(c2in.SectorSize), c.Bool("synthetic"), c.Bool("non-interactive")),
 		}
 
 		start := time.Now()
@@ -637,7 +653,7 @@ var simpleWindowPost = &cli.Command{
 			return xerrors.Errorf("parse commr: %w", err)
 		}
 
-		wpt, err := spt(sectorSize, false).RegisteredWindowPoStProof()
+		wpt, err := spt(sectorSize, false, false).RegisteredWindowPoStProof()
 		if err != nil {
 			return err
 		}
@@ -657,7 +673,7 @@ var simpleWindowPost = &cli.Command{
 
 		vp, err := ffi.GenerateSingleVanillaProof(ffi.PrivateSectorInfo{
 			SectorInfo: prf.SectorInfo{
-				SealProof:    spt(sectorSize, false),
+				SealProof:    spt(sectorSize, false, false),
 				SectorNumber: sn,
 				SealedCID:    commr,
 			},
@@ -728,7 +744,7 @@ var simpleWinningPost = &cli.Command{
 			return xerrors.Errorf("parse commr: %w", err)
 		}
 
-		wpt, err := spt(sectorSize, false).RegisteredWinningPoStProof()
+		wpt, err := spt(sectorSize, false, false).RegisteredWinningPoStProof()
 		if err != nil {
 			return err
 		}
@@ -748,7 +764,7 @@ var simpleWinningPost = &cli.Command{
 
 		vp, err := ffi.GenerateSingleVanillaProof(ffi.PrivateSectorInfo{
 			SectorInfo: prf.SectorInfo{
-				SealProof:    spt(sectorSize, false),
+				SealProof:    spt(sectorSize, false, false),
 				SectorNumber: sn,
 				SealedCID:    commr,
 			},
@@ -842,7 +858,7 @@ var simpleReplicaUpdate = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize, false),
+			ProofType: spt(sectorSize, false, false),
 		}
 
 		start := time.Now()
@@ -852,7 +868,7 @@ var simpleReplicaUpdate = &cli.Command{
 			return xerrors.Errorf("replica update: %w", err)
 		}
 
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 
 		fmt.Printf("ReplicaUpdate %s (%s)\n", took, bps(sectorSize, 1, took))
 		fmt.Printf("d:%s r:%s\n", ruo.NewUnsealed, ruo.NewSealed)
@@ -910,7 +926,7 @@ var simpleProveReplicaUpdate1 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize, false),
+			ProofType: spt(sectorSize, false, false),
 		}
 
 		start := time.Now()
@@ -935,7 +951,7 @@ var simpleProveReplicaUpdate1 = &cli.Command{
 			return xerrors.Errorf("replica update: %w", err)
 		}
 
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 
 		fmt.Printf("ProveReplicaUpdate1 %s (%s)\n", took, bps(sectorSize, 1, took))
 
@@ -997,7 +1013,7 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 				Miner:  mid,
 				Number: 1,
 			},
-			ProofType: spt(sectorSize, false),
+			ProofType: spt(sectorSize, false, false),
 		}
 
 		start := time.Now()
@@ -1032,7 +1048,7 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 			return xerrors.Errorf("prove replica update2: %w", err)
 		}
 
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 
 		fmt.Printf("ProveReplicaUpdate2 %s (%s)\n", took, bps(sectorSize, 1, took))
 		fmt.Println("p:", base64.StdEncoding.EncodeToString(p))

@@ -9,6 +9,7 @@ import (
 )
 
 var MinSyntheticPoRepVersion = network.Version21
+var MinNonInteractivePoRepVersion = network.Version23
 
 func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) (bitfield.BitField, error) {
 	var parts []bitfield.BitField
@@ -33,7 +34,17 @@ func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) 
 
 // SealProofTypeFromSectorSize returns preferred seal proof type for creating
 // new miner actors and new sectors
-func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synthetic bool) (abi.RegisteredSealProof, error) {
+func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synthetic bool, nonInteractive bool) (abi.RegisteredSealProof, error) {
+	if nv < MinSyntheticPoRepVersion && synthetic {
+		return 0, xerrors.Errorf("synthetic proofs are not supported on network version %d", nv)
+	}
+	if nv < MinNonInteractivePoRepVersion && nonInteractive {
+		return 0, xerrors.Errorf("non-interactive proofs are not supported on network version %d", nv)
+	}
+	if synthetic && nonInteractive {
+		return 0, xerrors.Errorf("synthetic and non-interactive proofs are mutually exclusive")
+	}
+
 	switch {
 	case nv < network.Version7:
 		switch ssize {
@@ -67,11 +78,13 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synth
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 
-		if nv >= MinSyntheticPoRepVersion && synthetic {
+		if synthetic {
 			return toSynthetic(v)
-		} else {
-			return v, nil
 		}
+		if nonInteractive {
+			return toNonInteractive(v)
+		}
+		return v, nil
 	}
 
 	return 0, xerrors.Errorf("unsupported network version")
@@ -91,6 +104,23 @@ func toSynthetic(in abi.RegisteredSealProof) (abi.RegisteredSealProof, error) {
 		return abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep, nil
 	default:
 		return 0, xerrors.Errorf("unsupported conversion to synthetic: %v", in)
+	}
+}
+
+func toNonInteractive(in abi.RegisteredSealProof) (abi.RegisteredSealProof, error) {
+	switch in {
+	case abi.RegisteredSealProof_StackedDrg2KiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg2KiBV1_2_Feat_NiPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg8MiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg8MiBV1_2_Feat_NiPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg512MiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg512MiBV1_2_Feat_NiPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg32GiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg32GiBV1_2_Feat_NiPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg64GiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg64GiBV1_2_Feat_NiPoRep, nil
+	default:
+		return 0, xerrors.Errorf("unsupported conversion to non-interactive: %v", in)
 	}
 }
 
