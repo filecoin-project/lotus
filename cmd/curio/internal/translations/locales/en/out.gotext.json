@@ -89,9 +89,50 @@
             "fuzzy": true
         },
         {
-            "id": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
-            "message": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
-            "translation": "Try the web interface with {Rendercurio_run___layersgui} for further guided improvements.",
+            "id": "Where should we save your database config file?",
+            "message": "Where should we save your database config file?",
+            "translation": "Where should we save your database config file?",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Aborting migration.",
+            "message": "Aborting migration.",
+            "translation": "Aborting migration.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]v",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Error writing file: {Error}",
+            "message": "Error writing file: {Error}",
+            "translation": "Error writing file: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "err.Error()"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Try the web interface with {Rendercurio_run___layersgui}",
+            "message": "Try the web interface with {Rendercurio_run___layersgui}",
+            "translation": "Try the web interface with {Rendercurio_run___layersgui}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -103,6 +144,13 @@
                     "expr": "code.Render(\"curio run --layers=gui\")"
                 }
             ],
+            "fuzzy": true
+        },
+        {
+            "id": "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.",
+            "message": "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.",
+            "translation": "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.",
+            "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
@@ -206,23 +254,6 @@
             "message": "No, abort",
             "translation": "No, abort",
             "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Aborting migration.",
-            "message": "Aborting migration.",
-            "translation": "Aborting migration.",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]v",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
             "fuzzy": true
         },
         {
@@ -973,9 +1004,9 @@
             "fuzzy": true
         },
         {
-            "id": "Owner Address: {String}",
-            "message": "Owner Address: {String}",
-            "translation": "Owner Address: {String}",
+            "id": "Owner Wallet: {String}",
+            "message": "Owner Wallet: {String}",
+            "translation": "Owner Wallet: {String}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -990,9 +1021,9 @@
             "fuzzy": true
         },
         {
-            "id": "Worker Address: {String}",
-            "message": "Worker Address: {String}",
-            "translation": "Worker Address: {String}",
+            "id": "Worker Wallet: {String}",
+            "message": "Worker Wallet: {String}",
+            "translation": "Worker Wallet: {String}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -1007,9 +1038,9 @@
             "fuzzy": true
         },
         {
-            "id": "Sender Address: {String}",
-            "message": "Sender Address: {String}",
-            "translation": "Sender Address: {String}",
+            "id": "Sender Wallet: {String}",
+            "message": "Sender Wallet: {String}",
+            "translation": "Sender Wallet: {String}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -1032,27 +1063,10 @@
                 {
                     "id": "Ssize",
                     "string": "%[1]d",
-                    "type": "github.com/filecoin-project/go-state-types/abi.SectorSize",
-                    "underlyingType": "uint64",
+                    "type": "string",
+                    "underlyingType": "string",
                     "argNum": 1,
                     "expr": "d.ssize"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Confidence epochs: {Confidence}",
-            "message": "Confidence epochs: {Confidence}",
-            "translation": "Confidence epochs: {Confidence}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Confidence",
-                    "string": "%[1]d",
-                    "type": "uint64",
-                    "underlyingType": "uint64",
-                    "argNum": 1,
-                    "expr": "d.confidence"
                 }
             ],
             "fuzzy": true
@@ -1130,23 +1144,44 @@
             "fuzzy": true
         },
         {
-            "id": "Enter the sector size",
-            "message": "Enter the sector size",
-            "translation": "Enter the sector size",
+            "id": "Select the Sector Size",
+            "message": "Select the Sector Size",
+            "translation": "Select the Sector Size",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "No value provided",
-            "message": "No value provided",
-            "translation": "No value provided",
+            "id": "64 GiB",
+            "message": "64 GiB",
+            "translation": "64 GiB",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {
-            "id": "Failed to parse sector size: {Error}",
-            "message": "Failed to parse sector size: {Error}",
-            "translation": "Failed to parse sector size: {Error}",
+            "id": "32 GiB",
+            "message": "32 GiB",
+            "translation": "32 GiB",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "8 MiB",
+            "message": "8 MiB",
+            "translation": "8 MiB",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "2 KiB",
+            "message": "2 KiB",
+            "translation": "2 KiB",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Sector selection failed: {Error}",
+            "message": "Sector selection failed: {Error}",
+            "translation": "Sector selection failed: {Error}",
             "translatorComment": "Copied from source.",
             "placeholders": [
                 {
@@ -1156,64 +1191,6 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Confidence epochs",
-            "message": "Confidence epochs",
-            "translation": "Confidence epochs",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "Failed to parse confidence: {Error}",
-            "message": "Failed to parse confidence: {Error}",
-            "translation": "Failed to parse confidence: {Error}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Failed to create the miner actor: {Error}",
-            "message": "Failed to create the miner actor: {Error}",
-            "translation": "Failed to create the miner actor: {Error}",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Error",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "err.Error()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "Miner {String} created successfully",
-            "message": "Miner {String} created successfully",
-            "translation": "Miner {String} created successfully",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "String",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "miner.String()"
                 }
             ],
             "fuzzy": true
@@ -1564,6 +1541,13 @@
                     "expr": "[]string{\"port\", \"username\", \"password\", \"database\"}[i-1]"
                 }
             ],
+            "fuzzy": true
+        },
+        {
+            "id": "No value provided",
+            "message": "No value provided",
+            "translation": "No value provided",
+            "translatorComment": "Copied from source.",
             "fuzzy": true
         },
         {

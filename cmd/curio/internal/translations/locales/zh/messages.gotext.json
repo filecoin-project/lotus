@@ -1095,6 +1095,84 @@
       "translation": "正在迁移{NSectors}个扇区的元数据。",
       "message": "Migrating metadata for {NSectors} sectors.",
       "placeholder": null
+    },
+    {
+      "id": "Where should we save your database config file?",
+      "translation": "我们应该把你的数据库配置文件保存在哪里？",
+      "message": "Where should we save your database config file?",
+      "placeholder": null
+    },
+    {
+      "id": "Error writing file: {Error}",
+      "translation": "写入文件错误: {Error}",
+      "message": "Error writing file: {Error}",
+      "placeholder": null
+    },
+    {
+      "id": "Try the web interface with {Rendercurio_run___layersgui}",
+      "translation": "尝试使用{Rendercurio_run___layersgui}的网页界面",
+      "message": "Try the web interface with {Rendercurio_run___layersgui}",
+      "placeholder": null
+    },
+    {
+      "id": "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.",
+      "translation": "对于更多服务器，将curio.env复制到/etc/curio.env并添加CURIO_LAYERS环境变量以分配用途。",
+      "message": "For more servers, copy curio.env to /etc/curio.env and add the CURIO_LAYERS env to assign purposes.",
+      "placeholder": null
+    },
+    {
+      "id": "Owner Wallet: {String}",
+      "translation": "所有者钱包: {String}",
+      "message": "Owner Wallet: {String}",
+      "placeholder": null
+    },
+    {
+      "id": "Worker Wallet: {String}",
+      "translation": "工人钱包: {String}",
+      "message": "Worker Wallet: {String}",
+      "placeholder": null
+    },
+    {
+      "id": "Sender Wallet: {String}",
+      "translation": "发送者钱包: {String}",
+      "message": "Sender Wallet: {String}",
+      "placeholder": null
+    },
+    {
+      "id": "Select the Sector Size",
+      "translation": "选择扇区大小",
+      "message": "Select the Sector Size",
+      "placeholder": null
+    },
+    {
+      "id": "64 GiB",
+      "translation": "64 GiB",
+      "message": "64 GiB",
+      "placeholder": null
+    },
+    {
+      "id": "32 GiB",
+      "translation": "32 GiB",
+      "message": "32 GiB",
+      "placeholder": null
+    },
+    {
+      "id": "8 MiB",
+      "translation": "8 MiB",
+      "message": "8 MiB",
+      "placeholder": null
+    },
+    {
+      "id": "2 KiB",
+      "translation": "2 KiB",
+      "message": "2 KiB",
+      "placeholder": null
+    },
+    {
+      "id": "Sector selection failed: {Error}",
+      "translation": "扇区选择失败: {Error}",
+      "message": "Sector selection failed: {Error}",
+      "placeholder": null
     }
   ]
 }

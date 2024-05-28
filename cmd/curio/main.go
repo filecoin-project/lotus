@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -47,6 +48,7 @@ func setupCloseHandler() {
 func main() {
 
 	lotuslog.SetupLogLevels()
+	readConfigEnvFile()
 
 	local := []*cli.Command{
 		cliCmd,
@@ -187,4 +189,24 @@ var fetchParamCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func readConfigEnvFile() {
+	for _, f := range guidedsetup.EnvFiles {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		for _, line := range bytes.Split(b, []byte("\n")) {
+			if len(line) == 0 {
+				continue
+			}
+			parts := bytes.Split(line, []byte("="))
+			if len(parts) != 2 {
+				continue
+			}
+			log.Info("Setting env var: ", string(parts[0]), "=", string(parts[1]), " from ", f)
+			os.Setenv(string(parts[0]), string(parts[1]))
+		}
+	}
 }
