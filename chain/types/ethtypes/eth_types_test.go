@@ -194,11 +194,40 @@ func TestMaskedIDInF4(t *testing.T) {
 }
 
 func TestUnmarshalEthCall(t *testing.T) {
-	data := `{"from":"0x4D6D86b31a112a05A473c4aE84afaF873f632325","to":"0xFe01CC39f5Ae8553D6914DBb9dC27D219fa22D7f","gas":"0x5","gasPrice":"0x6","value":"0x123","data":""}`
+	data := `{"from":"0x4D6D86b31a112a05A473c4aE84afaF873f632325","to":"0xFe01CC39f5Ae8553D6914DBb9dC27D219fa22D7f","gas":"0x5","gasPrice":"0x6","value":"0x123","data":"0xFF"}`
 
 	var c EthCall
 	err := c.UnmarshalJSON([]byte(data))
 	require.Nil(t, err)
+	require.EqualValues(t, []byte{0xff}, c.Data)
+}
+
+func TestUnmarshalEthCallInput(t *testing.T) {
+	data := `{"from":"0x4D6D86b31a112a05A473c4aE84afaF873f632325","to":"0xFe01CC39f5Ae8553D6914DBb9dC27D219fa22D7f","gas":"0x5","gasPrice":"0x6","value":"0x123","input":"0xFF"}`
+
+	var c EthCall
+	err := c.UnmarshalJSON([]byte(data))
+	require.Nil(t, err)
+	require.EqualValues(t, []byte{0xff}, c.Data)
+}
+
+func TestUnmarshalEthCallInputAndData(t *testing.T) {
+	data := `{"from":"0x4D6D86b31a112a05A473c4aE84afaF873f632325","to":"0xFe01CC39f5Ae8553D6914DBb9dC27D219fa22D7f","gas":"0x5","gasPrice":"0x6","value":"0x123","data":"0xFE","input":"0xFF"}`
+
+	var c EthCall
+	err := c.UnmarshalJSON([]byte(data))
+	require.Nil(t, err)
+	require.EqualValues(t, []byte{0xff}, c.Data)
+}
+
+func TestUnmarshalEthCallInputAndDataEmpty(t *testing.T) {
+	// Even if the input is empty, it should be used when specified.
+	data := `{"from":"0x4D6D86b31a112a05A473c4aE84afaF873f632325","to":"0xFe01CC39f5Ae8553D6914DBb9dC27D219fa22D7f","gas":"0x5","gasPrice":"0x6","value":"0x123","data":"0xFE","input":""}`
+
+	var c EthCall
+	err := c.UnmarshalJSON([]byte(data))
+	require.Nil(t, err)
+	require.EqualValues(t, []byte{}, c.Data)
 }
 
 func TestUnmarshalEthBytes(t *testing.T) {

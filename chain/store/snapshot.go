@@ -15,7 +15,7 @@ import (
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
@@ -60,7 +60,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	})
 }
 
-func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, error) {
+func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipSet, genesis *types.BlockHeader, err error) {
 	// TODO: writing only to the state blockstore is incorrect.
 	//  At this time, both the state and chain blockstores are backed by the
 	//  universal store. When we physically segregate the stores, we will need
@@ -69,7 +69,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 
 	br, err := carv2.NewBlockReader(r)
 	if err != nil {
-		return nil, xerrors.Errorf("loadcar failed: %w", err)
+		return nil, nil, xerrors.Errorf("loadcar failed: %w", err)
 	}
 
 	s := cs.StateBlockstore()
@@ -80,27 +80,51 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 		putThrottle <- nil
 	}
 
+	if len(br.Roots) == 0 {
+		return nil, nil, xerrors.Errorf("no roots in snapshot car file")
+	}
+	nextTailCid := br.Roots[0]
+
+	var tailBlock types.BlockHeader
+	tailBlock.Height = abi.ChainEpoch(-1)
+
 	var buf []blocks.Block
 	for {
 		blk, err := br.Next()
 		if err != nil {
+
+			// we're at the end
 			if err == io.EOF {
 				if len(buf) > 0 {
 					if err := s.PutMany(ctx, buf); err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 				}
 
 				break
 			}
-			return nil, err
+			return nil, nil, err
 		}
 
+		// check for header block, looking for genesis
+		if blk.Cid() == nextTailCid && tailBlock.Height != 0 {
+			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				return nil, nil, xerrors.Errorf("failed to unmarshal genesis block: %w", err)
+			}
+			if len(tailBlock.Parents) > 0 {
+				nextTailCid = tailBlock.Parents[0]
+			} else {
+				// note: even the 0th block has a parent linking to the cbor genesis block
+				return nil, nil, xerrors.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
+			}
+		}
+
+		// append to batch
 		buf = append(buf, blk)
 
 		if len(buf) > 1000 {
 			if lastErr := <-putThrottle; lastErr != nil { // consume one error to have the right to add one
-				return nil, lastErr
+				return nil, nil, lastErr
 			}
 
 			go func(buf []blocks.Block) {
@@ -113,13 +137,17 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	// check errors
 	for i := 0; i < parallelPuts; i++ {
 		if lastErr := <-putThrottle; lastErr != nil {
-			return nil, lastErr
+			return nil, nil, lastErr
 		}
+	}
+
+	if tailBlock.Height != 0 {
+		return nil, nil, xerrors.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
 	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(br.Roots...))
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+		return nil, nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 
 	ts := root
@@ -135,10 +163,10 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	}
 
 	if err := cs.PersistTipsets(ctx, tssToPersist); err != nil {
-		return nil, xerrors.Errorf("failed to persist tipsets: %w", err)
+		return nil, nil, xerrors.Errorf("failed to persist tipsets: %w", err)
 	}
 
-	return root, nil
+	return root, &tailBlock, nil
 }
 
 type walkSchedTaskType int
@@ -167,7 +195,7 @@ func (t walkSchedTaskType) String() string {
 	case dagTask:
 		return "dag"
 	}
-	panic(fmt.Sprintf("unknow task %d", t))
+	panic(fmt.Sprintf("unknown task %d", t))
 }
 
 type walkTask struct {
@@ -364,19 +392,21 @@ func (s *walkScheduler) Wait() error {
 		log.Errorw("error writing to CAR file", "error", err)
 		return errWrite
 	}
-	s.workerTasks.Close() //nolint:errcheck
+	_ = s.workerTasks.Close()
 	return err
 }
 
 func (s *walkScheduler) enqueueIfNew(task walkTask) {
-	if task.c.Prefix().MhType == mh.IDENTITY {
+	if multicodec.Code(task.c.Prefix().MhType) == multicodec.Identity {
 		//log.Infow("ignored", "cid", todo.c.String())
 		return
 	}
 
-	// This lets through RAW and CBOR blocks, the only two types that we
-	// end up writing to the exported CAR.
-	if task.c.Prefix().Codec != cid.Raw && task.c.Prefix().Codec != cid.DagCBOR {
+	// This lets through RAW, CBOR, and DagCBOR blocks, the only types that we end up writing to
+	// the exported CAR.
+	switch multicodec.Code(task.c.Prefix().Codec) {
+	case multicodec.Cbor, multicodec.DagCbor, multicodec.Raw:
+	default:
 		//log.Infow("ignored", "cid", todo.c.String())
 		return
 	}
@@ -450,7 +480,8 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 	// We exported the ipld block. If it wasn't a CBOR block, there's nothing
 	// else to do and we can bail out early as it won't have any links
 	// etc.
-	if t.c.Prefix().Codec != cid.DagCBOR || t.c.Prefix().MhType == mh.IDENTITY {
+	if multicodec.Code(t.c.Prefix().Codec) != multicodec.DagCbor ||
+		multicodec.Code(t.c.Prefix().MhType) == multicodec.Identity {
 		return nil
 	}
 
@@ -653,9 +684,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		}
 
 		if b.Height > 0 {
-			for _, p := range b.Parents {
-				blocksToWalk = append(blocksToWalk, p)
-			}
+			blocksToWalk = append(blocksToWalk, b.Parents...)
 		} else {
 			// include the genesis block
 			cids = append(cids, b.Parents...)
@@ -683,14 +712,13 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 				prefix := c.Prefix()
 
 				// Don't include identity CIDs.
-				if prefix.MhType == mh.IDENTITY {
+				if multicodec.Code(prefix.MhType) == multicodec.Identity {
 					continue
 				}
 
-				// We only include raw and dagcbor, for now.
-				// Raw for "code" CIDs.
-				switch prefix.Codec {
-				case cid.Raw, cid.DagCBOR:
+				// We only include raw, cbor, and dagcbor, for now.
+				switch multicodec.Code(prefix.Codec) {
+				case multicodec.Cbor, multicodec.DagCbor, multicodec.Raw:
 				default:
 					continue
 				}
@@ -722,7 +750,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 }
 
 func recurseLinks(ctx context.Context, bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
-	if root.Prefix().Codec != cid.DagCBOR {
+	if multicodec.Code(root.Prefix().Codec) != multicodec.DagCbor {
 		return in, nil
 	}
 

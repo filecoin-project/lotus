@@ -536,7 +536,7 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 
 	// At this point we have accepted and synced to the new `maybeHead`
 	// (`StageSyncComplete`).
-	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
+	if err := syncer.store.RefreshHeaviestTipSet(ctx, maybeHead.Height()); err != nil {
 		span.AddAttributes(trace.StringAttribute("put_error", err.Error()))
 		span.SetStatus(trace.Status{
 			Code:    13,
@@ -704,25 +704,25 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, incoming *types.TipSet
 	}
 
 	{
-		// ensure consistency of beacon entires
+		// ensure consistency of beacon entries
 		targetBE := incoming.Blocks()[0].BeaconEntries
 		sorted := sort.SliceIsSorted(targetBE, func(i, j int) bool {
 			return targetBE[i].Round < targetBE[j].Round
 		})
 		if !sorted {
-			syncer.bad.Add(incoming.Cids()[0], NewBadBlockReason(incoming.Cids(), "wrong order of beacon entires"))
-			return nil, xerrors.Errorf("wrong order of beacon entires")
+			syncer.bad.Add(incoming.Cids()[0], NewBadBlockReason(incoming.Cids(), "wrong order of beacon entries"))
+			return nil, xerrors.Errorf("wrong order of beacon entries")
 		}
 
 		for _, bh := range incoming.Blocks()[1:] {
 			if len(targetBE) != len(bh.BeaconEntries) {
 				// cannot mark bad, I think @Kubuxu
-				return nil, xerrors.Errorf("tipset contained different number for beacon entires")
+				return nil, xerrors.Errorf("tipset contained different number for beacon entries")
 			}
 			for i, be := range bh.BeaconEntries {
 				if targetBE[i].Round != be.Round || !bytes.Equal(targetBE[i].Data, be.Data) {
 					// cannot mark bad, I think @Kubuxu
-					return nil, xerrors.Errorf("tipset contained different beacon entires")
+					return nil, xerrors.Errorf("tipset contained different beacon entries")
 				}
 			}
 
@@ -844,7 +844,7 @@ loop:
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
 	if base.IsChildOf(knownParent) {
-		// common case: receiving a block thats potentially part of the same tipset as our best block
+		// common case: receiving a block that's potentially part of the same tipset as our best block
 		return blockSet, nil
 	}
 
@@ -884,6 +884,35 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		if known.Equals(chkpt) {
 			return nil, ErrForkCheckpoint
 		}
+	}
+
+	incomingParentsTsk := incoming.Parents()
+	commonParent := false
+	for _, incomingParent := range incomingParentsTsk.Cids() {
+		if known.Contains(incomingParent) {
+			commonParent = true
+		}
+	}
+
+	if commonParent {
+		// known contains at least one of incoming's Parents => the common ancestor is known's Parents (incoming's Grandparents)
+		// in this case, we need to return {incoming.Parents()}
+		incomingParents, err := syncer.store.LoadTipSet(ctx, incomingParentsTsk)
+		if err != nil {
+			// fallback onto the network
+			tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), 1)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to fetch incomingParents from the network: %w", err)
+			}
+
+			if len(tips) == 0 {
+				return nil, xerrors.Errorf("network didn't return any tipsets")
+			}
+
+			incomingParents = tips[0]
+		}
+
+		return []*types.TipSet{incomingParents}, nil
 	}
 
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2? Yes.
@@ -1094,8 +1123,8 @@ func (syncer *Syncer) fetchMessages(ctx context.Context, headers []*types.TipSet
 						requestErr = multierror.Append(requestErr, err)
 					} else {
 						isGood := true
-						for index, ts := range headers[nextI:lastI] {
-							cm := result[index]
+						for index, cm := range result {
+							ts := headers[nextI+index]
 							if err := checkMsgMeta(ts, cm.Bls, cm.Secpk, cm.BlsIncludes, cm.SecpkIncludes); err != nil {
 								log.Errorf("fetched messages not as expected: %s", err)
 								isGood = false

@@ -34,8 +34,8 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
-	full.RaftAPI
 	full.EthAPI
+	full.ActorEventsAPI
 
 	DS          dtypes.MetadataDS
 	NetworkName dtypes.NetworkName
@@ -117,14 +117,6 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 	}
 
 	return status, nil
-}
-
-func (n *FullNodeAPI) RaftState(ctx context.Context) (*api.RaftStateData, error) {
-	return n.RaftAPI.GetRaftState(ctx)
-}
-
-func (n *FullNodeAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
-	return n.RaftAPI.Leader(ctx)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

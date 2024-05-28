@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/ipfs/boxo/files"
+	dag "github.com/ipfs/boxo/ipld/merkledag"
+	dstest "github.com/ipfs/boxo/ipld/merkledag/test"
+	unixfile "github.com/ipfs/boxo/ipld/unixfs/file"
 	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	dag "github.com/ipfs/go-merkledag"
-	dstest "github.com/ipfs/go-merkledag/test"
-	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
@@ -85,6 +87,15 @@ func NewDealHarness(t *testing.T, client *TestFullNode, main *TestMiner, market 
 //
 // TODO: convert input parameters to struct, and add size as an input param.
 func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
+	deal, res, path = dh.StartRandomDeal(ctx, params)
+
+	fmt.Printf("WAIT DEAL SEALEDS START\n")
+	dh.WaitDealSealed(ctx, deal, false, false, nil)
+	fmt.Printf("WAIT DEAL SEALEDS END\n")
+	return deal, res, path
+}
+
+func (dh *DealHarness) StartRandomDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
 	if params.UseCARFileForStorageDeal {
 		res, _, path = dh.client.ClientImportCARFile(ctx, params.Rseed, 200)
 	} else {
@@ -105,11 +116,6 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 	dp.FastRetrieval = params.FastRet
 	deal = dh.StartDeal(ctx, dp)
 
-	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-	time.Sleep(time.Second)
-	fmt.Printf("WAIT DEAL SEALEDS START\n")
-	dh.WaitDealSealed(ctx, deal, false, false, nil)
-	fmt.Printf("WAIT DEAL SEALEDS END\n")
 	return deal, res, path
 }
 
@@ -391,17 +397,23 @@ func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) st
 	ch, err := car.LoadCar(ctx, bserv.Blockstore(), file)
 	require.NoError(dh.t, err)
 
-	b, err := bserv.GetBlock(ctx, ch.Roots[0])
+	blk, err := bserv.GetBlock(ctx, ch.Roots[0])
 	require.NoError(dh.t, err)
 
-	nd, err := ipld.Decode(b)
+	reg := ipld.Registry{}
+	reg.Register(cid.DagProtobuf, dag.DecodeProtobufBlock)
+	reg.Register(cid.DagCBOR, ipldcbor.DecodeBlock)
+	reg.Register(cid.Raw, dag.DecodeRawBlock)
+
+	nd, err := reg.Decode(blk)
 	require.NoError(dh.t, err)
 
 	dserv := dag.NewDAGService(bserv)
+
 	fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
 	require.NoError(dh.t, err)
 
-	tmpfile := dh.t.TempDir() + string(os.PathSeparator) + "file-in-car" + b.Cid().String()
+	tmpfile := dh.t.TempDir() + string(os.PathSeparator) + "file-in-car" + nd.Cid().String()
 
 	err = files.WriteTo(fil, tmpfile)
 	require.NoError(dh.t, err)

@@ -5,7 +5,7 @@ import (
 	"golang.org/x/xerrors"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin11 "github.com/filecoin-project/go-state-types/builtin"
+	builtin14 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -39,6 +39,15 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version11:
 			return load11(store, act.Head)
+
+		case actorstypes.Version12:
+			return load12(store, act.Head)
+
+		case actorstypes.Version13:
+			return load13(store, act.Head)
+
+		case actorstypes.Version14:
+			return load14(store, act.Head)
 
 		}
 	}
@@ -107,13 +116,22 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	case actorstypes.Version11:
 		return make11(store)
 
+	case actorstypes.Version12:
+		return make12(store)
+
+	case actorstypes.Version13:
+		return make13(store)
+
+	case actorstypes.Version14:
+		return make14(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 var (
-	Address = builtin11.CronActorAddr
-	Methods = builtin11.MethodsCron
+	Address = builtin14.CronActorAddr
+	Methods = builtin14.MethodsCron
 )
 
 type State interface {
@@ -137,5 +155,8 @@ func AllCodes() []cid.Cid {
 		(&state9{}).Code(),
 		(&state10{}).Code(),
 		(&state11{}).Code(),
+		(&state12{}).Code(),
+		(&state13{}).Code(),
+		(&state14{}).Code(),
 	}
 }

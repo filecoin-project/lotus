@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	inet "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -29,6 +30,7 @@ import (
 const ProtocolID = "/fil/hello/1.0.0"
 
 var log = logging.Logger("hello")
+var streamDeadline = 10 * time.Second
 
 type HelloMessage struct {
 	HeaviestTipSet       []cid.Cid
@@ -70,11 +72,15 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, co
 
 func (hs *Service) HandleStream(s inet.Stream) {
 	var hmsg HelloMessage
+	_ = s.SetReadDeadline(time.Now().Add(streamDeadline))
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
+		_ = s.SetReadDeadline(time.Time{})
 		log.Infow("failed to read hello message, disconnecting", "error", err)
 		_ = s.Conn().Close()
 		return
 	}
+	_ = s.SetReadDeadline(time.Time{})
+
 	arrived := build.Clock.Now()
 
 	log.Debugw("genesis from hello",
@@ -95,9 +101,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 			TArrival: arrived.UnixNano(),
 			TSent:    sent.UnixNano(),
 		}
+		_ = s.SetWriteDeadline(time.Now().Add(streamDeadline))
 		if err := cborutil.WriteCborRPC(s, msg); err != nil {
 			log.Debugf("error while responding to latency: %v", err)
 		}
+		_ = s.SetWriteDeadline(time.Time{})
 	}()
 
 	protos, err := hs.h.Peerstore().GetProtocols(s.Conn().RemotePeer())
@@ -114,7 +122,10 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
 
-	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
+	// We're trying to fetch the tipset from the peer that just said hello to us. No point in
+	// triggering any dials.
+	ctx := network.WithNoDial(context.Background(), "fetching filecoin hello tipset")
+	ts, err := hs.syncer.FetchTipSet(ctx, s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
 		log.Errorf("failed to fetch tipset from peer during hello: %+v", err)
 		return
@@ -155,9 +166,12 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	log.Debug("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
 
 	t0 := build.Clock.Now()
+	_ = s.SetWriteDeadline(time.Now().Add(streamDeadline))
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
+		_ = s.SetWriteDeadline(time.Time{})
 		return xerrors.Errorf("writing rpc to peer: %w", err)
 	}
+	_ = s.SetWriteDeadline(time.Time{})
 	if err := s.CloseWrite(); err != nil {
 		log.Warnw("CloseWrite err", "error", err)
 	}

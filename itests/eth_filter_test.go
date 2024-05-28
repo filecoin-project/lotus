@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -134,6 +135,41 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 	for _, found := range expected {
 		require.True(t, found)
 	}
+}
+
+func TestEthNewHeadsSubSimple(t *testing.T) {
+	require := require.New(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	kit.QuietAllLogsExcept("events", "messagepool")
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
+	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+
+	// install filter
+	subId, err := client.EthSubscribe(ctx, res.Wrap[jsonrpc.RawParams](json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})).Assert(require.NoError))
+	require.NoError(err)
+
+	err = client.EthSubRouter.AddSub(ctx, subId, func(ctx context.Context, resp *ethtypes.EthSubscriptionResponse) error {
+		rs := *resp
+		block, ok := rs.Result.(map[string]interface{})
+		require.True(ok)
+		blockNumber, ok := block["number"].(string)
+		require.True(ok)
+
+		blk, err := client.EthGetBlockByNumber(ctx, blockNumber, false)
+		require.NoError(err)
+		require.NotNil(blk)
+		fmt.Printf("block: %v\n", blk)
+		// block hashes should match
+		require.Equal(block["hash"], blk.Hash.String())
+
+		return nil
+	})
+	require.NoError(err)
+	time.Sleep(2 * time.Second)
 }
 
 func TestEthNewPendingTransactionSub(t *testing.T) {
@@ -543,6 +579,7 @@ func TestTxReceiptBloom(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
+	_ = logging.SetLogLevel("fullnode", "DEBUG")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -577,6 +614,10 @@ func TestTxReceiptBloom(t *testing.T) {
 		}
 	}
 
+	// Deflake plan: (Flake: 5 bits instead of 6)
+	//   Debug + search logs for "LogsBloom"
+	//   compare to passing case.
+	//
 	// 3 bits from the topic, 3 bits from the address
 	require.Equal(t, 6, bitsSet)
 }

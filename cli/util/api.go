@@ -76,42 +76,8 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 		if path == "" {
 			continue
 		}
-
-		p, err := homedir.Expand(path)
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
-		}
-
-		r, err := repo.NewFS(p)
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
-		}
-
-		exists, err := r.Exists()
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
-		}
-
-		if !exists {
-			return []APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
-		}
-
-		ma, err := r.APIEndpoint()
-		if err != nil {
-			return []APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
-		}
-
-		token, err := r.APIToken()
-		if err != nil {
-			log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
-		}
-
-		return []APIInfo{{
-			Addr:  ma.String(),
-			Token: token,
-		}}, nil
+		return GetAPIInfoFromRepoPath(path, t)
 	}
-
 	for _, env := range fallbacksEnvs {
 		env, ok := os.LookupEnv(env)
 		if ok {
@@ -119,7 +85,43 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 		}
 	}
 
-	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t.Type())
+	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v. Try setting environment variable: %s", t.Type(), primaryEnv)
+}
+
+func GetAPIInfoFromRepoPath(path string, t repo.RepoType) ([]APIInfo, error) {
+	p, err := homedir.Expand(path)
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", path, err)
+	}
+
+	r, err := repo.NewFS(p)
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+	}
+
+	exists, err := r.Exists()
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
+	}
+
+	if !exists {
+		return []APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
+	}
+
+	ma, err := r.APIEndpoint()
+	if err != nil {
+		return []APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+	}
+
+	token, err := r.APIToken()
+	if err != nil {
+		log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
+	}
+
+	return []APIInfo{{
+		Addr:  ma.String(),
+		Token: token,
+	}}, nil
 }
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
@@ -320,14 +322,14 @@ func GetFullNodeAPIV1Single(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientClo
 }
 
 type GetFullNodeOptions struct {
-	ethSubHandler api.EthSubscriber
+	EthSubHandler api.EthSubscriber
 }
 
 type GetFullNodeOption func(*GetFullNodeOptions)
 
 func FullNodeWithEthSubscribtionHandler(sh api.EthSubscriber) GetFullNodeOption {
 	return func(opts *GetFullNodeOptions) {
-		opts.ethSubHandler = sh
+		opts.EthSubHandler = sh
 	}
 }
 
@@ -342,8 +344,8 @@ func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNo
 	}
 
 	var rpcOpts []jsonrpc.Option
-	if options.ethSubHandler != nil {
-		rpcOpts = append(rpcOpts, jsonrpc.WithClientHandler("Filecoin", options.ethSubHandler), jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"))
+	if options.EthSubHandler != nil {
+		rpcOpts = append(rpcOpts, jsonrpc.WithClientHandler("Filecoin", options.EthSubHandler), jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"))
 	}
 
 	heads, err := GetRawAPIMulti(ctx, repo.FullNode, "v1")

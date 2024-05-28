@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -45,15 +46,20 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/cmd/curio/rpc"
+	"github.com/filecoin-project/lotus/cmd/curio/tasks"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
@@ -118,15 +124,17 @@ type Ensemble struct {
 	options      *ensembleOpts
 
 	inactive struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
+		fullnodes     []*TestFullNode
+		providernodes []*TestCurioNode
+		miners        []*TestMiner
+		workers       []*TestWorker
 	}
 	active struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
-		bms       map[*TestMiner]*BlockMiner
+		fullnodes     []*TestFullNode
+		providernodes []*TestCurioNode
+		miners        []*TestMiner
+		workers       []*TestWorker
+		bms           map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
 		version  network.Version
@@ -168,6 +176,8 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	} else {
 		require.NoError(t, build.UseNetworkBundle("testing"))
 	}
+
+	build.EquivocationDelaySecs = 0
 
 	return n
 }
@@ -217,6 +227,20 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	return n
 }
 
+// FullNode enrolls a new Curio node.
+func (n *Ensemble) Curio(cu *TestCurioNode, opts ...NodeOpt) *Ensemble {
+	options := DefaultNodeOpts
+	for _, o := range opts {
+		err := o(&options)
+		require.NoError(n.t, err)
+	}
+
+	*cu = TestCurioNode{t: n.t, options: options, Deps: &deps.Deps{}}
+
+	n.inactive.providernodes = append(n.inactive.providernodes, cu)
+	return n
+}
+
 // Miner enrolls a new miner, using the provided full node for chain
 // interactions.
 func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
@@ -258,7 +282,7 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 		)
 
 		// Will use 2KiB sectors by default (default value of sectorSize).
-		proofType, err := miner.SealProofTypeFromSectorSize(options.sectorSize, n.genesis.version)
+		proofType, err := miner.SealProofTypeFromSectorSize(options.sectorSize, n.genesis.version, false)
 		require.NoError(n.t, err)
 
 		// Create the preseal commitment.
@@ -356,6 +380,8 @@ func (n *Ensemble) Start() *Ensemble {
 		gtempl = n.generateGenesis()
 		n.mn = mocknet.New()
 	}
+
+	sharedITestID := harmonydb.ITestNewID()
 
 	// ---------------------
 	//  FULL NODES
@@ -601,6 +627,7 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
+		cfg.Subsystems.EnableSectorIndexDB = m.options.subsystems.Has(SHarmony)
 		cfg.Dealmaking.MaxStagingDealsBytes = m.options.maxStagingDealsBytes
 
 		if m.options.mainMiner != nil {
@@ -682,11 +709,9 @@ func (n *Ensemble) Start() *Ensemble {
 
 		var mineBlock = make(chan lotusminer.MineReq)
 
-		copy := *m.FullNode
-		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
-		m.FullNode = &copy
-
-		//m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
+		minerCopy := *m.FullNode
+		minerCopy.FullNode = modules.MakeUuidWrapper(minerCopy.FullNode)
+		m.FullNode = &minerCopy
 
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
@@ -695,8 +720,6 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-			//node.Override(new(v1api.RawFullNodeAPI), func() api.FullNode { return modules.MakeUuidWrapper(m.FullNode) }),
-			//node.Override(new(v1api.RawFullNodeAPI), modules.MakeUuidWrapper),
 			node.Override(new(v1api.RawFullNodeAPI), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
@@ -722,6 +745,17 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// upgrades
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
+
+			node.Override(new(harmonydb.ITestID), sharedITestID),
+			node.Override(new(config.HarmonyDB), func() config.HarmonyDB {
+				return config.HarmonyDB{
+					Hosts:    []string{envElse("LOTUS_HARMONYDB_HOSTS", "127.0.0.1")},
+					Database: "yugabyte",
+					Username: "yugabyte",
+					Password: "yugabyte",
+					Port:     "5433",
+				}
+			}),
 		}
 
 		if m.options.subsystems.Has(SMarkets) {
@@ -768,6 +802,12 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
+		mCopy := m
+		n.t.Cleanup(func() {
+			if mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB != nil {
+				mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
+			}
+		})
 
 		m.BaseAPI = m.StorageMiner
 
@@ -824,6 +864,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		auth := http.Header(nil)
 
+		// FUTURE: Use m.MinerNode.(BaseAPI).(impl.StorageMinerAPI).HarmonyDB to setup.
+
 		remote := paths.NewRemote(localStore, m.MinerNode, auth, 20, &paths.DefaultPartialFileHandler{})
 		store := m.options.workerStorageOpt(remote)
 
@@ -853,12 +895,35 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.active.workers = append(n.active.workers, m)
+
 	}
 
 	// If we are here, we have processed all inactive workers and moved them
 	// to active, so clear the slice.
 	n.inactive.workers = n.inactive.workers[:0]
 
+	for _, p := range n.inactive.providernodes {
+
+		// TODO setup config with options
+		err := p.Deps.PopulateRemainingDeps(context.Background(), &cli.Context{}, false)
+		require.NoError(n.t, err)
+
+		shutdownChan := make(chan struct{})
+		taskEngine, err := tasks.StartTasks(ctx, p.Deps)
+		if err != nil {
+			return nil
+		}
+		defer taskEngine.GracefullyTerminate()
+
+		err = rpc.ListenAndServe(ctx, p.Deps, shutdownChan) // Monitor for shutdown.
+		require.NoError(n.t, err)
+		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
+
+		<-finishCh
+
+		n.active.providernodes = append(n.active.providernodes, p)
+	}
 	// ---------------------
 	//  MISC
 	// ---------------------
@@ -1034,14 +1099,14 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []api.SectorPiece{
-				{
+			Pieces: []pipeline.SafeSectorPiece{
+				pipeline.SafePiece(api.SectorPiece{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
 					DealInfo: nil, // todo: likely possible to get, but not really that useful
-				},
+				}),
 			},
 			CommD: &commD,
 			CommR: &commR,
@@ -1064,4 +1129,11 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
 	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
+}
+
+func envElse(env, els string) string {
+	if v := os.Getenv(env); v != "" {
+		return v
+	}
+	return els
 }

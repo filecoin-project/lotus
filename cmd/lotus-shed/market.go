@@ -214,7 +214,7 @@ var marketExportDatastoreCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+		_ = logging.SetLogLevel("badger", "ERROR")
 
 		// If the backup dir is not specified, just use the OS temp dir
 		backupDir := cctx.String("backup-dir")
@@ -332,7 +332,7 @@ var marketImportDatastoreCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+		_ = logging.SetLogLevel("badger", "ERROR")
 
 		backupPath := cctx.String("backup-path")
 
@@ -387,7 +387,7 @@ var marketDealsTotalStorageCmd = &cli.Command{
 		count := 0
 
 		for _, deal := range deals {
-			if market.IsDealActive(deal.State) {
+			if market.IsDealActive(deal.State.Iface()) {
 				dealStorage := big.NewIntUnsigned(uint64(deal.Proposal.PieceSize))
 				total = big.Add(total, dealStorage)
 				count++

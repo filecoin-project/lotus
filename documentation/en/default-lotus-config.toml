@@ -129,22 +129,6 @@
 
 
 [Client]
-  # type: bool
-  # env var: LOTUS_CLIENT_USEIPFS
-  #UseIpfs = false
-
-  # type: bool
-  # env var: LOTUS_CLIENT_IPFSONLINEMODE
-  #IpfsOnlineMode = false
-
-  # type: string
-  # env var: LOTUS_CLIENT_IPFSMADDR
-  #IpfsMAddr = ""
-
-  # type: bool
-  # env var: LOTUS_CLIENT_IPFSUSEFORRETRIEVAL
-  #IpfsUseForRetrieval = false
-
   # The maximum number of simultaneous data transfers between the client
   # and storage providers for storage deals
   #
@@ -195,7 +179,7 @@
 
   [Chainstore.Splitstore]
     # ColdStoreType specifies the type of the coldstore.
-    # It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
+    # It can be "discard" (default) for discarding cold blocks, "messages" to store only messages or "universal" to store all chain state..
     #
     # type: string
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTORETYPE
@@ -260,68 +244,6 @@
     #HotstoreMaxSpaceSafetyBuffer = 50000000000
 
 
-[Cluster]
-  # EXPERIMENTAL. config to enabled node cluster with raft consensus
-  #
-  # type: bool
-  # env var: LOTUS_CLUSTER_CLUSTERMODEENABLED
-  #ClusterModeEnabled = false
-
-  # A folder to store Raft's data.
-  #
-  # type: string
-  # env var: LOTUS_CLUSTER_DATAFOLDER
-  #DataFolder = ""
-
-  # InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
-  # peers (with no prior state). It is ignored when Raft was already
-  # initialized or when starting in staging mode.
-  #
-  # type: []string
-  # env var: LOTUS_CLUSTER_INITPEERSETMULTIADDR
-  #InitPeersetMultiAddr = []
-
-  # LeaderTimeout specifies how long to wait for a leader before
-  # failing an operation.
-  #
-  # type: Duration
-  # env var: LOTUS_CLUSTER_WAITFORLEADERTIMEOUT
-  #WaitForLeaderTimeout = "15s"
-
-  # NetworkTimeout specifies how long before a Raft network
-  # operation is timed out
-  #
-  # type: Duration
-  # env var: LOTUS_CLUSTER_NETWORKTIMEOUT
-  #NetworkTimeout = "1m40s"
-
-  # CommitRetries specifies how many times we retry a failed commit until
-  # we give up.
-  #
-  # type: int
-  # env var: LOTUS_CLUSTER_COMMITRETRIES
-  #CommitRetries = 1
-
-  # How long to wait between retries
-  #
-  # type: Duration
-  # env var: LOTUS_CLUSTER_COMMITRETRYDELAY
-  #CommitRetryDelay = "200ms"
-
-  # BackupsRotate specifies the maximum number of Raft's DataFolder
-  # copies that we keep as backups (renaming) after cleanup.
-  #
-  # type: int
-  # env var: LOTUS_CLUSTER_BACKUPSROTATE
-  #BackupsRotate = 6
-
-  # Tracing enables propagation of contexts across binary boundaries.
-  #
-  # type: bool
-  # env var: LOTUS_CLUSTER_TRACING
-  #Tracing = false
-
-
 [Fevm]
   # EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
   # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
@@ -337,57 +259,66 @@
   # env var: LOTUS_FEVM_ETHTXHASHMAPPINGLIFETIMEDAYS
   #EthTxHashMappingLifetimeDays = 0
 
-  [Fevm.Events]
-    # EnableEthRPC enables APIs that
-    # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-    # The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
-    #
-    # type: bool
-    # env var: LOTUS_FEVM_EVENTS_DISABLEREALTIMEFILTERAPI
-    #DisableRealTimeFilterAPI = false
 
-    # DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
-    # that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-    # The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
-    #
-    # type: bool
-    # env var: LOTUS_FEVM_EVENTS_DISABLEHISTORICFILTERAPI
-    #DisableHistoricFilterAPI = false
+[Events]
+  # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+  # The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+  #
+  # type: bool
+  # env var: LOTUS_EVENTS_DISABLEREALTIMEFILTERAPI
+  #DisableRealTimeFilterAPI = false
 
-    # FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
-    # this time become eligible for automatic deletion.
-    #
-    # type: Duration
-    # env var: LOTUS_FEVM_EVENTS_FILTERTTL
-    #FilterTTL = "24h0m0s"
+  # DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+  # that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+  # The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
+  #
+  # type: bool
+  # env var: LOTUS_EVENTS_DISABLEHISTORICFILTERAPI
+  #DisableHistoricFilterAPI = false
 
-    # MaxFilters specifies the maximum number of filters that may exist at any one time.
-    #
-    # type: int
-    # env var: LOTUS_FEVM_EVENTS_MAXFILTERS
-    #MaxFilters = 100
+  # EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+  # emitted by (smart contracts + built-in Actors).
+  # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+  # disabled by setting their respective Disable* options.
+  #
+  # type: bool
+  # env var: LOTUS_EVENTS_ENABLEACTOREVENTSAPI
+  #EnableActorEventsAPI = false
 
-    # MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
-    #
-    # type: int
-    # env var: LOTUS_FEVM_EVENTS_MAXFILTERRESULTS
-    #MaxFilterResults = 10000
+  # FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+  # this time become eligible for automatic deletion.
+  #
+  # type: Duration
+  # env var: LOTUS_EVENTS_FILTERTTL
+  #FilterTTL = "24h0m0s"
 
-    # MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-    # the entire chain)
-    #
-    # type: uint64
-    # env var: LOTUS_FEVM_EVENTS_MAXFILTERHEIGHTRANGE
-    #MaxFilterHeightRange = 2880
+  # MaxFilters specifies the maximum number of filters that may exist at any one time.
+  #
+  # type: int
+  # env var: LOTUS_EVENTS_MAXFILTERS
+  #MaxFilters = 100
 
-    # DatabasePath is the full path to a sqlite database that will be used to index actor events to
-    # support the historic filter APIs. If the database does not exist it will be created. The directory containing
-    # the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-    # relative to the CWD (current working directory).
-    #
-    # type: string
-    # env var: LOTUS_FEVM_EVENTS_DATABASEPATH
-    #DatabasePath = ""
+  # MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+  #
+  # type: int
+  # env var: LOTUS_EVENTS_MAXFILTERRESULTS
+  #MaxFilterResults = 10000
+
+  # MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+  # the entire chain)
+  #
+  # type: uint64
+  # env var: LOTUS_EVENTS_MAXFILTERHEIGHTRANGE
+  #MaxFilterHeightRange = 2880
+
+  # DatabasePath is the full path to a sqlite database that will be used to index actor events to
+  # support the historic filter APIs. If the database does not exist it will be created. The directory containing
+  # the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+  # relative to the CWD (current working directory).
+  #
+  # type: string
+  # env var: LOTUS_EVENTS_DATABASEPATH
+  #DatabasePath = ""
 
 
 [Index]
@@ -397,5 +328,34 @@
   # type: bool
   # env var: LOTUS_INDEX_ENABLEMSGINDEX
   #EnableMsgIndex = false
+
+
+[FaultReporter]
+  # EnableConsensusFaultReporter controls whether the node will monitor and
+  # report consensus faults. When enabled, the node will watch for malicious
+  # behaviors like double-mining and parent grinding, and submit reports to the
+  # network. This can earn reporter rewards, but is not guaranteed. Nodes should
+  # enable fault reporting with care, as it may increase resource usage, and may
+  # generate gas fees without earning rewards.
+  #
+  # type: bool
+  # env var: LOTUS_FAULTREPORTER_ENABLECONSENSUSFAULTREPORTER
+  #EnableConsensusFaultReporter = false
+
+  # ConsensusFaultReporterDataDir is the path where fault reporter state will be
+  # persisted. This directory should have adequate space and permissions for the
+  # node process.
+  #
+  # type: string
+  # env var: LOTUS_FAULTREPORTER_CONSENSUSFAULTREPORTERDATADIR
+  #ConsensusFaultReporterDataDir = ""
+
+  # ConsensusFaultReporterAddress is the wallet address used for submitting
+  # ReportConsensusFault messages. It will pay for gas fees, and receive any
+  # rewards. This address should have adequate funds to cover gas fees.
+  #
+  # type: string
+  # env var: LOTUS_FAULTREPORTER_CONSENSUSFAULTREPORTERADDRESS
+  #ConsensusFaultReporterAddress = ""
 
 

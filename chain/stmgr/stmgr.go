@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"sync"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -49,7 +49,7 @@ type StateManagerAPI interface {
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
-	LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	LookupIDAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 }
 
@@ -113,6 +113,10 @@ func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCi
 	return nil
 }
 
+func (m *migrationResultCache) Delete(ctx context.Context, root cid.Cid) {
+	_ = m.ds.Delete(ctx, m.keyForMigration(root))
+}
+
 type Executor interface {
 	NewActorRegistry() *vm.ActorRegistry
 	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor, vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error)
@@ -156,7 +160,7 @@ type StateManager struct {
 
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
-	execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	execTraceCache *arc.ARCCache[types.TipSetKey, tipSetCacheEntry]
 	// We need a lock while making the copy as to prevent other callers
 	// overwrite the cache while making the copy
 	execTraceCacheLock sync.Mutex
@@ -213,10 +217,10 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 	}
 
 	log.Debugf("execTraceCache size: %d", execTraceCacheSize)
-	var execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	var execTraceCache *arc.ARCCache[types.TipSetKey, tipSetCacheEntry]
 	var err error
 	if execTraceCacheSize > 0 {
-		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
+		execTraceCache, err = arc.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
 		if err != nil {
 			return nil, err
 		}
@@ -396,13 +400,30 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 	return kaddr.Payload(), nil
 }
 
-func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (sm *StateManager) LookupIDAddress(_ context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	// Check for the fast route first to avoid unnecessary CBOR store instantiation and state tree load.
+	if addr.Protocol() == address.ID {
+		return addr, nil
+	}
+
 	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	state, err := state.LoadStateTree(cst, sm.parentState(ts))
 	if err != nil {
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
-	return state.LookupID(addr)
+	return state.LookupIDAddress(addr)
+}
+
+func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (abi.ActorID, error) {
+	idAddr, err := sm.LookupIDAddress(ctx, addr, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("state manager lookup id: %w", err)
+	}
+	id, err := address.IDFromAddress(idAddr)
+	if err != nil {
+		return 0, xerrors.Errorf("resolve actor id: id from addr: %w", err)
+	}
+	return abi.ActorID(id), nil
 }
 
 func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error) {
@@ -509,7 +530,17 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetBeaconRandomness(ctx, personalization, randEpoch, entropy)
+	digest, err := r.GetBeaconRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, xerrors.Errorf("getting beacon randomness: %w", err)
+	}
+
+	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("drawing beacon randomness: %w", err)
+	}
+
+	return ret, nil
 
 }
 
@@ -521,5 +552,38 @@ func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personaliz
 
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetChainRandomness(ctx, personalization, randEpoch, entropy)
+	digest, err := r.GetChainRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, xerrors.Errorf("getting chain randomness: %w", err)
+	}
+
+	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("drawing chain randomness: %w", err)
+	}
+
+	return ret, nil
+}
+
+func (sm *StateManager) GetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) ([32]byte, error) {
+	pts, err := sm.ChainStore().GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return [32]byte{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
+
+	return r.GetBeaconRandomness(ctx, randEpoch)
+
+}
+
+func (sm *StateManager) GetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) ([32]byte, error) {
+	pts, err := sm.ChainStore().LoadTipSet(ctx, tsk)
+	if err != nil {
+		return [32]byte{}, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
+
+	return r.GetChainRandomness(ctx, randEpoch)
 }

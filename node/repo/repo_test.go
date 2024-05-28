@@ -16,7 +16,7 @@ import (
 func basicTest(t *testing.T, repo Repo) {
 	apima, err := repo.APIEndpoint()
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrNoAPIEndpoint, err)
+		assert.ErrorContains(t, err, ErrNoAPIEndpoint.Error())
 	}
 	assert.Nil(t, apima, "with no api endpoint, return should be nil")
 
@@ -56,7 +56,7 @@ func basicTest(t *testing.T, repo Repo) {
 	// mutate config and persist back to repo
 	err = lrepo.SetConfig(func(c interface{}) {
 		cfg := c.(*config.FullNode)
-		cfg.Client.IpfsMAddr = "duvall"
+		cfg.FaultReporter.ConsensusFaultReporterAddress = "duvall"
 	})
 	assert.NoError(t, err)
 
@@ -64,7 +64,7 @@ func basicTest(t *testing.T, repo Repo) {
 	c2, err := lrepo.Config()
 	require.NoError(t, err)
 	cfg2 := c2.(*config.FullNode)
-	require.Equal(t, cfg2.Client.IpfsMAddr, "duvall")
+	require.Equal(t, cfg2.FaultReporter.ConsensusFaultReporterAddress, "duvall")
 
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to close")
@@ -72,7 +72,7 @@ func basicTest(t *testing.T, repo Repo) {
 	apima, err = repo.APIEndpoint()
 
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrNoAPIEndpoint, err, "after closing repo, api should be nil")
+		assert.ErrorContains(t, err, ErrNoAPIEndpoint.Error(), "after closing repo, api should be nil")
 	}
 	assert.Nil(t, apima, "with closed repo, apima should be set back to nil")
 

@@ -27,14 +27,24 @@ func isIndexedValue(b uint8) bool {
 	return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
 }
 
-type EventFilter struct {
-	id         types.FilterID
-	minHeight  abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
-	maxHeight  abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
-	tipsetCid  cid.Cid
-	addresses  []address.Address   // list of f4 actor addresses that are extpected to emit the event
-	keys       map[string][][]byte // map of key names to a list of alternate values that may match
-	maxResults int                 // maximum number of results to collect, 0 is unlimited
+type AddressResolver func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool)
+
+type EventFilter interface {
+	Filter
+
+	TakeCollectedEvents(context.Context) []*CollectedEvent
+	CollectEvents(context.Context, *TipSetEvents, bool, AddressResolver) error
+}
+
+type eventFilter struct {
+	id        types.FilterID
+	minHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
+	maxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
+	tipsetCid cid.Cid
+	addresses []address.Address // list of actor addresses that are extpected to emit the event
+
+	keysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
+	maxResults    int                                // maximum number of results to collect, 0 is unlimited
 
 	mu        sync.Mutex
 	collected []*CollectedEvent
@@ -42,12 +52,12 @@ type EventFilter struct {
 	ch        chan<- interface{}
 }
 
-var _ Filter = (*EventFilter)(nil)
+var _ Filter = (*eventFilter)(nil)
 
 type CollectedEvent struct {
 	Entries     []types.EventEntry
-	EmitterAddr address.Address // f4 address of emitter
-	EventIdx    int             // index of the event within the list of emitted events
+	EmitterAddr address.Address // address of emitter
+	EventIdx    int             // index of the event within the list of emitted events in a given tipset
 	Reverted    bool
 	Height      abi.ChainEpoch
 	TipSetKey   types.TipSetKey // tipset that contained the message
@@ -55,24 +65,24 @@ type CollectedEvent struct {
 	MsgCid      cid.Cid         // cid of message that produced event
 }
 
-func (f *EventFilter) ID() types.FilterID {
+func (f *eventFilter) ID() types.FilterID {
 	return f.id
 }
 
-func (f *EventFilter) SetSubChannel(ch chan<- interface{}) {
+func (f *eventFilter) SetSubChannel(ch chan<- interface{}) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.ch = ch
 	f.collected = nil
 }
 
-func (f *EventFilter) ClearSubChannel() {
+func (f *eventFilter) ClearSubChannel() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.ch = nil
 }
 
-func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
+func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver AddressResolver) error {
 	if !f.matchTipset(te) {
 		return nil
 	}
@@ -84,8 +94,11 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	if err != nil {
 		return xerrors.Errorf("load executed messages: %w", err)
 	}
+
+	eventCount := 0
+
 	for msgIdx, em := range ems {
-		for evIdx, ev := range em.Events() {
+		for _, ev := range em.Events() {
 			// lookup address corresponding to the actor id
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
@@ -109,7 +122,7 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			cev := &CollectedEvent{
 				Entries:     ev.Entries,
 				EmitterAddr: addr,
-				EventIdx:    evIdx,
+				EventIdx:    eventCount,
 				Reverted:    revert,
 				Height:      te.msgTs.Height(),
 				TipSetKey:   te.msgTs.Key(),
@@ -131,19 +144,20 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			}
 			f.collected = append(f.collected, cev)
 			f.mu.Unlock()
+			eventCount++
 		}
 	}
 
 	return nil
 }
 
-func (f *EventFilter) setCollectedEvents(ces []*CollectedEvent) {
+func (f *eventFilter) setCollectedEvents(ces []*CollectedEvent) {
 	f.mu.Lock()
 	f.collected = ces
 	f.mu.Unlock()
 }
 
-func (f *EventFilter) TakeCollectedEvents(ctx context.Context) []*CollectedEvent {
+func (f *eventFilter) TakeCollectedEvents(ctx context.Context) []*CollectedEvent {
 	f.mu.Lock()
 	collected := f.collected
 	f.collected = nil
@@ -153,14 +167,14 @@ func (f *EventFilter) TakeCollectedEvents(ctx context.Context) []*CollectedEvent
 	return collected
 }
 
-func (f *EventFilter) LastTaken() time.Time {
+func (f *eventFilter) LastTaken() time.Time {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.lastTaken
 }
 
 // matchTipset reports whether this filter matches the given tipset
-func (f *EventFilter) matchTipset(te *TipSetEvents) bool {
+func (f *eventFilter) matchTipset(te *TipSetEvents) bool {
 	if f.tipsetCid != cid.Undef {
 		tsCid, err := te.Cid()
 		if err != nil {
@@ -178,7 +192,7 @@ func (f *EventFilter) matchTipset(te *TipSetEvents) bool {
 	return true
 }
 
-func (f *EventFilter) matchAddress(o address.Address) bool {
+func (f *eventFilter) matchAddress(o address.Address) bool {
 	if len(f.addresses) == 0 {
 		return true
 	}
@@ -193,8 +207,8 @@ func (f *EventFilter) matchAddress(o address.Address) bool {
 	return false
 }
 
-func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
-	if len(f.keys) == 0 {
+func (f *eventFilter) matchKeys(ees []types.EventEntry) bool {
+	if len(f.keysWithCodec) == 0 {
 		return true
 	}
 	// TODO: optimize this naive algorithm
@@ -216,19 +230,19 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 			continue
 		}
 
-		wantlist, ok := f.keys[keyname]
+		wantlist, ok := f.keysWithCodec[keyname]
 		if !ok || len(wantlist) == 0 {
 			continue
 		}
 
 		for _, w := range wantlist {
-			if bytes.Equal(w, ee.Value) {
+			if bytes.Equal(w.Value, ee.Value) && w.Codec == ee.Codec {
 				matched[keyname] = true
 				break
 			}
 		}
 
-		if len(matched) == len(f.keys) {
+		if len(matched) == len(f.keysWithCodec) {
 			// all keys have been matched
 			return true
 		}
@@ -296,7 +310,7 @@ type EventFilterManager struct {
 	EventIndex       *EventIndex
 
 	mu            sync.Mutex // guards mutations to filters
-	filters       map[types.FilterID]*EventFilter
+	filters       map[types.FilterID]EventFilter
 	currentHeight abi.ChainEpoch
 }
 
@@ -362,8 +376,13 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	return nil
 }
 
-func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address, keys map[string][][]byte) (*EventFilter, error) {
+func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
+	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (EventFilter, error) {
 	m.mu.Lock()
+	if m.currentHeight == 0 {
+		// sync in progress, we haven't had an Apply
+		m.currentHeight = m.ChainStore.GetHeaviestTipSet().Height()
+	}
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
 
@@ -376,26 +395,26 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		return nil, xerrors.Errorf("new filter id: %w", err)
 	}
 
-	f := &EventFilter{
-		id:         id,
-		minHeight:  minHeight,
-		maxHeight:  maxHeight,
-		tipsetCid:  tipsetCid,
-		addresses:  addresses,
-		keys:       keys,
-		maxResults: m.MaxFilterResults,
+	f := &eventFilter{
+		id:            id,
+		minHeight:     minHeight,
+		maxHeight:     maxHeight,
+		tipsetCid:     tipsetCid,
+		addresses:     addresses,
+		keysWithCodec: keysWithCodec,
+		maxResults:    m.MaxFilterResults,
 	}
 
 	if m.EventIndex != nil && minHeight != -1 && minHeight < currentHeight {
 		// Filter needs historic events
-		if err := m.EventIndex.PrefillFilter(ctx, f); err != nil {
+		if err := m.EventIndex.prefillFilter(ctx, f, excludeReverted); err != nil {
 			return nil, err
 		}
 	}
 
 	m.mu.Lock()
 	if m.filters == nil {
-		m.filters = make(map[types.FilterID]*EventFilter)
+		m.filters = make(map[types.FilterID]EventFilter)
 	}
 	m.filters[id] = f
 	m.mu.Unlock()

@@ -1,0 +1,15 @@
+[Unit]
+Description=Curio
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/curio run
+Environment=GOLOG_FILE="/var/log/curio/curio.log"
+Environment=GOLOG_LOG_FMT="json"
+LimitNOFILE=1000000
+Restart=always
+RestartSec=10
+EnvironmentFile=/etc/curio.env
+
+[Install]
+WantedBy=multi-user.target

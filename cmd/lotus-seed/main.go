@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("lotus-seed")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	local := []*cli.Command{
 		genesisCmd,
@@ -137,7 +137,9 @@ var preSealCmd = &cli.Command{
 			nv = network.Version(c.Uint64("network-version"))
 		}
 
-		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv)
+		var synthetic = false // there's little reason to have this for a seed.
+
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, synthetic)
 		if err != nil {
 			return err
 		}

@@ -38,6 +38,7 @@ const (
 	ReadResMinSpeed     = 50 << 10
 	ShufflePeersPrefix  = 16
 	WriteResDeadline    = 60 * time.Second
+	streamReadDeadline  = 10 * time.Second
 )
 
 // FIXME: Rename. Make private.
@@ -154,6 +155,8 @@ type BSTipSet struct {
 // FIXME: The logic to decompress this structure should belong
 //
 //	to itself, not to the consumer.
+//
+// NOTE: Max messages is: BlockMessageLimit (10k) * MaxTipsetSize (15) = 150k
 type CompactedMessages struct {
 	Bls         []*types.Message
 	BlsIncludes [][]uint64

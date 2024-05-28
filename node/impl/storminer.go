@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -43,8 +42,10 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
@@ -53,6 +54,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -122,6 +124,8 @@ type StorageMinerAPI struct {
 	GetSealingConfigFunc                        dtypes.GetSealingConfigFunc                        `optional:"true"`
 	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc                 `optional:"true"`
 	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc                 `optional:"true"`
+
+	HarmonyDB *harmonydb.DB `optional:"true"`
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
@@ -240,7 +244,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 	return sInfo, nil
 }
 
-func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
+func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d piece.PieceDealInfo) (api.SectorOffset, error) {
 	so, err := sm.Miner.SectorAddPieceToAny(ctx, size, r, d)
 	if err != nil {
 		// jsonrpc doesn't support returning values with errors, make sure we never do that
@@ -278,7 +282,16 @@ func (sm *StorageMinerAPI) SectorUnseal(ctx context.Context, sectorNum abi.Secto
 		ProofType: status.SealProof,
 	}
 
-	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
+	bgCtx := context.Background()
+
+	go func() {
+		err := sm.StorageMgr.SectorsUnsealPiece(bgCtx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
+		if err != nil {
+			log.Errorf("unseal for sector %d failed: %+v", sectorNum, err)
+		}
+	}()
+
+	return nil
 }
 
 // List all staged sectors
@@ -327,19 +340,9 @@ func (sm *StorageMinerAPI) SectorsListInStates(ctx context.Context, states []api
 	return sns, nil
 }
 
+// Use SectorsSummary from stats (prometheus) for faster result
 func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorState]int, error) {
-	sectors, err := sm.Miner.ListSectors()
-	if err != nil {
-		return nil, err
-	}
-
-	out := make(map[api.SectorState]int)
-	for i := range sectors {
-		state := api.SectorState(sectors[i].State)
-		out[state]++
-	}
-
-	return out, nil
+	return sm.Miner.SectorsSummary(ctx), nil
 }
 
 func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
@@ -488,7 +491,7 @@ func (sm *StorageMinerAPI) SectorReceive(ctx context.Context, meta api.RemoteSec
 	return err
 }
 
-func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]minertypes.SubmitWindowedPoStParams, error) {
+func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]lminer.SubmitWindowedPoStParams, error) {
 	var ts *types.TipSet
 	var err error
 	if tsk == types.EmptyTSK {
@@ -504,7 +507,7 @@ func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, 
 }
 
 func (sm *StorageMinerAPI) ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
-	return sm.StorageMgr.DataCid(ctx, pieceSize, pieceData)
+	return sm.IStorageMgr.DataCid(ctx, pieceSize, pieceData)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
@@ -1374,15 +1377,15 @@ func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubs
 }
 
 func (sm *StorageMinerAPI) ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) {
-	return sm.withdrawBalance(ctx, amount, true)
+	return WithdrawBalance(ctx, sm.Full, sm.Miner.Address(), amount, true)
 }
 
 func (sm *StorageMinerAPI) BeneficiaryWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) {
-	return sm.withdrawBalance(ctx, amount, false)
+	return WithdrawBalance(ctx, sm.Full, sm.Miner.Address(), amount, false)
 }
 
-func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.TokenAmount, fromOwner bool) (cid.Cid, error) {
-	available, err := sm.Full.StateMinerAvailableBalance(ctx, sm.Miner.Address(), types.EmptyTSK)
+func WithdrawBalance(ctx context.Context, full api.FullNode, maddr address.Address, amount abi.TokenAmount, fromOwner bool) (cid.Cid, error) {
+	available, err := full.StateMinerAvailableBalance(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("Error getting miner balance: %w", err)
 	}
@@ -1395,14 +1398,14 @@ func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.Token
 		amount = available
 	}
 
-	params, err := actors.SerializeParams(&minertypes.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&lminer.WithdrawBalanceParams{
 		AmountRequested: amount,
 	})
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	mi, err := sm.Full.StateMinerInfo(ctx, sm.Miner.Address(), types.EmptyTSK)
+	mi, err := full.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("Error getting miner's owner address: %w", err)
 	}
@@ -1414,8 +1417,8 @@ func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.Token
 		sender = mi.Beneficiary
 	}
 
-	smsg, err := sm.Full.MpoolPushMessage(ctx, &types.Message{
-		To:     sm.Miner.Address(),
+	smsg, err := full.MpoolPushMessage(ctx, &types.Message{
+		To:     maddr,
 		From:   sender,
 		Value:  types.NewInt(0),
 		Method: builtintypes.MethodsMiner.WithdrawBalance,

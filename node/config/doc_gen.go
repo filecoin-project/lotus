@@ -9,7 +9,7 @@ type DocField struct {
 }
 
 var Doc = map[string][]DocField{
-	"API": []DocField{
+	"API": {
 		{
 			Name: "ListenAddress",
 			Type: "string",
@@ -29,7 +29,23 @@ var Doc = map[string][]DocField{
 			Comment: ``,
 		},
 	},
-	"Backup": []DocField{
+	"ApisConfig": {
+		{
+			Name: "ChainApiInfo",
+			Type: "[]string",
+
+			Comment: `ChainApiInfo is the API endpoint for the Lotus daemon.`,
+		},
+		{
+			Name: "StorageRPCSecret",
+			Type: "string",
+
+			Comment: `RPC Secret for the storage subsystem.
+If integrating with lotus-miner this must match the value from
+cat ~/.lotusminer/keystore/MF2XI2BNNJ3XILLQOJUXMYLUMU | jq -r .PrivateKey`,
+		},
+	},
+	"Backup": {
 		{
 			Name: "DisableMetadataLog",
 			Type: "bool",
@@ -41,7 +57,7 @@ Note that in case of metadata corruption it might be much harder to recover
 your node if metadata log is disabled`,
 		},
 	},
-	"BatchFeeConfig": []DocField{
+	"BatchFeeConfig": {
 		{
 			Name: "Base",
 			Type: "types.FIL",
@@ -55,7 +71,7 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Chainstore": []DocField{
+	"Chainstore": {
 		{
 			Name: "EnableSplitstore",
 			Type: "bool",
@@ -69,31 +85,7 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Client": []DocField{
-		{
-			Name: "UseIpfs",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsOnlineMode",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsMAddr",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsUseForRetrieval",
-			Type: "bool",
-
-			Comment: ``,
-		},
+	"Client": {
 		{
 			Name: "SimultaneousTransfersForStorage",
 			Type: "uint64",
@@ -117,7 +109,7 @@ without existing payment channels with available funds will fail instead
 of automatically performing on-chain operations.`,
 		},
 	},
-	"Common": []DocField{
+	"Common": {
 		{
 			Name: "API",
 			Type: "API",
@@ -149,7 +141,538 @@ of automatically performing on-chain operations.`,
 			Comment: ``,
 		},
 	},
-	"DAGStoreConfig": []DocField{
+	"CurioAddresses": {
+		{
+			Name: "PreCommitControl",
+			Type: "[]string",
+
+			Comment: `Addresses to send PreCommit messages from`,
+		},
+		{
+			Name: "CommitControl",
+			Type: "[]string",
+
+			Comment: `Addresses to send Commit messages from`,
+		},
+		{
+			Name: "TerminateControl",
+			Type: "[]string",
+
+			Comment: ``,
+		},
+		{
+			Name: "DisableOwnerFallback",
+			Type: "bool",
+
+			Comment: `DisableOwnerFallback disables usage of the owner address for messages
+sent automatically`,
+		},
+		{
+			Name: "DisableWorkerFallback",
+			Type: "bool",
+
+			Comment: `DisableWorkerFallback disables usage of the worker address for messages
+sent automatically, if control addresses are configured.
+A control address that doesn't have enough funds will still be chosen
+over the worker address if this flag is set.`,
+		},
+		{
+			Name: "MinerAddresses",
+			Type: "[]string",
+
+			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
+		},
+	},
+	"CurioAlerting": {
+		{
+			Name: "PagerDutyEventURL",
+			Type: "string",
+
+			Comment: `PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+routed to a PagerDuty.com service and processed.
+The default is sufficient for integration with the stock commercial PagerDuty.com company's service.`,
+		},
+		{
+			Name: "PageDutyIntegrationKey",
+			Type: "string",
+
+			Comment: `PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
+identifier in the integration page for the service.`,
+		},
+		{
+			Name: "MinimumWalletBalance",
+			Type: "types.FIL",
+
+			Comment: `MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+alerts will be triggered for the wallet`,
+		},
+	},
+	"CurioConfig": {
+		{
+			Name: "Subsystems",
+			Type: "CurioSubsystemsConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Fees",
+			Type: "CurioFees",
+
+			Comment: ``,
+		},
+		{
+			Name: "Addresses",
+			Type: "[]CurioAddresses",
+
+			Comment: `Addresses of wallets per MinerAddress (one of the fields).`,
+		},
+		{
+			Name: "Proving",
+			Type: "CurioProvingConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Ingest",
+			Type: "CurioIngestConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Journal",
+			Type: "JournalConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Apis",
+			Type: "ApisConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Alerting",
+			Type: "CurioAlerting",
+
+			Comment: ``,
+		},
+	},
+	"CurioFees": {
+		{
+			Name: "DefaultMaxFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxPreCommitGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxCommitGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxPreCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
+			Comment: `maxBatchFee = maxBase + maxPerSector * nSectors`,
+		},
+		{
+			Name: "MaxCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxTerminateGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxWindowPoStGasFee",
+			Type: "types.FIL",
+
+			Comment: `WindowPoSt is a high-value operation, so the default fee should be high.`,
+		},
+		{
+			Name: "MaxPublishDealsFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+	},
+	"CurioIngestConfig": {
+		{
+			Name: "MaxQueueDealSector",
+			Type: "int",
+
+			Comment: `Maximum number of sectors that can be queued waiting for deals to start processing.
+0 = unlimited
+Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+The DealSector queue includes deals which are ready to enter the sealing pipeline but are not yet part of it -
+size of this queue will also impact the maximum number of ParkPiece tasks which can run concurrently.
+DealSector queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.`,
+		},
+		{
+			Name: "MaxQueueSDR",
+			Type: "int",
+
+			Comment: `Maximum number of sectors that can be queued waiting for SDR to start processing.
+0 = unlimited
+Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+The SDR queue includes deals which are in the process of entering the sealing pipeline. In case of the SDR tasks it is
+possible that this queue grows more than this limit(CC sectors), the backpressure is only applied to sectors
+entering the pipeline.`,
+		},
+		{
+			Name: "MaxQueueTrees",
+			Type: "int",
+
+			Comment: `Maximum number of sectors that can be queued waiting for SDRTrees to start processing.
+0 = unlimited
+Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+In case of the trees tasks it is possible that this queue grows more than this limit, the backpressure is only
+applied to sectors entering the pipeline.`,
+		},
+		{
+			Name: "MaxQueuePoRep",
+			Type: "int",
+
+			Comment: `Maximum number of sectors that can be queued waiting for PoRep to start processing.
+0 = unlimited
+Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
+Like with the trees tasks, it is possible that this queue grows more than this limit, the backpressure is only
+applied to sectors entering the pipeline.`,
+		},
+		{
+			Name: "MaxDealWaitTime",
+			Type: "Duration",
+
+			Comment: `Maximum time an open deal sector should wait for more deal before it starts sealing`,
+		},
+	},
+	"CurioProvingConfig": {
+		{
+			Name: "ParallelCheckLimit",
+			Type: "int",
+
+			Comment: `Maximum number of sector checks to run in parallel. (0 = unlimited)
+
+WARNING: Setting this value too high may make the node crash by running out of stack
+WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
+to late submission.
+
+After changing this option, confirm that the new value works in your setup by invoking
+'lotus-miner proving compute window-post 0'`,
+		},
+		{
+			Name: "SingleCheckTimeout",
+			Type: "Duration",
+
+			Comment: `Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
+
+WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+test challenge took longer than this timeout
+WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this sector are
+blocked (e.g. in case of disconnected NFS mount)`,
+		},
+		{
+			Name: "PartitionCheckTimeout",
+			Type: "Duration",
+
+			Comment: `Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
+the partition which didn't get checked on time will be skipped
+
+WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+test challenge took longer than this timeout
+WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this partition are
+blocked or slow`,
+		},
+		{
+			Name: "DisableWDPoStPreChecks",
+			Type: "bool",
+
+			Comment: `Disable WindowPoSt provable sector readability checks.
+
+In normal operation, when preparing to compute WindowPoSt, lotus-miner will perform a round of reading challenges
+from all sectors to confirm that those sectors can be proven. Challenges read in this process are discarded, as
+we're only interested in checking that sector data can be read.
+
+When using builtin proof computation (no PoSt workers, and DisableBuiltinWindowPoSt is set to false), this process
+can save a lot of time and compute resources in the case that some sectors are not readable - this is caused by
+the builtin logic not skipping snark computation when some sectors need to be skipped.
+
+When using PoSt workers, this process is mostly redundant, with PoSt workers challenges will be read once, and
+if challenges for some sectors aren't readable, those sectors will just get skipped.
+
+Disabling sector pre-checks will slightly reduce IO load when proving sectors, possibly resulting in shorter
+time to produce window PoSt. In setups with good IO capabilities the effect of this option on proving time should
+be negligible.
+
+NOTE: It likely is a bad idea to disable sector pre-checks in setups with no PoSt workers.
+
+NOTE: Even when this option is enabled, recovering sectors will be checked before recovery declaration message is
+sent to the chain
+
+After changing this option, confirm that the new value works in your setup by invoking
+'lotus-miner proving compute window-post 0'`,
+		},
+		{
+			Name: "MaxPartitionsPerPoStMessage",
+			Type: "int",
+
+			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
+
+A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
+//
+Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
+
+Setting this value above the network limit has no effect`,
+		},
+		{
+			Name: "MaxPartitionsPerRecoveryMessage",
+			Type: "int",
+
+			Comment: `In some cases when submitting DeclareFaultsRecovered messages,
+there may be too many recoveries to fit in a BlockGasLimit.
+In those cases it may be necessary to set this value to something low (eg 1);
+Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
+resulting in more total gas use (but each message will have lower gas limit)`,
+		},
+		{
+			Name: "SingleRecoveringPartitionPerPostMessage",
+			Type: "bool",
+
+			Comment: `Enable single partition per PoSt Message for partitions containing recovery sectors
+
+In cases when submitting PoSt messages which contain recovering sectors, the default network limit may still be
+too high to fit in the block gas limit. In those cases, it becomes useful to only house the single partition
+with recovering sectors in the post message
+
+Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)`,
+		},
+	},
+	"CurioSubsystemsConfig": {
+		{
+			Name: "EnableWindowPost",
+			Type: "bool",
+
+			Comment: `EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
+with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
+machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
+will allow for parallel processing of partitions.
+
+It is possible to have instances handling both WindowPoSt and WinningPoSt, which can provide redundancy without
+the need for additional machines. In setups like this it is generally recommended to run
+partitionsPerDeadline+1 machines.`,
+		},
+		{
+			Name: "WindowPostMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableWinningPost",
+			Type: "bool",
+
+			Comment: `EnableWinningPost enables winning post to be executed on this curio instance.
+Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
+It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
+documentation.`,
+		},
+		{
+			Name: "WinningPostMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableParkPiece",
+			Type: "bool",
+
+			Comment: `EnableParkPiece enables the "piece parking" task to run on this node. This task is responsible for fetching
+pieces from the network and storing them in the storage subsystem until sectors are sealed. This task is
+only applicable when integrating with boost, and should be enabled on nodes which will hold deal data
+from boost until sectors containing the related pieces have the TreeD/TreeR constructed.
+Note that future Curio implementations will have a separate task type for fetching pieces from the internet.`,
+		},
+		{
+			Name: "ParkPieceMaxTasks",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableSealSDR",
+			Type: "bool",
+
+			Comment: `EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
+creating 11 layer files in sector cache directory.
+
+SDR is the first task in the sealing pipeline. It's inputs are just the hash of the
+unsealed data (CommD), sector number, miner id, and the seal proof type.
+It's outputs are the 11 layer files in the sector cache directory.
+
+In lotus-miner this was run as part of PreCommit1.`,
+		},
+		{
+			Name: "SealSDRMaxTasks",
+			Type: "int",
+
+			Comment: `The maximum amount of SDR tasks that can run simultaneously. Note that the maximum number of tasks will
+also be bounded by resources available on the machine.`,
+		},
+		{
+			Name: "EnableSealSDRTrees",
+			Type: "bool",
+
+			Comment: `EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
+This task handles encoding of unsealed data into last sdr layer and building
+of TreeR, TreeC and TreeD.
+
+This task runs after SDR
+TreeD is first computed with optional input of unsealed data
+TreeR is computed from replica, which is first computed as field
+addition of the last SDR layer and the bottom layer of TreeD (which is the unsealed data)
+TreeC is computed from the 11 SDR layers
+The 3 trees will later be used to compute the PoRep proof.
+
+In case of SyntheticPoRep challenges for PoRep will be pre-generated at this step, and trees and layers
+will be dropped. SyntheticPoRep works by pre-generating a very large set of challenges (~30GiB on disk)
+then using a small subset of them for the actual PoRep computation. This allows for significant scratch space
+saving between PreCommit and PoRep generation at the expense of more computation (generating challenges in this step)
+
+In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
+Note that nodes with SDRTrees enabled will also answer to Finalize tasks,
+which just remove unneeded tree data after PoRep is computed.`,
+		},
+		{
+			Name: "SealSDRTreesMaxTasks",
+			Type: "int",
+
+			Comment: `The maximum amount of SealSDRTrees tasks that can run simultaneously. Note that the maximum number of tasks will
+also be bounded by resources available on the machine.`,
+		},
+		{
+			Name: "FinalizeMaxTasks",
+			Type: "int",
+
+			Comment: `FinalizeMaxTasks is the maximum amount of finalize tasks that can run simultaneously.
+The finalize task is enabled on all machines which also handle SDRTrees tasks. Finalize ALWAYS runs on whichever
+machine holds sector cache files, as it removes unneeded tree data after PoRep is computed.
+Finalize will run in parallel with the SubmitCommitMsg task.`,
+		},
+		{
+			Name: "EnableSendPrecommitMsg",
+			Type: "bool",
+
+			Comment: `EnableSendPrecommitMsg enables the sending of precommit messages to the chain
+from this curio instance.
+This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message`,
+		},
+		{
+			Name: "EnablePoRepProof",
+			Type: "bool",
+
+			Comment: `EnablePoRepProof enables the computation of the porep proof
+
+This task runs after interactive-porep seed becomes available, which happens 150 epochs (75min) after the
+precommit message lands on chain. This task should run on a machine with a GPU. Vanilla PoRep proofs are
+requested from the machine which holds sector cache files which most likely is the machine which ran the SDRTrees
+task.
+
+In lotus-miner this was Commit1 / Commit2`,
+		},
+		{
+			Name: "PoRepProofMaxTasks",
+			Type: "int",
+
+			Comment: `The maximum amount of PoRepProof tasks that can run simultaneously. Note that the maximum number of tasks will
+also be bounded by resources available on the machine.`,
+		},
+		{
+			Name: "EnableSendCommitMsg",
+			Type: "bool",
+
+			Comment: `EnableSendCommitMsg enables the sending of commit messages to the chain
+from this curio instance.`,
+		},
+		{
+			Name: "RequireActivationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireNotificationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).`,
+		},
+		{
+			Name: "EnableMoveStorage",
+			Type: "bool",
+
+			Comment: `EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
+This tasks should only be enabled on nodes with long-term storage.
+
+The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
+SDRTrees machine into long-term storage. This task runs after the Finalize task.`,
+		},
+		{
+			Name: "MoveStorageMaxTasks",
+			Type: "int",
+
+			Comment: `The maximum amount of MoveStorage tasks that can run simultaneously. Note that the maximum number of tasks will
+also be bounded by resources available on the machine. It is recommended that this value is set to a number which
+uses all available network (or disk) bandwidth on the machine without causing bottlenecks.`,
+		},
+		{
+			Name: "BoostAdapters",
+			Type: "[]string",
+
+			Comment: `BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
+This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
+Strings should be in the format "actor:ip:port". IP cannot be 0.0.0.0. We recommend using a private IP.
+Example: "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+
+When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
+deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
+node in the cluster has the EnableParkPiece option enabled and has sufficient scratch space to store the deal data.
+This is different from lotus-miner which stored the deal data into an "unsealed" sector as soon as the deal was
+received. Deal data in PiecePark is accessed when the sector TreeD and TreeR are computed, but isn't needed for
+the initial SDR layers computation. Pieces in PiecePark are removed after all sectors referencing the piece are
+sealed.
+
+To get API info for boost configuration run 'curio market rpc-info'
+
+NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
+a machine which handles ParkPiece tasks.`,
+		},
+		{
+			Name: "EnableWebGui",
+			Type: "bool",
+
+			Comment: `EnableWebGui enables the web GUI on this curio instance. The UI has minimal local overhead, but it should
+only need to be run on a single machine in the cluster.`,
+		},
+		{
+			Name: "GuiAddress",
+			Type: "string",
+
+			Comment: `The address that should listen for Web GUI requests.`,
+		},
+	},
+	"DAGStoreConfig": {
 		{
 			Name: "RootDir",
 			Type: "string",
@@ -206,7 +729,7 @@ representation, e.g. 1m, 5m, 1h.
 Default value: 1 minute.`,
 		},
 	},
-	"DealmakingConfig": []DocField{
+	"DealmakingConfig": {
 		{
 			Name: "ConsiderOnlineStorageDeals",
 			Type: "bool",
@@ -341,14 +864,13 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
-	"Events": []DocField{
+	"EventsConfig": {
 		{
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
 
-			Comment: `EnableEthRPC enables APIs that
-DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+			Comment: `DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
 		},
 		{
 			Name: "DisableHistoricFilterAPI",
@@ -356,7 +878,16 @@ The API is enabled when EnableEthRPC is true, but can be disabled selectively wi
 
 			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "EnableActorEventsAPI",
+			Type: "bool",
+
+			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+emitted by (smart contracts + built-in Actors).
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+disabled by setting their respective Disable* options.`,
 		},
 		{
 			Name: "FilterTTL",
@@ -394,7 +925,36 @@ the database must already exist and be writeable. If a relative path is provided
 relative to the CWD (current working directory).`,
 		},
 	},
-	"FeeConfig": []DocField{
+	"FaultReporterConfig": {
+		{
+			Name: "EnableConsensusFaultReporter",
+			Type: "bool",
+
+			Comment: `EnableConsensusFaultReporter controls whether the node will monitor and
+report consensus faults. When enabled, the node will watch for malicious
+behaviors like double-mining and parent grinding, and submit reports to the
+network. This can earn reporter rewards, but is not guaranteed. Nodes should
+enable fault reporting with care, as it may increase resource usage, and may
+generate gas fees without earning rewards.`,
+		},
+		{
+			Name: "ConsensusFaultReporterDataDir",
+			Type: "string",
+
+			Comment: `ConsensusFaultReporterDataDir is the path where fault reporter state will be
+persisted. This directory should have adequate space and permissions for the
+node process.`,
+		},
+		{
+			Name: "ConsensusFaultReporterAddress",
+			Type: "string",
+
+			Comment: `ConsensusFaultReporterAddress is the wallet address used for submitting
+ReportConsensusFault messages. It will pay for gas fees, and receive any
+rewards. This address should have adequate funds to cover gas fees.`,
+		},
+	},
+	"FeeConfig": {
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
@@ -402,7 +962,7 @@ relative to the CWD (current working directory).`,
 			Comment: ``,
 		},
 	},
-	"FevmConfig": []DocField{
+	"FevmConfig": {
 		{
 			Name: "EnableEthRPC",
 			Type: "bool",
@@ -419,12 +979,12 @@ Set to 0 to keep all mappings`,
 		},
 		{
 			Name: "Events",
-			Type: "Events",
+			Type: "DeprecatedEvents",
 
 			Comment: ``,
 		},
 	},
-	"FullNode": []DocField{
+	"FullNode": {
 		{
 			Name: "Client",
 			Type: "Client",
@@ -450,14 +1010,14 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 		{
-			Name: "Cluster",
-			Type: "UserRaftConfig",
+			Name: "Fevm",
+			Type: "FevmConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Fevm",
-			Type: "FevmConfig",
+			Name: "Events",
+			Type: "EventsConfig",
 
 			Comment: ``,
 		},
@@ -467,8 +1027,47 @@ Set to 0 to keep all mappings`,
 
 			Comment: ``,
 		},
+		{
+			Name: "FaultReporter",
+			Type: "FaultReporterConfig",
+
+			Comment: ``,
+		},
 	},
-	"IndexConfig": []DocField{
+	"HarmonyDB": {
+		{
+			Name: "Hosts",
+			Type: "[]string",
+
+			Comment: `HOSTS is a list of hostnames to nodes running YugabyteDB
+in a cluster. Only 1 is required`,
+		},
+		{
+			Name: "Username",
+			Type: "string",
+
+			Comment: `The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.`,
+		},
+		{
+			Name: "Password",
+			Type: "string",
+
+			Comment: `The password for the related username. Blank for default.`,
+		},
+		{
+			Name: "Database",
+			Type: "string",
+
+			Comment: `The database (logical partition) within Yugabyte. Blank for default.`,
+		},
+		{
+			Name: "Port",
+			Type: "string",
+
+			Comment: `The port to find Yugabyte. Blank for default.`,
+		},
+	},
+	"IndexConfig": {
 		{
 			Name: "EnableMsgIndex",
 			Type: "bool",
@@ -477,7 +1076,7 @@ Set to 0 to keep all mappings`,
 EnableMsgIndex enables indexing of messages on chain.`,
 		},
 	},
-	"IndexProviderConfig": []DocField{
+	"IndexProviderConfig": {
 		{
 			Name: "Enable",
 			Type: "bool",
@@ -522,7 +1121,15 @@ starts. By default, the cache is rehydrated from previously cached entries store
 datastore if any is present.`,
 		},
 	},
-	"Libp2p": []DocField{
+	"JournalConfig": {
+		{
+			Name: "DisabledEvents",
+			Type: "string",
+
+			Comment: `Events of the form: "system1:event1,system1:event2[,...]"`,
+		},
+	},
+	"Libp2p": {
 		{
 			Name: "ListenAddresses",
 			Type: "[]string",
@@ -589,7 +1196,7 @@ count towards this limit.`,
 closed by the connection manager.`,
 		},
 	},
-	"Logging": []DocField{
+	"Logging": {
 		{
 			Name: "SubsystemLevels",
 			Type: "map[string]string",
@@ -597,7 +1204,7 @@ closed by the connection manager.`,
 			Comment: `SubsystemLevels specify per-subsystem log levels`,
 		},
 	},
-	"MinerAddressConfig": []DocField{
+	"MinerAddressConfig": {
 		{
 			Name: "PreCommitControl",
 			Type: "[]string",
@@ -639,7 +1246,7 @@ A control address that doesn't have enough funds will still be chosen
 over the worker address if this flag is set.`,
 		},
 	},
-	"MinerFeeConfig": []DocField{
+	"MinerFeeConfig": {
 		{
 			Name: "MaxPreCommitGasFee",
 			Type: "types.FIL",
@@ -688,8 +1295,14 @@ over the worker address if this flag is set.`,
 
 			Comment: ``,
 		},
+		{
+			Name: "MaximizeWindowPoStFeeCap",
+			Type: "bool",
+
+			Comment: ``,
+		},
 	},
-	"MinerSubsystemConfig": []DocField{
+	"MinerSubsystemConfig": {
 		{
 			Name: "EnableMining",
 			Type: "bool",
@@ -715,6 +1328,14 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 		{
+			Name: "EnableSectorIndexDB",
+			Type: "bool",
+
+			Comment: `When enabled, the sector index will reside in an external database
+as opposed to the local KV store in the miner process
+This is useful to allow workers to bypass the lotus miner to access sector information`,
+		},
+		{
 			Name: "SealerApiInfo",
 			Type: "string",
 
@@ -726,8 +1347,33 @@ over the worker address if this flag is set.`,
 
 			Comment: ``,
 		},
+		{
+			Name: "DisableWindowPoSt",
+			Type: "bool",
+
+			Comment: `When window post is enabled, the miner will automatically submit window post proofs
+for all sectors that are eligible for window post
+IF WINDOW POST IS DISABLED, THE MINER WILL NOT SUBMIT WINDOW POST PROOFS
+THIS WILL RESULT IN FAULTS AND PENALTIES IF NO OTHER MECHANISM IS RUNNING
+TO SUBMIT WINDOW POST PROOFS.
+Note: This option is entirely disabling the window post scheduler,
+not just the builtin PoSt computation like Proving.DisableBuiltinWindowPoSt.
+This option will stop lotus-miner from performing any actions related
+to window post, including scheduling, submitting proofs, and recovering
+sectors.`,
+		},
+		{
+			Name: "DisableWinningPoSt",
+			Type: "bool",
+
+			Comment: `When winning post is disabled, the miner process will NOT attempt to mine
+blocks. This should only be set when there's an external process mining
+blocks on behalf of the miner.
+When disabled and no external block producers are configured, all potential
+block rewards will be missed!`,
+		},
 	},
-	"ProvingConfig": []DocField{
+	"ProvingConfig": {
 		{
 			Name: "ParallelCheckLimit",
 			Type: "int",
@@ -818,13 +1464,10 @@ After changing this option, confirm that the new value works in your setup by in
 			Name: "MaxPartitionsPerPoStMessage",
 			Type: "int",
 
-			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
 
 A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
-
-The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-means that a single message can prove at most 10 partitions
-
+//
 Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 
@@ -854,7 +1497,7 @@ Note that setting this value lower may result in less efficient gas use - more m
 to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)`,
 		},
 	},
-	"Pubsub": []DocField{
+	"Pubsub": {
 		{
 			Name: "Bootstrapper",
 			Type: "bool",
@@ -914,7 +1557,7 @@ This property is used only if ElasticSearchTracer propery is set.`,
 			Comment: `Auth token that will be passed with logs to elasticsearch - used for weighted peers score.`,
 		},
 	},
-	"RetrievalPricing": []DocField{
+	"RetrievalPricing": {
 		{
 			Name: "Strategy",
 			Type: "string",
@@ -934,7 +1577,7 @@ This property is used only if ElasticSearchTracer propery is set.`,
 			Comment: ``,
 		},
 	},
-	"RetrievalPricingDefault": []DocField{
+	"RetrievalPricingDefault": {
 		{
 			Name: "VerifiedDealsFreeTransfer",
 			Type: "bool",
@@ -945,7 +1588,7 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 default value is true`,
 		},
 	},
-	"RetrievalPricingExternal": []DocField{
+	"RetrievalPricingExternal": {
 		{
 			Name: "Path",
 			Type: "string",
@@ -954,7 +1597,7 @@ default value is true`,
 This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".`,
 		},
 	},
-	"SealerConfig": []DocField{
+	"SealerConfig": {
 		{
 			Name: "ParallelFetchLimit",
 			Type: "int",
@@ -1055,7 +1698,7 @@ to use when evaluating tasks against this worker. An empty value defaults
 to "hardware".`,
 		},
 	},
-	"SealingConfig": []DocField{
+	"SealingConfig": {
 		{
 			Name: "MaxWaitDealsSectors",
 			Type: "uint64",
@@ -1115,7 +1758,7 @@ required to have expiration of at least the soonest-ending deal`,
 
 			Comment: `CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 live before it must be extended or converted into sector containing deals before it is
-terminated. Value must be between 180-540 days inclusive`,
+terminated. Value must be between 180-1278 days (1278 in nv21, 540 before nv21).`,
 		},
 		{
 			Name: "WaitDealsDelay",
@@ -1170,12 +1813,6 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Comment: `Don't send collateral with messages even if there is no available balance in the miner actor`,
 		},
 		{
-			Name: "BatchPreCommits",
-			Type: "bool",
-
-			Comment: `enable / disable precommit batching (takes effect after nv13)`,
-		},
-		{
 			Name: "MaxPreCommitBatch",
 			Type: "int",
 
@@ -1228,7 +1865,8 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Type: "types.FIL",
 
 			Comment: `network BaseFee below which to stop doing precommit batching, instead
-sending precommit messages to the chain individually`,
+sending precommit messages to the chain individually. When the basefee is
+below this threshold, precommit messages will get sent out immediately.`,
 		},
 		{
 			Name: "AggregateAboveBaseFee",
@@ -1265,14 +1903,44 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 
 			Comment: ``,
 		},
+		{
+			Name: "UseSyntheticPoRep",
+			Type: "bool",
+
+			Comment: `UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.`,
+		},
+		{
+			Name: "RequireActivationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireActivationSuccessUpdate",
+			Type: "bool",
+
+			Comment: `Whether to abort if any piece activation notification returns a non-zero exit code (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireNotificationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).`,
+		},
+		{
+			Name: "RequireNotificationSuccessUpdate",
+			Type: "bool",
+
+			Comment: `Whether to abort if any piece activation notification returns a non-zero exit code (updating sectors, only with ProveReplicaUpdates3).`,
+		},
 	},
-	"Splitstore": []DocField{
+	"Splitstore": {
 		{
 			Name: "ColdStoreType",
 			Type: "string",
 
 			Comment: `ColdStoreType specifies the type of the coldstore.
-It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.`,
+It can be "discard" (default) for discarding cold blocks, "messages" to store only messages or "universal" to store all chain state..`,
 		},
 		{
 			Name: "HotStoreType",
@@ -1333,7 +2001,7 @@ is set.  Moving GC will not occur when total moving size exceeds
 HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 		},
 	},
-	"StorageMiner": []DocField{
+	"StorageMiner": {
 		{
 			Name: "Subsystems",
 			Type: "MinerSubsystemConfig",
@@ -1388,70 +2056,14 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 
 			Comment: ``,
 		},
-	},
-	"UserRaftConfig": []DocField{
 		{
-			Name: "ClusterModeEnabled",
-			Type: "bool",
+			Name: "HarmonyDB",
+			Type: "HarmonyDB",
 
-			Comment: `EXPERIMENTAL. config to enabled node cluster with raft consensus`,
-		},
-		{
-			Name: "DataFolder",
-			Type: "string",
-
-			Comment: `A folder to store Raft's data.`,
-		},
-		{
-			Name: "InitPeersetMultiAddr",
-			Type: "[]string",
-
-			Comment: `InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
-peers (with no prior state). It is ignored when Raft was already
-initialized or when starting in staging mode.`,
-		},
-		{
-			Name: "WaitForLeaderTimeout",
-			Type: "Duration",
-
-			Comment: `LeaderTimeout specifies how long to wait for a leader before
-failing an operation.`,
-		},
-		{
-			Name: "NetworkTimeout",
-			Type: "Duration",
-
-			Comment: `NetworkTimeout specifies how long before a Raft network
-operation is timed out`,
-		},
-		{
-			Name: "CommitRetries",
-			Type: "int",
-
-			Comment: `CommitRetries specifies how many times we retry a failed commit until
-we give up.`,
-		},
-		{
-			Name: "CommitRetryDelay",
-			Type: "Duration",
-
-			Comment: `How long to wait between retries`,
-		},
-		{
-			Name: "BackupsRotate",
-			Type: "int",
-
-			Comment: `BackupsRotate specifies the maximum number of Raft's DataFolder
-copies that we keep as backups (renaming) after cleanup.`,
-		},
-		{
-			Name: "Tracing",
-			Type: "bool",
-
-			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
+			Comment: ``,
 		},
 	},
-	"Wallet": []DocField{
+	"Wallet": {
 		{
 			Name: "RemoteBackend",
 			Type: "string",

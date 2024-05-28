@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
@@ -62,7 +63,7 @@ func (e *EthModuleDummy) EthGetTransactionByHashLimited(ctx context.Context, txH
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error) {
+func (e *EthModuleDummy) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
 
@@ -82,15 +83,15 @@ func (e *EthModuleDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Cont
 	return ethtypes.EthTx{}, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error) {
+func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigIntZero, ErrModuleDisabled
 }
 
@@ -122,11 +123,11 @@ func (e *EthModuleDummy) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, e
 	return ethtypes.EthBigIntZero, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error) {
+func (e *EthModuleDummy) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
@@ -178,5 +179,27 @@ func (e *EthModuleDummy) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubs
 	return false, ErrModuleDisabled
 }
 
+func (e *EthModuleDummy) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
+	return nil, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
+	return nil, ErrModuleDisabled
+}
+
 var _ EthModuleAPI = &EthModuleDummy{}
 var _ EthEventAPI = &EthModuleDummy{}
+
+var ErrActorEventModuleDisabled = errors.New("module disabled, enable with Events.EnableActorEventsAPI")
+
+type ActorEventDummy struct{}
+
+func (a *ActorEventDummy) GetActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	return nil, ErrActorEventModuleDisabled
+}
+
+func (a *ActorEventDummy) SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	return nil, ErrActorEventModuleDisabled
+}
+
+var _ ActorEventAPI = &ActorEventDummy{}

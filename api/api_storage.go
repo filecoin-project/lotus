@@ -19,11 +19,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -75,7 +76,7 @@ type StorageMiner interface {
 	// Add piece to an open sector. If no sectors with enough space are open,
 	// either a new sector will be created, or this call will block until more
 	// sectors can be created.
-	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d PieceDealInfo) (SectorOffset, error) //perm:admin
+	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d piece.PieceDealInfo) (SectorOffset, error) //perm:admin
 
 	SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error //perm:admin
 
@@ -199,11 +200,11 @@ type StorageMiner interface {
 	// StorageBestAlloc returns list of paths where sector files of the specified type can be allocated, ordered by preference.
 	// Paths with more weight and more % of free space are preferred.
 	// Note: This method doesn't filter paths based on AllowTypes/DenyTypes.
-	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) //perm:admin
-	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                   //perm:admin
-	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                        //perm:admin
-	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                  //perm:admin
-	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                          //perm:admin
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error) //perm:admin
+	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                                      //perm:admin
+	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                                           //perm:admin
+	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                                     //perm:admin
+	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                                             //perm:admin
 
 	StorageLocal(ctx context.Context) (map[storiface.ID]string, error)       //perm:admin
 	StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) //perm:admin
@@ -353,9 +354,20 @@ type SectorLog struct {
 }
 
 type SectorPiece struct {
-	Piece    abi.PieceInfo
-	DealInfo *PieceDealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
+	Piece abi.PieceInfo
+
+	// DealInfo is nil for pieces which do not appear in deals (e.g. filler pieces)
+	// NOTE: DDO pieces which aren't associated with a market deal and have no
+	// verified allocation will still have a non-nil DealInfo.
+	// nil DealInfo indicates that the piece is a filler, and has zero piece commitment.
+	DealInfo *piece.PieceDealInfo
 }
+
+// DEPRECATED: Use piece.PieceDealInfo instead
+type PieceDealInfo = piece.PieceDealInfo
+
+// DEPRECATED: Use piece.DealSchedule instead
+type DealSchedule = piece.DealSchedule
 
 type SectorInfo struct {
 	SectorID             abi.SectorNumber
@@ -457,23 +469,6 @@ type PendingDealInfo struct {
 type SectorOffset struct {
 	Sector abi.SectorNumber
 	Offset abi.PaddedPieceSize
-}
-
-// DealInfo is a tuple of deal identity and its schedule
-type PieceDealInfo struct {
-	PublishCid   *cid.Cid
-	DealID       abi.DealID
-	DealProposal *market.DealProposal
-	DealSchedule DealSchedule
-	KeepUnsealed bool
-}
-
-// DealSchedule communicates the time interval of a storage deal. The deal must
-// appear in a sealed (proven) sector no later than StartEpoch, otherwise it
-// is invalid.
-type DealSchedule struct {
-	StartEpoch abi.ChainEpoch
-	EndEpoch   abi.ChainEpoch
 }
 
 // DagstoreShardInfo is the serialized form of dagstore.DagstoreShardInfo that

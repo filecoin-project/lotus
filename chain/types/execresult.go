@@ -24,6 +24,13 @@ type MessageTrace struct {
 	Method      abi.MethodNum
 	Params      []byte
 	ParamsCodec uint64
+	GasLimit    uint64
+	ReadOnly    bool
+}
+
+type ActorTrace struct {
+	Id    abi.ActorID
+	State Actor
 }
 
 type ReturnTrace struct {
@@ -33,10 +40,11 @@ type ReturnTrace struct {
 }
 
 type ExecutionTrace struct {
-	Msg        MessageTrace
-	MsgRct     ReturnTrace
-	GasCharges []*GasTrace      `cborgen:"maxlen=1000000000"`
-	Subcalls   []ExecutionTrace `cborgen:"maxlen=1000000000"`
+	Msg          MessageTrace
+	MsgRct       ReturnTrace
+	InvokedActor *ActorTrace      `json:",omitempty"`
+	GasCharges   []*GasTrace      `cborgen:"maxlen=1000000000"`
+	Subcalls     []ExecutionTrace `cborgen:"maxlen=1000000000"`
 }
 
 func (et ExecutionTrace) SumGas() GasTrace {

@@ -3,7 +3,7 @@ package miner
 import (
 	"context"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-address"
@@ -22,19 +22,19 @@ type MineReq struct {
 
 func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(v1api.FullNode, gen.WinningPoStProver) *Miner {
 	return func(api v1api.FullNode, epp gen.WinningPoStProver) *Miner {
-		arc, err := lru.NewARC[abi.ChainEpoch, bool](10000)
+		arc, err := arc.NewARC[abi.ChainEpoch, bool](10000)
 		if err != nil {
 			panic(err)
 		}
 
 		m := &Miner{
-			api:               api,
-			waitFunc:          chanWaiter(nextCh),
-			epp:               epp,
-			minedBlockHeights: arc,
-			address:           addr,
-			sf:                slashfilter.New(ds.NewMapDatastore()),
-			journal:           journal.NilJournal(),
+			api:                 api,
+			propagationWaitFunc: chanWaiter(nextCh),
+			epp:                 epp,
+			minedBlockHeights:   arc,
+			address:             addr,
+			sf:                  slashfilter.New(ds.NewMapDatastore()),
+			journal:             journal.NilJournal(),
 		}
 
 		if err := m.Start(context.TODO()); err != nil {

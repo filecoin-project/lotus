@@ -284,7 +284,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 
 	return &api.MarketDeal{
 		Proposal: *proposal,
-		State:    *st,
+		State:    api.MakeDealState(st),
 	}, nil
 }
 
@@ -355,7 +355,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
 	}
 
-	prand, err := rand.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+	prand, err := rand.DrawRandomnessFromBase(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
@@ -542,7 +542,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 
-	addr, err = sm.LookupID(ctx, addr, ts)
+	addr, err = sm.LookupIDAddress(ctx, addr, ts)
 	if err != nil {
 		return api.MarketBalance{}, err
 	}

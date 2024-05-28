@@ -185,6 +185,30 @@ func (worker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated [
 	return "WORKER_API_INFO", nil, nil
 }
 
+type curio struct{}
+
+var Curio curio
+
+func (curio) Type() string {
+	return "Curio"
+}
+
+func (curio) Config() interface{} {
+	return &struct{}{}
+}
+
+func (curio) APIFlags() []string {
+	return []string{"curio-api-url"}
+}
+
+func (curio) RepoFlags() []string {
+	return []string{"curio-repo"}
+}
+
+func (curio) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "CURIO_API_INFO", nil, nil
+}
+
 var Wallet wallet
 
 type wallet struct {
@@ -264,7 +288,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 	}
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
-	err = os.MkdirAll(fsr.path, 0755) //nolint: gosec
+	err = os.MkdirAll(fsr.path, 0755)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -322,7 +346,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 
 	f, err := os.Open(p)
 	if os.IsNotExist(err) {
-		return nil, ErrNoAPIEndpoint
+		return nil, xerrors.Errorf("No file (%s): %w", p, ErrNoAPIEndpoint)
 	} else if err != nil {
 		return nil, err
 	}

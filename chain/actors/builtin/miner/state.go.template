@@ -72,7 +72,7 @@ func (s *state{{.v}}) AvailableBalance(bal abi.TokenAmount) (available abi.Token
 			available = abi.NewTokenAmount(0)
 		}
 	}()
-	// this panics if the miner doesnt have enough funds to cover their locked pledge
+	// this panics if the miner doesn't have enough funds to cover their locked pledge
 	available{{if (ge .v 2)}}, err{{end}} = s.GetAvailableBalance(bal)
 	return available, err
 }
@@ -583,7 +583,12 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
 		{{if (ge .v 7)}}
 		SectorKeyCID: v{{.v}}.SectorKeyCID,
-        {{end}}
+                {{end}}
+		{{if (ge .v 12)}}
+		PowerBaseEpoch:        v{{.v}}.PowerBaseEpoch,
+		ReplacedDayReward:     v{{.v}}.ReplacedDayReward,
+		Flags:                 SectorOnChainInfoFlags(v{{.v}}.Flags),
+                {{end}}
 	}
 	return info
 }

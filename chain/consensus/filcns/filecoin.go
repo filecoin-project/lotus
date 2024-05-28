@@ -80,15 +80,17 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 	if actErr != nil {
 		return xerrors.Errorf("failed to apply reward message: %w", actErr)
 	}
+
+	if !ret.ExitCode.IsSuccess() {
+		return xerrors.Errorf("reward actor failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
+	}
+
 	if em != nil {
 		if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
 			return xerrors.Errorf("callback failed on reward message: %w", err)
 		}
 	}
 
-	if ret.ExitCode != 0 {
-		return xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
-	}
 	return nil
 }
 
@@ -127,6 +129,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
+	// TODO: Optimization: See https://github.com/filecoin-project/lotus/issues/11597
 	prevBeacon, err := filec.store.GetLatestBeaconEntry(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
@@ -147,7 +150,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
 	}
 	if h.Timestamp > now {
-		log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
+		log.Warnf("Got block from the future, but within threshold (%d > %d)", h.Timestamp, now)
 	}
 
 	minerCheck := async.Err(func() error {
@@ -163,7 +166,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 	}
 
 	if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
-		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
+		return xerrors.Errorf("parent weight different: %s (header) != %s (computed)",
 			b.Header.ParentWeight, pweight)
 	}
 
@@ -196,7 +199,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		vrfBase, err := rand.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
+		vrfBase, err := rand.DrawRandomnessFromBase(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("could not draw randomness: %w", err)
 		}
@@ -262,7 +265,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			beaconBase = h.BeaconEntries[len(h.BeaconEntries)-1]
 		}
 
-		vrfBase, err := rand.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, h.Height-build.TicketRandomnessLookback, buf.Bytes())
+		vrfBase, err := rand.DrawRandomnessFromBase(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, h.Height-build.TicketRandomnessLookback, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
@@ -340,7 +343,7 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 		rbase = h.BeaconEntries[len(h.BeaconEntries)-1]
 	}
 
-	rand, err := rand.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height, buf.Bytes())
+	rand, err := rand.DrawRandomnessFromBase(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying winning post proof: %w", err)
 	}

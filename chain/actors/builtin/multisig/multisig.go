@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	msig11 "github.com/filecoin-project/go-state-types/builtin/v11/multisig"
+	msig14 "github.com/filecoin-project/go-state-types/builtin/v14/multisig"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -47,6 +47,15 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version11:
 			return load11(store, act.Head)
+
+		case actorstypes.Version12:
+			return load12(store, act.Head)
+
+		case actorstypes.Version13:
+			return load13(store, act.Head)
+
+		case actorstypes.Version14:
+			return load14(store, act.Head)
 
 		}
 	}
@@ -115,6 +124,15 @@ func MakeState(store adt.Store, av actorstypes.Version, signers []address.Addres
 	case actorstypes.Version11:
 		return make11(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
+	case actorstypes.Version12:
+		return make12(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actorstypes.Version13:
+		return make13(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actorstypes.Version14:
+		return make14(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -141,7 +159,7 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig11.Transaction
+type Transaction = msig14.Transaction
 
 var Methods = builtintypes.MethodsMultisig
 
@@ -180,6 +198,15 @@ func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 
 	case actorstypes.Version11:
 		return message11{message0{from}}
+
+	case actorstypes.Version12:
+		return message12{message0{from}}
+
+	case actorstypes.Version13:
+		return message13{message0{from}}
+
+	case actorstypes.Version14:
+		return message14{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -203,13 +230,13 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig11.ProposalHashData
-type ProposeReturn = msig11.ProposeReturn
-type ProposeParams = msig11.ProposeParams
-type ApproveReturn = msig11.ApproveReturn
+type ProposalHashData = msig14.ProposalHashData
+type ProposeReturn = msig14.ProposeReturn
+type ProposeParams = msig14.ProposeParams
+type ApproveReturn = msig14.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig11.TxnIDParams{ID: msig11.TxnID(id)}
+	params := msig14.TxnIDParams{ID: msig14.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
@@ -244,5 +271,8 @@ func AllCodes() []cid.Cid {
 		(&state9{}).Code(),
 		(&state10{}).Code(),
 		(&state11{}).Code(),
+		(&state12{}).Code(),
+		(&state13{}).Code(),
+		(&state14{}).Code(),
 	}
 }

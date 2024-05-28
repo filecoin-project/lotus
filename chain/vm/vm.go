@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtin_types "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -32,13 +31,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 )
 
 const MaxCallDepth = 4096
-const CborCodec = 0x51
 
 var (
 	log            = logging.Logger("vm")
@@ -128,7 +127,7 @@ func (bs *gasChargingBlocks) Put(ctx context.Context, blk block.Block) error {
 func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runtime) *Runtime {
 	paramsCodec := uint64(0)
 	if len(msg.Params) > 0 {
-		paramsCodec = CborCodec
+		paramsCodec = uint64(multicodec.Cbor)
 	}
 	rt := &Runtime{
 		ctx:         ctx,
@@ -224,7 +223,7 @@ type LegacyVM struct {
 	buf            *blockstore.BufferedBlockstore
 	blockHeight    abi.ChainEpoch
 	areg           *ActorRegistry
-	rand           Rand
+	rand           rand.Rand
 	circSupplyCalc CircSupplyCalculator
 	networkVersion network.Version
 	baseFee        abi.TokenAmount
@@ -238,7 +237,7 @@ type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
 	Timestamp      uint64
-	Rand           Rand
+	Rand           rand.Rand
 	Bstore         blockstore.Blockstore
 	Actors         *ActorRegistry
 	Syscalls       SyscallBuilder
@@ -285,11 +284,6 @@ func NewLegacyVM(ctx context.Context, opts *VMOpts) (*LegacyVM, error) {
 		baseCircSupply: baseCirc,
 		lbStateGet:     opts.LookbackState,
 	}, nil
-}
-
-type Rand interface {
-	GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
@@ -342,9 +336,7 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				if vm.networkVersion <= network.Version3 {
-					// Leave the rt.Message as is
-				} else {
+				if vm.networkVersion > network.Version3 {
 					nmsg := Message{
 						msg: types.Message{
 							To:    aid,
@@ -352,9 +344,8 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 							Value: rt.Message.ValueReceived(),
 						},
 					}
-
 					rt.Message = &nmsg
-				}
+				} // else leave the rt.Message as is
 			} else {
 				return nil, aerrors.Escalate(err, "getting actor")
 			}
@@ -385,7 +376,7 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 
 	retCodec := uint64(0)
 	if len(ret) > 0 {
-		retCodec = CborCodec
+		retCodec = uint64(multicodec.Cbor)
 	}
 	rt.executionTrace.MsgRct = types.ReturnTrace{
 		ExitCode:    aerrors.RetCode(err),
@@ -700,15 +691,15 @@ func (vm *LegacyVM) ActorStore(ctx context.Context) adt.Store {
 }
 
 func linksForObj(blk block.Block, cb func(cid.Cid)) error {
-	switch blk.Cid().Prefix().Codec {
-	case cid.DagCBOR:
+	switch multicodec.Code(blk.Cid().Prefix().Codec) {
+	case multicodec.DagCbor:
 		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
 		if err != nil {
 			return xerrors.Errorf("cbg.ScanForLinks: %w", err)
 		}
 		return nil
-	case cid.Raw:
-		// We implicitly have all children of raw blocks.
+	case multicodec.Raw, multicodec.Cbor:
+		// We implicitly have all children of raw/cbor blocks.
 		return nil
 	default:
 		return xerrors.Errorf("vm flush copy method only supports dag cbor")
@@ -808,14 +799,17 @@ func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, 
 		}
 
 		prefix := link.Prefix()
-		if prefix.Codec == cid.FilCommitmentSealed || prefix.Codec == cid.FilCommitmentUnsealed {
+		codec := multicodec.Code(prefix.Codec)
+		switch codec {
+		case multicodec.FilCommitmentSealed, cid.FilCommitmentUnsealed:
 			return
 		}
 
 		// We always have blocks inlined into CIDs, but we may not have their children.
-		if prefix.MhType == mh.IDENTITY {
+		if multicodec.Code(prefix.MhType) == multicodec.Identity {
 			// Unless the inlined block has no children.
-			if prefix.Codec == cid.Raw {
+			switch codec {
+			case multicodec.Raw, multicodec.Cbor:
 				return
 			}
 		} else {
@@ -905,7 +899,7 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
 		}
 
-		fromID, err = vm.cstate.LookupID(from)
+		fromID, err = vm.cstate.LookupIDAddress(from)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
 		}
@@ -924,7 +918,7 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return nil
 		}
 
-		toID, err = vm.cstate.LookupID(to)
+		toID, err = vm.cstate.LookupIDAddress(to)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
 		}
@@ -938,12 +932,12 @@ func (vm *LegacyVM) transfer(from, to address.Address, amt types.BigInt, network
 			return nil
 		}
 
-		fromID, err = vm.cstate.LookupID(from)
+		fromID, err = vm.cstate.LookupIDAddress(from)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
 		}
 
-		toID, err = vm.cstate.LookupID(to)
+		toID, err = vm.cstate.LookupIDAddress(to)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
 		}

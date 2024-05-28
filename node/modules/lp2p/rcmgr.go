@@ -15,20 +15,22 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
-	rcmgrObs "github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
+	ma "github.com/multiformats/go-multiaddr"
+	madns "github.com/multiformats/go-multiaddr-dns"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var rcmgrMetricsOnce sync.Once
 
-func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
-	return func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
+func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo, bs dtypes.BootstrapPeers) (network.ResourceManager, error) {
+	return func(lc fx.Lifecycle, repo repo.LockedRepo, bs dtypes.BootstrapPeers) (network.ResourceManager, error) {
 		isFullNode := repo.RepoType().Type() == "FullNode"
 		envvar := os.Getenv("LOTUS_RCMGR")
 		if (isFullNode && envvar == "0") || // only set NullResourceManager if envvar is explicitly "0"
@@ -39,7 +41,7 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 
 		log.Info("libp2p resource manager is enabled")
 		// enable debug logs for rcmgr
-		logging.SetLogLevel("rcmgr", "debug")
+		_ = logging.SetLogLevel("rcmgr", "debug")
 
 		// Adjust default defaultLimits
 		// - give it more memory, up to 4G, min of 1G
@@ -113,13 +115,13 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 			return nil, err
 		}
 
-		str, err := rcmgrObs.NewStatsTraceReporter()
+		str, err := rcmgr.NewStatsTraceReporter()
 		if err != nil {
 			return nil, fmt.Errorf("error creating resource manager stats reporter: %w", err)
 		}
 
 		rcmgrMetricsOnce.Do(func() {
-			rcmgrObs.MustRegisterWith(prometheus.DefaultRegisterer)
+			rcmgr.MustRegisterWith(prometheus.DefaultRegisterer)
 		})
 
 		// Metrics
@@ -133,6 +135,20 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 			traceFile := filepath.Join(debugPath, "rcmgr.json.gz")
 			opts = append(opts, rcmgr.WithTrace(traceFile))
 		}
+
+		resolver := madns.DefaultResolver
+		var bootstrapperMaddrs []ma.Multiaddr
+		for _, pi := range bs {
+			for _, addr := range pi.Addrs {
+				resolved, err := resolver.Resolve(context.Background(), addr)
+				if err != nil {
+					continue
+				}
+				bootstrapperMaddrs = append(bootstrapperMaddrs, resolved...)
+			}
+		}
+
+		opts = append(opts, rcmgr.WithAllowlistedMultiaddrs(bootstrapperMaddrs))
 
 		mgr, err := rcmgr.NewResourceManager(limiter, opts...)
 		if err != nil {

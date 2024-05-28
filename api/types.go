@@ -19,8 +19,8 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -56,14 +56,17 @@ type PubsubScore struct {
 	Score *pubsub.PeerScoreSnapshot
 }
 
+// MessageSendSpec contains optional fields which modify message sending behavior
 type MessageSendSpec struct {
-	MaxFee  abi.TokenAmount
-	MsgUuid uuid.UUID
-}
+	// MaxFee specifies a cap on network fees related to this message
+	MaxFee abi.TokenAmount
 
-type MpoolMessageWhole struct {
-	Msg  *types.Message
-	Spec *MessageSendSpec
+	// MsgUuid specifies a unique message identifier which can be used on node (or node cluster)
+	// level to prevent double-sends of messages even when nonce generation is not handled by sender
+	MsgUuid uuid.UUID
+
+	// MaximizeFeeCap makes message FeeCap be based entirely on MaxFee
+	MaximizeFeeCap bool
 }
 
 // GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
@@ -312,6 +315,7 @@ type NetworkParams struct {
 	SupportedProofTypes     []abi.RegisteredSealProof
 	PreCommitChallengeDelay abi.ChainEpoch
 	ForkUpgradeParams       ForkUpgradeParams
+	Eip155ChainID           int
 }
 
 type ForkUpgradeParams struct {
@@ -339,64 +343,10 @@ type ForkUpgradeParams struct {
 	UpgradeHyggeHeight       abi.ChainEpoch
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
-}
-
-type NonceMapType map[address.Address]uint64
-type MsgUuidMapType map[uuid.UUID]*types.SignedMessage
-
-type RaftStateData struct {
-	NonceMap NonceMapType
-	MsgUuids MsgUuidMapType
-}
-
-func (n *NonceMapType) MarshalJSON() ([]byte, error) {
-	marshalled := make(map[string]uint64)
-	for a, n := range *n {
-		marshalled[a.String()] = n
-	}
-	return json.Marshal(marshalled)
-}
-
-func (n *NonceMapType) UnmarshalJSON(b []byte) error {
-	unmarshalled := make(map[string]uint64)
-	err := json.Unmarshal(b, &unmarshalled)
-	if err != nil {
-		return err
-	}
-	*n = make(map[address.Address]uint64)
-	for saddr, nonce := range unmarshalled {
-		a, err := address.NewFromString(saddr)
-		if err != nil {
-			return err
-		}
-		(*n)[a] = nonce
-	}
-	return nil
-}
-
-func (m *MsgUuidMapType) MarshalJSON() ([]byte, error) {
-	marshalled := make(map[string]*types.SignedMessage)
-	for u, msg := range *m {
-		marshalled[u.String()] = msg
-	}
-	return json.Marshal(marshalled)
-}
-
-func (m *MsgUuidMapType) UnmarshalJSON(b []byte) error {
-	unmarshalled := make(map[string]*types.SignedMessage)
-	err := json.Unmarshal(b, &unmarshalled)
-	if err != nil {
-		return err
-	}
-	*m = make(map[uuid.UUID]*types.SignedMessage)
-	for suid, msg := range unmarshalled {
-		u, err := uuid.Parse(suid)
-		if err != nil {
-			return err
-		}
-		(*m)[u] = msg
-	}
-	return nil
+	UpgradeWatermelonHeight  abi.ChainEpoch
+	UpgradeDragonHeight      abi.ChainEpoch
+	UpgradePhoenixHeight     abi.ChainEpoch
+	UpgradeAussieHeight      abi.ChainEpoch
 }
 
 // ChainExportConfig holds configuration for chain ranged exports.

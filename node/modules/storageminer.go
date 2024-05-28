@@ -157,7 +157,8 @@ func SealProofType(maddr dtypes.MinerAddress, fnapi v1api.FullNode) (abi.Registe
 		return 0, err
 	}
 
-	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
+	// node seal proof type does not decide whether or not we use synthetic porep
+	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType, false)
 }
 
 func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.AddressSelector, error) {
@@ -310,12 +311,11 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 			verif  = params.Verifier
 			j      = params.Journal
 			as     = params.AddrSel
-			maddr  = address.Address(params.Maddr)
 		)
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr)
+		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, []dtypes.MinerAddress{params.Maddr})
 
 		if err != nil {
 			return nil, err
@@ -820,7 +820,13 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, e
 	return sealer.StorageAuth(headers), nil
 }
 
-func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
+func StorageAuthWithURL(apiInfo string) interface{} {
+	if strings.HasPrefix(apiInfo, "harmony:") {
+		return func(ctx helpers.MetricsCtx, ca MinerStorageService) (sealer.StorageAuth, error) {
+			return StorageAuth(ctx, ca)
+		}
+	}
+
 	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
 		s := strings.Split(apiInfo, ":")
 		if len(s) != 2 {
@@ -1000,7 +1006,6 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
 				DisableCollateralFallback:  cfg.DisableCollateralFallback,
 
-				BatchPreCommits:     cfg.BatchPreCommits,
 				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
 				PreCommitBatchSlack: config.Duration(cfg.PreCommitBatchSlack),
@@ -1017,6 +1022,12 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				TerminateBatchMin:                      cfg.TerminateBatchMin,
 				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
 				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
+				UseSyntheticPoRep:                      cfg.UseSyntheticPoRep,
+
+				RequireActivationSuccess:         cfg.RequireActivationSuccess,
+				RequireActivationSuccessUpdate:   cfg.RequireActivationSuccessUpdate,
+				RequireNotificationSuccess:       cfg.RequireNotificationSuccess,
+				RequireNotificationSuccessUpdate: cfg.RequireNotificationSuccessUpdate,
 			}
 			c.SetSealingConfig(newCfg)
 		})
@@ -1045,7 +1056,6 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		AvailableBalanceBuffer:     types.BigInt(sealingCfg.AvailableBalanceBuffer),
 		DisableCollateralFallback:  sealingCfg.DisableCollateralFallback,
 
-		BatchPreCommits:     sealingCfg.BatchPreCommits,
 		MaxPreCommitBatch:   sealingCfg.MaxPreCommitBatch,
 		PreCommitBatchWait:  time.Duration(sealingCfg.PreCommitBatchWait),
 		PreCommitBatchSlack: time.Duration(sealingCfg.PreCommitBatchSlack),
@@ -1062,6 +1072,12 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
 		TerminateBatchMin:  sealingCfg.TerminateBatchMin,
 		TerminateBatchWait: time.Duration(sealingCfg.TerminateBatchWait),
+		UseSyntheticPoRep:  sealingCfg.UseSyntheticPoRep,
+
+		RequireActivationSuccess:         sealingCfg.RequireActivationSuccess,
+		RequireActivationSuccessUpdate:   sealingCfg.RequireActivationSuccessUpdate,
+		RequireNotificationSuccess:       sealingCfg.RequireNotificationSuccess,
+		RequireNotificationSuccessUpdate: sealingCfg.RequireNotificationSuccessUpdate,
 	}
 }
 

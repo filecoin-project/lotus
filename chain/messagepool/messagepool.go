@@ -21,6 +21,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
+	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -63,6 +64,9 @@ var MaxNonceGap = uint64(4)
 
 const MaxMessageSize = 64 << 10 // 64KiB
 
+// NOTE: When adding a new error type, please make sure to add the new error type in
+// func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message)
+// in /chain/sub/incoming.go
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -207,8 +211,10 @@ func ComputeRBF(curPrem abi.TokenAmount, replaceByFeeRatio types.Percent) abi.To
 
 func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.MessageSendSpec) {
 	var maxFee abi.TokenAmount
+	var maximizeFeeCap bool
 	if sendSpec != nil {
 		maxFee = sendSpec.MaxFee
+		maximizeFeeCap = sendSpec.MaximizeFeeCap
 	}
 	if maxFee.Int == nil || maxFee.Equals(big.Zero()) {
 		mf, err := mff()
@@ -219,15 +225,12 @@ func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.M
 		maxFee = mf
 	}
 
-	gl := types.NewInt(uint64(msg.GasLimit))
-	totalFee := types.BigMul(msg.GasFeeCap, gl)
-
-	if totalFee.LessThanEqual(maxFee) {
-		msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
-		return
+	gaslimit := types.NewInt(uint64(msg.GasLimit))
+	totalFee := types.BigMul(msg.GasFeeCap, gaslimit)
+	if maximizeFeeCap || totalFee.GreaterThan(maxFee) {
+		msg.GasFeeCap = big.Div(maxFee, gaslimit)
 	}
 
-	msg.GasFeeCap = big.Div(maxFee, gl)
 	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
 
@@ -775,9 +778,7 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 
 	mp.curTsLk.Lock()
-	if tmpCurTs == mp.curTs {
-		//with the lock enabled, mp.curTs is the same Ts as we just had, so we know that our computations are cached
-	} else {
+	if tmpCurTs != mp.curTs {
 		//curTs has been updated so we want to cache the new one:
 		tmpCurTs = mp.curTs
 		//we want to release the lock, cache the computations then grab it again
@@ -786,7 +787,7 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 		mp.curTsLk.Lock()
 		//now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
-	}
+	} // else with the lock enabled, mp.curTs is the same Ts as we just had, so we know that our computations are cached
 
 	defer mp.curTsLk.Unlock()
 
@@ -1019,6 +1020,9 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	})
 
+	// Record the current size of the Mpool
+	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
+
 	return nil
 }
 
@@ -1211,6 +1215,9 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 			return
 		}
 	}
+
+	// Record the current size of the Mpool
+	stats.Record(ctx, metrics.MpoolMessageCount.M(int64(mp.currentSize)))
 }
 
 func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {

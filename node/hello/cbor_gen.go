@@ -35,7 +35,7 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.HeaviestTipSet ([]cid.Cid) (slice)
-	if len(t.HeaviestTipSet) > cbg.MaxLength {
+	if len(t.HeaviestTipSet) > 8192 {
 		return xerrors.Errorf("Slice value in field t.HeaviestTipSet was too long")
 	}
 
@@ -43,9 +43,11 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.HeaviestTipSet {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.HeaviestTipSet: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
@@ -103,7 +105,7 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.HeaviestTipSet: array too large (%d)", extra)
 	}
 
@@ -116,21 +118,34 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("reading cid field t.HeaviestTipSet failed: %w", err)
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.HeaviestTipSet[i]: %w", err)
+				}
+
+				t.HeaviestTipSet[i] = c
+
+			}
+
 		}
-		t.HeaviestTipSet[i] = c
 	}
-
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -208,6 +223,7 @@ func (t *LatencyMessage) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -237,10 +253,10 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.TArrival (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -262,10 +278,10 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.TSent (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)

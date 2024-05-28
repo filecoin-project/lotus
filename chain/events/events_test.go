@@ -358,7 +358,7 @@ func (fcs *fakeCS) advance(rev, app, drop int, msgs map[int]cid.Cid, nulls ...in
 	fcs.sub(nil, nil)
 }
 
-var _ EventAPI = &fakeCS{}
+var _ EventHelperAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	//stm: @EVENTS_HEIGHT_CHAIN_AT_001, @EVENTS_HEIGHT_REVERT_001
@@ -673,7 +673,7 @@ func TestCalled(t *testing.T) {
 	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)
@@ -991,7 +991,7 @@ func TestCalledNull(t *testing.T) {
 	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)
@@ -1050,7 +1050,7 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)
@@ -1155,7 +1155,7 @@ func TestStateChanged(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// create few blocks to make sure nothing get's randomly called
+	// create few blocks to make sure nothing gets randomly called
 
 	fcs.advance(0, 4, 0, nil) // H=5
 	require.Equal(t, false, applied)

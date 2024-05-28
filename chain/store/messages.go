@@ -119,7 +119,7 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 		var sender address.Address
 		if ts.Height() >= build.UpgradeHyperdriveHeight {
 			if useIds {
-				sender, err = st.LookupID(m.From)
+				sender, err = st.LookupIDAddress(m.From)
 				if err != nil {
 					return false, xerrors.Errorf("failed to resolve sender: %w", err)
 				}
@@ -131,14 +131,14 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 					// uh-oh, we actually have an ID-sender!
 					useIds = true
 					for robust, nonce := range applied {
-						resolved, err := st.LookupID(robust)
+						resolved, err := st.LookupIDAddress(robust)
 						if err != nil {
 							return false, xerrors.Errorf("failed to resolve sender: %w", err)
 						}
 						applied[resolved] = nonce
 					}
 
-					sender, err = st.LookupID(m.From)
+					sender, err = st.LookupIDAddress(m.From)
 					if err != nil {
 						return false, xerrors.Errorf("failed to resolve sender: %w", err)
 					}
@@ -212,13 +212,8 @@ func (cs *ChainStore) MessagesForTipset(ctx context.Context, ts *types.TipSet) (
 
 	var out []types.ChainMsg
 	for _, bm := range bmsgs {
-		for _, blsm := range bm.BlsMessages {
-			out = append(out, blsm)
-		}
-
-		for _, secm := range bm.SecpkMessages {
-			out = append(out, secm)
-		}
+		out = append(out, bm.BlsMessages...)
+		out = append(out, bm.SecpkMessages...)
 	}
 
 	return out, nil

@@ -183,3 +183,17 @@ func (b *idstore) Close() error {
 func (b *idstore) Flush(ctx context.Context) error {
 	return b.bs.Flush(ctx)
 }
+
+func (b *idstore) CollectGarbage(ctx context.Context, options ...BlockstoreGCOption) error {
+	if bs, ok := b.bs.(BlockstoreGC); ok {
+		return bs.CollectGarbage(ctx, options...)
+	}
+	return xerrors.Errorf("not supported")
+}
+
+func (b *idstore) GCOnce(ctx context.Context, options ...BlockstoreGCOption) error {
+	if bs, ok := b.bs.(BlockstoreGCOnce); ok {
+		return bs.GCOnce(ctx, options...)
+	}
+	return xerrors.Errorf("not supported")
+}

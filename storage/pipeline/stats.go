@@ -44,6 +44,10 @@ func (ss *SectorStats) updateSector(ctx context.Context, cfg sealiface.Config, i
 		ss.totals[toStatState(oldst, cfg.FinalizeEarly)]--
 		ss.byState[oldst]--
 
+		if ss.byState[oldst] <= 0 {
+			delete(ss.byState, oldst)
+		}
+
 		mctx, _ := tag.New(ctx, tag.Upsert(metrics.SectorState, string(oldst)))
 		stats.Record(mctx, metrics.SectorStates.M(ss.byState[oldst]))
 	}

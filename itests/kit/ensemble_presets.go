@@ -101,6 +101,21 @@ func EnsembleOneTwo(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMine
 	return &full, &one, &two, ens
 }
 
+// EnsembleProvider creates and starts an Ensemble with a single full node and a single Curio.
+// It does not interconnect nodes nor does it begin mining.
+func EnsembleProvider(t *testing.T, opts ...interface{}) (*TestFullNode, *TestCurioNode, *Ensemble) {
+	opts = append(opts, WithAllSubsystems())
+
+	eopts, nopts := siftOptions(t, opts)
+
+	var (
+		full     TestFullNode
+		provider TestCurioNode
+	)
+	ens := NewEnsemble(t, eopts...).FullNode(&full, nopts...).Curio(&provider, nopts...).Start()
+	return &full, &provider, ens
+}
+
 func siftOptions(t *testing.T, opts []interface{}) (eopts []EnsembleOpt, nopts []NodeOpt) {
 	for _, v := range opts {
 		switch o := v.(type) {

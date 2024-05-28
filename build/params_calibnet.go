@@ -19,7 +19,8 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandMainnet,
+	0:                    DrandMainnet,
+	UpgradePhoenixHeight: DrandQuicknet,
 }
 
 const GenesisNetworkVersion = network.Version0
@@ -79,6 +80,27 @@ const UpgradeLightningHeight = 489094
 // 2023-04-21T16:00:00Z
 const UpgradeThunderHeight = UpgradeLightningHeight + 3120
 
+// 2023-10-19T13:00:00Z
+const UpgradeWatermelonHeight = 1013134
+
+// 2023-11-07T13:00:00Z
+const UpgradeWatermelonFixHeight = 1070494
+
+// 2023-11-21T13:00:00Z
+const UpgradeWatermelonFix2Height = 1108174
+
+// 2024-03-11T14:00:00Z
+const UpgradeDragonHeight = 1427974
+
+// This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
+const UpgradePhoenixHeight = UpgradeDragonHeight + 120
+
+// 2024-04-03T11:00:00Z
+const UpgradeCalibrationDragonFixHeight = 1493854
+
+// ?????
+const UpgradeAussieHeight = 999999999999999
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
@@ -119,6 +141,8 @@ func init() {
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 var PropagationDelaySecs = uint64(10)
+
+var EquivocationDelaySecs = uint64(2)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -268,14 +269,14 @@ func TestFEVMDelegateCall(t *testing.T) {
 	// The implementation's storage should not have been updated.
 	actorAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(actorAddr)
 	require.NoError(t, err)
-	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, "latest")
+	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, ethtypes.EthBytes(make([]byte, 32)), value)
 
 	// The storage actor's storage _should_ have been updated
 	storageAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(storageAddr)
 	require.NoError(t, err)
-	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, "latest")
+	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, ethtypes.EthBytes(expectedResult), value)
 }
@@ -375,7 +376,7 @@ func TestFEVMTestApp(t *testing.T) {
 
 }
 
-// TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
+// TestFEVMTestConstructor creates a contract that just has a self destruct feature and calls it
 func TestFEVMTestConstructor(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -406,7 +407,7 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
+// TestFEVMTestSendToContract creates a contract that just has a self destruct feature and calls it
 func TestFEVMTestSendToContract(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -618,9 +619,9 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
 
 	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
-	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
+	t.Run("n=251,r=164", testN(251, 164, exitcode.Ok))
 
-	t.Run("n=0,r=253-fails", testN(0, 254, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }
 
@@ -657,11 +658,15 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			t.Logf("running with %d recursive calls", r)
 
 			params := makeParams(r)
-			gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+
+			gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 				From: &ethAddr,
 				To:   &contractAddr,
 				Data: params,
-			})
+			}})
+			require.NoError(t, err)
+
+			gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 			require.NoError(t, err)
 			require.LessOrEqual(t, int64(gaslimit), build.BlockGasLimit)
 
@@ -816,11 +821,14 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	contractEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
 	require.NoError(t, err)
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 		From:  &accntEth,
 		To:    &contractEth,
 		Value: ethtypes.EthBigInt(big.NewInt(100)),
-	})
+	}})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 	require.NoError(t, err)
 
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
@@ -881,7 +889,7 @@ func TestFEVMTestDeployOnTransfer(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ret.Receipt.ExitCode.IsSuccess())
 
-	balance, err := client.EVM().EthGetBalance(ctx, randomAddr, "latest")
+	balance, err := client.EVM().EthGetBalance(ctx, randomAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, value.Int, balance.Int)
 
@@ -1030,14 +1038,17 @@ func TestFEVMErrorParsing(t *testing.T) {
 				_, err := e.EthCall(ctx, ethtypes.EthCall{
 					To:   &contractAddrEth,
 					Data: entryPoint,
-				}, "latest")
+				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.ErrorContains(t, err, expected)
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {
-				_, err := e.EthEstimateGas(ctx, ethtypes.EthCall{
+				gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
 					To:   &contractAddrEth,
 					Data: entryPoint,
-				})
+				}})
+				require.NoError(t, err)
+
+				_, err = e.EthEstimateGas(ctx, gasParams)
 				require.ErrorContains(t, err, expected)
 			})
 		})

@@ -26,7 +26,11 @@ import (
 
 var log = logging.Logger("sealworker")
 
-func WorkerHandler(authv func(ctx context.Context, token string) ([]auth.Permission, error), remote http.HandlerFunc, a api.Worker, permissioned bool) http.Handler {
+func WorkerHandler(
+	authv func(ctx context.Context, token string) ([]auth.Permission, error),
+	remote http.HandlerFunc,
+	a api.Worker,
+	permissioned bool) http.Handler {
 	mux := mux.NewRouter()
 	readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 	rpcServer := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors), readerServerOpt)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -76,17 +77,18 @@ func defCommon() Common {
 	}
 }
 
-var (
-	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
-	DefaultSimultaneousTransfers = uint64(20)
-)
+var DefaultSimultaneousTransfers = uint64(20)
+
+func DefaultDefaultMaxFee() types.FIL {
+	return types.MustParseFIL("0.07")
+}
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
 		Fees: FeeConfig{
-			DefaultMaxFee: DefaultDefaultMaxFee,
+			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
 		Client: Client{
 			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
@@ -105,23 +107,25 @@ func DefaultFullNode() *FullNode {
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},
 		},
-		Cluster: *DefaultUserRaftConfig(),
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
-			Events: Events{
-				DisableRealTimeFilterAPI: false,
-				DisableHistoricFilterAPI: false,
-				FilterTTL:                Duration(time.Hour * 24),
-				MaxFilters:               100,
-				MaxFilterResults:         10000,
-				MaxFilterHeightRange:     2880, // conservative limit of one day
-			},
+		},
+		Events: EventsConfig{
+			DisableRealTimeFilterAPI: false,
+			DisableHistoricFilterAPI: false,
+			EnableActorEventsAPI:     false,
+			FilterTTL:                Duration(time.Hour * 24),
+			MaxFilters:               100,
+			MaxFilterResults:         10000,
+			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
 	}
 }
 
 func DefaultStorageMiner() *StorageMiner {
+	// TODO: Should we increase this to nv21, which would push it to 3.5 years?
+	maxSectorExtentsion, _ := policy.GetMaxSectorExpirationExtension(network.Version20)
 	cfg := &StorageMiner{
 		Common: defCommon(),
 
@@ -138,13 +142,12 @@ func DefaultStorageMiner() *StorageMiner {
 			AvailableBalanceBuffer:     types.FIL(big.Zero()),
 			DisableCollateralFallback:  false,
 
-			BatchPreCommits:    true,
 			MaxPreCommitBatch:  miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
 			PreCommitBatchWait: Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
 			// XXX snap deals wait deals slack if first
 			PreCommitBatchSlack: Duration(3 * time.Hour), // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
 
-			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(policy.GetMaxSectorExpirationExtension()) * uint64(time.Second)),
+			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(maxSectorExtentsion) * uint64(time.Second)),
 
 			AggregateCommits: true,
 			MinCommitBatch:   miner5.MinAggregatedSectors, // per FIP13, we must have at least four proofs to aggregate, where 4 is the cross over point where aggregation wins out on single provecommit gas costs
@@ -159,6 +162,7 @@ func DefaultStorageMiner() *StorageMiner {
 			TerminateBatchMax:                      100,
 			TerminateBatchWait:                     Duration(5 * time.Minute),
 			MaxSectorProveCommitsSubmittedPerEpoch: 20,
+			UseSyntheticPoRep:                      false,
 		},
 
 		Proving: ProvingConfig{
@@ -235,6 +239,7 @@ func DefaultStorageMiner() *StorageMiner {
 			EnableSealing:       true,
 			EnableSectorStorage: true,
 			EnableMarkets:       false,
+			EnableSectorIndexDB: false,
 		},
 
 		Fees: MinerFeeConfig{
@@ -254,6 +259,8 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxWindowPoStGasFee:    types.MustParseFIL("5"),
 			MaxPublishDealsFee:     types.MustParseFIL("0.05"),
 			MaxMarketBalanceAddFee: types.MustParseFIL("0.007"),
+
+			MaximizeWindowPoStFeeCap: true,
 		},
 
 		Addresses: MinerAddressConfig{
@@ -268,6 +275,13 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxConcurrencyStorageCalls: 100,
 			MaxConcurrentUnseals:       5,
 			GCInterval:                 Duration(1 * time.Minute),
+		},
+		HarmonyDB: HarmonyDB{
+			Hosts:    []string{"127.0.0.1"},
+			Username: "yugabyte",
+			Password: "yugabyte",
+			Database: "yugabyte",
+			Port:     "5433",
 		},
 	}
 
@@ -314,24 +328,54 @@ const (
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
 
-var (
-	DefaultDataSubFolder        = "raft"
-	DefaultWaitForLeaderTimeout = 15 * time.Second
-	DefaultCommitRetries        = 1
-	DefaultNetworkTimeout       = 100 * time.Second
-	DefaultCommitRetryDelay     = 200 * time.Millisecond
-	DefaultBackupsRotate        = 6
-)
+func DefaultCurioConfig() *CurioConfig {
+	return &CurioConfig{
+		Subsystems: CurioSubsystemsConfig{
+			GuiAddress:                 "0.0.0.0:4701",
+			BoostAdapters:              []string{},
+			RequireActivationSuccess:   true,
+			RequireNotificationSuccess: true,
+		},
+		Fees: CurioFees{
+			DefaultMaxFee:      DefaultDefaultMaxFee(),
+			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
+			MaxCommitGasFee:    types.MustParseFIL("0.05"),
 
-func DefaultUserRaftConfig() *UserRaftConfig {
-	var cfg UserRaftConfig
-	cfg.DataFolder = "" // empty so it gets omitted
-	cfg.InitPeersetMultiAddr = []string{}
-	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
-	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
-	cfg.CommitRetries = DefaultCommitRetries
-	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
-	cfg.BackupsRotate = DefaultBackupsRotate
+			MaxPreCommitBatchGasFee: BatchFeeConfig{
+				Base:      types.MustParseFIL("0"),
+				PerSector: types.MustParseFIL("0.02"),
+			},
+			MaxCommitBatchGasFee: BatchFeeConfig{
+				Base:      types.MustParseFIL("0"),
+				PerSector: types.MustParseFIL("0.03"), // enough for 6 agg and 1nFIL base fee
+			},
 
-	return &cfg
+			MaxTerminateGasFee:  types.MustParseFIL("0.5"),
+			MaxWindowPoStGasFee: types.MustParseFIL("5"),
+			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
+		},
+		Addresses: []CurioAddresses{{
+			PreCommitControl: []string{},
+			CommitControl:    []string{},
+			TerminateControl: []string{},
+			MinerAddresses:   []string{},
+		}},
+		Proving: CurioProvingConfig{
+			ParallelCheckLimit:    32,
+			PartitionCheckTimeout: Duration(20 * time.Minute),
+			SingleCheckTimeout:    Duration(10 * time.Minute),
+		},
+		Ingest: CurioIngestConfig{
+			MaxQueueDealSector: 8, // default to 8 sectors open(or in process of opening) for deals
+			MaxQueueSDR:        8, // default to 8 (will cause backpressure even if deal sectors are 0)
+			MaxQueueTrees:      0, // default don't use this limit
+			MaxQueuePoRep:      0, // default don't use this limit
+			MaxDealWaitTime:    Duration(1 * time.Hour),
+		},
+		Alerting: CurioAlerting{
+			PagerDutyEventURL:      "https://events.pagerduty.com/v2/enqueue",
+			PageDutyIntegrationKey: "",
+			MinimumWalletBalance:   types.MustParseFIL("5"),
+		},
+	}
 }

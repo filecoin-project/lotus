@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/api/v1api"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -18,8 +19,8 @@ type MinerStorageService api.StorageMiner
 
 var _ sectorblocks.SectorBuilder = *new(MinerSealingService)
 
-func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
+func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (api.StorageMiner, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (api.StorageMiner, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 		info := cliutil.ParseApiInfo(apiInfo)
 		addr, err := info.DialArgs("v0")
@@ -55,16 +56,16 @@ func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lif
 	}
 }
 
-func ConnectSealingService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (MinerSealingService, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (MinerSealingService, error) {
+func ConnectSealingService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (MinerSealingService, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (MinerSealingService, error) {
 		log.Info("Connecting sealing service to miner")
-		return connectMinerService(apiInfo)(mctx, lc)
+		return connectMinerService(apiInfo)(mctx, lc, fapi)
 	}
 }
 
-func ConnectStorageService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (MinerStorageService, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (MinerStorageService, error) {
+func ConnectStorageService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (MinerStorageService, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, fapi v1api.FullNode) (MinerStorageService, error) {
 		log.Info("Connecting storage service to miner")
-		return connectMinerService(apiInfo)(mctx, lc)
+		return connectMinerService(apiInfo)(mctx, lc, fapi)
 	}
 }

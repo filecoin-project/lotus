@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -17,7 +16,7 @@ import (
 )
 
 type PreCommitPolicy interface {
-	Expiration(ctx context.Context, ps ...api.SectorPiece) (abi.ChainEpoch, error)
+	Expiration(ctx context.Context, ps ...SafeSectorPiece) (abi.ChainEpoch, error)
 }
 
 type Chain interface {
@@ -60,7 +59,7 @@ func NewBasicPreCommitPolicy(api Chain, cfgGetter dtypes.GetSealingConfigFunc, p
 
 // Expiration produces the pre-commit sector expiration epoch for an encoded
 // replica containing the provided enumeration of pieces and deals.
-func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...api.SectorPiece) (abi.ChainEpoch, error) {
+func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...SafeSectorPiece) (abi.ChainEpoch, error) {
 	ts, err := p.api.ChainHead(ctx)
 	if err != nil {
 		return 0, err
@@ -69,26 +68,36 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...api.SectorP
 	var end *abi.ChainEpoch
 
 	for _, p := range ps {
-		if p.DealInfo == nil {
+		if !p.HasDealInfo() {
 			continue
 		}
 
-		if p.DealInfo.DealSchedule.EndEpoch < ts.Height() {
+		endEpoch, err := p.EndEpoch()
+		if err != nil {
+			return 0, xerrors.Errorf("failed to get end epoch: %w", err)
+		}
+
+		if endEpoch < ts.Height() {
 			log.Warnf("piece schedule %+v ended before current epoch %d", p, ts.Height())
 			continue
 		}
 
-		if end == nil || *end < p.DealInfo.DealSchedule.EndEpoch {
-			tmp := p.DealInfo.DealSchedule.EndEpoch
+		if end == nil || *end < endEpoch {
+			tmp := endEpoch
 			end = &tmp
 		}
 	}
 
 	if end == nil {
-		// no deal pieces, get expiration for committed capacity sector
-		expirationDuration, err := p.getCCSectorLifetime()
+		nv, err := p.api.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
-			return 0, err
+			return 0, xerrors.Errorf("failed to get network version: %w", err)
+		}
+
+		// no deal pieces, get expiration for committed capacity sector
+		expirationDuration, err := p.getCCSectorLifetime(nv)
+		if err != nil {
+			return 0, xerrors.Errorf("failed to get cc sector lifetime: %w", err)
 		}
 
 		tmp := ts.Height() + expirationDuration
@@ -105,25 +114,30 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...api.SectorP
 	return *end, nil
 }
 
-func (p *BasicPreCommitPolicy) getCCSectorLifetime() (abi.ChainEpoch, error) {
+func (p *BasicPreCommitPolicy) getCCSectorLifetime(nv network.Version) (abi.ChainEpoch, error) {
 	c, err := p.getSealingConfig()
 	if err != nil {
 		return 0, xerrors.Errorf("sealing config load error: %w", err)
 	}
 
+	maxCommitment, err := policy.GetMaxSectorExpirationExtension(nv)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to get max extension: %w", err)
+	}
+
 	var ccLifetimeEpochs = abi.ChainEpoch(uint64(c.CommittedCapacitySectorLifetime.Seconds()) / builtin.EpochDurationSeconds)
 	// if zero value in config, assume default sector extension
 	if ccLifetimeEpochs == 0 {
-		ccLifetimeEpochs = policy.GetMaxSectorExpirationExtension()
+		ccLifetimeEpochs = maxCommitment
 	}
 
 	if minExpiration := abi.ChainEpoch(miner.MinSectorExpiration); ccLifetimeEpochs < minExpiration {
 		log.Warnf("value for CommittedCapacitySectorLiftime is too short, using default minimum (%d epochs)", minExpiration)
 		return minExpiration, nil
 	}
-	if maxExpiration := policy.GetMaxSectorExpirationExtension(); ccLifetimeEpochs > maxExpiration {
-		log.Warnf("value for CommittedCapacitySectorLiftime is too long, using default maximum (%d epochs)", maxExpiration)
-		return maxExpiration, nil
+	if ccLifetimeEpochs > maxCommitment {
+		log.Warnf("value for CommittedCapacitySectorLiftime is too long, using default maximum (%d epochs)", maxCommitment)
+		return maxCommitment, nil
 	}
 
 	return ccLifetimeEpochs - p.provingBuffer, nil

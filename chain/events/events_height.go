@@ -22,7 +22,7 @@ type heightHandler struct {
 }
 
 type heightEvents struct {
-	api          EventAPI
+	api          EventHelperAPI
 	gcConfidence abi.ChainEpoch
 
 	lk                        sync.Mutex
@@ -31,7 +31,7 @@ type heightEvents struct {
 	lastGc                    abi.ChainEpoch //nolint:structcheck
 }
 
-func newHeightEvents(api EventAPI, obs *observer, gcConfidence abi.ChainEpoch) *heightEvents {
+func newHeightEvents(api EventHelperAPI, obs *observer, gcConfidence abi.ChainEpoch) *heightEvents {
 	he := &heightEvents{
 		api:            api,
 		gcConfidence:   gcConfidence,
@@ -180,7 +180,7 @@ func (e *heightEventsObserver) Revert(ctx context.Context, from, to *types.TipSe
 	// Update the head first so we don't accidental skip reverting a concurrent call to ChainAt.
 	e.updateHead(to)
 
-	// Call revert on all hights between the two tipsets, handling empty tipsets.
+	// Call revert on all heights between the two tipsets, handling empty tipsets.
 	for h := from.Height(); h > to.Height(); h-- {
 		e.lk.Lock()
 		triggers := e.tsHeights[h]

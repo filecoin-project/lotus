@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"os"
 	"sort"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -177,11 +179,23 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
 		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
-		if err == nil && ok {
-			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
-			return migCid, nil
-		} else if err != nil {
+		if err == nil {
+			if ok {
+				log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
+				foundMigratedRoot, err := sm.ChainStore().StateBlockstore().Has(ctx, migCid)
+				if err != nil {
+					log.Errorw("failed to check whether previous migration result is present", "err", err)
+				} else if !foundMigratedRoot {
+					log.Errorw("cached migration result not found in blockstore, running migration again")
+					u.migrationResultCache.Delete(ctx, root)
+				} else {
+					return migCid, nil
+				}
+			}
+		} else if !errors.Is(err, datastore.ErrNotFound) {
 			log.Errorw("failed to lookup previous migration result", "err", err)
+		} else {
+			log.Debug("no cached migration found, migrating from scratch")
 		}
 
 		startTime := time.Now()
@@ -194,10 +208,6 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 			log.Errorw("FAILED migration", "height", height, "from", root, "error", err)
 			return cid.Undef, err
 		}
-		// Yes, we update the cache, even for the final upgrade epoch. Why? Reverts. This
-		// can save us a _lot_ of time because very few actors will have changed if we
-		// do a small revert then need to re-run the migration.
-		u.cache.Update(tmpCache)
 		log.Warnw("COMPLETED migration",
 			"height", height,
 			"from", root,
@@ -224,11 +234,6 @@ func (sm *StateManager) hasExpensiveForkBetween(parent, height abi.ChainEpoch) b
 		}
 	}
 	return false
-}
-
-func (sm *StateManager) hasExpensiveFork(height abi.ChainEpoch) bool {
-	_, ok := sm.expensiveUpgrades[height]
-	return ok
 }
 
 func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv16.MemMigrationCache, ts *types.TipSet) {

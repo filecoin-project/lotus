@@ -14,7 +14,8 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	market "github.com/filecoin-project/go-state-types/builtin/v9/market"
+
+	piece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
 var _ = xerrors.Errorf
@@ -35,14 +36,14 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Channel (address.Address) (struct)
-	if len("Channel") > cbg.MaxLength {
+	if len("Channel") > 8192 {
 		return xerrors.Errorf("Value in field \"Channel\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Channel"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Channel")); err != nil {
+	if _, err := cw.WriteString(string("Channel")); err != nil {
 		return err
 	}
 
@@ -51,18 +52,18 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Vouchers ([]*paych.SignedVoucher) (slice)
-	if len("Vouchers") > cbg.MaxLength {
+	if len("Vouchers") > 8192 {
 		return xerrors.Errorf("Value in field \"Vouchers\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Vouchers"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Vouchers")); err != nil {
+	if _, err := cw.WriteString(string("Vouchers")); err != nil {
 		return err
 	}
 
-	if len(t.Vouchers) > cbg.MaxLength {
+	if len(t.Vouchers) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Vouchers was too long")
 	}
 
@@ -73,17 +74,18 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.WaitSentinel (cid.Cid) (struct)
-	if len("WaitSentinel") > cbg.MaxLength {
+	if len("WaitSentinel") > 8192 {
 		return xerrors.Errorf("Value in field \"WaitSentinel\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("WaitSentinel"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("WaitSentinel")); err != nil {
+	if _, err := cw.WriteString(string("WaitSentinel")); err != nil {
 		return err
 	}
 
@@ -123,7 +125,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -150,7 +152,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > 8192 {
 				return fmt.Errorf("t.Vouchers: array too large (%d)", extra)
 			}
 
@@ -163,15 +165,34 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				var v paych.SignedVoucher
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
+					{
+
+						b, err := cr.ReadByte()
+						if err != nil {
+							return err
+						}
+						if b != cbg.CborNull[0] {
+							if err := cr.UnreadByte(); err != nil {
+								return err
+							}
+							t.Vouchers[i] = new(paych.SignedVoucher)
+							if err := t.Vouchers[i].UnmarshalCBOR(cr); err != nil {
+								return xerrors.Errorf("unmarshaling t.Vouchers[i] pointer: %w", err)
+							}
+						}
+
+					}
+
 				}
-
-				t.Vouchers[i] = &v
 			}
-
 			// t.WaitSentinel (cid.Cid) (struct)
 		case "WaitSentinel":
 
@@ -207,14 +228,14 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Size (abi.UnpaddedPieceSize) (uint64)
-	if len("Size") > cbg.MaxLength {
+	if len("Size") > 8192 {
 		return xerrors.Errorf("Value in field \"Size\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Size"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Size")); err != nil {
+	if _, err := cw.WriteString(string("Size")); err != nil {
 		return err
 	}
 
@@ -223,14 +244,14 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Offset (abi.PaddedPieceSize) (uint64)
-	if len("Offset") > cbg.MaxLength {
+	if len("Offset") > 8192 {
 		return xerrors.Errorf("Value in field \"Offset\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Offset"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Offset")); err != nil {
+	if _, err := cw.WriteString(string("Offset")); err != nil {
 		return err
 	}
 
@@ -239,14 +260,14 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SectorID (abi.SectorNumber) (uint64)
-	if len("SectorID") > cbg.MaxLength {
+	if len("SectorID") > 8192 {
 		return xerrors.Errorf("Value in field \"SectorID\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("SectorID"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("SectorID")); err != nil {
+	if _, err := cw.WriteString(string("SectorID")); err != nil {
 		return err
 	}
 
@@ -286,7 +307,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -362,18 +383,18 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Refs ([]api.SealedRef) (slice)
-	if len("Refs") > cbg.MaxLength {
+	if len("Refs") > 8192 {
 		return xerrors.Errorf("Value in field \"Refs\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Refs"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Refs")); err != nil {
+	if _, err := cw.WriteString(string("Refs")); err != nil {
 		return err
 	}
 
-	if len(t.Refs) > cbg.MaxLength {
+	if len(t.Refs) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Refs was too long")
 	}
 
@@ -384,6 +405,7 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -417,7 +439,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -434,7 +456,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > 8192 {
 				return fmt.Errorf("t.Refs: array too large (%d)", extra)
 			}
 
@@ -447,13 +469,23 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				var v SealedRef
-				if err := v.UnmarshalCBOR(cr); err != nil {
-					return err
+					{
+
+						if err := t.Refs[i].UnmarshalCBOR(cr); err != nil {
+							return xerrors.Errorf("unmarshaling t.Refs[i]: %w", err)
+						}
+
+					}
+
 				}
-
-				t.Refs[i] = v
 			}
 
 		default:
@@ -477,14 +509,14 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Epoch (abi.ChainEpoch) (int64)
-	if len("Epoch") > cbg.MaxLength {
+	if len("Epoch") > 8192 {
 		return xerrors.Errorf("Value in field \"Epoch\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Epoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Epoch")); err != nil {
+	if _, err := cw.WriteString(string("Epoch")); err != nil {
 		return err
 	}
 
@@ -499,18 +531,18 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Value (abi.SealRandomness) (slice)
-	if len("Value") > cbg.MaxLength {
+	if len("Value") > 8192 {
 		return xerrors.Errorf("Value in field \"Value\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Value")); err != nil {
+	if _, err := cw.WriteString(string("Value")); err != nil {
 		return err
 	}
 
-	if len(t.Value) > cbg.ByteArrayMaxLen {
+	if len(t.Value) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Value was too long")
 	}
 
@@ -518,9 +550,10 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -553,7 +586,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -566,10 +599,10 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Epoch":
 			{
 				maj, extra, err := cr.ReadHeader()
-				var extraI int64
 				if err != nil {
 					return err
 				}
+				var extraI int64
 				switch maj {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
@@ -596,7 +629,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.ByteArrayMaxLen {
+			if extra > 2097152 {
 				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
@@ -607,7 +640,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Value = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Value); err != nil {
 				return err
 			}
 
@@ -632,14 +665,14 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Epoch (abi.ChainEpoch) (int64)
-	if len("Epoch") > cbg.MaxLength {
+	if len("Epoch") > 8192 {
 		return xerrors.Errorf("Value in field \"Epoch\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Epoch"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Epoch")); err != nil {
+	if _, err := cw.WriteString(string("Epoch")); err != nil {
 		return err
 	}
 
@@ -654,18 +687,18 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Value (abi.InteractiveSealRandomness) (slice)
-	if len("Value") > cbg.MaxLength {
+	if len("Value") > 8192 {
 		return xerrors.Errorf("Value in field \"Value\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Value")); err != nil {
+	if _, err := cw.WriteString(string("Value")); err != nil {
 		return err
 	}
 
-	if len(t.Value) > cbg.ByteArrayMaxLen {
+	if len(t.Value) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Value was too long")
 	}
 
@@ -673,9 +706,10 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -708,7 +742,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -721,10 +755,10 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Epoch":
 			{
 				maj, extra, err := cr.ReadHeader()
-				var extraI int64
 				if err != nil {
 					return err
 				}
+				var extraI int64
 				switch maj {
 				case cbg.MajUnsignedInt:
 					extraI = int64(extra)
@@ -751,7 +785,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.ByteArrayMaxLen {
+			if extra > 2097152 {
 				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 			}
 			if maj != cbg.MajByteString {
@@ -762,241 +796,8 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Value = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Value); err != nil {
 				return err
-			}
-
-		default:
-			// Field doesn't exist on this type, so ignore it
-			cbg.ScanForLinks(r, func(cid.Cid) {})
-		}
-	}
-
-	return nil
-}
-func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-
-	cw := cbg.NewCborWriter(w)
-
-	if _, err := cw.Write([]byte{165}); err != nil {
-		return err
-	}
-
-	// t.DealID (abi.DealID) (uint64)
-	if len("DealID") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"DealID\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealID"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("DealID")); err != nil {
-		return err
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.DealID)); err != nil {
-		return err
-	}
-
-	// t.PublishCid (cid.Cid) (struct)
-	if len("PublishCid") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"PublishCid\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PublishCid"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("PublishCid")); err != nil {
-		return err
-	}
-
-	if t.PublishCid == nil {
-		if _, err := cw.Write(cbg.CborNull); err != nil {
-			return err
-		}
-	} else {
-		if err := cbg.WriteCid(cw, *t.PublishCid); err != nil {
-			return xerrors.Errorf("failed to write cid field t.PublishCid: %w", err)
-		}
-	}
-
-	// t.DealProposal (market.DealProposal) (struct)
-	if len("DealProposal") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"DealProposal\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealProposal"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("DealProposal")); err != nil {
-		return err
-	}
-
-	if err := t.DealProposal.MarshalCBOR(cw); err != nil {
-		return err
-	}
-
-	// t.DealSchedule (api.DealSchedule) (struct)
-	if len("DealSchedule") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"DealSchedule\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealSchedule"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("DealSchedule")); err != nil {
-		return err
-	}
-
-	if err := t.DealSchedule.MarshalCBOR(cw); err != nil {
-		return err
-	}
-
-	// t.KeepUnsealed (bool) (bool)
-	if len("KeepUnsealed") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"KeepUnsealed\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("KeepUnsealed"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("KeepUnsealed")); err != nil {
-		return err
-	}
-
-	if err := cbg.WriteBool(w, t.KeepUnsealed); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
-	*t = PieceDealInfo{}
-
-	cr := cbg.NewCborReader(r)
-
-	maj, extra, err := cr.ReadHeader()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-	}()
-
-	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
-	}
-
-	if extra > cbg.MaxLength {
-		return fmt.Errorf("PieceDealInfo: map struct too large (%d)", extra)
-	}
-
-	var name string
-	n := extra
-
-	for i := uint64(0); i < n; i++ {
-
-		{
-			sval, err := cbg.ReadString(cr)
-			if err != nil {
-				return err
-			}
-
-			name = string(sval)
-		}
-
-		switch name {
-		// t.DealID (abi.DealID) (uint64)
-		case "DealID":
-
-			{
-
-				maj, extra, err = cr.ReadHeader()
-				if err != nil {
-					return err
-				}
-				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
-				}
-				t.DealID = abi.DealID(extra)
-
-			}
-			// t.PublishCid (cid.Cid) (struct)
-		case "PublishCid":
-
-			{
-
-				b, err := cr.ReadByte()
-				if err != nil {
-					return err
-				}
-				if b != cbg.CborNull[0] {
-					if err := cr.UnreadByte(); err != nil {
-						return err
-					}
-
-					c, err := cbg.ReadCid(cr)
-					if err != nil {
-						return xerrors.Errorf("failed to read cid field t.PublishCid: %w", err)
-					}
-
-					t.PublishCid = &c
-				}
-
-			}
-			// t.DealProposal (market.DealProposal) (struct)
-		case "DealProposal":
-
-			{
-
-				b, err := cr.ReadByte()
-				if err != nil {
-					return err
-				}
-				if b != cbg.CborNull[0] {
-					if err := cr.UnreadByte(); err != nil {
-						return err
-					}
-					t.DealProposal = new(market.DealProposal)
-					if err := t.DealProposal.UnmarshalCBOR(cr); err != nil {
-						return xerrors.Errorf("unmarshaling t.DealProposal pointer: %w", err)
-					}
-				}
-
-			}
-			// t.DealSchedule (api.DealSchedule) (struct)
-		case "DealSchedule":
-
-			{
-
-				if err := t.DealSchedule.UnmarshalCBOR(cr); err != nil {
-					return xerrors.Errorf("unmarshaling t.DealSchedule: %w", err)
-				}
-
-			}
-			// t.KeepUnsealed (bool) (bool)
-		case "KeepUnsealed":
-
-			maj, extra, err = cr.ReadHeader()
-			if err != nil {
-				return err
-			}
-			if maj != cbg.MajOther {
-				return fmt.Errorf("booleans must be major type 7")
-			}
-			switch extra {
-			case 20:
-				t.KeepUnsealed = false
-			case 21:
-				t.KeepUnsealed = true
-			default:
-				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 			}
 
 		default:
@@ -1020,14 +821,14 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Piece (abi.PieceInfo) (struct)
-	if len("Piece") > cbg.MaxLength {
+	if len("Piece") > 8192 {
 		return xerrors.Errorf("Value in field \"Piece\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Piece"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Piece")); err != nil {
+	if _, err := cw.WriteString(string("Piece")); err != nil {
 		return err
 	}
 
@@ -1035,15 +836,15 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.DealInfo (api.PieceDealInfo) (struct)
-	if len("DealInfo") > cbg.MaxLength {
+	// t.DealInfo (piece.PieceDealInfo) (struct)
+	if len("DealInfo") > 8192 {
 		return xerrors.Errorf("Value in field \"DealInfo\" was too long")
 	}
 
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealInfo"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("DealInfo")); err != nil {
+	if _, err := cw.WriteString(string("DealInfo")); err != nil {
 		return err
 	}
 
@@ -1082,7 +883,7 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -1101,7 +902,7 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.DealInfo (api.PieceDealInfo) (struct)
+			// t.DealInfo (piece.PieceDealInfo) (struct)
 		case "DealInfo":
 
 			{
@@ -1114,169 +915,12 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 					if err := cr.UnreadByte(); err != nil {
 						return err
 					}
-					t.DealInfo = new(PieceDealInfo)
+					t.DealInfo = new(piece.PieceDealInfo)
 					if err := t.DealInfo.UnmarshalCBOR(cr); err != nil {
 						return xerrors.Errorf("unmarshaling t.DealInfo pointer: %w", err)
 					}
 				}
 
-			}
-
-		default:
-			// Field doesn't exist on this type, so ignore it
-			cbg.ScanForLinks(r, func(cid.Cid) {})
-		}
-	}
-
-	return nil
-}
-func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-
-	cw := cbg.NewCborWriter(w)
-
-	if _, err := cw.Write([]byte{162}); err != nil {
-		return err
-	}
-
-	// t.EndEpoch (abi.ChainEpoch) (int64)
-	if len("EndEpoch") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"EndEpoch\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("EndEpoch"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("EndEpoch")); err != nil {
-		return err
-	}
-
-	if t.EndEpoch >= 0 {
-		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.EndEpoch)); err != nil {
-			return err
-		}
-	} else {
-		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.EndEpoch-1)); err != nil {
-			return err
-		}
-	}
-
-	// t.StartEpoch (abi.ChainEpoch) (int64)
-	if len("StartEpoch") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"StartEpoch\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("StartEpoch"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("StartEpoch")); err != nil {
-		return err
-	}
-
-	if t.StartEpoch >= 0 {
-		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.StartEpoch)); err != nil {
-			return err
-		}
-	} else {
-		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.StartEpoch-1)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
-	*t = DealSchedule{}
-
-	cr := cbg.NewCborReader(r)
-
-	maj, extra, err := cr.ReadHeader()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-	}()
-
-	if maj != cbg.MajMap {
-		return fmt.Errorf("cbor input should be of type map")
-	}
-
-	if extra > cbg.MaxLength {
-		return fmt.Errorf("DealSchedule: map struct too large (%d)", extra)
-	}
-
-	var name string
-	n := extra
-
-	for i := uint64(0); i < n; i++ {
-
-		{
-			sval, err := cbg.ReadString(cr)
-			if err != nil {
-				return err
-			}
-
-			name = string(sval)
-		}
-
-		switch name {
-		// t.EndEpoch (abi.ChainEpoch) (int64)
-		case "EndEpoch":
-			{
-				maj, extra, err := cr.ReadHeader()
-				var extraI int64
-				if err != nil {
-					return err
-				}
-				switch maj {
-				case cbg.MajUnsignedInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 positive overflow")
-					}
-				case cbg.MajNegativeInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 negative overflow")
-					}
-					extraI = -1 - extraI
-				default:
-					return fmt.Errorf("wrong type for int64 field: %d", maj)
-				}
-
-				t.EndEpoch = abi.ChainEpoch(extraI)
-			}
-			// t.StartEpoch (abi.ChainEpoch) (int64)
-		case "StartEpoch":
-			{
-				maj, extra, err := cr.ReadHeader()
-				var extraI int64
-				if err != nil {
-					return err
-				}
-				switch maj {
-				case cbg.MajUnsignedInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 positive overflow")
-					}
-				case cbg.MajNegativeInt:
-					extraI = int64(extra)
-					if extraI < 0 {
-						return fmt.Errorf("int64 negative overflow")
-					}
-					extraI = -1 - extraI
-				default:
-					return fmt.Errorf("wrong type for int64 field: %d", maj)
-				}
-
-				t.StartEpoch = abi.ChainEpoch(extraI)
 			}
 
 		default:

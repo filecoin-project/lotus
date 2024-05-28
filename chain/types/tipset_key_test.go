@@ -18,10 +18,10 @@ import (
 func TestTipSetKey(t *testing.T) {
 	//stm: @TYPES_TIPSETKEY_FROM_BYTES_001, @TYPES_TIPSETKEY_NEW_001
 	cb := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}
+	// distinct, but arbitrary CIDs, pretending dag-cbor encoding but they are just a multihash over bytes
 	c1, _ := cb.Sum([]byte("a"))
 	c2, _ := cb.Sum([]byte("b"))
 	c3, _ := cb.Sum([]byte("c"))
-	fmt.Println(len(c1.Bytes()))
 
 	t.Run("zero value", func(t *testing.T) {
 		assert.Equal(t, EmptyTSK, NewTipSetKey())
@@ -31,6 +31,22 @@ func TestTipSetKey(t *testing.T) {
 		assert.Equal(t, []cid.Cid{}, NewTipSetKey().Cids())
 		assert.Equal(t, []cid.Cid{c1}, NewTipSetKey(c1).Cids())
 		assert.Equal(t, []cid.Cid{c1, c2, c3}, NewTipSetKey(c1, c2, c3).Cids())
+
+		// The key doesn't check for duplicates.
+		assert.Equal(t, []cid.Cid{c1, c1}, NewTipSetKey(c1, c1).Cids())
+	})
+
+	t.Run("derived CID", func(t *testing.T) {
+		assert.Equal(t, "bafy2bzacecesrkxghscnq7vatble2hqdvwat6ed23vdu4vvo3uuggsoaya7ki", c1.String()) // sanity check
+		actualCid, err := NewTipSetKey().Cid()
+		require.NoError(t, err)
+		assert.Equal(t, "bafy2bzacea456askyutsf7uk4ta2q5aojrlcji4mhaqokbfalgvoq4ueeh4l2", actualCid.String(), "empty TSK")
+		actualCid, err = NewTipSetKey(c1).Cid()
+		require.NoError(t, err)
+		assert.Equal(t, "bafy2bzacealem6larzxhf7aggj3cozcefqez3jlksx2tuxehwdil27otcmy4q", actualCid.String())
+		actualCid, err = NewTipSetKey(c1, c2, c3).Cid()
+		require.NoError(t, err)
+		assert.Equal(t, "bafy2bzacecbnwngwfvxuciumcfudiaoqozisp3hus5im5lg4urrwlxbueissu", actualCid.String())
 
 		// The key doesn't check for duplicates.
 		assert.Equal(t, []cid.Cid{c1, c1}, NewTipSetKey(c1, c1).Cids())

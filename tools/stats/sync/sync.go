@@ -91,7 +91,7 @@ type BufferedTipsetChannelApi interface {
 }
 
 // BufferedTipsetChannel returns an unbuffered channel of tipsets. Buffering occurs internally to handle revert
-// ChainNotify changes. The returned channel can output tipsets at the same height twice if a reorg larger the the
+// ChainNotify changes. The returned channel can output tipsets at the same height twice if a reorg larger the
 // provided `size` occurs.
 func BufferedTipsetChannel(ctx context.Context, api BufferedTipsetChannelApi, lastHeight abi.ChainEpoch, size int) (<-chan *types.TipSet, error) {
 	chmain := make(chan *types.TipSet)

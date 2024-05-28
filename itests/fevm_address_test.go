@@ -1,7 +1,6 @@
 package itests
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"os"
@@ -14,8 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
-	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -43,7 +40,7 @@ func effectiveEthAddressForCreate(t *testing.T, sender address.Address) ethtypes
 	panic("unreachable")
 }
 
-func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *api.MsgLookup {
+func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *api.EthTxReceipt {
 	// Create and deploy evm actor
 
 	method := builtintypes.MethodsEAM.CreateExternal
@@ -61,21 +58,13 @@ func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode
 	smsg, err := client.MpoolPushMessage(ctx, createMsg, nil)
 	require.NoError(t, err)
 
-	wait, err := client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
-	require.NoError(t, err)
-	require.Equal(t, exitcode.Ok, wait.Receipt.ExitCode)
-	return wait
-}
-
-func getEthAddressTX(ctx context.Context, t *testing.T, client *kit.TestFullNode, wait *api.MsgLookup, ethAddr ethtypes.EthAddress) ethtypes.EthAddress {
-	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
-	var createExternalReturn eam.CreateExternalReturn
-	err := createExternalReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
+	txHash, err := client.EthGetTransactionHashByCid(ctx, smsg.Cid())
 	require.NoError(t, err)
 
-	createdEthAddr, err := ethtypes.CastEthAddress(createExternalReturn.EthAddress[:])
+	receipt, err := client.EVM().WaitTransaction(ctx, *txHash)
 	require.NoError(t, err)
-	return createdEthAddr
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+	return receipt
 }
 
 func TestAddressCreationBeforeDeploy(t *testing.T) {
@@ -112,11 +101,11 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.True(t, builtin.IsPlaceholderActor(actor.Code))
 
 	// Create and deploy evm actor
-	wait := createAndDeploy(ctx, t, client, fromAddr, contract)
+	receipt := createAndDeploy(ctx, t, client, fromAddr, contract)
 
-	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
-	createdEthAddr := getEthAddressTX(ctx, t, client, wait, ethAddr)
-	require.Equal(t, ethAddr, createdEthAddr)
+	// Check if eth address returned from CreateExternal is the same as eth address predicted at
+	// the start
+	require.Equal(t, &ethAddr, receipt.ContractAddress)
 
 	// Check if newly deployed actor still has funds
 	actorPostCreate, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
@@ -158,11 +147,11 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 	require.True(t, builtin.IsPlaceholderActor(actor.Code))
 
 	// Create and deploy evm actor
-	wait := createAndDeploy(ctx, t, client, fromAddr, contract)
+	receipt := createAndDeploy(ctx, t, client, fromAddr, contract)
 
-	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
-	createdEthAddr := getEthAddressTX(ctx, t, client, wait, ethAddr)
-	require.Equal(t, ethAddr, createdEthAddr)
+	// Check if eth address returned from CreateExternal is the same as eth address predicted at
+	// the start
+	require.Equal(t, &ethAddr, receipt.ContractAddress)
 
 	// Check if newly deployed actor still has funds
 	actorPostCreate, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
@@ -171,10 +160,9 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 	require.True(t, builtin.IsEvmActor(actorPostCreate.Code))
 
 	// Create and deploy evm actor
-	wait = createAndDeploy(ctx, t, client, fromAddr, contract)
+	receipt = createAndDeploy(ctx, t, client, fromAddr, contract)
 
 	// Check that this time eth address returned from CreateExternal is not the same as eth address predicted at the start
-	createdEthAddr = getEthAddressTX(ctx, t, client, wait, ethAddr)
-	require.NotEqual(t, ethAddr, createdEthAddr)
+	require.NotEqual(t, &ethAddr, receipt.ContractAddress)
 
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
@@ -41,34 +42,35 @@ func TestIndexSeeks(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, syncds.MutexWrap(datastore.NewMapDatastore()), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	_, err = cs.Import(ctx, bytes.NewReader(gencar))
+	_, _, err = cs.Import(ctx, bytes.NewReader(gencar))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	cur := mock.TipSet(gen)
-	if err := cs.PutTipSet(ctx, mock.TipSet(gen)); err != nil {
-		t.Fatal(err)
-	}
+
 	assert.NoError(t, cs.SetGenesis(ctx, gen))
 
 	// Put 113 blocks from genesis
 	for i := 0; i < 113; i++ {
-		nextts := mock.TipSet(mock.MkBlock(cur, 1, 1))
-
-		if err := cs.PutTipSet(ctx, nextts); err != nil {
-			t.Fatal(err)
-		}
+		nextBlk := mock.MkBlock(cur, 1, 1)
+		nextts := mock.TipSet(nextBlk)
+		assert.NoError(t, cs.PersistTipsets(ctx, []*types.TipSet{nextts}))
+		assert.NoError(t, cs.AddToTipSetTracker(ctx, nextBlk))
 		cur = nextts
 	}
+
+	assert.NoError(t, cs.RefreshHeaviestTipSet(ctx, cur.Height()))
 
 	// Put 50 null epochs + 1 block
 	skip := mock.MkBlock(cur, 1, 1)
 	skip.Height += 50
-
 	skipts := mock.TipSet(skip)
 
-	if err := cs.PutTipSet(ctx, skipts); err != nil {
+	assert.NoError(t, cs.PersistTipsets(ctx, []*types.TipSet{skipts}))
+	assert.NoError(t, cs.AddToTipSetTracker(ctx, skip))
+
+	if err := cs.RefreshHeaviestTipSet(ctx, skip.Height); err != nil {
 		t.Fatal(err)
 	}
 

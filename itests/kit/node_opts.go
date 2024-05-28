@@ -1,6 +1,8 @@
 package kit
 
 import (
+	"math"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -63,6 +65,8 @@ var DefaultNodeOpts = nodeOpts{
 			// test defaults
 
 			cfg.Fevm.EnableEthRPC = true
+			cfg.Events.MaxFilterHeightRange = math.MaxInt64
+			cfg.Events.EnableActorEventsAPI = true
 			return nil
 		},
 	},
@@ -85,6 +89,13 @@ func WithAllSubsystems() NodeOpt {
 		opts.subsystems = opts.subsystems.Add(SSealing)
 		opts.subsystems = opts.subsystems.Add(SSectorStorage)
 
+		return nil
+	}
+}
+
+func WithSectorIndexDB() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.subsystems = opts.subsystems.Add(SHarmony)
 		return nil
 	}
 }
@@ -197,7 +208,7 @@ func OwnerAddr(wk *key.Key) NodeOpt {
 // the node.
 func ConstructorOpts(extra ...node.Option) NodeOpt {
 	return func(opts *nodeOpts) error {
-		opts.extraNodeOpts = extra
+		opts.extraNodeOpts = append(opts.extraNodeOpts, extra...)
 		return nil
 	}
 }
@@ -286,6 +297,13 @@ func SplitstoreMessges() NodeOpt {
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "messages"  // universal bs is coldstore, and it accepts messages
+		return nil
+	})
+}
+
+func SplitstoreDisable() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Chainstore.EnableSplitstore = false
 		return nil
 	})
 }

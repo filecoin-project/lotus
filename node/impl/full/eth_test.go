@@ -1,16 +1,96 @@
 package full
 
 import (
+	"bytes"
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+func TestParseBlockRange(t *testing.T) {
+	pstring := func(s string) *string { return &s }
+
+	tcs := map[string]struct {
+		heaviest abi.ChainEpoch
+		from     *string
+		to       *string
+		maxRange abi.ChainEpoch
+		minOut   abi.ChainEpoch
+		maxOut   abi.ChainEpoch
+		errStr   string
+	}{
+		"fails when both are specified and range is greater than max allowed range": {
+			heaviest: 100,
+			from:     pstring("0x100"),
+			to:       pstring("0x200"),
+			maxRange: 10,
+			minOut:   0,
+			maxOut:   0,
+			errStr:   "too large",
+		},
+		"fails when min is specified and range is greater than max allowed range": {
+			heaviest: 500,
+			from:     pstring("0x10"),
+			to:       pstring("latest"),
+			maxRange: 10,
+			minOut:   0,
+			maxOut:   0,
+			errStr:   "too far in the past",
+		},
+		"fails when max is specified and range is greater than max allowed range": {
+			heaviest: 500,
+			from:     pstring("earliest"),
+			to:       pstring("0x10000"),
+			maxRange: 10,
+			minOut:   0,
+			maxOut:   0,
+			errStr:   "too large",
+		},
+		"works when range is valid": {
+			heaviest: 500,
+			from:     pstring("earliest"),
+			to:       pstring("latest"),
+			maxRange: 1000,
+			minOut:   0,
+			maxOut:   -1,
+		},
+		"works when range is valid and specified": {
+			heaviest: 500,
+			from:     pstring("0x10"),
+			to:       pstring("0x30"),
+			maxRange: 1000,
+			minOut:   16,
+			maxOut:   48,
+		},
+	}
+
+	for name, tc := range tcs {
+		tc2 := tc
+		t.Run(name, func(t *testing.T) {
+			min, max, err := parseBlockRange(tc2.heaviest, tc2.from, tc2.to, tc2.maxRange)
+			require.Equal(t, tc2.minOut, min)
+			require.Equal(t, tc2.maxOut, max)
+			if tc2.errStr != "" {
+				fmt.Println(err)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc2.errStr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
 
 func TestEthLogFromEvent(t *testing.T) {
 	// basic empty
@@ -161,4 +241,55 @@ func TestRewardPercentiles(t *testing.T) {
 		require.Equal(t, len(ans), len(tc.percentiles))
 		require.Equal(t, ans, rewards)
 	}
+}
+
+func TestABIEncoding(t *testing.T) {
+	// Generated from https://abi.hashex.org/
+	const expected = "000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000510000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000001b1111111111111111111020200301000000044444444444444444010000000000"
+	const data = "111111111111111111102020030100000004444444444444444401"
+
+	expectedBytes, err := hex.DecodeString(expected)
+	require.NoError(t, err)
+
+	dataBytes, err := hex.DecodeString(data)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedBytes, encodeAsABIHelper(22, 81, dataBytes))
+}
+
+func TestDecodePayload(t *testing.T) {
+	// "empty"
+	b, err := decodePayload(nil, 0)
+	require.NoError(t, err)
+	require.Empty(t, b)
+
+	// raw empty
+	_, err = decodePayload(nil, uint64(multicodec.Raw))
+	require.NoError(t, err)
+	require.Empty(t, b)
+
+	// raw non-empty
+	b, err = decodePayload([]byte{1}, uint64(multicodec.Raw))
+	require.NoError(t, err)
+	require.EqualValues(t, b, []byte{1})
+
+	// Invalid cbor bytes
+	_, err = decodePayload(nil, uint64(multicodec.DagCbor))
+	require.Error(t, err)
+
+	// valid cbor bytes
+	var w bytes.Buffer
+	require.NoError(t, cbg.WriteByteArray(&w, []byte{1}))
+	b, err = decodePayload(w.Bytes(), uint64(multicodec.DagCbor))
+	require.NoError(t, err)
+	require.EqualValues(t, b, []byte{1})
+
+	// regular cbor also works.
+	b, err = decodePayload(w.Bytes(), uint64(multicodec.Cbor))
+	require.NoError(t, err)
+	require.EqualValues(t, b, []byte{1})
+
+	// random codec should fail
+	_, err = decodePayload(w.Bytes(), 42)
+	require.Error(t, err)
 }

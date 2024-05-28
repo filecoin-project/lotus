@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -93,7 +93,7 @@ type Commit2In struct {
 }
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	log.Info("Starting lotus-bench")
 
@@ -107,6 +107,7 @@ func main() {
 			sealBenchCmd,
 			simpleCmd,
 			importBenchCmd,
+			cliCmd,
 			rpcCmd,
 		},
 	}
@@ -328,13 +329,16 @@ var sealBenchCmd = &cli.Command{
 		}
 
 		var challenge [32]byte
-		rand.Read(challenge[:])
+		_, err = rand.Read(challenge[:])
+		if err != nil {
+			return err
+		}
 
 		beforePost := time.Now()
 
 		if !skipc2 {
 			log.Info("generating winning post candidates")
-			wipt, err := spt(sectorSize).RegisteredWinningPoStProof()
+			wipt, err := spt(sectorSize, false).RegisteredWinningPoStProof()
 			if err != nil {
 				return err
 			}
@@ -552,15 +556,13 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 				Miner:  mid,
 				Number: i,
 			},
-			ProofType: spt(sectorSize),
+			ProofType: spt(sectorSize, false),
 		}
 
 		start := time.Now()
 		log.Infof("[%d] Writing piece into sector...", i)
 
-		r := rand.New(rand.NewSource(100 + int64(i)))
-
-		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r)
+		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), rand.Reader)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -584,7 +586,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 							Miner:  mid,
 							Number: i,
 						},
-						ProofType: spt(sectorSize),
+						ProofType: spt(sectorSize, false),
 					}
 
 					start := time.Now()
@@ -795,7 +797,7 @@ var proveCmd = &cli.Command{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(c2in.SectorNum),
 			},
-			ProofType: spt(abi.SectorSize(c2in.SectorSize)),
+			ProofType: spt(abi.SectorSize(c2in.SectorSize), false),
 		}
 
 		fmt.Printf("----\nstart proof computation\n")
@@ -826,8 +828,8 @@ func bps(sectorSize abi.SectorSize, sectorNum int, d time.Duration) string {
 	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
 }
 
-func spt(ssize abi.SectorSize) abi.RegisteredSealProof {
-	spt, err := miner.SealProofTypeFromSectorSize(ssize, build.TestNetworkVersion)
+func spt(ssize abi.SectorSize, synth bool) abi.RegisteredSealProof {
+	spt, err := miner.SealProofTypeFromSectorSize(ssize, build.TestNetworkVersion, synth)
 	if err != nil {
 		panic(err)
 	}

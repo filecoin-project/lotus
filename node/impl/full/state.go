@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -19,8 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	market12 "github.com/filecoin-project/go-state-types/builtin/v12/market"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -486,7 +486,7 @@ func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, t
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	ret, err := m.StateManager.LookupID(ctx, addr, ts)
+	ret, err := m.StateManager.LookupIDAddress(ctx, addr, ts)
 	if err != nil && xerrors.Is(err, types.ErrActorNotFound) {
 		return address.Undef, &api.ErrActorNotFound{}
 	}
@@ -762,7 +762,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		}
 		out[strconv.FormatInt(int64(dealID), 10)] = &api.MarketDeal{
 			Proposal: d,
-			State:    *s,
+			State:    api.MakeDealState(s),
 		}
 		return nil
 	}); err != nil {
@@ -779,22 +779,31 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
-func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+func (a *StateAPI) StateGetAllocationIdForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return verifreg.NoAllocationID, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	st, err := a.StateManager.GetMarketState(ctx, ts)
 	if err != nil {
-		return nil, err
+		return verifreg.NoAllocationID, err
 	}
 
 	allocationId, err := st.GetAllocationIdForPendingDeal(dealId)
 	if err != nil {
+		return verifreg.NoAllocationID, err
+	}
+
+	return allocationId, nil
+}
+
+func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+	allocationId, err := a.StateGetAllocationIdForPendingDeal(ctx, dealId, tsk)
+	if err != nil {
 		return nil, err
 	}
-	if allocationId == verifregtypes.NoAllocationID {
+	if allocationId == verifreg.NoAllocationID {
 		return nil, nil
 	}
 
@@ -857,6 +866,25 @@ func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.A
 	return allocations, nil
 }
 
+func (a *StateAPI) StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := a.StateManager.GetVerifregState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading verifreg state: %w", err)
+	}
+
+	allocations, err := st.GetAllAllocations()
+	if err != nil {
+		return nil, xerrors.Errorf("getting all allocations: %w", err)
+	}
+
+	return allocations, nil
+}
+
 func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifreg.ClaimId, tsk types.TipSetKey) (*verifreg.Claim, error) {
 	idAddr, err := a.StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
@@ -908,38 +936,55 @@ func (a *StateAPI) StateGetClaims(ctx context.Context, providerAddr address.Addr
 	return claims, nil
 }
 
+func (a *StateAPI) StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := a.StateManager.GetVerifregState(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading verifreg state: %w", err)
+	}
+
+	claims, err := st.GetAllClaims()
+	if err != nil {
+		return nil, xerrors.Errorf("getting all claims: %w", err)
+	}
+
+	return claims, nil
+}
+
 func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
 	nv, err := a.StateNetworkVersion(ctx, tsk)
 	if err != nil {
 		return cid.Cid{}, err
 	}
 
-	var ccparams []byte
 	if nv < network.Version13 {
-		ccparams, err = actors.SerializeParams(&market2.ComputeDataCommitmentParams{
-			DealIDs:    deals,
-			SectorType: sectorType,
-		})
-	} else {
-		ccparams, err = actors.SerializeParams(&market5.ComputeDataCommitmentParams{
-			Inputs: []*market5.SectorDataSpec{
-				{
-					DealIDs:    deals,
-					SectorType: sectorType,
-				},
-			},
-		})
+		return a.stateComputeDataCIDv1(ctx, maddr, sectorType, deals, tsk)
+	} else if nv < network.Version21 {
+		return a.stateComputeDataCIDv2(ctx, maddr, sectorType, deals, tsk)
 	}
+	return a.stateComputeDataCIDv3(ctx, maddr, sectorType, deals, tsk)
+}
+
+func (a *StateAPI) stateComputeDataCIDv1(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	var err error
+	ccparams, err := actors.SerializeParams(&market2.ComputeDataCommitmentParams{
+		DealIDs:    deals,
+		SectorType: sectorType,
+	})
 
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("computing params for ComputeDataCommitment: %w", err)
 	}
-
 	ccmt := &types.Message{
-		To:     market.Address,
-		From:   maddr,
-		Value:  types.NewInt(0),
-		Method: market.Methods.ComputeDataCommitment,
+		To:    market.Address,
+		From:  maddr,
+		Value: types.NewInt(0),
+		// Hard coded, because the method has since been deprecated
+		Method: 8,
 		Params: ccparams,
 	}
 	r, err := a.StateCall(ctx, ccmt, tsk)
@@ -950,13 +995,42 @@ func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Addres
 		return cid.Undef, xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
 	}
 
-	if nv < network.Version13 {
-		var c cbg.CborCid
-		if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
-			return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
-		}
+	var c cbg.CborCid
+	if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+	}
 
-		return cid.Cid(c), nil
+	return cid.Cid(c), nil
+}
+
+func (a *StateAPI) stateComputeDataCIDv2(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	var err error
+	ccparams, err := actors.SerializeParams(&market5.ComputeDataCommitmentParams{
+		Inputs: []*market5.SectorDataSpec{
+			{
+				DealIDs:    deals,
+				SectorType: sectorType,
+			},
+		},
+	})
+
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("computing params for ComputeDataCommitment: %w", err)
+	}
+	ccmt := &types.Message{
+		To:    market.Address,
+		From:  maddr,
+		Value: types.NewInt(0),
+		// Hard coded, because the method has since been deprecated
+		Method: 8,
+		Params: ccparams,
+	}
+	r, err := a.StateCall(ctx, ccmt, tsk)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("calling ComputeDataCommitment: %w", err)
+	}
+	if r.MsgRct.ExitCode != 0 {
+		return cid.Undef, xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
 	}
 
 	var cr market5.ComputeDataCommitmentReturn
@@ -969,6 +1043,52 @@ func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Addres
 	}
 
 	return cid.Cid(cr.CommDs[0]), nil
+}
+
+func (a *StateAPI) stateComputeDataCIDv3(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	if len(deals) == 0 {
+		return cid.Undef, nil
+	}
+
+	var err error
+	ccparams, err := actors.SerializeParams(&market12.VerifyDealsForActivationParams{
+		Sectors: []market12.SectorDeals{{
+			SectorType:   sectorType,
+			SectorExpiry: math.MaxInt64,
+			DealIDs:      deals,
+		}},
+	})
+
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("computing params for VerifyDealsForActivation: %w", err)
+	}
+	ccmt := &types.Message{
+		To:     market.Address,
+		From:   maddr,
+		Value:  types.NewInt(0),
+		Method: market.Methods.VerifyDealsForActivation,
+		Params: ccparams,
+	}
+	r, err := a.StateCall(ctx, ccmt, tsk)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("calling VerifyDealsForActivation: %w", err)
+	}
+	if r.MsgRct.ExitCode != 0 {
+		return cid.Undef, xerrors.Errorf("receipt for VerifyDealsForActivation had exit code %d", r.MsgRct.ExitCode)
+	}
+
+	var cr market12.VerifyDealsForActivationReturn
+	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to VerifyDealsForActivationReturn: %w", err)
+	}
+	if len(cr.UnsealedCIDs) != 1 {
+		return cid.Undef, xerrors.Errorf("Sectors output must have 1 entry")
+	}
+	ucid := cr.UnsealedCIDs[0]
+	if ucid == nil {
+		return cid.Undef, xerrors.Errorf("computed data CID is nil")
+	}
+	return *ucid, nil
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
@@ -1040,7 +1160,7 @@ func (a *StateAPI) StateMinerAllocated(ctx context.Context, addr address.Address
 	return mas.GetAllocatedSectors()
 }
 
-func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
+func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1315,7 +1435,7 @@ func (m *StateModule) MsigGetPending(ctx context.Context, addr address.Address, 
 var initialPledgeNum = types.NewInt(110)
 var initialPledgeDen = types.NewInt(100)
 
-func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1347,7 +1467,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 			sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 		}
 	} else {
-		sectorWeight = minertypes.QAPowerMax(ssize)
+		sectorWeight = miner.QAPowerMax(ssize)
 	}
 
 	var powerSmoothed builtin.FilterEstimate
@@ -1379,7 +1499,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	// TODO: this repeats a lot of the previous function. Fix that.
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1504,7 +1624,7 @@ func (a *StateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.
 	return mas.IsAllocated(s)
 }
 
-// StateVerifiedClientStatus returns the data cap for the given address.
+// StateVerifierStatus returns the data cap for the given address.
 // Returns zero if there is no entry in the data cap table for the
 // address.
 func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
@@ -1752,7 +1872,34 @@ func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personaliz
 
 func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
+}
 
+func (a *StateAPI) StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	ret, err := a.StateManager.GetRandomnessDigestFromTickets(ctx, randEpoch, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness digest from tickets: %w", err)
+	}
+
+	return ret[:], nil
+}
+
+func (a *StateAPI) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	ret, err := a.StateManager.GetRandomnessDigestFromBeacon(ctx, randEpoch, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness digest from tickets: %w", err)
+	}
+
+	return ret[:], nil
 }
 
 func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -1786,6 +1933,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 		ConsensusMinerMinPower:  build.ConsensusMinerMinPower,
 		SupportedProofTypes:     build.SupportedProofTypes,
 		PreCommitChallengeDelay: build.PreCommitChallengeDelay,
+		Eip155ChainID:           build.Eip155ChainId,
 		ForkUpgradeParams: api.ForkUpgradeParams{
 			UpgradeSmokeHeight:       build.UpgradeSmokeHeight,
 			UpgradeBreezeHeight:      build.UpgradeBreezeHeight,
@@ -1811,6 +1959,10 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeHyggeHeight:       build.UpgradeHyggeHeight,
 			UpgradeLightningHeight:   build.UpgradeLightningHeight,
 			UpgradeThunderHeight:     build.UpgradeThunderHeight,
+			UpgradeWatermelonHeight:  build.UpgradeWatermelonHeight,
+			UpgradeDragonHeight:      build.UpgradeDragonHeight,
+			UpgradePhoenixHeight:     build.UpgradePhoenixHeight,
+			UpgradeAussieHeight:      build.UpgradeAussieHeight,
 		},
 	}, nil
 }

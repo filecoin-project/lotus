@@ -559,6 +559,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		}
 
 	case pubsub_pb.TraceEvent_PRUNE:
+		stats.Record(context.TODO(), metrics.PubsubPruneMessage.M(1))
 		if trw.traceMessage(evt.GetPrune().GetTopic()) {
 			if trw.lp2pTracer != nil {
 				trw.lp2pTracer.Trace(evt)
@@ -593,7 +594,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		msgsRPC := evt.GetRecvRPC().GetMeta().GetMessages()
 
 		// check if any of the messages we are sending belong to a trackable topic
-		var validTopic bool = false
+		var validTopic = false
 		for _, topic := range msgsRPC {
 			if trw.traceMessage(topic.GetTopic()) {
 				validTopic = true
@@ -601,7 +602,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 		// track if the Iwant / Ihave messages are from a valid Topic
-		var validIhave bool = false
+		var validIhave = false
 		for _, msgs := range ihave {
 			if trw.traceMessage(msgs.GetTopic()) {
 				validIhave = true
@@ -629,7 +630,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		msgsRPC := evt.GetSendRPC().GetMeta().GetMessages()
 
 		// check if any of the messages we are sending belong to a trackable topic
-		var validTopic bool = false
+		var validTopic = false
 		for _, topic := range msgsRPC {
 			if trw.traceMessage(topic.GetTopic()) {
 				validTopic = true
@@ -637,7 +638,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 		// track if the Iwant / Ihave messages are from a valid Topic
-		var validIhave bool = false
+		var validIhave = false
 		for _, msgs := range ihave {
 			if trw.traceMessage(msgs.GetTopic()) {
 				validIhave = true

@@ -82,7 +82,7 @@ const (
 	PreCommit1 SectorState = "PreCommit1" // do PreCommit1
 	PreCommit2 SectorState = "PreCommit2" // do PreCommit2
 
-	PreCommitting SectorState = "PreCommitting" // on chain pre-commit
+	PreCommitting SectorState = "PreCommitting" // on chain pre-commit (deprecated)
 	PreCommitWait SectorState = "PreCommitWait" // waiting for precommit to land on chain
 
 	SubmitPreCommitBatch SectorState = "SubmitPreCommitBatch"
@@ -94,7 +94,7 @@ const (
 	CommitFinalizeFailed SectorState = "CommitFinalizeFailed"
 
 	// single commit
-	SubmitCommit SectorState = "SubmitCommit" // send commit message to the chain
+	SubmitCommit SectorState = "SubmitCommit" // send commit message to the chain (deprecated)
 	CommitWait   SectorState = "CommitWait"   // wait for the commit message to land on chain
 
 	SubmitCommitAggregate SectorState = "SubmitCommitAggregate"

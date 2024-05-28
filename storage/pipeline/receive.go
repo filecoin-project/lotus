@@ -86,6 +86,11 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		return SectorInfo{}, xerrors.Errorf("getting chain head: %w", err)
 	}
 
+	nv, err := m.Api.StateNetworkVersion(ctx, ts.Key())
+	if err != nil {
+		return SectorInfo{}, xerrors.Errorf("getting network version: %w", err)
+	}
+
 	var info SectorInfo
 	var validatePoRep bool
 
@@ -123,7 +128,7 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		if err := m.maddr.MarshalCBOR(maddrBuf); err != nil {
 			return SectorInfo{}, xerrors.Errorf("marshal miner address for seed check: %w", err)
 		}
-		rand, err := m.Api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, meta.SeedEpoch, maddrBuf.Bytes(), ts.Key())
+		rand, err := m.Api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, meta.SeedEpoch, maddrBuf.Bytes(), ts.Key())
 		if err != nil {
 			return SectorInfo{}, xerrors.Errorf("generating check seed: %w", err)
 		}
@@ -217,8 +222,23 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		info.State = ReceiveSector
 
 		info.SectorNumber = meta.Sector.Number
-		info.Pieces = meta.Pieces
+		info.Pieces = make([]SafeSectorPiece, len(meta.Pieces))
 		info.SectorType = meta.Type
+
+		for i, piece := range meta.Pieces {
+			info.Pieces[i] = SafeSectorPiece{
+				real: piece,
+			}
+
+			if !info.Pieces[i].HasDealInfo() {
+				continue // cc
+			}
+
+			err := info.Pieces[i].DealInfo().Valid(nv)
+			if err != nil {
+				return SectorInfo{}, xerrors.Errorf("piece %d deal info invalid: %w", i, err)
+			}
+		}
 
 		if meta.RemoteSealingDoneEndpoint != "" {
 			// validate the url
@@ -229,7 +249,7 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 			info.RemoteSealingDoneEndpoint = meta.RemoteSealingDoneEndpoint
 		}
 
-		if err := checkPieces(ctx, m.maddr, meta.Sector.Number, meta.Pieces, m.Api, false); err != nil {
+		if err := checkPieces(ctx, m.maddr, meta.Sector.Number, info.Pieces, m.Api, false); err != nil {
 			return SectorInfo{}, xerrors.Errorf("checking pieces: %w", err)
 		}
 

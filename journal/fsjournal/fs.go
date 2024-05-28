@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -37,7 +38,16 @@ type fsJournal struct {
 // OpenFSJournal constructs a rolling filesystem journal, with a default
 // per-file size limit of 1GiB.
 func OpenFSJournal(lr repo.LockedRepo, disabled journal.DisabledEvents) (journal.Journal, error) {
-	dir := filepath.Join(lr.Path(), "journal")
+	return OpenFSJournalPath(lr.Path(), disabled)
+}
+
+func OpenFSJournalPath(path string, disabled journal.DisabledEvents) (journal.Journal, error) {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to expand repo path: %w", err)
+	}
+
+	dir := filepath.Join(path, "journal")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to mk directory %s for file journal: %w", dir, err)
 	}

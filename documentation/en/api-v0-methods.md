@@ -170,6 +170,8 @@
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetAllAllocations](#StateGetAllAllocations)
+  * [StateGetAllClaims](#StateGetAllClaims)
   * [StateGetAllocation](#StateGetAllocation)
   * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
   * [StateGetAllocations](#StateGetAllocations)
@@ -2289,7 +2291,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "07070707-0707-0707-0707-070707070707",
+    "MaximizeFeeCap": true
   },
   [
     {
@@ -2766,7 +2769,8 @@ Inputs:
   ],
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "07070707-0707-0707-0707-070707070707",
+    "MaximizeFeeCap": true
   }
 ]
 ```
@@ -3025,7 +3029,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "07070707-0707-0707-0707-070707070707",
+    "MaximizeFeeCap": true
   }
 ]
 ```
@@ -4729,7 +4734,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  23
 ]
 ```
 
@@ -4744,7 +4749,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  23
 ]
 ```
 
@@ -4873,12 +4878,28 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "ParamsCodec": 42,
+      "GasLimit": 42,
+      "ReadOnly": true
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "ReturnCodec": 42
+    },
+    "InvokedActor": {
+      "Id": 1000,
+      "State": {
+        "Code": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Head": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Nonce": 42,
+        "Balance": "0",
+        "Address": "f01234"
+      }
     },
     "GasCharges": [
       {
@@ -4897,12 +4918,28 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "ReturnCodec": 42
+        },
+        "InvokedActor": {
+          "Id": 1000,
+          "State": {
+            "Code": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Head": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Nonce": 42,
+            "Balance": "0",
+            "Address": "f01234"
+          }
         },
         "GasCharges": [
           {
@@ -5103,12 +5140,28 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "ReturnCodec": 42
+        },
+        "InvokedActor": {
+          "Id": 1000,
+          "State": {
+            "Code": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Head": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Nonce": 42,
+            "Balance": "0",
+            "Address": "f01234"
+          }
         },
         "GasCharges": [
           {
@@ -5127,12 +5180,28 @@ Response:
               "Value": "0",
               "Method": 1,
               "Params": "Ynl0ZSBhcnJheQ==",
-              "ParamsCodec": 42
+              "ParamsCodec": 42,
+              "GasLimit": 42,
+              "ReadOnly": true
             },
             "MsgRct": {
               "ExitCode": 0,
               "Return": "Ynl0ZSBhcnJheQ==",
               "ReturnCodec": 42
+            },
+            "InvokedActor": {
+              "Id": 1000,
+              "State": {
+                "Code": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Head": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Nonce": 42,
+                "Balance": "0",
+                "Address": "f01234"
+              }
             },
             "GasCharges": [
               {
@@ -5245,6 +5314,50 @@ Response:
   "Address": "f01234"
 }
 ```
+
+### StateGetAllAllocations
+StateGetAllAllocations returns the all the allocations available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
+### StateGetAllClaims
+StateGetAllClaims returns the all the claims available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
 
 ### StateGetAllocation
 StateGetAllocation returns the allocation for a given address and allocation ID.
@@ -5445,8 +5558,13 @@ Response:
     "UpgradeSharkHeight": 10101,
     "UpgradeHyggeHeight": 10101,
     "UpgradeLightningHeight": 10101,
-    "UpgradeThunderHeight": 10101
-  }
+    "UpgradeThunderHeight": 10101,
+    "UpgradeWatermelonHeight": 10101,
+    "UpgradeDragonHeight": 10101,
+    "UpgradePhoenixHeight": 10101,
+    "UpgradeAussieHeight": 10101
+  },
+  "Eip155ChainID": 123
 }
 ```
 
@@ -5723,10 +5841,10 @@ Response:
       "ClientCollateral": "0"
     },
     "State": {
+      "SectorNumber": 9,
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 }
@@ -5802,10 +5920,10 @@ Response:
     "ClientCollateral": "0"
   },
   "State": {
+    "SectorNumber": 9,
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101,
-    "VerifiedClaim": 0
+    "SlashEpoch": 10101
   }
 }
 ```
@@ -5850,12 +5968,12 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
+    "PowerBaseEpoch": 10101,
     "ReplacedDayReward": "0",
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "SimpleQAPower": true
+    "Flags": 0
   }
 ]
 ```
@@ -6330,12 +6448,12 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
+    "PowerBaseEpoch": 10101,
     "ReplacedDayReward": "0",
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "SimpleQAPower": true
+    "Flags": 0
   }
 ]
 ```
@@ -6370,7 +6488,7 @@ Inputs:
 ]
 ```
 
-Response: `20`
+Response: `23`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -6491,12 +6609,28 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "ParamsCodec": 42,
+      "GasLimit": 42,
+      "ReadOnly": true
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "ReturnCodec": 42
+    },
+    "InvokedActor": {
+      "Id": 1000,
+      "State": {
+        "Code": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Head": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Nonce": 42,
+        "Balance": "0",
+        "Address": "f01234"
+      }
     },
     "GasCharges": [
       {
@@ -6515,12 +6649,28 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "ParamsCodec": 42,
+          "GasLimit": 42,
+          "ReadOnly": true
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "ReturnCodec": 42
+        },
+        "InvokedActor": {
+          "Id": 1000,
+          "State": {
+            "Code": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Head": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Nonce": 42,
+            "Balance": "0",
+            "Address": "f01234"
+          }
         },
         "GasCharges": [
           {
@@ -6725,12 +6875,12 @@ Response:
   "InitialPledge": "0",
   "ExpectedDayReward": "0",
   "ExpectedStoragePledge": "0",
-  "ReplacedSectorAge": 10101,
+  "PowerBaseEpoch": 10101,
   "ReplacedDayReward": "0",
   "SectorKeyCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "SimpleQAPower": true
+  "Flags": 0
 }
 ```
 
@@ -7447,7 +7597,7 @@ Inputs:
 Response: `"f01234"`
 
 ### WalletSetDefault
-WalletSetDefault marks the given address as as the default one.
+WalletSetDefault marks the given address as the default one.
 
 
 Perms: write

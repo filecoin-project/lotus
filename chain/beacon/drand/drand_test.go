@@ -3,6 +3,7 @@
 package drand
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
@@ -17,8 +18,13 @@ import (
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	server := build.DrandConfigs[build.DrandDevnet].Servers[0]
-	c, err := hclient.New(server, nil, nil)
+	server := build.DrandConfigs[build.DrandTestnet].Servers[0]
+	chainInfo := build.DrandConfigs[build.DrandTestnet].ChainInfoJSON
+
+	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(chainInfo)))
+	assert.NoError(t, err)
+	c, err := hclient.NewWithInfo(server, drandChain, nil)
+
 	assert.NoError(t, err)
 	cg := c.(interface {
 		FetchChainInfo(ctx context.Context, groupHash []byte) (*dchain.Info, error)
@@ -31,9 +37,17 @@ func TestPrintGroupInfo(t *testing.T) {
 
 func TestMaxBeaconRoundForEpoch(t *testing.T) {
 	todayTs := uint64(1652222222)
-	db, err := NewDrandBeacon(todayTs, build.BlockDelaySecs, nil, build.DrandConfigs[build.DrandDevnet])
+	db, err := NewDrandBeacon(todayTs, build.BlockDelaySecs, nil, build.DrandConfigs[build.DrandTestnet])
 	assert.NoError(t, err)
+	assert.True(t, db.IsChained())
 	mbr15 := db.MaxBeaconRoundForEpoch(network.Version15, 100)
 	mbr16 := db.MaxBeaconRoundForEpoch(network.Version16, 100)
 	assert.Equal(t, mbr15+1, mbr16)
+}
+
+func TestQuicknetIsChained(t *testing.T) {
+	todayTs := uint64(1652222222)
+	db, err := NewDrandBeacon(todayTs, build.BlockDelaySecs, nil, build.DrandConfigs[build.DrandQuicknet])
+	assert.NoError(t, err)
+	assert.False(t, db.IsChained())
 }

@@ -1,5 +1,5 @@
 #####################################
-FROM golang:1.19.7-buster AS lotus-builder
+FROM golang:1.21.7-bullseye AS lotus-builder
 MAINTAINER Lotus Development Team
 
 RUN apt-get update && apt-get install -y ca-certificates build-essential clang ocl-icd-opencl-dev ocl-icd-libopencl1 jq libhwloc-dev
@@ -58,7 +58,7 @@ COPY --from=lotus-builder /lib/*/libgcc_s.so.1      /lib/
 COPY --from=lotus-builder /lib/*/libutil.so.1       /lib/
 COPY --from=lotus-builder /usr/lib/*/libltdl.so.7   /lib/
 COPY --from=lotus-builder /usr/lib/*/libnuma.so.1   /lib/
-COPY --from=lotus-builder /usr/lib/*/libhwloc.so.5  /lib/
+COPY --from=lotus-builder /usr/lib/*/libhwloc.so.*  /lib/
 COPY --from=lotus-builder /usr/lib/*/libOpenCL.so.1 /lib/
 
 RUN useradd -r -u 532 -U fc \
@@ -73,7 +73,7 @@ COPY --from=lotus-builder /opt/filecoin/lotus /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-shed /usr/local/bin/
 COPY scripts/docker-lotus-entrypoint.sh /
 
-ARG DOCKER_LOTUS_IMPORT_SNAPSHOT https://snapshots.mainnet.filops.net/minimal/latest
+ARG DOCKER_LOTUS_IMPORT_SNAPSHOT=https://forest-archive.chainsafe.dev/latest/mainnet/
 ENV DOCKER_LOTUS_IMPORT_SNAPSHOT ${DOCKER_LOTUS_IMPORT_SNAPSHOT}
 ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
 ENV LOTUS_PATH /var/lib/lotus
@@ -109,6 +109,7 @@ COPY --from=lotus-builder /opt/filecoin/lotus-wallet   /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-gateway  /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-miner    /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-worker   /usr/local/bin/
+COPY --from=lotus-builder /opt/filecoin/curio    /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-stats    /usr/local/bin/
 COPY --from=lotus-builder /opt/filecoin/lotus-fountain /usr/local/bin/
 
@@ -117,11 +118,13 @@ RUN mkdir /var/lib/lotus
 RUN mkdir /var/lib/lotus-miner
 RUN mkdir /var/lib/lotus-worker
 RUN mkdir /var/lib/lotus-wallet
+RUN mkdir /var/lib/curio
 RUN chown fc: /var/tmp/filecoin-proof-parameters
 RUN chown fc: /var/lib/lotus
 RUN chown fc: /var/lib/lotus-miner
 RUN chown fc: /var/lib/lotus-worker
 RUN chown fc: /var/lib/lotus-wallet
+RUN chown fc: /var/lib/curio
 
 
 VOLUME /var/tmp/filecoin-proof-parameters
@@ -129,6 +132,7 @@ VOLUME /var/lib/lotus
 VOLUME /var/lib/lotus-miner
 VOLUME /var/lib/lotus-worker
 VOLUME /var/lib/lotus-wallet
+VOLUME /var/lib/curio
 
 EXPOSE 1234
 EXPOSE 2345

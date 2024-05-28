@@ -1,0 +1,105 @@
+{{define "sector_info"}}
+    <h2>Sector {{.SectorNumber}}</h2>
+    <div>
+        <h3>PoRep Pipeline</h3>
+        {{template "sector_porep_state" .PipelinePoRep}}
+    </div>
+    <div>
+        <h3>Pieces</h3>
+        <table class="porep-state">
+            <tr>
+                <th>Piece Index</th>
+                <th>Piece CID</th>
+                <th>Piece Size</th>
+                <th>Data URL</th>
+                <th>Data Raw Size</th>
+                <th>Delete On Finalize</th>
+                <th>F05 Publish CID</th>
+                <th>F05 Deal ID</th>
+                <th>Direct Piece Activation Manifest</th>
+
+                <th>PiecePark ID</th>
+                <th>PP URL</th>
+                <th>PP Created At</th>
+                <th>PP Complete</th>
+                <th>PP Cleanup Task</th>
+            </tr>
+            {{range .Pieces}}
+                <tr>
+                    <td>{{.PieceIndex}}</td>
+                    <td>{{.PieceCid}}</td>
+                    <td>{{.PieceSize}}</td>
+                    <td>{{.DataUrl}}</td>
+                    <td>{{.DataRawSize}}</td>
+                    <td>{{.DeleteOnFinalize}}</td>
+                    <td>{{.F05PublishCid}}</td>
+                    <td>{{.F05DealID}}</td>
+                    <td>{{.DDOPam}}</td>
+                    {{if .IsParkedPiece}}
+                    <td>{{.PieceParkID}}</td>
+                    <td>{{.PieceParkDataUrl}}</td>
+                    <td>{{.PieceParkCreatedAt}}</td>
+                    <td>{{.PieceParkComplete}}</td>
+                    <td>{{.PieceParkCleanupTaskID}}</td>
+                    {{else}}
+                    <td>{{if not .IsParkedPieceFound}}ERR:RefNotFound{{end}}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    {{end}}
+                </tr>
+            {{end}}
+        </table>
+    </div>
+    <div>
+        <h3>Storage</h3>
+        <table class="porep-state">
+            <tr>
+                <th>Path Type</th>
+                <th>File Type</th>
+                <th>Path ID</th>
+                <th>Host</th>
+            </tr>
+            {{range .Locations}}
+                <tr>
+                    {{if .PathType}}
+                        <td rowspan="{{.PathTypeRowSpan}}">{{.PathType}}</td>
+                    {{end}}
+                    {{if .FileType}}
+                        <td rowspan="{{.FileTypeRowSpan}}">{{.FileType}}</td>
+                    {{end}}
+                    <td>{{(index .Locations 0).StorageID}}</td>
+                    <td>{{range (index .Locations 0).Urls}}<p>{{.}}</p>{{end}}</td>
+                </tr>
+                {{range $i, $loc := .Locations}}
+                    {{if gt $i 0}}
+                        <tr>
+                            <td>{{$loc.StorageID}}</td>
+                            <td>{{range $loc.Urls}}<p>{{.}}</p>{{end}}</td>
+                        </tr>
+                    {{end}}
+                {{end}}
+            {{end}}
+        </table>
+    </div>
+    <div>
+        <h3>Tasks</h3>
+        <table class="porep-state">
+            <tr>
+                <th>Task Type</th>
+                <th>Task ID</th>
+                <th>Posted</th>
+                <th>Worker</th>
+            </tr>
+        {{range .Tasks}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td>{{.ID}}</td>
+                <td>{{.SincePosted}}</td>
+                <td>{{if ne nil .OwnerID}}<a href="/hapi/node/{{.OwnerID}}">{{.Owner}}</a>{{end}}</td>
+            </tr>
+        {{end}}
+        </table>
+    </div>
+{{end}}

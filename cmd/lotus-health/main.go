@@ -25,7 +25,7 @@ type CidWindow [][]cid.Cid
 var log = logging.Logger("lotus-health")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	log.Info("Starting health agent")
 

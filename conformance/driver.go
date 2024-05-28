@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -89,9 +90,9 @@ type ExecuteTipsetParams struct {
 	ParentEpoch abi.ChainEpoch
 	Tipset      *schema.Tipset
 	ExecEpoch   abi.ChainEpoch
-	// Rand is an optional vm.Rand implementation to use. If nil, the driver
-	// will use a vm.Rand that returns a fixed value for all calls.
-	Rand vm.Rand
+	// Rand is an optional rand.Rand implementation to use. If nil, the driver
+	// will use a rand.Rand that returns a fixed value for all calls.
+	Rand rand.Rand
 	// BaseFee if not nil or zero, will override the basefee of the tipset.
 	BaseFee abi.TokenAmount
 }
@@ -99,7 +100,7 @@ type ExecuteTipsetParams struct {
 // ExecuteTipset executes the supplied tipset on top of the state represented
 // by the preroot CID.
 //
-// This method returns the the receipts root, the poststate root, and the VM
+// This method returns the receipts root, the poststate root, and the VM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params ExecuteTipsetParams) (*ExecuteTipsetResult, error) {
@@ -195,14 +196,15 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 type ExecuteMessageParams struct {
 	Preroot        cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Message        *types.Message
 	CircSupply     abi.TokenAmount
 	BaseFee        abi.TokenAmount
 	NetworkVersion network.Version
 
-	// Rand is an optional vm.Rand implementation to use. If nil, the driver
-	// will use a vm.Rand that returns a fixed value for all calls.
-	Rand vm.Rand
+	// Rand is an optional rand.Rand implementation to use. If nil, the driver
+	// will use a rand.Rand that returns a fixed value for all calls.
+	Rand rand.Rand
 
 	// Lookback is the LookbackStateGetter; returns the state tree at a given epoch.
 	Lookback vm.LookbackStateGetter
@@ -248,6 +250,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
 		Epoch:     params.Epoch,
+		Timestamp: params.Timestamp,
 		Bstore:    bs,
 		Syscalls:  vm.Syscalls(ffiwrapper.ProofVerifier),
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {

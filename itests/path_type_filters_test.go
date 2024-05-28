@@ -15,6 +15,8 @@ import (
 )
 
 func TestPathTypeFilters(t *testing.T) {
+	kit.QuietMiningLogs()
+
 	runTest := func(t *testing.T, name string, asserts func(t *testing.T, ctx context.Context, miner *kit.TestMiner, run func())) {
 		t.Run(name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())

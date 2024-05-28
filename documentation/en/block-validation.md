@@ -104,9 +104,9 @@ domain separation tag.
 ### Winning PoSt proof
 
 Draw randomness for current epoch with `WinningPoSt` domain separation tag.
-Get list of sectors challanged in this epoch for this miner, based on the randomness drawn. 
+Get list of sectors challenged in this epoch for this miner, based on the randomness drawn. 
 
-`V`: Use filecoin proofs system to verify that miner prooved access to sealed versions of these sectors.
+`V`: Use filecoin proofs system to verify that miner proved access to sealed versions of these sectors.
 
 ## `(*StateManager).TipSetState()`
 
