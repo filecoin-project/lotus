@@ -36,7 +36,7 @@ var log = logging.Logger("curio/deps")
 func StartTasks(ctx context.Context, dependencies *deps.Deps) (*harmonytask.TaskEngine, error) {
 	cfg := dependencies.Cfg
 	db := dependencies.DB
-	full := dependencies.Full
+	full := dependencies.DaemonApi
 	verif := dependencies.Verif
 	as := dependencies.As
 	maddrs := dependencies.Maddrs

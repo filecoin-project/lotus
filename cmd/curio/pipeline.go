@@ -101,12 +101,12 @@ var sealStartCmd = &cli.Command{
 			return xerrors.Errorf("getting miner id: %w", err)
 		}
 
-		mi, err := dep.Full.StateMinerInfo(ctx, act, types.EmptyTSK)
+		mi, err := dep.DaemonApi.StateMinerInfo(ctx, act, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		nv, err := dep.Full.StateNetworkVersion(ctx, types.EmptyTSK)
+		nv, err := dep.DaemonApi.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting network version: %w", err)
 		}
@@ -117,7 +117,7 @@ var sealStartCmd = &cli.Command{
 			return xerrors.Errorf("getting seal proof type: %w", err)
 		}
 
-		num, err := seal.AllocateSectorNumbers(ctx, dep.Full, dep.DB, act, cctx.Int("count"), func(tx *harmonydb.Tx, numbers []abi.SectorNumber) (bool, error) {
+		num, err := seal.AllocateSectorNumbers(ctx, dep.DaemonApi, dep.DB, act, cctx.Int("count"), func(tx *harmonydb.Tx, numbers []abi.SectorNumber) (bool, error) {
 			for _, n := range numbers {
 				_, err := tx.Exec("insert into sectors_sdr_pipeline (sp_id, sector_number, reg_seal_proof) values ($1, $2, $3)", mid, n, spt)
 				if err != nil {

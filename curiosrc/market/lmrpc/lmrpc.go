@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/curiosrc/api/daemonapi"
 	cumarket "github.com/filecoin-project/lotus/curiosrc/market"
 	"github.com/filecoin-project/lotus/curiosrc/market/fakelm"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -42,7 +43,7 @@ var log = logging.Logger("lmrpc")
 
 const backpressureWaitTime = 30 * time.Second
 
-func ServeCurioMarketRPCFromConfig(db *harmonydb.DB, full api.FullNode, cfg *config.CurioConfig) error {
+func ServeCurioMarketRPCFromConfig(db *harmonydb.DB, daemon daemonapi.Daemon, cfg *config.CurioConfig) error {
 	return forEachMarketRPC(cfg, func(maddr string, listen string) error {
 		addr, err := address.NewFromString(maddr)
 		if err != nil {
@@ -50,7 +51,7 @@ func ServeCurioMarketRPCFromConfig(db *harmonydb.DB, full api.FullNode, cfg *con
 		}
 
 		go func() {
-			err := ServeCurioMarketRPC(db, full, addr, cfg, listen)
+			err := ServeCurioMarketRPC(db, daemon, addr, cfg, listen)
 			if err != nil {
 				log.Errorf("failed to serve market rpc: %s", err)
 			}
@@ -149,10 +150,10 @@ func forEachMarketRPC(cfg *config.CurioConfig, cb func(string, string) error) er
 	return nil
 }
 
-func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Address, conf *config.CurioConfig, listen string) error {
+func ServeCurioMarketRPC(db *harmonydb.DB, daemon daemonapi.Daemon, maddr address.Address, conf *config.CurioConfig, listen string) error {
 	ctx := context.Background()
 
-	pin, err := cumarket.NewPieceIngester(ctx, db, full, maddr, false, time.Duration(conf.Ingest.MaxDealWaitTime))
+	pin, err := cumarket.NewPieceIngester(ctx, db, daemon, maddr, false, time.Duration(conf.Ingest.MaxDealWaitTime))
 	if err != nil {
 		return xerrors.Errorf("starting piece ingestor")
 	}
@@ -164,12 +165,12 @@ func ServeCurioMarketRPC(db *harmonydb.DB, full api.FullNode, maddr address.Addr
 		return xerrors.Errorf("getting miner id: %w", err)
 	}
 
-	mi, err := full.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	mi, err := daemon.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	lp := fakelm.NewLMRPCProvider(si, full, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, conf)
+	lp := fakelm.NewLMRPCProvider(si, daemon, maddr, abi.ActorID(mid), mi.SectorSize, pin, db, conf)
 
 	laddr, err := net.ResolveTCPAddr("tcp", listen)
 	if err != nil {

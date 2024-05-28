@@ -321,7 +321,7 @@ func ConstructCurioTest(ctx context.Context, t *testing.T, dir string, db *harmo
 
 	dependencies := &deps.Deps{}
 	dependencies.DB = db
-	dependencies.Full = full
+	dependencies.DaemonApi = full
 	seal.SetDevnet(true)
 	err = os.Setenv("CURIO_REPO_PATH", dir)
 	require.NoError(t, err)
@@ -332,7 +332,7 @@ func ConstructCurioTest(ctx context.Context, t *testing.T, dir string, db *harmo
 	require.NoError(t, err)
 
 	dependencies.Cfg.Subsystems.BoostAdapters = []string{fmt.Sprintf("%s:127.0.0.1:32000", maddr)}
-	err = lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.Full, dependencies.Cfg)
+	err = lmrpc.ServeCurioMarketRPCFromConfig(dependencies.DB, dependencies.DaemonApi, dependencies.Cfg)
 	require.NoError(t, err)
 
 	go func() {
