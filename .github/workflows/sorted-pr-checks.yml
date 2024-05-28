@@ -17,6 +17,8 @@ on:
       - completed
 
 permissions:
+  actions: read
+  checks: read
   pull-requests: write
 
 concurrency:
