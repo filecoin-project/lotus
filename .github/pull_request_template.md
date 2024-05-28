@@ -5,7 +5,7 @@
 <!-- A clear list of the changes being made -->
 
 ## Test Plan
-<!-- PRs should include unit/integration tests, and/or IRL opertional testing plans-->
+<!-- PRs should include unit/integration tests, and/or IRL operational testing plans-->
 
 ## Checklist
 
