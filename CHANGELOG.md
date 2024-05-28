@@ -6,9 +6,9 @@
 
 ## Improvements
 
-# v1.27.0-rc3 / 2024-05-16
+# v1.27.0 / 2024-05-27
 
-This is the third release candidate of the upcoming optional release of Lotus v1.27.0. This feature release includes numerous improvements and enhancements for node operators, RPC- and ETH RPC-providers as well as storage providers. This feature release introduces Curio in Beta release. Check out the Curio Beta release section for how you can get started with Curio.
+This is an optional feature release of Lotus. Lotus v1.27.0 includes numerous improvements, bugfixes and enhancements for node operators, RPC- and ETH RPC-providers. This feature release also introduces Curio in a Beta release. Check out the Curio Beta release section for how you can get started with Curio.
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -25,6 +25,7 @@ This release includes a lot of improvements and fixes for indexers, RPC- and ETH
 - [Length check the array sent to eth_feeHistory RPC](https://github.com/filecoin-project/lotus/pull/11696)
 - [ETH subscribe tipsets API should only return tipsets that have been executed](https://github.com/filecoin-project/lotus/pull/11858)
 - [Adjust indexes in event index db to match query patterns](https://github.com/filecoin-project/lotus/pull/111934)
+- 
 
 ## ⭐️ Curio Beta Release  ⭐️
 
@@ -139,9 +140,12 @@ Visit the Curio Official Website insert link
 - chore:libp2p: update libp2p deps in master ([filecoin-project/lotus#11522](https://github.com/filecoin-project/lotus/pull/11522))
 - dep: go-multi-address ([filecoin-project/lotus#11563](https://github.com/filecoin-project/lotus/pull/11563))
 - chore: update go-data-transfer and go-graphsync (#12000) ([filecoin-project/lotus#12000](https://github.com/filecoin-project/lotus/pull/2000))
+- chore: update drand (#12021) ([filecoin-project/lotus#12021](https://github.com/filecoin-project/lotus/pull/12021))
+- chore: libp2p: update to v0.34.1 (12027) ([filecoin-project/lotus#12027](https://github.com/filecoin-project/lotus/pull/12027))
 - github.com/filecoin-project/go-amt-ipld/ (v4.2.0 -> v4.3.0)
 - github.com/filecoin-project/go-state-types (v0.13.1 -> v0.13.3)
 - github.com/libp2p/go-libp2p-pubsub (v0.10.0 -> v0.10.1)
+- github.com/libp2p/go-libp2p (v0.33.2 -> v0.34.1)
 
 
 ## Others
@@ -167,6 +171,7 @@ Visit the Curio Official Website insert link
 - chore: docs: nv-skeleton documentation (#11065) ([filecoin-project/lotus#11065](https://github.com/filecoin-project/lotus/pull/11065))
 - chore: Add v13 support to invariants-checker (#11931) ([filecoin-project/lotus#11931](https://github.com/filecoin-project/lotus/pull/11931))
 - chore: remove unmaintained bootstrappers (#11983) ([filecoin-project/lotus#11983](https://github.com/filecoin-project/lotus/pull/11983))
+- chore: go mod: revert go version change as it breaks Docker build (#12050) ([filecoin-project/lotus#12050](https://github.com/filecoin-project/lotus/pull/12050))
 
 ## Contributors
 

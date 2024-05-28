@@ -88,7 +88,7 @@ func (r *Reporter) Print(elapsed time.Duration, w io.Writer) {
 		return r.latencies[i] < r.latencies[j]
 	})
 
-	var totalLatency int64 = 0
+	var totalLatency int64
 	for _, latency := range r.latencies {
 		totalLatency += latency
 	}

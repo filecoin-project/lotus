@@ -48,7 +48,7 @@ func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 		var (
 			countdown int32
 			headCh    <-chan []*lapi.HeadChange
-			backoff   time.Duration = minbackoff
+			backoff   = minbackoff
 			err       error
 		)
 		minutely := time.NewTicker(time.Minute)
@@ -66,10 +66,9 @@ func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 					}
 					backoff = nextbackoff
 					continue
-				} else {
-					healthlog.Infof("started ChainNotify channel")
-					backoff = minbackoff
 				}
+				healthlog.Infof("started ChainNotify channel")
+				backoff = minbackoff
 			}
 			select {
 			case <-minutely.C:

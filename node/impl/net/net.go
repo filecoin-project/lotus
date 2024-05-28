@@ -11,7 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	"github.com/libp2p/go-libp2p/p2p/host/autonat"
 	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -135,8 +135,12 @@ func (a *NetAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, err
 	return a.Router.FindPeer(ctx, p)
 }
 
+type autoNatGetter interface {
+	GetAutoNat() autonat.AutoNAT
+}
+
 func (a *NetAPI) NetAutoNatStatus(context.Context) (i api.NatInfo, err error) {
-	autonat := a.RawHost.(*basichost.BasicHost).GetAutoNat()
+	autonat := a.RawHost.(autoNatGetter).GetAutoNat()
 
 	if autonat == nil {
 		return api.NatInfo{

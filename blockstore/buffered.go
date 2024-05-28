@@ -109,11 +109,9 @@ func (bs *BufferedBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) er
 
 func (bs *BufferedBlockstore) View(ctx context.Context, c cid.Cid, callback func([]byte) error) error {
 	// both stores are viewable.
-	if err := bs.write.View(ctx, c, callback); ipld.IsNotFound(err) {
-		// not found in write blockstore; fall through.
-	} else {
+	if err := bs.write.View(ctx, c, callback); !ipld.IsNotFound(err) {
 		return err // propagate errors, or nil, i.e. found.
-	}
+	} // else not found in write blockstore; fall through.
 	return bs.read.View(ctx, c, callback)
 }
 

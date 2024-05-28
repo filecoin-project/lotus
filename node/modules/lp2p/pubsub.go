@@ -594,7 +594,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		msgsRPC := evt.GetRecvRPC().GetMeta().GetMessages()
 
 		// check if any of the messages we are sending belong to a trackable topic
-		var validTopic bool = false
+		var validTopic = false
 		for _, topic := range msgsRPC {
 			if trw.traceMessage(topic.GetTopic()) {
 				validTopic = true
@@ -602,7 +602,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 		// track if the Iwant / Ihave messages are from a valid Topic
-		var validIhave bool = false
+		var validIhave = false
 		for _, msgs := range ihave {
 			if trw.traceMessage(msgs.GetTopic()) {
 				validIhave = true
@@ -630,7 +630,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		msgsRPC := evt.GetSendRPC().GetMeta().GetMessages()
 
 		// check if any of the messages we are sending belong to a trackable topic
-		var validTopic bool = false
+		var validTopic = false
 		for _, topic := range msgsRPC {
 			if trw.traceMessage(topic.GetTopic()) {
 				validTopic = true
@@ -638,7 +638,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 		// track if the Iwant / Ihave messages are from a valid Topic
-		var validIhave bool = false
+		var validIhave = false
 		for _, msgs := range ihave {
 			if trw.traceMessage(msgs.GetTopic()) {
 				validIhave = true

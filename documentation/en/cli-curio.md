@@ -7,7 +7,7 @@ USAGE:
    curio [global options] command [command options] [arguments...]
 
 VERSION:
-   1.27.0-rc3
+   1.27.0
 
 COMMANDS:
    cli           Execute cli commands
