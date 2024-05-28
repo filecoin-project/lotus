@@ -2319,7 +2319,10 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 		}
 	}
 
-	fmt.Fprintf(out, "Sending Channels\n\n")
+	if _, err := fmt.Fprintf(out, "Sending Channels\n\n"); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing to output: %v\n", err)
+		return
+	}
 	w := tablewriter.New(tablewriter.Col("ID"),
 		tablewriter.Col("Status"),
 		tablewriter.Col("Sending To"),

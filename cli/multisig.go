@@ -332,7 +332,9 @@ var msigInspectCmd = &cli.Command{
 			})
 
 			w := tabwriter.NewWriter(cctx.App.Writer, 8, 4, 2, ' ', 0)
-			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
+			if _, err := fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n"); err != nil {
+				return err
+			}
 			for _, txid := range txids {
 				tx := pending[txid]
 				target := tx.To.String()
@@ -344,9 +346,13 @@ var msigInspectCmd = &cli.Command{
 
 				if err != nil {
 					if tx.Method == 0 {
-						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "Send", tx.Method, paramStr)
+						if _, err := fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "Send", tx.Method, paramStr); err != nil {
+							return err
+						}
 					} else {
-						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "new account, unknown method", tx.Method, paramStr)
+						if _, err := fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "new account, unknown method", tx.Method, paramStr); err != nil {
+							return err
+						}
 					}
 				} else {
 					method := consensus.NewActorRegistry().Methods[targAct.Code][tx.Method] // TODO: use remote map
@@ -365,7 +371,9 @@ var msigInspectCmd = &cli.Command{
 						paramStr = string(b)
 					}
 
-					fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Name, tx.Method, paramStr)
+					if _, err := fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Name, tx.Method, paramStr); err != nil {
+						return err
+					}
 				}
 			}
 			if err := w.Flush(); err != nil {
