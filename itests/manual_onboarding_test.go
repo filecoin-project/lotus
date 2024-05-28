@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -41,6 +38,7 @@ func TestManualCCOnboarding(t *testing.T) {
 		if withMockProofs {
 			testName = "WithMockProofs"
 		}
+
 		t.Run(testName, func(t *testing.T) {
 			kit.QuietMiningLogs()
 			ctx, cancel := context.WithCancel(context.Background())
@@ -48,42 +46,12 @@ func TestManualCCOnboarding(t *testing.T) {
 
 			var (
 				blocktime = 2 * time.Millisecond
-
-				client kit.TestFullNode
-				minerA kit.TestMiner          // A is a standard genesis miner
-				minerB kit.TestUnmanagedMiner // B is a CC miner we will onboard manually without NI-Porep
-
-				// TODO: single sector per miner for now, but this isn't going to scale when refactored into
-				// TestUnmanagedMiner - they'll need their own list of sectors and their own copy of each of
-				// the things below, including per-sector maps of some of these too.
-				//
-				// Misc thoughts:
-				// Each TestUnmanagedMiner should have its own temp dir, within which it can have a cache dir
-				// and a place to put sealed and unsealed sectors. We can't share these between miners.
-				// We should have a way to "add" CC sectors, which will setup the sealed and unsealed files
-				// and can move many of the manualOnboarding*() methods into the TestUnmanagedMiner struct.
-				//
-				// The manualOnboardingRunWindowPost() Go routine should be owned by TestUnmanagedMiner and
-				// a simple "miner.StartWindowPost()" should suffice to make it observe all of the sectors
-				// it knows about and start posting for them. We should be able to ignore most (all?) of the
-				// special cases that lotus-miner currently has to deal with.
-
-				// sector numbers, make them unique for each miner so our maps work
-				bSectorNum = abi.SectorNumber(22)
-
-				tmpDir = t.TempDir()
-
-				cacheDirPath                         = map[abi.SectorNumber]string{} // can't share a cacheDir between miners
-				unsealedSectorPath, sealedSectorPath = map[abi.SectorNumber]string{}, map[abi.SectorNumber]string{}
-				sealedCid, unsealedCid               = map[abi.SectorNumber]cid.Cid{}, map[abi.SectorNumber]cid.Cid{}
-
-				// note we'll use the same randEpoch for both miners
-				sealRandEpoch = policy.SealRandomnessLookback
-				sealTickets   = map[abi.SectorNumber]abi.SealRandomness{}
+				client    kit.TestFullNode
+				minerA    kit.TestMiner // A is a standard genesis miner
 			)
 
 			// Setup and begin mining with a single miner (A)
-
+			// Miner A will only be a genesis Miner with power allocated in the genesis block and will not onboard any sectors from here on
 			kitOpts := []kit.EnsembleOpt{}
 			if withMockProofs {
 				kitOpts = append(kitOpts, kit.MockProofs())
@@ -96,110 +64,37 @@ func TestManualCCOnboarding(t *testing.T) {
 				InterconnectAll()
 			ens.BeginMining(blocktime)
 
+			// Instantiate MinerB to manually handle sector onboarding and power acquisition through sector activation.
+			// Unlike other miners managed by the Lotus Miner storage infrastructure, MinerB operates independently,
+			// performing all related tasks manually. Managed by the TestKit, MinerB has the capability to utilize actual proofs
+			// for the processes of sector onboarding and activation.
 			nodeOpts = append(nodeOpts, kit.OwnerAddr(client.DefaultKey))
-			ens.UnmanagedMiner(&minerB, &client, nodeOpts...).Start()
+			minerB, ens := ens.UnmanagedMiner(&client, nodeOpts...)
+			ens.Start()
 
 			build.Clock.Sleep(time.Second)
 
-			head, err := client.ChainHead(ctx)
-			req.NoError(err)
-
 			t.Log("Checking initial power ...")
 
-			// Miner A should have power
+			// Miner A should have power as it has already onboarded sectors in the genesis block
+			head, err := client.ChainHead(ctx)
+			req.NoError(err)
 			p, err := client.StateMinerPower(ctx, minerA.ActorAddr, head.Key())
 			req.NoError(err)
 			t.Logf("MinerA RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
 
-			// Miner B should have no power
-			p, err = client.StateMinerPower(ctx, minerB.ActorAddr, head.Key())
-			req.NoError(err)
-			t.Logf("MinerB RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
-			req.True(p.MinerPower.RawBytePower.IsZero())
+			// Miner B should have no power as it has yet to onboard and activate any sectors
+			minerB.AssertNoPower(ctx)
 
-			// Run precommit for a sector on miner B
-
-			t.Logf("Waiting for at least epoch %d for seal randomness (current epoch %d) ...", sealRandEpoch+5, head.Height())
-			client.WaitTillChain(ctx, kit.HeightAtLeast(sealRandEpoch+5))
-
+			var bSectorNum abi.SectorNumber
 			if withMockProofs {
-				sealedCid[bSectorNum] = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
+				bSectorNum = minerB.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
 			} else {
-				cacheDirPath[bSectorNum] = filepath.Join(tmpDir, "cacheb")
-				unsealedSectorPath[bSectorNum] = filepath.Join(tmpDir, "unsealedb")
-				sealedSectorPath[bSectorNum] = filepath.Join(tmpDir, "sealedb")
-
-				sealTickets[bSectorNum], sealedCid[bSectorNum], unsealedCid[bSectorNum] = manualOnboardingGeneratePreCommit(
-					ctx,
-					t,
-					client,
-					cacheDirPath[bSectorNum],
-					unsealedSectorPath[bSectorNum],
-					sealedSectorPath[bSectorNum],
-					minerB.ActorAddr,
-					bSectorNum,
-					sealRandEpoch,
-					kit.TestSpt,
-				)
+				bSectorNum = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
 			}
 
-			t.Log("Submitting MinerB PreCommitSector ...")
-
-			r, err := manualOnboardingSubmitMessage(ctx, client, minerB, &miner14.PreCommitSectorBatchParams2{
-				Sectors: []miner14.SectorPreCommitInfo{{
-					Expiration:    2880 * 300,
-					SectorNumber:  bSectorNum,
-					SealProof:     kit.TestSpt,
-					SealedCID:     sealedCid[bSectorNum],
-					SealRandEpoch: sealRandEpoch,
-				}},
-			}, 1, builtin.MethodsMiner.PreCommitSectorBatch2)
-			req.NoError(err)
-			req.True(r.Receipt.ExitCode.IsSuccess())
-
-			preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, minerB.ActorAddr, bSectorNum, r.TipSet)
-			req.NoError(err)
-
-			// Run prove commit for the sector on miner B
-
-			seedRandomnessHeight := preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
-			t.Logf("Waiting %d epochs for seed randomness at epoch %d (current epoch %d)...", seedRandomnessHeight-r.Height, seedRandomnessHeight, r.Height)
-			client.WaitTillChain(ctx, kit.HeightAtLeast(seedRandomnessHeight+5))
-
-			var sectorProof []byte
-			if withMockProofs {
-				sectorProof = []byte{0xde, 0xad, 0xbe, 0xef}
-			} else {
-				sectorProof = manualOnboardingGenerateProveCommit(
-					ctx,
-					t,
-					client,
-					cacheDirPath[bSectorNum],
-					sealedSectorPath[bSectorNum],
-					minerB.ActorAddr,
-					bSectorNum,
-					sealedCid[bSectorNum],
-					unsealedCid[bSectorNum],
-					sealTickets[bSectorNum],
-					kit.TestSpt,
-				)
-			}
-
-			t.Log("Submitting MinerB ProveCommitSector ...")
-
-			r, err = manualOnboardingSubmitMessage(ctx, client, minerB, &miner14.ProveCommitSectors3Params{
-				SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: bSectorNum}},
-				SectorProofs:             [][]byte{sectorProof},
-				RequireActivationSuccess: true,
-			}, 0, builtin.MethodsMiner.ProveCommitSectors3)
-			req.NoError(err)
-			req.True(r.Receipt.ExitCode.IsSuccess())
-
-			// Check power after proving, should still be zero until the PoSt is submitted
-			p, err = client.StateMinerPower(ctx, minerB.ActorAddr, r.TipSet)
-			req.NoError(err)
-			t.Logf("MinerB RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
-			req.True(p.MinerPower.RawBytePower.IsZero())
+			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
+			minerB.AssertNoPower(ctx)
 
 			// start a background PoST scheduler for miner B
 			bFirstCh, bErrCh := manualOnboardingRunWindowPost(
@@ -208,9 +103,9 @@ func TestManualCCOnboarding(t *testing.T) {
 				client,
 				minerB,
 				bSectorNum,
-				cacheDirPath[bSectorNum],
-				sealedSectorPath[bSectorNum],
-				sealedCid[bSectorNum],
+				minerB.CacheDirPaths[bSectorNum],
+				minerB.SealedSectorPaths[bSectorNum],
+				minerB.SealedCids[bSectorNum],
 				kit.TestSpt,
 			)
 
@@ -249,13 +144,12 @@ func TestManualCCOnboarding(t *testing.T) {
 			}
 
 			// Fetch on-chain sector properties
-
-			soi, err := client.StateSectorGetInfo(ctx, minerB.ActorAddr, bSectorNum, r.TipSet)
-			req.NoError(err)
-			t.Logf("Miner B SectorOnChainInfo %d: %+v", bSectorNum, soi)
-
 			head, err = client.ChainHead(ctx)
 			req.NoError(err)
+
+			soi, err := client.StateSectorGetInfo(ctx, minerB.ActorAddr, bSectorNum, head.Key())
+			req.NoError(err)
+			t.Logf("Miner B SectorOnChainInfo %d: %+v", bSectorNum, soi)
 
 			head = client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+5))
 
@@ -264,150 +158,11 @@ func TestManualCCOnboarding(t *testing.T) {
 			t.Log("Checking power after PoSt ...")
 
 			// Miner B should now have power
-			p, err = client.StateMinerPower(ctx, minerB.ActorAddr, head.Key())
-			req.NoError(err)
-			t.Logf("MinerB RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
-			req.Equal(uint64(2<<10), p.MinerPower.RawBytePower.Uint64())    // 2kiB RBP
-			req.Equal(uint64(2<<10), p.MinerPower.QualityAdjPower.Uint64()) // 2kiB QaP
+			minerB.AssertPower(ctx, (uint64(2 << 10)), (uint64(2 << 10)))
 
 			checkPostSchedulers()
 		})
 	}
-}
-
-func manualOnboardingGeneratePreCommit(
-	ctx context.Context,
-	t *testing.T,
-	client api.FullNode,
-	cacheDirPath,
-	unsealedSectorPath,
-	sealedSectorPath string,
-	minerAddr address.Address,
-	sectorNumber abi.SectorNumber,
-	sealRandEpoch abi.ChainEpoch,
-	proofType abi.RegisteredSealProof,
-) (abi.SealRandomness, cid.Cid, cid.Cid) {
-
-	req := require.New(t)
-	t.Logf("Generating proof type %d PreCommit ...", proofType)
-
-	_ = os.Mkdir(cacheDirPath, 0755)
-	unsealedSize := abi.PaddedPieceSize(sectorSize).Unpadded()
-	req.NoError(os.WriteFile(unsealedSectorPath, make([]byte, unsealedSize), 0644))
-	req.NoError(os.WriteFile(sealedSectorPath, make([]byte, sectorSize), 0644))
-
-	t.Logf("Wrote unsealed sector to %s", unsealedSectorPath)
-	t.Logf("Wrote sealed sector to %s", sealedSectorPath)
-
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-
-	minerAddrBytes := new(bytes.Buffer)
-	req.NoError(minerAddr.MarshalCBOR(minerAddrBytes))
-
-	rand, err := client.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_SealRandomness, sealRandEpoch, minerAddrBytes.Bytes(), head.Key())
-	req.NoError(err)
-	sealTickets := abi.SealRandomness(rand)
-
-	t.Logf("Running proof type %d SealPreCommitPhase1 for sector %d...", proofType, sectorNumber)
-
-	actorIdNum, err := address.IDFromAddress(minerAddr)
-	req.NoError(err)
-	actorId := abi.ActorID(actorIdNum)
-
-	pc1, err := ffi.SealPreCommitPhase1(
-		proofType,
-		cacheDirPath,
-		unsealedSectorPath,
-		sealedSectorPath,
-		sectorNumber,
-		actorId,
-		sealTickets,
-		[]abi.PieceInfo{},
-	)
-	req.NoError(err)
-	req.NotNil(pc1)
-
-	t.Logf("Running proof type %d SealPreCommitPhase2 for sector %d...", proofType, sectorNumber)
-
-	sealedCid, unsealedCid, err := ffi.SealPreCommitPhase2(
-		pc1,
-		cacheDirPath,
-		sealedSectorPath,
-	)
-	req.NoError(err)
-
-	t.Logf("Unsealed CID: %s", unsealedCid)
-	t.Logf("Sealed CID: %s", sealedCid)
-
-	return sealTickets, sealedCid, unsealedCid
-}
-
-func manualOnboardingGenerateProveCommit(
-	ctx context.Context,
-	t *testing.T,
-	client api.FullNode,
-	cacheDirPath,
-	sealedSectorPath string,
-	minerAddr address.Address,
-	sectorNumber abi.SectorNumber,
-	sealedCid, unsealedCid cid.Cid,
-	sealTickets abi.SealRandomness,
-	proofType abi.RegisteredSealProof,
-) []byte {
-	req := require.New(t)
-
-	t.Logf("Generating proof type %d Sector Proof ...", proofType)
-
-	head, err := client.ChainHead(ctx)
-	req.NoError(err)
-
-	var seedRandomnessHeight abi.ChainEpoch
-
-	preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, minerAddr, sectorNumber, head.Key())
-	req.NoError(err)
-	seedRandomnessHeight = preCommitInfo.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
-
-	minerAddrBytes := new(bytes.Buffer)
-	req.NoError(minerAddr.MarshalCBOR(minerAddrBytes))
-
-	rand, err := client.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, seedRandomnessHeight, minerAddrBytes.Bytes(), head.Key())
-	req.NoError(err)
-	seedRandomness := abi.InteractiveSealRandomness(rand)
-
-	actorIdNum, err := address.IDFromAddress(minerAddr)
-	req.NoError(err)
-	actorId := abi.ActorID(actorIdNum)
-
-	t.Logf("Running proof type %d SealCommitPhase1 for sector %d...", proofType, sectorNumber)
-
-	scp1, err := ffi.SealCommitPhase1(
-		proofType,
-		sealedCid,
-		unsealedCid,
-		cacheDirPath,
-		sealedSectorPath,
-		sectorNumber,
-		actorId,
-		sealTickets,
-		seedRandomness,
-		[]abi.PieceInfo{},
-	)
-	req.NoError(err)
-
-	t.Logf("Running proof type %d SealCommitPhase2 for sector %d...", proofType, sectorNumber)
-
-	sectorProof, err := ffi.SealCommitPhase2(scp1, sectorNumber, actorId)
-	req.NoError(err)
-
-	t.Logf("Got proof type %d sector proof of length %d", proofType, len(sectorProof))
-
-	/* this variant would be used for aggregating NI-PoRep proofs
-	sectorProof, err := ffi.SealCommitPhase2CircuitProofs(scp1, sectorNumber)
-	req.NoError(err)
-	*/
-
-	return sectorProof
 }
 
 func manualOnboardingGenerateWindowPost(
@@ -501,7 +256,7 @@ func manualOnboardingGenerateWindowPost(
 func manualOnboardingDisputeWindowPost(
 	ctx context.Context,
 	client kit.TestFullNode,
-	miner kit.TestUnmanagedMiner,
+	miner *kit.TestUnmanagedMiner,
 	sectorNumber abi.SectorNumber,
 ) error {
 
@@ -546,7 +301,7 @@ func manualOnboardingDisputeWindowPost(
 func manualOnboardingSubmitMessage(
 	ctx context.Context,
 	client api.FullNode,
-	from kit.TestUnmanagedMiner,
+	from *kit.TestUnmanagedMiner,
 	params cbg.CBORMarshaler,
 	value uint64,
 	method abi.MethodNum,
@@ -615,7 +370,7 @@ func manualOnboardingSubmitWindowPost(
 	ctx context.Context,
 	withMockProofs bool,
 	client kit.TestFullNode,
-	miner kit.TestUnmanagedMiner,
+	miner *kit.TestUnmanagedMiner,
 	sectorNumber abi.SectorNumber,
 	cacheDirPath, sealedSectorPath string,
 	sealedCid cid.Cid,
@@ -698,7 +453,7 @@ func manualOnboardingRunWindowPost(
 	ctx context.Context,
 	withMockProofs bool,
 	client kit.TestFullNode,
-	miner kit.TestUnmanagedMiner,
+	miner *kit.TestUnmanagedMiner,
 	sectorNumber abi.SectorNumber,
 	cacheDirPath,
 	sealedSectorPath string,
