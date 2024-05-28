@@ -51,7 +51,7 @@ func CreateRandomFile(t *testing.T, rseed, size int) (path string) {
 	return file.Name()
 }
 
-// CreateRandomFile creates a  normal file with the provided seed and the
+// CreateRandomCARv1 creates a  normal file with the provided seed and the
 // provided size and then transforms it to a CARv1 file and returns it.
 func CreateRandomCARv1(t *testing.T, rseed, size int, opts ...GeneratedDAGOpts) (carV1FilePath string, origFilePath string) {
 	ctx := context.Background()
