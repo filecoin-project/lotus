@@ -705,7 +705,6 @@ func manualOnboardingRunWindowPost(
 	sealedCid cid.Cid,
 	proofType abi.RegisteredSealProof,
 ) (chan struct{}, chan error) {
-
 	first := make(chan struct{})
 	errCh := make(chan error)
 
