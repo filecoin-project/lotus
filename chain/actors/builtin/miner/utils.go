@@ -9,6 +9,7 @@ import (
 )
 
 var MinSyntheticPoRepVersion = network.Version21
+var MinNonInteractivePoRepVersion = network.Version23
 
 func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) (bitfield.BitField, error) {
 	var parts []bitfield.BitField
@@ -33,7 +34,14 @@ func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) 
 
 // SealProofTypeFromSectorSize returns preferred seal proof type for creating
 // new miner actors and new sectors
-func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synthetic bool) (abi.RegisteredSealProof, error) {
+func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synthetic bool, nonInteractive bool) (abi.RegisteredSealProof, error) {
+	if nv < MinSyntheticPoRepVersion && synthetic {
+		return 0, xerrors.Errorf("synthetic proofs are not supported on network version %d", nv)
+	}
+	if nv < MinNonInteractivePoRepVersion && nonInteractive {
+		return 0, xerrors.Errorf("non-interactive proofs are not supported on network version %d", nv)
+	}
+
 	switch {
 	case nv < network.Version7:
 		switch ssize {
