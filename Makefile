@@ -66,7 +66,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed sptool
+build-devnets: build lotus-seed lotus-shed
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -97,12 +97,6 @@ lotus-miner: $(BUILD_DEPS)
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
-sptool: $(BUILD_DEPS)
-	rm -f sptool
-	$(GOCC) build $(GOFLAGS) -o sptool ./cmd/sptool
-.PHONY: sptool
-BINS+=sptool
-
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	$(GOCC) build $(GOFLAGS) -o lotus-worker ./cmd/lotus-worker
@@ -121,22 +115,19 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker sptool
+build: lotus lotus-miner lotus-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker install-sptool
+install: install-daemon install-miner install-worker
 
 install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
 
 install-miner:
 	install -C ./lotus-miner /usr/local/bin/lotus-miner
-
-install-sptool:
-	install -C ./sptool /usr/local/bin/sptool
 
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
@@ -152,9 +143,6 @@ uninstall-daemon:
 
 uninstall-miner:
 	rm -f /usr/local/bin/lotus-miner
-
-uninstall-sptool:
-	rm -f /usr/local/bin/sptool
 
 uninstall-worker:
 	rm -f /usr/local/bin/lotus-worker
@@ -381,12 +369,12 @@ gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
 
 jen: gen
 
-snap: lotus lotus-miner lotus-worker sptool
+snap: lotus lotus-miner lotus-worker
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
 # separate from gen because it needs binaries
-docsgen-cli: lotus lotus-miner lotus-worker  sptool
+docsgen-cli: lotus lotus-miner lotus-worker
 	python3 ./scripts/generate-lotus-cli.py
 	./lotus config default > documentation/en/default-lotus-config.toml
 	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
