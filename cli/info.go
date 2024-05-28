@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/journal/alerting"
 )
 
-var infoCmd = &cli.Command{
+var InfoCmd = &cli.Command{
 	Name:   "info",
 	Usage:  "Print node info",
 	Action: infoCmdAct,
@@ -131,9 +131,8 @@ func infoCmdAct(cctx *cli.Context) error {
 		if err != nil {
 			if strings.Contains(err.Error(), "actor not found") {
 				continue
-			} else {
-				return err
 			}
+			return err
 		}
 		mbLockedSum = big.Add(mbLockedSum, mbal.Locked)
 		mbAvailableSum = big.Add(mbAvailableSum, mbal.Escrow)

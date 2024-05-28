@@ -3,7 +3,6 @@ package node
 import (
 	"os"
 
-	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -32,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	raftcns "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -185,7 +183,6 @@ func ConfigFullNode(c interface{}) Option {
 
 	enableLibp2pNode := true // always enable libp2p for full nodes
 
-	ipfsMaddr := cfg.Client.IpfsMAddr
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
@@ -231,13 +228,6 @@ func ConfigFullNode(c interface{}) Option {
 
 		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 
-		If(cfg.Client.UseIpfs,
-			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
-			Override(new(storagemarket.BlockstoreAccessor), modules.IpfsStorageBlockstoreAccessor),
-			If(cfg.Client.IpfsUseForRetrieval,
-				Override(new(retrievalmarket.BlockstoreAccessor), modules.IpfsRetrievalBlockstoreAccessor),
-			),
-		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfersForStorage, cfg.Client.SimultaneousTransfersForRetrieval)),
 
 		Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(cfg.Client.OffChainRetrieval)),
@@ -251,17 +241,6 @@ func ConfigFullNode(c interface{}) Option {
 		If(cfg.Wallet.DisableLocal,
 			Unset(new(*wallet.LocalWallet)),
 			Override(new(wallet.Default), wallet.NilDefault),
-		),
-
-		// Chain node cluster enabled
-		If(cfg.Cluster.ClusterModeEnabled,
-			Override(new(*gorpc.Client), modules.NewRPCClient),
-			Override(new(*raftcns.ClusterRaftConfig), raftcns.NewClusterRaftConfig(&cfg.Cluster)),
-			Override(new(*raftcns.Consensus), raftcns.NewConsensusWithRPCClient(false)),
-			Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
-			Override(new(messagesigner.MsgSigner), From(new(*messagesigner.MessageSignerConsensus))),
-			Override(new(*modules.RPCHandler), modules.NewRPCHandler),
-			Override(GoRPCServer, modules.NewRPCServer),
 		),
 
 		// Actor event filtering support

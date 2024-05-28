@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/go-sysinfo"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/pbnjay/memory"
 	"golang.org/x/sys/unix"
 	"golang.org/x/xerrors"
 
@@ -24,6 +24,19 @@ type Resources struct {
 	Gpu       float64
 	Ram       uint64
 	MachineID int
+	Storage
+}
+
+// Optional Storage management.
+type Storage interface {
+	HasCapacity() bool
+
+	// This allows some other system to claim space for this task.
+	Claim(taskID int) error
+
+	// This allows some other system to consider the task done.
+	// It's up to the caller to remove the data, if that applies.
+	MarkComplete(taskID int) error
 }
 type Reg struct {
 	Resources
@@ -82,7 +95,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 			if reg.shutdown.Load() {
 				return
 			}
-			_, err := db.Exec(ctx, `UPDATE harmony_machines SET last_contact=CURRENT_TIMESTAMP`)
+			_, err := db.Exec(ctx, `UPDATE harmony_machines SET last_contact=CURRENT_TIMESTAMP where id=$1`, reg.MachineID)
 			if err != nil {
 				logger.Error("Cannot keepalive ", err)
 			}
@@ -118,13 +131,23 @@ func getResources() (res Resources, err error) {
 			}
 		}
 		if found > 1 {
-			logger.Warn("lotus-provider's defaults are for running alone. Use task maximums or CGroups.")
+			logger.Warn("curio's defaults are for running alone. Use task maximums or CGroups.")
 		}
+	}
+
+	h, err := sysinfo.Host()
+	if err != nil {
+		return Resources{}, err
+	}
+
+	mem, err := h.Memory()
+	if err != nil {
+		return Resources{}, err
 	}
 
 	res = Resources{
 		Cpu: runtime.NumCPU(),
-		Ram: memory.FreeMemory(),
+		Ram: mem.Available,
 		Gpu: getGPUDevices(),
 	}
 

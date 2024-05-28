@@ -77,17 +77,18 @@ func defCommon() Common {
 	}
 }
 
-var (
-	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
-	DefaultSimultaneousTransfers = uint64(20)
-)
+var DefaultSimultaneousTransfers = uint64(20)
+
+func DefaultDefaultMaxFee() types.FIL {
+	return types.MustParseFIL("0.07")
+}
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
 		Fees: FeeConfig{
-			DefaultMaxFee: DefaultDefaultMaxFee,
+			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
 		Client: Client{
 			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
@@ -106,7 +107,6 @@ func DefaultFullNode() *FullNode {
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},
 		},
-		Cluster: *DefaultUserRaftConfig(),
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
@@ -328,33 +328,14 @@ const (
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
 
-var (
-	DefaultDataSubFolder        = "raft"
-	DefaultWaitForLeaderTimeout = 15 * time.Second
-	DefaultCommitRetries        = 1
-	DefaultNetworkTimeout       = 100 * time.Second
-	DefaultCommitRetryDelay     = 200 * time.Millisecond
-	DefaultBackupsRotate        = 6
-)
-
-func DefaultUserRaftConfig() *UserRaftConfig {
-	var cfg UserRaftConfig
-	cfg.DataFolder = "" // empty so it gets omitted
-	cfg.InitPeersetMultiAddr = []string{}
-	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
-	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
-	cfg.CommitRetries = DefaultCommitRetries
-	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
-	cfg.BackupsRotate = DefaultBackupsRotate
-
-	return &cfg
-}
-
-func DefaultLotusProvider() *LotusProviderConfig {
-	return &LotusProviderConfig{
-		Subsystems: ProviderSubsystemsConfig{},
-		Fees: LotusProviderFees{
-			DefaultMaxFee:      DefaultDefaultMaxFee,
+func DefaultCurioConfig() *CurioConfig {
+	return &CurioConfig{
+		Subsystems: CurioSubsystemsConfig{
+			GuiAddress:    ":4701",
+			BoostAdapters: []string{},
+		},
+		Fees: CurioFees{
+			DefaultMaxFee:      DefaultDefaultMaxFee(),
 			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
 			MaxCommitGasFee:    types.MustParseFIL("0.05"),
 
@@ -371,15 +352,21 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			MaxWindowPoStGasFee: types.MustParseFIL("5"),
 			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
 		},
-		Addresses: LotusProviderAddresses{
+		Addresses: []CurioAddresses{{
 			PreCommitControl: []string{},
 			CommitControl:    []string{},
 			TerminateControl: []string{},
-		},
-		Proving: ProvingConfig{
+			MinerAddresses:   []string{},
+		}},
+		Proving: CurioProvingConfig{
 			ParallelCheckLimit:    32,
 			PartitionCheckTimeout: Duration(20 * time.Minute),
 			SingleCheckTimeout:    Duration(10 * time.Minute),
+		},
+		Ingest: CurioIngestConfig{
+			MaxQueueSDR:   8, // default to 8 sectors before sdr
+			MaxQueueTrees: 0, // default don't use this limit
+			MaxQueuePoRep: 0, // default don't use this limit
 		},
 	}
 }

@@ -74,7 +74,7 @@ func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
 	return e, nil
 }
 
-var clientCmd = &cli.Command{
+var ClientCmd = &cli.Command{
 	Name:  "client",
 	Usage: "Make deals, store data, retrieve data",
 	Subcommands: []*cli.Command{
@@ -574,7 +574,7 @@ func interactiveDeal(cctx *cli.Context) error {
 	cs := readline.NewCancelableStdin(afmt.Stdin)
 	go func() {
 		<-ctx.Done()
-		cs.Close() // nolint:errcheck
+		_ = cs.Close()
 	}()
 
 	rl := bufio.NewReader(cs)
@@ -2327,7 +2327,7 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 	for _, channel := range sendingChannels {
 		w.Write(toChannelOutput("Sending To", channel, verbose))
 	}
-	w.Flush(out) //nolint:errcheck
+	_ = w.Flush(out)
 
 	fmt.Fprintf(out, "\nReceiving Channels\n\n")
 	w = tablewriter.New(tablewriter.Col("ID"),
@@ -2341,7 +2341,7 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 	for _, channel := range receivingChannels {
 		w.Write(toChannelOutput("Receiving From", channel, verbose))
 	}
-	w.Flush(out) //nolint:errcheck
+	_ = w.Flush(out)
 }
 
 func channelStatusString(status datatransfer.Status) string {

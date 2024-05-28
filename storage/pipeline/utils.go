@@ -1,7 +1,9 @@
 package sealing
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"math/bits"
 
 	"github.com/ipfs/go-cid"
@@ -105,7 +107,17 @@ func simulateMsgGas(ctx context.Context, sa interface {
 		Params: params,
 	}
 
-	return sa.GasEstimateMessageGas(ctx, &msg, nil, types.EmptyTSK)
+	var b bytes.Buffer
+	err := msg.MarshalCBOR(&b)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal the signed message: %w", err)
+	}
+
+	gmsg, err := sa.GasEstimateMessageGas(ctx, &msg, nil, types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("message %x failed: %w", b.Bytes(), err)
+	}
+	return gmsg, err
 }
 
 func sendMsg(ctx context.Context, sa interface {

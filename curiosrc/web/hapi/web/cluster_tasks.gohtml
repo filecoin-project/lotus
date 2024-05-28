@@ -1,0 +1,10 @@
+{{define "cluster_tasks"}}
+    {{range .}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td>{{.ID}}</td>
+            <td>{{.SincePosted}}</td>
+            <td>{{if ne nil .OwnerID}}<a href="/hapi/node/{{.OwnerID}}">{{.Owner}}</a>{{end}}</td>
+        </tr>
+    {{end}}
+{{end}}

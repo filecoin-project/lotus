@@ -584,7 +584,7 @@ func TestMigrationNV18(t *testing.T) {
 	// check the EthZeroAddress
 	ethZeroAddr, err := (ethtypes.EthAddress{}).ToFilecoinAddress()
 	require.NoError(t, err)
-	ethZeroAddrID, err := newStateTree.LookupID(ethZeroAddr)
+	ethZeroAddrID, err := newStateTree.LookupIDAddress(ethZeroAddr)
 	require.NoError(t, err)
 	ethZeroActor, err := newStateTree.GetActor(ethZeroAddrID)
 	require.NoError(t, err)

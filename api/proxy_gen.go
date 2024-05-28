@@ -5,6 +5,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -111,6 +113,41 @@ type CommonNetStub struct {
 	CommonStub
 
 	NetStub
+}
+
+type CurioStruct struct {
+	Internal CurioMethods
+}
+
+type CurioMethods struct {
+	AllocatePieceToSector func(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) `perm:"write"`
+
+	LogList func(p0 context.Context) ([]string, error) `perm:"read"`
+
+	LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"admin"`
+
+	Shutdown func(p0 context.Context) error `perm:"admin"`
+
+	StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+	StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+	StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
+
+	StorageInfo func(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) `perm:"admin"`
+
+	StorageInit func(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error `perm:"admin"`
+
+	StorageList func(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) `perm:"admin"`
+
+	StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
+
+	StorageStat func(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) `perm:"admin"`
+
+	Version func(p0 context.Context) (Version, error) `perm:"admin"`
+}
+
+type CurioStub struct {
 }
 
 type EthSubscriberStruct struct {
@@ -457,10 +494,6 @@ type FullNodeMethods struct {
 
 	PaychVoucherSubmit func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) `perm:"sign"`
 
-	RaftLeader func(p0 context.Context) (peer.ID, error) `perm:"read"`
-
-	RaftState func(p0 context.Context) (*RaftStateData, error) `perm:"read"`
-
 	StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
 	StateActorCodeCIDs func(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) `perm:"read"`
@@ -687,6 +720,8 @@ type GatewayMethods struct {
 
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) ``
 
+	EthAddressToFilecoinAddress func(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) ``
+
 	EthBlockNumber func(p0 context.Context) (ethtypes.EthUint64, error) ``
 
 	EthCall func(p0 context.Context, p1 ethtypes.EthCall, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) ``
@@ -757,6 +792,8 @@ type GatewayMethods struct {
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) ``
 
+	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) ``
+
 	GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
 
 	GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
@@ -811,6 +848,8 @@ type GatewayMethods struct {
 
 	StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) ``
 
+	StateMinerDeadlines func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) ``
+
 	StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerInfo, error) ``
 
 	StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) ``
@@ -847,19 +886,6 @@ type GatewayMethods struct {
 }
 
 type GatewayStub struct {
-}
-
-type LotusProviderStruct struct {
-	Internal LotusProviderMethods
-}
-
-type LotusProviderMethods struct {
-	Shutdown func(p0 context.Context) error `perm:"admin"`
-
-	Version func(p0 context.Context) (Version, error) `perm:"admin"`
-}
-
-type LotusProviderStub struct {
 }
 
 type NetStruct struct {
@@ -1169,7 +1195,7 @@ type StorageMinerMethods struct {
 
 	StorageAuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"read"`
 
-	StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) `perm:"admin"`
+	StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType, p4 abi.ActorID) ([]storiface.StorageInfo, error) `perm:"admin"`
 
 	StorageDeclareSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error `perm:"admin"`
 
@@ -1470,6 +1496,149 @@ func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
 
 func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
 	return *new(APIVersion), ErrNotSupported
+}
+
+func (s *CurioStruct) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+	if s.Internal.AllocatePieceToSector == nil {
+		return *new(SectorOffset), ErrNotSupported
+	}
+	return s.Internal.AllocatePieceToSector(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *CurioStub) AllocatePieceToSector(p0 context.Context, p1 address.Address, p2 PieceDealInfo, p3 int64, p4 url.URL, p5 http.Header) (SectorOffset, error) {
+	return *new(SectorOffset), ErrNotSupported
+}
+
+func (s *CurioStruct) LogList(p0 context.Context) ([]string, error) {
+	if s.Internal.LogList == nil {
+		return *new([]string), ErrNotSupported
+	}
+	return s.Internal.LogList(p0)
+}
+
+func (s *CurioStub) LogList(p0 context.Context) ([]string, error) {
+	return *new([]string), ErrNotSupported
+}
+
+func (s *CurioStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+	if s.Internal.LogSetLevel == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.LogSetLevel(p0, p1, p2)
+}
+
+func (s *CurioStub) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+	return ErrNotSupported
+}
+
+func (s *CurioStruct) Shutdown(p0 context.Context) error {
+	if s.Internal.Shutdown == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.Shutdown(p0)
+}
+
+func (s *CurioStub) Shutdown(p0 context.Context) error {
+	return ErrNotSupported
+}
+
+func (s *CurioStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageAddLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageAddLocal(p0, p1)
+}
+
+func (s *CurioStub) StorageAddLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *CurioStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageDetachLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachLocal(p0, p1)
+}
+
+func (s *CurioStub) StorageDetachLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *CurioStruct) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
+	if s.Internal.StorageFindSector == nil {
+		return *new([]storiface.SectorStorageInfo), ErrNotSupported
+	}
+	return s.Internal.StorageFindSector(p0, p1, p2, p3, p4)
+}
+
+func (s *CurioStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
+	return *new([]storiface.SectorStorageInfo), ErrNotSupported
+}
+
+func (s *CurioStruct) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
+	if s.Internal.StorageInfo == nil {
+		return *new(storiface.StorageInfo), ErrNotSupported
+	}
+	return s.Internal.StorageInfo(p0, p1)
+}
+
+func (s *CurioStub) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
+	return *new(storiface.StorageInfo), ErrNotSupported
+}
+
+func (s *CurioStruct) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
+	if s.Internal.StorageInit == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageInit(p0, p1, p2)
+}
+
+func (s *CurioStub) StorageInit(p0 context.Context, p1 string, p2 storiface.LocalStorageMeta) error {
+	return ErrNotSupported
+}
+
+func (s *CurioStruct) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
+	if s.Internal.StorageList == nil {
+		return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
+	}
+	return s.Internal.StorageList(p0)
+}
+
+func (s *CurioStub) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
+	return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
+}
+
+func (s *CurioStruct) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	if s.Internal.StorageLocal == nil {
+		return *new(map[storiface.ID]string), ErrNotSupported
+	}
+	return s.Internal.StorageLocal(p0)
+}
+
+func (s *CurioStub) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	return *new(map[storiface.ID]string), ErrNotSupported
+}
+
+func (s *CurioStruct) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
+	if s.Internal.StorageStat == nil {
+		return *new(fsutil.FsStat), ErrNotSupported
+	}
+	return s.Internal.StorageStat(p0, p1)
+}
+
+func (s *CurioStub) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
+	return *new(fsutil.FsStat), ErrNotSupported
+}
+
+func (s *CurioStruct) Version(p0 context.Context) (Version, error) {
+	if s.Internal.Version == nil {
+		return *new(Version), ErrNotSupported
+	}
+	return s.Internal.Version(p0)
+}
+
+func (s *CurioStub) Version(p0 context.Context) (Version, error) {
+	return *new(Version), ErrNotSupported
 }
 
 func (s *EthSubscriberStruct) EthSubscription(p0 context.Context, p1 jsonrpc.RawParams) error {
@@ -3265,28 +3434,6 @@ func (s *FullNodeStub) PaychVoucherSubmit(p0 context.Context, p1 address.Address
 	return *new(cid.Cid), ErrNotSupported
 }
 
-func (s *FullNodeStruct) RaftLeader(p0 context.Context) (peer.ID, error) {
-	if s.Internal.RaftLeader == nil {
-		return *new(peer.ID), ErrNotSupported
-	}
-	return s.Internal.RaftLeader(p0)
-}
-
-func (s *FullNodeStub) RaftLeader(p0 context.Context) (peer.ID, error) {
-	return *new(peer.ID), ErrNotSupported
-}
-
-func (s *FullNodeStruct) RaftState(p0 context.Context) (*RaftStateData, error) {
-	if s.Internal.RaftState == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.RaftState(p0)
-}
-
-func (s *FullNodeStub) RaftState(p0 context.Context) (*RaftStateData, error) {
-	return nil, ErrNotSupported
-}
-
 func (s *FullNodeStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	if s.Internal.StateAccountKey == nil {
 		return *new(address.Address), ErrNotSupported
@@ -4464,6 +4611,17 @@ func (s *GatewayStub) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, er
 	return *new([]ethtypes.EthAddress), ErrNotSupported
 }
 
+func (s *GatewayStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
+	if s.Internal.EthAddressToFilecoinAddress == nil {
+		return *new(address.Address), ErrNotSupported
+	}
+	return s.Internal.EthAddressToFilecoinAddress(p0, p1)
+}
+
+func (s *GatewayStub) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
+	return *new(address.Address), ErrNotSupported
+}
+
 func (s *GatewayStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthBlockNumber == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -4849,6 +5007,17 @@ func (s *GatewayStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscrip
 	return false, ErrNotSupported
 }
 
+func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	if s.Internal.FilecoinAddressToEthAddress == nil {
+		return *new(ethtypes.EthAddress), ErrNotSupported
+	}
+	return s.Internal.FilecoinAddressToEthAddress(p0, p1)
+}
+
+func (s *GatewayStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	return *new(ethtypes.EthAddress), ErrNotSupported
+}
+
 func (s *GatewayStruct) GasEstimateGasPremium(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) {
 	if s.Internal.GasEstimateGasPremium == nil {
 		return *new(types.BigInt), ErrNotSupported
@@ -5146,6 +5315,17 @@ func (s *GatewayStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, 
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
+	if s.Internal.StateMinerDeadlines == nil {
+		return *new([]Deadline), ErrNotSupported
+	}
+	return s.Internal.StateMinerDeadlines(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
+	return *new([]Deadline), ErrNotSupported
+}
+
 func (s *GatewayStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerInfo, error) {
 	if s.Internal.StateMinerInfo == nil {
 		return *new(MinerInfo), ErrNotSupported
@@ -5331,28 +5511,6 @@ func (s *GatewayStruct) Web3ClientVersion(p0 context.Context) (string, error) {
 
 func (s *GatewayStub) Web3ClientVersion(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
-}
-
-func (s *LotusProviderStruct) Shutdown(p0 context.Context) error {
-	if s.Internal.Shutdown == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.Shutdown(p0)
-}
-
-func (s *LotusProviderStub) Shutdown(p0 context.Context) error {
-	return ErrNotSupported
-}
-
-func (s *LotusProviderStruct) Version(p0 context.Context) (Version, error) {
-	if s.Internal.Version == nil {
-		return *new(Version), ErrNotSupported
-	}
-	return s.Internal.Version(p0)
-}
-
-func (s *LotusProviderStub) Version(p0 context.Context) (Version, error) {
-	return *new(Version), ErrNotSupported
 }
 
 func (s *NetStruct) ID(p0 context.Context) (peer.ID, error) {
@@ -6895,14 +7053,14 @@ func (s *StorageMinerStub) StorageAuthVerify(p0 context.Context, p1 string) ([]a
 	return *new([]auth.Permission), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {
+func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType, p4 abi.ActorID) ([]storiface.StorageInfo, error) {
 	if s.Internal.StorageBestAlloc == nil {
 		return *new([]storiface.StorageInfo), ErrNotSupported
 	}
-	return s.Internal.StorageBestAlloc(p0, p1, p2, p3)
+	return s.Internal.StorageBestAlloc(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {
+func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType, p4 abi.ActorID) ([]storiface.StorageInfo, error) {
 	return *new([]storiface.StorageInfo), ErrNotSupported
 }
 
@@ -7580,10 +7738,10 @@ func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)
 var _ CommonNet = new(CommonNetStruct)
+var _ Curio = new(CurioStruct)
 var _ EthSubscriber = new(EthSubscriberStruct)
 var _ FullNode = new(FullNodeStruct)
 var _ Gateway = new(GatewayStruct)
-var _ LotusProvider = new(LotusProviderStruct)
 var _ Net = new(NetStruct)
 var _ Signable = new(SignableStruct)
 var _ StorageMiner = new(StorageMinerStruct)

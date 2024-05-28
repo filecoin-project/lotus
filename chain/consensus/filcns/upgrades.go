@@ -81,7 +81,7 @@ func init() {
 			return
 		}
 		// use value from environment
-		log.Infof("migration worker cound set from %s (%d)", EnvMigrationMaxWorkerCount, mwc)
+		log.Infof("migration worker count set from %s (%d)", EnvMigrationMaxWorkerCount, mwc)
 		MigrationMaxWorkerCount = int(mwc)
 		return
 	}
@@ -1712,14 +1712,14 @@ func upgradeActorsV10Common(
 
 	if stateRoot.Version != types.StateTreeVersion4 {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 4 for actors v9 upgrade, got %d",
+			"expected state root version 4 for actors v10 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
 
 	manifest, ok := actors.GetManifest(actorstypes.Version10)
 	if !ok {
-		return cid.Undef, xerrors.Errorf("no manifest CID for v9 upgrade")
+		return cid.Undef, xerrors.Errorf("no manifest CID for v10 upgrade")
 	}
 
 	// Perform the migration
@@ -1893,7 +1893,7 @@ func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	}
 	newRoot, err := upgradeActorsV12Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v11 state: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v12 state: %w", err)
 	}
 	return newRoot, nil
 }
@@ -2210,7 +2210,7 @@ func UpgradeActorsV13(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	}
 	newRoot, err := upgradeActorsV13Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v11 state: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v13 state: %w", err)
 	}
 	return newRoot, nil
 }

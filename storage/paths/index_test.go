@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("stores", "DEBUG")
+	_ = logging.SetLogLevel("stores", "DEBUG")
 }
 
 func newTestStorage() storiface.StorageInfo {
@@ -151,4 +151,62 @@ func TestFindAllow(t *testing.T) {
 			require.Equal(t, stor2.ID, si[0].ID)
 		}
 	}
+}
+
+func TestStorageBestAlloc(t *testing.T) {
+	idx := NewMemIndex(nil)
+
+	dummyStorageInfo := storiface.StorageInfo{
+		ID:       storiface.ID("dummy"),
+		CanSeal:  true,
+		CanStore: true,
+		URLs:     []string{"http://localhost:9999/"},
+		Weight:   10,
+		AllowMiners: []string{
+			"t001",
+		},
+	}
+
+	dummyFsStat := fsutil.FsStat{
+		Capacity:  10000000000,
+		Available: 7000000000,
+		Reserved:  100000000,
+		Used:      3000000000,
+	}
+
+	err := idx.StorageAttach(context.Background(), dummyStorageInfo, dummyFsStat)
+	require.NoError(t, err)
+
+	t.Run("PathSealing", func(t *testing.T) {
+		result, err := idx.StorageBestAlloc(context.Background(), storiface.FTUnsealed, 123, storiface.PathSealing, 1)
+		require.Equal(t, err, nil)
+		require.NotNil(t, result)
+		require.Equal(t, len(result), 1)
+		require.Equal(t, result[0].ID, dummyStorageInfo.ID)
+	})
+
+	t.Run("PathStorage", func(t *testing.T) {
+		result, err := idx.StorageBestAlloc(context.Background(), storiface.FTUnsealed, 123, storiface.PathStorage, 1)
+		require.Equal(t, err, nil)
+		require.NotNil(t, result)
+		require.Equal(t, len(result), 1)
+		require.Equal(t, result[0].ID, dummyStorageInfo.ID)
+	})
+
+	t.Run("NotAllowedMiner", func(t *testing.T) {
+		_, err := idx.StorageBestAlloc(context.Background(), storiface.FTUnsealed, 123, storiface.PathSealing, 2)
+		require.Error(t, err)
+	})
+
+	t.Run("NoAvailableSpace", func(t *testing.T) {
+		bigSectorSize := abi.SectorSize(10000000000)
+		_, err := idx.StorageBestAlloc(context.Background(), storiface.FTUnsealed, bigSectorSize, storiface.PathSealing, 1)
+		require.Error(t, err)
+	})
+
+	t.Run("AllowedMiner", func(t *testing.T) {
+		_, err := idx.StorageBestAlloc(context.Background(), storiface.FTUnsealed, 123, storiface.PathSealing, 1)
+		require.NoError(t, err)
+	})
+
 }

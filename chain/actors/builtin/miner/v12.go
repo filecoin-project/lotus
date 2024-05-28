@@ -545,6 +545,10 @@ func fromV12SectorOnChainInfo(v12 miner12.SectorOnChainInfo) SectorOnChainInfo {
 		ExpectedStoragePledge: v12.ExpectedStoragePledge,
 
 		SectorKeyCID: v12.SectorKeyCID,
+
+		PowerBaseEpoch:    v12.PowerBaseEpoch,
+		ReplacedDayReward: v12.ReplacedDayReward,
+		Flags:             SectorOnChainInfoFlags(v12.Flags),
 	}
 	return info
 }

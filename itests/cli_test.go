@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/clicommands"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -23,5 +23,5 @@ func TestClient(t *testing.T) {
 	blockTime := 5 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
-	kit.RunClientTest(t, cli.Commands, client)
+	kit.RunClientTest(t, clicommands.Commands, client)
 }

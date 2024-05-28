@@ -153,7 +153,7 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 	rootMux := mux.NewRouter()
 
 	// remote storage
-	{
+	if _, realImpl := a.(*impl.StorageMinerAPI); realImpl {
 		m := mux.NewRouter()
 		m.PathPrefix("/remote").HandlerFunc(a.(*impl.StorageMinerAPI).ServeRemote(permissioned))
 

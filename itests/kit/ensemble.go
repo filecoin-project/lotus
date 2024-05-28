@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -45,6 +46,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/cmd/curio/deps"
+	"github.com/filecoin-project/lotus/cmd/curio/rpc"
+	"github.com/filecoin-project/lotus/cmd/curio/tasks"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
@@ -120,15 +124,17 @@ type Ensemble struct {
 	options      *ensembleOpts
 
 	inactive struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
+		fullnodes     []*TestFullNode
+		providernodes []*TestProviderNode
+		miners        []*TestMiner
+		workers       []*TestWorker
 	}
 	active struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
-		bms       map[*TestMiner]*BlockMiner
+		fullnodes     []*TestFullNode
+		providernodes []*TestProviderNode
+		miners        []*TestMiner
+		workers       []*TestWorker
+		bms           map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
 		version  network.Version
@@ -218,6 +224,20 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	*full = TestFullNode{t: n.t, options: options, DefaultKey: key, EthSubRouter: gateway.NewEthSubHandler()}
 
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
+	return n
+}
+
+// FullNode enrolls a new Provider node.
+func (n *Ensemble) Provider(lp *TestProviderNode, opts ...NodeOpt) *Ensemble {
+	options := DefaultNodeOpts
+	for _, o := range opts {
+		err := o(&options)
+		require.NoError(n.t, err)
+	}
+
+	*lp = TestProviderNode{t: n.t, options: options, Deps: &deps.Deps{}}
+
+	n.inactive.providernodes = append(n.inactive.providernodes, lp)
 	return n
 }
 
@@ -689,11 +709,9 @@ func (n *Ensemble) Start() *Ensemble {
 
 		var mineBlock = make(chan lotusminer.MineReq)
 
-		copy := *m.FullNode
-		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
-		m.FullNode = &copy
-
-		//m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
+		minerCopy := *m.FullNode
+		minerCopy.FullNode = modules.MakeUuidWrapper(minerCopy.FullNode)
+		m.FullNode = &minerCopy
 
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
@@ -702,8 +720,6 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-			//node.Override(new(v1api.RawFullNodeAPI), func() api.FullNode { return modules.MakeUuidWrapper(m.FullNode) }),
-			//node.Override(new(v1api.RawFullNodeAPI), modules.MakeUuidWrapper),
 			node.Override(new(v1api.RawFullNodeAPI), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
@@ -886,6 +902,28 @@ func (n *Ensemble) Start() *Ensemble {
 	// to active, so clear the slice.
 	n.inactive.workers = n.inactive.workers[:0]
 
+	for _, p := range n.inactive.providernodes {
+
+		// TODO setup config with options
+		err := p.Deps.PopulateRemainingDeps(context.Background(), &cli.Context{}, false)
+		require.NoError(n.t, err)
+
+		shutdownChan := make(chan struct{})
+		taskEngine, err := tasks.StartTasks(ctx, p.Deps)
+		if err != nil {
+			return nil
+		}
+		defer taskEngine.GracefullyTerminate()
+
+		err = rpc.ListenAndServe(ctx, p.Deps, shutdownChan) // Monitor for shutdown.
+		require.NoError(n.t, err)
+		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
+
+		<-finishCh
+
+		n.active.providernodes = append(n.active.providernodes, p)
+	}
 	// ---------------------
 	//  MISC
 	// ---------------------

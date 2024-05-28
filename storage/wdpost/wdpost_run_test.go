@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
@@ -73,13 +74,13 @@ func (m *mockStorageMinerAPI) StateMinerPartitions(ctx context.Context, a addres
 	return m.partitions, nil
 }
 
-func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, snos *bitfield.BitField, key types.TipSetKey) ([]*minertypes.SectorOnChainInfo, error) {
-	var sis []*minertypes.SectorOnChainInfo
+func (m *mockStorageMinerAPI) StateMinerSectors(ctx context.Context, address address.Address, snos *bitfield.BitField, key types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	var sis []*miner.SectorOnChainInfo
 	if snos == nil {
 		panic("unsupported")
 	}
 	_ = snos.ForEach(func(i uint64) error {
-		sis = append(sis, &minertypes.SectorOnChainInfo{
+		sis = append(sis, &miner.SectorOnChainInfo{
 			SectorNumber: abi.SectorNumber(i),
 		})
 		return nil

@@ -151,7 +151,7 @@ func workersCmd(sealing bool) *cli.Command {
 				ramTotal := stat.Info.Resources.MemPhysical
 				ramTasks := stat.MemUsedMin
 				ramUsed := stat.Info.Resources.MemUsed
-				var ramReserved uint64 = 0
+				var ramReserved uint64
 				if ramUsed > ramTasks {
 					ramReserved = ramUsed - ramTasks
 				}
@@ -167,7 +167,7 @@ func workersCmd(sealing bool) *cli.Command {
 				vmemTotal := stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap
 				vmemTasks := stat.MemUsedMax
 				vmemUsed := stat.Info.Resources.MemUsed + stat.Info.Resources.MemSwapUsed
-				var vmemReserved uint64 = 0
+				var vmemReserved uint64
 				if vmemUsed > vmemTasks {
 					vmemReserved = vmemUsed - vmemTasks
 				}

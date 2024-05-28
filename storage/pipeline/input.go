@@ -655,7 +655,6 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	log.Debugw("updateInput matching done", "matches", len(matches), "toAssign", len(toAssign), "assigned", assigned, "openSectors", len(m.openSectors), "pieces", len(m.pendingPieces))
 
 	if len(toAssign) > 0 {
-		log.Errorf("we are trying to create a new sector with open sectors %v", m.openSectors)
 		if err := m.tryGetDealSector(ctx, sp, getExpirationCached); err != nil {
 			log.Errorw("Failed to create a new sector for deals", "error", err)
 		}

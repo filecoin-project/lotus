@@ -24,6 +24,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
+const NoMinerFilter = abi.ActorID(0)
+
+const URLSeparator = ","
+
 var errAlreadyLocked = errors.New("already locked")
 
 type DBIndex struct {
@@ -182,11 +186,10 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 
 	// Single transaction to attach storage which is not present in the DB
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
-
 		var urls sql.NullString
 		var storageId sql.NullString
-		err = dbi.harmonyDB.QueryRow(ctx,
-			"Select storage_id, urls FROM storage_path WHERE storage_id = $1", string(si.ID)).Scan(&storageId, &urls)
+		err = tx.QueryRow(
+			"SELECT storage_id, urls FROM storage_path WHERE storage_id = $1", string(si.ID)).Scan(&storageId, &urls)
 		if err != nil && !strings.Contains(err.Error(), "no rows in result set") {
 			return false, xerrors.Errorf("storage attach select fails: %v", err)
 		}
@@ -196,13 +199,13 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		if storageId.Valid {
 			var currUrls []string
 			if urls.Valid {
-				currUrls = strings.Split(urls.String, ",")
+				currUrls = strings.Split(urls.String, URLSeparator)
 			}
 			currUrls = union(currUrls, si.URLs)
 
-			_, err = dbi.harmonyDB.Exec(ctx,
-				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9 WHERE storage_id=$10",
-				strings.Join(currUrls, ","),
+			_, err = tx.Exec(
+				"UPDATE storage_path set urls=$1, weight=$2, max_storage=$3, can_seal=$4, can_store=$5, groups=$6, allow_to=$7, allow_types=$8, deny_types=$9, allow_miners=$10, deny_miners=$11, last_heartbeat=NOW() WHERE storage_id=$12",
+				strings.Join(currUrls, URLSeparator),
 				si.Weight,
 				si.MaxStorage,
 				si.CanSeal,
@@ -211,6 +214,8 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 				strings.Join(si.AllowTo, ","),
 				strings.Join(si.AllowTypes, ","),
 				strings.Join(si.DenyTypes, ","),
+				strings.Join(si.AllowMiners, ","),
+				strings.Join(si.DenyMiners, ","),
 				si.ID)
 			if err != nil {
 				return false, xerrors.Errorf("storage attach UPDATE fails: %v", err)
@@ -220,9 +225,9 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		}
 
 		// Insert storage id
-		_, err = dbi.harmonyDB.Exec(ctx,
+		_, err = tx.Exec(
 			"INSERT INTO storage_path "+
-				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+				"Values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), $16, $17)",
 			si.ID,
 			strings.Join(si.URLs, ","),
 			si.Weight,
@@ -238,17 +243,15 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 			st.FSAvailable,
 			st.Reserved,
 			st.Used,
-			time.Now())
+			strings.Join(si.AllowMiners, ","),
+			strings.Join(si.DenyMiners, ","))
 		if err != nil {
 			return false, xerrors.Errorf("StorageAttach insert fails: %v", err)
 		}
 		return true, nil
-	})
-	if err != nil {
-		return err
-	}
+	}, harmonydb.OptionRetry())
 
-	return nil
+	return err
 }
 
 func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url string) error {
@@ -276,7 +279,7 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 	}
 
 	if len(modUrls) > 0 {
-		newUrls := strings.Join(modUrls, ",")
+		newUrls := strings.Join(modUrls, URLSeparator)
 		_, err := dbi.harmonyDB.Exec(ctx, "UPDATE storage_path set urls=$1 WHERE storage_id=$2", newUrls, id)
 		if err != nil {
 			return err
@@ -287,46 +290,53 @@ func (dbi *DBIndex) StorageDetach(ctx context.Context, id storiface.ID, url stri
 		// Single transaction to drop storage path and sector decls which have this as a storage path
 		_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			// Drop storage path completely
-			_, err = dbi.harmonyDB.Exec(ctx, "DELETE FROM storage_path WHERE storage_id=$1", id)
+			_, err = tx.Exec("DELETE FROM storage_path WHERE storage_id=$1", id)
 			if err != nil {
 				return false, err
 			}
 
 			// Drop all sectors entries which use this storage path
-			_, err = dbi.harmonyDB.Exec(ctx, "DELETE FROM sector_location WHERE storage_id=$1", id)
+			_, err = tx.Exec("DELETE FROM sector_location WHERE storage_id=$1", id)
 			if err != nil {
 				return false, err
 			}
 			return true, nil
-		})
+		}, harmonydb.OptionRetry())
 		if err != nil {
 			return err
 		}
 		log.Warnw("Dropping sector storage", "path", id)
 	}
 
-	return nil
+	return err
 }
 
 func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
-
-	var canSeal, canStore bool
-	err := dbi.harmonyDB.QueryRow(ctx,
-		"SELECT can_seal, can_store FROM storage_path WHERE storage_id=$1", id).Scan(&canSeal, &canStore)
-	if err != nil {
-		return xerrors.Errorf("Querying for storage id %s fails with err %v", id, err)
-	}
-
-	_, err = dbi.harmonyDB.Exec(ctx,
-		"UPDATE storage_path set capacity=$1, available=$2, fs_available=$3, reserved=$4, used=$5, last_heartbeat=$6",
+	retryWait := time.Millisecond * 20
+retryReportHealth:
+	_, err := dbi.harmonyDB.Exec(ctx,
+		"UPDATE storage_path set capacity=$1, available=$2, fs_available=$3, reserved=$4, used=$5, last_heartbeat=NOW() where storage_id=$6",
 		report.Stat.Capacity,
 		report.Stat.Available,
 		report.Stat.FSAvailable,
 		report.Stat.Reserved,
 		report.Stat.Used,
-		time.Now())
+		id)
 	if err != nil {
-		return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
+		//return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
+		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
+			goto retryReportHealth
+		}
+		return err
+	}
+
+	var canSeal, canStore bool
+	err = dbi.harmonyDB.QueryRow(ctx,
+		"SELECT can_seal, can_store FROM storage_path WHERE storage_id=$1", id).Scan(&canSeal, &canStore)
+	if err != nil {
+		return xerrors.Errorf("Querying for storage id %s fails with err %v", id, err)
 	}
 
 	if report.Stat.Capacity > 0 {
@@ -375,7 +385,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 		var currPrimary sql.NullBool
-		err = dbi.harmonyDB.QueryRow(ctx,
+		err = tx.QueryRow(
 			"SELECT is_primary FROM sector_location WHERE miner_id=$1 and sector_num=$2 and sector_filetype=$3 and storage_id=$4",
 			uint64(s.Miner), uint64(s.Number), int(ft), string(storageID)).Scan(&currPrimary)
 		if err != nil && !strings.Contains(err.Error(), "no rows in result set") {
@@ -385,7 +395,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 		// If storage id already exists for this sector, update primary if need be
 		if currPrimary.Valid {
 			if !currPrimary.Bool && primary {
-				_, err = dbi.harmonyDB.Exec(ctx,
+				_, err = tx.Exec(
 					"UPDATE sector_location set is_primary = TRUE WHERE miner_id=$1 and sector_num=$2 and sector_filetype=$3 and storage_id=$4",
 					s.Miner, s.Number, ft, storageID)
 				if err != nil {
@@ -395,7 +405,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 				log.Warnf("sector %v redeclared in %s", s, storageID)
 			}
 		} else {
-			_, err = dbi.harmonyDB.Exec(ctx,
+			_, err = tx.Exec(
 				"INSERT INTO sector_location "+
 					"values($1, $2, $3, $4, $5)",
 				s.Miner, s.Number, ft, storageID, primary)
@@ -405,12 +415,9 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 		}
 
 		return true, nil
-	})
-	if err != nil {
-		return err
-	}
+	}, harmonydb.OptionRetry())
 
-	return nil
+	return err
 }
 
 func (dbi *DBIndex) StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error {
@@ -533,14 +540,16 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 		// 7. Storage path is part of the groups which are allowed from the storage paths which already hold the sector
 
 		var rows []struct {
-			StorageId  string
-			Urls       string
-			Weight     uint64
-			CanSeal    bool
-			CanStore   bool
-			Groups     string
-			AllowTypes string
-			DenyTypes  string
+			StorageId   string
+			Urls        string
+			Weight      uint64
+			CanSeal     bool
+			CanStore    bool
+			Groups      string
+			AllowTypes  string
+			DenyTypes   string
+			AllowMiners string
+			DenyMiners  string
 		}
 		err = dbi.harmonyDB.Select(ctx, &rows,
 			`SELECT storage_id, 
@@ -550,13 +559,15 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 					  	can_store,
 					  	groups, 
 					  	allow_types, 
-					  	deny_types
+					  	deny_types,
+					  	allow_miners,
+					  	deny_miners
 				FROM storage_path 
 				WHERE can_seal=true 
 				  and available >= $1 
-				  and NOW()-last_heartbeat < $2 
+				  and NOW()-($2 * INTERVAL '1 second') < last_heartbeat
 				  and heartbeat_err is null`,
-			spaceReq, SkippedHeartbeatThresh)
+			spaceReq, SkippedHeartbeatThresh.Seconds())
 		if err != nil {
 			return nil, xerrors.Errorf("Selecting allowfetch storage paths from DB fails err: %v", err)
 		}
@@ -568,6 +579,16 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 
 			if !ft.AnyAllowed(splitString(row.AllowTypes), splitString(row.DenyTypes)) {
 				log.Debugf("not selecting on %s, not allowed by file type filters", row.StorageId)
+				continue
+			}
+			allowMiners := splitString(row.AllowMiners)
+			denyMiners := splitString(row.DenyMiners)
+			proceed, msg, err := MinerFilter(allowMiners, denyMiners, s.Miner)
+			if err != nil {
+				return nil, err
+			}
+			if !proceed {
+				log.Debugf("not allocating on %s, miner %s %s", row.StorageId, s.Miner.String(), msg)
 				continue
 			}
 
@@ -619,19 +640,21 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface.StorageInfo, error) {
 
 	var qResults []struct {
-		Urls       string
-		Weight     uint64
-		MaxStorage uint64
-		CanSeal    bool
-		CanStore   bool
-		Groups     string
-		AllowTo    string
-		AllowTypes string
-		DenyTypes  string
+		Urls        string
+		Weight      uint64
+		MaxStorage  uint64
+		CanSeal     bool
+		CanStore    bool
+		Groups      string
+		AllowTo     string
+		AllowTypes  string
+		DenyTypes   string
+		AllowMiners string
+		DenyMiners  string
 	}
 
 	err := dbi.harmonyDB.Select(ctx, &qResults,
-		"SELECT urls, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types "+
+		"SELECT urls, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types, allow_miners, deny_miners "+
 			"FROM storage_path WHERE storage_id=$1", string(id))
 	if err != nil {
 		return storiface.StorageInfo{}, xerrors.Errorf("StorageInfo query fails: %v", err)
@@ -648,11 +671,13 @@ func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface
 	sinfo.AllowTo = splitString(qResults[0].AllowTo)
 	sinfo.AllowTypes = splitString(qResults[0].AllowTypes)
 	sinfo.DenyTypes = splitString(qResults[0].DenyTypes)
+	sinfo.AllowMiners = splitString(qResults[0].AllowMiners)
+	sinfo.DenyMiners = splitString(qResults[0].DenyMiners)
 
 	return sinfo, nil
 }
 
-func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) {
+func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType, miner abi.ActorID) ([]storiface.StorageInfo, error) {
 	var err error
 	var spaceReq uint64
 	switch pathType {
@@ -668,16 +693,18 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 	}
 
 	var rows []struct {
-		StorageId  string
-		Urls       string
-		Weight     uint64
-		MaxStorage uint64
-		CanSeal    bool
-		CanStore   bool
-		Groups     string
-		AllowTo    string
-		AllowTypes string
-		DenyTypes  string
+		StorageId   string
+		Urls        string
+		Weight      uint64
+		MaxStorage  uint64
+		CanSeal     bool
+		CanStore    bool
+		Groups      string
+		AllowTo     string
+		AllowTypes  string
+		DenyTypes   string
+		AllowMiners string
+		DenyMiners  string
 	}
 
 	err = dbi.harmonyDB.Select(ctx, &rows,
@@ -690,15 +717,17 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 								groups, 
 								allow_to, 
 								allow_types, 
-								deny_types 
+								deny_types,
+								allow_miners,
+								deny_miners
 						 FROM storage_path 
 						 WHERE available >= $1
-						 and NOW()-last_heartbeat < $2 
-						 and heartbeat_err is null
-						 and ($3 and can_seal = TRUE or $4 and can_store = TRUE)
+						 and NOW()-($2 * INTERVAL '1 second') < last_heartbeat
+						 and heartbeat_err = ''
+						 and (($3 and can_seal = TRUE) or ($4 and can_store = TRUE))
 						order by (available::numeric * weight) desc`,
 		spaceReq,
-		SkippedHeartbeatThresh,
+		SkippedHeartbeatThresh.Seconds(),
 		pathType == storiface.PathSealing,
 		pathType == storiface.PathStorage,
 	)
@@ -707,18 +736,36 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 	}
 
 	var result []storiface.StorageInfo
+
 	for _, row := range rows {
+		// Matching with 0 as a workaround to avoid having minerID
+		// present when calling TaskStorage.HasCapacity()
+		if miner != NoMinerFilter {
+			allowMiners := splitString(row.AllowMiners)
+			denyMiners := splitString(row.DenyMiners)
+			proceed, msg, err := MinerFilter(allowMiners, denyMiners, miner)
+			if err != nil {
+				return nil, err
+			}
+			if !proceed {
+				log.Debugf("not allocating on %s, miner %s %s", row.StorageId, miner.String(), msg)
+				continue
+			}
+		}
+
 		result = append(result, storiface.StorageInfo{
-			ID:         storiface.ID(row.StorageId),
-			URLs:       splitString(row.Urls),
-			Weight:     row.Weight,
-			MaxStorage: row.MaxStorage,
-			CanSeal:    row.CanSeal,
-			CanStore:   row.CanStore,
-			Groups:     splitString(row.Groups),
-			AllowTo:    splitString(row.AllowTo),
-			AllowTypes: splitString(row.AllowTypes),
-			DenyTypes:  splitString(row.DenyTypes),
+			ID:          storiface.ID(row.StorageId),
+			URLs:        splitString(row.Urls),
+			Weight:      row.Weight,
+			MaxStorage:  row.MaxStorage,
+			CanSeal:     row.CanSeal,
+			CanStore:    row.CanStore,
+			Groups:      splitString(row.Groups),
+			AllowTo:     splitString(row.AllowTo),
+			AllowTypes:  splitString(row.AllowTypes),
+			DenyTypes:   splitString(row.DenyTypes),
+			AllowMiners: splitString(row.AllowMiners),
+			DenyMiners:  splitString(row.DenyMiners),
 		})
 	}
 
@@ -750,7 +797,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 	_, err := dbi.harmonyDB.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 
 		fts := (read | write).AllSet()
-		err = dbi.harmonyDB.Select(ctx, &rows,
+		err = tx.Select(&rows,
 			`SELECT sector_filetype, read_ts, read_refs, write_ts 
 								 FROM sector_location 
 								 WHERE miner_id=$1 
@@ -792,7 +839,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		// Acquire write locks
-		_, err = dbi.harmonyDB.Exec(ctx,
+		_, err = tx.Exec(
 			`UPDATE sector_location
 							 	SET write_ts = NOW(), write_lock_owner = $1
 							 	WHERE miner_id=$2
@@ -807,7 +854,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		// Acquire read locks
-		_, err = dbi.harmonyDB.Exec(ctx,
+		_, err = tx.Exec(
 			`UPDATE sector_location
 							 	SET read_ts = NOW(), read_refs = read_refs + 1
 							 	WHERE miner_id=$1
@@ -821,7 +868,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		return true, nil
-	})
+	}, harmonydb.OptionRetry())
 	if err != nil {
 		return false, err
 	}

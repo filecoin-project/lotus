@@ -3735,6 +3735,12 @@ Inputs:
     ],
     "DenyTypes": [
       "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
+      "string value"
     ]
   },
   {
@@ -3782,7 +3788,8 @@ Inputs:
 [
   1,
   34359738368,
-  "sealing"
+  "sealing",
+  1000
 ]
 ```
 
@@ -3808,6 +3815,12 @@ Response:
       "string value"
     ],
     "DenyTypes": [
+      "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
       "string value"
     ]
   }
@@ -3928,6 +3941,12 @@ Response:
     ],
     "DenyTypes": [
       "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
+      "string value"
     ]
   }
 ]
@@ -3954,11 +3973,13 @@ Response:
         0,
         1,
         0,
+        0,
         0
       ],
       "Read": [
         2,
         3,
+        0,
         0,
         0,
         0
@@ -4001,6 +4022,12 @@ Response:
     "string value"
   ],
   "DenyTypes": [
+    "string value"
+  ],
+  "AllowMiners": [
+    "string value"
+  ],
+  "DenyMiners": [
     "string value"
   ]
 }

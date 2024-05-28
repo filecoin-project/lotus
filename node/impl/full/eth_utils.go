@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -91,9 +92,8 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, chain *store.ChainStor
 				return nil, fmt.Errorf("cannot get parent tipset")
 			}
 			return parent, nil
-		} else {
-			return nil, fmt.Errorf("unknown predefined block %s", *predefined)
 		}
+		return nil, fmt.Errorf("unknown predefined block %s", *predefined)
 	}
 
 	if blkParam.BlockNumber != nil {
@@ -224,7 +224,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load state-tree root %q: %w", stRoot, err)
 	}
 
-	block := ethtypes.NewEthBlock(len(msgs) > 0)
+	block := ethtypes.NewEthBlock(len(msgs) > 0, len(ts.Blocks()))
 
 	gasUsed := int64(0)
 	for i, msg := range msgs {
@@ -297,7 +297,7 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs *store.ChainStore, 
 const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
 const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
 // Eth ABI (solidity) panic codes.
-var panicErrorCodes map[uint64]string = map[uint64]string{
+var panicErrorCodes = map[uint64]string{
 	0x00: "Panic()",
 	0x01: "Assert()",
 	0x11: "ArithmeticOverflow()",
@@ -391,10 +391,12 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 	}
 
 	// Otherwise, resolve the ID addr.
-	idAddr, err := st.LookupID(addr)
+	idAddr, err := st.LookupIDAddress(addr)
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
+
+	// revive:disable:empty-block easier to grok when the cases are explicit
 
 	// Lookup on the target actor and try to get an f410 address.
 	if actor, err := st.GetActor(idAddr); errors.Is(err, types.ErrActorNotFound) {
@@ -455,9 +457,9 @@ func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, er
 		return tx.TxHash()
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
 		return ethtypes.EthHashFromCid(smsg.Cid())
-	} else { // BLS message
-		return ethtypes.EthHashFromCid(smsg.Message.Cid())
 	}
+	// else BLS message
+	return ethtypes.EthHashFromCid(smsg.Message.Cid())
 }
 
 func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (ethtypes.EthTx, error) {
@@ -525,9 +527,6 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		}
 		to = revertedEthAddress
 	}
-	toPtr := &to
-
-	// Finally, convert the input parameters to "solidity ABI".
 
 	// For empty, we use "0" as the codec. Otherwise, we use CBOR for message
 	// parameters.
@@ -536,31 +535,11 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		codec = uint64(multicodec.Cbor)
 	}
 
-	// We try to decode the input as an EVM method invocation and/or a contract creation. If
-	// that fails, we encode the "native" parameters as Solidity ABI.
-	var input []byte
-	switch msg.Method {
-	case builtintypes.MethodsEVM.InvokeContract, builtintypes.MethodsEAM.CreateExternal:
-		inp, err := decodePayload(msg.Params, codec)
-		if err == nil {
-			// If this is a valid "create external", unset the "to" address.
-			if msg.Method == builtintypes.MethodsEAM.CreateExternal {
-				toPtr = nil
-			}
-			input = []byte(inp)
-			break
-		}
-		// Yeah, we're going to ignore errors here because the user can send whatever they
-		// want and may send garbage.
-		fallthrough
-	default:
-		input = encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params)
-	}
-
-	return ethtypes.EthTx{
-		To:                   toPtr,
+	// We decode as a native call first.
+	ethTx := ethtypes.EthTx{
+		To:                   &to,
 		From:                 from,
-		Input:                input,
+		Input:                encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params),
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),
@@ -569,7 +548,25 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
 		AccessList:           []ethtypes.EthHash{},
-	}, nil
+	}
+
+	// Then we try to see if it's "special". If we fail, we ignore the error and keep treating
+	// it as a native message. Unfortunately, the user is free to send garbage that may not
+	// properly decode.
+	if msg.Method == builtintypes.MethodsEVM.InvokeContract {
+		// try to decode it as a contract invocation first.
+		if inp, err := decodePayload(msg.Params, codec); err == nil {
+			ethTx.Input = []byte(inp)
+		}
+	} else if msg.To == builtin.EthereumAddressManagerActorAddr && msg.Method == builtintypes.MethodsEAM.CreateExternal {
+		// Then, try to decode it as a contract deployment from an EOA.
+		if inp, err := decodePayload(msg.Params, codec); err == nil {
+			ethTx.Input = []byte(inp)
+			ethTx.To = nil
+		}
+	}
+
+	return ethTx, nil
 }
 
 func getSignedMessage(ctx context.Context, cs *store.ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {
@@ -659,7 +656,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, events []types.Event, cs *store.ChainStore, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -700,7 +697,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
 	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
-	ts, err := cs.GetTipSetFromKey(ctx, lookup.TipSet)
+	ts, err := ca.Chain.GetTipSetFromKey(ctx, lookup.TipSet)
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
 	}
@@ -711,7 +708,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	// The tx is located in the parent tipset
-	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
+	parentTs, err := ca.Chain.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
 	}
@@ -734,6 +731,24 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
 		receipt.ContractAddress = &addr
+	}
+
+	var events []types.Event
+	if rct := lookup.Receipt; rct.EventsRoot != nil {
+		events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+		if err != nil {
+			// Fore-recompute, we must have enabled the Event APIs after computing this
+			// tipset.
+			if _, _, err := sa.StateManager.RecomputeTipSetState(ctx, ts); err != nil {
+
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+			// Try again
+			events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+		}
 	}
 
 	if len(events) > 0 {
@@ -803,8 +818,8 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	if len(data)%EVM_WORD_SIZE != 0 {
 		totalWords++
 	}
-	len := totalWords * EVM_WORD_SIZE
-	buf := make([]byte, len)
+	sz := totalWords * EVM_WORD_SIZE
+	buf := make([]byte, sz)
 	offset := 0
 	// Below, we use copy instead of "appending" to preserve all the zero padding.
 	for _, arg := range staticArgs {

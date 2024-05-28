@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/xerrors"
 )
@@ -388,13 +392,28 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 	}
 
 	// sanity-check that the updated config parses the same way as the current one
+
 	if cfgDef != nil {
 		cfgUpdated, err := FromReader(strings.NewReader(nodeStr), cfgDef)
 		if err != nil {
 			return nil, xerrors.Errorf("parsing updated config: %w", err)
 		}
 
-		if !reflect.DeepEqual(cfgCur, cfgUpdated) {
+		opts := []cmp.Option{
+			// This equality function compares big.Int
+			cmpopts.IgnoreUnexported(big.Int{}),
+			cmp.Comparer(func(x, y []string) bool {
+				tx, ty := reflect.TypeOf(x), reflect.TypeOf(y)
+				if tx.Kind() == reflect.Slice && ty.Kind() == reflect.Slice && tx.Elem().Kind() == reflect.String && ty.Elem().Kind() == reflect.String {
+					sort.Strings(x)
+					sort.Strings(y)
+					return strings.Join(x, "\n") == strings.Join(y, "\n")
+				}
+				return false
+			}),
+		}
+
+		if !cmp.Equal(cfgUpdated, cfgCur, opts...) {
 			return nil, xerrors.Errorf("updated config didn't match current config")
 		}
 	}

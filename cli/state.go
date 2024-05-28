@@ -17,10 +17,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -46,43 +44,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
-
-var StateCmd = &cli.Command{
-	Name:  "state",
-	Usage: "Interact with and query filecoin chain state",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "tipset",
-			Usage: "specify tipset to call method on (pass comma separated array of cids)",
-		},
-	},
-	Subcommands: []*cli.Command{
-		StatePowerCmd,
-		StateSectorsCmd,
-		StateActiveSectorsCmd,
-		StateListActorsCmd,
-		StateListMinersCmd,
-		StateCircSupplyCmd,
-		StateSectorCmd,
-		StateGetActorCmd,
-		StateLookupIDCmd,
-		StateReplayCmd,
-		StateSectorSizeCmd,
-		StateReadStateCmd,
-		StateListMessagesCmd,
-		StateComputeStateCmd,
-		StateCallCmd,
-		StateGetDealSetCmd,
-		StateWaitMsgCmd,
-		StateSearchMsgCmd,
-		StateMinerInfo,
-		StateMarketCmd,
-		StateExecTraceCmd,
-		StateNtwkVersionCmd,
-		StateMinerProvingDeadlineCmd,
-		StateSysActorCIDsCmd,
-	},
-}
 
 var StateMinerProvingDeadlineCmd = &cli.Command{
 	Name:      "miner-proving-deadline",
@@ -122,114 +83,6 @@ var StateMinerProvingDeadlineCmd = &cli.Command{
 		fmt.Printf("Close:\t\t%s\n", cd.Close)
 		fmt.Printf("Challenge:\t%s\n", cd.Challenge)
 		fmt.Printf("FaultCutoff:\t%s\n", cd.FaultCutoff)
-
-		return nil
-	},
-}
-
-var StateMinerInfo = &cli.Command{
-	Name:      "miner-info",
-	Usage:     "Retrieve miner information",
-	ArgsUsage: "[minerAddress]",
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		ctx := ReqContext(cctx)
-
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
-		addr, err := address.NewFromString(cctx.Args().First())
-		if err != nil {
-			return err
-		}
-
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
-
-		mi, err := api.StateMinerInfo(ctx, addr, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		availableBalance, err := api.StateMinerAvailableBalance(ctx, addr, ts.Key())
-		if err != nil {
-			return xerrors.Errorf("getting miner available balance: %w", err)
-		}
-		fmt.Printf("Available Balance: %s\n", types.FIL(availableBalance))
-		fmt.Printf("Owner:\t%s\n", mi.Owner)
-		fmt.Printf("Worker:\t%s\n", mi.Worker)
-		for i, controlAddress := range mi.ControlAddresses {
-			fmt.Printf("Control %d: \t%s\n", i, controlAddress)
-		}
-		if mi.Beneficiary != address.Undef {
-			fmt.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
-			if mi.Beneficiary != mi.Owner {
-				fmt.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
-				fmt.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
-				fmt.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
-			}
-		}
-		if mi.PendingBeneficiaryTerm != nil {
-			fmt.Printf("Pending Beneficiary Term:\n")
-			fmt.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
-			fmt.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
-			fmt.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
-			fmt.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
-			fmt.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
-		}
-
-		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
-		fmt.Printf("Multiaddrs:\t")
-		for _, addr := range mi.Multiaddrs {
-			a, err := multiaddr.NewMultiaddrBytes(addr)
-			if err != nil {
-				return xerrors.Errorf("undecodable listen address: %w", err)
-			}
-			fmt.Printf("%s ", a)
-		}
-		fmt.Println()
-		fmt.Printf("Consensus Fault End:\t%d\n", mi.ConsensusFaultElapsed)
-
-		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
-		pow, err := api.StateMinerPower(ctx, addr, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
-			color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
-			types.SizeStr(pow.TotalPower.RawBytePower),
-			types.BigDivFloat(
-				types.BigMul(pow.MinerPower.RawBytePower, big.NewInt(100)),
-				pow.TotalPower.RawBytePower,
-			),
-		)
-
-		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n",
-			color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
-			types.DeciStr(pow.TotalPower.QualityAdjPower),
-			types.BigDivFloat(
-				types.BigMul(pow.MinerPower.QualityAdjPower, big.NewInt(100)),
-				pow.TotalPower.QualityAdjPower,
-			),
-		)
-
-		fmt.Println()
-
-		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
-		if err != nil {
-			return xerrors.Errorf("getting miner info: %w", err)
-		}
-
-		fmt.Printf("Proving Period Start:\t%s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.PeriodStart))
 
 		return nil
 	},
@@ -1388,15 +1241,19 @@ func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 
 	p, err := stmgr.GetParamType(ar, code, method) // todo use api for correct actor registry
 	if err != nil {
-		return "", err
+		return fmt.Sprintf("raw:%x; DECODE ERR: %s", params, err.Error()), nil
 	}
 
 	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
-		return "", err
+		return fmt.Sprintf("raw:%x; DECODE cbor ERR: %s", params, err.Error()), nil
 	}
 
 	b, err := json.MarshalIndent(p, "", "  ")
-	return string(b), err
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
 
 func JsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
@@ -1407,7 +1264,7 @@ func JsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) 
 	re := reflect.New(methodMeta.Ret.Elem())
 	p := re.Interface().(cbg.CBORUnmarshaler)
 	if err := p.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-		return "", err
+		return fmt.Sprintf("raw:%x; DECODE ERR: %s", ret, err.Error()), nil
 	}
 
 	b, err := json.MarshalIndent(p, "", "  ")

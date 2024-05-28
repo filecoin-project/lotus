@@ -146,6 +146,7 @@ func init() {
 	allocationId := verifreg.AllocationId(0)
 	addExample(allocationId)
 	addExample(&allocationId)
+	addExample(miner.SectorOnChainInfoFlags(0))
 	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
 	claimId := verifreg.ClaimId(0)
 	addExample(claimId)
@@ -356,10 +357,6 @@ func init() {
 	addExample(map[string]bitfield.BitField{
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
-	addExample(&api.RaftStateData{
-		NonceMap: make(map[address.Address]uint64),
-		MsgUuids: make(map[uuid.UUID]*types.SignedMessage),
-	})
 
 	addExample(http.Header{
 		"Authorization": []string{"Bearer ey.."},
@@ -459,10 +456,10 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			i = &api.GatewayStruct{}
 			t = reflect.TypeOf(new(struct{ api.Gateway })).Elem()
 			permStruct = append(permStruct, reflect.TypeOf(api.GatewayStruct{}.Internal))
-		case "Provider":
-			i = &api.LotusProviderStruct{}
-			t = reflect.TypeOf(new(struct{ api.LotusProvider })).Elem()
-			permStruct = append(permStruct, reflect.TypeOf(api.LotusProviderStruct{}.Internal))
+		case "Curio":
+			i = &api.CurioStruct{}
+			t = reflect.TypeOf(new(struct{ api.Curio })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(api.CurioStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

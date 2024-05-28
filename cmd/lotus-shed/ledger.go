@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
-	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
+	ledgerfil "github.com/zondax/ledger-filecoin-go"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"

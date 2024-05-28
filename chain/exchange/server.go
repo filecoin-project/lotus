@@ -40,11 +40,15 @@ func (s *server) HandleStream(stream inet.Stream) {
 
 	defer stream.Close() //nolint:errcheck
 
+	_ = stream.SetReadDeadline(time.Now().Add(streamReadDeadline))
 	var req Request
 	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
+		_ = stream.SetReadDeadline(time.Time{})
 		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
+	_ = stream.SetReadDeadline(time.Time{})
+
 	log.Debugw("block sync request",
 		"start", req.Head, "len", req.Length)
 
@@ -137,7 +141,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 
 	chain, err := collectChainSegment(ctx, s.cs, req)
 	if err != nil {
-		log.Warn("block sync request: collectChainSegment failed: ", err)
+		log.Info("block sync request: collectChainSegment failed: ", err)
 		return &Response{
 			Status:       InternalError,
 			ErrorMessage: err.Error(),
@@ -171,17 +175,11 @@ func collectChainSegment(ctx context.Context, cs *store.ChainStore, req *validat
 		}
 
 		if req.options.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(ctx, cs, ts)
+			bst.Messages, err = gatherMessages(ctx, cs, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
 
-			// FIXME: Pass the response to `gatherMessages()` and set all this there.
-			bst.Messages = &CompactedMessages{}
-			bst.Messages.Bls = bmsgs
-			bst.Messages.BlsIncludes = bmincl
-			bst.Messages.Secpk = smsgs
-			bst.Messages.SecpkIncludes = smincl
 		}
 
 		bstips = append(bstips, &bst)
@@ -196,16 +194,16 @@ func collectChainSegment(ctx context.Context, cs *store.ChainStore, req *validat
 	}
 }
 
-func gatherMessages(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func gatherMessages(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) (*CompactedMessages, error) {
+	msgs := new(CompactedMessages)
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
-	var secpkincl, blsincl [][]uint64
 
 	var blscids, secpkcids []cid.Cid
 	for _, block := range ts.Blocks() {
 		bc, sc, err := cs.ReadMsgMetaCids(ctx, block.Messages)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, err
 		}
 
 		// FIXME: DRY. Use `chain.Message` interface.
@@ -220,7 +218,7 @@ func gatherMessages(ctx context.Context, cs *store.ChainStore, ts *types.TipSet)
 
 			bmi = append(bmi, i)
 		}
-		blsincl = append(blsincl, bmi)
+		msgs.BlsIncludes = append(msgs.BlsIncludes, bmi)
 
 		smi := make([]uint64, 0, len(sc))
 		for _, m := range sc {
@@ -233,18 +231,19 @@ func gatherMessages(ctx context.Context, cs *store.ChainStore, ts *types.TipSet)
 
 			smi = append(smi, i)
 		}
-		secpkincl = append(secpkincl, smi)
+		msgs.SecpkIncludes = append(msgs.SecpkIncludes, smi)
 	}
 
-	blsmsgs, err := cs.LoadMessagesFromCids(ctx, blscids)
+	var err error
+	msgs.Bls, err = cs.LoadMessagesFromCids(ctx, blscids)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 
-	secpkmsgs, err := cs.LoadSignedMessagesFromCids(ctx, secpkcids)
+	msgs.Secpk, err = cs.LoadSignedMessagesFromCids(ctx, secpkcids)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 
-	return blsmsgs, blsincl, secpkmsgs, secpkincl, nil
+	return msgs, nil
 }

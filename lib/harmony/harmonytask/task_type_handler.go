@@ -25,16 +25,14 @@ type taskTypeHandler struct {
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
 	var tID TaskID
+	retryWait := time.Millisecond * 100
+retryAddTask:
 	_, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
-		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
-			VALUES ($1, $2, CURRENT_TIMESTAMP) `, h.Name, h.TaskEngine.ownerID)
+		err := tx.QueryRow(`INSERT INTO harmony_task (name, added_by, posted_time) 
+          VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id`, h.Name, h.TaskEngine.ownerID).Scan(&tID)
 		if err != nil {
 			return false, fmt.Errorf("could not insert into harmonyTask: %w", err)
-		}
-		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
-		if err != nil {
-			return false, fmt.Errorf("Could not select ID: %v", err)
 		}
 		return extra(tID, tx)
 	})
@@ -44,14 +42,20 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 			log.Debugf("addtask(%s) saw unique constraint, so it's added already.", h.Name)
 			return
 		}
-		log.Error("Could not add task. AddTasFunc failed: %v", err)
+		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
+			goto retryAddTask
+		}
+		log.Errorw("Could not add task. AddTasFunc failed", "error", err, "type", h.Name)
 		return
 	}
 }
 
 const (
-	workSourcePoller  = "poller"
-	workSourceRecover = "recovered"
+	WorkSourcePoller   = "poller"
+	WorkSourceRecover  = "recovered"
+	WorkSourceIAmBored = "bored"
 )
 
 // considerWork is called to attempt to start work on a task-id of this task type.
@@ -81,8 +85,14 @@ top:
 		return false
 	}
 
+	h.TaskEngine.WorkOrigin = from
+
 	// 3. What does the impl say?
+canAcceptAgain:
 	tID, err := h.CanAccept(ids, h.TaskEngine)
+
+	h.TaskEngine.WorkOrigin = ""
+
 	if err != nil {
 		log.Error(err)
 		return false
@@ -92,16 +102,46 @@ top:
 		return false
 	}
 
+	releaseStorage := func() {
+	}
+	if h.TaskTypeDetails.Cost.Storage != nil {
+		if err = h.TaskTypeDetails.Cost.Storage.Claim(int(*tID)); err != nil {
+			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "storage claim failed", "name", h.Name, "error", err)
+
+			if len(ids) > 1 {
+				var tryAgain = make([]TaskID, 0, len(ids)-1)
+				for _, id := range ids {
+					if id != *tID {
+						tryAgain = append(tryAgain, id)
+					}
+				}
+				ids = tryAgain
+				goto canAcceptAgain
+			}
+
+			return false
+		}
+		releaseStorage = func() {
+			if err := h.TaskTypeDetails.Cost.Storage.MarkComplete(int(*tID)); err != nil {
+				log.Errorw("Could not release storage", "error", err)
+			}
+		}
+	}
+
 	// if recovering we don't need to try to claim anything because those tasks are already claimed by us
-	if from != workSourceRecover {
+	if from != WorkSourceRecover {
 		// 4. Can we claim the work for our hostname?
 		ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
 		if err != nil {
 			log.Error(err)
+
+			releaseStorage()
 			return false
 		}
 		if ct == 0 {
 			log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
+			releaseStorage()
+
 			var tryAgain = make([]TaskID, 0, len(ids)-1)
 			for _, id := range ids {
 				if id != *tID {
@@ -131,6 +171,7 @@ top:
 			}
 			h.Count.Add(-1)
 
+			releaseStorage()
 			h.recordCompletion(*tID, workStart, done, doErr)
 			if done {
 				for _, fs := range h.TaskEngine.follows[h.Name] { // Do we know of any follows for this task type?
@@ -161,10 +202,12 @@ top:
 
 func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done bool, doErr error) {
 	workEnd := time.Now()
-
+	retryWait := time.Millisecond * 100
+retryRecordCompletion:
 	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
+
 		if err != nil {
 			return false, fmt.Errorf("could not log completion: %w ", err)
 		}
@@ -176,6 +219,9 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 				return false, fmt.Errorf("could not log completion: %w", err)
 			}
 			result = ""
+			if doErr != nil {
+				result = "non-failing error: " + doErr.Error()
+			}
 		} else {
 			if doErr != nil {
 				result = "error: " + doErr.Error()
@@ -207,13 +253,18 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 		}
 		_, err = tx.Exec(`INSERT INTO harmony_task_history 
 									 (task_id,   name, posted,    work_start, work_end, result, completed_by_host_and_port,      err)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, tID, h.Name, postedTime, workStart, workEnd, done, h.TaskEngine.hostAndPort, result)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, tID, h.Name, postedTime.UTC(), workStart.UTC(), workEnd.UTC(), done, h.TaskEngine.hostAndPort, result)
 		if err != nil {
 			return false, fmt.Errorf("could not write history: %w", err)
 		}
 		return true, nil
 	})
 	if err != nil {
+		if harmonydb.IsErrSerialization(err) {
+			time.Sleep(retryWait)
+			retryWait *= 2
+			goto retryRecordCompletion
+		}
 		log.Error("Could not record transaction: ", err)
 		return
 	}
@@ -233,6 +284,12 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	}
 	if r.Gpu-h.Cost.Gpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
+	}
+
+	if h.TaskTypeDetails.Cost.Storage != nil {
+		if !h.TaskTypeDetails.Cost.Storage.HasCapacity() {
+			return errors.New("Did not accept " + h.Name + " task: out of available Storage")
+		}
 	}
 	return nil
 }

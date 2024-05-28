@@ -49,7 +49,7 @@ type StateManagerAPI interface {
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
-	LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	LookupIDAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 }
 
@@ -111,6 +111,10 @@ func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCi
 	}
 
 	return nil
+}
+
+func (m *migrationResultCache) Delete(ctx context.Context, root cid.Cid) {
+	_ = m.ds.Delete(ctx, m.keyForMigration(root))
 }
 
 type Executor interface {
@@ -396,13 +400,30 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 	return kaddr.Payload(), nil
 }
 
-func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (sm *StateManager) LookupIDAddress(_ context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	// Check for the fast route first to avoid unnecessary CBOR store instantiation and state tree load.
+	if addr.Protocol() == address.ID {
+		return addr, nil
+	}
+
 	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	state, err := state.LoadStateTree(cst, sm.parentState(ts))
 	if err != nil {
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
-	return state.LookupID(addr)
+	return state.LookupIDAddress(addr)
+}
+
+func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (abi.ActorID, error) {
+	idAddr, err := sm.LookupIDAddress(ctx, addr, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("state manager lookup id: %w", err)
+	}
+	id, err := address.IDFromAddress(idAddr)
+	if err != nil {
+		return 0, xerrors.Errorf("resolve actor id: id from addr: %w", err)
+	}
+	return abi.ActorID(id), nil
 }
 
 func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error) {

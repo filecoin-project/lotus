@@ -121,6 +121,10 @@ func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent
 		if err != nil {
 			return nil, err
 		}
+		if log.TransactionHash == ethtypes.EmptyEthHash {
+			// We've garbage collected the message, ignore the events and continue.
+			continue
+		}
 		c, err := ev.TipSetKey.Cid()
 		if err != nil {
 			return nil, err
@@ -250,6 +254,8 @@ type ethSubscription struct {
 	sendQueueLen int
 	toSend       *queue.Queue[[]byte]
 	sendCond     chan struct{}
+
+	lastSentTipset *types.TipSetKey
 }
 
 func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
@@ -337,12 +343,27 @@ func (e *ethSubscription) start(ctx context.Context) {
 					e.send(ctx, r)
 				}
 			case *types.TipSet:
-				ev, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
-				if err != nil {
-					break
+				// Skip processing for tipset at epoch 0 as it has no parent
+				if vt.Height() == 0 {
+					continue
+				}
+				// Check if the parent has already been processed
+				parentTipSetKey := vt.Parents()
+				if e.lastSentTipset != nil && (*e.lastSentTipset) == parentTipSetKey {
+					continue
+				}
+				parentTipSet, loadErr := e.Chain.LoadTipSet(ctx, parentTipSetKey)
+				if loadErr != nil {
+					log.Warnw("failed to load parent tipset", "tipset", parentTipSetKey, "error", loadErr)
+					continue
+				}
+				ethBlock, ethBlockErr := newEthBlockFromFilecoinTipSet(ctx, parentTipSet, true, e.Chain, e.StateAPI)
+				if ethBlockErr != nil {
+					continue
 				}
 
-				e.send(ctx, ev)
+				e.send(ctx, ethBlock)
+				e.lastSentTipset = &parentTipSetKey
 			case *types.SignedMessage: // mpool txid
 				evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt})
 				if err != nil {
