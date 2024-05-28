@@ -16,5 +16,4 @@
   - example: ` fix: mempool: Introduce a cache for valid signatures`
   - `PR type`: fix, feat, build, chore, ci, docs, perf, refactor, revert, style, test
   - `area`, e.g. api, chain, state, market, mempool, multisig, networking, paych, proving, sealing, wallet, deps
-- [ ] New or updated features/configuration have usage guidelines and/or documentation updates in [Lotus Documentation](https://lotus.filecoin.io).
 - [ ] CI is green
