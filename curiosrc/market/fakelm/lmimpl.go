@@ -97,7 +97,7 @@ func (l *LMRPCProvider) SectorsStatus(ctx context.Context, sid abi.SectorNumber,
 		}
 	}
 
-	spt, err := miner.SealProofTypeFromSectorSize(l.ssize, network.Version20, false) // good enough, just need this for ssize anyways
+	spt, err := miner.SealProofTypeFromSectorSize(l.ssize, network.Version20, miner.SealProofVariant_Standard) // good enough, just need this for ssize anyways
 	if err != nil {
 		return api.SectorInfo{}, err
 	}

@@ -25,7 +25,7 @@ import (
 const DefaultPresealsPerBootstrapMiner = 2
 
 const TestSpt = abi.RegisteredSealProof_StackedDrg2KiBV1_1
-const TestSptNi = abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_NiPoRep
+const TestSptNi = abi.RegisteredSealProof_StackedDrg2KiBV1_2_Feat_NiPoRep
 
 // nodeOpts is an options accumulating struct, where functional options are
 // merged into.

@@ -461,9 +461,9 @@ func manualOnboardingGenerateProveCommit(
 
 	var seedRandomnessHeight abi.ChainEpoch
 
-	if proofType >= abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_NiPoRep && proofType <= abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_NiPoRep {
+	if proofType >= abi.RegisteredSealProof_StackedDrg2KiBV1_2_Feat_NiPoRep && proofType <= abi.RegisteredSealProof_StackedDrg64GiBV1_2_Feat_NiPoRep {
 		// this just needs to be somewhere between 6 months and chain finality for NI-PoRep,
-		// and there's no PreCommitInfo becuase it's non-interactive!
+		// and there's no PreCommitInfo because it's non-interactive!
 		seedRandomnessHeight = head.Height() - policy.ChainFinality
 	} else {
 		preCommitInfo, err := client.StateSectorPreCommitInfo(ctx, minerAddr, sectorNumber, head.Key())
