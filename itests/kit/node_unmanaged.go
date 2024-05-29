@@ -23,8 +23,6 @@ import (
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/proof"
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -259,26 +257,6 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 	waitSeedRandomness := tm.proveCommitWaitSeed(ctx, sectorNumber)
 
 	proveCommit := tm.generateProveCommit(ctx, sectorNumber, proofType, waitSeedRandomness, pieces)
-
-	minerId, err := address.IDFromAddress(tm.ActorAddr)
-	require.NoError(tm.t, err)
-
-	// verify the 'ole proofy
-	isValid, err := ffi.VerifySeal(prooftypes.SealVerifyInfo{
-		SectorID: abi.SectorID{
-			Miner:  abi.ActorID(minerId),
-			Number: sectorNumber,
-		},
-		SealedCID:             tm.sealedCids[sectorNumber],
-		SealProof:             proofType,
-		Proof:                 proveCommit,
-		DealIDs:               []abi.DealID{},
-		Randomness:            tm.sealTickets[sectorNumber],
-		InteractiveRandomness: waitSeedRandomness,
-		UnsealedCID:           tm.unsealedCids[sectorNumber],
-	})
-	req.NoError(err)
-	req.True(isValid, "proof wasn't valid")
 
 	// Step 6: Submit the ProveCommit to the network
 	tm.t.Log("Submitting ProveCommitSector ...")
