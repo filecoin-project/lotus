@@ -46,7 +46,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.3.2
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.14.0-dev.0.20240529001730-3bfff718e9cc
+	github.com/filecoin-project/go-state-types v0.14.0-dev.0.20240529052523-2d27210dc3cd
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0

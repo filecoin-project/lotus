@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -104,6 +105,13 @@ func TestManualCCOnboarding(t *testing.T) {
 
 			build.Clock.Sleep(time.Second)
 
+			nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
+			req.NoError(err)
+			sealProofType, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, miner.SealProofVariant_Standard)
+			req.NoError(err)
+			nonInteractiveSealProofType, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, miner.SealProofVariant_NonInteractive)
+			req.NoError(err)
+
 			head, err := client.ChainHead(ctx)
 			req.NoError(err)
 
@@ -148,7 +156,7 @@ func TestManualCCOnboarding(t *testing.T) {
 					minerB.ActorAddr,
 					bSectorNum,
 					sealRandEpoch,
-					kit.TestSpt,
+					sealProofType,
 				)
 			}
 
@@ -158,7 +166,7 @@ func TestManualCCOnboarding(t *testing.T) {
 				Sectors: []miner14.SectorPreCommitInfo{{
 					Expiration:    2880 * 300,
 					SectorNumber:  bSectorNum,
-					SealProof:     kit.TestSpt,
+					SealProof:     sealProofType,
 					SealedCID:     sealedCid[bSectorNum],
 					SealRandEpoch: sealRandEpoch,
 				}},
@@ -190,7 +198,7 @@ func TestManualCCOnboarding(t *testing.T) {
 					sealedCid[bSectorNum],
 					unsealedCid[bSectorNum],
 					sealTickets[bSectorNum],
-					kit.TestSpt,
+					sealProofType,
 				)
 			}
 
@@ -220,10 +228,14 @@ func TestManualCCOnboarding(t *testing.T) {
 				cacheDirPath[bSectorNum],
 				sealedSectorPath[bSectorNum],
 				sealedCid[bSectorNum],
-				kit.TestSpt,
+				sealProofType,
 			)
 
 			// NI-PoRep
+
+			actorIdNum, err := address.IDFromAddress(minerC.ActorAddr)
+			req.NoError(err)
+			actorId := abi.ActorID(actorIdNum)
 
 			if withMockProofs {
 				sectorProof = []byte{0xde, 0xad, 0xbe, 0xef}
@@ -244,10 +256,10 @@ func TestManualCCOnboarding(t *testing.T) {
 					minerC.ActorAddr,
 					cSectorNum,
 					sealRandEpoch,
-					kit.TestSptNi,
+					nonInteractiveSealProofType,
 				)
 
-				sectorProof = manualOnboardingGenerateProveCommit(
+				sectorProofCircuits := manualOnboardingGenerateProveCommit(
 					ctx,
 					t,
 					client,
@@ -258,15 +270,25 @@ func TestManualCCOnboarding(t *testing.T) {
 					sealedCid[cSectorNum],
 					unsealedCid[cSectorNum],
 					sealTickets[cSectorNum],
-					kit.TestSptNi,
+					nonInteractiveSealProofType,
 				)
+
+				sectorProof, err = ffi.AggregateSealProofs(proof.AggregateSealVerifyProofAndInfos{
+					Miner:          actorId,
+					SealProof:      nonInteractiveSealProofType,
+					AggregateProof: abi.RegisteredAggregationProof_SnarkPackV2,
+					Infos: []proof.AggregateSealVerifyInfo{{
+						Number:                cSectorNum,
+						Randomness:            sealTickets[cSectorNum],
+						InteractiveRandomness: nil,
+						SealedCID:             sealedCid[cSectorNum],
+						UnsealedCID:           unsealedCid[cSectorNum],
+					}},
+				}, [][]byte{sectorProofCircuits})
+				req.NoError(err)
 			}
 
 			t.Log("Submitting MinerC ProveCommitSectorsNI ...")
-
-			actorIdNum, err := address.IDFromAddress(minerC.ActorAddr)
-			req.NoError(err)
-			actorId := abi.ActorID(actorIdNum)
 
 			r, err = manualOnboardingSubmitMessage(ctx, client, minerC, &miner14.ProveCommitSectorsNIParams{
 				Sectors: []miner14.SectorNIActivationInfo{{
@@ -277,7 +299,7 @@ func TestManualCCOnboarding(t *testing.T) {
 					SealRandEpoch: sealRandEpoch,
 					Expiration:    2880 * 300,
 				}},
-				SealProofType:            kit.TestSptNi,
+				SealProofType:            nonInteractiveSealProofType,
 				SectorProofs:             [][]byte{sectorProof},
 				RequireActivationSuccess: true,
 			}, 1, builtin.MethodsMiner.ProveCommitSectorsNI)
@@ -294,7 +316,7 @@ func TestManualCCOnboarding(t *testing.T) {
 				cacheDirPath[cSectorNum],
 				sealedSectorPath[cSectorNum],
 				sealedCid[cSectorNum],
-				kit.TestSptNi,
+				nonInteractiveSealProofType,
 			)
 
 			checkPostSchedulers := func() {
@@ -461,7 +483,7 @@ func manualOnboardingGenerateProveCommit(
 
 	var seedRandomnessHeight abi.ChainEpoch
 
-	if proofType >= abi.RegisteredSealProof_StackedDrg2KiBV1_2_Feat_NiPoRep && proofType <= abi.RegisteredSealProof_StackedDrg64GiBV1_2_Feat_NiPoRep {
+	if proofType.IsNonInteractive() {
 		// this just needs to be somewhere between 6 months and chain finality for NI-PoRep,
 		// and there's no PreCommitInfo because it's non-interactive!
 		seedRandomnessHeight = head.Height() - policy.ChainFinality
@@ -500,15 +522,16 @@ func manualOnboardingGenerateProveCommit(
 
 	t.Logf("Running proof type %d SealCommitPhase2 for sector %d...", proofType, sectorNumber)
 
-	sectorProof, err := ffi.SealCommitPhase2(scp1, sectorNumber, actorId)
-	req.NoError(err)
+	var sectorProof []byte
+	if proofType.IsNonInteractive() {
+		sectorProof, err = ffi.SealCommitPhase2CircuitProofs(scp1, sectorNumber)
+		req.NoError(err)
+	} else {
+		sectorProof, err = ffi.SealCommitPhase2(scp1, sectorNumber, actorId)
+		req.NoError(err)
+	}
 
 	t.Logf("Got proof type %d sector proof of length %d", proofType, len(sectorProof))
-
-	/* this variant would be used for aggregating NI-PoRep proofs
-	sectorProof, err := ffi.SealCommitPhase2CircuitProofs(scp1, sectorNumber)
-	req.NoError(err)
-	*/
 
 	return sectorProof
 }
