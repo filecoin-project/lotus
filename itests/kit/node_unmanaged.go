@@ -228,7 +228,6 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 			return
 		}
 
-		nextPost += 5 // Buffer to ensure readiness for submission
 		tm.FullNode.WaitTillChain(ctx, HeightAtLeast(nextPost))
 
 		err = tm.submitWindowPost(ctx, sectorNumber)

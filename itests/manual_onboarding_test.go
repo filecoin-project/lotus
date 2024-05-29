@@ -24,7 +24,8 @@ func TestManualCCOnboarding(t *testing.T) {
 	defer cancel()
 
 	var (
-		blocktime = 2 * time.Millisecond
+		// need to pick a balance value so that the test is not racy on CI by running through it's WindowPostDeadlines too fast
+		blocktime = 5 * time.Millisecond
 		client    kit.TestFullNode
 		minerA    kit.TestMiner // A is a standard genesis miner
 	)
