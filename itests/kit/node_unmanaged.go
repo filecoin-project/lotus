@@ -30,6 +30,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 )
 
+const sectorSize = abi.SectorSize(2 << 10) // 2KiB
+
 // TestUnmanagedMiner is a miner that's not managed by the storage/infrastructure, all tasks must be manually executed, managed and scheduled by the test or test kit.
 // Note: `TestUnmanagedMiner` is not thread safe and assumes linear access of it's methods
 type TestUnmanagedMiner struct {
@@ -39,7 +41,6 @@ type TestUnmanagedMiner struct {
 	cacheDir          string
 	unsealedSectorDir string
 	sealedSectorDir   string
-	sectorSize        abi.SectorSize
 	currentSectorNum  abi.SectorNumber
 
 	cacheDirPaths       map[abi.SectorNumber]string
@@ -151,13 +152,13 @@ func (tm *TestUnmanagedMiner) createCCSector(_ context.Context, sectorNumber abi
 
 	unsealedSectorPath := filepath.Join(tm.unsealedSectorDir, fmt.Sprintf("%d", sectorNumber))
 	sealedSectorPath := filepath.Join(tm.sealedSectorDir, fmt.Sprintf("%d", sectorNumber))
-	unsealedSize := abi.PaddedPieceSize(tm.sectorSize).Unpadded()
+	unsealedSize := abi.PaddedPieceSize(sectorSize).Unpadded()
 
 	err = os.WriteFile(unsealedSectorPath, make([]byte, unsealedSize), 0644)
 	req.NoError(err)
 	tm.t.Logf("MinerB: Sector %d: wrote unsealed CC sector to %s", sectorNumber, unsealedSectorPath)
 
-	err = os.WriteFile(sealedSectorPath, make([]byte, tm.sectorSize), 0644)
+	err = os.WriteFile(sealedSectorPath, make([]byte, sectorSize), 0644)
 	req.NoError(err)
 	tm.t.Logf("MinerB: Sector %d: wrote sealed CC sector to %s", sectorNumber, sealedSectorPath)
 
