@@ -8,6 +8,14 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 )
 
+type SealProofVariant int
+
+const (
+	SealProofVariant_Standard SealProofVariant = iota
+	SealProofVariant_Synthetic
+	SealProofVariant_NonInteractive
+)
+
 var MinSyntheticPoRepVersion = network.Version21
 var MinNonInteractivePoRepVersion = network.Version23
 
@@ -34,15 +42,16 @@ func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) 
 
 // SealProofTypeFromSectorSize returns preferred seal proof type for creating
 // new miner actors and new sectors
-func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synthetic bool, nonInteractive bool) (abi.RegisteredSealProof, error) {
-	if nv < MinSyntheticPoRepVersion && synthetic {
-		return 0, xerrors.Errorf("synthetic proofs are not supported on network version %d", nv)
-	}
-	if nv < MinNonInteractivePoRepVersion && nonInteractive {
-		return 0, xerrors.Errorf("non-interactive proofs are not supported on network version %d", nv)
-	}
-	if synthetic && nonInteractive {
-		return 0, xerrors.Errorf("synthetic and non-interactive proofs are mutually exclusive")
+func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, variant SealProofVariant) (abi.RegisteredSealProof, error) {
+	switch variant {
+	case SealProofVariant_Synthetic:
+		if nv < MinSyntheticPoRepVersion {
+			return 0, xerrors.Errorf("synthetic proofs are not supported on network version %d", nv)
+		}
+	case SealProofVariant_NonInteractive:
+		if nv < MinNonInteractivePoRepVersion {
+			return 0, xerrors.Errorf("non-interactive proofs are not supported on network version %d", nv)
+		}
 	}
 
 	switch {
@@ -78,10 +87,10 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synth
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 
-		if synthetic {
+		switch variant {
+		case SealProofVariant_Synthetic:
 			return toSynthetic(v)
-		}
-		if nonInteractive {
+		case SealProofVariant_NonInteractive:
 			return toNonInteractive(v)
 		}
 		return v, nil
