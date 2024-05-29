@@ -138,7 +138,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		i := i
 		m := m
 
-		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv, synthetic)
+		variant := miner.SealProofVariant_Standard
+		if synthetic {
+			variant = miner.SealProofVariant_Synthetic
+		}
+		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv, variant)
 		if err != nil {
 			return cid.Undef, err
 		}
