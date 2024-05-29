@@ -28,6 +28,7 @@ func TestManualCCOnboarding(t *testing.T) {
 		blocktime = 5 * time.Millisecond
 		client    kit.TestFullNode
 		minerA    kit.TestMiner // A is a standard genesis miner
+		minerA2   kit.TestMiner
 	)
 
 	// Setup and begin mining with a single miner (A)
@@ -37,6 +38,8 @@ func TestManualCCOnboarding(t *testing.T) {
 	ens := kit.NewEnsemble(t, kitOpts...).
 		FullNode(&client, nodeOpts...).
 		Miner(&minerA, &client, nodeOpts...).
+		// TODO: Figure out we need two genesis miners if we want to use two unmanaged miners in the test
+		Miner(&minerA2, &client, nodeOpts...).
 		Start().
 		InterconnectAll()
 	ens.BeginMining(blocktime)
@@ -68,38 +71,53 @@ func TestManualCCOnboarding(t *testing.T) {
 	// Miner C should have no power as it has yet to onboard and activate any sectors
 	minerC.AssertNoPower(ctx)
 
+	// ---- Miner B onboards a CC sector
 	var bSectorNum abi.SectorNumber
 	var respCh chan kit.WindowPostResp
-	bSectorNum, respCh = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
-
+	bSectorNum, respCh = minerB.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
 	// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 	minerB.AssertNoPower(ctx)
+	// Activate CC Sector for Miner B and assert power
+	activateAndAssertPower(ctx, t, minerB, respCh, bSectorNum)
+
+	// --- Miner C onboards sector with data/pieces
+	var cSectorNum abi.SectorNumber
+	var cRespCh chan kit.WindowPostResp
+	cSectorNum, cRespCh = minerC.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
+	// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
+	minerC.AssertNoPower(ctx)
+	// Activate CC Sector for Miner C and assert power
+	activateAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum)
+}
+
+func activateAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, respCh chan kit.WindowPostResp, sector abi.SectorNumber) {
+	req := require.New(t)
 	// wait till sector is activated
 	select {
 	case resp := <-respCh:
 		req.NoError(resp.Error)
-		req.Equal(resp.SectorNumber, bSectorNum)
+		req.Equal(resp.SectorNumber, sector)
 	case <-ctx.Done():
 		t.Fatal("timed out waiting for sector activation")
 	}
 
 	// Fetch on-chain sector properties
-	head, err = client.ChainHead(ctx)
+	head, err := miner.FullNode.ChainHead(ctx)
 	req.NoError(err)
 
-	soi, err := client.StateSectorGetInfo(ctx, minerB.ActorAddr, bSectorNum, head.Key())
+	soi, err := miner.FullNode.StateSectorGetInfo(ctx, miner.ActorAddr, sector, head.Key())
 	req.NoError(err)
-	t.Logf("Miner B SectorOnChainInfo %d: %+v", bSectorNum, soi)
+	t.Logf("Miner %s SectorOnChainInfo %d: %+v", miner.ActorAddr.String(), sector, soi)
 
-	_ = client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+5))
+	_ = miner.FullNode.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+5))
 
 	t.Log("Checking power after PoSt ...")
 
 	// Miner B should now have power
-	minerB.AssertPower(ctx, (uint64(2 << 10)), (uint64(2 << 10)))
+	miner.AssertPower(ctx, (uint64(sectorSize)), (uint64(sectorSize)))
 
 	// WindowPost Dispute should fail
-	assertDisputeFails(ctx, t, minerB, bSectorNum)
+	assertDisputeFails(ctx, t, miner, sector)
 }
 
 func assertDisputeFails(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, sector abi.SectorNumber) {
