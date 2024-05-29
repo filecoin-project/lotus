@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
 )
 
 const sectorSize = abi.SectorSize(2 << 10) // 2KiB
@@ -85,7 +87,7 @@ func TestManualCCOnboarding(t *testing.T) {
 	req.NoError(err)
 	t.Logf("Miner B SectorOnChainInfo %d: %+v", bSectorNum, soi)
 
-	head = client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+5))
+	_ = client.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+5))
 
 	t.Log("Checking power after PoSt ...")
 
@@ -93,10 +95,10 @@ func TestManualCCOnboarding(t *testing.T) {
 	minerB.AssertPower(ctx, (uint64(2 << 10)), (uint64(2 << 10)))
 
 	// WindowPost Dispute should fail
-	assertDisputeFails(t, ctx, minerB, bSectorNum)
+	assertDisputeFails(ctx, t, minerB, bSectorNum)
 }
 
-func assertDisputeFails(t *testing.T, ctx context.Context, miner *kit.TestUnmanagedMiner, sector abi.SectorNumber) {
+func assertDisputeFails(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, sector abi.SectorNumber) {
 	err := miner.SubmitPostDispute(ctx, sector)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to dispute valid post")
