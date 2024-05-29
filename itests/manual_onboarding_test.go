@@ -46,6 +46,8 @@ func TestManualCCOnboarding(t *testing.T) {
 	// for the processes of sector onboarding and activation.
 	nodeOpts = append(nodeOpts, kit.OwnerAddr(client.DefaultKey))
 	minerB, ens := ens.UnmanagedMiner(&client, nodeOpts...)
+	minerC, ens := ens.UnmanagedMiner(&client, nodeOpts...)
+
 	ens.Start()
 
 	build.Clock.Sleep(time.Second)
@@ -62,14 +64,15 @@ func TestManualCCOnboarding(t *testing.T) {
 	// Miner B should have no power as it has yet to onboard and activate any sectors
 	minerB.AssertNoPower(ctx)
 
+	// Miner C should have no power as it has yet to onboard and activate any sectors
+	minerC.AssertNoPower(ctx)
+
 	var bSectorNum abi.SectorNumber
 	var respCh chan kit.WindowPostResp
-
 	bSectorNum, respCh = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
 
 	// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 	minerB.AssertNoPower(ctx)
-
 	// wait till sector is activated
 	select {
 	case resp := <-respCh:
