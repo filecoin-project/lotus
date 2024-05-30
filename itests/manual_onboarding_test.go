@@ -28,7 +28,6 @@ func TestManualCCOnboarding(t *testing.T) {
 		blocktime = 5 * time.Millisecond
 		client    kit.TestFullNode
 		minerA    kit.TestMiner // A is a standard genesis miner
-		minerA2   kit.TestMiner
 	)
 
 	// Setup and begin mining with a single miner (A)
@@ -38,11 +37,9 @@ func TestManualCCOnboarding(t *testing.T) {
 	ens := kit.NewEnsemble(t, kitOpts...).
 		FullNode(&client, nodeOpts...).
 		Miner(&minerA, &client, nodeOpts...).
-		// TODO: Figure out we need two genesis miners if we want to use two unmanaged miners in the test
-		Miner(&minerA2, &client, nodeOpts...).
 		Start().
 		InterconnectAll()
-	ens.BeginMining(blocktime)
+	ens.BeginMiningMustPost(blocktime)
 
 	// Instantiate MinerB to manually handle sector onboarding and power acquisition through sector activation.
 	// Unlike other miners managed by the Lotus Miner storage infrastructure, MinerB operates independently,
