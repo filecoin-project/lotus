@@ -4,7 +4,7 @@ description: Install Yugabyte Database for Filecoin Lotus
 runs:
   using: composite
   steps:
-    - run: docker run --rm --name yugabyte -d -p 5433:5433 yugabytedb/yugabyte:2.18.0.0-b65 bin/yugabyted start --daemon=false
+    - run: docker run --rm --name yugabyte -d -p 5433:5433 yugabytedb/yugabyte:2.21.0.1-b1 bin/yugabyted start --daemon=false
       shell: bash
     - run: |
         while true; do

@@ -266,12 +266,14 @@ func SectorsStatusCmd(getActorAddress ActorAddressGetter, getOnDiskInfo OnDiskIn
 			}
 
 			if cctx.Bool("log") {
-				fmt.Printf("--------\nEvent Log:\n")
+				if getOnDiskInfo != nil {
+					fmt.Printf("--------\nEvent Log:\n")
 
-				for i, l := range status.Log {
-					fmt.Printf("%d.\t%s:\t[%s]\t%s\n", i, time.Unix(int64(l.Timestamp), 0), l.Kind, l.Message)
-					if l.Trace != "" {
-						fmt.Printf("\t%s\n", l.Trace)
+					for i, l := range status.Log {
+						fmt.Printf("%d.\t%s:\t[%s]\t%s\n", i, time.Unix(int64(l.Timestamp), 0), l.Kind, l.Message)
+						if l.Trace != "" {
+							fmt.Printf("\t%s\n", l.Trace)
+						}
 					}
 				}
 			}

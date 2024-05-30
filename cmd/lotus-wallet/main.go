@@ -52,7 +52,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-wallet",
 		Usage:   "Basic external wallet",
-		Version: build.UserVersion(),
+		Version: string(build.NodeUserVersion()),
 		Description: `
 lotus-wallet provides a remote wallet service for lotus.
 

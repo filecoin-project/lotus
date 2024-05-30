@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/filler"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -88,7 +89,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		return xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes)
 	}
 
-	fillerSizes, err := fillersFromRem(ubytes - allocated)
+	fillerSizes, err := filler.FillersFromRem(ubytes - allocated)
 	if err != nil {
 		return err
 	}

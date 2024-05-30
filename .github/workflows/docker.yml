@@ -10,16 +10,21 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      ref:
+        description: The GitHub ref (e.g. refs/tags/v1.0.0) to release
+        required: false
 
 defaults:
   run:
     shell: bash
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   docker:
-    name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}]
+    name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ (inputs.ref || github.ref) == 'refs/heads/master' || startsWith(inputs.ref || github.ref, 'refs/tags/') }}]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -35,13 +40,13 @@ jobs:
           - image: lotus
             network: mainnet
     env:
-      PUBLISH: ${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}
+      PUBLISH: ${{ github.ref == 'refs/heads/master' || startsWith(inputs.ref || github.ref, 'refs/tags/') }}
     steps:
       - id: channel
         env:
-          IS_MASTER: ${{ github.ref == 'refs/heads/master' }}
-          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
-          IS_RC: ${{ endsWith(github.ref, '-rc') }}
+          IS_MASTER: ${{ (inputs.ref || github.ref) == 'refs/heads/master' }}
+          IS_TAG: ${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}
+          IS_RC: ${{ contains(inputs.ref || github.ref, '-rc') }}
           IS_SCHEDULED: ${{ github.event_name == 'schedule' }}
         run: |
           channel=''
@@ -58,10 +63,20 @@ jobs:
               channel=stable
             fi
           fi
-          echo "channel=$channel" | tee -a $GITHUB_ENV
+          echo "channel=$channel" | tee -a $GITHUB_OUTPUT
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          ref: ${{ inputs.ref || github.ref }}
+      - id: git
+        env:
+          REF: ${{ inputs.ref || github.ref }}
+        run: |
+          ref="${REF#refs/heads/}"
+          ref="${ref#refs/tags/}"
+          sha="$(git rev-parse --short HEAD)"
+          echo "ref=$ref" | tee -a "$GITHUB_OUTPUT"
+          echo "sha=$sha" | tee -a "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Docker meta
@@ -70,10 +85,9 @@ jobs:
         with:
           images: filecoin/${{ matrix.image }}
           tags: |
-            type=schedule
-            type=raw,enable=${{ github.event_name != 'schedule' && steps.channel.outputs.channel != '' }},value=${{ steps.channel.outputs.channel }}
-            type=ref,event=tag
-            type=sha,prefix=
+            type=raw,enable=${{ steps.channel.outputs.channel != '' }},value=${{ steps.channel.outputs.channel }}
+            type=raw,enable=${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }},value=${{ steps.git.outputs.ref }}
+            type=raw,value=${{ steps.git.outputs.sha }}
           flavor: |
             latest=false
             suffix=${{ matrix.network != 'mainnet' && format('-{0}', matrix.network) || '' }}

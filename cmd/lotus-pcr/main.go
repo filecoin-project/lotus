@@ -70,7 +70,7 @@ func main() {
    A single message will be produced per miner totaling their refund for all PreCommitSector messages
    in a tipset.
 `,
-		Version: build.UserVersion(),
+		Version: string(build.NodeUserVersion()),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "lotus-path",

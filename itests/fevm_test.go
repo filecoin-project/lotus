@@ -376,7 +376,7 @@ func TestFEVMTestApp(t *testing.T) {
 
 }
 
-// TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
+// TestFEVMTestConstructor creates a contract that just has a self destruct feature and calls it
 func TestFEVMTestConstructor(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -407,7 +407,7 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
+// TestFEVMTestSendToContract creates a contract that just has a self destruct feature and calls it
 func TestFEVMTestSendToContract(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()

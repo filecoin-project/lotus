@@ -7,6 +7,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -160,7 +161,7 @@ func ConfigFullNode(c interface{}) Option {
 	enableLibp2pNode := true // always enable libp2p for full nodes
 
 	return Options(
-		ConfigCommon(&cfg.Common, enableLibp2pNode),
+		ConfigCommon(&cfg.Common, build.NodeUserVersion(), enableLibp2pNode),
 
 		Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 

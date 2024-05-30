@@ -580,6 +580,7 @@ USAGE:
 COMMANDS:
    status                Get the seal status of a sector by its number
    list                  List sectors
+   refs                  List References to sectors
    update-state          ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge                store random data in a sector
    numbers               manage sector number assignments
@@ -657,6 +658,18 @@ OPTIONS:
    --csv            output machine-readable values (default: false)
    --deal-terms     bucket by how many deal-sectors can start at a given expiration (default: false)
    --help, -h       show help
+```
+
+### lotus-miner sectors refs
+```
+NAME:
+   lotus-miner sectors refs - List References to sectors
+
+USAGE:
+   lotus-miner sectors refs [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus-miner sectors update-state

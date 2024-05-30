@@ -56,7 +56,7 @@ var runCmd = &cli.Command{
 		}
 
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
-			tag.Insert(metrics.Version, build.BuildVersion),
+			tag.Insert(metrics.Version, build.MinerBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
 		)
