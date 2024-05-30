@@ -57,7 +57,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
-		ConfigCommon(&cfg.Common, cfg.EnableLibp2p),
+		ConfigCommon(&cfg.Common, build.NodeUserVersion(), cfg.EnableLibp2p),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
