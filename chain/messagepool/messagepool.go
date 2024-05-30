@@ -822,7 +822,12 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if err := consensus.AuthenticateMessage(m, m.Message.From); err != nil {
+	kaddr, err := mp.api.StateDeterministicAddressAtFinality(context.Background(), m.Message.From, mp.curTs)
+	if err != nil {
+		return xerrors.Errorf("failed to resolve key addr: %w", err)
+	}
+
+	if err := consensus.AuthenticateMessage(m, kaddr); err != nil {
 		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
 

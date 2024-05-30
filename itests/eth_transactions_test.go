@@ -87,8 +87,10 @@ func TestEIP1559IDAddrFails(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("idAddr", idAddr)
 	smsg.Message.From = idAddr
-	_, err = client.MpoolPush(ctx, smsg)
+	msgcID, err := client.MpoolPush(ctx, smsg)
 	require.NoError(t, err)
+	client.WaitMsg(ctx, msgcID)
+	fmt.Println("it worked")
 	//require.Contains(t, err.Error(), "must resolve ID addresses before using them to verify a signature")
 }
 
