@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -25,6 +26,71 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
+
+func TestEIP1559IDAddrFails(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	_, ethAddr2, _ := client.EVM().NewAccount()
+
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
+
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{
+		Tx: ethtypes.EthCall{
+			From: &ethAddr,
+			Data: contract,
+		},
+		BlkParam: &blkParam,
+	})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.EthTxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &ethAddr2,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	client.EVM().SignTransaction(&tx, key.PrivateKey)
+
+	// change the sender to an ID address
+	smsg, err := tx.ToSignedMessage()
+	require.NoError(t, err)
+	idAddr, err := client.StateLookupID(ctx, deployer, types.EmptyTSK)
+	require.NoError(t, err)
+	fmt.Println("idAddr", idAddr)
+	smsg.Message.From = idAddr
+	_, err = client.MpoolPush(ctx, smsg)
+	require.NoError(t, err)
+	//require.Contains(t, err.Error(), "must resolve ID addresses before using them to verify a signature")
+}
 
 func TestValueTransferValidSignature(t *testing.T) {
 	blockTime := 100 * time.Millisecond

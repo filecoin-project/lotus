@@ -37,9 +37,9 @@ func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 		return xerrors.Errorf("signature is nil")
 	}
 
-	if addr.Protocol() == address.ID {
-		return fmt.Errorf("must resolve ID addresses before using them to verify a signature")
-	}
+	//if addr.Protocol() == address.ID {
+	//	return fmt.Errorf("must resolve ID addresses before using them to verify a signature")
+	//}
 
 	sv, ok := sigs[sig.Type]
 	if !ok {
