@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"golang.org/x/xerrors"
 	"testing"
 	"time"
 
@@ -107,6 +108,30 @@ func (f *TestFullNode) WaitTillChain(ctx context.Context, pred ChainPredicate) *
 	}
 	require.Fail(f.t, "chain condition not met")
 	return nil
+}
+
+// WaitTillChain waits until a specified chain condition is met. It returns
+// the first tipset where the condition is met.
+func (f *TestFullNode) WaitTillChainOrError(ctx context.Context, pred ChainPredicate) (*types.TipSet, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	heads, err := f.ChainNotify(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for chg := range heads {
+		for _, c := range chg {
+			if c.Type != "apply" {
+				continue
+			}
+			if ts := c.Val; pred(ts) {
+				return ts, nil
+			}
+		}
+	}
+	return nil, xerrors.New("chain condition not met")
 }
 
 func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn abi.SectorNumber, maddr address.Address) {

@@ -120,7 +120,7 @@ func NewTestUnmanagedMiner(t *testing.T, full *TestFullNode, actorAddr address.A
 
 func (tm *TestUnmanagedMiner) AssertNoPower(ctx context.Context) {
 	p := tm.CurrentPower(ctx)
-	tm.t.Logf("MinerB RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
+	tm.t.Logf("Miner %s RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), tm.ActorAddr, p.MinerPower.RawBytePower.String())
 	require.True(tm.t, p.MinerPower.RawBytePower.IsZero())
 }
 
@@ -137,7 +137,7 @@ func (tm *TestUnmanagedMiner) CurrentPower(ctx context.Context) *api.MinerPower 
 func (tm *TestUnmanagedMiner) AssertPower(ctx context.Context, raw uint64, qa uint64) {
 	req := require.New(tm.t)
 	p := tm.CurrentPower(ctx)
-	tm.t.Logf("MinerB RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
+	tm.t.Logf("Miner %s RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), tm.ActorAddr, p.MinerPower.RawBytePower.String())
 	req.Equal(raw, p.MinerPower.RawBytePower.Uint64())
 	req.Equal(qa, p.MinerPower.QualityAdjPower.Uint64())
 }
@@ -202,7 +202,7 @@ func (tm *TestUnmanagedMiner) makeAndSaveCCSector(_ context.Context, sectorNumbe
 	// Create cache directory
 	cacheDirPath := filepath.Join(tm.cacheDir, fmt.Sprintf("%d", sectorNumber))
 	requirements.NoError(os.Mkdir(cacheDirPath, 0755))
-	tm.t.Logf("MinerB: Sector %d: created cache directory at %s", sectorNumber, cacheDirPath)
+	tm.t.Logf("Miner %s: Sector %d: created cache directory at %s", tm.ActorAddr, sectorNumber, cacheDirPath)
 
 	// Define paths for unsealed and sealed sectors
 	unsealedSectorPath := filepath.Join(tm.unsealedSectorDir, fmt.Sprintf("%d", sectorNumber))
@@ -211,11 +211,11 @@ func (tm *TestUnmanagedMiner) makeAndSaveCCSector(_ context.Context, sectorNumbe
 
 	// Write unsealed sector file
 	requirements.NoError(os.WriteFile(unsealedSectorPath, make([]byte, unsealedSize), 0644))
-	tm.t.Logf("MinerB: Sector %d: wrote unsealed CC sector to %s", sectorNumber, unsealedSectorPath)
+	tm.t.Logf("Miner %s: Sector %d: wrote unsealed CC sector to %s", tm.ActorAddr, sectorNumber, unsealedSectorPath)
 
 	// Write sealed sector file
 	requirements.NoError(os.WriteFile(sealedSectorPath, make([]byte, sectorSize), 0644))
-	tm.t.Logf("MinerB: Sector %d: wrote sealed CC sector to %s", sectorNumber, sealedSectorPath)
+	tm.t.Logf("Miner %s: Sector %d: wrote sealed CC sector to %s", tm.ActorAddr, sectorNumber, sealedSectorPath)
 
 	// Update paths in the struct
 	tm.unsealedSectorPaths[sectorNumber] = unsealedSectorPath
@@ -228,12 +228,10 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
 
-	// --------------------Create pre-commit for the CC sector -> we'll just pre-commit `sector size` worth of 0s for this CC sector
-
 	// Step 1: Wait for the pre-commitseal randomness to be available (we can only draw seal randomness from tipsets that have already achieved finality)
 	preCommitSealRand := tm.waitPreCommitSealRandomness(ctx, sectorNumber)
 
-	// Step 2: Write empty 32 bytes that we want to seal i.e. create our CC sector
+	// Step 2: Build a sector with non 0 Pieces that we want to onboard
 	pieces := tm.mkAndSavePiecesToOnboard(ctx, sectorNumber, proofType)
 
 	// Step 3: Generate a Pre-Commit for the CC sector -> this persists the proof on the `TestUnmanagedMiner` Miner State
@@ -241,7 +239,7 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 
 	// Step 4 : Submit the Pre-Commit to the network
 	unsealedCid := tm.unsealedCids[sectorNumber]
-	r := tm.submitMessage(ctx, &miner14.PreCommitSectorBatchParams2{
+	r, err := tm.submitMessage(ctx, &miner14.PreCommitSectorBatchParams2{
 		Sectors: []miner14.SectorPreCommitInfo{{
 			Expiration:    2880 * 300,
 			SectorNumber:  sectorNumber,
@@ -251,6 +249,7 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 			UnsealedCid:   &unsealedCid,
 		}},
 	}, 1, builtin.MethodsMiner.PreCommitSectorBatch2)
+	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess())
 
 	// Step 5: Generate a ProveCommit for the CC sector
@@ -269,11 +268,12 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 		})
 	}
 
-	r = tm.submitMessage(ctx, &miner14.ProveCommitSectors3Params{
+	r, err = tm.submitMessage(ctx, &miner14.ProveCommitSectors3Params{
 		SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: sectorNumber, Pieces: manifest}},
 		SectorProofs:             [][]byte{proveCommit},
 		RequireActivationSuccess: true,
 	}, 1, builtin.MethodsMiner.ProveCommitSectors3)
+	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess())
 
 	tm.proofType[sectorNumber] = proofType
@@ -302,7 +302,7 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 	tm.generatePreCommit(ctx, sectorNumber, preCommitSealRand, proofType, []abi.PieceInfo{})
 
 	// Step 4 : Submit the Pre-Commit to the network
-	r := tm.submitMessage(ctx, &miner14.PreCommitSectorBatchParams2{
+	r, err := tm.submitMessage(ctx, &miner14.PreCommitSectorBatchParams2{
 		Sectors: []miner14.SectorPreCommitInfo{{
 			Expiration:    2880 * 300,
 			SectorNumber:  sectorNumber,
@@ -311,6 +311,7 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 			SealRandEpoch: preCommitSealRand,
 		}},
 	}, 1, builtin.MethodsMiner.PreCommitSectorBatch2)
+	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess())
 
 	// Step 5: Generate a ProveCommit for the CC sector
@@ -321,11 +322,12 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 	// Step 6: Submit the ProveCommit to the network
 	tm.t.Log("Submitting ProveCommitSector ...")
 
-	r = tm.submitMessage(ctx, &miner14.ProveCommitSectors3Params{
+	r, err = tm.submitMessage(ctx, &miner14.ProveCommitSectors3Params{
 		SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: sectorNumber}},
 		SectorProofs:             [][]byte{proveCommit},
 		RequireActivationSuccess: true,
 	}, 0, builtin.MethodsMiner.ProveCommitSectors3)
+	req.NoError(err)
 	req.True(r.Receipt.ExitCode.IsSuccess())
 
 	tm.proofType[sectorNumber] = proofType
@@ -339,32 +341,36 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 
 func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp) {
 	go func() {
+		writeRespF := func(respErr error) {
+			select {
+			case respCh <- WindowPostResp{SectorNumber: sectorNumber, Error: respErr}:
+			case <-ctx.Done():
+			default:
+			}
+		}
+
 		currentEpoch, nextPost, err := tm.calculateNextPostEpoch(ctx, sectorNumber)
 		tm.t.Logf("Activating sector %d, next post %d, current epoch %d", sectorNumber, nextPost, currentEpoch)
 		if err != nil {
-			select {
-			case respCh <- WindowPostResp{SectorNumber: sectorNumber, Error: err}:
-			case <-ctx.Done():
-				return
-			default:
-			}
+			writeRespF(err)
 			return
 		}
 
-		tm.FullNode.WaitTillChain(ctx, HeightAtLeast(nextPost))
+		if _, err := tm.FullNode.WaitTillChainOrError(ctx, HeightAtLeast(nextPost)); err != nil {
+			writeRespF(err)
+			return
+		}
 
 		err = tm.submitWindowPost(ctx, sectorNumber)
-		select {
-		case respCh <- WindowPostResp{SectorNumber: sectorNumber, Error: err}:
-		case <-ctx.Done():
+		writeRespF(err)
+		if ctx.Err() != nil {
 			return
-		default:
 		}
 	}()
 }
 
 func (tm *TestUnmanagedMiner) SubmitPostDispute(ctx context.Context, sectorNumber abi.SectorNumber) error {
-	tm.t.Logf("MinerB(%s): Starting dispute submission for sector %d", tm.ActorAddr, sectorNumber)
+	tm.t.Logf("Miner %s: Starting dispute submission for sector %d", tm.ActorAddr, sectorNumber)
 
 	head, err := tm.FullNode.ChainHead(ctx)
 	if err != nil {
@@ -382,30 +388,16 @@ func (tm *TestUnmanagedMiner) SubmitPostDispute(ctx context.Context, sectorNumbe
 	}
 
 	disputeEpoch := di.Close + 5
-	tm.t.Logf("MinerB(%s): Sector %d - Waiting %d epochs until epoch %d to submit dispute", tm.ActorAddr, sectorNumber, disputeEpoch-head.Height(), disputeEpoch)
+	tm.t.Logf("Miner %s: Sector %d - Waiting %d epochs until epoch %d to submit dispute", tm.ActorAddr, sectorNumber, disputeEpoch-head.Height(), disputeEpoch)
 
 	tm.FullNode.WaitTillChain(ctx, HeightAtLeast(disputeEpoch))
 
-	tm.t.Logf("MinerB(%s): Sector %d - Disputing WindowedPoSt to confirm validity at epoch %d", tm.ActorAddr, sectorNumber, disputeEpoch)
+	tm.t.Logf("Miner %s: Sector %d - Disputing WindowedPoSt to confirm validity at epoch %d", tm.ActorAddr, sectorNumber, disputeEpoch)
 
-	params := &miner14.DisputeWindowedPoStParams{
+	_, err = tm.submitMessage(ctx, &miner14.DisputeWindowedPoStParams{
 		Deadline:  sp.Deadline,
 		PoStIndex: 0,
-	}
-
-	enc, aerr := actors.SerializeParams(params)
-	require.NoError(tm.t, aerr)
-
-	_, err = tm.FullNode.MpoolPushMessage(ctx, &types.Message{
-		To:     tm.ActorAddr,
-		From:   tm.OwnerKey.Address,
-		Value:  types.FromFil(1),
-		Method: builtin.MethodsMiner.DisputeWindowedPoSt,
-		Params: enc,
-	}, nil)
-	if err != nil {
-		tm.t.Logf("MinerB(%s): Failed to push dispute message for sector %d: %s", tm.ActorAddr, sectorNumber, err)
-	}
+	}, 1, builtin.MethodsMiner.DisputeWindowedPoSt)
 	return err
 }
 
@@ -451,13 +443,16 @@ func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber
 		return fmt.Errorf("Miner(%s): failed to get miner info for sector %d: %w", tm.ActorAddr, sectorNumber, err)
 	}
 
-	r := tm.submitMessage(ctx, &miner14.SubmitWindowedPoStParams{
+	r, err := tm.submitMessage(ctx, &miner14.SubmitWindowedPoStParams{
 		ChainCommitEpoch: chainRandomnessEpoch,
 		ChainCommitRand:  chainRandomness,
 		Deadline:         sp.Deadline,
 		Partitions:       []miner14.PoStPartition{{Index: sp.Partition}},
 		Proofs:           []proof.PoStProof{{PoStProof: minerInfo.WindowPoStProofType, ProofBytes: proofBytes}},
 	}, 0, builtin.MethodsMiner.SubmitWindowedPoSt)
+	if err != nil {
+		return fmt.Errorf("Miner(%s): failed to submit window post for sector %d: %w", tm.ActorAddr, sectorNumber, err)
+	}
 
 	if !r.Receipt.ExitCode.IsSuccess() {
 		return fmt.Errorf("Miner(%s): submitting PoSt for sector %d failed: %s", tm.ActorAddr, sectorNumber, r.Receipt.ExitCode)
@@ -742,9 +737,11 @@ func (tm *TestUnmanagedMiner) submitMessage(
 	params cbg.CBORMarshaler,
 	value uint64,
 	method abi.MethodNum,
-) *api.MsgLookup {
+) (*api.MsgLookup, error) {
 	enc, aerr := actors.SerializeParams(params)
-	require.NoError(tm.t, aerr)
+	if aerr != nil {
+		return nil, aerr
+	}
 
 	tm.t.Logf("Submitting message for miner %s with method number %d", tm.ActorAddr, method)
 
@@ -755,20 +752,25 @@ func (tm *TestUnmanagedMiner) submitMessage(
 		Method: method,
 		Params: enc,
 	}, nil)
-	require.NoError(tm.t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	tm.t.Logf("Pushed message with CID: %s for miner %s", m.Cid(), tm.ActorAddr)
 
 	msg, err := tm.FullNode.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
-	require.NoError(tm.t, err)
+	if err != nil {
+		return nil, err
+	}
+
 	tm.t.Logf("Message with CID: %s has been confirmed on-chain for miner %s", m.Cid(), tm.ActorAddr)
 
-	return msg
+	return msg, nil
 }
 
 func requireTempFile(t *testing.T, fileContentsReader io.Reader, size uint64) *os.File {
 	// Create a temporary file
-	tempFile, err := os.CreateTemp("", "")
+	tempFile, err := os.CreateTemp(t.TempDir(), "")
 	require.NoError(t, err)
 
 	// Copy contents from the reader to the temporary file
