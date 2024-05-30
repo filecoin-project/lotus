@@ -23,8 +23,6 @@
   * [ComputeWindowPoSt](#ComputeWindowPoSt)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
-* [Deals](#Deals)
-  * [DealsList](#DealsList)
 * [I](#I)
   * [ID](#ID)
 * [Log](#Log)
@@ -508,45 +506,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-## Deals
-
-
-### DealsList
-
-
-Perms: admin
-
-Inputs: `null`
-
-Response:
-```json
-[
-  {
-    "Proposal": {
-      "PieceCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceSize": 1032,
-      "VerifiedDeal": true,
-      "Client": "f01234",
-      "Provider": "f01234",
-      "Label": "",
-      "StartEpoch": 10101,
-      "EndEpoch": 10101,
-      "StoragePricePerEpoch": "0",
-      "ProviderCollateral": "0",
-      "ClientCollateral": "0"
-    },
-    "State": {
-      "SectorNumber": 9,
-      "SectorStartEpoch": 10101,
-      "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101
-    }
-  }
-]
-```
 
 ## I
 

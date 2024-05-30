@@ -887,8 +887,6 @@ type StorageMinerMethods struct {
 
 	CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-	DealsList func(p0 context.Context) ([]*MarketDeal, error) `perm:"admin"`
-
 	MarketListDeals func(p0 context.Context) ([]*MarketDeal, error) `perm:"read"`
 
 	MiningBase func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
@@ -5259,17 +5257,6 @@ func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {
 
 func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
-}
-
-func (s *StorageMinerStruct) DealsList(p0 context.Context) ([]*MarketDeal, error) {
-	if s.Internal.DealsList == nil {
-		return *new([]*MarketDeal), ErrNotSupported
-	}
-	return s.Internal.DealsList(p0)
-}
-
-func (s *StorageMinerStub) DealsList(p0 context.Context) ([]*MarketDeal, error) {
-	return *new([]*MarketDeal), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketListDeals(p0 context.Context) ([]*MarketDeal, error) {

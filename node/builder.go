@@ -104,7 +104,6 @@ const (
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
-	HandleMigrateClientFundsKey
 	HandlePaymentChannelManagerKey
 
 	RelayIndexerMessagesKey

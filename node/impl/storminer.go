@@ -516,10 +516,6 @@ func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]*api.MarketDe
 	return sm.listDeals(ctx)
 }
 
-func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]*api.MarketDeal, error) {
-	return sm.listDeals(ctx)
-}
-
 func (sm *StorageMinerAPI) DealsGetExpectedSealDurationFunc(ctx context.Context) (time.Duration, error) {
 	return sm.GetExpectedSealDurationFunc()
 }

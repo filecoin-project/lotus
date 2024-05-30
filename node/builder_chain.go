@@ -114,7 +114,6 @@ var ChainNode = Options(
 
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
-	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
 
 	Override(new(*full.GasPriceCache), full.NewGasPriceCache),
 

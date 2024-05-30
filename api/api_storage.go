@@ -216,8 +216,6 @@ type StorageMiner interface {
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
 
-	DealsList(ctx context.Context) ([]*MarketDeal, error) //perm:admin
-
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus-miner is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
