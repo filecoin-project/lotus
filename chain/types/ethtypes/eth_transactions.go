@@ -113,10 +113,6 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 	if smsg == nil {
 		return nil, errors.New("signed message is nil")
 	}
-	// Validate the sender's address format.
-	if !IsEthAddress(smsg.Message.From) {
-		return nil, fmt.Errorf("sender must be an eth account, was %s", smsg.Message.From)
-	}
 
 	// Ensure the signature type is delegated.
 	if smsg.Signature.Type != typescrypto.SigTypeDelegated {
