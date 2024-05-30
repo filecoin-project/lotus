@@ -23,6 +23,7 @@ import (
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -278,7 +279,119 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh)
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, false)
+
+	return sectorNumber, respCh
+}
+
+func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+	req := require.New(tm.t)
+	sectorNumber := tm.currentSectorNum
+	tm.currentSectorNum++
+
+	// Step 1: Wait for the pre-commitseal randomness to be available (we can only draw seal randomness from tipsets that have already achieved finality)
+	preCommitSealRand := tm.waitPreCommitSealRandomness(ctx, sectorNumber)
+
+	// Step 2: Build a sector with non 0 Pieces that we want to onboard
+	pieces := []abi.PieceInfo{{
+		Size:     abi.PaddedPieceSize(tm.options.sectorSize),
+		PieceCID: cid.MustParse("baga6ea4seaqjtovkwk4myyzj56eztkh5pzsk5upksan6f5outesy62bsvl4dsha"),
+	}}
+
+	// Step 3: Generate a Pre-Commit for the CC sector -> this persists the proof on the `TestUnmanagedMiner` Miner State
+	tm.sealedCids[sectorNumber] = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
+	tm.unsealedCids[sectorNumber] = cid.MustParse("baga6ea4seaqjtovkwk4myyzj56eztkh5pzsk5upksan6f5outesy62bsvl4dsha")
+
+	// Step 4 : Submit the Pre-Commit to the network
+	unsealedCid := tm.unsealedCids[sectorNumber]
+	r, err := tm.submitMessage(ctx, &miner14.PreCommitSectorBatchParams2{
+		Sectors: []miner14.SectorPreCommitInfo{{
+			Expiration:    2880 * 300,
+			SectorNumber:  sectorNumber,
+			SealProof:     TestSpt,
+			SealedCID:     tm.sealedCids[sectorNumber],
+			SealRandEpoch: preCommitSealRand,
+			UnsealedCid:   &unsealedCid,
+		}},
+	}, 1, builtin.MethodsMiner.PreCommitSectorBatch2)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess())
+
+	// Step 5: Generate a ProveCommit for the CC sector
+	_ = tm.proveCommitWaitSeed(ctx, sectorNumber)
+	sectorProof := []byte{0xde, 0xad, 0xbe, 0xef}
+
+	// Step 6: Submit the ProveCommit to the network
+	tm.t.Log("Submitting ProveCommitSector ...")
+
+	var manifest []miner14.PieceActivationManifest
+	for _, piece := range pieces {
+		manifest = append(manifest, miner14.PieceActivationManifest{
+			CID:  piece.PieceCID,
+			Size: piece.Size,
+		})
+	}
+
+	r, err = tm.submitMessage(ctx, &miner14.ProveCommitSectors3Params{
+		SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: sectorNumber, Pieces: manifest}},
+		SectorProofs:             [][]byte{sectorProof},
+		RequireActivationSuccess: true,
+	}, 1, builtin.MethodsMiner.ProveCommitSectors3)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess())
+
+	tm.proofType[sectorNumber] = proofType
+
+	respCh := make(chan WindowPostResp, 1)
+
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, true)
+
+	return sectorNumber, respCh
+}
+
+func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+	req := require.New(tm.t)
+	sectorNumber := tm.currentSectorNum
+	tm.currentSectorNum++
+
+	// Step 1: Wait for the pre-commitseal randomness to be available (we can only draw seal randomness from tipsets that have already achieved finality)
+	preCommitSealRand := tm.waitPreCommitSealRandomness(ctx, sectorNumber)
+
+	tm.sealedCids[sectorNumber] = cid.MustParse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
+
+	// Step 4 : Submit the Pre-Commit to the network
+	r, err := tm.submitMessage(ctx, &miner14.PreCommitSectorBatchParams2{
+		Sectors: []miner14.SectorPreCommitInfo{{
+			Expiration:    2880 * 300,
+			SectorNumber:  sectorNumber,
+			SealProof:     TestSpt,
+			SealedCID:     tm.sealedCids[sectorNumber],
+			SealRandEpoch: preCommitSealRand,
+		}},
+	}, 1, builtin.MethodsMiner.PreCommitSectorBatch2)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess())
+
+	// Step 5: Generate a ProveCommit for the CC sector
+	_ = tm.proveCommitWaitSeed(ctx, sectorNumber)
+	sectorProof := []byte{0xde, 0xad, 0xbe, 0xef}
+
+	// Step 6: Submit the ProveCommit to the network
+	tm.t.Log("Submitting ProveCommitSector ...")
+
+	r, err = tm.submitMessage(ctx, &miner14.ProveCommitSectors3Params{
+		SectorActivations:        []miner14.SectorActivationManifest{{SectorNumber: sectorNumber}},
+		SectorProofs:             [][]byte{sectorProof},
+		RequireActivationSuccess: true,
+	}, 0, builtin.MethodsMiner.ProveCommitSectors3)
+	req.NoError(err)
+	req.True(r.Receipt.ExitCode.IsSuccess())
+
+	tm.proofType[sectorNumber] = proofType
+
+	respCh := make(chan WindowPostResp, 1)
+
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, true)
 
 	return sectorNumber, respCh
 }
@@ -332,12 +445,12 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh)
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, false)
 
 	return sectorNumber, respCh
 }
 
-func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, withMockProofs bool) {
 	go func() {
 		writeRespF := func(respErr error) {
 			select {
@@ -359,7 +472,7 @@ func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.S
 			return
 		}
 
-		err = tm.submitWindowPost(ctx, sectorNumber)
+		err = tm.submitWindowPost(ctx, sectorNumber, withMockProofs)
 		writeRespF(err)
 		if ctx.Err() != nil {
 			return
@@ -399,7 +512,7 @@ func (tm *TestUnmanagedMiner) SubmitPostDispute(ctx context.Context, sectorNumbe
 	return err
 }
 
-func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber abi.SectorNumber) error {
+func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber abi.SectorNumber, withMockProofs bool) error {
 	tm.t.Logf("Miner(%s): WindowPoST(%d): Running WindowPoSt ...\n", tm.ActorAddr, sectorNumber)
 
 	head, err := tm.FullNode.ChainHead(ctx)
@@ -422,9 +535,13 @@ func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber
 	}
 
 	var proofBytes []byte
-	proofBytes, err = tm.generateWindowPost(ctx, sectorNumber)
-	if err != nil {
-		return fmt.Errorf("Miner(%s): failed to generate window post for sector %d: %w", tm.ActorAddr, sectorNumber, err)
+	if withMockProofs {
+		proofBytes = []byte{0xde, 0xad, 0xbe, 0xef}
+	} else {
+		proofBytes, err = tm.generateWindowPost(ctx, sectorNumber)
+		if err != nil {
+			return fmt.Errorf("Miner(%s): failed to generate window post for sector %d: %w", tm.ActorAddr, sectorNumber, err)
+		}
 	}
 
 	tm.t.Logf("Miner(%s): WindowedPoSt(%d) Submitting ...\n", tm.ActorAddr, sectorNumber)
