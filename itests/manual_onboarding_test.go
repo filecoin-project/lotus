@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-const sectorSize = abi.SectorSize(2 << 10) // 2KiB
+const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
 
 // Manually onboard CC sectors, bypassing lotus-miner onboarding pathways
 func TestManualCCOnboarding(t *testing.T) {
@@ -34,7 +34,7 @@ func TestManualCCOnboarding(t *testing.T) {
 	// Setup and begin mining with a single miner (A)
 	// Miner A will only be a genesis Miner with power allocated in the genesis block and will not onboard any sectors from here on
 	kitOpts := []kit.EnsembleOpt{}
-	nodeOpts := []kit.NodeOpt{kit.SectorSize(sectorSize), kit.WithAllSubsystems()}
+	nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.WithAllSubsystems()}
 	ens := kit.NewEnsemble(t, kitOpts...).
 		FullNode(&client, nodeOpts...).
 		Miner(&minerA, &client, nodeOpts...).
@@ -78,7 +78,7 @@ func TestManualCCOnboarding(t *testing.T) {
 	// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 	minerB.AssertNoPower(ctx)
 	// Activate CC Sector for Miner B and assert power
-	activateAndAssertPower(ctx, t, minerB, respCh, bSectorNum)
+	activateAndAssertPower(ctx, t, minerB, respCh, bSectorNum, uint64(defaultSectorSize))
 
 	// --- Miner C onboards sector with data/pieces
 	var cSectorNum abi.SectorNumber
@@ -87,10 +87,11 @@ func TestManualCCOnboarding(t *testing.T) {
 	// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 	minerC.AssertNoPower(ctx)
 	// Activate CC Sector for Miner C and assert power
-	activateAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum)
+	activateAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize))
 }
 
-func activateAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, respCh chan kit.WindowPostResp, sector abi.SectorNumber) {
+func activateAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, respCh chan kit.WindowPostResp, sector abi.SectorNumber,
+	sectorSize uint64) {
 	req := require.New(t)
 	// wait till sector is activated
 	select {
@@ -114,7 +115,7 @@ func activateAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUn
 	t.Log("Checking power after PoSt ...")
 
 	// Miner B should now have power
-	miner.AssertPower(ctx, (uint64(sectorSize)), (uint64(sectorSize)))
+	miner.AssertPower(ctx, sectorSize, sectorSize)
 
 	// WindowPost Dispute should fail
 	assertDisputeFails(ctx, t, miner, sector)

@@ -30,8 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 )
 
-const sectorSize = abi.SectorSize(2 << 10) // 2KiB
-
 // TestUnmanagedMiner is a miner that's not managed by the storage/infrastructure, all tasks must be manually executed, managed and scheduled by the test or test kit.
 // Note: `TestUnmanagedMiner` is not thread safe and assumes linear access of it's methods
 type TestUnmanagedMiner struct {
@@ -143,7 +141,7 @@ func (tm *TestUnmanagedMiner) AssertPower(ctx context.Context, raw uint64, qa ui
 }
 
 func (tm *TestUnmanagedMiner) mkAndSavePiecesToOnboard(_ context.Context, sectorNumber abi.SectorNumber, pt abi.RegisteredSealProof) []abi.PieceInfo {
-	paddedPieceSize := abi.PaddedPieceSize(sectorSize)
+	paddedPieceSize := abi.PaddedPieceSize(tm.options.sectorSize)
 	unpaddedPieceSize := paddedPieceSize.Unpadded()
 
 	// Generate random bytes for the piece
@@ -207,14 +205,14 @@ func (tm *TestUnmanagedMiner) makeAndSaveCCSector(_ context.Context, sectorNumbe
 	// Define paths for unsealed and sealed sectors
 	unsealedSectorPath := filepath.Join(tm.unsealedSectorDir, fmt.Sprintf("%d", sectorNumber))
 	sealedSectorPath := filepath.Join(tm.sealedSectorDir, fmt.Sprintf("%d", sectorNumber))
-	unsealedSize := abi.PaddedPieceSize(sectorSize).Unpadded()
+	unsealedSize := abi.PaddedPieceSize(tm.options.sectorSize).Unpadded()
 
 	// Write unsealed sector file
 	requirements.NoError(os.WriteFile(unsealedSectorPath, make([]byte, unsealedSize), 0644))
 	tm.t.Logf("Miner %s: Sector %d: wrote unsealed CC sector to %s", tm.ActorAddr, sectorNumber, unsealedSectorPath)
 
 	// Write sealed sector file
-	requirements.NoError(os.WriteFile(sealedSectorPath, make([]byte, sectorSize), 0644))
+	requirements.NoError(os.WriteFile(sealedSectorPath, make([]byte, tm.options.sectorSize), 0644))
 	tm.t.Logf("Miner %s: Sector %d: wrote sealed CC sector to %s", tm.ActorAddr, sectorNumber, sealedSectorPath)
 
 	// Update paths in the struct
