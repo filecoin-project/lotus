@@ -836,7 +836,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 }
 
 func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
-	return build.UserVersion(), nil
+	return string(build.NodeUserVersion()), nil
 }
 
 func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {

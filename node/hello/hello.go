@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	inet "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -121,7 +122,10 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
 
-	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
+	// We're trying to fetch the tipset from the peer that just said hello to us. No point in
+	// triggering any dials.
+	ctx := network.WithNoDial(context.Background(), "fetching filecoin hello tipset")
+	ts, err := hs.syncer.FetchTipSet(ctx, s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
 		log.Errorf("failed to fetch tipset from peer during hello: %+v", err)
 		return

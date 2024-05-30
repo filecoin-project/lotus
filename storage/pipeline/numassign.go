@@ -212,7 +212,7 @@ func (m *Sealing) NumReserve(ctx context.Context, name string, reserving bitfiel
 	return m.numReserveLocked(ctx, name, reserving, force)
 }
 
-// NumReserve creates a new sector reservation
+// numReserveLocked creates a new sector reservation
 func (m *Sealing) numReserveLocked(ctx context.Context, name string, reserving bitfield.BitField, force bool) error {
 	rk, err := reservationKey(name)
 	if err != nil {

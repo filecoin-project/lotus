@@ -1421,6 +1421,13 @@ func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceIn
 	return ffi.GenerateUnsealedCID(proofType, allPieces)
 }
 
+func (sb *Sealer) GenerateSingleVanillaProof(
+	replica ffi.PrivateSectorInfo,
+	challenges []uint64,
+) ([]byte, error) {
+	return ffi.GenerateSingleVanillaProof(replica, challenges)
+}
+
 func (sb *Sealer) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error) {
 	return ffi.GenerateWinningPoStWithVanilla(proofType, minerID, randomness, vanillas)
 }

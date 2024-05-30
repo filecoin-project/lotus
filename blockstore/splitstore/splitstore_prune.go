@@ -47,7 +47,7 @@ var (
 	PruneThreshold = 7 * build.Finality
 )
 
-// GCHotstore runs online GC on the chain state in the hotstore according the to options specified
+// GCHotStore runs online GC on the chain state in the hotstore according the to options specified
 func (s *SplitStore) GCHotStore(opts api.HotGCOpts) error {
 	if opts.Moving {
 		gcOpts := []bstore.BlockstoreGCOption{bstore.WithFullGC(true)}

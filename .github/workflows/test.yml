@@ -16,7 +16,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   discover:
@@ -115,7 +116,7 @@ jobs:
             }
           # A list of test groups that require YugabyteDB to be running
           yugabytedb: |
-            ["itest-harmonydb", "itest-harmonytask", "itest-curio"]
+            ["itest-harmonydb"]
           # A list of test groups that require Proof Parameters to be fetched
           parameters: |
             [
@@ -144,7 +145,8 @@ jobs:
               "itest-worker",
               "multicore-sdr",
               "unit-cli",
-              "unit-storage"
+              "unit-storage",
+              "itest-curio"
             ]
         run: |
           # Create a list of integration test groups
