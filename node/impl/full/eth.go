@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -18,7 +19,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -1012,7 +1012,7 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		return ethtypes.EthUint64(0), xerrors.Errorf("decoding params: %w", err)
 	}
 
-	msg, err := ethCallToFilecoinMessage(ctx, params.Tx)
+	msg, err := params.Tx.ToFilecoinMessage()
 	if err != nil {
 		return ethtypes.EthUint64(0), err
 	}
@@ -1179,7 +1179,7 @@ func ethGasSearch(
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
-	msg, err := ethCallToFilecoinMessage(ctx, tx)
+	msg, err := tx.ToFilecoinMessage()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
