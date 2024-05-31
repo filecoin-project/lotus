@@ -982,18 +982,13 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 
 	// Walk back until we find a tipset where no state migration is needed
 	if ts.Height() > 0 {
-		for {
-			pts, err := a.Chain.GetTipSetFromKey(ctx, ts.Parents())
-			if err != nil {
-				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
-			}
-			if !a.StateManager.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
-				break
-			}
-			ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
-			if err != nil {
-				return nil, xerrors.Errorf("getting parent tipset: %w", err)
-			}
+		pts, err := a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+		}
+		// Check for expensive forks from the parents to the tipset, including nil tipsets
+		if a.StateManager.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			return nil, stmgr.ErrExpensiveFork
 		}
 	}
 
