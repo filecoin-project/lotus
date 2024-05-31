@@ -980,7 +980,6 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 		return nil, xerrors.Errorf("cannot get tipset: %w", err)
 	}
 
-	// Walk back until we find a tipset where no state migration is needed
 	if ts.Height() > 0 {
 		pts, err := a.Chain.GetTipSetFromKey(ctx, ts.Parents())
 		if err != nil {
