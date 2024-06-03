@@ -42,19 +42,22 @@ func TestManualCCOnboarding(t *testing.T) {
 			if withMockProofs {
 				kitOpts = append(kitOpts, kit.MockProofs())
 			}
-			nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.WithAllSubsystems()}
 			ens := kit.NewEnsemble(t, kitOpts...).
-				FullNode(&client, nodeOpts...).
-				Miner(&minerA, &client, nodeOpts...).
+				FullNode(&client, kit.SectorSize(defaultSectorSize)).
+				// preseal more than the default number of sectors to ensure that the genesis miner has power
+				// because our unmanaged miners won't produce blocks so we may get null rounds
+				Miner(&minerA, &client, kit.PresealSectors(5), kit.SectorSize(defaultSectorSize), kit.WithAllSubsystems()).
 				Start().
 				InterconnectAll()
-			ens.BeginMiningMustPost(blocktime)
+			blockMiners := ens.BeginMiningMustPost(blocktime)
+			req.Len(blockMiners, 1)
+			blockMiner := blockMiners[0]
 
 			// Instantiate MinerB to manually handle sector onboarding and power acquisition through sector activation.
 			// Unlike other miners managed by the Lotus Miner storage infrastructure, MinerB operates independently,
 			// performing all related tasks manually. Managed by the TestKit, MinerB has the capability to utilize actual proofs
 			// for the processes of sector onboarding and activation.
-			nodeOpts = append(nodeOpts, kit.OwnerAddr(client.DefaultKey))
+			nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey)}
 			minerB, ens := ens.UnmanagedMiner(&client, nodeOpts...)
 			minerC, ens := ens.UnmanagedMiner(&client, nodeOpts...)
 
@@ -88,6 +91,8 @@ func TestManualCCOnboarding(t *testing.T) {
 			}
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower(ctx)
+			// Ensure that the block miner checks for and waits for posts from our new miner with a sector
+			blockMiner.WatchMinerForPost(minerB.ActorAddr)
 			// Activate CC Sector for Miner B and assert power
 			activateAndAssertPower(ctx, t, minerB, respCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
 
@@ -102,6 +107,8 @@ func TestManualCCOnboarding(t *testing.T) {
 			}
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerC.AssertNoPower(ctx)
+			// Ensure that the block miner checks for and waits for posts from our new miner with a sector
+			blockMiner.WatchMinerForPost(minerC.ActorAddr)
 			// Activate CC Sector for Miner C and assert power
 			activateAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize), withMockProofs)
 		})
@@ -115,7 +122,7 @@ func activateAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUn
 	select {
 	case resp := <-respCh:
 		req.NoError(resp.Error)
-		req.Equal(resp.SectorNumber, sector)
+		req.True(resp.Posted)
 	case <-ctx.Done():
 		t.Fatal("timed out waiting for sector activation")
 	}
@@ -143,7 +150,6 @@ func activateAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUn
 		// WindowPost Dispute should fail
 		assertDisputeFails(ctx, t, miner, sector)
 	}
-
 }
 
 func assertDisputeFails(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, sector abi.SectorNumber) {
