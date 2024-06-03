@@ -809,7 +809,7 @@ func manualOnboardingSubmitWindowPost(
 	if !withMockProofs {
 		// Dispute the PoSt to confirm the validity of the PoSt since PoSt acceptance is optimistic
 		if err := manualOnboardingDisputeWindowPost(ctx, client, miner, sectorNumber); err != nil {
-			return fmt.Errorf("failed to dispute PoSt: %w", err)
+			return fmt.Errorf("failed to run PoSt dispute: %w", err)
 		}
 	}
 	return nil
