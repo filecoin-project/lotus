@@ -479,7 +479,7 @@ var NetBandwidthCmd = &cli.Command{
 
 		tw := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
 
-		fmt.Fprintf(tw, "Segment\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
+		_, _ = fmt.Fprintf(tw, "Segment\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
 
 		if bypeer {
 			bw, err := api.NetBandwidthStatsByPeer(ctx)
@@ -498,7 +498,15 @@ var NetBandwidthCmd = &cli.Command{
 
 			for _, p := range peers {
 				s := bw[p]
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+				_, _ = fmt.Fprintf(
+					tw,
+					"%s\t%s\t%s\t%s/s\t%s/s\n",
+					p,
+					humanize.Bytes(uint64(s.TotalIn)),
+					humanize.Bytes(uint64(s.TotalOut)),
+					humanize.Bytes(uint64(s.RateIn)),
+					humanize.Bytes(uint64(s.RateOut)),
+				)
 			}
 		} else if byproto {
 			bw, err := api.NetBandwidthStatsByProtocol(ctx)
@@ -520,7 +528,15 @@ var NetBandwidthCmd = &cli.Command{
 				if p == "" {
 					p = "<unknown>"
 				}
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+				_, _ = fmt.Fprintf(
+					tw,
+					"%s\t%s\t%s\t%s/s\t%s/s\n",
+					p,
+					humanize.Bytes(uint64(s.TotalIn)),
+					humanize.Bytes(uint64(s.TotalOut)),
+					humanize.Bytes(uint64(s.RateIn)),
+					humanize.Bytes(uint64(s.RateOut)),
+				)
 			}
 		} else {
 
@@ -529,7 +545,14 @@ var NetBandwidthCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Fprintf(tw, "Total\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+			_, _ = fmt.Fprintf(
+				tw,
+				"Total\t%s\t%s\t%s/s\t%s/s\n",
+				humanize.Bytes(uint64(s.TotalIn)),
+				humanize.Bytes(uint64(s.TotalOut)),
+				humanize.Bytes(uint64(s.RateIn)),
+				humanize.Bytes(uint64(s.RateOut)),
+			)
 		}
 
 		return tw.Flush()

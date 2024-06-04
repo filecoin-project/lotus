@@ -10,9 +10,8 @@ import (
 )
 
 func open(cctx *cli.Context) (*simulation.Node, error) {
-	_, _, err := ulimit.ManageFdLimit()
-	if err != nil {
-		fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to raise ulimit: %s\n", err)
+	if _, _, err := ulimit.ManageFdLimit(); err != nil {
+		_, _ = fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to raise ulimit: %s\n", err)
 	}
 	return simulation.OpenNode(cctx.Context, cctx.String("repo"))
 }

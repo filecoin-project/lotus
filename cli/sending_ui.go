@@ -28,7 +28,7 @@ func InteractiveSend(ctx context.Context, cctx *cli.Context, srv ServicesAPI,
 	printer := cctx.App.Writer
 	if xerrors.Is(err, ErrCheckFailed) {
 		if !cctx.Bool("interactive") {
-			fmt.Fprintf(printer, "Following checks have failed:\n")
+			_, _ = fmt.Fprintf(printer, "Following checks have failed:\n")
 			printChecks(printer, checks, proto.Message.Cid())
 		} else {
 			proto, err = resolveChecks(ctx, srv, cctx.App.Writer, proto, checks)
@@ -75,11 +75,11 @@ func resolveChecks(ctx context.Context, s ServicesAPI, printer io.Writer,
 	proto *api.MessagePrototype, checkGroups [][]api.MessageCheckStatus,
 ) (*api.MessagePrototype, error) {
 
-	fmt.Fprintf(printer, "Following checks have failed:\n")
+	_, _ = fmt.Fprintf(printer, "Following checks have failed:\n")
 	printChecks(printer, checkGroups, proto.Message.Cid())
 
 	if feeCapBad, baseFee := isFeeCapProblem(checkGroups, proto.Message.Cid()); feeCapBad {
-		fmt.Fprintf(printer, "Fee of the message can be adjusted\n")
+		_, _ = fmt.Fprintf(printer, "Fee of the message can be adjusted\n")
 		if askUser(printer, "Do you wish to do that? [Yes/no]: ", true) {
 			var err error
 			proto, err = runFeeCapAdjustmentUI(proto, baseFee)
@@ -91,7 +91,7 @@ func resolveChecks(ctx context.Context, s ServicesAPI, printer io.Writer,
 		if err != nil {
 			return nil, err
 		}
-		fmt.Fprintf(printer, "Following checks still failed:\n")
+		_, _ = fmt.Fprintf(printer, "Following checks still failed:\n")
 		printChecks(printer, checks, proto.Message.Cid())
 	}
 
@@ -114,14 +114,14 @@ func printChecks(printer io.Writer, checkGroups [][]api.MessageCheckStatus, prot
 			if !aboutProto {
 				msgName = c.Cid.String()
 			}
-			fmt.Fprintf(printer, "%s message failed a check %s: %s\n", msgName, c.Code, c.Err)
+			_, _ = fmt.Fprintf(printer, "%s message failed a check %s: %s\n", msgName, c.Code, c.Err)
 		}
 	}
 }
 
 func askUser(printer io.Writer, q string, def bool) bool {
 	var resp string
-	fmt.Fprint(printer, q)
+	_, _ = fmt.Fprint(printer, q)
 	_, _ = fmt.Scanln(&resp)
 	resp = strings.ToLower(resp)
 	if len(resp) == 0 {

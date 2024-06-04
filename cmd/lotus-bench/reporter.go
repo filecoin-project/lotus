@@ -93,16 +93,16 @@ func (r *Reporter) Print(elapsed time.Duration, w io.Writer) {
 		totalLatency += latency
 	}
 
-	fmt.Fprintf(w, "- Total Requests: %d\n", nrReq)
-	fmt.Fprintf(w, "- Total Duration: %dms\n", elapsed.Milliseconds())
-	fmt.Fprintf(w, "- Requests/sec: %f\n", float64(nrReq)/elapsed.Seconds())
-	fmt.Fprintf(w, "- Avg latency: %dms\n", totalLatency/nrReq)
-	fmt.Fprintf(w, "- Median latency: %dms\n", r.latencies[nrReq/2])
-	fmt.Fprintf(w, "- Latency distribution:\n")
+	fmt.Fprintf(w, "- Total Requests: %d\n", nrReq)                          //nolint:errcheck
+	fmt.Fprintf(w, "- Total Duration: %dms\n", elapsed.Milliseconds())       //nolint:errcheck
+	fmt.Fprintf(w, "- Requests/sec: %f\n", float64(nrReq)/elapsed.Seconds()) //nolint:errcheck
+	fmt.Fprintf(w, "- Avg latency: %dms\n", totalLatency/nrReq)              //nolint:errcheck
+	fmt.Fprintf(w, "- Median latency: %dms\n", r.latencies[nrReq/2])         //nolint:errcheck
+	fmt.Fprintf(w, "- Latency distribution:\n")                              //nolint:errcheck
 	percentiles := []float64{0.1, 0.5, 0.9, 0.95, 0.99, 0.999}
 	for _, p := range percentiles {
 		idx := int64(p * float64(nrReq))
-		fmt.Fprintf(w, "    %s%% in %dms\n", fmt.Sprintf("%.2f", p*100.0), r.latencies[idx])
+		_, _ = fmt.Fprintf(w, "    %s%% in %dms\n", fmt.Sprintf("%.2f", p*100.0), r.latencies[idx])
 	}
 
 	// create a simple histogram with 10 buckets spanning the range of latency
@@ -135,19 +135,19 @@ func (r *Reporter) Print(elapsed time.Duration, w io.Writer) {
 	}
 
 	// print the histogram using a tabwriter which will align the columns nicely
-	fmt.Fprintf(w, "- Histogram:\n")
+	_, _ = fmt.Fprintf(w, "- Histogram:\n")
 	const padding = 2
 	tabWriter := tabwriter.NewWriter(w, 0, 0, padding, ' ', tabwriter.AlignRight|tabwriter.Debug)
 	for i := 0; i < nrBucket; i++ {
 		ratio := float64(buckets[i].cnt) / float64(nrReq)
 		bars := strings.Repeat("#", int(ratio*100))
-		fmt.Fprintf(tabWriter, "  %d-%dms\t%d\t%s (%s%%)\n", buckets[i].start, buckets[i].end, buckets[i].cnt, bars, fmt.Sprintf("%.2f", ratio*100))
+		_, _ = fmt.Fprintf(tabWriter, "  %d-%dms\t%d\t%s (%s%%)\n", buckets[i].start, buckets[i].end, buckets[i].cnt, bars, fmt.Sprintf("%.2f", ratio*100))
 	}
 	tabWriter.Flush() //nolint:errcheck
 
-	fmt.Fprintf(w, "- Status codes:\n")
+	_, _ = fmt.Fprintf(w, "- Status codes:\n")
 	for code, cnt := range r.statusCodes {
-		fmt.Fprintf(w, "    [%d]: %d\n", code, cnt)
+		_, _ = fmt.Fprintf(w, "    [%d]: %d\n", code, cnt)
 	}
 
 	// print the 10 most occurring errors (in case error values are not unique)
@@ -163,12 +163,12 @@ func (r *Reporter) Print(elapsed time.Duration, w io.Writer) {
 	sort.Slice(sortedErrors, func(i, j int) bool {
 		return sortedErrors[i].cnt > sortedErrors[j].cnt
 	})
-	fmt.Fprintf(w, "- Errors (top 10):\n")
+	_, _ = fmt.Fprintf(w, "- Errors (top 10):\n")
 	for i, se := range sortedErrors {
 		if i > 10 {
 			break
 		}
-		fmt.Fprintf(w, "    [%s]: %d\n", se.err, se.cnt)
+		_, _ = fmt.Fprintf(w, "    [%s]: %d\n", se.err, se.cnt)
 	}
 }
 

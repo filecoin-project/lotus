@@ -160,8 +160,18 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 
 	fmt.Printf("Bandwidth:\n")
-	fmt.Fprintf(tw, "\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
-	fmt.Fprintf(tw, "\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+	if _, err := fmt.Fprintf(tw, "\tTotalIn\tTotalOut\tRateIn\tRateOut\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(
+		tw,
+		"\t%s\t%s\t%s/s\t%s/s\n",
+		humanize.Bytes(uint64(s.TotalIn)),
+		humanize.Bytes(uint64(s.TotalOut)),
+		humanize.Bytes(uint64(s.RateIn)),
+		humanize.Bytes(uint64(s.RateOut))); err != nil {
+		return err
+	}
 	return tw.Flush()
 
 }

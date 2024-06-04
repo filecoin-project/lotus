@@ -60,7 +60,7 @@ var infoCapacityGrowthSimCommand = &cli.Command{
 			)
 			lastPower = newPower
 			lastHeight = newEpoch
-			fmt.Fprintf(cctx.App.Writer, "%s/day\n", types.SizeStr(growthRate))
+			_, _ = fmt.Fprintf(cctx.App.Writer, "%s/day\n", types.SizeStr(growthRate))
 		}
 		return cctx.Err()
 	},
