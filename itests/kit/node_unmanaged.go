@@ -61,8 +61,8 @@ type TestUnmanagedMiner struct {
 }
 
 type WindowPostResp struct {
-	SectorNumber abi.SectorNumber
-	Error        error
+	Posted bool
+	Error  error
 }
 
 func NewTestUnmanagedMiner(t *testing.T, full *TestFullNode, actorAddr address.Address, opts ...NodeOpt) *TestUnmanagedMiner {
@@ -119,7 +119,7 @@ func NewTestUnmanagedMiner(t *testing.T, full *TestFullNode, actorAddr address.A
 
 func (tm *TestUnmanagedMiner) AssertNoPower(ctx context.Context) {
 	p := tm.CurrentPower(ctx)
-	tm.t.Logf("Miner %s RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), tm.ActorAddr, p.MinerPower.RawBytePower.String())
+	tm.t.Logf("Miner %s RBP: %v, QaP: %v", tm.ActorAddr, p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
 	require.True(tm.t, p.MinerPower.RawBytePower.IsZero())
 }
 
@@ -452,30 +452,49 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 
 func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, withMockProofs bool) {
 	go func() {
+		var firstPost bool
+
 		writeRespF := func(respErr error) {
+			var send WindowPostResp
+			if respErr == nil {
+				if firstPost {
+					return // already reported on our first post, no error to report, don't send anything
+				}
+				send.Posted = true
+				firstPost = true
+			} else {
+				if ctx.Err() == nil {
+					tm.t.Logf("Sector %d: WindowPoSt submission failed: %s", sectorNumber, respErr)
+				}
+				send.Error = respErr
+			}
 			select {
-			case respCh <- WindowPostResp{SectorNumber: sectorNumber, Error: respErr}:
+			case respCh <- send:
 			case <-ctx.Done():
 			default:
 			}
 		}
 
-		currentEpoch, nextPost, err := tm.calculateNextPostEpoch(ctx, sectorNumber)
-		tm.t.Logf("Activating sector %d, next post %d, current epoch %d", sectorNumber, nextPost, currentEpoch)
-		if err != nil {
-			writeRespF(err)
-			return
-		}
+		var postCount int
+		for ctx.Err() == nil {
+			currentEpoch, nextPost, err := tm.calculateNextPostEpoch(ctx, sectorNumber)
+			tm.t.Logf("Activating sector %d, next post %d, current epoch %d", sectorNumber, nextPost, currentEpoch)
+			if err != nil {
+				writeRespF(err)
+				return
+			}
 
-		if _, err := tm.FullNode.WaitTillChainOrError(ctx, HeightAtLeast(nextPost)); err != nil {
-			writeRespF(err)
-			return
-		}
+			if nextPost > currentEpoch {
+				if _, err := tm.FullNode.WaitTillChainOrError(ctx, HeightAtLeast(nextPost)); err != nil {
+					writeRespF(err)
+					return
+				}
+			}
 
-		err = tm.submitWindowPost(ctx, sectorNumber, withMockProofs)
-		writeRespF(err)
-		if ctx.Err() != nil {
-			return
+			err = tm.submitWindowPost(ctx, sectorNumber, withMockProofs)
+			writeRespF(err) // send an error, or first post, or nothing if no error and this isn't the first post
+			postCount++
+			tm.t.Logf("Sector %d: WindowPoSt #%d submitted", sectorNumber, postCount)
 		}
 	}()
 }
