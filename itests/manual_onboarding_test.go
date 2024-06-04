@@ -19,7 +19,7 @@ const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
 func TestManualSectorOnboarding(t *testing.T) {
 	req := require.New(t)
 
-	for _, withMockProofs := range []bool{true, false} {
+	for _, withMockProofs := range []bool{false, true} {
 		testName := "WithRealProofs"
 		if withMockProofs {
 			testName = "WithMockProofs"
@@ -120,7 +120,15 @@ func TestManualSectorOnboarding(t *testing.T) {
 			// Note: We can't activate a sector with mock proofs as the WdPost is successfully disputed and so no point
 			// in snapping it as snapping is only for activated sectors
 			if !withMockProofs {
-				minerB.SnapDealWithRealProofs(ctx, kit.TestSpt, bSectorNum)
+				respCh := minerB.SnapDealWithRealProofs(ctx, kit.TestSpt, bSectorNum)
+				// ensure we submit a valid WdPost for the snapped sector
+				select {
+				case resp := <-respCh:
+					req.NoError(resp.Error)
+					req.True(resp.Posted)
+				case <-ctx.Done():
+					t.Fatal("timed out waiting for sector activation")
+				}
 			}
 		})
 	}

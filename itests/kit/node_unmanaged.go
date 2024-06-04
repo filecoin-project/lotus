@@ -389,7 +389,7 @@ func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(_ context.Context, sectorNu
 	return publicPieces, unsealedSectorFile.Name()
 }
 
-func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof, sectorNumber abi.SectorNumber) {
+func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof, sectorNumber abi.SectorNumber) chan WindowPostResp {
 	// generate sector key
 	pieces, unsealedPath := tm.mkStagedFileWithPieces(ctx, sectorNumber, proofType)
 	updateProofType := abi.SealProofInfos[proofType].UpdateProof
@@ -453,6 +453,10 @@ func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofT
 	r, err := tm.submitMessage(ctx, params, 1, builtin.MethodsMiner.ProveReplicaUpdates3)
 	require.NoError(tm.t, err)
 	require.True(tm.t, r.Receipt.ExitCode.IsSuccess())
+
+	respCh := make(chan WindowPostResp, 1)
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, true, newSealed, updatePath.Name(), updateDir)
+	return respCh
 }
 
 func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
