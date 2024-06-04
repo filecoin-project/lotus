@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/clicommands"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
@@ -71,7 +72,7 @@ func main() {
 	app := &cli.App{
 		Name:                 "lotus",
 		Usage:                "Filecoin decentralized storage network client",
-		Version:              build.UserVersion(),
+		Version:              string(build.NodeUserVersion()),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -106,13 +107,13 @@ func main() {
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String("repo"), c.App.Name)
+				build.GenerateNodePanicReport(c.String("panic-reports"), c.String("repo"), c.App.Name)
 				panic(r)
 			}
 			return nil
 		},
 
-		Commands: append(local, lcli.Commands...),
+		Commands: append(local, clicommands.Commands...),
 	}
 
 	app.Setup()

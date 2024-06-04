@@ -26,8 +26,8 @@ type FullNode struct {
 	Wallet        Wallet
 	Fees          FeeConfig
 	Chainstore    Chainstore
-	Cluster       UserRaftConfig
 	Fevm          FevmConfig
+	Events        EventsConfig
 	Index         IndexConfig
 	FaultReporter FaultReporterConfig
 }
@@ -66,16 +66,6 @@ type StorageMiner struct {
 	HarmonyDB HarmonyDB
 }
 
-type LotusProviderConfig struct {
-	Subsystems ProviderSubsystemsConfig
-
-	Fees      LotusProviderFees
-	Addresses LotusProviderAddresses
-	Proving   ProvingConfig
-	Journal   JournalConfig
-	Apis      ApisConfig
-}
-
 type ApisConfig struct {
 	// ChainApiInfo is the API endpoint for the Lotus daemon.
 	ChainApiInfo []string
@@ -89,13 +79,6 @@ type ApisConfig struct {
 type JournalConfig struct {
 	//Events of the form: "system1:event1,system1:event2[,...]"
 	DisabledEvents string
-}
-
-type ProviderSubsystemsConfig struct {
-	EnableWindowPost    bool
-	WindowPostMaxTasks  int
-	EnableWinningPost   bool
-	WinningPostMaxTasks int
 }
 
 type DAGStoreConfig struct {
@@ -487,6 +470,15 @@ type SealingConfig struct {
 
 	// UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.
 	UseSyntheticPoRep bool
+
+	// Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).
+	RequireActivationSuccess bool
+	// Whether to abort if any piece activation notification returns a non-zero exit code (newly sealed sectors, only with ProveCommitSectors3).
+	RequireActivationSuccessUpdate bool
+	// Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).
+	RequireNotificationSuccess bool
+	// Whether to abort if any piece activation notification returns a non-zero exit code (updating sectors, only with ProveReplicaUpdates3).
+	RequireNotificationSuccessUpdate bool
 }
 
 type SealerConfig struct {
@@ -552,20 +544,6 @@ type MinerFeeConfig struct {
 	MaximizeWindowPoStFeeCap bool
 }
 
-type LotusProviderFees struct {
-	DefaultMaxFee      types.FIL
-	MaxPreCommitGasFee types.FIL
-	MaxCommitGasFee    types.FIL
-
-	// maxBatchFee = maxBase + maxPerSector * nSectors
-	MaxPreCommitBatchGasFee BatchFeeConfig
-	MaxCommitBatchGasFee    BatchFeeConfig
-
-	MaxTerminateGasFee types.FIL
-	// WindowPoSt is a high-value operation, so the default fee should be high.
-	MaxWindowPoStGasFee types.FIL
-	MaxPublishDealsFee  types.FIL
-}
 type MinerAddressConfig struct {
 	// Addresses to send PreCommit messages from
 	PreCommitControl []string
@@ -582,26 +560,6 @@ type MinerAddressConfig struct {
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
-}
-
-type LotusProviderAddresses struct {
-	// Addresses to send PreCommit messages from
-	PreCommitControl []string
-	// Addresses to send Commit messages from
-	CommitControl    []string
-	TerminateControl []string
-
-	// DisableOwnerFallback disables usage of the owner address for messages
-	// sent automatically
-	DisableOwnerFallback bool
-	// DisableWorkerFallback disables usage of the worker address for messages
-	// sent automatically, if control addresses are configured.
-	// A control address that doesn't have enough funds will still be chosen
-	// over the worker address if this flag is set.
-	DisableWorkerFallback bool
-
-	// MinerAddresses are the addresses of the miner actors to use for sending messages
-	MinerAddresses []string
 }
 
 // API contains configs for API endpoint
@@ -718,10 +676,6 @@ type Splitstore struct {
 
 // // Full Node
 type Client struct {
-	UseIpfs             bool
-	IpfsOnlineMode      bool
-	IpfsMAddr           string
-	IpfsUseForRetrieval bool
 	// The maximum number of simultaneous data transfers between the client
 	// and storage providers for storage deals
 	SimultaneousTransfersForStorage uint64
@@ -745,33 +699,6 @@ type FeeConfig struct {
 	DefaultMaxFee types.FIL
 }
 
-type UserRaftConfig struct {
-	// EXPERIMENTAL. config to enabled node cluster with raft consensus
-	ClusterModeEnabled bool
-	// A folder to store Raft's data.
-	DataFolder string
-	// InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
-	// peers (with no prior state). It is ignored when Raft was already
-	// initialized or when starting in staging mode.
-	InitPeersetMultiAddr []string
-	// LeaderTimeout specifies how long to wait for a leader before
-	// failing an operation.
-	WaitForLeaderTimeout Duration
-	// NetworkTimeout specifies how long before a Raft network
-	// operation is timed out
-	NetworkTimeout Duration
-	// CommitRetries specifies how many times we retry a failed commit until
-	// we give up.
-	CommitRetries int
-	// How long to wait between retries
-	CommitRetryDelay Duration
-	// BackupsRotate specifies the maximum number of Raft's DataFolder
-	// copies that we keep as backups (renaming) after cleanup.
-	BackupsRotate int
-	// Tracing enables propagation of contexts across binary boundaries.
-	Tracing bool
-}
-
 type FevmConfig struct {
 	// EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
@@ -781,19 +708,47 @@ type FevmConfig struct {
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
 
-	Events Events
+	Events DeprecatedEvents `toml:"Events,omitempty"`
 }
 
-type Events struct {
-	// EnableEthRPC enables APIs that
+type DeprecatedEvents struct {
+	// DisableRealTimeFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableRealTimeFilterAPI instead.
+	DisableRealTimeFilterAPI bool `moved:"Events.DisableRealTimeFilterAPI" toml:"DisableRealTimeFilterAPI,omitempty"`
+
+	// DisableHistoricFilterAPI is DEPRECATED and will be removed in a future release. Use Events.DisableHistoricFilterAPI instead.
+	DisableHistoricFilterAPI bool `moved:"Events.DisableHistoricFilterAPI" toml:"DisableHistoricFilterAPI,omitempty"`
+
+	// FilterTTL is DEPRECATED and will be removed in a future release. Use Events.FilterTTL instead.
+	FilterTTL Duration `moved:"Events.FilterTTL" toml:"FilterTTL,omitzero"`
+
+	// MaxFilters is DEPRECATED and will be removed in a future release. Use Events.MaxFilters instead.
+	MaxFilters int `moved:"Events.MaxFilters" toml:"MaxFilters,omitzero"`
+
+	// MaxFilterResults is DEPRECATED and will be removed in a future release. Use Events.MaxFilterResults instead.
+	MaxFilterResults int `moved:"Events.MaxFilterResults" toml:"MaxFilterResults,omitzero"`
+
+	// MaxFilterHeightRange is DEPRECATED and will be removed in a future release. Use Events.MaxFilterHeightRange instead.
+	MaxFilterHeightRange uint64 `moved:"Events.MaxFilterHeightRange" toml:"MaxFilterHeightRange,omitzero"`
+
+	// DatabasePath is DEPRECATED and will be removed in a future release. Use Events.DatabasePath instead.
+	DatabasePath string `moved:"Events.DatabasePath" toml:"DatabasePath,omitempty"`
+}
+
+type EventsConfig struct {
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool
 
 	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableHistoricFilterAPI bool
+
+	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+	// emitted by (smart contracts + built-in Actors).
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+	// disabled by setting their respective Disable* options.
+	EnableActorEventsAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
 	// this time become eligible for automatic deletion.
@@ -844,6 +799,7 @@ type HarmonyDB struct {
 	// The port to find Yugabyte. Blank for default.
 	Port string
 }
+
 type FaultReporterConfig struct {
 	// EnableConsensusFaultReporter controls whether the node will monitor and
 	// report consensus faults. When enabled, the node will watch for malicious

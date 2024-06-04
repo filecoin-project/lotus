@@ -1,0 +1,23 @@
+name: Built-in Actors
+
+on:
+  push:
+    paths:
+      - build/actors
+      - build/builtin_actors_gen.go
+    branches:
+      - release/*
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Release Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+      - run: go test -tags=release ./build

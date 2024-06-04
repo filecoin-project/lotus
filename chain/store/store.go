@@ -305,6 +305,7 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 			// Unsubscribe.
 			cs.bestTips.Unsub(subch)
 
+			// revive:disable-next-line:empty-block
 			// Drain the channel.
 			for range subch {
 			}
@@ -752,7 +753,7 @@ func FlushValidationCache(ctx context.Context, ds dstore.Batching) error {
 	for _, k := range allKeys {
 		if strings.HasPrefix(k.Key, blockValidationCacheKeyPrefix.String()) {
 			delCnt++
-			batch.Delete(ctx, dstore.RawKey(k.Key)) // nolint:errcheck
+			_ = batch.Delete(ctx, dstore.RawKey(k.Key))
 		}
 	}
 
@@ -793,9 +794,12 @@ func (cs *ChainStore) removeCheckpoint(ctx context.Context) error {
 	return nil
 }
 
-// SetCheckpoint will set a checkpoint past which the chainstore will not allow forks.
+// SetCheckpoint will set a checkpoint past which the chainstore will not allow forks. If the new
+// checkpoint is not an ancestor of the current head, head will be set to the new checkpoint.
 //
-// NOTE: Checkpoints cannot be set beyond ForkLengthThreshold epochs in the past.
+// NOTE: Checkpoints cannot be set beyond ForkLengthThreshold epochs in the past, but can be set
+// arbitrarily far into the future.
+// NOTE: The new checkpoint must already be synced.
 func (cs *ChainStore) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
 	tskBytes, err := json.Marshal(ts.Key())
 	if err != nil {
@@ -804,10 +808,6 @@ func (cs *ChainStore) SetCheckpoint(ctx context.Context, ts *types.TipSet) error
 
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
-
-	if ts.Height() > cs.heaviest.Height() {
-		return xerrors.Errorf("cannot set a checkpoint in the future")
-	}
 
 	// Otherwise, this operation could get _very_ expensive.
 	if cs.heaviest.Height()-ts.Height() > build.ForkLengthThreshold {
@@ -821,7 +821,9 @@ func (cs *ChainStore) SetCheckpoint(ctx context.Context, ts *types.TipSet) error
 		}
 
 		if !anc {
-			return xerrors.Errorf("cannot mark tipset as checkpoint, since it isn't in the main-chain: %w", err)
+			if err := cs.takeHeaviestTipSet(ctx, ts); err != nil {
+				return xerrors.Errorf("failed to switch chains when setting checkpoint: %w", err)
+			}
 		}
 	}
 	err = cs.metadataDs.Put(ctx, checkpointKey, tskBytes)

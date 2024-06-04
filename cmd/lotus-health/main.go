@@ -25,7 +25,7 @@ type CidWindow [][]cid.Cid
 var log = logging.Logger("lotus-health")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	log.Info("Starting health agent")
 
@@ -36,7 +36,7 @@ func main() {
 	app := &cli.App{
 		Name:     "lotus-health",
 		Usage:    "Tools for monitoring lotus daemon health",
-		Version:  build.UserVersion(),
+		Version:  string(build.NodeUserVersion()),
 		Commands: local,
 		Flags: []cli.Flag{
 			&cli.StringFlag{

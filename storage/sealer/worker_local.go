@@ -28,8 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var pathTypes = []storiface.SectorFileType{storiface.FTUnsealed, storiface.FTSealed, storiface.FTCache, storiface.FTUpdate, storiface.FTUpdateCache}
-
 type WorkerConfig struct {
 	TaskTypes []sealtasks.TaskType
 	NoSwap    bool
@@ -152,22 +150,22 @@ type localWorkerPathProvider struct {
 }
 
 func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
-	paths, storageIDs, err := l.w.storage.AcquireSector(ctx, sector, existing, allocate, sealing, l.op)
+	spaths, storageIDs, err := l.w.storage.AcquireSector(ctx, sector, existing, allocate, sealing, l.op)
 	if err != nil {
 		return storiface.SectorPaths{}, nil, err
 	}
 
-	releaseStorage, err := l.w.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal)
+	releaseStorage, err := l.w.localStore.Reserve(ctx, sector, allocate, storageIDs, storiface.FSOverheadSeal, paths.MinFreeStoragePercentage)
 	if err != nil {
 		return storiface.SectorPaths{}, nil, xerrors.Errorf("reserving storage space: %w", err)
 	}
 
-	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, paths)
+	log.Debugf("acquired sector %d (e:%d; a:%d): %v", sector, existing, allocate, spaths)
 
-	return paths, func() {
+	return spaths, func() {
 		releaseStorage()
 
-		for _, fileType := range pathTypes {
+		for _, fileType := range storiface.PathTypes {
 			if fileType&allocate == 0 {
 				continue
 			}
@@ -180,14 +178,14 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 	}, nil
 }
 
+func (l *localWorkerPathProvider) AcquireSectorCopy(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+	return (&localWorkerPathProvider{w: l.w, op: storiface.AcquireCopy}).AcquireSector(ctx, id, existing, allocate, ptype)
+}
+
 func FFIExec(opts ...ffiwrapper.FFIWrapperOpt) func(l *LocalWorker) (storiface.Storage, error) {
 	return func(l *LocalWorker) (storiface.Storage, error) {
 		return ffiwrapper.New(&localWorkerPathProvider{w: l}, opts...)
 	}
-}
-
-func (l *localWorkerPathProvider) AcquireSectorCopy(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
-	return (&localWorkerPathProvider{w: l.w, op: storiface.AcquireCopy}).AcquireSector(ctx, id, existing, allocate, ptype)
 }
 
 type ReturnType string
@@ -664,7 +662,7 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 	var wg sync.WaitGroup
 	wg.Add(len(sectors))
 
-	vproofs := make([][]byte, 0, len(sectors))
+	vproofs := make([][]byte, len(sectors))
 
 	for i, s := range sectors {
 		if l.challengeThrottle != nil {
@@ -677,6 +675,8 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 
 		go func(i int, s storiface.PostSectorChallenge) {
 			defer wg.Done()
+			ctx := ctx
+
 			defer func() {
 				if l.challengeThrottle != nil {
 					<-l.challengeThrottle
@@ -702,8 +702,7 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 				return
 			}
 
-			//vproofs[i] = vanilla // todo substitutes??
-			vproofs = append(vproofs, vanilla)
+			vproofs[i] = vanilla
 		}(i, s)
 	}
 	wg.Wait()
@@ -717,6 +716,22 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 		return storiface.WindowPoStResult{Skipped: skipped}, nil
 	}
 
+	// compact skipped sectors
+	var skippedSoFar int
+	for i := range vproofs {
+		if len(vproofs[i]) == 0 {
+			skippedSoFar++
+			continue
+		}
+
+		if skippedSoFar > 0 {
+			vproofs[i-skippedSoFar] = vproofs[i]
+		}
+	}
+
+	vproofs = vproofs[:len(vproofs)-skippedSoFar]
+
+	// compute the PoSt!
 	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
 	r := storiface.WindowPoStResult{
 		PoStProofs: res,

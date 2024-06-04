@@ -1,4 +1,4 @@
-LOTUS_IMPORT_SNAPSHOT="https://fil-chain-snapshots-fallback.s3.amazonaws.com/mainnet/minimal_finality_stateroots_latest.car"
+LOTUS_IMPORT_SNAPSHOT="https://forest-archive.chainsafe.dev/latest/mainnet/"
 LOTUS_BINARY=$(dirname "$0")/lotus
 GATE="$LOTUS_PATH"/date_initialized
 if [ ! -f "$GATE" ]; then

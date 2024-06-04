@@ -24,34 +24,20 @@ func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) e
 		ts = tss[0]
 	}
 
-	if err := syncer.switchChain(ctx, ts); err != nil {
-		return xerrors.Errorf("failed to switch chain when syncing checkpoint: %w", err)
-	}
+	hts := syncer.ChainStore().GetHeaviestTipSet()
+	if !hts.Equals(ts) {
+		if anc, err := syncer.store.IsAncestorOf(ctx, ts, hts); err != nil {
+			return xerrors.Errorf("failed to walk the chain when checkpointing: %w", err)
+		} else if !anc {
+			if err := syncer.collectChain(ctx, ts, hts, true); err != nil {
+				return xerrors.Errorf("failed to collect chain for checkpoint: %w", err)
+			}
+		} // else new checkpoint is on the current chain, we definitely have the tipsets.
+	} // else current head, no need to switch.
 
 	if err := syncer.ChainStore().SetCheckpoint(ctx, ts); err != nil {
 		return xerrors.Errorf("failed to set the chain checkpoint: %w", err)
 	}
 
-	return nil
-}
-
-func (syncer *Syncer) switchChain(ctx context.Context, ts *types.TipSet) error {
-	hts := syncer.ChainStore().GetHeaviestTipSet()
-	if hts.Equals(ts) {
-		return nil
-	}
-
-	if anc, err := syncer.store.IsAncestorOf(ctx, ts, hts); err == nil && anc {
-		return nil
-	}
-
-	// Otherwise, sync the chain and set the head.
-	if err := syncer.collectChain(ctx, ts, hts, true); err != nil {
-		return xerrors.Errorf("failed to collect chain for checkpoint: %w", err)
-	}
-
-	if err := syncer.ChainStore().SetHead(ctx, ts); err != nil {
-		return xerrors.Errorf("failed to set the chain head: %w", err)
-	}
 	return nil
 }

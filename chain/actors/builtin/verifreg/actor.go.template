@@ -81,8 +81,10 @@ type State interface {
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 	GetAllocation(clientIdAddr address.Address, allocationId AllocationId) (*Allocation, bool, error)
 	GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error)
+	GetAllAllocations() (map[AllocationId]Allocation, error)
 	GetClaim(providerIdAddr address.Address, claimId ClaimId) (*Claim, bool, error)
 	GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error)
+	GetAllClaims() (map[ClaimId]Claim, error)
 	GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error)
 	GetState() interface{}
 }

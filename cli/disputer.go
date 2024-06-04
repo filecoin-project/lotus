@@ -361,6 +361,15 @@ var disputerStartCmd = &cli.Command{
 // for a given miner, index, and maxPostIndex, tries to dispute posts from 0...postsSnapshotted-1
 // returns a list of DisputeWindowedPoSt msgs that are expected to succeed if sent
 func makeDisputeWindowedPosts(ctx context.Context, api v0api.FullNode, dl minerDeadline, postsSnapshotted uint64, sender address.Address) ([]*types.Message, error) {
+	// CHECK: if miner waller balance is zero then skip sending dispute message
+	walletBalance, err := api.WalletBalance(ctx, dl.miner)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get wallet balance while checking to send dispute messages to miner %w: %w", dl.miner, err)
+	}
+	if walletBalance.IsZero() {
+		disputeLog.Warnw("wallet balance is zero, skipping dispute message", "wallet", dl.miner)
+		return nil, nil
+	}
 	disputes := make([]*types.Message, 0)
 
 	for i := uint64(0); i < postsSnapshotted; i++ {

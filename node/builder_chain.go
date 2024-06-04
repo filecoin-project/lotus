@@ -3,7 +3,6 @@ package node
 import (
 	"os"
 
-	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -13,11 +12,13 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -31,7 +32,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	raftcns "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -155,6 +155,7 @@ var ChainNode = Options(
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
 		Override(new(full.EthEventAPI), From(new(api.Gateway))),
+		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
 	),
 
 	// Full node API / service startup
@@ -183,9 +184,8 @@ func ConfigFullNode(c interface{}) Option {
 
 	enableLibp2pNode := true // always enable libp2p for full nodes
 
-	ipfsMaddr := cfg.Client.IpfsMAddr
 	return Options(
-		ConfigCommon(&cfg.Common, enableLibp2pNode),
+		ConfigCommon(&cfg.Common, build.NodeUserVersion(), enableLibp2pNode),
 
 		Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
@@ -223,19 +223,12 @@ func ConfigFullNode(c interface{}) Option {
 		// If the Eth JSON-RPC is enabled, enable storing events at the ChainStore.
 		// This is the case even if real-time and historic filtering are disabled,
 		// as it enables us to serve logs in eth_getTransactionReceipt.
-		If(cfg.Fevm.EnableEthRPC, Override(StoreEventsKey, modules.EnableStoringEvents)),
+		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI, Override(StoreEventsKey, modules.EnableStoringEvents)),
 
 		Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
 
 		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 
-		If(cfg.Client.UseIpfs,
-			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
-			Override(new(storagemarket.BlockstoreAccessor), modules.IpfsStorageBlockstoreAccessor),
-			If(cfg.Client.IpfsUseForRetrieval,
-				Override(new(retrievalmarket.BlockstoreAccessor), modules.IpfsRetrievalBlockstoreAccessor),
-			),
-		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfersForStorage, cfg.Client.SimultaneousTransfersForRetrieval)),
 
 		Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(cfg.Client.OffChainRetrieval)),
@@ -251,29 +244,28 @@ func ConfigFullNode(c interface{}) Option {
 			Override(new(wallet.Default), wallet.NilDefault),
 		),
 
-		// Chain node cluster enabled
-		If(cfg.Cluster.ClusterModeEnabled,
-			Override(new(*gorpc.Client), modules.NewRPCClient),
-			Override(new(*raftcns.ClusterRaftConfig), raftcns.NewClusterRaftConfig(&cfg.Cluster)),
-			Override(new(*raftcns.Consensus), raftcns.NewConsensusWithRPCClient(false)),
-			Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
-			Override(new(messagesigner.MsgSigner), From(new(*messagesigner.MessageSignerConsensus))),
-			Override(new(*modules.RPCHandler), modules.NewRPCHandler),
-			Override(GoRPCServer, modules.NewRPCServer),
-		),
-
 		// Actor event filtering support
-		Override(new(events.EventAPI), From(new(modules.EventAPI))),
+		Override(new(events.EventHelperAPI), From(new(modules.EventHelperAPI))),
+		Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Events)),
 
 		// in lite-mode Eth api is provided by gateway
 		ApplyIf(isFullNode,
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
-				Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm)),
+				Override(new(full.EthEventAPI), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+			),
+		),
+
+		ApplyIf(isFullNode,
+			If(cfg.Events.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), modules.ActorEventHandler(cfg.Events)),
+			),
+			If(!cfg.Events.EnableActorEventsAPI,
+				Override(new(full.ActorEventAPI), &full.ActorEventDummy{}),
 			),
 		),
 

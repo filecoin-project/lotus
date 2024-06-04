@@ -108,7 +108,7 @@ func dedupeSectorInfo(sectorInfo []proof.ExtendedSectorInfo) []proof.ExtendedSec
 }
 
 func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, ppt abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
-	var retErr error = nil
+	var retErr error
 	randomness[31] &= 0x3f
 
 	out := make([]proof.PoStProof, 0)

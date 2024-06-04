@@ -1191,7 +1191,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 func TestOptimalMessageSelection3(t *testing.T) {
 	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 
-	// this test uses 10 actors sending a block of messages to each other, with the the first
+	// this test uses 10 actors sending a block of messages to each other, with the first
 	// actors paying higher gas premium than the subsequent actors.
 	// We select with a low ticket quality; the chain dependent merging algorithm should pick
 	// messages from the median actor from the start
@@ -1321,7 +1321,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		mustAdd(t, mp, m)
 	}
 
-	logging.SetLogLevel("messagepool", "error")
+	_ = logging.SetLogLevel("messagepool", "error")
 
 	// 1. greedy selection
 	gm, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
@@ -1414,7 +1414,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	t.Logf("Average reward boost: %f", rewardBoost)
 	t.Logf("Average best tq reward: %f", totalBestTQReward/runs/1e12)
 
-	logging.SetLogLevel("messagepool", "info")
+	_ = logging.SetLogLevel("messagepool", "info")
 
 	return capacityBoost, rewardBoost, totalBestTQReward / runs / 1e12
 }

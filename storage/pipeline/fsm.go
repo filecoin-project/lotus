@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"runtime"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -39,8 +40,27 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 		return nil, processed, nil
 	}
 
-	return func(ctx statemachine.Context, si SectorInfo) error {
-		err := next(ctx, si)
+	return func(ctx statemachine.Context, si SectorInfo) (err error) {
+		// handle panics
+		defer func() {
+			if r := recover(); r != nil {
+				buf := make([]byte, 1<<16)
+				n := runtime.Stack(buf, false)
+				buf = buf[:n]
+
+				l := Log{
+					Timestamp: uint64(time.Now().Unix()),
+					Message:   fmt.Sprintf("panic: %v\n%s", r, buf),
+					Kind:      "panic",
+				}
+				si.logAppend(l)
+
+				err = fmt.Errorf("panic: %v\n%s", r, buf)
+			}
+		}()
+
+		// execute the next state
+		err = next(ctx, si)
 		if err != nil {
 			log.Errorf("unhandled sector error (%d): %+v", si.SectorNumber, err)
 			return nil
@@ -127,8 +147,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	Committing: planCommitting,
 	CommitFinalize: planOne(
-		on(SectorFinalized{}, SubmitCommit),
-		on(SectorFinalizedAvailable{}, SubmitCommit),
+		on(SectorFinalized{}, SubmitCommitAggregate),
+		on(SectorFinalizedAvailable{}, SubmitCommitAggregate),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
 	),
 	SubmitCommit: planOne(
@@ -674,7 +694,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			}
 		case SectorCommitted: // the normal case
 			e.apply(state)
-			state.State = SubmitCommit
+			state.State = SubmitCommitAggregate
 		case SectorProofReady: // early finalize
 			e.apply(state)
 			state.State = CommitFinalize

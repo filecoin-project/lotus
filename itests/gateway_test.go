@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/clicommands"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/multisig"
@@ -231,7 +231,7 @@ func TestGatewayCLIDealFlow(t *testing.T) {
 	ctx := context.Background()
 	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
 
-	kit.RunClientTest(t, cli.Commands, nodes.lite)
+	kit.RunClientTest(t, clicommands.Commands, nodes.lite)
 }
 
 type testNodes struct {

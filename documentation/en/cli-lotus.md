@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.25.2-dev
+   1.27.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1188,10 +1188,11 @@ COMMANDS:
    check-client-datacap           check verified client remaining bytes
    check-notary-datacap           check a notary's remaining bytes
    sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
-   list-allocations               List allocations made by client
-   list-claims                    List claims made by provider
+   list-allocations               List allocations available in verified registry actor or made by a client if specified
+   list-claims                    List claims available in verified registry actor or made by provider if specified
    remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
+   extend-claim                   extends claim expiration (TermMax)
    help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1275,26 +1276,28 @@ OPTIONS:
 ### lotus filplus list-allocations
 ```
 NAME:
-   lotus filplus list-allocations - List allocations made by client
+   lotus filplus list-allocations - List allocations available in verified registry actor or made by a client if specified
 
 USAGE:
    lotus filplus list-allocations [command options] clientAddress
 
 OPTIONS:
    --expired   list only expired allocations (default: false)
+   --json      output results in json format (default: false)
    --help, -h  show help
 ```
 
 ### lotus filplus list-claims
 ```
 NAME:
-   lotus filplus list-claims - List claims made by provider
+   lotus filplus list-claims - List claims available in verified registry actor or made by provider if specified
 
 USAGE:
    lotus filplus list-claims [command options] providerAddress
 
 OPTIONS:
    --expired   list only expired claims (default: false)
+   --json      output results in json format (default: false)
    --help, -h  show help
 ```
 
@@ -1322,6 +1325,28 @@ USAGE:
 OPTIONS:
    --from value  optionally specify the account to send the message from
    --help, -h    show help
+```
+
+### lotus filplus extend-claim
+```
+NAME:
+   lotus filplus extend-claim - extends claim expiration (TermMax)
+
+USAGE:
+   Extends claim expiration (TermMax).
+   If the client is original client then claim can be extended to maximum 5 years and no Datacap is required.
+   If the client id different then claim can be extended up to maximum 5 years from now and Datacap is required.
+
+
+OPTIONS:
+   --term-max value, --tmax value                                                                               The maximum period for which a provider can earn quality-adjusted power for the piece (epochs). Default is 5 years. (default: 5256000)
+   --client value                                                                                               the client address that will used to send the message
+   --all                                                                                                        automatically extend TermMax of all claims for specified miner[s] to --term-max (default: 5 years from claim start epoch) (default: false)
+   --miner value, -m value, --provider value, -p value [ --miner value, -m value, --provider value, -p value ]  storage provider address[es]
+   --assume-yes, -y, --yes                                                                                      automatic yes to prompts; assume 'yes' as answer to all prompts and run non-interactively (default: false)
+   --confidence value                                                                                           number of block confirmations to wait for (default: 5)
+   --batch-size value                                                                                           number of extend requests per batch. If set incorrectly, this will lead to out of gas error (default: 500)
+   --help, -h                                                                                                   show help
 ```
 
 ## lotus paych
@@ -1807,8 +1832,16 @@ OPTIONS:
    --help, -h   show help
 ```
 
-#### lotus state sector, sector-info
+### lotus state sector
 ```
+NAME:
+   lotus state sector - Get miner sector info
+
+USAGE:
+   lotus state sector [command options] [minerAddress] [sectorNumber]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state get-actor
@@ -1937,12 +1970,29 @@ OPTIONS:
    --help, -h  show help
 ```
 
-#### lotus state wait-msg, wait-message
+### lotus state wait-msg
 ```
+NAME:
+   lotus state wait-msg - Wait for a message to appear on chain
+
+USAGE:
+   lotus state wait-msg [command options] [messageCid]
+
+OPTIONS:
+   --timeout value  (default: "10m")
+   --help, -h       show help
 ```
 
-#### lotus state search-msg, search-message
+### lotus state search-msg
 ```
+NAME:
+   lotus state search-msg - Search to see whether a message has appeared on chain
+
+USAGE:
+   lotus state search-msg [command options] [messageCid]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus state miner-info
@@ -2080,8 +2130,17 @@ OPTIONS:
    --help, -h  show help
 ```
 
-#### lotus chain get-block, getblock
+### lotus chain get-block
 ```
+NAME:
+   lotus chain get-block - Get a block and print its details
+
+USAGE:
+   lotus chain get-block [command options] [blockCid]
+
+OPTIONS:
+   --raw       print just the raw block header (default: false)
+   --help, -h  show help
 ```
 
 ### lotus chain read-obj
@@ -2132,16 +2191,46 @@ OPTIONS:
    --help, -h    show help
 ```
 
-##### lotus chain getmessage, get-message, get-msg
+### lotus chain getmessage
 ```
+NAME:
+   lotus chain getmessage - Get and print a message by its cid
+
+USAGE:
+   lotus chain getmessage [command options] [messageCid]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
-#### lotus chain sethead, set-head
+### lotus chain sethead
 ```
+NAME:
+   lotus chain sethead - manually set the local nodes head tipset (Caution: normally only used for recovery)
+
+USAGE:
+   lotus chain sethead [command options] [tipsetkey]
+
+OPTIONS:
+   --genesis      reset head to genesis (default: false)
+   --epoch value  reset head to given epoch (default: 0)
+   --help, -h     show help
 ```
 
-#### lotus chain list, love
+### lotus chain list
 ```
+NAME:
+   lotus chain list - View a segment of the chain
+
+USAGE:
+   lotus chain list [command options] [arguments...]
+
+OPTIONS:
+   --height value  (default: current head)
+   --count value   (default: 30)
+   --format value  specify the format to print out tipsets (default: "<height>: (<time>) <blocks>")
+   --gas-stats     view gas statistics for the chain (default: false)
+   --help, -h      show help
 ```
 
 ### lotus chain get
@@ -2768,8 +2857,16 @@ OPTIONS:
    --help, -h  show help
 ```
 
-#### lotus net find-peer, findpeer
+### lotus net find-peer
 ```
+NAME:
+   lotus net find-peer - Find the addresses of a given peerID
+
+USAGE:
+   lotus net find-peer [command options] [peerId]
+
+OPTIONS:
+   --help, -h  show help
 ```
 
 ### lotus net scores

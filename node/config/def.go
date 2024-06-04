@@ -77,17 +77,18 @@ func defCommon() Common {
 	}
 }
 
-var (
-	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
-	DefaultSimultaneousTransfers = uint64(20)
-)
+var DefaultSimultaneousTransfers = uint64(20)
+
+func DefaultDefaultMaxFee() types.FIL {
+	return types.MustParseFIL("0.07")
+}
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
 	return &FullNode{
 		Common: defCommon(),
 		Fees: FeeConfig{
-			DefaultMaxFee: DefaultDefaultMaxFee,
+			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
 		Client: Client{
 			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
@@ -106,18 +107,18 @@ func DefaultFullNode() *FullNode {
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},
 		},
-		Cluster: *DefaultUserRaftConfig(),
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
-			Events: Events{
-				DisableRealTimeFilterAPI: false,
-				DisableHistoricFilterAPI: false,
-				FilterTTL:                Duration(time.Hour * 24),
-				MaxFilters:               100,
-				MaxFilterResults:         10000,
-				MaxFilterHeightRange:     2880, // conservative limit of one day
-			},
+		},
+		Events: EventsConfig{
+			DisableRealTimeFilterAPI: false,
+			DisableHistoricFilterAPI: false,
+			EnableActorEventsAPI:     false,
+			FilterTTL:                Duration(time.Hour * 24),
+			MaxFilters:               100,
+			MaxFilterResults:         10000,
+			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
 	}
 }
@@ -326,59 +327,3 @@ const (
 	// worker. The scheduler may assign any task to this worker.
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
-
-var (
-	DefaultDataSubFolder        = "raft"
-	DefaultWaitForLeaderTimeout = 15 * time.Second
-	DefaultCommitRetries        = 1
-	DefaultNetworkTimeout       = 100 * time.Second
-	DefaultCommitRetryDelay     = 200 * time.Millisecond
-	DefaultBackupsRotate        = 6
-)
-
-func DefaultUserRaftConfig() *UserRaftConfig {
-	var cfg UserRaftConfig
-	cfg.DataFolder = "" // empty so it gets omitted
-	cfg.InitPeersetMultiAddr = []string{}
-	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
-	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
-	cfg.CommitRetries = DefaultCommitRetries
-	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
-	cfg.BackupsRotate = DefaultBackupsRotate
-
-	return &cfg
-}
-
-func DefaultLotusProvider() *LotusProviderConfig {
-	return &LotusProviderConfig{
-		Subsystems: ProviderSubsystemsConfig{},
-		Fees: LotusProviderFees{
-			DefaultMaxFee:      DefaultDefaultMaxFee,
-			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
-			MaxCommitGasFee:    types.MustParseFIL("0.05"),
-
-			MaxPreCommitBatchGasFee: BatchFeeConfig{
-				Base:      types.MustParseFIL("0"),
-				PerSector: types.MustParseFIL("0.02"),
-			},
-			MaxCommitBatchGasFee: BatchFeeConfig{
-				Base:      types.MustParseFIL("0"),
-				PerSector: types.MustParseFIL("0.03"), // enough for 6 agg and 1nFIL base fee
-			},
-
-			MaxTerminateGasFee:  types.MustParseFIL("0.5"),
-			MaxWindowPoStGasFee: types.MustParseFIL("5"),
-			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
-		},
-		Addresses: LotusProviderAddresses{
-			PreCommitControl: []string{},
-			CommitControl:    []string{},
-			TerminateControl: []string{},
-		},
-		Proving: ProvingConfig{
-			ParallelCheckLimit:    32,
-			PartitionCheckTimeout: Duration(20 * time.Minute),
-			SingleCheckTimeout:    Duration(10 * time.Minute),
-		},
-	}
-}

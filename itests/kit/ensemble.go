@@ -689,11 +689,9 @@ func (n *Ensemble) Start() *Ensemble {
 
 		var mineBlock = make(chan lotusminer.MineReq)
 
-		copy := *m.FullNode
-		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
-		m.FullNode = &copy
-
-		//m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
+		minerCopy := *m.FullNode
+		minerCopy.FullNode = modules.MakeUuidWrapper(minerCopy.FullNode)
+		m.FullNode = &minerCopy
 
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
@@ -702,8 +700,6 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-			//node.Override(new(v1api.RawFullNodeAPI), func() api.FullNode { return modules.MakeUuidWrapper(m.FullNode) }),
-			//node.Override(new(v1api.RawFullNodeAPI), modules.MakeUuidWrapper),
 			node.Override(new(v1api.RawFullNodeAPI), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
@@ -1061,14 +1057,14 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []api.SectorPiece{
-				{
+			Pieces: []pipeline.SafeSectorPiece{
+				pipeline.SafePiece(api.SectorPiece{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
 					DealInfo: nil, // todo: likely possible to get, but not really that useful
-				},
+				}),
 			},
 			CommD: &commD,
 			CommR: &commR,

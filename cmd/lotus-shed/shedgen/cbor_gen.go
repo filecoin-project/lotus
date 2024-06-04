@@ -31,7 +31,7 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Sub ([]cid.Cid) (slice)
-	if len("Sub") > cbg.MaxLength {
+	if len("Sub") > 8192 {
 		return xerrors.Errorf("Value in field \"Sub\" was too long")
 	}
 
@@ -42,7 +42,7 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Sub) > cbg.MaxLength {
+	if len(t.Sub) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Sub was too long")
 	}
 
@@ -88,7 +88,7 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) (err error) {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadString(cr)
+			sval, err := cbg.ReadStringWithMax(cr, 8192)
 			if err != nil {
 				return err
 			}
@@ -105,7 +105,7 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > 8192 {
 				return fmt.Errorf("t.Sub: array too large (%d)", extra)
 			}
 
@@ -136,6 +136,7 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) (err error) {
 						t.Sub[i] = c
 
 					}
+
 				}
 			}
 

@@ -44,8 +44,6 @@ type MpoolAPI struct {
 	WalletAPI
 	GasAPI
 
-	RaftAPI
-
 	MessageSigner messagesigner.MsgSigner
 
 	PushLocks *dtypes.MpoolLocker
@@ -144,20 +142,6 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
-
-	// Redirect to leader if current node is not leader. A single non raft based node is always the leader
-	if !a.RaftAPI.IsLeader(ctx) {
-		var signedMsg types.SignedMessage
-		redirected, err := a.RaftAPI.RedirectToLeader(ctx, "MpoolPushMessage", api.MpoolMessageWhole{Msg: msg, Spec: spec}, &signedMsg)
-		if err != nil {
-			return nil, err
-		}
-		// It's possible that the current node became the leader between the check and the redirect
-		// In that case, continue with rest of execution and only return signedMsg if something was redirected
-		if redirected {
-			return &signedMsg, nil
-		}
-	}
 
 	// Generate spec and uuid if not available in the message
 	if spec == nil {

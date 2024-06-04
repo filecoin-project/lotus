@@ -1,5 +1,7 @@
 package result
 
+import "encoding/json"
+
 // Result is a small wrapper type encapsulating Value/Error tuples, mostly for
 // use when sending values across channels
 // NOTE: Avoid adding any functionality to this, any "nice" things added here will
@@ -38,4 +40,14 @@ func (r Result[T]) Assert(noErrFn func(err error, msgAndArgs ...interface{})) T 
 	noErrFn(r.Error)
 
 	return r.Value
+}
+
+// MarshalJSON implements the json.Marshaler interface, marshalling string error correctly
+// this method makes the display in log.Infow nicer
+func (r Result[T]) MarshalJSON() ([]byte, error) {
+	if r.Error != nil {
+		return json.Marshal(map[string]string{"Error": r.Error.Error()})
+	}
+
+	return json.Marshal(map[string]interface{}{"Value": r.Value})
 }

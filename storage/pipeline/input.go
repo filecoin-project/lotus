@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
@@ -13,14 +12,15 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -32,10 +32,19 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	var used abi.UnpaddedPieceSize
 	var lastDealEnd abi.ChainEpoch
 	for _, piece := range sector.Pieces {
-		used += piece.Piece.Size.Unpadded()
+		used += piece.Piece().Size.Unpadded()
 
-		if piece.DealInfo != nil && piece.DealInfo.DealProposal.EndEpoch > lastDealEnd {
-			lastDealEnd = piece.DealInfo.DealProposal.EndEpoch
+		if !piece.HasDealInfo() {
+			continue
+		}
+
+		endEpoch, err := piece.EndEpoch()
+		if err != nil {
+			return xerrors.Errorf("piece.EndEpoch: %w", err)
+		}
+
+		if endEpoch > lastDealEnd {
+			lastDealEnd = endEpoch
 		}
 	}
 
@@ -65,9 +74,9 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	if _, has := m.openSectors[sid]; !has {
 		m.openSectors[sid] = &openSector{
 			used: used,
-			maybeAccept: func(cid cid.Cid) error {
+			maybeAccept: func(pk piece.PieceKey) error {
 				// todo check deal start deadline (configurable)
-				m.assignedPieces[sid] = append(m.assignedPieces[sid], cid)
+				m.assignedPieces[sid] = append(m.assignedPieces[sid], pk)
 
 				return ctx.Send(SectorAddPiece{})
 			},
@@ -94,7 +103,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
 	log := log.WithOptions(zap.Fields(
 		zap.Uint64("sector", uint64(sector.SectorNumber)),
-		zap.Int("deals", len(sector.dealIDs())),
+		zap.Int("dataPieces", len(sector.nonPaddingPieceInfos())),
 	))
 
 	now := time.Now()
@@ -117,7 +126,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		return false, xerrors.Errorf("getting per-sector deal limit: %w", err)
 	}
 
-	if len(sector.dealIDs()) >= maxDeals {
+	if len(sector.nonPaddingPieceInfos()) >= maxDeals {
 		// can't accept more deals
 		log.Infow("starting to seal deal sector", "trigger", "maxdeals")
 		return true, ctx.Send(SectorStartPacking{})
@@ -146,13 +155,24 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 
 		var dealSafeSealEpoch abi.ChainEpoch
 		for _, piece := range sector.Pieces {
-			if piece.DealInfo == nil {
+			if !piece.HasDealInfo() {
 				continue
 			}
 
-			dealSafeSealEpoch = piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
+			startEpoch, err := piece.StartEpoch()
+			if err != nil {
+				log.Errorw("failed to get start epoch for deal", "piece", piece.String(), "error", err)
+				continue // not ideal, but skipping the check should break things less
+			}
 
-			alloc, _ := m.Api.StateGetAllocationForPendingDeal(ctx.Context(), piece.DealInfo.DealID, types.EmptyTSK)
+			dealSafeSealEpoch = startEpoch - cfg.StartEpochSealingBuffer
+
+			alloc, err := piece.GetAllocation(ctx.Context(), m.Api, types.EmptyTSK)
+			if err != nil {
+				log.Errorw("failed to get allocation for deal", "piece", piece.String(), "error", err)
+				continue // not ideal, but skipping the check should break things less
+			}
+
 			// alloc is nil if this is not a verified deal in nv17 or later
 			if alloc == nil {
 				continue
@@ -210,8 +230,8 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 	var offset abi.UnpaddedPieceSize
 	pieceSizes := make([]abi.UnpaddedPieceSize, len(sector.Pieces))
 	for i, p := range sector.Pieces {
-		pieceSizes[i] = p.Piece.Size.Unpadded()
-		offset += p.Piece.Size.Unpadded()
+		pieceSizes[i] = p.Piece().Size.Unpadded()
+		offset += p.Piece().Size.Unpadded()
 	}
 
 	maxDeals, err := getDealPerSectorLimit(ssize)
@@ -227,7 +247,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			return xerrors.Errorf("piece %s assigned to sector %d not found", piece, sector.SectorNumber)
 		}
 
-		if len(sector.dealIDs())+(i+1) > maxDeals {
+		if len(sector.nonPaddingPieceInfos())+(i+1) > maxDeals {
 			// todo: this is rather unlikely to happen, but in case it does, return the deal to waiting queue instead of failing it
 			deal.accepted(sector.SectorNumber, offset, xerrors.Errorf("too many deals assigned to sector %d, dropping deal", sector.SectorNumber))
 			continue
@@ -263,8 +283,10 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			}
 
 			pieceSizes = append(pieceSizes, p.Unpadded())
-			res.NewPieces = append(res.NewPieces, api.SectorPiece{
-				Piece: ppi,
+			res.NewPieces = append(res.NewPieces, SafeSectorPiece{
+				api.SectorPiece{
+					Piece: ppi,
+				},
 			})
 		}
 
@@ -278,22 +300,26 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			deal.accepted(sector.SectorNumber, offset, err)
 			return ctx.Send(SectorAddPieceFailed{err})
 		}
-		if !ppi.PieceCID.Equals(deal.deal.DealProposal.PieceCID) {
-			err = xerrors.Errorf("got unexpected piece CID: expected:%s, got:%s", deal.deal.DealProposal.PieceCID, ppi.PieceCID)
+		if !ppi.PieceCID.Equals(deal.deal.PieceCID()) {
+			err = xerrors.Errorf("got unexpected piece CID: expected:%s, got:%s", deal.deal.PieceCID(), ppi.PieceCID)
 			deal.accepted(sector.SectorNumber, offset, err)
 			return ctx.Send(SectorAddPieceFailed{err})
 		}
 
-		log.Infow("deal added to a sector", "deal", deal.deal.DealID, "sector", sector.SectorNumber, "piece", ppi.PieceCID)
+		log.Infow("deal added to a sector", "pieceID", deal.deal.String(), "sector", sector.SectorNumber, "piece", ppi.PieceCID)
 
 		deal.accepted(sector.SectorNumber, offset, nil)
 
 		offset += deal.size
 		pieceSizes = append(pieceSizes, deal.size)
 
-		res.NewPieces = append(res.NewPieces, api.SectorPiece{
-			Piece:    ppi,
-			DealInfo: &deal.deal,
+		dinfo := deal.deal.Impl()
+
+		res.NewPieces = append(res.NewPieces, SafeSectorPiece{
+			api.SectorPiece{
+				Piece:    ppi,
+				DealInfo: &dinfo,
+			},
 		})
 	}
 
@@ -304,8 +330,13 @@ func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorIn
 	return ctx.Send(SectorRetryWaitDeals{})
 }
 
-func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
-	log.Infof("Adding piece for deal %d (publish msg: %s)", deal.DealID, deal.PublishCid)
+func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo piece.PieceDealInfo) (api.SectorOffset, error) {
+	return m.sectorAddPieceToAny(ctx, size, data, &pieceInfo)
+}
+
+func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo UniversalPieceInfo) (api.SectorOffset, error) {
+	log.Infof("Adding piece %s", pieceInfo.String())
+
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return api.SectorOffset{}, xerrors.Errorf("cannot allocate unpadded piece")
 	}
@@ -324,10 +355,6 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		return api.SectorOffset{}, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
-	if _, err := deal.DealProposal.Cid(); err != nil {
-		return api.SectorOffset{}, xerrors.Errorf("getting proposal CID: %w", err)
-	}
-
 	cfg, err := m.getConfig()
 	if err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("getting config: %w", err)
@@ -337,19 +364,34 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	if err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
 	}
-	if ts.Height()+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
-		return api.SectorOffset{}, xerrors.Errorf(
-			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
-			deal.DealProposal.PieceCID, ts.Height(), deal.DealProposal.StartEpoch)
+
+	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting network version: %w", err)
 	}
 
-	claimTerms, err := m.getClaimTerms(ctx, deal, ts.Key())
+	if err := pieceInfo.Valid(nv); err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("piece metadata invalid: %w", err)
+	}
+
+	startEpoch, err := pieceInfo.StartEpoch()
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting last start epoch: %w", err)
+	}
+
+	if ts.Height()+cfg.StartEpochSealingBuffer > startEpoch {
+		return api.SectorOffset{}, xerrors.Errorf(
+			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
+			pieceInfo.PieceCID(), ts.Height(), startEpoch)
+	}
+
+	claimTerms, err := m.getClaimTerms(ctx, pieceInfo, ts.Key())
 	if err != nil {
 		return api.SectorOffset{}, err
 	}
 
 	m.inputLk.Lock()
-	if pp, exist := m.pendingPieces[proposalCID(deal)]; exist {
+	if pp, exist := m.pendingPieces[pieceInfo.Key()]; exist {
 		m.inputLk.Unlock()
 
 		// we already have a pre-existing add piece call for this deal, let's wait for it to finish and see if it's successful
@@ -366,7 +408,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	}
 
 	// addPendingPiece takes over m.inputLk
-	pp := m.addPendingPiece(ctx, size, data, deal, claimTerms, sp)
+	pp := m.addPendingPiece(ctx, size, data, pieceInfo, claimTerms, sp)
 
 	res, err := waitAddPieceResp(ctx, pp)
 	if err != nil {
@@ -375,32 +417,41 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
-func (m *Sealing) getClaimTerms(ctx context.Context, deal api.PieceDealInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
+func (m *Sealing) getClaimTerms(ctx context.Context, deal UniversalPieceInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
+
+	all, err := deal.GetAllocation(ctx, m.Api, tsk)
+	if err != nil {
+		return pieceClaimBounds{}, err
+	}
+	if all != nil {
+		startEpoch, err := deal.StartEpoch()
+		if err != nil {
+			return pieceClaimBounds{}, err
+		}
+
+		return pieceClaimBounds{
+			claimTermEnd: startEpoch + all.TermMax,
+		}, nil
+	}
+
 	nv, err := m.Api.StateNetworkVersion(ctx, tsk)
 	if err != nil {
 		return pieceClaimBounds{}, err
 	}
 
-	if nv >= network.Version17 {
-		all, err := m.Api.StateGetAllocationForPendingDeal(ctx, deal.DealID, tsk)
-		if err != nil {
-			return pieceClaimBounds{}, err
-		}
-		if all != nil {
-			return pieceClaimBounds{
-				claimTermEnd: deal.DealProposal.StartEpoch + all.TermMax,
-			}, nil
-		}
+	endEpoch, err := deal.EndEpoch()
+	if err != nil {
+		return pieceClaimBounds{}, err
 	}
 
 	// no allocation for this deal, so just use a really high number for "term end"
 	return pieceClaimBounds{
-		claimTermEnd: deal.DealProposal.EndEpoch + policy.GetSectorMaxLifetime(abi.RegisteredSealProof_StackedDrg32GiBV1_1, network.Version17),
+		claimTermEnd: endEpoch + policy.GetSectorMaxLifetime(abi.RegisteredSealProof_StackedDrg32GiBV1_1, nv),
 	}, nil
 }
 
 // called with m.inputLk; transfers the lock to another goroutine!
-func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, deal api.PieceDealInfo, ct pieceClaimBounds, sp abi.RegisteredSealProof) *pendingPiece {
+func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, deal UniversalPieceInfo, ct pieceClaimBounds, sp abi.RegisteredSealProof) *pendingPiece {
 	doneCh := make(chan struct{})
 	pp := &pendingPiece{
 		size:       size,
@@ -417,14 +468,12 @@ func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSiz
 		close(pp.doneCh)
 	}
 
-	log.Debugw("new pending piece", "dealId", deal.DealID,
-		"piece", deal.DealProposal.PieceCID,
-		"size", size,
-		"dealStart", deal.DealSchedule.StartEpoch,
-		"dealEnd", deal.DealSchedule.EndEpoch,
+	log.Debugw("new pending piece", "pieceID", deal.String(),
+		"dealStart", result.Wrap(deal.StartEpoch()),
+		"dealEnd", result.Wrap(deal.EndEpoch()),
 		"termEnd", ct.claimTermEnd)
 
-	m.pendingPieces[proposalCID(deal)] = pp
+	m.pendingPieces[deal.Key()] = pp
 	go func() {
 		defer m.inputLk.Unlock()
 		if err := m.updateInput(ctx, sp); err != nil {
@@ -489,7 +538,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 
 	type match struct {
 		sector abi.SectorID
-		deal   cid.Cid
+		deal   piece.PieceKey
 
 		dealEnd      abi.ChainEpoch
 		claimTermEnd abi.ChainEpoch
@@ -499,7 +548,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	}
 
 	var matches []match
-	toAssign := map[cid.Cid]struct{}{} // used to maybe create new sectors
+	toAssign := map[piece.PieceKey]struct{}{} // used to maybe create new sectors
 
 	// todo: this is distinctly O(n^2), may need to be optimized for tiny deals and large scale miners
 	//  (unlikely to be a problem now)
@@ -523,12 +572,18 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 				continue
 			}
 
+			endEpoch, err := piece.deal.EndEpoch()
+			if err != nil {
+				log.Errorf("failed to get end epoch for deal %s", piece.deal)
+				continue
+			}
+
 			if piece.size <= avail { // (note: if we have enough space for the piece, we also have enough space for inter-piece padding)
 				matches = append(matches, match{
 					sector: id,
 					deal:   proposalCid,
 
-					dealEnd:      piece.deal.DealProposal.EndEpoch,
+					dealEnd:      endEpoch,
 					claimTermEnd: piece.claimTerms.claimTermEnd,
 
 					size:    piece.size,
@@ -600,7 +655,6 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	log.Debugw("updateInput matching done", "matches", len(matches), "toAssign", len(toAssign), "assigned", assigned, "openSectors", len(m.openSectors), "pieces", len(m.pendingPieces))
 
 	if len(toAssign) > 0 {
-		log.Errorf("we are trying to create a new sector with open sectors %v", m.openSectors)
 		if err := m.tryGetDealSector(ctx, sp, getExpirationCached); err != nil {
 			log.Errorw("Failed to create a new sector for deals", "error", err)
 		}
@@ -610,7 +664,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 }
 
 // pendingPieceIndex is an index in the Sealing.pendingPieces map
-type pendingPieceIndex cid.Cid
+type pendingPieceIndex piece.PieceKey
 
 type pieceBound struct {
 	epoch abi.ChainEpoch
@@ -634,13 +688,21 @@ func (m *Sealing) pendingPieceEpochBounds() []pieceBound {
 			continue
 		}
 
+		endEpoch, err := piece.deal.EndEpoch()
+		if err != nil {
+			// this really should never happen, at this point we have validated
+			// the piece enough times
+			log.Errorf("failed to get end epoch for deal %s: %v", ppi, err)
+			continue
+		}
+
 		// start bound on deal end
-		if boundsByEpoch[piece.deal.DealProposal.EndEpoch] == nil {
-			boundsByEpoch[piece.deal.DealProposal.EndEpoch] = &pieceBound{
-				epoch: piece.deal.DealProposal.EndEpoch,
+		if boundsByEpoch[endEpoch] == nil {
+			boundsByEpoch[endEpoch] = &pieceBound{
+				epoch: endEpoch,
 			}
 		}
-		boundsByEpoch[piece.deal.DealProposal.EndEpoch].boundStart = append(boundsByEpoch[piece.deal.DealProposal.EndEpoch].boundStart, pendingPieceIndex(ppi))
+		boundsByEpoch[endEpoch].boundStart = append(boundsByEpoch[endEpoch].boundStart, pendingPieceIndex(ppi))
 
 		// end bound on term max
 		if boundsByEpoch[piece.claimTerms.claimTermEnd] == nil {
@@ -663,10 +725,10 @@ func (m *Sealing) pendingPieceEpochBounds() []pieceBound {
 	var curBoundBytes abi.UnpaddedPieceSize
 	for i, bound := range out {
 		for _, ppi := range bound.boundStart {
-			curBoundBytes += m.pendingPieces[cid.Cid(ppi)].size
+			curBoundBytes += m.pendingPieces[piece.PieceKey(ppi)].size
 		}
 		for _, ppi := range bound.boundEnd {
-			curBoundBytes -= m.pendingPieces[cid.Cid(ppi)].size
+			curBoundBytes -= m.pendingPieces[piece.PieceKey(ppi)].size
 		}
 
 		out[i].dealBytesInBound = curBoundBytes
@@ -894,18 +956,30 @@ func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showO
 		return api.SectorInfo{}, err
 	}
 
+	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return api.SectorInfo{}, xerrors.Errorf("getting network version: %w", err)
+	}
+
 	deals := make([]abi.DealID, len(info.Pieces))
 	pieces := make([]api.SectorPiece, len(info.Pieces))
 	for i, piece := range info.Pieces {
-		pieces[i].Piece = piece.Piece
-		if piece.DealInfo == nil {
+		pieces[i].Piece = piece.Piece()
+
+		if !piece.HasDealInfo() {
 			continue
 		}
 
-		pdi := *piece.DealInfo // copy
+		pdi := piece.Impl()
+		if pdi.Valid(nv) != nil {
+			continue
+		}
+
 		pieces[i].DealInfo = &pdi
 
-		deals[i] = piece.DealInfo.DealID
+		if pdi.PublishCid != nil {
+			deals[i] = pdi.DealID
+		}
 	}
 
 	log := make([]api.SectorLog, len(info.Log))
@@ -954,16 +1028,6 @@ func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showO
 	}
 
 	return sInfo, nil
-}
-
-func proposalCID(deal api.PieceDealInfo) cid.Cid {
-	pc, err := deal.DealProposal.Cid()
-	if err != nil {
-		log.Errorf("DealProposal.Cid error: %+v", err)
-		return cid.Undef
-	}
-
-	return pc
 }
 
 var _ sectorblocks.SectorBuilder = &Sealing{}

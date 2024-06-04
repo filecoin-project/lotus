@@ -66,7 +66,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed lotus-provider
+build-devnets: build lotus-seed lotus-shed
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -97,13 +97,6 @@ lotus-miner: $(BUILD_DEPS)
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
-lotus-provider: $(BUILD_DEPS)
-	rm -f lotus-provider
-	$(GOCC) build $(GOFLAGS) -o lotus-provider ./cmd/lotus-provider
-
-lp2k: GOFLAGS+=-tags=2k
-lp2k: lotus-provider
-
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	$(GOCC) build $(GOFLAGS) -o lotus-worker ./cmd/lotus-worker
@@ -122,22 +115,19 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker 
+build: lotus lotus-miner lotus-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker install-provider
+install: install-daemon install-miner install-worker
 
 install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
 
 install-miner:
 	install -C ./lotus-miner /usr/local/bin/lotus-miner
-
-install-provider:
-	install -C ./lotus-provider /usr/local/bin/lotus-provider
 
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
@@ -153,9 +143,6 @@ uninstall-daemon:
 
 uninstall-miner:
 	rm -f /usr/local/bin/lotus-miner
-
-uninstall-provider:
-	rm -f /usr/local/bin/lotus-provider
 
 uninstall-worker:
 	rm -f /usr/local/bin/lotus-worker
@@ -244,7 +231,9 @@ install-daemon-service: install-daemon
 	install -C -m 0644 ./scripts/lotus-daemon.service /etc/systemd/system/lotus-daemon.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
+	@echo "lotus-daemon service installed."
+	@echo "To start the service, run: 'sudo systemctl start lotus-daemon'"
+	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-daemon'"
 
 install-miner-service: install-miner install-daemon-service
 	mkdir -p /etc/systemd/system
@@ -252,15 +241,9 @@ install-miner-service: install-miner install-daemon-service
 	install -C -m 0644 ./scripts/lotus-miner.service /etc/systemd/system/lotus-miner.service
 	systemctl daemon-reload
 	@echo
-	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
-
-install-provider-service: install-provider install-daemon-service
-	mkdir -p /etc/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-provider.service /etc/systemd/system/lotus-provider.service
-	systemctl daemon-reload
-	@echo
-	@echo "lotus-provider service installed. Don't forget to run 'sudo systemctl start lotus-provider' to start it and 'sudo systemctl enable lotus-provider' for it to be enabled on startup."
+	@echo "lotus-miner service installed."
+	@echo "To start the service, run: 'sudo systemctl start lotus-miner'"
+	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-miner'"
 
 install-main-services: install-miner-service
 
@@ -280,12 +263,6 @@ clean-miner-service:
 	rm -f /etc/systemd/system/lotus-miner.service
 	systemctl daemon-reload
 
-clean-provider-service:
-	-systemctl stop lotus-provider
-	-systemctl disable lotus-provider
-	rm -f /etc/systemd/system/lotus-provider.service
-	systemctl daemon-reload
-
 clean-main-services: clean-daemon-service
 
 clean-all-services: clean-main-services
@@ -300,6 +277,10 @@ install-completions:
 	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
 	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
+
+unittests:
+	@$(GOCC) test $(shell go list ./... | grep -v /lotus/itests)
+.PHONY: unittests
 
 clean:
 	rm -rf $(CLEAN) $(BINS)
@@ -321,8 +302,8 @@ actors-code-gen:
 	$(GOCC) run ./chain/actors/agen
 	$(GOCC) fmt ./...
 
-actors-gen: actors-code-gen 
-	./scripts/fiximports
+actors-gen: actors-code-gen
+	$(GOCC) run ./scripts/fiximports
 .PHONY: actors-gen
 
 bundle-gen:
@@ -356,7 +337,7 @@ docsgen-md-bin: api-gen actors-gen
 docsgen-openrpc-bin: api-gen actors-gen
 	$(GOCC) build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
-docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker docsgen-md-provider
+docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
 
 docsgen-md-full: docsgen-md-bin
 	./docgen-md "api/api_full.go" "FullNode" "api" "./api" > documentation/en/api-v1-unstable-methods.md
@@ -365,46 +346,41 @@ docsgen-md-storage: docsgen-md-bin
 	./docgen-md "api/api_storage.go" "StorageMiner" "api" "./api" > documentation/en/api-v0-methods-miner.md
 docsgen-md-worker: docsgen-md-bin
 	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
-docsgen-md-provider: docsgen-md-bin
-	./docgen-md "api/api_lp.go" "Provider" "api" "./api" > documentation/en/api-v0-methods-provider.md
 
 docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker docsgen-openrpc-gateway
 
 docsgen-openrpc-full: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_full.go" "FullNode" "api" "./api" -gzip > build/openrpc/full.json.gz
+	./docgen-openrpc "api/api_full.go" "FullNode" "api" "./api" > build/openrpc/full.json
 docsgen-openrpc-storage: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_storage.go" "StorageMiner" "api" "./api" -gzip > build/openrpc/miner.json.gz
+	./docgen-openrpc "api/api_storage.go" "StorageMiner" "api" "./api" > build/openrpc/miner.json
 docsgen-openrpc-worker: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_worker.go" "Worker" "api" "./api" -gzip > build/openrpc/worker.json.gz
+	./docgen-openrpc "api/api_worker.go" "Worker" "api" "./api" > build/openrpc/worker.json
 docsgen-openrpc-gateway: docsgen-openrpc-bin
-	./docgen-openrpc "api/api_gateway.go" "Gateway" "api" "./api" -gzip > build/openrpc/gateway.json.gz
+	./docgen-openrpc "api/api_gateway.go" "Gateway" "api" "./api" > build/openrpc/gateway.json
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
 fiximports:
-	./scripts/fiximports
+	$(GOCC) run ./scripts/fiximports
 
-gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci
-	./scripts/fiximports
+gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
+	$(GOCC) run ./scripts/fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
 .PHONY: gen
 
 jen: gen
 
-snap: lotus lotus-miner lotus-worker lotus-provider
+snap: lotus lotus-miner lotus-worker
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
 # separate from gen because it needs binaries
-docsgen-cli: lotus lotus-miner lotus-worker lotus-provider
+docsgen-cli: lotus lotus-miner lotus-worker
 	python3 ./scripts/generate-lotus-cli.py
 	./lotus config default > documentation/en/default-lotus-config.toml
 	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
-	./lotus-provider config default > documentation/en/default-lotus-provider-config.toml
 .PHONY: docsgen-cli
 
 print-%:
 	@echo $*=$($*)
 
-circleci:
-	go generate -x ./.circleci

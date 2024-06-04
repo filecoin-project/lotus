@@ -220,6 +220,13 @@ var minerCreateCmd = &cli.Command{
 	Name:      "create",
 	Usage:     "sends a create miner message",
 	ArgsUsage: "[sender] [owner] [worker] [sector size]",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "confidence",
+			Usage: "number of block confirmations to wait for",
+			Value: int(build.MessageConfidence),
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		wapi, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -274,7 +281,7 @@ var minerCreateCmd = &cli.Command{
 			log.Infof("Initializing worker account %s, message: %s", worker, signed.Cid())
 			log.Infof("Waiting for confirmation")
 
-			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
+			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), uint64(cctx.Int("confidence")))
 			if err != nil {
 				return xerrors.Errorf("waiting for worker init: %w", err)
 			}
@@ -553,7 +560,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		fmt.Printf("submitting bad PoST for %d paritions\n", len(partitionIndices))
+		fmt.Printf("submitting bad PoST for %d partitions\n", len(partitionIndices))
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   minfo.Worker,
 			To:     maddr,

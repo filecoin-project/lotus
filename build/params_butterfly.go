@@ -16,10 +16,11 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0: DrandMainnet,
+	0:                    DrandMainnet,
+	UpgradePhoenixHeight: DrandQuicknet,
 }
 
-const GenesisNetworkVersion = network.Version20
+const GenesisNetworkVersion = network.Version21
 
 var NetworkBundle = "butterflynet"
 var BundleOverrides map[actorstypes.Version]string
@@ -54,14 +55,20 @@ const UpgradeSharkHeight = -20
 const UpgradeHyggeHeight = -21
 const UpgradeLightningHeight = -22
 const UpgradeThunderHeight = -23
+const UpgradeWatermelonHeight = -24
+const UpgradeDragonHeight = -25
+const UpgradePhoenixHeight = -26
 
-const UpgradeWatermelonHeight = 400
+const UpgradeAussieHeight = 400
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFix2Height = -101
+
+// This fix upgrade only ran on calibrationnet
+const UpgradeCalibrationDragonFixHeight = -102
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,

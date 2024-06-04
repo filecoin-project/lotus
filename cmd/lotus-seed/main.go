@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("lotus-seed")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 
 	local := []*cli.Command{
 		genesisCmd,
@@ -38,7 +38,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-seed",
 		Usage:   "Seal sectors for genesis miner",
-		Version: build.UserVersion(),
+		Version: string(build.NodeUserVersion()),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "sector-dir",

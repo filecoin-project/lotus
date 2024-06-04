@@ -111,7 +111,7 @@ func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
 }
 
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
-	r, err := rt.state.LookupID(addr)
+	r, err := rt.state.LookupIDAddress(addr)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
 			return address.Undef, false

@@ -1,13 +1,20 @@
 name: sync-master-main
+
 on:
   push:
     branches:
       - master
+
+permissions:
+  contents: read
+
 jobs:
   sync:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: update remote branch main
         run: |
           # overrides the remote branch (origin:github) `main`

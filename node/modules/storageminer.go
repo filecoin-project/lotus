@@ -820,7 +820,13 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, e
 	return sealer.StorageAuth(headers), nil
 }
 
-func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
+func StorageAuthWithURL(apiInfo string) interface{} {
+	if strings.HasPrefix(apiInfo, "harmony:") {
+		return func(ctx helpers.MetricsCtx, ca MinerStorageService) (sealer.StorageAuth, error) {
+			return StorageAuth(ctx, ca)
+		}
+	}
+
 	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
 		s := strings.Split(apiInfo, ":")
 		if len(s) != 2 {
@@ -1017,6 +1023,11 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
 				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
 				UseSyntheticPoRep:                      cfg.UseSyntheticPoRep,
+
+				RequireActivationSuccess:         cfg.RequireActivationSuccess,
+				RequireActivationSuccessUpdate:   cfg.RequireActivationSuccessUpdate,
+				RequireNotificationSuccess:       cfg.RequireNotificationSuccess,
+				RequireNotificationSuccessUpdate: cfg.RequireNotificationSuccessUpdate,
 			}
 			c.SetSealingConfig(newCfg)
 		})
@@ -1062,6 +1073,11 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		TerminateBatchMin:  sealingCfg.TerminateBatchMin,
 		TerminateBatchWait: time.Duration(sealingCfg.TerminateBatchWait),
 		UseSyntheticPoRep:  sealingCfg.UseSyntheticPoRep,
+
+		RequireActivationSuccess:         sealingCfg.RequireActivationSuccess,
+		RequireActivationSuccessUpdate:   sealingCfg.RequireActivationSuccessUpdate,
+		RequireNotificationSuccess:       sealingCfg.RequireNotificationSuccess,
+		RequireNotificationSuccessUpdate: sealingCfg.RequireNotificationSuccessUpdate,
 	}
 }
 

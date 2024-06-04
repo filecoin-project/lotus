@@ -32,8 +32,8 @@ def generate_lotus_cli(prog):
                     cmd_flag = False
                 if cmd_flag is True and line[-1] != ':' and 'help, h' not in line:
                     gap_pos = None
-                    sub_cmd = line
-                    if ' ' in line:
+                    sub_cmd = line.split(',')[0].strip()  # only take the first sub-command before the comma
+                    if ' ' in sub_cmd:
                         gap_pos = sub_cmd.index('  ')
                     sub_cmd = cur_cmd + ' ' + sub_cmd[:gap_pos]
                     get_cmd_recursively(sub_cmd)
@@ -50,6 +50,9 @@ if __name__ == "__main__":
     # Unset everything we can find via: grep -ho 'EnvVars:.*' -r * | sort -u
     for e in [ "LOTUS_PATH", "LOTUS_MARKETS_PATH", "LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH", "LOTUS_WORKER_PATH", "WORKER_PATH", "LOTUS_PANIC_REPORT_PATH", "WALLET_PATH" ]:
         os.environ.pop(e, None)
+
+    # Set env var telling the binaries that we're generating docs
+    os.putenv("LOTUS_DOCS_GENERATION", "1")
 
     os.putenv("LOTUS_VERSION_IGNORE_COMMIT", "1")
     generate_lotus_cli('lotus')

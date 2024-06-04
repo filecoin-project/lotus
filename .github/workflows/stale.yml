@@ -4,18 +4,19 @@ on:
   schedule:
   - cron: '0 12 * * *'
 
+permissions:
+  contents: read
+
 jobs:
   stale:
-
-    runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
-
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/stale@v3
+    - uses: actions/stale@v9
       with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        repo-token: ${{ github.token }}
         stale-issue-message: 'Oops, seems like we needed more information for this issue, please comment with more details or this issue will be closed in 24 hours.'
         close-issue-message: 'This issue was closed because it is missing author input.'
         stale-pr-message: 'Thank you for submitting the PR and contributing to lotus! Lotus maintainers need more of your input before merging it, please address the suggested changes or reply to the comments or this PR will be closed in 48 hours. You are always more than welcome to reopen the PR later as well!'
@@ -29,5 +30,3 @@ jobs:
         days-before-pr-close: 2
         remove-stale-when-updated: true
         enable-statistics: true
-
-

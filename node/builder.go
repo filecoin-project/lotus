@@ -127,7 +127,6 @@ const (
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
 	SetupFallbackBlockstoresKey
-	GoRPCServer
 
 	ConsensusReporterKey
 
@@ -267,12 +266,13 @@ func Base() Option {
 }
 
 // Config sets up constructors based on the provided Config
-func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
+func ConfigCommon(cfg *config.Common, buildVersion build.BuildVersion, enableLibp2pNode bool) Option {
 	// setup logging early
 	lotuslog.SetLevelsFromConfig(cfg.Logging.SubsystemLevels)
 
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
+		Override(new(build.BuildVersion), buildVersion),
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 			return multiaddr.NewMultiaddr(cfg.API.ListenAddress)
 		}),

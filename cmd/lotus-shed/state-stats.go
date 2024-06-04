@@ -723,7 +723,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 
 		go func() {
 			// error is check later
-			eg.Wait() //nolint:errcheck
+			_ = eg.Wait()
 			close(results)
 		}()
 

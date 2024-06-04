@@ -92,9 +92,8 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, chain *store.ChainStor
 				return nil, fmt.Errorf("cannot get parent tipset")
 			}
 			return parent, nil
-		} else {
-			return nil, fmt.Errorf("unknown predefined block %s", *predefined)
 		}
+		return nil, fmt.Errorf("unknown predefined block %s", *predefined)
 	}
 
 	if blkParam.BlockNumber != nil {
@@ -225,7 +224,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load state-tree root %q: %w", stRoot, err)
 	}
 
-	block := ethtypes.NewEthBlock(len(msgs) > 0)
+	block := ethtypes.NewEthBlock(len(msgs) > 0, len(ts.Blocks()))
 
 	gasUsed := int64(0)
 	for i, msg := range msgs {
@@ -298,7 +297,7 @@ func executeTipset(ctx context.Context, ts *types.TipSet, cs *store.ChainStore, 
 const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
 const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
 // Eth ABI (solidity) panic codes.
-var panicErrorCodes map[uint64]string = map[uint64]string{
+var panicErrorCodes = map[uint64]string{
 	0x00: "Panic()",
 	0x01: "Assert()",
 	0x11: "ArithmeticOverflow()",
@@ -382,34 +381,37 @@ func parseEthRevert(ret []byte) string {
 //  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
+//
+// If the actor doesn't exist in the state-tree but we have its ID, we use a masked ID address. It could have been deleted.
 func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAddress, error) {
-	// BLOCK A: We are trying to get an actual Ethereum address from an f410 address.
 	// Attempt to convert directly, if it's an f4 address.
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
 	if err == nil && !ethAddr.IsMaskedID() {
 		return ethAddr, nil
 	}
 
-	// Lookup on the target actor and try to get an f410 address.
-	if actor, err := st.GetActor(addr); err != nil {
-		return ethtypes.EthAddress{}, err
-	} else if actor.Address != nil {
-		if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
-			return ethAddr, nil
-		}
-	}
-
-	// BLOCK B: We gave up on getting an actual Ethereum address and are falling back to a Masked ID address.
-	// Check if we already have an ID addr, and use it if possible.
-	if err == nil && ethAddr.IsMaskedID() {
-		return ethAddr, nil
-	}
-
 	// Otherwise, resolve the ID addr.
-	idAddr, err := st.LookupID(addr)
+	idAddr, err := st.LookupIDAddress(addr)
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
+
+	// revive:disable:empty-block easier to grok when the cases are explicit
+
+	// Lookup on the target actor and try to get an f410 address.
+	if actor, err := st.GetActor(idAddr); errors.Is(err, types.ErrActorNotFound) {
+		// Not found -> use a masked ID address
+	} else if err != nil {
+		// Any other error -> fail.
+		return ethtypes.EthAddress{}, err
+	} else if actor.Address == nil {
+		// No delegated address -> use masked ID address.
+	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+		// Conversable into an eth address, use it.
+		return ethAddr, nil
+	}
+
+	// Otherwise, use the masked address.
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
@@ -455,9 +457,9 @@ func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, er
 		return tx.TxHash()
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
 		return ethtypes.EthHashFromCid(smsg.Cid())
-	} else { // BLS message
-		return ethtypes.EthHashFromCid(smsg.Message.Cid())
 	}
+	// else BLS message
+	return ethtypes.EthHashFromCid(smsg.Message.Cid())
 }
 
 func newEthTxFromSignedMessage(smsg *types.SignedMessage, st *state.StateTree) (ethtypes.EthTx, error) {
@@ -654,7 +656,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, events []types.Event, cs *store.ChainStore, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -695,7 +697,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
 	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
-	ts, err := cs.GetTipSetFromKey(ctx, lookup.TipSet)
+	ts, err := ca.Chain.GetTipSetFromKey(ctx, lookup.TipSet)
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
 	}
@@ -706,7 +708,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	// The tx is located in the parent tipset
-	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
+	parentTs, err := ca.Chain.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
 	}
@@ -729,6 +731,24 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
 		receipt.ContractAddress = &addr
+	}
+
+	var events []types.Event
+	if rct := lookup.Receipt; rct.EventsRoot != nil {
+		events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+		if err != nil {
+			// Fore-recompute, we must have enabled the Event APIs after computing this
+			// tipset.
+			if _, _, err := sa.StateManager.RecomputeTipSetState(ctx, ts); err != nil {
+
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+			// Try again
+			events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
+			}
+		}
 	}
 
 	if len(events) > 0 {
@@ -798,8 +818,8 @@ func encodeAsABIHelper(param1 uint64, param2 uint64, data []byte) []byte {
 	if len(data)%EVM_WORD_SIZE != 0 {
 		totalWords++
 	}
-	len := totalWords * EVM_WORD_SIZE
-	buf := make([]byte, len)
+	sz := totalWords * EVM_WORD_SIZE
+	buf := make([]byte, sz)
 	offset := 0
 	// Below, we use copy instead of "appending" to preserve all the zero padding.
 	for _, arg := range staticArgs {

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -50,6 +51,12 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version12:
 			return load12(store, act.Head)
+
+		case actorstypes.Version13:
+			return load13(store, act.Head)
+
+		case actorstypes.Version14:
+			return load14(store, act.Head)
 
 		}
 	}
@@ -120,6 +127,12 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 	case actors.Version12:
 		return make12(store)
+
+	case actors.Version13:
+		return make13(store)
+
+	case actors.Version14:
+		return make14(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -212,7 +225,7 @@ type Partition interface {
 	UnprovenSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = minertypes.SectorOnChainInfo
+type SectorOnChainInfo = minertypes13.SectorOnChainInfo
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof, configWantSynthetic bool) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -299,7 +312,9 @@ type DeclareFaultsParams = minertypes.DeclareFaultsParams
 type ProveCommitAggregateParams = minertypes.ProveCommitAggregateParams
 type ProveCommitSectorParams = minertypes.ProveCommitSectorParams
 type ProveReplicaUpdatesParams = minertypes.ProveReplicaUpdatesParams
+type ProveReplicaUpdatesParams2 = minertypes.ProveReplicaUpdatesParams2
 type ReplicaUpdate = minertypes.ReplicaUpdate
+type ReplicaUpdate2 = minertypes.ReplicaUpdate2
 type PreCommitSectorBatchParams = minertypes.PreCommitSectorBatchParams
 type PreCommitSectorBatchParams2 = minertypes.PreCommitSectorBatchParams2
 type ExtendSectorExpiration2Params = minertypes.ExtendSectorExpiration2Params
@@ -307,6 +322,13 @@ type SectorClaim = minertypes.SectorClaim
 type ExpirationExtension2 = minertypes.ExpirationExtension2
 type CompactPartitionsParams = minertypes.CompactPartitionsParams
 type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
+
+type PieceActivationManifest = minertypes13.PieceActivationManifest
+type ProveCommitSectors3Params = minertypes13.ProveCommitSectors3Params
+type SectorActivationManifest = minertypes13.SectorActivationManifest
+type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
+type SectorUpdateManifest = minertypes13.SectorUpdateManifest
+type SectorOnChainInfoFlags = minertypes13.SectorOnChainInfoFlags
 
 var QAPowerMax = minertypes.QAPowerMax
 
@@ -374,5 +396,7 @@ func AllCodes() []cid.Cid {
 		(&state10{}).Code(),
 		(&state11{}).Code(),
 		(&state12{}).Code(),
+		(&state13{}).Code(),
+		(&state14{}).Code(),
 	}
 }

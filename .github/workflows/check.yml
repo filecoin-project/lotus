@@ -1,0 +1,83 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/*
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check-docsgen:
+    name: Check (docs-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: make deps
+      - run: make docsgen
+      - run: git diff --exit-code
+  check-gen:
+    name: Check (gen-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - run: make deps lotus
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: go install github.com/hannahhoward/cbor-gen-for
+      - run: make gen
+      - run: git diff --exit-code
+      - run: make docsgen-cli
+      - run: git diff --exit-code
+  check-lint:
+    name: Check (lint-all)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
+      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.2
+      - run: make deps
+      - run: golangci-lint run -v --timeout 10m --concurrency 4
+  check-fmt:
+    name: Check (gofmt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-go
+      - run: go fmt ./...
+      - run: git diff --exit-code
+  check-mod-tidy:
+    name: Check (mod-tidy-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: ./.github/actions/install-go
+      - run: go mod tidy -v
+      - run: git diff --exit-code

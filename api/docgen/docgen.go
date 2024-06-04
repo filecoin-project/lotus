@@ -40,6 +40,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -145,6 +146,7 @@ func init() {
 	allocationId := verifreg.AllocationId(0)
 	addExample(allocationId)
 	addExample(&allocationId)
+	addExample(miner.SectorOnChainInfoFlags(0))
 	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
 	claimId := verifreg.ClaimId(0)
 	addExample(claimId)
@@ -152,12 +154,13 @@ func init() {
 	addExample(map[verifreg.ClaimId]verifreg.Claim{})
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
+	addExample(abi.ActorID(1000))
+	addExample(map[string]types.Actor{
+		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
+	})
 	addExample(&types.ExecutionTrace{
 		Msg:    ExampleValue("init", reflect.TypeOf(types.MessageTrace{}), nil).(types.MessageTrace),
 		MsgRct: ExampleValue("init", reflect.TypeOf(types.ReturnTrace{}), nil).(types.ReturnTrace),
-	})
-	addExample(map[string]types.Actor{
-		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
 	addExample(map[string]api.MarketDeal{
 		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
@@ -207,7 +210,6 @@ func init() {
 	si := uint64(12)
 	addExample(&si)
 	addExample(retrievalmarket.DealID(5))
-	addExample(abi.ActorID(1000))
 	addExample(map[string]cid.Cid{})
 	addExample(map[string][]api.SealedRef{
 		"98000": {
@@ -355,10 +357,6 @@ func init() {
 	addExample(map[string]bitfield.BitField{
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
-	addExample(&api.RaftStateData{
-		NonceMap: make(map[address.Address]uint64),
-		MsgUuids: make(map[uuid.UUID]*types.SignedMessage),
-	})
 
 	addExample(http.Header{
 		"Authorization": []string{"Bearer ey.."},
@@ -406,6 +404,32 @@ func init() {
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
+
+	addExample(&miner.PieceActivationManifest{
+		CID:                   c,
+		Size:                  2032,
+		VerifiedAllocationKey: nil,
+		Notify:                nil,
+	})
+
+	addExample(&types.ActorEventBlock{
+		Codec: 0x51,
+		Value: []byte("ddata"),
+	})
+
+	addExample(&types.ActorEventFilter{
+		Addresses: []address.Address{addr},
+		Fields: map[string][]types.ActorEventBlock{
+			"abc": {
+				{
+					Codec: 0x51,
+					Value: []byte("ddata"),
+				},
+			},
+		},
+		FromHeight: epochPtr(1010),
+		ToHeight:   epochPtr(1020),
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -432,10 +456,6 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			i = &api.GatewayStruct{}
 			t = reflect.TypeOf(new(struct{ api.Gateway })).Elem()
 			permStruct = append(permStruct, reflect.TypeOf(api.GatewayStruct{}.Internal))
-		case "Provider":
-			i = &api.LotusProviderStruct{}
-			t = reflect.TypeOf(new(struct{ api.LotusProvider })).Elem()
-			permStruct = append(permStruct, reflect.TypeOf(api.LotusProviderStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}
@@ -509,6 +529,11 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 	}
 
 	return ns.Interface()
+}
+
+func epochPtr(ei int64) *abi.ChainEpoch {
+	ep := abi.ChainEpoch(ei)
+	return &ep
 }
 
 type Visitor struct {

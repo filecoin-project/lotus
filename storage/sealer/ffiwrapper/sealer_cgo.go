@@ -520,7 +520,7 @@ func (sb *Sealer) regenerateSectorKey(ctx context.Context, sector storiface.Sect
 	// prepare SDR params
 	commp, err := commcid.CIDToDataCommitmentV1(keyDataCid)
 	if err != nil {
-		return xerrors.Errorf("computing commP: %w", err)
+		return xerrors.Errorf("computing commK: %w", err)
 	}
 
 	replicaID, err := sector.ProofType.ReplicaId(sector.ID.Miner, sector.ID.Number, ticket, commp)
@@ -1419,6 +1419,13 @@ func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceIn
 	}
 
 	return ffi.GenerateUnsealedCID(proofType, allPieces)
+}
+
+func (sb *Sealer) GenerateSingleVanillaProof(
+	replica ffi.PrivateSectorInfo,
+	challenges []uint64,
+) ([]byte, error) {
+	return ffi.GenerateSingleVanillaProof(replica, challenges)
 }
 
 func (sb *Sealer) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error) {

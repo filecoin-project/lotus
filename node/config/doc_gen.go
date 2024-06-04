@@ -87,30 +87,6 @@ your node if metadata log is disabled`,
 	},
 	"Client": {
 		{
-			Name: "UseIpfs",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsOnlineMode",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsMAddr",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "IpfsUseForRetrieval",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
 			Name: "SimultaneousTransfersForStorage",
 			Type: "uint64",
 
@@ -357,14 +333,13 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
-	"Events": {
+	"EventsConfig": {
 		{
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
 
-			Comment: `EnableEthRPC enables APIs that
-DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+			Comment: `DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
 		},
 		{
 			Name: "DisableHistoricFilterAPI",
@@ -372,7 +347,16 @@ The API is enabled when EnableEthRPC is true, but can be disabled selectively wi
 
 			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "EnableActorEventsAPI",
+			Type: "bool",
+
+			Comment: `EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+emitted by (smart contracts + built-in Actors).
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+disabled by setting their respective Disable* options.`,
 		},
 		{
 			Name: "FilterTTL",
@@ -464,7 +448,7 @@ Set to 0 to keep all mappings`,
 		},
 		{
 			Name: "Events",
-			Type: "Events",
+			Type: "DeprecatedEvents",
 
 			Comment: ``,
 		},
@@ -495,14 +479,14 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 		{
-			Name: "Cluster",
-			Type: "UserRaftConfig",
+			Name: "Fevm",
+			Type: "FevmConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Fevm",
-			Type: "FevmConfig",
+			Name: "Events",
+			Type: "EventsConfig",
 
 			Comment: ``,
 		},
@@ -689,136 +673,6 @@ closed by the connection manager.`,
 			Comment: `SubsystemLevels specify per-subsystem log levels`,
 		},
 	},
-	"LotusProviderAddresses": {
-		{
-			Name: "PreCommitControl",
-			Type: "[]string",
-
-			Comment: `Addresses to send PreCommit messages from`,
-		},
-		{
-			Name: "CommitControl",
-			Type: "[]string",
-
-			Comment: `Addresses to send Commit messages from`,
-		},
-		{
-			Name: "TerminateControl",
-			Type: "[]string",
-
-			Comment: ``,
-		},
-		{
-			Name: "DisableOwnerFallback",
-			Type: "bool",
-
-			Comment: `DisableOwnerFallback disables usage of the owner address for messages
-sent automatically`,
-		},
-		{
-			Name: "DisableWorkerFallback",
-			Type: "bool",
-
-			Comment: `DisableWorkerFallback disables usage of the worker address for messages
-sent automatically, if control addresses are configured.
-A control address that doesn't have enough funds will still be chosen
-over the worker address if this flag is set.`,
-		},
-		{
-			Name: "MinerAddresses",
-			Type: "[]string",
-
-			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
-		},
-	},
-	"LotusProviderConfig": {
-		{
-			Name: "Subsystems",
-			Type: "ProviderSubsystemsConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "Fees",
-			Type: "LotusProviderFees",
-
-			Comment: ``,
-		},
-		{
-			Name: "Addresses",
-			Type: "LotusProviderAddresses",
-
-			Comment: ``,
-		},
-		{
-			Name: "Proving",
-			Type: "ProvingConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "Journal",
-			Type: "JournalConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "Apis",
-			Type: "ApisConfig",
-
-			Comment: ``,
-		},
-	},
-	"LotusProviderFees": {
-		{
-			Name: "DefaultMaxFee",
-			Type: "types.FIL",
-
-			Comment: ``,
-		},
-		{
-			Name: "MaxPreCommitGasFee",
-			Type: "types.FIL",
-
-			Comment: ``,
-		},
-		{
-			Name: "MaxCommitGasFee",
-			Type: "types.FIL",
-
-			Comment: ``,
-		},
-		{
-			Name: "MaxPreCommitBatchGasFee",
-			Type: "BatchFeeConfig",
-
-			Comment: `maxBatchFee = maxBase + maxPerSector * nSectors`,
-		},
-		{
-			Name: "MaxCommitBatchGasFee",
-			Type: "BatchFeeConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "MaxTerminateGasFee",
-			Type: "types.FIL",
-
-			Comment: ``,
-		},
-		{
-			Name: "MaxWindowPoStGasFee",
-			Type: "types.FIL",
-
-			Comment: `WindowPoSt is a high-value operation, so the default fee should be high.`,
-		},
-		{
-			Name: "MaxPublishDealsFee",
-			Type: "types.FIL",
-
-			Comment: ``,
-		},
-	},
 	"MinerAddressConfig": {
 		{
 			Name: "PreCommitControl",
@@ -986,32 +840,6 @@ blocks. This should only be set when there's an external process mining
 blocks on behalf of the miner.
 When disabled and no external block producers are configured, all potential
 block rewards will be missed!`,
-		},
-	},
-	"ProviderSubsystemsConfig": {
-		{
-			Name: "EnableWindowPost",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "WindowPostMaxTasks",
-			Type: "int",
-
-			Comment: ``,
-		},
-		{
-			Name: "EnableWinningPost",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "WinningPostMaxTasks",
-			Type: "int",
-
-			Comment: ``,
 		},
 	},
 	"ProvingConfig": {
@@ -1550,6 +1378,30 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 
 			Comment: `UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.`,
 		},
+		{
+			Name: "RequireActivationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireActivationSuccessUpdate",
+			Type: "bool",
+
+			Comment: `Whether to abort if any piece activation notification returns a non-zero exit code (newly sealed sectors, only with ProveCommitSectors3).`,
+		},
+		{
+			Name: "RequireNotificationSuccess",
+			Type: "bool",
+
+			Comment: `Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).`,
+		},
+		{
+			Name: "RequireNotificationSuccessUpdate",
+			Type: "bool",
+
+			Comment: `Whether to abort if any piece activation notification returns a non-zero exit code (updating sectors, only with ProveReplicaUpdates3).`,
+		},
 	},
 	"Splitstore": {
 		{
@@ -1678,68 +1530,6 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 			Type: "HarmonyDB",
 
 			Comment: ``,
-		},
-	},
-	"UserRaftConfig": {
-		{
-			Name: "ClusterModeEnabled",
-			Type: "bool",
-
-			Comment: `EXPERIMENTAL. config to enabled node cluster with raft consensus`,
-		},
-		{
-			Name: "DataFolder",
-			Type: "string",
-
-			Comment: `A folder to store Raft's data.`,
-		},
-		{
-			Name: "InitPeersetMultiAddr",
-			Type: "[]string",
-
-			Comment: `InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
-peers (with no prior state). It is ignored when Raft was already
-initialized or when starting in staging mode.`,
-		},
-		{
-			Name: "WaitForLeaderTimeout",
-			Type: "Duration",
-
-			Comment: `LeaderTimeout specifies how long to wait for a leader before
-failing an operation.`,
-		},
-		{
-			Name: "NetworkTimeout",
-			Type: "Duration",
-
-			Comment: `NetworkTimeout specifies how long before a Raft network
-operation is timed out`,
-		},
-		{
-			Name: "CommitRetries",
-			Type: "int",
-
-			Comment: `CommitRetries specifies how many times we retry a failed commit until
-we give up.`,
-		},
-		{
-			Name: "CommitRetryDelay",
-			Type: "Duration",
-
-			Comment: `How long to wait between retries`,
-		},
-		{
-			Name: "BackupsRotate",
-			Type: "int",
-
-			Comment: `BackupsRotate specifies the maximum number of Raft's DataFolder
-copies that we keep as backups (renaming) after cleanup.`,
-		},
-		{
-			Name: "Tracing",
-			Type: "bool",
-
-			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
 		},
 	},
 	"Wallet": {

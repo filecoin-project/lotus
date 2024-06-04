@@ -475,7 +475,7 @@ Inputs:
   ],
   "Bw==",
   10101,
-  21
+  23
 ]
 ```
 
@@ -824,10 +824,10 @@ Response:
       "ClientCollateral": "0"
     },
     "State": {
+      "SectorNumber": 9,
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 ]
@@ -1424,10 +1424,10 @@ Response:
       "ClientCollateral": "0"
     },
     "State": {
+      "SectorNumber": 9,
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 ]
@@ -2910,6 +2910,14 @@ Inputs:
       "StartEpoch": 10101,
       "EndEpoch": 10101
     },
+    "PieceActivationManifest": {
+      "CID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Size": 2032,
+      "VerifiedAllocationKey": null,
+      "Notify": null
+    },
     "KeepUnsealed": true
   }
 ]
@@ -3211,6 +3219,14 @@ Inputs:
           "DealSchedule": {
             "StartEpoch": 10101,
             "EndEpoch": 10101
+          },
+          "PieceActivationManifest": {
+            "CID": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 2032,
+            "VerifiedAllocationKey": null,
+            "Notify": null
           },
           "KeepUnsealed": true
         }
@@ -3556,6 +3572,14 @@ Response:
           "StartEpoch": 10101,
           "EndEpoch": 10101
         },
+        "PieceActivationManifest": {
+          "CID": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          },
+          "Size": 2032,
+          "VerifiedAllocationKey": null,
+          "Notify": null
+        },
         "KeepUnsealed": true
       }
     }
@@ -3713,6 +3737,12 @@ Inputs:
     ],
     "DenyTypes": [
       "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
+      "string value"
     ]
   },
   {
@@ -3760,7 +3790,8 @@ Inputs:
 [
   1,
   34359738368,
-  "sealing"
+  "sealing",
+  1000
 ]
 ```
 
@@ -3786,6 +3817,12 @@ Response:
       "string value"
     ],
     "DenyTypes": [
+      "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
       "string value"
     ]
   }
@@ -3906,6 +3943,12 @@ Response:
     ],
     "DenyTypes": [
       "string value"
+    ],
+    "AllowMiners": [
+      "string value"
+    ],
+    "DenyMiners": [
+      "string value"
     ]
   }
 ]
@@ -3932,11 +3975,13 @@ Response:
         0,
         1,
         0,
+        0,
         0
       ],
       "Read": [
         2,
         3,
+        0,
         0,
         0,
         0
@@ -3979,6 +4024,12 @@ Response:
     "string value"
   ],
   "DenyTypes": [
+    "string value"
+  ],
+  "AllowMiners": [
+    "string value"
+  ],
+  "DenyMiners": [
     "string value"
   ]
 }

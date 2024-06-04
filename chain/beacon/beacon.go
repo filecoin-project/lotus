@@ -43,31 +43,31 @@ type BeaconPoint struct {
 // been posted on chain.
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
-	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
+	VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte) error
 	MaxBeaconRoundForEpoch(network.Version, abi.ChainEpoch) uint64
+	IsChained() bool
 }
 
 func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockHeader, parentEpoch abi.ChainEpoch,
 	prevEntry types.BeaconEntry) error {
-	{
-		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
-		currBeacon := bSchedule.BeaconForEpoch(h.Height)
-		if parentBeacon != currBeacon {
-			if len(h.BeaconEntries) != 2 {
-				return xerrors.Errorf("expected two beacon entries at beacon fork, got %d", len(h.BeaconEntries))
-			}
-			err := currBeacon.VerifyEntry(h.BeaconEntries[1], h.BeaconEntries[0])
-			if err != nil {
-				return xerrors.Errorf("beacon at fork point invalid: (%v, %v): %w",
-					h.BeaconEntries[1], h.BeaconEntries[0], err)
-			}
-			return nil
+
+	parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
+	currBeacon := bSchedule.BeaconForEpoch(h.Height)
+	// When we have "chained" beacons, two entries at a fork are required.
+	if parentBeacon != currBeacon && currBeacon.IsChained() {
+		if len(h.BeaconEntries) != 2 {
+			return xerrors.Errorf("expected two beacon entries at beacon fork, got %d", len(h.BeaconEntries))
 		}
+		err := currBeacon.VerifyEntry(h.BeaconEntries[1], h.BeaconEntries[0].Data)
+		if err != nil {
+			return xerrors.Errorf("beacon at fork point invalid: (%v, %v): %w",
+				h.BeaconEntries[1], h.BeaconEntries[0], err)
+		}
+		return nil
 	}
 
-	// TODO: fork logic
-	b := bSchedule.BeaconForEpoch(h.Height)
-	maxRound := b.MaxBeaconRoundForEpoch(nv, h.Height)
+	maxRound := currBeacon.MaxBeaconRoundForEpoch(nv, h.Height)
+	// We don't expect to ever actually meet this condition
 	if maxRound == prevEntry.Round {
 		if len(h.BeaconEntries) != 0 {
 			return xerrors.Errorf("expected not to have any beacon entries in this block, got %d", len(h.BeaconEntries))
@@ -79,13 +79,31 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 		return xerrors.Errorf("expected to have beacon entries in this block, but didn't find any")
 	}
 
+	// We skip verifying the genesis entry when randomness is "chained".
+	if currBeacon.IsChained() && prevEntry.Round == 0 {
+		return nil
+	}
+
 	last := h.BeaconEntries[len(h.BeaconEntries)-1]
 	if last.Round != maxRound {
 		return xerrors.Errorf("expected final beacon entry in block to be at round %d, got %d", maxRound, last.Round)
 	}
 
+	// If the beacon is UNchained, verify that the block only includes the rounds we want for the epochs in between parentEpoch and h.Height
+	// For chained beacons, you must have all the rounds forming a valid chain with prevEntry, so we can skip this step
+	if !currBeacon.IsChained() {
+		// Verify that all other entries' rounds are as expected for the epochs in between parentEpoch and h.Height
+		for i, e := range h.BeaconEntries {
+			correctRound := currBeacon.MaxBeaconRoundForEpoch(nv, parentEpoch+abi.ChainEpoch(i)+1)
+			if e.Round != correctRound {
+				return xerrors.Errorf("unexpected beacon round %d, expected %d for epoch %d", e.Round, correctRound, parentEpoch+abi.ChainEpoch(i))
+			}
+		}
+	}
+
+	// Verify the beacon entries themselves
 	for i, e := range h.BeaconEntries {
-		if err := b.VerifyEntry(e, prevEntry); err != nil {
+		if err := currBeacon.VerifyEntry(e, prevEntry.Data); err != nil {
 			return xerrors.Errorf("beacon entry %d (%d - %x (%d)) was invalid: %w", i, e.Round, e.Data, len(e.Data), err)
 		}
 		prevEntry = e
@@ -95,34 +113,32 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 }
 
 func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.Version, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
-	{
-		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
-		currBeacon := bSchedule.BeaconForEpoch(epoch)
-		if parentBeacon != currBeacon {
-			// Fork logic
-			round := currBeacon.MaxBeaconRoundForEpoch(nv, epoch)
-			out := make([]types.BeaconEntry, 2)
-			rch := currBeacon.Entry(ctx, round-1)
-			res := <-rch
-			if res.Err != nil {
-				return nil, xerrors.Errorf("getting entry %d returned error: %w", round-1, res.Err)
-			}
-			out[0] = res.Entry
-			rch = currBeacon.Entry(ctx, round)
-			res = <-rch
-			if res.Err != nil {
-				return nil, xerrors.Errorf("getting entry %d returned error: %w", round, res.Err)
-			}
-			out[1] = res.Entry
-			return out, nil
+	// When we have "chained" beacons, two entries at a fork are required.
+	parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
+	currBeacon := bSchedule.BeaconForEpoch(epoch)
+	if parentBeacon != currBeacon && currBeacon.IsChained() {
+		// Fork logic
+		round := currBeacon.MaxBeaconRoundForEpoch(nv, epoch)
+		out := make([]types.BeaconEntry, 2)
+		rch := currBeacon.Entry(ctx, round-1)
+		res := <-rch
+		if res.Err != nil {
+			return nil, xerrors.Errorf("getting entry %d returned error: %w", round-1, res.Err)
 		}
+		out[0] = res.Entry
+		rch = currBeacon.Entry(ctx, round)
+		res = <-rch
+		if res.Err != nil {
+			return nil, xerrors.Errorf("getting entry %d returned error: %w", round, res.Err)
+		}
+		out[1] = res.Entry
+		return out, nil
 	}
-
-	beacon := bSchedule.BeaconForEpoch(epoch)
 
 	start := build.Clock.Now()
 
-	maxRound := beacon.MaxBeaconRoundForEpoch(nv, epoch)
+	maxRound := currBeacon.MaxBeaconRoundForEpoch(nv, epoch)
+	// We don't expect this to ever be the case
 	if maxRound == prev.Round {
 		return nil, nil
 	}
@@ -132,10 +148,10 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.V
 		prev.Round = maxRound - 1
 	}
 
-	cur := maxRound
 	var out []types.BeaconEntry
-	for cur > prev.Round {
-		rch := beacon.Entry(ctx, cur)
+	for currEpoch := epoch; currEpoch > parentEpoch; currEpoch-- {
+		currRound := currBeacon.MaxBeaconRoundForEpoch(nv, currEpoch)
+		rch := currBeacon.Entry(ctx, currRound)
 		select {
 		case resp := <-rch:
 			if resp.Err != nil {
@@ -143,7 +159,6 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.V
 			}
 
 			out = append(out, resp.Entry)
-			cur = resp.Entry.Round - 1
 		case <-ctx.Done():
 			return nil, xerrors.Errorf("context timed out waiting on beacon entry to come back for epoch %d: %w", epoch, ctx.Err())
 		}

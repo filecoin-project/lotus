@@ -74,7 +74,7 @@ func (ts *apiSuite) testVersion(t *testing.T) {
 
 	versions := strings.Split(v.Version, "+")
 	require.NotZero(t, len(versions), "empty version")
-	require.Equal(t, versions[0], build.BuildVersion)
+	require.Equal(t, versions[0], build.NodeBuildVersion)
 }
 
 func (ts *apiSuite) testID(t *testing.T) {

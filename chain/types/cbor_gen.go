@@ -55,7 +55,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.BeaconEntries ([]types.BeaconEntry) (slice)
-	if len(t.BeaconEntries) > cbg.MaxLength {
+	if len(t.BeaconEntries) > 8192 {
 		return xerrors.Errorf("Slice value in field t.BeaconEntries was too long")
 	}
 
@@ -66,10 +66,11 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.WinPoStProof ([]proof.PoStProof) (slice)
-	if len(t.WinPoStProof) > cbg.MaxLength {
+	if len(t.WinPoStProof) > 8192 {
 		return xerrors.Errorf("Slice value in field t.WinPoStProof was too long")
 	}
 
@@ -80,10 +81,11 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Parents ([]cid.Cid) (slice)
-	if len(t.Parents) > cbg.MaxLength {
+	if len(t.Parents) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Parents was too long")
 	}
 
@@ -238,7 +240,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.BeaconEntries: array too large (%d)", extra)
 	}
 
@@ -266,9 +268,9 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.WinPoStProof ([]proof.PoStProof) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -276,7 +278,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.WinPoStProof: array too large (%d)", extra)
 	}
 
@@ -304,9 +306,9 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Parents ([]cid.Cid) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -314,7 +316,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Parents: array too large (%d)", extra)
 	}
 
@@ -345,9 +347,9 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Parents[i] = c
 
 			}
+
 		}
 	}
-
 	// t.ParentWeight (big.Int) (struct)
 
 	{
@@ -360,10 +362,10 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Height (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -511,7 +513,7 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.VRFProof ([]uint8) (slice)
-	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
+	if len(t.VRFProof) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.VRFProof was too long")
 	}
 
@@ -519,9 +521,10 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.VRFProof[:]); err != nil {
+	if _, err := cw.Write(t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -555,7 +558,7 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.VRFProof: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -566,9 +569,10 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) (err error) {
 		t.VRFProof = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.VRFProof[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -598,7 +602,7 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.VRFProof ([]uint8) (slice)
-	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
+	if len(t.VRFProof) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.VRFProof was too long")
 	}
 
@@ -606,9 +610,10 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.VRFProof[:]); err != nil {
+	if _, err := cw.Write(t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -638,10 +643,10 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.WinCount (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -667,7 +672,7 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.VRFProof: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -678,9 +683,10 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) (err error) {
 		t.VRFProof = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.VRFProof[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.VRFProof); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -753,7 +759,7 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Params ([]uint8) (slice)
-	if len(t.Params) > cbg.ByteArrayMaxLen {
+	if len(t.Params) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Params was too long")
 	}
 
@@ -761,9 +767,10 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Params[:]); err != nil {
+	if _, err := cw.Write(t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -848,10 +855,10 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.GasLimit (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -909,7 +916,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Params: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -920,9 +927,10 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Params = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Params[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1343,7 +1351,7 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.BlsMessages ([]cid.Cid) (slice)
-	if len(t.BlsMessages) > cbg.MaxLength {
+	if len(t.BlsMessages) > 8192 {
 		return xerrors.Errorf("Slice value in field t.BlsMessages was too long")
 	}
 
@@ -1359,7 +1367,7 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SecpkMessages ([]cid.Cid) (slice)
-	if len(t.SecpkMessages) > cbg.MaxLength {
+	if len(t.SecpkMessages) > 8192 {
 		return xerrors.Errorf("Slice value in field t.SecpkMessages was too long")
 	}
 
@@ -1425,7 +1433,7 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.BlsMessages: array too large (%d)", extra)
 	}
 
@@ -1456,9 +1464,9 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 				t.BlsMessages[i] = c
 
 			}
+
 		}
 	}
-
 	// t.SecpkMessages ([]cid.Cid) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -1466,7 +1474,7 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.SecpkMessages: array too large (%d)", extra)
 	}
 
@@ -1497,9 +1505,9 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 				t.SecpkMessages[i] = c
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -1518,7 +1526,7 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cids ([]cid.Cid) (slice)
-	if len(t.Cids) > cbg.MaxLength {
+	if len(t.Cids) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Cids was too long")
 	}
 
@@ -1534,7 +1542,7 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Blocks ([]*types.BlockHeader) (slice)
-	if len(t.Blocks) > cbg.MaxLength {
+	if len(t.Blocks) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Blocks was too long")
 	}
 
@@ -1545,6 +1553,7 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Height (abi.ChainEpoch) (int64)
@@ -1557,6 +1566,7 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -1590,7 +1600,7 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Cids: array too large (%d)", extra)
 	}
 
@@ -1621,9 +1631,9 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Cids[i] = c
 
 			}
+
 		}
 	}
-
 	// t.Blocks ([]*types.BlockHeader) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -1631,7 +1641,7 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Blocks: array too large (%d)", extra)
 	}
 
@@ -1669,16 +1679,16 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Height (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -1721,7 +1731,7 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Data ([]uint8) (slice)
-	if len(t.Data) > cbg.ByteArrayMaxLen {
+	if len(t.Data) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Data was too long")
 	}
 
@@ -1729,9 +1739,10 @@ func (t *BeaconEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Data[:]); err != nil {
+	if _, err := cw.Write(t.Data); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1779,7 +1790,7 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Data: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -1790,9 +1801,10 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Data = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Data[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Data); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1908,6 +1920,7 @@ func (t *StateInfo0) MarshalCBOR(w io.Writer) error {
 	if _, err := cw.Write(lengthBufStateInfo0); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1958,7 +1971,7 @@ func (t *Event) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Entries ([]types.EventEntry) (slice)
-	if len(t.Entries) > cbg.MaxLength {
+	if len(t.Entries) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Entries was too long")
 	}
 
@@ -1969,6 +1982,7 @@ func (t *Event) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -2017,7 +2031,7 @@ func (t *Event) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Entries: array too large (%d)", extra)
 	}
 
@@ -2045,9 +2059,9 @@ func (t *Event) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -2071,7 +2085,7 @@ func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Key (string) (string)
-	if len(t.Key) > cbg.MaxLength {
+	if len(t.Key) > 8192 {
 		return xerrors.Errorf("Value in field t.Key was too long")
 	}
 
@@ -2089,7 +2103,7 @@ func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Value ([]uint8) (slice)
-	if len(t.Value) > cbg.ByteArrayMaxLen {
+	if len(t.Value) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Value was too long")
 	}
 
@@ -2097,9 +2111,10 @@ func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Value[:]); err != nil {
+	if _, err := cw.Write(t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -2142,7 +2157,7 @@ func (t *EventEntry) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Key (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -2170,7 +2185,7 @@ func (t *EventEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Value: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -2181,9 +2196,10 @@ func (t *EventEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Value = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Value[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Value); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -2202,7 +2218,7 @@ func (t *GasTrace) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Name (string) (string)
-	if len(t.Name) > cbg.MaxLength {
+	if len(t.Name) > 8192 {
 		return xerrors.Errorf("Value in field t.Name was too long")
 	}
 
@@ -2256,6 +2272,7 @@ func (t *GasTrace) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -2285,7 +2302,7 @@ func (t *GasTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Name (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -2295,10 +2312,10 @@ func (t *GasTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.TotalGas (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -2320,10 +2337,10 @@ func (t *GasTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.ComputeGas (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -2345,10 +2362,10 @@ func (t *GasTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.StorageGas (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -2370,10 +2387,10 @@ func (t *GasTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.TimeTaken (time.Duration) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -2395,7 +2412,83 @@ func (t *GasTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufMessageTrace = []byte{137}
+var lengthBufActorTrace = []byte{130}
+
+func (t *ActorTrace) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufActorTrace); err != nil {
+		return err
+	}
+
+	// t.Id (abi.ActorID) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Id)); err != nil {
+		return err
+	}
+
+	// t.State (types.ActorV5) (struct)
+	if err := t.State.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *ActorTrace) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ActorTrace{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Id (abi.ActorID) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Id = abi.ActorID(extra)
+
+	}
+	// t.State (types.ActorV5) (struct)
+
+	{
+
+		if err := t.State.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.State: %w", err)
+		}
+
+	}
+	return nil
+}
+
+var lengthBufMessageTrace = []byte{136}
 
 func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -2431,7 +2524,7 @@ func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Params ([]uint8) (slice)
-	if len(t.Params) > cbg.ByteArrayMaxLen {
+	if len(t.Params) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Params was too long")
 	}
 
@@ -2439,7 +2532,7 @@ func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Params[:]); err != nil {
+	if _, err := cw.Write(t.Params); err != nil {
 		return err
 	}
 
@@ -2459,13 +2552,6 @@ func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteBool(w, t.ReadOnly); err != nil {
 		return err
 	}
-
-	// t.CodeCid (cid.Cid) (struct)
-
-	if err := cbg.WriteCid(cw, t.CodeCid); err != nil {
-		return xerrors.Errorf("failed to write cid field t.CodeCid: %w", err)
-	}
-
 	return nil
 }
 
@@ -2488,7 +2574,7 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 9 {
+	if extra != 8 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2540,7 +2626,7 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Params: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -2551,9 +2637,10 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Params = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Params[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Params); err != nil {
 		return err
 	}
+
 	// t.ParamsCodec (uint64) (uint64)
 
 	{
@@ -2599,18 +2686,6 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
-	// t.CodeCid (cid.Cid) (struct)
-
-	{
-
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.CodeCid: %w", err)
-		}
-
-		t.CodeCid = c
-
-	}
 	return nil
 }
 
@@ -2640,7 +2715,7 @@ func (t *ReturnTrace) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Return ([]uint8) (slice)
-	if len(t.Return) > cbg.ByteArrayMaxLen {
+	if len(t.Return) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Return was too long")
 	}
 
@@ -2648,7 +2723,7 @@ func (t *ReturnTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Return[:]); err != nil {
+	if _, err := cw.Write(t.Return); err != nil {
 		return err
 	}
 
@@ -2687,10 +2762,10 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.ExitCode (exitcode.ExitCode) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -2716,7 +2791,7 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Return: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -2727,9 +2802,10 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Return = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Return[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Return); err != nil {
 		return err
 	}
+
 	// t.ReturnCodec (uint64) (uint64)
 
 	{
@@ -2747,7 +2823,7 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufExecutionTrace = []byte{132}
+var lengthBufExecutionTrace = []byte{133}
 
 func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -2771,6 +2847,11 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.InvokedActor (types.ActorTrace) (struct)
+	if err := t.InvokedActor.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
 	// t.GasCharges ([]*types.GasTrace) (slice)
 	if len(t.GasCharges) > 1000000000 {
 		return xerrors.Errorf("Slice value in field t.GasCharges was too long")
@@ -2783,6 +2864,7 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.Subcalls ([]types.ExecutionTrace) (slice)
@@ -2797,6 +2879,7 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -2820,7 +2903,7 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2839,6 +2922,25 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 
 		if err := t.MsgRct.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.MsgRct: %w", err)
+		}
+
+	}
+	// t.InvokedActor (types.ActorTrace) (struct)
+
+	{
+
+		b, err := cr.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
+			t.InvokedActor = new(ActorTrace)
+			if err := t.InvokedActor.UnmarshalCBOR(cr); err != nil {
+				return xerrors.Errorf("unmarshaling t.InvokedActor pointer: %w", err)
+			}
 		}
 
 	}
@@ -2887,9 +2989,9 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.Subcalls ([]types.ExecutionTrace) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -2925,8 +3027,8 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	return nil
 }

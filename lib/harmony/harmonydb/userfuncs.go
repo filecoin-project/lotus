@@ -3,16 +3,18 @@ package harmonydb
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
+	"time"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/georgysavva/scany/v2/dbscan"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/samber/lo"
+	"github.com/yugabyte/pgx/v5"
+	"github.com/yugabyte/pgx/v5/pgconn"
 )
 
-var errTx = errors.New("Cannot use a non-transaction func in a transaction")
+var errTx = errors.New("cannot use a non-transaction func in a transaction")
 
 // rawStringOnly is _intentionally_private_ to force only basic strings in SQL queries.
 // In any package, raw strings will satisfy compilation.  Ex:
@@ -41,7 +43,7 @@ type Qry interface {
 	Values() ([]any, error)
 }
 
-// Query offers Next/Err/Close/Scan/Values/StructScan
+// Query offers Next/Err/Close/Scan/Values
 type Query struct {
 	Qry
 }
@@ -68,8 +70,12 @@ func (db *DB) Query(ctx context.Context, sql rawStringOnly, arguments ...any) (*
 	q, err := db.pgx.Query(ctx, string(sql), arguments...)
 	return &Query{q}, err
 }
+
+// StructScan allows scanning a single row into a struct.
+// This improves efficiency of processing large result sets
+// by avoiding the need to allocate a slice of structs.
 func (q *Query) StructScan(s any) error {
-	return pgxscan.ScanRow(s, q.Qry.(pgx.Rows))
+	return dbscan.ScanRow(s, dbscanRows{q.Qry.(pgx.Rows)})
 }
 
 type Row interface {
@@ -94,6 +100,24 @@ func (db *DB) QueryRow(ctx context.Context, sql rawStringOnly, arguments ...any)
 	return db.pgx.QueryRow(ctx, string(sql), arguments...)
 }
 
+type dbscanRows struct {
+	pgx.Rows
+}
+
+func (d dbscanRows) Close() error {
+	d.Rows.Close()
+	return nil
+}
+func (d dbscanRows) Columns() ([]string, error) {
+	return lo.Map(d.Rows.FieldDescriptions(), func(fd pgconn.FieldDescription, _ int) string {
+		return fd.Name
+	}), nil
+}
+
+func (d dbscanRows) NextResultSet() bool {
+	return false
+}
+
 /*
 Select multiple rows into a slice using name matching
 Ex:
@@ -112,7 +136,12 @@ func (db *DB) Select(ctx context.Context, sliceOfStructPtr any, sql rawStringOnl
 	if db.usedInTransaction() {
 		return errTx
 	}
-	return pgxscan.Select(ctx, db.pgx, sliceOfStructPtr, string(sql), arguments...)
+	rows, err := db.pgx.Query(ctx, string(sql), arguments...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	return dbscan.ScanAll(sliceOfStructPtr, dbscanRows{rows})
 }
 
 type Tx struct {
@@ -129,6 +158,25 @@ func (db *DB) usedInTransaction() bool {
 	return lo.Contains(framePtrs, db.BTFP.Load())         // Unsafe read @ beginTx overlap, but 'return false' is correct there.
 }
 
+type TransactionOptions struct {
+	RetrySerializationError            bool
+	InitialSerializationErrorRetryWait time.Duration
+}
+
+type TransactionOption func(*TransactionOptions)
+
+func OptionRetry() TransactionOption {
+	return func(o *TransactionOptions) {
+		o.RetrySerializationError = true
+	}
+}
+
+func OptionSerialRetryTime(d time.Duration) TransactionOption {
+	return func(o *TransactionOptions) {
+		o.InitialSerializationErrorRetryWait = d
+	}
+}
+
 // BeginTransaction is how you can access transactions using this library.
 // The entire transaction happens in the function passed in.
 // The return must be true or a rollback will occur.
@@ -137,7 +185,7 @@ func (db *DB) usedInTransaction() bool {
 //	when there is a DB serialization error.
 //
 //go:noinline
-func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, err error)) (didCommit bool, retErr error) {
+func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, err error), opt ...TransactionOption) (didCommit bool, retErr error) {
 	db.BTFPOnce.Do(func() {
 		fp := make([]uintptr, 20)
 		runtime.Callers(1, fp)
@@ -146,6 +194,28 @@ func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, er
 	if db.usedInTransaction() {
 		return false, errTx
 	}
+
+	opts := TransactionOptions{
+		RetrySerializationError:            false,
+		InitialSerializationErrorRetryWait: 10 * time.Millisecond,
+	}
+
+	for _, o := range opt {
+		o(&opts)
+	}
+
+retry:
+	comm, err := db.transactionInner(ctx, f)
+	if err != nil && opts.RetrySerializationError && IsErrSerialization(err) {
+		time.Sleep(opts.InitialSerializationErrorRetryWait)
+		opts.InitialSerializationErrorRetryWait *= 2
+		goto retry
+	}
+
+	return comm, err
+}
+
+func (db *DB) transactionInner(ctx context.Context, f func(*Tx) (commit bool, err error)) (didCommit bool, retErr error) {
 	tx, err := db.pgx.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return false, err
@@ -191,7 +261,12 @@ func (t *Tx) QueryRow(sql rawStringOnly, arguments ...any) Row {
 
 // Select in a transaction.
 func (t *Tx) Select(sliceOfStructPtr any, sql rawStringOnly, arguments ...any) error {
-	return pgxscan.Select(t.ctx, t.Tx, sliceOfStructPtr, string(sql), arguments...)
+	rows, err := t.Query(sql, arguments...)
+	if err != nil {
+		return fmt.Errorf("scany: query multiple result rows: %w", err)
+	}
+	defer rows.Close()
+	return dbscan.ScanAll(sliceOfStructPtr, dbscanRows{rows.Qry.(pgx.Rows)})
 }
 
 func IsErrUniqueContraint(err error) bool {
