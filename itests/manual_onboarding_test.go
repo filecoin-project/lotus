@@ -19,7 +19,7 @@ const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
 func TestManualSectorOnboarding(t *testing.T) {
 	req := require.New(t)
 
-	for _, withMockProofs := range []bool{false, true} {
+	for _, withMockProofs := range []bool{true, false} {
 		testName := "WithRealProofs"
 		if withMockProofs {
 			testName = "WithMockProofs"
