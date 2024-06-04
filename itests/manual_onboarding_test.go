@@ -93,8 +93,6 @@ func TestManualCCOnboarding(t *testing.T) {
 			minerB.AssertNoPower(ctx)
 			// Ensure that the block miner checks for and waits for posts from our new miner with a sector
 			blockMiner.WatchMinerForPost(minerB.ActorAddr)
-			// Activate CC Sector for Miner B and assert power
-			activateAndAssertPower(ctx, t, minerB, respCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
 
 			// --- Miner C onboards sector with data/pieces
 			var cSectorNum abi.SectorNumber
@@ -109,13 +107,15 @@ func TestManualCCOnboarding(t *testing.T) {
 			minerC.AssertNoPower(ctx)
 			// Ensure that the block miner checks for and waits for posts from our new miner with a sector
 			blockMiner.WatchMinerForPost(minerC.ActorAddr)
-			// Activate CC Sector for Miner C and assert power
-			activateAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize), withMockProofs)
+
+			// Wait till both miners' sectors have had their first post and are activated and check that this is reflected in miner power
+			waitTillActivatedAndAssertPower(ctx, t, minerB, respCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
+			waitTillActivatedAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize), withMockProofs)
 		})
 	}
 }
 
-func activateAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, respCh chan kit.WindowPostResp, sector abi.SectorNumber,
+func waitTillActivatedAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, respCh chan kit.WindowPostResp, sector abi.SectorNumber,
 	sectorSize uint64, withMockProofs bool) {
 	req := require.New(t)
 	// wait till sector is activated
