@@ -25,13 +25,16 @@ func TestManualCCOnboarding(t *testing.T) {
 			testName = "WithMockProofs"
 		}
 		t.Run(testName, func(t *testing.T) {
+			if testName == "WithRealProofs" {
+				kit.Expensive(t)
+			}
 			kit.QuietMiningLogs()
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			var (
 				// need to pick a balance value so that the test is not racy on CI by running through it's WindowPostDeadlines too fast
-				blocktime = 5 * time.Millisecond
+				blocktime = 2 * time.Millisecond
 				client    kit.TestFullNode
 				minerA    kit.TestMiner // A is a standard genesis miner
 			)
@@ -59,6 +62,7 @@ func TestManualCCOnboarding(t *testing.T) {
 			// for the processes of sector onboarding and activation.
 			nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey)}
 			minerB, ens := ens.UnmanagedMiner(&client, nodeOpts...)
+			// MinerC is similar to MinerB, but onboards pieces instead of a pure CC sector
 			minerC, ens := ens.UnmanagedMiner(&client, nodeOpts...)
 
 			ens.Start()
@@ -82,16 +86,16 @@ func TestManualCCOnboarding(t *testing.T) {
 
 			// ---- Miner B onboards a CC sector
 			var bSectorNum abi.SectorNumber
-			var respCh chan kit.WindowPostResp
+			var bRespCh chan kit.WindowPostResp
 
 			if withMockProofs {
-				bSectorNum, respCh = minerB.OnboardSectorWithPiecesAndMockProofs(ctx, kit.TestSpt)
+				bSectorNum, bRespCh = minerB.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
 			} else {
-				bSectorNum, respCh = minerB.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
+				bSectorNum, bRespCh = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
 			}
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower(ctx)
-			// Ensure that the block miner checks for and waits for posts from our new miner with a sector
+			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
 			blockMiner.WatchMinerForPost(minerB.ActorAddr)
 
 			// --- Miner C onboards sector with data/pieces
@@ -99,17 +103,17 @@ func TestManualCCOnboarding(t *testing.T) {
 			var cRespCh chan kit.WindowPostResp
 
 			if withMockProofs {
-				cSectorNum, cRespCh = minerC.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
+				cSectorNum, cRespCh = minerC.OnboardSectorWithPiecesAndMockProofs(ctx, kit.TestSpt)
 			} else {
-				cSectorNum, cRespCh = minerC.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
+				cSectorNum, cRespCh = minerC.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
 			}
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerC.AssertNoPower(ctx)
-			// Ensure that the block miner checks for and waits for posts from our new miner with a sector
+			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
 			blockMiner.WatchMinerForPost(minerC.ActorAddr)
 
 			// Wait till both miners' sectors have had their first post and are activated and check that this is reflected in miner power
-			waitTillActivatedAndAssertPower(ctx, t, minerB, respCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
+			waitTillActivatedAndAssertPower(ctx, t, minerB, bRespCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
 			waitTillActivatedAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize), withMockProofs)
 		})
 	}
