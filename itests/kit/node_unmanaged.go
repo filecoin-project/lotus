@@ -279,7 +279,7 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, false)
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
 	return sectorNumber, respCh
 }
@@ -344,7 +344,7 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.C
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, true)
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
 	return sectorNumber, respCh
 }
@@ -497,7 +497,7 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context,
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, true)
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
 	return sectorNumber, respCh
 }
@@ -551,12 +551,12 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, false)
+	go tm.wdPostLoop(ctx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
 	return sectorNumber, respCh
 }
 
-func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, withMockProofs bool) {
+func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, withMockProofs bool, sealedCid cid.Cid, sealedPath, cacheDir string) {
 	go func() {
 		var firstPost bool
 
@@ -597,7 +597,7 @@ func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.S
 				}
 			}
 
-			err = tm.submitWindowPost(ctx, sectorNumber, withMockProofs)
+			err = tm.submitWindowPost(ctx, sectorNumber, withMockProofs, sealedCid, sealedPath, cacheDir)
 			writeRespF(err) // send an error, or first post, or nothing if no error and this isn't the first post
 			postCount++
 			tm.t.Logf("Sector %d: WindowPoSt #%d submitted", sectorNumber, postCount)
@@ -637,7 +637,7 @@ func (tm *TestUnmanagedMiner) SubmitPostDispute(ctx context.Context, sectorNumbe
 	return err
 }
 
-func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber abi.SectorNumber, withMockProofs bool) error {
+func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber abi.SectorNumber, withMockProofs bool, sealedCid cid.Cid, sealedPath, cacheDir string) error {
 	tm.t.Logf("Miner(%s): WindowPoST(%d): Running WindowPoSt ...\n", tm.ActorAddr, sectorNumber)
 
 	head, err := tm.FullNode.ChainHead(ctx)
@@ -663,7 +663,7 @@ func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber
 	if withMockProofs {
 		proofBytes = []byte{0xde, 0xad, 0xbe, 0xef}
 	} else {
-		proofBytes, err = tm.generateWindowPost(ctx, sectorNumber)
+		proofBytes, err = tm.generateWindowPost(ctx, sectorNumber, sealedCid, sealedPath, cacheDir)
 		if err != nil {
 			return fmt.Errorf("Miner(%s): failed to generate window post for sector %d: %w", tm.ActorAddr, sectorNumber, err)
 		}
@@ -706,6 +706,9 @@ func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber
 func (tm *TestUnmanagedMiner) generateWindowPost(
 	ctx context.Context,
 	sectorNumber abi.SectorNumber,
+	sealedCid cid.Cid,
+	sealedPath string,
+	cacheDir string,
 ) ([]byte, error) {
 	head, err := tm.FullNode.ChainHead(ctx)
 	if err != nil {
@@ -738,11 +741,11 @@ func (tm *TestUnmanagedMiner) generateWindowPost(
 		SectorInfo: proof.SectorInfo{
 			SealProof:    tm.proofType[sectorNumber],
 			SectorNumber: sectorNumber,
-			SealedCID:    tm.sealedCids[sectorNumber],
+			SealedCID:    sealedCid,
 		},
-		CacheDirPath:     tm.cacheDirPaths[sectorNumber],
+		CacheDirPath:     cacheDir,
 		PoStProofType:    minerInfo.WindowPoStProofType,
-		SealedSectorPath: tm.sealedSectorPaths[sectorNumber],
+		SealedSectorPath: sealedPath,
 	}
 
 	actorIdNum, err := address.IDFromAddress(tm.ActorAddr)
@@ -769,7 +772,7 @@ func (tm *TestUnmanagedMiner) generateWindowPost(
 	info := proof.WindowPoStVerifyInfo{
 		Randomness:        postRand,
 		Proofs:            []proof.PoStProof{{PoStProof: minerInfo.WindowPoStProofType, ProofBytes: proofBytes}},
-		ChallengedSectors: []proof.SectorInfo{{SealProof: tm.proofType[sectorNumber], SectorNumber: sectorNumber, SealedCID: tm.sealedCids[sectorNumber]}},
+		ChallengedSectors: []proof.SectorInfo{{SealProof: tm.proofType[sectorNumber], SectorNumber: sectorNumber, SealedCID: sealedCid}},
 		Prover:            actorId,
 	}
 
