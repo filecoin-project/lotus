@@ -83,9 +83,9 @@ func profileOnSignal(cctx *cli.Context, signals ...os.Signal) {
 			case context.Canceled:
 				return
 			case nil:
-				fmt.Fprintf(cctx.App.ErrWriter, "Wrote profile to %q\n", fname)
+				_, _ = fmt.Fprintf(cctx.App.ErrWriter, "Wrote profile to %q\n", fname)
 			default:
-				fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to write profile: %s\n", err)
+				_, _ = fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to write profile: %s\n", err)
 			}
 		case <-cctx.Done():
 			return

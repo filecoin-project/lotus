@@ -51,22 +51,22 @@ Signals:
 				return err
 			}
 
-			fmt.Fprintf(cctx.App.Writer, "advanced to %d %s\n", ts.Height(), ts.Key())
+			_, _ = fmt.Fprintf(cctx.App.Writer, "advanced to %d %s\n", ts.Height(), ts.Key())
 
 			// Print
 			select {
 			case <-ch:
-				fmt.Fprintln(cctx.App.Writer, "---------------------")
+				_, _ = fmt.Fprintln(cctx.App.Writer, "---------------------")
 				if err := printInfo(cctx.Context, sim, cctx.App.Writer); err != nil {
-					fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to print info: %s\n", err)
+					_, _ = fmt.Fprintf(cctx.App.ErrWriter, "ERROR: failed to print info: %s\n", err)
 				}
-				fmt.Fprintln(cctx.App.Writer, "---------------------")
+				_, _ = fmt.Fprintln(cctx.App.Writer, "---------------------")
 			case <-cctx.Context.Done():
 				return cctx.Err()
 			default:
 			}
 		}
-		fmt.Fprintln(cctx.App.Writer, "simulation done")
+		_, _ = fmt.Fprintln(cctx.App.Writer, "simulation done")
 		return err
 	},
 }

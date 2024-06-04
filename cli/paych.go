@@ -93,7 +93,7 @@ var paychAddFundsCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, chAddr)
+		_, _ = fmt.Fprintln(cctx.App.Writer, chAddr)
 		return nil
 	},
 }
@@ -168,23 +168,23 @@ var paychStatusCmd = &cli.Command{
 func paychStatus(writer io.Writer, avail *lapi.ChannelAvailableFunds) {
 	if avail.Channel == nil {
 		if avail.PendingWaitSentinel != nil {
-			fmt.Fprint(writer, "Creating channel\n")
-			fmt.Fprintf(writer, "  From:          %s\n", avail.From)
-			fmt.Fprintf(writer, "  To:            %s\n", avail.To)
-			fmt.Fprintf(writer, "  Pending Amt:   %s\n", types.FIL(avail.PendingAmt))
-			fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
+			_, _ = fmt.Fprint(writer, "Creating channel\n")
+			_, _ = fmt.Fprintf(writer, "  From:          %s\n", avail.From)
+			_, _ = fmt.Fprintf(writer, "  To:            %s\n", avail.To)
+			_, _ = fmt.Fprintf(writer, "  Pending Amt:   %s\n", types.FIL(avail.PendingAmt))
+			_, _ = fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
 			return
 		}
-		fmt.Fprint(writer, "Channel does not exist\n")
-		fmt.Fprintf(writer, "  From: %s\n", avail.From)
-		fmt.Fprintf(writer, "  To:   %s\n", avail.To)
+		_, _ = fmt.Fprint(writer, "Channel does not exist\n")
+		_, _ = fmt.Fprintf(writer, "  From: %s\n", avail.From)
+		_, _ = fmt.Fprintf(writer, "  To:   %s\n", avail.To)
 		return
 	}
 
 	if avail.PendingWaitSentinel != nil {
-		fmt.Fprint(writer, "Adding Funds to channel\n")
+		_, _ = fmt.Fprint(writer, "Adding Funds to channel\n")
 	} else {
-		fmt.Fprint(writer, "Channel exists\n")
+		_, _ = fmt.Fprint(writer, "Channel exists\n")
 	}
 
 	nameValues := [][]string{
@@ -204,7 +204,7 @@ func paychStatus(writer io.Writer, avail *lapi.ChannelAvailableFunds) {
 			avail.PendingWaitSentinel.String(),
 		})
 	}
-	fmt.Fprint(writer, formatNameValues(nameValues))
+	_, _ = fmt.Fprint(writer, formatNameValues(nameValues))
 }
 
 func formatNameValues(nameValues [][]string) string {
@@ -240,7 +240,7 @@ var paychListCmd = &cli.Command{
 		}
 
 		for _, v := range chs {
-			fmt.Fprintln(cctx.App.Writer, v.String())
+			_, _ = fmt.Fprintln(cctx.App.Writer, v.String())
 		}
 		return nil
 	},
@@ -281,7 +281,7 @@ var paychSettleCmd = &cli.Command{
 			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Settled channel %s\n", ch)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Settled channel %s\n", ch)
 		return nil
 	},
 }
@@ -321,7 +321,7 @@ var paychCloseCmd = &cli.Command{
 			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Collected funds for channel %s\n", ch)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Collected funds for channel %s\n", ch)
 		return nil
 	},
 }
@@ -381,7 +381,7 @@ var paychVoucherCreateCmd = &cli.Command{
 		}
 
 		if v.Voucher == nil {
-			return fmt.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", v.Shortfall)
+			return fmt.Errorf("could not create voucher: insufficient funds in channel, shortfall: %d", v.Shortfall)
 		}
 
 		enc, err := EncodedString(v.Voucher)
@@ -389,7 +389,7 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, enc)
+		_, _ = fmt.Fprintln(cctx.App.Writer, enc)
 		return nil
 	},
 }
@@ -425,7 +425,7 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "voucher is valid")
+		_, _ = fmt.Fprintln(cctx.App.Writer, "voucher is valid")
 		return nil
 	},
 }
@@ -580,12 +580,16 @@ func outputVoucher(w io.Writer, v *paych.SignedVoucher, export bool) error {
 		}
 	}
 
-	fmt.Fprintf(w, "Lane %d, Nonce %d: %s", v.Lane, v.Nonce, types.FIL(v.Amount))
-	if export {
-		fmt.Fprintf(w, "; %s", enc)
+	if _, err := fmt.Fprintf(w, "Lane %d, Nonce %d: %s", v.Lane, v.Nonce, types.FIL(v.Amount)); err != nil {
+		return err
 	}
-	fmt.Fprintln(w)
-	return nil
+	if export {
+		if _, err := fmt.Fprintf(w, "; %s", enc); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintln(w)
+	return err
 }
 
 var paychVoucherSubmitCmd = &cli.Command{
@@ -629,7 +633,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "channel updated successfully")
+		_, _ = fmt.Fprintln(cctx.App.Writer, "channel updated successfully")
 
 		return nil
 	},

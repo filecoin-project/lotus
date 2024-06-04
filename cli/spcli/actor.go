@@ -670,7 +670,7 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			}
 
 			if !cctx.Bool("really-do-it") {
-				fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+				_, _ = fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
 				return nil
 			}
 
@@ -695,7 +695,7 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 				return xerrors.Errorf("mpool push: %w", err)
 			}
 
-			fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
+			_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
 			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
@@ -716,8 +716,8 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 				return fmt.Errorf("Proposed worker address change not reflected on chain: expected '%s', found '%s'", na, mi.NewWorker)
 			}
 
-			fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully sent, change happens at height %d.\n", na, mi.WorkerChangeEpoch)
-			fmt.Fprintf(cctx.App.Writer, "If you have no active deadlines, call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully sent, change happens at height %d.\n", na, mi.WorkerChangeEpoch)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "If you have no active deadlines, call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch)
 
 			return nil
 		},
@@ -942,7 +942,7 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 
 			// check it executed successfully
 			if wait.Receipt.ExitCode.IsError() {
-				fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
+				_, _ = fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
 				return err
 			}
 
