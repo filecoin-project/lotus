@@ -349,6 +349,112 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.C
 	return sectorNumber, respCh
 }
 
+func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(_ context.Context, sectorNumber abi.SectorNumber, pt abi.RegisteredSealProof) ([]abi.PieceInfo, string) {
+	paddedPieceSize := abi.PaddedPieceSize(tm.options.sectorSize)
+	unpaddedPieceSize := paddedPieceSize.Unpadded()
+
+	// Generate random bytes for the piece
+	randomBytes := make([]byte, unpaddedPieceSize)
+	_, err := io.ReadFull(rand.Reader, randomBytes)
+	require.NoError(tm.t, err)
+
+	// Create a temporary file for the first piece
+	pieceFileA := requireTempFile(tm.t, bytes.NewReader(randomBytes), uint64(unpaddedPieceSize))
+
+	// Generate the piece CID from the file
+	pieceCIDA, err := ffi.GeneratePieceCIDFromFile(pt, pieceFileA, unpaddedPieceSize)
+	require.NoError(tm.t, err)
+
+	// Reset file offset to the beginning after CID generation
+	_, err = pieceFileA.Seek(0, io.SeekStart)
+	require.NoError(tm.t, err)
+
+	unsealedSectorFile := requireTempFile(tm.t, bytes.NewReader([]byte{}), 0)
+	defer func() {
+		_ = unsealedSectorFile.Close()
+	}()
+
+	// Write the piece to the staged sector file without alignment
+	writtenBytes, pieceCID, err := ffi.WriteWithoutAlignment(pt, pieceFileA, unpaddedPieceSize, unsealedSectorFile)
+	require.NoError(tm.t, err)
+	require.EqualValues(tm.t, unpaddedPieceSize, writtenBytes)
+	require.True(tm.t, pieceCID.Equals(pieceCIDA))
+
+	// Create a struct for the piece info
+	publicPieces := []abi.PieceInfo{{
+		Size:     paddedPieceSize,
+		PieceCID: pieceCIDA,
+	}}
+
+	return publicPieces, unsealedSectorFile.Name()
+}
+
+func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof, sectorNumber abi.SectorNumber) {
+	// generate sector key
+	pieces, unsealedPath := tm.mkStagedFileWithPieces(ctx, sectorNumber, proofType)
+	updateProofType := abi.SealProofInfos[proofType].UpdateProof
+
+	s, err := os.Stat(tm.sealedSectorPaths[sectorNumber])
+	require.NoError(tm.t, err)
+
+	randomBytes := make([]byte, s.Size())
+	_, err = io.ReadFull(rand.Reader, randomBytes)
+	require.NoError(tm.t, err)
+
+	updatePath := requireTempFile(tm.t, bytes.NewReader(randomBytes), uint64(s.Size()))
+	_ = updatePath.Close()
+	updateDir := filepath.Join(tm.t.TempDir(), fmt.Sprintf("update-%d", sectorNumber))
+	_ = os.MkdirAll(updateDir, 0700)
+
+	newSealed, newUnsealed, err := ffi.SectorUpdate.EncodeInto(updateProofType, updatePath.Name(), updateDir,
+		tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber], unsealedPath, pieces)
+	require.NoError(tm.t, err)
+
+	vp, err := ffi.SectorUpdate.GenerateUpdateVanillaProofs(updateProofType, tm.sealedCids[sectorNumber],
+		newSealed, newUnsealed, updatePath.Name(), updateDir, tm.sealedSectorPaths[sectorNumber],
+		tm.cacheDirPaths[sectorNumber])
+	require.NoError(tm.t, err)
+
+	snapProof, err := ffi.SectorUpdate.GenerateUpdateProofWithVanilla(updateProofType, tm.sealedCids[sectorNumber],
+		newSealed, newUnsealed, vp)
+	require.NoError(tm.t, err)
+
+	// submit proof
+	var manifest []miner14.PieceActivationManifest
+	for _, piece := range pieces {
+		manifest = append(manifest, miner14.PieceActivationManifest{
+			CID:  piece.PieceCID,
+			Size: piece.Size,
+		})
+	}
+
+	head, err := tm.FullNode.ChainHead(ctx)
+	require.NoError(tm.t, err)
+
+	sl, err := tm.FullNode.StateSectorPartition(ctx, tm.ActorAddr, sectorNumber, head.Key())
+	require.NoError(tm.t, err)
+
+	params := &miner14.ProveReplicaUpdates3Params{
+		SectorUpdates: []miner14.SectorUpdateManifest{
+			{
+				Sector:       sectorNumber,
+				Deadline:     sl.Deadline,
+				Partition:    sl.Partition,
+				NewSealedCID: newSealed,
+				Pieces:       manifest,
+			},
+		},
+		SectorProofs:               [][]byte{snapProof},
+		UpdateProofsType:           updateProofType,
+		RequireActivationSuccess:   true,
+		RequireNotificationSuccess: false,
+	}
+
+	r, err := tm.submitMessage(ctx, params, 1, builtin.MethodsMiner.ProveReplicaUpdates3)
+	require.NoError(tm.t, err)
+	require.True(tm.t, r.Receipt.ExitCode.IsSuccess())
+}
+
 func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum

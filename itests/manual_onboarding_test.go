@@ -16,7 +16,7 @@ import (
 const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
 
 // Manually onboard CC sectors, bypassing lotus-miner onboarding pathways
-func TestManualCCOnboarding(t *testing.T) {
+func TestManualSectorOnboarding(t *testing.T) {
 	req := require.New(t)
 
 	for _, withMockProofs := range []bool{true, false} {
@@ -115,6 +115,13 @@ func TestManualCCOnboarding(t *testing.T) {
 			// Wait till both miners' sectors have had their first post and are activated and check that this is reflected in miner power
 			waitTillActivatedAndAssertPower(ctx, t, minerB, bRespCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
 			waitTillActivatedAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize), withMockProofs)
+
+			// Miner B has activated the CC sector -> upgrade it with snapdeals
+			// Note: We can't activate a sector with mock proofs as the WdPost is successfully disputed and so no point
+			// in snapping it as snapping is only for activated sectors
+			if !withMockProofs {
+				minerB.SnapDealWithRealProofs(ctx, kit.TestSpt, bSectorNum)
+			}
 		})
 	}
 }
