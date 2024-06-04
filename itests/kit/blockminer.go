@@ -50,6 +50,41 @@ func NewBlockMiner(t *testing.T, miner *TestMiner) *BlockMiner {
 	}
 }
 
+type minerDeadline struct {
+	addr     address.Address
+	deadline dline.Info
+}
+
+type minerDeadlines []minerDeadline
+
+func (mds minerDeadlines) CloseList() []abi.ChainEpoch {
+	var ret []abi.ChainEpoch
+	for _, md := range mds {
+		ret = append(ret, md.deadline.Last())
+	}
+	return ret
+}
+
+func (mds minerDeadlines) MinerStringList() []string {
+	var ret []string
+	for _, md := range mds {
+		ret = append(ret, md.addr.String())
+	}
+	return ret
+}
+
+// FilterByLast returns a new minerDeadlines with only the deadlines that have a Last() epoch
+// greater than or equal to last.
+func (mds minerDeadlines) FilterByLast(last abi.ChainEpoch) minerDeadlines {
+	var ret minerDeadlines
+	for _, md := range mds {
+		if last >= md.deadline.Last() {
+			ret = append(ret, md)
+		}
+	}
+	return ret
+}
+
 type partitionTracker struct {
 	minerAddr  address.Address
 	partitions []api.Partition
@@ -100,7 +135,7 @@ func (p *partitionTracker) recordIfPost(t *testing.T, msg *types.Message) (ret b
 	return
 }
 
-func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, minerAddr address.Address, dlinfo *dline.Info) {
+func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, minerAddr address.Address, dlinfo dline.Info) {
 	tracker := newPartitionTracker(ctx, bm.t, bm.miner.FullNode, minerAddr, dlinfo.Index)
 	if !tracker.done(bm.t) { // need to wait for post
 		bm.t.Logf("expect %d partitions proved but only see %d", len(tracker.partitions), tracker.count(bm.t))
@@ -202,24 +237,25 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			ts, err := bm.miner.FullNode.ChainHead(ctx)
 			require.NoError(bm.t, err)
 
-			// find the miner and its deadline that has the earliest Last() epoch
+			// Get current deadline information for all miners, then filter by the ones that are about to
+			// close so we can force a post for them.
 			bm.postWatchMinersLk.Lock()
-			var earliestDline *dline.Info
-			var earliestMiner address.Address
+			var impendingDeadlines minerDeadlines
 			for _, minerAddr := range bm.postWatchMiners {
 				dlinfo, err := bm.miner.FullNode.StateMinerProvingDeadline(ctx, minerAddr, ts.Key())
 				require.NoError(bm.t, err)
-				if earliestDline == nil || dlinfo.Last() < earliestDline.Last() {
-					earliestDline = dlinfo
-					earliestMiner = minerAddr
-				}
+				require.NotNil(bm.t, dlinfo, "no deadline info for miner %s", minerAddr)
+				impendingDeadlines = append(impendingDeadlines, minerDeadline{addr: minerAddr, deadline: *dlinfo})
 			}
 			bm.postWatchMinersLk.Unlock()
-			require.NotNil(bm.t, earliestDline, "no miners to watch for posts; there should be at least one!")
+			impendingDeadlines = impendingDeadlines.FilterByLast(ts.Height() + 5 + abi.ChainEpoch(nulls))
 
-			if ts.Height()+5+abi.ChainEpoch(nulls) >= earliestDline.Last() { // Next block brings us past the last epoch in dline, we need to wait for miner to post
-				bm.t.Logf("forcing post to get in if due before deadline closes at %d for %s", earliestDline.Last(), earliestMiner.String())
-				bm.forcePoSt(ctx, ts, earliestMiner, earliestDline)
+			if len(impendingDeadlines) > 0 {
+				// Next block brings us too close for at least one deadline, we need to wait for miners to post
+				bm.t.Logf("forcing post to get in if due before deadline closes at %v for %v", impendingDeadlines.CloseList(), impendingDeadlines.MinerStringList())
+				for _, md := range impendingDeadlines {
+					bm.forcePoSt(ctx, ts, md.addr, md.deadline)
+				}
 			}
 
 			var target abi.ChainEpoch
@@ -249,10 +285,13 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					return
 				}
 				if !success {
-					// if we are mining a new null block and it brings us past deadline boundary we need to wait for miner to post
-					if ts.Height()+5+abi.ChainEpoch(nulls+i) >= earliestDline.Last() {
-						bm.t.Logf("forcing post to get in if due before deadline closes at %d for %s", earliestDline.Last(), earliestMiner.String())
-						bm.forcePoSt(ctx, ts, earliestMiner, earliestDline)
+					// if we are mining a new null block and it brings us past deadline boundary we need to wait for miners to post
+					impendingDeadlines = impendingDeadlines.FilterByLast(ts.Height() + 5 + abi.ChainEpoch(nulls+i))
+					if len(impendingDeadlines) > 0 {
+						bm.t.Logf("forcing post to get in if due before deadline closes at %v for %v", impendingDeadlines.CloseList(), impendingDeadlines.MinerStringList())
+						for _, md := range impendingDeadlines {
+							bm.forcePoSt(ctx, ts, md.addr, md.deadline)
+						}
 					}
 				}
 			}

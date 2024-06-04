@@ -119,7 +119,7 @@ func NewTestUnmanagedMiner(t *testing.T, full *TestFullNode, actorAddr address.A
 
 func (tm *TestUnmanagedMiner) AssertNoPower(ctx context.Context) {
 	p := tm.CurrentPower(ctx)
-	tm.t.Logf("Miner %s RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), tm.ActorAddr, p.MinerPower.RawBytePower.String())
+	tm.t.Logf("Miner %s RBP: %v, QaP: %v", tm.ActorAddr, p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
 	require.True(tm.t, p.MinerPower.RawBytePower.IsZero())
 }
 
