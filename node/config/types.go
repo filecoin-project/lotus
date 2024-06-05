@@ -50,15 +50,14 @@ type Logging struct {
 type StorageMiner struct {
 	Common
 
-	Subsystems   MinerSubsystemConfig
-	Dealmaking   DealmakingConfig
-	Proving      ProvingConfig
-	Sealing      SealingConfig
-	Storage      SealerConfig
-	Fees         MinerFeeConfig
-	Addresses    MinerAddressConfig
-	HarmonyDB    HarmonyDB
-	EnableLibp2p bool
+	Subsystems MinerSubsystemConfig
+	Dealmaking DealmakingConfig
+	Proving    ProvingConfig
+	Sealing    SealingConfig
+	Storage    SealerConfig
+	Fees       MinerFeeConfig
+	Addresses  MinerAddressConfig
+	HarmonyDB  HarmonyDB
 }
 
 type CurioConfig struct {

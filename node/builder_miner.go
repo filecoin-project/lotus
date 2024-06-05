@@ -57,7 +57,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
-		ConfigCommon(&cfg.Common, build.NodeUserVersion(), cfg.EnableLibp2p),
+		ConfigCommon(&cfg.Common, build.NodeUserVersion(), false),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
@@ -144,7 +144,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	)
 }
 
-func StorageMiner(out *api.StorageMiner, enableLibp2pNode bool) Option {
+func StorageMiner(out *api.StorageMiner) Option {
 	return Options(
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the StorageMiner option must be set before Config option")),
@@ -152,7 +152,6 @@ func StorageMiner(out *api.StorageMiner, enableLibp2pNode bool) Option {
 
 		func(s *Settings) error {
 			s.nodeType = repo.StorageMiner
-			s.enableLibp2pNode = enableLibp2pNode
 			return nil
 		},
 
