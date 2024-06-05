@@ -87,11 +87,12 @@ func TestManualSectorOnboarding(t *testing.T) {
 			// ---- Miner B onboards a CC sector
 			var bSectorNum abi.SectorNumber
 			var bRespCh chan kit.WindowPostResp
+			var bWdPostCancelF context.CancelFunc
 
 			if withMockProofs {
-				bSectorNum, bRespCh = minerB.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
+				bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
 			} else {
-				bSectorNum, bRespCh = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
+				bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
 			}
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower(ctx)
@@ -103,9 +104,9 @@ func TestManualSectorOnboarding(t *testing.T) {
 			var cRespCh chan kit.WindowPostResp
 
 			if withMockProofs {
-				cSectorNum, cRespCh = minerC.OnboardSectorWithPiecesAndMockProofs(ctx, kit.TestSpt)
+				cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPiecesAndMockProofs(ctx, kit.TestSpt)
 			} else {
-				cSectorNum, cRespCh = minerC.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
+				cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
 			}
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerC.AssertNoPower(ctx)
@@ -120,15 +121,9 @@ func TestManualSectorOnboarding(t *testing.T) {
 			// Note: We can't activate a sector with mock proofs as the WdPost is successfully disputed and so no point
 			// in snapping it as snapping is only for activated sectors
 			if !withMockProofs {
-				respCh := minerB.SnapDealWithRealProofs(ctx, kit.TestSpt, bSectorNum)
-				// ensure we submit a valid WdPost for the snapped sector
-				select {
-				case resp := <-respCh:
-					req.NoError(resp.Error)
-					req.True(resp.Posted)
-				case <-ctx.Done():
-					t.Fatal("timed out waiting for sector activation")
-				}
+				minerB.SnapDealWithRealProofs(ctx, kit.TestSpt, bSectorNum)
+				// cancel the WdPost for the CC sector as the corresponding CommR is no longer valid
+				bWdPostCancelF()
 			}
 		})
 	}

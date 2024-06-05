@@ -222,7 +222,8 @@ func (tm *TestUnmanagedMiner) makeAndSaveCCSector(_ context.Context, sectorNumbe
 	tm.cacheDirPaths[sectorNumber] = cacheDirPath
 }
 
-func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -279,12 +280,14 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
-func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -344,12 +347,13 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.C
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
-func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(sectorNumber abi.SectorNumber, pt abi.RegisteredSealProof) ([]abi.PieceInfo, string) {
+func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(pt abi.RegisteredSealProof) ([]abi.PieceInfo, string) {
 	paddedPieceSize := abi.PaddedPieceSize(tm.options.sectorSize)
 	unpaddedPieceSize := paddedPieceSize.Unpadded()
 
@@ -389,9 +393,9 @@ func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(sectorNumber abi.SectorNumb
 	return publicPieces, unsealedSectorFile.Name()
 }
 
-func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof, sectorNumber abi.SectorNumber) chan WindowPostResp {
+func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof, sectorNumber abi.SectorNumber) {
 	// generate sector key
-	pieces, unsealedPath := tm.mkStagedFileWithPieces(ctx, sectorNumber, proofType)
+	pieces, unsealedPath := tm.mkStagedFileWithPieces(proofType)
 	updateProofType := abi.SealProofInfos[proofType].UpdateProof
 
 	s, err := os.Stat(tm.sealedSectorPaths[sectorNumber])
@@ -453,13 +457,10 @@ func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofT
 	r, err := tm.submitMessage(ctx, params, 1, builtin.MethodsMiner.ProveReplicaUpdates3)
 	require.NoError(tm.t, err)
 	require.True(tm.t, r.Receipt.ExitCode.IsSuccess())
-
-	respCh := make(chan WindowPostResp, 1)
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, true, newSealed, updatePath.Name(), updateDir)
-	return respCh
 }
 
-func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -501,12 +502,14 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context,
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
-func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -555,9 +558,10 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
 func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, withMockProofs bool, sealedCid cid.Cid, sealedPath, cacheDir string) {
