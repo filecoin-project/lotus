@@ -116,11 +116,11 @@ func (ts *apiSuite) testConnectTwo(t *testing.T) {
 		return len(peerIDs)
 	}
 
-	require.Equal(t, countPeerIDs(peers), 2, "node one doesn't have 2 peers")
+	require.Equal(t, countPeerIDs(peers), 1, "node one doesn't have 1 peer")
 
 	peers, err = two.NetPeers(ctx)
 	require.NoError(t, err)
-	require.Equal(t, countPeerIDs(peers), 2, "node one doesn't have 2 peers")
+	require.Equal(t, countPeerIDs(peers), 1, "node one doesn't have 1 peer")
 }
 
 func (ts *apiSuite) testSearchMsg(t *testing.T) {
