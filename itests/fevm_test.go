@@ -678,7 +678,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			nonce, err := client.MpoolGetNonce(ctx, ethFilAddr)
 			require.NoError(t, err)
 
-			tx := &ethtypes.EthTxArgs{
+			tx := &ethtypes.Eth1559TxArgs{
 				ChainID:              build.Eip155ChainId,
 				To:                   &contractAddr,
 				Value:                big.Zero(),
@@ -695,7 +695,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			client.EVM().SignTransaction(tx, key.PrivateKey)
 			hash := client.EVM().SubmitTransaction(ctx, tx)
 
-			smsg, err := tx.ToSignedMessage()
+			smsg, err := ethtypes.ToSignedFilecoinMessage(tx)
 			require.NoError(t, err)
 
 			_, err = client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
@@ -834,7 +834,7 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 	require.NoError(t, err)
 
-	tx := ethtypes.EthTxArgs{
+	tx := ethtypes.Eth1559TxArgs{
 		ChainID:              build.Eip155ChainId,
 		Value:                big.NewInt(100),
 		Nonce:                0,

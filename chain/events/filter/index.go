@@ -32,6 +32,8 @@ var pragmas = []string{
 	"PRAGMA read_uncommitted = ON",
 }
 
+// Any changes to this schema should be matched for the `lotus-shed indexes backfill-events` command
+
 var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS event (
 		id INTEGER PRIMARY KEY,

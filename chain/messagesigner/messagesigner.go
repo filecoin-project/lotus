@@ -196,7 +196,7 @@ func (ms *MessageSigner) dstoreKey(addr address.Address) datastore.Key {
 
 func SigningBytes(msg *types.Message, sigType address.Protocol) ([]byte, error) {
 	if sigType == address.Delegated {
-		txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(msg)
+		txArgs, err := ethtypes.Eth1559TxArgsFromUnsignedFilecoinMessage(msg)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
 		}
