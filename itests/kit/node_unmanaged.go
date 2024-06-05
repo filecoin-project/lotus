@@ -349,7 +349,7 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.C
 	return sectorNumber, respCh
 }
 
-func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(_ context.Context, sectorNumber abi.SectorNumber, pt abi.RegisteredSealProof) ([]abi.PieceInfo, string) {
+func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(sectorNumber abi.SectorNumber, pt abi.RegisteredSealProof) ([]abi.PieceInfo, string) {
 	paddedPieceSize := abi.PaddedPieceSize(tm.options.sectorSize)
 	unpaddedPieceSize := paddedPieceSize.Unpadded()
 
@@ -402,9 +402,9 @@ func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofT
 	require.NoError(tm.t, err)
 
 	updatePath := requireTempFile(tm.t, bytes.NewReader(randomBytes), uint64(s.Size()))
-	_ = updatePath.Close()
+	require.NoError(tm.t, updatePath.Close())
 	updateDir := filepath.Join(tm.t.TempDir(), fmt.Sprintf("update-%d", sectorNumber))
-	_ = os.MkdirAll(updateDir, 0700)
+	require.NoError(tm.t, os.MkdirAll(updateDir, 0700))
 
 	newSealed, newUnsealed, err := ffi.SectorUpdate.EncodeInto(updateProofType, updatePath.Name(), updateDir,
 		tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber], unsealedPath, pieces)
