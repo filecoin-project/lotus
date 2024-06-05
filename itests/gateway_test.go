@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cli/clicommands"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/multisig"
@@ -192,46 +191,6 @@ func TestGatewayMsigCLI(t *testing.T) {
 
 	lite := nodes.lite
 	multisig.RunMultisigTests(t, lite)
-}
-
-func TestGatewayDealFlow(t *testing.T) {
-	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
-	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
-	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
-	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
-	kit.QuietMiningLogs()
-
-	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
-
-	time.Sleep(5 * time.Second)
-
-	// For these tests where the block time is artificially short, just use
-	// a deal start epoch that is guaranteed to be far enough in the future
-	// so that the deal starts sealing in time
-	dealStartEpoch := abi.ChainEpoch(2 << 12)
-
-	dh := kit.NewDealHarness(t, nodes.lite, nodes.miner, nodes.miner)
-	dealCid, res, _ := dh.MakeOnlineDeal(context.Background(), kit.MakeFullDealParams{
-		Rseed:      6,
-		StartEpoch: dealStartEpoch,
-	})
-	dh.PerformRetrieval(ctx, dealCid, res.Root, false)
-}
-
-func TestGatewayCLIDealFlow(t *testing.T) {
-	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
-	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
-	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
-	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
-	kit.QuietMiningLogs()
-
-	blocktime := 5 * time.Millisecond
-	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
-
-	kit.RunClientTest(t, clicommands.Commands, nodes.lite)
 }
 
 type testNodes struct {

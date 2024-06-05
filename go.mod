@@ -15,7 +15,6 @@ require (
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
-	github.com/buger/goterm v1.0.3
 	github.com/chzyer/readline v1.5.1
 	github.com/containerd/cgroups v1.1.0
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -41,7 +40,6 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc8
 	github.com/filecoin-project/go-fil-commcid v0.1.0
-	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.28.3
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0
 	github.com/filecoin-project/go-jsonrpc v0.4.0
@@ -124,7 +122,6 @@ require (
 	github.com/multiformats/go-base32 v0.1.0
 	github.com/multiformats/go-multiaddr v0.12.4
 	github.com/multiformats/go-multiaddr-dns v0.3.1
-	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.0.7
@@ -199,6 +196,7 @@ require (
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
+	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
@@ -279,6 +277,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
+	github.com/multiformats/go-multibase v0.2.0 // indirect
 	github.com/multiformats/go-multistream v0.5.0 // indirect
 	github.com/nikkolasg/hexjson v0.1.0 // indirect
 	github.com/nkovacs/streamquote v1.0.0 // indirect

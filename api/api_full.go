@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -347,74 +346,6 @@ type FullNode interface {
 	WalletValidateAddress(context.Context, string) (address.Address, error) //perm:read
 
 	// Other
-
-	// MethodGroup: Client
-	// The Client methods all have to do with interacting with the storage and
-	// retrieval markets as a client
-
-	// ClientImport imports file under the specified path into filestore.
-	ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error) //perm:admin
-	// ClientRemoveImport removes file import
-	ClientRemoveImport(ctx context.Context, importID imports.ID) error //perm:admin
-	// ClientStartDeal proposes a deal with a miner.
-	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:admin
-	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
-	ClientStatelessDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:write
-	// ClientGetDealInfo returns the latest information about a given deal.
-	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error) //perm:read
-	// ClientListDeals returns information about the deals made by the local client.
-	ClientListDeals(ctx context.Context) ([]DealInfo, error) //perm:write
-	// ClientGetDealUpdates returns the status of updated deals
-	ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error) //perm:write
-	// ClientGetDealStatus returns status given a code
-	ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error) //perm:read
-	// ClientHasLocal indicates whether a certain CID is locally stored.
-	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) //perm:write
-	// ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
-	ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]QueryOffer, error) //perm:read
-	// ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
-	ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (QueryOffer, error) //perm:read
-	// ClientRetrieve initiates the retrieval of a file, as specified in the order.
-	ClientRetrieve(ctx context.Context, params RetrievalOrder) (*RestrievalRes, error) //perm:admin
-	// ClientRetrieveWait waits for retrieval to be complete
-	ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error //perm:admin
-	// ClientExport exports a file stored in the local filestore to a system file
-	ClientExport(ctx context.Context, exportRef ExportRef, fileRef FileRef) error //perm:admin
-	// ClientListRetrievals returns information about retrievals made by the local client
-	ClientListRetrievals(ctx context.Context) ([]RetrievalInfo, error) //perm:write
-	// ClientGetRetrievalUpdates returns status of updated retrieval deals
-	ClientGetRetrievalUpdates(ctx context.Context) (<-chan RetrievalInfo, error) //perm:write
-	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
-	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*StorageAsk, error) //perm:read
-	// ClientCalcCommP calculates the CommP and data size of the specified CID
-	ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize, error) //perm:read
-	// ClientCalcCommP calculates the CommP for a specified file
-	ClientCalcCommP(ctx context.Context, inpath string) (*CommPRet, error) //perm:write
-	// ClientGenCar generates a CAR file for the specified file.
-	ClientGenCar(ctx context.Context, ref FileRef, outpath string) error //perm:write
-	// ClientDealSize calculates real deal data size
-	ClientDealSize(ctx context.Context, root cid.Cid) (DataSize, error) //perm:read
-	// ClientListTransfers returns the status of all ongoing transfers of data
-	ClientListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)        //perm:write
-	ClientDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error) //perm:write
-	// ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
-	ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
-	// ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
-	ClientCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
-	// ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
-	// which are stuck due to insufficient funds
-	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error //perm:write
-
-	// ClientCancelRetrievalDeal cancels an ongoing retrieval deal based on DealID
-	ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error //perm:write
-
-	// ClientUnimport removes references to the specified file from filestore
-	// ClientUnimport(path string)
-
-	// ClientListImports lists imported files and their root CIDs
-	ClientListImports(ctx context.Context) ([]Import, error) //perm:write
-
-	// ClientListAsks() []Ask
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.

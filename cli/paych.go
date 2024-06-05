@@ -40,11 +40,6 @@ var paychAddFundsCmd = &cli.Command{
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "restart-retrievals",
-			Usage: "restart stalled retrieval deals on this payment channel",
-			Value: true,
-		},
-		&cli.BoolFlag{
 			Name:  "reserve",
 			Usage: "mark funds as reserved",
 		},
@@ -99,10 +94,6 @@ var paychAddFundsCmd = &cli.Command{
 		}
 
 		fmt.Fprintln(cctx.App.Writer, chAddr)
-		restartRetrievals := cctx.Bool("restart-retrievals")
-		if restartRetrievals {
-			return api.ClientRetrieveTryRestartInsufficientFunds(ctx, chAddr)
-		}
 		return nil
 	},
 }
