@@ -637,17 +637,17 @@ var backfillTxHashCmd = &cli.Command{
 						continue
 					}
 
-					tx, err := ethtypes.EthTxFromSignedEthMessage(smsg)
+					tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
 					if err != nil {
 						return fmt.Errorf("failed to convert from signed message: %w at epoch: %d", err, epoch)
 					}
 
-					tx.Hash, err = tx.TxHash()
+					hash, err := tx.TxHash()
 					if err != nil {
 						return fmt.Errorf("failed to calculate hash for ethTx: %w at epoch: %d", err, epoch)
 					}
 
-					res, err := insertStmt.Exec(tx.Hash.String(), smsg.Cid().String())
+					res, err := insertStmt.Exec(hash.String(), smsg.Cid().String())
 					if err != nil {
 						return fmt.Errorf("error inserting tx mapping to db: %s at epoch: %d", err, epoch)
 					}
@@ -658,7 +658,7 @@ var backfillTxHashCmd = &cli.Command{
 					}
 
 					if rowsAffected > 0 {
-						log.Debugf("Inserted txhash %s, cid: %s at epoch: %d", tx.Hash.String(), smsg.Cid().String(), epoch)
+						log.Debugf("Inserted txhash %s, cid: %s at epoch: %d", hash.String(), smsg.Cid().String(), epoch)
 					}
 
 					totalRowsAffected += rowsAffected
