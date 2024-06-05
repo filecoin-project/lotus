@@ -13,9 +13,6 @@ const (
 	// SubsystemUnknown is a placeholder for the zero value. It should never
 	// be used.
 	SubsystemUnknown MinerSubsystem = iota
-	// SubsystemMarkets signifies the storage and retrieval
-	// deal-making subsystem.
-	SubsystemMarkets
 	// SubsystemMining signifies the mining subsystem.
 	SubsystemMining
 	// SubsystemSealing signifies the sealing subsystem.
@@ -26,7 +23,6 @@ const (
 
 var MinerSubsystemToString = map[MinerSubsystem]string{
 	SubsystemUnknown:       "Unknown",
-	SubsystemMarkets:       "Markets",
 	SubsystemMining:        "Mining",
 	SubsystemSealing:       "Sealing",
 	SubsystemSectorStorage: "SectorStorage",
@@ -34,7 +30,6 @@ var MinerSubsystemToString = map[MinerSubsystem]string{
 
 var MinerSubsystemToID = map[string]MinerSubsystem{
 	"Unknown":       SubsystemUnknown,
-	"Markets":       SubsystemMarkets,
 	"Mining":        SubsystemMining,
 	"Sealing":       SubsystemSealing,
 	"SectorStorage": SubsystemSectorStorage,

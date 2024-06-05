@@ -128,30 +128,6 @@
   #TracerSourceAuth = ""
 
 
-[Client]
-  # The maximum number of simultaneous data transfers between the client
-  # and storage providers for storage deals
-  #
-  # type: uint64
-  # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERSFORSTORAGE
-  #SimultaneousTransfersForStorage = 20
-
-  # The maximum number of simultaneous data transfers between the client
-  # and storage providers for retrieval deals
-  #
-  # type: uint64
-  # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERSFORRETRIEVAL
-  #SimultaneousTransfersForRetrieval = 20
-
-  # Require that retrievals perform no on-chain operations. Paid retrievals
-  # without existing payment channels with available funds will fail instead
-  # of automatically performing on-chain operations.
-  #
-  # type: bool
-  # env var: LOTUS_CLIENT_OFFCHAINRETRIEVAL
-  #OffChainRetrieval = false
-
-
 [Wallet]
   # type: string
   # env var: LOTUS_WALLET_REMOTEBACKEND

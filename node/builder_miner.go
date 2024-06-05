@@ -2,16 +2,10 @@ package node
 
 import (
 	"errors"
-	"time"
 
-	provider "github.com/ipni/index-provider"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -20,12 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/markets/dagstore"
-	"github.com/filecoin-project/lotus/markets/dealfilter"
-	"github.com/filecoin-project/lotus/markets/idxprov"
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
-	"github.com/filecoin-project/lotus/markets/sectoraccessor"
-	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -62,21 +50,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	pricingConfig := cfg.Dealmaking.RetrievalPricing
-	if pricingConfig.Strategy == config.RetrievalPricingExternalMode {
-		if pricingConfig.External == nil {
-			return Error(xerrors.New("retrieval pricing policy has been to set to external but external policy config is nil"))
-		}
-
-		if pricingConfig.External.Path == "" {
-			return Error(xerrors.New("retrieval pricing policy has been to set to external but external script path is empty"))
-		}
-	} else if pricingConfig.Strategy != config.RetrievalPricingDefaultMode {
-		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
-	}
-
-	enableLibp2pNode := cfg.Subsystems.EnableMarkets // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
-
 	return Options(
 
 		Override(new(v1api.FullNode), modules.MakeUuidWrapper),
@@ -84,7 +57,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
 		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
-		ConfigCommon(&cfg.Common, build.NodeUserVersion(), enableLibp2pNode),
+		ConfigCommon(&cfg.Common, build.NodeUserVersion(), false),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
@@ -93,7 +66,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(*paths.Local), modules.LocalStorage),
 		Override(new(*paths.Remote), modules.RemoteStorage),
 		Override(new(paths.Store), From(new(*paths.Remote))),
-		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(cfg.Subsystems.EnableMining || cfg.Subsystems.EnableSealing,
 			Override(GetParamsKey, modules.GetParams(!cfg.Proving.DisableBuiltinWindowPoSt || !cfg.Proving.DisableBuiltinWinningPoSt || cfg.Storage.AllowCommit || cfg.Storage.AllowProveReplicaUpdate2)),
@@ -164,88 +136,6 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(paths.SectorIndex), From(new(modules.MinerSealingService))),
 		),
 
-		If(cfg.Subsystems.EnableMarkets,
-
-			// Alert that legacy-markets is being deprecated
-			Override(LegacyMarketsEOL, modules.LegacyMarketsEOL),
-
-			// Markets
-			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
-			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfersForStorage, cfg.Dealmaking.SimultaneousTransfersForStoragePerClient, cfg.Dealmaking.SimultaneousTransfersForRetrieval)),
-			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
-			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-
-			// Markets (retrieval deps)
-			Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
-			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(config.DealmakingConfig{
-				RetrievalPricing: &config.RetrievalPricing{
-					Strategy: config.RetrievalPricingDefaultMode,
-					Default:  &config.RetrievalPricingDefault{},
-				},
-			})),
-			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
-
-			// DAG Store
-			Override(new(dagstore.MinerAPI), modules.NewMinerAPI(cfg.DAGStore)),
-			Override(DAGStoreKey, modules.DAGStore(cfg.DAGStore)),
-
-			// Markets (retrieval)
-			Override(new(dagstore.SectorAccessor), sectoraccessor.NewSectorAccessor),
-			Override(new(retrievalmarket.SectorAccessor), From(new(dagstore.SectorAccessor))),
-			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
-			Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
-			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
-			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
-			Override(HandleRetrievalKey, modules.HandleRetrieval),
-
-			// Markets (storage)
-			Override(new(dtypes.ProviderTransferNetwork), modules.NewProviderTransferNetwork),
-			Override(new(dtypes.ProviderTransport), modules.NewProviderTransport),
-			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDataTransfer),
-			Override(new(idxprov.MeshCreator), idxprov.NewMeshCreator),
-			Override(new(provider.Interface), modules.IndexProvider(cfg.IndexProvider)),
-			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
-			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, nil)),
-			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
-			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
-			Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
-			Override(HandleDealsKey, modules.HandleDeals),
-
-			// Config (todo: get a real property system)
-			Override(new(dtypes.ConsiderOnlineStorageDealsConfigFunc), modules.NewConsiderOnlineStorageDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOnlineStorageDealsConfigFunc), modules.NewSetConsideringOnlineStorageDealsFunc),
-			Override(new(dtypes.ConsiderOnlineRetrievalDealsConfigFunc), modules.NewConsiderOnlineRetrievalDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOnlineRetrievalDealsConfigFunc), modules.NewSetConsiderOnlineRetrievalDealsConfigFunc),
-			Override(new(dtypes.StorageDealPieceCidBlocklistConfigFunc), modules.NewStorageDealPieceCidBlocklistConfigFunc),
-			Override(new(dtypes.SetStorageDealPieceCidBlocklistConfigFunc), modules.NewSetStorageDealPieceCidBlocklistConfigFunc),
-			Override(new(dtypes.ConsiderOfflineStorageDealsConfigFunc), modules.NewConsiderOfflineStorageDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOfflineStorageDealsConfigFunc), modules.NewSetConsideringOfflineStorageDealsFunc),
-			Override(new(dtypes.ConsiderOfflineRetrievalDealsConfigFunc), modules.NewConsiderOfflineRetrievalDealsConfigFunc),
-			Override(new(dtypes.SetConsiderOfflineRetrievalDealsConfigFunc), modules.NewSetConsiderOfflineRetrievalDealsConfigFunc),
-			Override(new(dtypes.ConsiderVerifiedStorageDealsConfigFunc), modules.NewConsiderVerifiedStorageDealsConfigFunc),
-			Override(new(dtypes.SetConsiderVerifiedStorageDealsConfigFunc), modules.NewSetConsideringVerifiedStorageDealsFunc),
-			Override(new(dtypes.ConsiderUnverifiedStorageDealsConfigFunc), modules.NewConsiderUnverifiedStorageDealsConfigFunc),
-			Override(new(dtypes.SetConsiderUnverifiedStorageDealsConfigFunc), modules.NewSetConsideringUnverifiedStorageDealsFunc),
-			Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
-			Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
-			Override(new(dtypes.SetMaxDealStartDelayFunc), modules.NewSetMaxDealStartDelayFunc),
-			Override(new(dtypes.GetMaxDealStartDelayFunc), modules.NewGetMaxDealStartDelayFunc),
-
-			If(cfg.Dealmaking.Filter != "",
-				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
-			),
-
-			If(cfg.Dealmaking.RetrievalFilter != "",
-				Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
-			),
-			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(&cfg.Fees, storageadapter.PublishMsgConfig{
-				Period:                  time.Duration(cfg.Dealmaking.PublishMsgPeriod),
-				MaxDealsPerMsg:          cfg.Dealmaking.MaxDealsPerPublishMsg,
-				StartEpochSealingBuffer: cfg.Dealmaking.StartEpochSealingBuffer,
-			})),
-			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
-		),
-
 		Override(new(config.SealerConfig), cfg.Storage),
 		Override(new(config.ProvingConfig), cfg.Proving),
 		Override(new(config.HarmonyDB), cfg.HarmonyDB),
@@ -254,7 +144,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	)
 }
 
-func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConfig) Option {
+func StorageMiner(out *api.StorageMiner) Option {
 	return Options(
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the StorageMiner option must be set before Config option")),
@@ -262,7 +152,6 @@ func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConf
 
 		func(s *Settings) error {
 			s.nodeType = repo.StorageMiner
-			s.enableLibp2pNode = subsystemsCfg.EnableMarkets
 			return nil
 		},
 

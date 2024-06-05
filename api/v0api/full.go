@@ -5,11 +5,9 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -669,38 +667,4 @@ type FullNode interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
-}
-
-func OfferOrder(o api.QueryOffer, client address.Address) RetrievalOrder {
-	return RetrievalOrder{
-		Root:                    o.Root,
-		Piece:                   o.Piece,
-		Size:                    o.Size,
-		Total:                   o.MinPrice,
-		UnsealPrice:             o.UnsealPrice,
-		PaymentInterval:         o.PaymentInterval,
-		PaymentIntervalIncrease: o.PaymentIntervalIncrease,
-		Client:                  client,
-
-		Miner:     o.Miner,
-		MinerPeer: &o.MinerPeer,
-	}
-}
-
-type RetrievalOrder struct {
-	// TODO: make this less unixfs specific
-	Root                  cid.Cid
-	Piece                 *cid.Cid
-	DatamodelPathSelector *textselector.Expression
-	Size                  uint64
-
-	FromLocalCAR string // if specified, get data from a local CARv2 file.
-	// TODO: support offset
-	Total                   types.BigInt
-	UnsealPrice             types.BigInt
-	PaymentInterval         uint64
-	PaymentIntervalIncrease uint64
-	Client                  address.Address
-	Miner                   address.Address
-	MinerPeer               *retrievalmarket.RetrievalPeer
 }

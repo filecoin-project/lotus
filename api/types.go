@@ -2,22 +2,16 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-graphsync"
-	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
-	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -67,71 +61,6 @@ type MessageSendSpec struct {
 
 	// MaximizeFeeCap makes message FeeCap be based entirely on MaxFee
 	MaximizeFeeCap bool
-}
-
-// GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
-type GraphSyncDataTransfer struct {
-	// GraphSync request id for this transfer
-	RequestID *graphsync.RequestID
-	// Graphsync state for this transfer
-	RequestState string
-	// If a channel ID is present, indicates whether this is the current graphsync request for this channel
-	// (could have changed in a restart)
-	IsCurrentChannelRequest bool
-	// Data transfer channel ID for this transfer
-	ChannelID *datatransfer.ChannelID
-	// Data transfer state for this transfer
-	ChannelState *DataTransferChannel
-	// Diagnostic information about this request -- and unexpected inconsistencies in
-	// request state
-	Diagnostics []string
-}
-
-// TransferDiagnostics give current information about transfers going over graphsync that may be helpful for debugging
-type TransferDiagnostics struct {
-	ReceivingTransfers []*GraphSyncDataTransfer
-	SendingTransfers   []*GraphSyncDataTransfer
-}
-
-type DataTransferChannel struct {
-	TransferID  datatransfer.TransferID
-	Status      datatransfer.Status
-	BaseCID     cid.Cid
-	IsInitiator bool
-	IsSender    bool
-	Voucher     string
-	Message     string
-	OtherPeer   peer.ID
-	Transferred uint64
-	Stages      *datatransfer.ChannelStages
-}
-
-// NewDataTransferChannel constructs an API DataTransferChannel type from full channel state snapshot and a host id
-func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelState) DataTransferChannel {
-	channel := DataTransferChannel{
-		TransferID: channelState.TransferID(),
-		Status:     channelState.Status(),
-		BaseCID:    channelState.BaseCID(),
-		IsSender:   channelState.Sender() == hostID,
-		Message:    channelState.Message(),
-	}
-	voucher := channelState.Voucher()
-	voucherJSON, err := ipld.Encode(voucher.Voucher, dagjson.Encode)
-	if err != nil {
-		channel.Voucher = fmt.Errorf("Voucher Serialization: %w", err).Error()
-	} else {
-		channel.Voucher = string(voucherJSON)
-	}
-	if channel.IsSender {
-		channel.IsInitiator = !channelState.IsPull()
-		channel.Transferred = channelState.Sent()
-		channel.OtherPeer = channelState.Recipient()
-	} else {
-		channel.IsInitiator = channelState.IsPull()
-		channel.Transferred = channelState.Received()
-		channel.OtherPeer = channelState.Sender()
-	}
-	return channel
 }
 
 type NetStat struct {
@@ -229,66 +158,12 @@ type MessagePrototype struct {
 	ValidNonce bool
 }
 
-type RetrievalInfo struct {
-	PayloadCID   cid.Cid
-	ID           retrievalmarket.DealID
-	PieceCID     *cid.Cid
-	PricePerByte abi.TokenAmount
-	UnsealPrice  abi.TokenAmount
-
-	Status        retrievalmarket.DealStatus
-	Message       string // more information about deal state, particularly errors
-	Provider      peer.ID
-	BytesReceived uint64
-	BytesPaidFor  uint64
-	TotalPaid     abi.TokenAmount
-
-	TransferChannelID *datatransfer.ChannelID
-	DataTransfer      *DataTransferChannel
-
-	// optional event if part of ClientGetRetrievalUpdates
-	Event *retrievalmarket.ClientEvent
-}
-
-type RestrievalRes struct {
-	DealID retrievalmarket.DealID
-}
-
 // Selector specifies ipld selector string
 //   - if the string starts with '{', it's interpreted as json selector string
 //     see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
 //   - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
 //     see https://github.com/ipld/go-ipld-selector-text-lite
 type Selector string
-
-type DagSpec struct {
-	// DataSelector matches data to be retrieved
-	// - when using textselector, the path specifies subtree
-	// - the matched graph must have a single root
-	DataSelector *Selector
-
-	// ExportMerkleProof is applicable only when exporting to a CAR file via a path textselector
-	// When true, in addition to the selection target, the resulting CAR will contain every block along the
-	// path back to, and including the original root
-	// When false the resulting CAR contains only the blocks of the target subdag
-	ExportMerkleProof bool
-}
-
-type ExportRef struct {
-	Root cid.Cid
-
-	// DAGs array specifies a list of DAGs to export
-	// - If exporting into unixfs files, only one DAG is supported, DataSelector is only used to find the targeted root node
-	// - If exporting into a car file
-	//   - When exactly one text-path DataSelector is specified exports the subgraph and its full merkle-path from the original root
-	//   - Otherwise ( multiple paths and/or JSON selector specs) determines each individual subroot and exports the subtrees as a multi-root car
-	// - When not specified defaults to a single DAG:
-	//   - Data - the entire DAG: `{"R":{"l":{"none":{}},":>":{"a":{">":{"@":{}}}}}}`
-	DAGs []DagSpec
-
-	FromLocalCAR string // if specified, get data from a local CARv2 file.
-	DealID       retrievalmarket.DealID
-}
 
 type MinerInfo struct {
 	Owner                      address.Address   // Must be an ID-address.

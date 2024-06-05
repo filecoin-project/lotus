@@ -33,7 +33,6 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
-	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/net"
@@ -69,9 +68,7 @@ var (
 	AutoNATSvcKey        = special{10} // Libp2p option
 	BandwidthReporterKey = special{11} // Libp2p option
 	ConnGaterKey         = special{12} // Libp2p option
-	DAGStoreKey          = special{13} // constructor returns multiple values
 	ResourceManagerKey   = special{14} // Libp2p option
-	UserAgentKey         = special{15} // Libp2p option
 )
 
 type invoke int
@@ -91,7 +88,6 @@ const (
 	CheckFDLimit
 	CheckFvmConcurrency
 	CheckUDPBufferSize
-	LegacyMarketsEOL
 
 	// libp2p
 	PstoreAddSelfKeysKey
@@ -108,7 +104,6 @@ const (
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
-	HandleMigrateClientFundsKey
 	HandlePaymentChannelManagerKey
 
 	RelayIndexerMessagesKey
@@ -397,7 +392,6 @@ func Test() Option {
 		Unset(RunPeerMgrKey),
 		Unset(new(*peermgr.PeerMgr)),
 		Override(new(beacon.Schedule), testing.RandomBeacon),
-		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
 		Override(new(index.MsgIndex), modules.DummyMsgIndex),
 	)
 }
