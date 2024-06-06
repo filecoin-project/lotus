@@ -422,6 +422,7 @@ func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofT
 	snapProof, err := ffi.SectorUpdate.GenerateUpdateProofWithVanilla(updateProofType, tm.sealedCids[sectorNumber],
 		newSealed, newUnsealed, vp)
 	require.NoError(tm.t, err)
+	tm.waitForMutableDeadline(ctx, sectorNumber)
 
 	// submit proof
 	var manifest []miner14.PieceActivationManifest
@@ -453,10 +454,39 @@ func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofT
 		RequireActivationSuccess:   true,
 		RequireNotificationSuccess: false,
 	}
-
 	r, err := tm.submitMessage(ctx, params, 1, builtin.MethodsMiner.ProveReplicaUpdates3)
 	require.NoError(tm.t, err)
 	require.True(tm.t, r.Receipt.ExitCode.IsSuccess())
+}
+
+func (tm *TestUnmanagedMiner) waitForMutableDeadline(ctx context.Context, sectorNum abi.SectorNumber) {
+	ts, err := tm.FullNode.ChainHead(ctx)
+	require.NoError(tm.t, err)
+
+	sl, err := tm.FullNode.StateSectorPartition(ctx, tm.ActorAddr, sectorNum, ts.Key())
+	require.NoError(tm.t, err)
+
+	dlinfo, err := tm.FullNode.StateMinerProvingDeadline(ctx, tm.ActorAddr, ts.Key())
+	require.NoError(tm.t, err)
+
+	sectorDeadlineOpen := sl.Deadline == dlinfo.Index
+	sectorDeadlineNext := (dlinfo.Index+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline
+	immutable := sectorDeadlineOpen || sectorDeadlineNext
+
+	// Sleep for immutable epochs
+	if immutable {
+		dlineEpochsRemaining := dlinfo.NextOpen() - ts.Height()
+		var targetEpoch abi.ChainEpoch
+		if sectorDeadlineOpen {
+			// sleep for remainder of deadline
+			targetEpoch = ts.Height() + dlineEpochsRemaining
+		} else {
+			// sleep for remainder of deadline and next one
+			targetEpoch = ts.Height() + dlineEpochsRemaining + dlinfo.WPoStChallengeWindow
+		}
+		_, err := tm.FullNode.WaitTillChainOrError(ctx, HeightAtLeast(targetEpoch+5))
+		require.NoError(tm.t, err)
+	}
 }
 
 func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
