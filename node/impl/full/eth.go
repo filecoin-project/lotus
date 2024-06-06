@@ -75,7 +75,7 @@ type EthModuleAPI interface {
 	Web3ClientVersion(ctx context.Context) (string, error)
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
-	EthTraceTransaction(ctx context.Context, txHash ethtypes.EthTransaction) (*ethtypes.EthTraceTransaction, error)
+	EthTraceTransaction(ctx context.Context, txHash string) (*ethtypes.EthTraceTransaction, error)
 }
 
 type EthEventAPI interface {
@@ -977,13 +977,17 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 	return allTraces, nil
 }
 
-func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTraceTransaction, error) {
-	
-	tx, err := EthGetTransactionByHash(ctx, txHash);
+func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) (*ethtypes.EthTraceTransaction, error) {
+
+	// convert from string to internal type
+	ethTxHash, err := ethtypes.ParseEthHash(txHash);
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get transaction: %w", err)
 	}
-	fmt.Println("EthTraceTransaction: ", tx);
+	fmt.Println("ethTxHash: ", ethTxHash);
+
+	tx, err := a.EthGetTransactionByHash(ctx, &ethTxHash);
+	fmt.Println("Tx: ", tx);
 
 	return nil, xerrors.Errorf("EthTraceTransaction under construction")
 }
