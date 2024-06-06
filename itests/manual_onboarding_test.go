@@ -16,7 +16,7 @@ import (
 const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
 
 // Manually onboard CC sectors, bypassing lotus-miner onboarding pathways
-func TestManualCCOnboarding(t *testing.T) {
+func TestManualSectorOnboarding(t *testing.T) {
 	req := require.New(t)
 
 	for _, withMockProofs := range []bool{true, false} {
@@ -87,11 +87,12 @@ func TestManualCCOnboarding(t *testing.T) {
 			// ---- Miner B onboards a CC sector
 			var bSectorNum abi.SectorNumber
 			var bRespCh chan kit.WindowPostResp
+			var bWdPostCancelF context.CancelFunc
 
 			if withMockProofs {
-				bSectorNum, bRespCh = minerB.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
+				bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
 			} else {
-				bSectorNum, bRespCh = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
+				bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
 			}
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower(ctx)
@@ -103,9 +104,9 @@ func TestManualCCOnboarding(t *testing.T) {
 			var cRespCh chan kit.WindowPostResp
 
 			if withMockProofs {
-				cSectorNum, cRespCh = minerC.OnboardSectorWithPiecesAndMockProofs(ctx, kit.TestSpt)
+				cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPiecesAndMockProofs(ctx, kit.TestSpt)
 			} else {
-				cSectorNum, cRespCh = minerC.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
+				cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
 			}
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerC.AssertNoPower(ctx)
@@ -115,6 +116,15 @@ func TestManualCCOnboarding(t *testing.T) {
 			// Wait till both miners' sectors have had their first post and are activated and check that this is reflected in miner power
 			waitTillActivatedAndAssertPower(ctx, t, minerB, bRespCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
 			waitTillActivatedAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize), withMockProofs)
+
+			// Miner B has activated the CC sector -> upgrade it with snapdeals
+			// Note: We can't activate a sector with mock proofs as the WdPost is successfully disputed and so no point
+			// in snapping it as snapping is only for activated sectors
+			if !withMockProofs {
+				minerB.SnapDealWithRealProofs(ctx, kit.TestSpt, bSectorNum)
+				// cancel the WdPost for the CC sector as the corresponding CommR is no longer valid
+				bWdPostCancelF()
+			}
 		})
 	}
 }

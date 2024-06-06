@@ -222,7 +222,8 @@ func (tm *TestUnmanagedMiner) makeAndSaveCCSector(_ context.Context, sectorNumbe
 	tm.cacheDirPaths[sectorNumber] = cacheDirPath
 }
 
-func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -279,12 +280,14 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndRealProofs(ctx context.C
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, false)
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
-func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -344,12 +347,120 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPiecesAndMockProofs(ctx context.C
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, true)
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
-func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(pt abi.RegisteredSealProof) ([]abi.PieceInfo, string) {
+	paddedPieceSize := abi.PaddedPieceSize(tm.options.sectorSize)
+	unpaddedPieceSize := paddedPieceSize.Unpadded()
+
+	// Generate random bytes for the piece
+	randomBytes := make([]byte, unpaddedPieceSize)
+	_, err := io.ReadFull(rand.Reader, randomBytes)
+	require.NoError(tm.t, err)
+
+	// Create a temporary file for the first piece
+	pieceFileA := requireTempFile(tm.t, bytes.NewReader(randomBytes), uint64(unpaddedPieceSize))
+
+	// Generate the piece CID from the file
+	pieceCIDA, err := ffi.GeneratePieceCIDFromFile(pt, pieceFileA, unpaddedPieceSize)
+	require.NoError(tm.t, err)
+
+	// Reset file offset to the beginning after CID generation
+	_, err = pieceFileA.Seek(0, io.SeekStart)
+	require.NoError(tm.t, err)
+
+	unsealedSectorFile := requireTempFile(tm.t, bytes.NewReader([]byte{}), 0)
+	defer func() {
+		_ = unsealedSectorFile.Close()
+	}()
+
+	// Write the piece to the staged sector file without alignment
+	writtenBytes, pieceCID, err := ffi.WriteWithoutAlignment(pt, pieceFileA, unpaddedPieceSize, unsealedSectorFile)
+	require.NoError(tm.t, err)
+	require.EqualValues(tm.t, unpaddedPieceSize, writtenBytes)
+	require.True(tm.t, pieceCID.Equals(pieceCIDA))
+
+	// Create a struct for the piece info
+	publicPieces := []abi.PieceInfo{{
+		Size:     paddedPieceSize,
+		PieceCID: pieceCIDA,
+	}}
+
+	return publicPieces, unsealedSectorFile.Name()
+}
+
+func (tm *TestUnmanagedMiner) SnapDealWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof, sectorNumber abi.SectorNumber) {
+	// generate sector key
+	pieces, unsealedPath := tm.mkStagedFileWithPieces(proofType)
+	updateProofType := abi.SealProofInfos[proofType].UpdateProof
+
+	s, err := os.Stat(tm.sealedSectorPaths[sectorNumber])
+	require.NoError(tm.t, err)
+
+	randomBytes := make([]byte, s.Size())
+	_, err = io.ReadFull(rand.Reader, randomBytes)
+	require.NoError(tm.t, err)
+
+	updatePath := requireTempFile(tm.t, bytes.NewReader(randomBytes), uint64(s.Size()))
+	require.NoError(tm.t, updatePath.Close())
+	updateDir := filepath.Join(tm.t.TempDir(), fmt.Sprintf("update-%d", sectorNumber))
+	require.NoError(tm.t, os.MkdirAll(updateDir, 0700))
+
+	newSealed, newUnsealed, err := ffi.SectorUpdate.EncodeInto(updateProofType, updatePath.Name(), updateDir,
+		tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber], unsealedPath, pieces)
+	require.NoError(tm.t, err)
+
+	vp, err := ffi.SectorUpdate.GenerateUpdateVanillaProofs(updateProofType, tm.sealedCids[sectorNumber],
+		newSealed, newUnsealed, updatePath.Name(), updateDir, tm.sealedSectorPaths[sectorNumber],
+		tm.cacheDirPaths[sectorNumber])
+	require.NoError(tm.t, err)
+
+	snapProof, err := ffi.SectorUpdate.GenerateUpdateProofWithVanilla(updateProofType, tm.sealedCids[sectorNumber],
+		newSealed, newUnsealed, vp)
+	require.NoError(tm.t, err)
+
+	// submit proof
+	var manifest []miner14.PieceActivationManifest
+	for _, piece := range pieces {
+		manifest = append(manifest, miner14.PieceActivationManifest{
+			CID:  piece.PieceCID,
+			Size: piece.Size,
+		})
+	}
+
+	head, err := tm.FullNode.ChainHead(ctx)
+	require.NoError(tm.t, err)
+
+	sl, err := tm.FullNode.StateSectorPartition(ctx, tm.ActorAddr, sectorNumber, head.Key())
+	require.NoError(tm.t, err)
+
+	params := &miner14.ProveReplicaUpdates3Params{
+		SectorUpdates: []miner14.SectorUpdateManifest{
+			{
+				Sector:       sectorNumber,
+				Deadline:     sl.Deadline,
+				Partition:    sl.Partition,
+				NewSealedCID: newSealed,
+				Pieces:       manifest,
+			},
+		},
+		SectorProofs:               [][]byte{snapProof},
+		UpdateProofsType:           updateProofType,
+		RequireActivationSuccess:   true,
+		RequireNotificationSuccess: false,
+	}
+
+	r, err := tm.submitMessage(ctx, params, 1, builtin.MethodsMiner.ProveReplicaUpdates3)
+	require.NoError(tm.t, err)
+	require.True(tm.t, r.Receipt.ExitCode.IsSuccess())
+}
+
+func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -391,12 +502,14 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithMockProofs(ctx context.Context,
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, true)
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, true, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
-func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp) {
+func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context, proofType abi.RegisteredSealProof) (abi.SectorNumber, chan WindowPostResp,
+	context.CancelFunc) {
 	req := require.New(tm.t)
 	sectorNumber := tm.currentSectorNum
 	tm.currentSectorNum++
@@ -445,12 +558,13 @@ func (tm *TestUnmanagedMiner) OnboardCCSectorWithRealProofs(ctx context.Context,
 
 	respCh := make(chan WindowPostResp, 1)
 
-	go tm.wdPostLoop(ctx, sectorNumber, respCh, false)
+	wdCtx, cancelF := context.WithCancel(ctx)
+	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, false, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
 
-	return sectorNumber, respCh
+	return sectorNumber, respCh, cancelF
 }
 
-func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, withMockProofs bool) {
+func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, withMockProofs bool, sealedCid cid.Cid, sealedPath, cacheDir string) {
 	go func() {
 		var firstPost bool
 
@@ -491,7 +605,7 @@ func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.S
 				}
 			}
 
-			err = tm.submitWindowPost(ctx, sectorNumber, withMockProofs)
+			err = tm.submitWindowPost(ctx, sectorNumber, withMockProofs, sealedCid, sealedPath, cacheDir)
 			writeRespF(err) // send an error, or first post, or nothing if no error and this isn't the first post
 			postCount++
 			tm.t.Logf("Sector %d: WindowPoSt #%d submitted", sectorNumber, postCount)
@@ -531,7 +645,7 @@ func (tm *TestUnmanagedMiner) SubmitPostDispute(ctx context.Context, sectorNumbe
 	return err
 }
 
-func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber abi.SectorNumber, withMockProofs bool) error {
+func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber abi.SectorNumber, withMockProofs bool, sealedCid cid.Cid, sealedPath, cacheDir string) error {
 	tm.t.Logf("Miner(%s): WindowPoST(%d): Running WindowPoSt ...\n", tm.ActorAddr, sectorNumber)
 
 	head, err := tm.FullNode.ChainHead(ctx)
@@ -557,7 +671,7 @@ func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber
 	if withMockProofs {
 		proofBytes = []byte{0xde, 0xad, 0xbe, 0xef}
 	} else {
-		proofBytes, err = tm.generateWindowPost(ctx, sectorNumber)
+		proofBytes, err = tm.generateWindowPost(ctx, sectorNumber, sealedCid, sealedPath, cacheDir)
 		if err != nil {
 			return fmt.Errorf("Miner(%s): failed to generate window post for sector %d: %w", tm.ActorAddr, sectorNumber, err)
 		}
@@ -600,6 +714,9 @@ func (tm *TestUnmanagedMiner) submitWindowPost(ctx context.Context, sectorNumber
 func (tm *TestUnmanagedMiner) generateWindowPost(
 	ctx context.Context,
 	sectorNumber abi.SectorNumber,
+	sealedCid cid.Cid,
+	sealedPath string,
+	cacheDir string,
 ) ([]byte, error) {
 	head, err := tm.FullNode.ChainHead(ctx)
 	if err != nil {
@@ -632,11 +749,11 @@ func (tm *TestUnmanagedMiner) generateWindowPost(
 		SectorInfo: proof.SectorInfo{
 			SealProof:    tm.proofType[sectorNumber],
 			SectorNumber: sectorNumber,
-			SealedCID:    tm.sealedCids[sectorNumber],
+			SealedCID:    sealedCid,
 		},
-		CacheDirPath:     tm.cacheDirPaths[sectorNumber],
+		CacheDirPath:     cacheDir,
 		PoStProofType:    minerInfo.WindowPoStProofType,
-		SealedSectorPath: tm.sealedSectorPaths[sectorNumber],
+		SealedSectorPath: sealedPath,
 	}
 
 	actorIdNum, err := address.IDFromAddress(tm.ActorAddr)
@@ -663,7 +780,7 @@ func (tm *TestUnmanagedMiner) generateWindowPost(
 	info := proof.WindowPoStVerifyInfo{
 		Randomness:        postRand,
 		Proofs:            []proof.PoStProof{{PoStProof: minerInfo.WindowPoStProofType, ProofBytes: proofBytes}},
-		ChallengedSectors: []proof.SectorInfo{{SealProof: tm.proofType[sectorNumber], SectorNumber: sectorNumber, SealedCID: tm.sealedCids[sectorNumber]}},
+		ChallengedSectors: []proof.SectorInfo{{SealProof: tm.proofType[sectorNumber], SectorNumber: sectorNumber, SealedCID: sealedCid}},
 		Prover:            actorId,
 	}
 
