@@ -75,6 +75,7 @@ type EthModuleAPI interface {
 	Web3ClientVersion(ctx context.Context) (string, error)
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
+	EthTraceTransaction(ctx context.Context, txHash ethtypes.EthTransaction) (*ethtypes.EthTraceTransaction, error)
 }
 
 type EthEventAPI interface {
@@ -974,6 +975,17 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 	}
 
 	return allTraces, nil
+}
+
+func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTraceTransaction, error) {
+	
+	tx, err := EthGetTransactionByHash(ctx, txHash);
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get transaction: %w", err)
+	}
+	fmt.Println("EthTraceTransaction: ", tx);
+
+	return nil, xerrors.Errorf("EthTraceTransaction under construction")
 }
 
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
