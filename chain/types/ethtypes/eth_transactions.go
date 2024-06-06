@@ -253,6 +253,10 @@ func getFilecoinMethodInfo(recipient *EthAddress, input []byte) (*methodInfo, er
 	var to address.Address
 	var method abi.MethodNum
 
+	var zeroEthAddr EthAddress
+	if recipient != nil && *recipient == zeroEthAddr {
+		return nil, fmt.Errorf("zero address recipient disallowed, please set `To` to null")
+	}
 	if recipient == nil {
 		// If recipient is nil, use Ethereum Address Manager Actor and CreateExternal method
 		method = builtintypes.MethodsEAM.CreateExternal
