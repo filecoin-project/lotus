@@ -621,6 +621,23 @@ func (gw *Node) EthTraceReplayBlockTransactions(ctx context.Context, blkNum stri
 	return gw.target.EthTraceReplayBlockTransactions(ctx, blkNum, traceTypes)
 }
 
+func (gw *Node) EthTraceTransaction(ctx context.Context, txHash ethtypes.EthHash) (*ethtypes.EthTraceTransaction, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	/*
+		TODO - implement checkTransaction
+
+	if err := gw.checkTransaction(ctx, txHash); err != nil {
+		return nil, err
+	}
+	*/
+
+	return gw.target.EthTraceTransaction(ctx, txHash)
+}
+
+
 var EthMaxFiltersPerConn = 16 // todo make this configurable
 
 func addUserFilterLimited(ctx context.Context, cb func() (ethtypes.EthFilterID, error)) (ethtypes.EthFilterID, error) {
