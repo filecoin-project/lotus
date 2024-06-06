@@ -618,7 +618,6 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
 		cfg.Subsystems.EnableSectorIndexDB = m.options.subsystems.Has(SHarmony)
-		cfg.EnableLibp2p = true
 
 		if m.options.mainMiner != nil {
 			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions)
@@ -704,7 +703,7 @@ func (n *Ensemble) Start() *Ensemble {
 		m.FullNode = &minerCopy
 
 		opts := []node.Option{
-			node.StorageMiner(&m.StorageMiner, true),
+			node.StorageMiner(&m.StorageMiner),
 			node.Base(),
 			node.Repo(r),
 			node.Test(),
@@ -992,15 +991,6 @@ func (n *Ensemble) Start() *Ensemble {
 
 // InterconnectAll connects all miners and full nodes to one another.
 func (n *Ensemble) InterconnectAll() *Ensemble {
-	// connect full nodes to miners.
-	for _, from := range n.active.fullnodes {
-		for _, to := range n.active.miners {
-			// []*TestMiner to []api.CommonAPI type coercion not possible
-			// so cannot use variadic form.
-			n.Connect(from, to)
-		}
-	}
-
 	// connect full nodes between each other, skipping ourselves.
 	last := len(n.active.fullnodes) - 1
 	for i, from := range n.active.fullnodes {

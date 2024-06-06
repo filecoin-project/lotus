@@ -1717,12 +1717,6 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 
 			Comment: ``,
 		},
-		{
-			Name: "EnableLibp2p",
-			Type: "bool",
-
-			Comment: ``,
-		},
 	},
 	"Wallet": {
 		{

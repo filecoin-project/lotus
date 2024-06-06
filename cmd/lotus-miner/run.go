@@ -130,7 +130,7 @@ var runCmd = &cli.Command{
 
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
-			node.StorageMiner(&minerapi, false),
+			node.StorageMiner(&minerapi),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Base(),
 			node.Repo(r),

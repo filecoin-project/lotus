@@ -74,7 +74,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
+	txArgs, err := ethtypes.Eth1559TxArgsFromUnsignedFilecoinMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err := txArgs.ToRlpUnsignedMsg()
@@ -111,7 +111,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err = ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
+	txArgs, err = ethtypes.Eth1559TxArgsFromUnsignedFilecoinMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err = txArgs.ToRlpUnsignedMsg()
@@ -185,7 +185,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	msgFromPlaceholder.Value = abi.TokenAmount(types.MustParseFIL("1000"))
-	txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
+	txArgs, err := ethtypes.Eth1559TxArgsFromUnsignedFilecoinMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err := txArgs.ToRlpUnsignedMsg()
@@ -224,7 +224,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err = ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
+	txArgs, err = ethtypes.Eth1559TxArgsFromUnsignedFilecoinMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err = txArgs.ToRlpUnsignedMsg()
@@ -285,7 +285,7 @@ func TestEthAccountAbstractionFailsFromEvmActor(t *testing.T) {
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 	require.NoError(t, err)
 
-	tx := ethtypes.EthTxArgs{
+	tx := ethtypes.Eth1559TxArgs{
 		ChainID:              build.Eip155ChainId,
 		Value:                big.Zero(),
 		Nonce:                0,
@@ -302,7 +302,7 @@ func TestEthAccountAbstractionFailsFromEvmActor(t *testing.T) {
 
 	client.EVM().SubmitTransaction(ctx, &tx)
 
-	smsg, err := tx.ToSignedMessage()
+	smsg, err := ethtypes.ToSignedFilecoinMessage(&tx)
 	require.NoError(t, err)
 
 	ml, err := client.StateWaitMsg(ctx, smsg.Cid(), 1, api.LookbackNoLimit, true)
