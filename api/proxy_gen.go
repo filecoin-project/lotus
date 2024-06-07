@@ -4372,7 +4372,6 @@ func (s *GatewayStub) EthTraceTransaction(p0 context.Context, p1 string) (*[]eth
 	return *new(*[]ethtypes.EthTraceTransaction), ErrNotSupported
 }
 
-
 func (s *GatewayStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
 	if s.Internal.EthUninstallFilter == nil {
 		return false, ErrNotSupported

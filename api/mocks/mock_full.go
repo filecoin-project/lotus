@@ -1122,7 +1122,6 @@ func (mr *MockFullNodeMockRecorder) EthTraceTransaction(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceTransaction", reflect.TypeOf((*MockFullNode)(nil).EthTraceTransaction), arg0, arg1)
 }
 
-
 // EthUninstallFilter mocks base method.
 func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 ethtypes.EthFilterID) (bool, error) {
 	m.ctrl.T.Helper()
