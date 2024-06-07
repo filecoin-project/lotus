@@ -623,13 +623,13 @@ func TestTraceTransaction(t *testing.T) {
 	nonExistentTxHash := "0x0000000000000000000000000000000000000000000000000000000000000000"
 	traces, err := client.EthTraceTransaction(ctx, nonExistentTxHash)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "error in RPC call to 'Filecoin.EthTraceTransaction': transaction not found")
+	require.Contains(t, err.Error(), "transaction not found")
 	require.Nil(t, traces)
 
 	// EthTraceTransaction errors when a trace for pending transactions is requested
 	traces, err = client.EthTraceTransaction(ctx, hash.String())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "error in RPC call to 'Filecoin.EthTraceTransaction': no trace for pending transactions")
+	require.Contains(t, err.Error(), "no trace for pending transactions")
 	require.Nil(t, traces)
 
 	receipt, err := client.EVM().WaitTransaction(ctx, hash)
