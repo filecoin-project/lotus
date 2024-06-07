@@ -590,3 +590,57 @@ func TestEthTxFromNativeAccount_InvalidReceiver(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, &expectedTo, tx.To)
 }
+
+func TestTraceTransaction(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	// send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+
+	// DEPLOY CONTRACT
+	tx, err := deployContractTx(ctx, client, ethAddr, contract)
+	require.NoError(t, err)
+
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	// EthTraceTransaction errors when tx hash is not found
+	nonExistentTxHash := "0x0000000000000000000000000000000000000000000000000000000000000000"
+	traces, err := client.EthTraceTransaction(ctx, nonExistentTxHash)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "error in RPC call to 'Filecoin.EthTraceTransaction': transaction not found")
+	require.Nil(t, traces)
+
+	// EthTraceTransaction errors when a trace for pending transactions is requested
+	traces, err = client.EthTraceTransaction(ctx, hash.String())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "error in RPC call to 'Filecoin.EthTraceTransaction': no trace for pending transactions")
+	require.Nil(t, traces)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	// get trace and verify values
+	traces, err = client.EthTraceTransaction(ctx, hash.String())
+	require.NoError(t, err)
+	require.NotNil(t, traces)
+	require.EqualValues(t, traces[0].TransactionHash, hash)
+	require.EqualValues(t, traces[0].BlockNumber, receipt.BlockNumber)
+}
