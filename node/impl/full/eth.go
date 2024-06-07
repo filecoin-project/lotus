@@ -980,35 +980,39 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) (*[]ethtypes.EthTraceTransaction, error) {
 
 	// convert from string to internal type
-	ethTxHash, err := ethtypes.ParseEthHash(txHash);
+	ethTxHash, err := ethtypes.ParseEthHash(txHash)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse eth hash: %w", err)
 	}
 
-	tx, err := a.EthGetTransactionByHash(ctx, &ethTxHash);
+	tx, err := a.EthGetTransactionByHash(ctx, &ethTxHash)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get transaction by hash: %w", err)
 	}
 
-	blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber),10));
+	if tx == nil {
+		return nil, xerrors.Errorf("transaction not found")
+	}
+
+	blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber), 10))
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get trace for block: %w", err)
 	}
 
 	txTraces := make([]ethtypes.EthTraceTransaction, 0, len(blockTraces))
-        for _, blockTrace := range blockTraces {
-            if blockTrace.TransactionHash == ethTxHash {
-                // Create a new EthTraceTransaction from the block trace
-                txTrace := ethtypes.EthTraceTransaction{
-            	EthTrace:            blockTrace.EthTrace,
-            	BlockHash:           blockTrace.BlockHash,
-            	BlockNumber:         blockTrace.BlockNumber,
-            	TransactionHash:     blockTrace.TransactionHash,
-            	TransactionPosition: blockTrace.TransactionPosition,
-                }
-                txTraces = append(txTraces, txTrace)
-            }
-        }
+	for _, blockTrace := range blockTraces {
+		if blockTrace.TransactionHash == ethTxHash {
+			// Create a new EthTraceTransaction from the block trace
+			txTrace := ethtypes.EthTraceTransaction{
+				EthTrace:            blockTrace.EthTrace,
+				BlockHash:           blockTrace.BlockHash,
+				BlockNumber:         blockTrace.BlockNumber,
+				TransactionHash:     blockTrace.TransactionHash,
+				TransactionPosition: blockTrace.TransactionPosition,
+			}
+			txTraces = append(txTraces, txTrace)
+		}
+	}
 
 	return &txTraces, nil
 }

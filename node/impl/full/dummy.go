@@ -191,7 +191,6 @@ func (e *EthModuleDummy) EthTraceTransaction(ctx context.Context, txHash string)
 	return nil, ErrModuleDisabled
 }
 
-
 var _ EthModuleAPI = &EthModuleDummy{}
 var _ EthEventAPI = &EthModuleDummy{}
 

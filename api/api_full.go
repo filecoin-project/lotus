@@ -825,7 +825,7 @@ type FullNode interface {
 	// Replays all transactions in a block returning the requested traces for each transaction
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) //perm:read
 
-	// Implmements OpenEthereum-compatible API method trace_transaction 
+	// Implmements OpenEthereum-compatible API method trace_transaction
 	EthTraceTransaction(ctx context.Context, txHash string) (*[]ethtypes.EthTraceTransaction, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The

@@ -1012,11 +1012,11 @@ type EthTraceReplayBlockTransaction struct {
 }
 
 type EthTraceTransaction struct {
-    *EthTrace
-    BlockHash           EthHash `json:"blockHash"`
-    BlockNumber         int64   `json:"blockNumber"`
-    TransactionHash     EthHash `json:"transactionHash"`
-    TransactionPosition int     `json:"transactionPosition"`
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
 }
 
 type EthCallTraceAction struct {

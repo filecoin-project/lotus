@@ -626,17 +626,8 @@ func (gw *Node) EthTraceTransaction(ctx context.Context, txHash string) (*[]etht
 		return nil, err
 	}
 
-	/*
-		TODO - implement checkTransaction
-
-	if err := gw.checkTransaction(ctx, txHash); err != nil {
-		return nil, err
-	}
-	*/
-
 	return gw.target.EthTraceTransaction(ctx, txHash)
 }
-
 
 var EthMaxFiltersPerConn = 16 // todo make this configurable
 
