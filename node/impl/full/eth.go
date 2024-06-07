@@ -994,6 +994,11 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 		return nil, xerrors.Errorf("transaction not found")
 	}
 
+	// tx.BlockNumber is nil when the transaction is still in the mpool/pending
+	if tx.BlockNumber == nil {
+		return nil, xerrors.Errorf("no trace for pending transactions")
+	}
+
 	blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber), 10))
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get trace for block: %w", err)
