@@ -32,7 +32,7 @@ function validate_lotus_version_matches_tag(){
 
 _lotus_path=$1
 
-if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+if [[ "$GITHUB_REF" == refs/tags/* ]]; then
   validate_lotus_version_matches_tag "${_lotus_path}" "${GITHUB_REF#refs/tags/}"
 else
   echo "$GITHUB_REF is not a tag, skipping version check"

@@ -74,7 +74,7 @@ func (ts *apiSuite) testVersion(t *testing.T) {
 
 	versions := strings.Split(v.Version, "+")
 	require.NotZero(t, len(versions), "empty version")
-	require.Equal(t, versions[0], build.BuildVersion)
+	require.Equal(t, versions[0], build.NodeBuildVersion)
 }
 
 func (ts *apiSuite) testID(t *testing.T) {
@@ -116,11 +116,11 @@ func (ts *apiSuite) testConnectTwo(t *testing.T) {
 		return len(peerIDs)
 	}
 
-	require.Equal(t, countPeerIDs(peers), 2, "node one doesn't have 2 peers")
+	require.Equal(t, countPeerIDs(peers), 1, "node one doesn't have 1 peer")
 
 	peers, err = two.NetPeers(ctx)
 	require.NoError(t, err)
-	require.Equal(t, countPeerIDs(peers), 2, "node one doesn't have 2 peers")
+	require.Equal(t, countPeerIDs(peers), 1, "node one doesn't have 1 peer")
 }
 
 func (ts *apiSuite) testSearchMsg(t *testing.T) {

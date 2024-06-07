@@ -81,7 +81,7 @@ func FromReader(reader io.Reader, def interface{}, opts ...LoadCfgOpt) (interfac
 	}
 	for _, d := range movedFields {
 		if md.IsDefined(d.Field...) {
-			fmt.Fprintf(
+			_, _ = fmt.Fprintf(
 				warningOut,
 				"WARNING: Use of deprecated configuration option '%s' will be removed in a future release, use '%s' instead\n",
 				strings.Join(d.Field, "."),

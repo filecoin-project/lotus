@@ -304,9 +304,9 @@ func (c *CMD) Stop() {
 
 func (c *CMD) Report() {
 	total := time.Since(c.start)
-	fmt.Fprintf(c.w, "[%s]:\n", c.cmd)
-	fmt.Fprintf(c.w, "- Options:\n")
-	fmt.Fprintf(c.w, "  - concurrency: %d\n", c.concurrency)
-	fmt.Fprintf(c.w, "  - qps: %d\n", c.qps)
+	fmt.Fprintf(c.w, "[%s]:\n", c.cmd)                       //nolint:errcheck
+	fmt.Fprintf(c.w, "- Options:\n")                         //nolint:errcheck
+	fmt.Fprintf(c.w, "  - concurrency: %d\n", c.concurrency) //nolint:errcheck
+	fmt.Fprintf(c.w, "  - qps: %d\n", c.qps)                 //nolint:errcheck
 	c.reporter.Print(total, c.w)
 }

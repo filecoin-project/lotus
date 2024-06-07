@@ -66,17 +66,17 @@ func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) e
 	startTime := time.Unix(int64(start.MinTimestamp()), 0)
 	duration := headTime.Sub(startTime)
 
-	fmt.Fprintf(tw, "Num:\t%s\n", sim.Name())
-	fmt.Fprintf(tw, "Head:\t%s\n", head)
-	fmt.Fprintf(tw, "Start Epoch:\t%d\n", firstEpoch)
-	fmt.Fprintf(tw, "End Epoch:\t%d\n", headEpoch)
-	fmt.Fprintf(tw, "Length:\t%d\n", headEpoch-firstEpoch)
-	fmt.Fprintf(tw, "Start Date:\t%s\n", startTime)
-	fmt.Fprintf(tw, "End Date:\t%s\n", headTime)
-	fmt.Fprintf(tw, "Duration:\t%.2f day(s)\n", duration.Hours()/24)
-	fmt.Fprintf(tw, "Capacity:\t%s\n", types.SizeStr(powerNow.RawBytePower))
-	fmt.Fprintf(tw, "Daily Capacity Growth:\t%s/day\n", types.SizeStr(growthRate))
-	fmt.Fprintf(tw, "Network Version:\t%d\n", sim.GetNetworkVersion())
+	fmt.Fprintf(tw, "Num:\t%s\n", sim.Name())                                      //nolint:errcheck
+	fmt.Fprintf(tw, "Head:\t%s\n", head)                                           //nolint:errcheck
+	fmt.Fprintf(tw, "Start Epoch:\t%d\n", firstEpoch)                              //nolint:errcheck
+	fmt.Fprintf(tw, "End Epoch:\t%d\n", headEpoch)                                 //nolint:errcheck
+	fmt.Fprintf(tw, "Length:\t%d\n", headEpoch-firstEpoch)                         //nolint:errcheck
+	fmt.Fprintf(tw, "Start Date:\t%s\n", startTime)                                //nolint:errcheck
+	fmt.Fprintf(tw, "End Date:\t%s\n", headTime)                                   //nolint:errcheck
+	fmt.Fprintf(tw, "Duration:\t%.2f day(s)\n", duration.Hours()/24)               //nolint:errcheck
+	fmt.Fprintf(tw, "Capacity:\t%s\n", types.SizeStr(powerNow.RawBytePower))       //nolint:errcheck
+	fmt.Fprintf(tw, "Daily Capacity Growth:\t%s/day\n", types.SizeStr(growthRate)) //nolint:errcheck
+	fmt.Fprintf(tw, "Network Version:\t%d\n", sim.GetNetworkVersion())             //nolint:errcheck
 	return tw.Flush()
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/api"
@@ -303,7 +304,10 @@ func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmoun
 	return pst.TotalLocked()
 }
 
-func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+func GetFilLocked(ctx context.Context, st *state.StateTree, nv network.Version) (abi.TokenAmount, error) {
+	if nv >= network.Version23 {
+		return getFilPowerLocked(ctx, st)
+	}
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
@@ -337,6 +341,7 @@ func (sm *StateManager) GetVMCirculatingSupply(ctx context.Context, height abi.C
 }
 
 func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
+	nv := sm.GetNetworkVersion(ctx, height)
 	filVested, err := sm.GetFilVested(ctx, height)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
@@ -360,7 +365,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
-	filLocked, err := GetFilLocked(ctx, st)
+	filLocked, err := GetFilLocked(ctx, st, nv)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}
@@ -387,6 +392,8 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	circ := big.Zero()
 	unCirc := big.Zero()
+	nv := sm.GetNetworkVersion(ctx, height)
+
 	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
 		// this can be a lengthy operation, we need to cancel early when
 		// the context is cancelled to avoid resource exhaustion
@@ -415,18 +422,22 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			unCirc = big.Add(unCirc, actor.Balance)
 
 		case a == market.Address:
-			mst, err := market.Load(sm.cs.ActorStore(ctx), actor)
-			if err != nil {
-				return err
-			}
+			if nv >= network.Version23 {
+				circ = big.Add(circ, actor.Balance)
+			} else {
+				mst, err := market.Load(sm.cs.ActorStore(ctx), actor)
+				if err != nil {
+					return err
+				}
 
-			lb, err := mst.TotalLocked()
-			if err != nil {
-				return err
-			}
+				lb, err := mst.TotalLocked()
+				if err != nil {
+					return err
+				}
 
-			circ = big.Add(circ, big.Sub(actor.Balance, lb))
-			unCirc = big.Add(unCirc, lb)
+				circ = big.Add(circ, big.Sub(actor.Balance, lb))
+				unCirc = big.Add(unCirc, lb)
+			}
 
 		case builtin.IsAccountActor(actor.Code) ||
 			builtin.IsPaymentChannelActor(actor.Code) ||

@@ -12,12 +12,9 @@ require (
 	github.com/DataDog/zstd v1.4.5
 	github.com/GeertJohan/go.rice v1.0.3
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
-	github.com/KarpelesLab/reflink v1.0.1
 	github.com/Kubuxu/imtui v0.0.0-20210401140320-41663d68d0fa
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
-	github.com/buger/goterm v1.0.3
-	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/chzyer/readline v1.5.1
 	github.com/containerd/cgroups v1.1.0
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -32,7 +29,6 @@ require (
 	github.com/elastic/gosigar v0.14.2
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.15.0
-	github.com/filecoin-project/dagstore v0.5.2
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20220519234331-bfd1f5f9fe38
 	github.com/filecoin-project/go-address v1.1.0
 	github.com/filecoin-project/go-amt-ipld/v4 v4.3.0
@@ -41,15 +37,12 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837
 	github.com/filecoin-project/go-crypto v0.0.1
-	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc8
 	github.com/filecoin-project/go-fil-commcid v0.1.0
-	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.28.3
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0
-	github.com/filecoin-project/go-jsonrpc v0.3.1
+	github.com/filecoin-project/go-jsonrpc v0.3.2
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.13.3
+	github.com/filecoin-project/go-state-types v0.14.0-dev
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -65,7 +58,7 @@ require (
 	github.com/filecoin-project/test-vectors/schema v0.0.7
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/gdamore/tcell/v2 v2.2.0
-	github.com/georgysavva/scany/v2 v2.0.0
+	github.com/georgysavva/scany/v2 v2.1.3
 	github.com/go-openapi/spec v0.19.11
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.6.0
@@ -91,24 +84,19 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
 	github.com/ipfs/go-fs-lock v0.0.7
-	github.com/ipfs/go-graphsync v0.17.0
-	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipld-cbor v0.1.0
 	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
-	github.com/ipfs/go-unixfsnode v1.9.0
-	github.com/ipld/go-car v0.6.2
+	github.com/ipld/go-car v0.6.1
 	github.com/ipld/go-car/v2 v2.13.1
-	github.com/ipld/go-codec-dagpb v1.6.0
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/ipni/go-libipni v0.0.8
-	github.com/ipni/index-provider v0.12.0
-	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
-	github.com/jackc/pgx/v5 v5.4.1
+	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/klauspost/compress v1.17.6
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.34.1
@@ -122,17 +110,14 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
-	github.com/minio/sha256-simd v1.0.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.1.0
 	github.com/multiformats/go-multiaddr v0.12.4
 	github.com/multiformats/go-multiaddr-dns v0.3.1
-	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-varint v0.0.7
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
-	github.com/pkg/errors v0.9.1
 	github.com/polydawn/refmt v0.89.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/puzpuzpuz/xsync/v2 v2.4.0
@@ -181,12 +166,9 @@ require (
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/akavel/rsrc v0.8.0 // indirect
-	github.com/alecthomas/units v0.0.0-20231202071711-9a357b53e9c9 // indirect
-	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bep/debounce v1.2.1 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -205,7 +187,6 @@ require (
 	github.com/etclabscore/go-jsonschema-walk v0.0.6 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
-	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
@@ -229,6 +210,8 @@ require (
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20240509144519-723abb6459b7 // indirect
 	github.com/hannahhoward/cbor-gen-for v0.0.0-20230214144701-5d17c9d5243c // indirect
+	github.com/google/pprof v0.0.0-20240207164012-fb44976bdcd5 // indirect
+	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
@@ -242,32 +225,28 @@ require (
 	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.3 // indirect
 	github.com/ipfs/go-ipld-legacy v0.2.1 // indirect
-	github.com/ipfs/go-libipfs v0.7.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-merkledag v0.11.0 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.1 // indirect
-	github.com/ipfs/go-verifcid v0.0.3 // indirect
-	github.com/ipld/go-ipld-adl-hamt v0.0.0-20220616142416-9004dbd839e0 // indirect
+	github.com/ipfs/go-verifcid v0.0.2 // indirect
+	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
+	github.com/jackc/pgx/v5 v5.4.1 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
-	github.com/jbenet/go-random v0.0.0-20190219211222-123a90aedc0c // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/kilic/bls12-381 v0.1.0 // indirect
-	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.4.1 // indirect
-	github.com/libp2p/go-libp2p-gostream v0.6.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.6.3 // indirect
 	github.com/libp2p/go-nat v0.2.0 // indirect
 	github.com/libp2p/go-netroute v0.2.1 // indirect
@@ -282,11 +261,11 @@ require (
 	github.com/miekg/dns v1.1.59 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
+	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/muesli/reflow v0.3.0 // indirect
-	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
+	github.com/multiformats/go-multibase v0.2.0 // indirect
 	github.com/multiformats/go-multistream v0.5.0 // indirect
 	github.com/nikkolasg/hexjson v0.1.0 // indirect
 	github.com/nkovacs/streamquote v1.0.0 // indirect
@@ -295,22 +274,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
-	github.com/pion/datachannel v1.5.6 // indirect
-	github.com/pion/dtls/v2 v2.2.11 // indirect
-	github.com/pion/ice/v2 v2.3.24 // indirect
-	github.com/pion/interceptor v0.1.29 // indirect
-	github.com/pion/logging v0.2.2 // indirect
-	github.com/pion/mdns v0.0.12 // indirect
-	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/rtcp v1.2.14 // indirect
-	github.com/pion/rtp v1.8.6 // indirect
-	github.com/pion/sctp v1.8.16 // indirect
-	github.com/pion/sdp/v3 v3.0.9 // indirect
-	github.com/pion/srtp/v2 v2.0.18 // indirect
-	github.com/pion/stun v0.6.1 // indirect
-	github.com/pion/transport/v2 v2.2.5 // indirect
-	github.com/pion/turn/v2 v2.1.6 // indirect
-	github.com/pion/webrtc/v3 v3.2.40 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
@@ -325,7 +289,6 @@ require (
 	github.com/sirupsen/logrus v1.9.2 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
-	github.com/twmb/murmur3 v1.1.6 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.0.1 // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect

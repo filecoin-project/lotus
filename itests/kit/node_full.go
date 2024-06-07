@@ -12,6 +12,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/node"
 )
@@ -55,17 +55,6 @@ type TestFullNode struct {
 	options nodeOpts
 }
 
-// TestProviderNode represents a Provider node enrolled in an Ensemble.
-type TestProviderNode struct {
-	v1api.CurioStruct
-
-	t *testing.T
-
-	*deps.Deps
-
-	options nodeOpts
-}
-
 func MergeFullNodes(fullNodes []*TestFullNode) *TestFullNode {
 	var wrappedFullNode TestFullNode
 	var fns api.FullNodeStruct
@@ -84,22 +73,6 @@ func MergeFullNodes(fullNodes []*TestFullNode) *TestFullNode {
 
 func (f TestFullNode) Shutdown(ctx context.Context) error {
 	return f.Stop(ctx)
-}
-
-func (f *TestFullNode) ClientImportCARFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, carv1FilePath string, origFilePath string) {
-	carv1FilePath, origFilePath = CreateRandomCARv1(f.t, rseed, size)
-	res, err := f.ClientImport(ctx, api.FileRef{Path: carv1FilePath, IsCAR: true})
-	require.NoError(f.t, err)
-	return res, carv1FilePath, origFilePath
-}
-
-// CreateImportFile creates a random file with the specified seed and size, and
-// imports it into the full node.
-func (f *TestFullNode) CreateImportFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, path string) {
-	path = CreateRandomFile(f.t, rseed, size)
-	res, err := f.ClientImport(ctx, api.FileRef{Path: path})
-	require.NoError(f.t, err)
-	return res, path
 }
 
 // WaitTillChain waits until a specified chain condition is met. It returns
@@ -123,6 +96,30 @@ func (f *TestFullNode) WaitTillChain(ctx context.Context, pred ChainPredicate) *
 	}
 	require.Fail(f.t, "chain condition not met")
 	return nil
+}
+
+// WaitTillChain waits until a specified chain condition is met. It returns
+// the first tipset where the condition is met.
+func (f *TestFullNode) WaitTillChainOrError(ctx context.Context, pred ChainPredicate) (*types.TipSet, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	heads, err := f.ChainNotify(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for chg := range heads {
+		for _, c := range chg {
+			if c.Type != "apply" {
+				continue
+			}
+			if ts := c.Val; pred(ts) {
+				return ts, nil
+			}
+		}
+	}
+	return nil, xerrors.New("chain condition not met")
 }
 
 func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn abi.SectorNumber, maddr address.Address) {

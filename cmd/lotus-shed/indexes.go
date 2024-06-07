@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -21,6 +22,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
+)
+
+const (
+	// same as in chain/events/index.go
+	eventExists = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	insertEvent = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	insertEntry = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
 )
 
 func withCategory(cat string, cmd *cli.Command) *cli.Command {
@@ -53,6 +61,16 @@ var backfillEventsCmd = &cli.Command{
 			Name:  "epochs",
 			Value: 2000,
 			Usage: "the number of epochs to backfill",
+		},
+		&cli.BoolFlag{
+			Name:  "temporary-index",
+			Value: false,
+			Usage: "use a temporary index to speed up the backfill process",
+		},
+		&cli.BoolFlag{
+			Name:  "vacuum",
+			Value: false,
+			Usage: "run VACUUM on the database after backfilling is complete; this will reclaim space from deleted rows, but may take a long time",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -92,8 +110,12 @@ var backfillEventsCmd = &cli.Command{
 			return err
 		}
 
+		log.Infof(
+			"WARNING: If this command is run against a node that is currently collecting events with DisableHistoricFilterAPI=false, " +
+				"it may cause the node to fail to record recent events due to the need to obtain an exclusive lock on the database for writes.")
+
 		dbPath := path.Join(basePath, "sqlite", "events.db")
-		db, err := sql.Open("sqlite3", dbPath)
+		db, err := sql.Open("sqlite3", dbPath+"?_txlock=immediate")
 		if err != nil {
 			return err
 		}
@@ -104,6 +126,14 @@ var backfillEventsCmd = &cli.Command{
 				fmt.Printf("ERROR: closing db: %s", err)
 			}
 		}()
+
+		if cctx.Bool("temporary-index") {
+			log.Info("creating temporary index (tmp_event_backfill_index) on event table to speed up backfill")
+			_, err := db.Exec("CREATE INDEX IF NOT EXISTS tmp_event_backfill_index ON event (height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted);")
+			if err != nil {
+				return err
+			}
+		}
 
 		addressLookups := make(map[abi.ActorID]address.Address)
 
@@ -133,25 +163,35 @@ var backfillEventsCmd = &cli.Command{
 		var totalEventsAffected int64
 		var totalEntriesAffected int64
 
+		stmtEventExists, err := db.Prepare(eventExists)
+		if err != nil {
+			return err
+		}
+		stmtInsertEvent, err := db.Prepare(insertEvent)
+		if err != nil {
+			return err
+		}
+		stmtInsertEntry, err := db.Prepare(insertEntry)
+		if err != nil {
+			return err
+		}
+
 		processHeight := func(ctx context.Context, cnt int, msgs []lapi.Message, receipts []*types.MessageReceipt) error {
-			tx, err := db.BeginTx(ctx, nil)
-			if err != nil {
-				return fmt.Errorf("failed to start transaction: %w", err)
+			var tx *sql.Tx
+			for {
+				var err error
+				tx, err = db.BeginTx(ctx, nil)
+				if err != nil {
+					if err.Error() == "database is locked" {
+						log.Warnf("database is locked, retrying in 200ms")
+						time.Sleep(200 * time.Millisecond)
+						continue
+					}
+					return err
+				}
+				break
 			}
 			defer tx.Rollback() //nolint:errcheck
-
-			stmtSelectEvent, err := tx.Prepare("SELECT MAX(id) from event WHERE height=? AND tipset_key=? and tipset_key_cid=? and emitter_addr=? and event_index=? and message_cid=? and message_index=? and reverted=false")
-			if err != nil {
-				return err
-			}
-			stmtEvent, err := tx.Prepare("INSERT INTO event (height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
-			if err != nil {
-				return err
-			}
-			stmtEntry, err := tx.Prepare("INSERT INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)")
-			if err != nil {
-				return err
-			}
 
 			var eventsAffected int64
 			var entriesAffected int64
@@ -192,7 +232,7 @@ var backfillEventsCmd = &cli.Command{
 
 					// select the highest event id that exists in database, or null if none exists
 					var entryID sql.NullInt64
-					err = stmtSelectEvent.QueryRow(
+					err = tx.Stmt(stmtEventExists).QueryRow(
 						currTs.Height(),
 						currTs.Key().Bytes(),
 						tsKeyCid.Bytes(),
@@ -211,7 +251,7 @@ var backfillEventsCmd = &cli.Command{
 					}
 
 					// event does not exist, lets backfill it
-					res, err := tx.Stmt(stmtEvent).Exec(
+					res, err := tx.Stmt(stmtInsertEvent).Exec(
 						currTs.Height(),      // height
 						currTs.Key().Bytes(), // tipset_key
 						tsKeyCid.Bytes(),     // tipset_key_cid
@@ -238,7 +278,7 @@ var backfillEventsCmd = &cli.Command{
 
 					// backfill the event entries
 					for _, entry := range event.Entries {
-						_, err := tx.Stmt(stmtEntry).Exec(
+						_, err := tx.Stmt(stmtInsertEntry).Exec(
 							entryID.Int64,               // event_id
 							isIndexedValue(entry.Flags), // indexed
 							[]byte{entry.Flags},         // flags
@@ -311,6 +351,22 @@ var backfillEventsCmd = &cli.Command{
 		}
 
 		log.Infof("backfilling events complete, totalEventsAffected:%d, totalEntriesAffected:%d", totalEventsAffected, totalEntriesAffected)
+
+		if cctx.Bool("temporary-index") {
+			log.Info("dropping temporary index (tmp_event_backfill_index) on event table")
+			_, err := db.Exec("DROP INDEX IF EXISTS tmp_event_backfill_index;")
+			if err != nil {
+				fmt.Printf("ERROR: dropping index: %s", err)
+			}
+		}
+
+		if cctx.Bool("vacuum") {
+			log.Info("running VACUUM on the database")
+			_, err := db.Exec("VACUUM;")
+			if err != nil {
+				return fmt.Errorf("failed to run VACUUM on the database: %w", err)
+			}
+		}
 
 		return nil
 	},
@@ -581,17 +637,17 @@ var backfillTxHashCmd = &cli.Command{
 						continue
 					}
 
-					tx, err := ethtypes.EthTxFromSignedEthMessage(smsg)
+					tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
 					if err != nil {
 						return fmt.Errorf("failed to convert from signed message: %w at epoch: %d", err, epoch)
 					}
 
-					tx.Hash, err = tx.TxHash()
+					hash, err := tx.TxHash()
 					if err != nil {
 						return fmt.Errorf("failed to calculate hash for ethTx: %w at epoch: %d", err, epoch)
 					}
 
-					res, err := insertStmt.Exec(tx.Hash.String(), smsg.Cid().String())
+					res, err := insertStmt.Exec(hash.String(), smsg.Cid().String())
 					if err != nil {
 						return fmt.Errorf("error inserting tx mapping to db: %s at epoch: %d", err, epoch)
 					}
@@ -602,7 +658,7 @@ var backfillTxHashCmd = &cli.Command{
 					}
 
 					if rowsAffected > 0 {
-						log.Debugf("Inserted txhash %s, cid: %s at epoch: %d", tx.Hash.String(), smsg.Cid().String(), epoch)
+						log.Debugf("Inserted txhash %s, cid: %s at epoch: %d", hash.String(), smsg.Cid().String(), epoch)
 					}
 
 					totalRowsAffected += rowsAffected

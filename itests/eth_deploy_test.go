@@ -73,7 +73,7 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 
 	// now deploy a contract from the placeholder, and validate it went well
-	tx := ethtypes.EthTxArgs{
+	tx := ethtypes.Eth1559TxArgs{
 		ChainID:              build.Eip155ChainId,
 		Value:                big.Zero(),
 		Nonce:                0,

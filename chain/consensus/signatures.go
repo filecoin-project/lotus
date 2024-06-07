@@ -18,34 +18,42 @@ import (
 // must be recognized by the registered verifier for the signature type.
 func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error {
 	var digest []byte
+	signatureType := msg.Signature.Type
+	signatureCopy := msg.Signature
 
-	typ := msg.Signature.Type
-	switch typ {
+	switch signatureType {
 	case crypto.SigTypeDelegated:
-		txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(&msg.Message)
+		signatureCopy.Data = make([]byte, len(msg.Signature.Data))
+		copy(signatureCopy.Data, msg.Signature.Data)
+		ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(msg)
 		if err != nil {
-			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
-		}
-		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
-		if err != nil {
-			return xerrors.Errorf("failed to reconstruct filecoin msg: %w", err)
+			return xerrors.Errorf("failed to reconstruct Ethereum transaction: %w", err)
 		}
 
-		if !msg.Message.Equals(roundTripMsg) {
-			return xerrors.New("ethereum tx failed to roundtrip")
+		filecoinMsg, err := ethTx.ToUnsignedFilecoinMessage(msg.Message.From)
+		if err != nil {
+			return xerrors.Errorf("failed to reconstruct Filecoin message: %w", err)
 		}
 
-		rlpEncodedMsg, err := txArgs.ToRlpUnsignedMsg()
+		if !msg.Message.Equals(filecoinMsg) {
+			return xerrors.New("Ethereum transaction roundtrip mismatch")
+		}
+
+		rlpEncodedMsg, err := ethTx.ToRlpUnsignedMsg()
 		if err != nil {
-			return xerrors.Errorf("failed to repack eth rlp message: %w", err)
+			return xerrors.Errorf("failed to encode RLP message: %w", err)
 		}
 		digest = rlpEncodedMsg
+		signatureCopy.Data, err = ethTx.ToVerifiableSignature(signatureCopy.Data)
+		if err != nil {
+			return xerrors.Errorf("failed to verify signature: %w", err)
+		}
 	default:
 		digest = msg.Message.Cid().Bytes()
 	}
 
-	if err := sigs.Verify(&msg.Signature, signer, digest); err != nil {
-		return xerrors.Errorf("message %s has invalid signature (type %d): %w", msg.Cid(), typ, err)
+	if err := sigs.Verify(&signatureCopy, signer, digest); err != nil {
+		return xerrors.Errorf("invalid signature for message %s (type %d): %w", msg.Cid(), signatureType, err)
 	}
 	return nil
 }

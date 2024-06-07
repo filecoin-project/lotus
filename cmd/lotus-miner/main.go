@@ -43,16 +43,10 @@ func main() {
 		backupCmd,
 		lcli.WithCategory("chain", actorCmd),
 		lcli.WithCategory("chain", infoCmd),
-		lcli.WithCategory("market", setHidden(storageDealsCmd)),
-		lcli.WithCategory("market", setHidden(retrievalDealsCmd)),
-		lcli.WithCategory("market", setHidden(dataTransfersCmd)),
-		lcli.WithCategory("market", setHidden(dagstoreCmd)),
-		lcli.WithCategory("market", setHidden(indexProvCmd)),
 		lcli.WithCategory("storage", sectorsCmd),
 		lcli.WithCategory("storage", provingCmd),
 		lcli.WithCategory("storage", storageCmd),
 		lcli.WithCategory("storage", sealingCmd),
-		lcli.WithCategory("retrieval", setHidden(piecesCmd)),
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")
@@ -101,7 +95,7 @@ func main() {
 	app := &cli.App{
 		Name:                 "lotus-miner",
 		Usage:                "Filecoin decentralized storage network miner",
-		Version:              build.UserVersion(),
+		Version:              string(build.MinerUserVersion()),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -159,7 +153,7 @@ func main() {
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagMinerRepo), c.App.Name)
+				build.GenerateMinerPanicReport(c.String("panic-reports"), c.String(FlagMinerRepo), c.App.Name)
 				panic(r)
 			}
 			return nil
@@ -191,11 +185,6 @@ func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Addr
 	}
 
 	return maddr, nil
-}
-
-func setHidden(cmd *cli.Command) *cli.Command {
-	cmd.Hidden = true
-	return cmd
 }
 
 func LMActorOrEnvGetter(cctx *cli.Context) (address.Address, error) {

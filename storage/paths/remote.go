@@ -177,7 +177,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s storiface.SectorRef, exist
 		// If any path types weren't found in local storage, try fetching them
 
 		// First reserve storage
-		releaseStorage, err := r.local.Reserve(ctx, s, toFetch, fetchIDs, overheadTable)
+		releaseStorage, err := r.local.Reserve(ctx, s, toFetch, fetchIDs, overheadTable, MinFreeStoragePercentage)
 		if err != nil {
 			return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.Errorf("reserving storage space: %w", err)
 		}
@@ -812,7 +812,7 @@ func (r *Remote) ReaderSeq(ctx context.Context, s storiface.SectorRef, ft storif
 	return nil, xerrors.Errorf("failed to read sector %v from remote(%d): %w", s, ft, storiface.ErrSectorNotFound)
 }
 
-func (r *Remote) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+func (r *Remote) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int, minFreePercentage float64) (func(), error) {
 	log.Warnf("reserve called on remote store, sectorID: %v", sid.ID)
 	return func() {
 

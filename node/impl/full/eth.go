@@ -294,14 +294,16 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 			// This should be "fine" as anyone using an "Ethereum-centric" block
 			// explorer shouldn't care about seeing pending messages from native
 			// accounts.
-			tx, err := ethtypes.EthTxFromSignedEthMessage(p)
+			ethtx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(p)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
 			}
-			tx.Hash, err = tx.TxHash()
+
+			tx, err := ethtx.ToEthTx(p)
 			if err != nil {
-				return nil, fmt.Errorf("could not compute tx hash for eth txn: %w", err)
+				return nil, fmt.Errorf("could not convert Eth transaction to EthTx: %w", err)
 			}
+
 			return &tx, nil
 		}
 	}
@@ -817,12 +819,12 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	txArgs, err := ethtypes.ParseEthTxArgs(rawTx)
+	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
 
-	smsg, err := txArgs.ToSignedMessage()
+	smsg, err := ethtypes.ToSignedFilecoinMessage(txArgs)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
@@ -836,7 +838,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 }
 
 func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
-	return build.UserVersion(), nil
+	return string(build.NodeUserVersion()), nil
 }
 
 func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
