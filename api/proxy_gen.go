@@ -2053,13 +2053,13 @@ func (s *FullNodeStub) EthTraceReplayBlockTransactions(p0 context.Context, p1 st
 
 func (s *FullNodeStruct) EthTraceTransaction(p0 context.Context, p1 string) (*[]ethtypes.EthTraceTransaction, error) {
 	if s.Internal.EthTraceTransaction == nil {
-		return *new(*[]ethtypes.EthTraceTransaction), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthTraceTransaction(p0, p1)
 }
 
 func (s *FullNodeStub) EthTraceTransaction(p0 context.Context, p1 string) (*[]ethtypes.EthTraceTransaction, error) {
-	return *new(*[]ethtypes.EthTraceTransaction), ErrNotSupported
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
@@ -4363,13 +4363,13 @@ func (s *GatewayStub) EthTraceReplayBlockTransactions(p0 context.Context, p1 str
 
 func (s *GatewayStruct) EthTraceTransaction(p0 context.Context, p1 string) (*[]ethtypes.EthTraceTransaction, error) {
 	if s.Internal.EthTraceTransaction == nil {
-		return *new(*[]ethtypes.EthTraceTransaction), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthTraceTransaction(p0, p1)
 }
 
 func (s *GatewayStub) EthTraceTransaction(p0 context.Context, p1 string) (*[]ethtypes.EthTraceTransaction, error) {
-	return *new(*[]ethtypes.EthTraceTransaction), ErrNotSupported
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
