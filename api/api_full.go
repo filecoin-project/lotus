@@ -826,7 +826,7 @@ type FullNode interface {
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) //perm:read
 
 	// Implmements OpenEthereum-compatible API method trace_transaction
-	EthTraceTransaction(ctx context.Context, txHash string) (*[]ethtypes.EthTraceTransaction, error) //perm:read
+	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the

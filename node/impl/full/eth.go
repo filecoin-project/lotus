@@ -75,7 +75,7 @@ type EthModuleAPI interface {
 	Web3ClientVersion(ctx context.Context) (string, error)
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
-	EthTraceTransaction(ctx context.Context, txHash string) (*[]ethtypes.EthTraceTransaction, error)
+	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
 }
 
 type EthEventAPI interface {
@@ -977,7 +977,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 	return allTraces, nil
 }
 
-func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) (*[]ethtypes.EthTraceTransaction, error) {
+func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) {
 
 	// convert from string to internal type
 	ethTxHash, err := ethtypes.ParseEthHash(txHash)
@@ -999,7 +999,7 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) (*[]
 		return nil, xerrors.Errorf("cannot get trace for block: %w", err)
 	}
 
-	txTraces := make([]ethtypes.EthTraceTransaction, 0, len(blockTraces))
+	txTraces := make([]*ethtypes.EthTraceTransaction, 0, len(blockTraces))
 	for _, blockTrace := range blockTraces {
 		if blockTrace.TransactionHash == ethTxHash {
 			// Create a new EthTraceTransaction from the block trace
@@ -1010,11 +1010,11 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) (*[]
 				TransactionHash:     blockTrace.TransactionHash,
 				TransactionPosition: blockTrace.TransactionPosition,
 			}
-			txTraces = append(txTraces, txTrace)
+			txTraces = append(txTraces, &txTrace)
 		}
 	}
 
-	return &txTraces, nil
+	return txTraces, nil
 }
 
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {

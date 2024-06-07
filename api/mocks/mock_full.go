@@ -1108,10 +1108,10 @@ func (mr *MockFullNodeMockRecorder) EthTraceReplayBlockTransactions(arg0, arg1, 
 }
 
 // EthTraceTransaction mocks base method.
-func (m *MockFullNode) EthTraceTransaction(arg0 context.Context, arg1 string) (*[]ethtypes.EthTraceTransaction, error) {
+func (m *MockFullNode) EthTraceTransaction(arg0 context.Context, arg1 string) ([]*ethtypes.EthTraceTransaction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthTraceTransaction", arg0, arg1)
-	ret0, _ := ret[0].(*[]ethtypes.EthTraceTransaction)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceTransaction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
