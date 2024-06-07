@@ -197,6 +197,7 @@ Visit the Curio Official Website insert link
 - chore: Add v13 support to invariants-checker (#11931) ([filecoin-project/lotus#11931](https://github.com/filecoin-project/lotus/pull/11931))
 - chore: remove unmaintained bootstrappers (#11983) ([filecoin-project/lotus#11983](https://github.com/filecoin-project/lotus/pull/11983))
 - chore: go mod: revert go version change as it breaks Docker build (#12050) ([filecoin-project/lotus#12050](https://github.com/filecoin-project/lotus/pull/12050))
+- chore: pin golanglint-ci to v1.58.2 ([filecoin-project/lotus#12054](https://github.com/filecoin-project/lotus/pull/12054))
 
 ## Contributors
 
@@ -4096,7 +4097,6 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 - Release Template: remove binary validation step ([filecoin-project/lotus#6709](https://github.com/filecoin-project/lotus/pull/6709))
 - Reset of the interop network ([filecoin-project/lotus#6689](https://github.com/filecoin-project/lotus/pull/6689))
 - Update version.go to 1.11.1 ([filecoin-project/lotus#6621](https://github.com/filecoin-project/lotus/pull/6621))
-- chore: pin golanglint-ci to v1.58.2 ([filecoin-project/lotus#12054](https://github.com/filecoin-project/lotus/pull/12054))
 
 ## Contributors
 
