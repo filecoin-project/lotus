@@ -187,7 +187,7 @@ func (e *EthModuleDummy) EthTraceReplayBlockTransactions(ctx context.Context, bl
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthTraceTransaction(ctx context.Context, txHash string) (*ethtypes.EthTraceTransaction, error) {
+func (e *EthModuleDummy) EthTraceTransaction(ctx context.Context, txHash string) (*[]ethtypes.EthTraceTransaction, error) {
 	return nil, ErrModuleDisabled
 }
 

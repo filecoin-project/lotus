@@ -621,7 +621,7 @@ func (gw *Node) EthTraceReplayBlockTransactions(ctx context.Context, blkNum stri
 	return gw.target.EthTraceReplayBlockTransactions(ctx, blkNum, traceTypes)
 }
 
-func (gw *Node) EthTraceTransaction(ctx context.Context, txHash string) (*ethtypes.EthTraceTransaction, error) {
+func (gw *Node) EthTraceTransaction(ctx context.Context, txHash string) (*[]ethtypes.EthTraceTransaction, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
