@@ -1107,6 +1107,21 @@ func (mr *MockFullNodeMockRecorder) EthTraceReplayBlockTransactions(arg0, arg1, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceReplayBlockTransactions", reflect.TypeOf((*MockFullNode)(nil).EthTraceReplayBlockTransactions), arg0, arg1, arg2)
 }
 
+// EthTraceTransaction mocks base method.
+func (m *MockFullNode) EthTraceTransaction(arg0 context.Context, arg1 string) ([]*ethtypes.EthTraceTransaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceTransaction", arg0, arg1)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceTransaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceTransaction indicates an expected call of EthTraceTransaction.
+func (mr *MockFullNodeMockRecorder) EthTraceTransaction(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceTransaction", reflect.TypeOf((*MockFullNode)(nil).EthTraceTransaction), arg0, arg1)
+}
+
 // EthUninstallFilter mocks base method.
 func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 ethtypes.EthFilterID) (bool, error) {
 	m.ctrl.T.Helper()
