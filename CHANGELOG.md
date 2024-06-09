@@ -69,6 +69,37 @@ There is no change in the behaviour when a call returns an error, as the error o
 - github.com/filecoin-project/go-jsonrpc (v0.3.1 -> v0.3.2)
 - github.com/filecoin-project/go-state-types (v0.13.3 -> v0.14.0-dev)
 
+## Lotus-Miner / Curio related changes
+
+- fix logs (#12036) ([filecoin-project/lotus#12036](https://github.com/filecoin-project/lotus/pull/12036))
+- feat: curioweb: Improve task_history indexes (#11911) ([filecoin-project/lotus#11911](https://github.com/filecoin-project/lotus/pull/11911))
+- fix: curio taskstorage: Don't try to free reservations by nulled TaskID (#12018) ([filecoin-project/lotus#12018](https://github.com/filecoin-project/lotus/pull/12018))
+- fix actor string (#12019) ([filecoin-project/lotus#12019](https://github.com/filecoin-project/lotus/pull/12019))
+- fix: curio: Update pgx imports, fix db_storage alloc
+- feat: curioweb: Show piece info on the sector page (#11955) ([filecoin-project/lotus#11955](https://github.com/filecoin-project/lotus/pull/11955))
+- curio: feat: break trees task into TreeD(prefetch) and TreeRC (#11895) ([filecoin-project/lotus#11895](https://github.com/filecoin-project/lotus/pull/11895))
+- fix: curio: node UI & darwin gpu count (#11950) ([filecoin-project/lotus#11950](https://github.com/filecoin-project/lotus/pull/11950))
+- feat: curio: Keep more sector metadata in the DB long-term (#11933) ([filecoin-project/lotus#11933](https://github.com/filecoin-project/lotus/pull/11933))
+- fix: curio/lmrpc: Check ParkPiece success before creating sectors (#11975) ([filecoin-project/lotus#11975](https://github.com/filecoin-project/lotus/pull/11975))
+- feat: curio: docker devnet (#11954) ([filecoin-project/lotus#11954](https://github.com/filecoin-project/lotus/pull/11954))
+- feat: curio: alertManager (#11926) ([filecoin-project/lotus#11926](https://github.com/filecoin-project/lotus/pull/11926))
+- curio cfg edit: ux cleanups (#11985) ([filecoin-project/lotus#11985](https://github.com/filecoin-project/lotus/pull/11985))
+- fix: curio: Drop FKs from pipeline to fix retry loops (#11973) ([filecoin-project/lotus#11973](https://github.com/filecoin-project/lotus/pull/11973))
+- Produce DEB files for amd64 for openCL and cuda (#11885) ([filecoin-project/lotus#11885](https://github.com/filecoin-project/lotus/pull/11885))
+- gui-listen fix (#12013) ([filecoin-project/lotus#12013](https://github.com/filecoin-project/lotus/pull/12013))
+- feat: curio: allow multiple pieces per sector (#11935) ([filecoin-project/lotus#11935](https://github.com/filecoin-project/lotus/pull/11935))
+- chore: update yugabyte deps (#12022) ([filecoin-project/lotus#12022](https://github.com/filecoin-project/lotus/pull/12022))
+- fix: harmonydb: Use timestampz instead of timestamp across the schema (#12030) ([filecoin-project/lotus#12030](https://github.com/filecoin-project/lotus/pull/12030))
+- cleanup: miner: remove markets and deal-making from Lotus Miner (#12005) ([filecoin-project/lotus#12005](https://github.com/filecoin-project/lotus/pull/12005))
+- fix non existing sector (#12012) ([filecoin-project/lotus#12012](https://github.com/filecoin-project/lotus/pull/12012))
+- feat: curio ffiselect: Isolate gpu calls in a subprocess (#11994) ([filecoin-project/lotus#11994](https://github.com/filecoin-project/lotus/pull/11994))
+- feat: curio: jsonrpc in webui (#11904) ([filecoin-project/lotus#11904](https://github.com/filecoin-project/lotus/pull/11904))
+- fix: itests: Fix flaky curio itest (#12037) ([filecoin-project/lotus#12037](https://github.com/filecoin-project/lotus/pull/12037))
+- feat: curio: wdPost and wnPost alerts (#12029) ([filecoin-project/lotus#12029](https://github.com/filecoin-project/lotus/pull/12029))
+- fix: storage: Fix a race in GenerateWindowPoStAdv (#12064) ([filecoin-project/lotus#12064](https://github.com/filecoin-project/lotus/pull/12064))
+- Remove "provider" relics  (#11992) ([filecoin-project/lotus#11992](https://github.com/filecoin-project/lotus/pull/11992))
+- fix sector UI (#12016) ([filecoin-project/lotus#12016](https://github.com/filecoin-project/lotus/pull/12016))
+
 ## Others
 - ci: deprecate circle ci in favour of github actions (#11786) ([filecoin-project/lotus#11786](https://github.com/filecoin-project/lotus/pull/11786))
 - src: chain: remove C dependency from builtin types (#12015) ([filecoin-project/lotus#12015](https://github.com/filecoin-project/lotus/pull/12015))
