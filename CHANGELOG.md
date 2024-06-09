@@ -6,7 +6,7 @@
 
 ## Improvements
 
-# v1.27.1 / 2024-06-07
+# v1.27.1 / 2024-06-10
 
 This is the first release candidate of the upcoming optional release of Lotus v1.27.1
 
