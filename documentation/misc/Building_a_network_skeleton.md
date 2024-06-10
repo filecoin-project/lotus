@@ -173,7 +173,7 @@ And you're done! These are all the steps necessary to create a network upgrade s
 - Complete the migration at upgrade epoch, with a succesful upgrade.
 - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
-You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11897), which added the skeleton for network version 23.
+You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11964), which added the skeleton for network version 23.
 
 [^1]: Here is system.go template for a simple migration:
 
