@@ -2,9 +2,9 @@ package full
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
-	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -164,8 +164,8 @@ func traceErrMsg(et *types.ExecutionTrace) string {
 }
 
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
-func buildTraces(env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*cid.Cid) error {
-	trace, recurseInto, err := buildTrace(env, addr, et, deployedCode)
+func buildTraces(ctx context.Context, a *EthModule, env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*ethtypes.EthBytes) error {
+	trace, recurseInto, err := buildTrace(ctx, a, env, addr, et, deployedCode)
 	if err != nil {
 		return xerrors.Errorf("at trace %v: %w", addr, err)
 	}
@@ -189,7 +189,13 @@ func buildTraces(env *environment, addr []int, et *types.ExecutionTrace, deploye
 	// end up repeatedly mutating previous paths.
 	addr = addr[:len(addr):len(addr)]
 	for i := range recurseInto.Subcalls {
-		err := buildTraces(subEnv, append(addr, subEnv.subtraceCount), &recurseInto.Subcalls[i], deployedCode)
+
+		var deployedSubcall map[abi.ActorID]*ethtypes.EthBytes
+		if recurseInto.Subcalls[i].MsgRct.ExitCode == 0 {
+			deployedSubcall = deployedCode
+		}
+
+		err := buildTraces(ctx, a, subEnv, append(addr, subEnv.subtraceCount), &recurseInto.Subcalls[i], deployedSubcall)
 		if err != nil {
 			return err
 		}
@@ -203,7 +209,7 @@ func buildTraces(env *environment, addr []int, et *types.ExecutionTrace, deploye
 // buildTrace processes the passed execution trace and updates the environment, if necessary.
 //
 // On success, it returns a trace to add (or nil to skip) and the trace recurse into (or nil to skip).
-func buildTrace(env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*cid.Cid) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+func buildTrace(ctx context.Context, a *EthModule, env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*ethtypes.EthBytes) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	// This function first assumes that the call is a "native" call, then handles all the "not
 	// native" cases. If we get any unexpected results in any of these special cases, we just
 	// keep the "native" interpretation and move on.
@@ -257,7 +263,7 @@ func buildTrace(env *environment, addr []int, et *types.ExecutionTrace, deployed
 	case builtin.EthereumAddressManagerActorAddr:
 		switch et.Msg.Method {
 		case builtin.MethodsEAM.Create, builtin.MethodsEAM.Create2, builtin.MethodsEAM.CreateExternal:
-			return traceEthCreate(env, addr, et, deployedCode)
+			return traceEthCreate(ctx, a, env, addr, et, deployedCode)
 		}
 	}
 
@@ -454,7 +460,7 @@ func decodeCreateViaEAM(et *types.ExecutionTrace) (initcode []byte, addr *ethtyp
 
 // Build an EthTrace for an EVM "create" operation. This should only be called with an
 // ExecutionTrace for a Create, Create2, or CreateExternal method invocation on the EAM.
-func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*cid.Cid) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
+func traceEthCreate(ctx context.Context, a *EthModule, env *environment, addr []int, et *types.ExecutionTrace, deployedCode map[abi.ActorID]*ethtypes.EthBytes) (*ethtypes.EthTrace, *types.ExecutionTrace, error) {
 	// Same as the Init actor case above, see the comment there.
 	if et.Msg.ReadOnly {
 		return nil, nil, nil
@@ -502,7 +508,13 @@ func traceEthCreate(env *environment, addr []int, et *types.ExecutionTrace, depl
 		if deployedCode != nil {
 			var getBytecodeReturn evm12.GetBytecodeReturn
 			if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(et.MsgRct.Return)); err == nil && getBytecodeReturn.Cid != nil {
-				deployedCode[abi.ActorID(id)] = getBytecodeReturn.Cid
+
+				blk, err := a.Chain.StateBlockstore().Get(ctx, *getBytecodeReturn.Cid)
+				if blk == nil || err != nil {
+					return nil, nil, xerrors.Errorf("cid not found: %w", err)
+				}
+				codeRawData := ethtypes.EthBytes(blk.RawData())
+				deployedCode[abi.ActorID(id)] = &codeRawData
 			}
 		}
 

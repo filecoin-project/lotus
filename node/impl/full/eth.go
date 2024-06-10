@@ -867,7 +867,7 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 
 	allTraces := make([]*ethtypes.EthTraceBlock, 0, len(trace))
 	msgIdx := 0
-	deployedCode := make(map[abi.ActorID]*cid.Cid)
+	deployedCode := make(map[abi.ActorID]*ethtypes.EthBytes)
 
 	for _, ir := range trace {
 		// ignore messages from system actor
@@ -890,12 +890,12 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
 
-		var deployed map[abi.ActorID]*cid.Cid
+		var deployed map[abi.ActorID]*ethtypes.EthBytes
 		if ir.MsgRct.ExitCode.IsSuccess() {
 			deployed = deployedCode
 		}
 
-		err = buildTraces(env, []int{}, &ir.ExecutionTrace, deployed)
+		err = buildTraces(ctx, a, env, []int{}, &ir.ExecutionTrace, deployed)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
 		}
@@ -924,8 +924,9 @@ func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtyp
 	return allTraces, nil
 }
 
-func (a *EthModule) updateContractAddresses(ctx context.Context, ts *types.TipSet, allTraces []*ethtypes.EthTrace, deployedCode map[abi.ActorID]*cid.Cid) error {
+func (a *EthModule) updateContractAddresses(ctx context.Context, ts *types.TipSet, allTraces []*ethtypes.EthTrace, deployedCode map[abi.ActorID]*ethtypes.EthBytes) error {
 	// Update Contract Addresses if contract still exists
+
 	for _, trace := range allTraces {
 		switch r := trace.Result.(type) {
 		case *ethtypes.EthCreateTraceResult:
@@ -951,17 +952,11 @@ func (a *EthModule) updateContractAddresses(ctx context.Context, ts *types.TipSe
 				continue
 			}
 
-			codeCid, ok := deployedCode[id]
+			code, ok := deployedCode[id]
 			if !ok {
 				continue
 			}
-
-			blk, err := a.Chain.StateBlockstore().Get(ctx, *codeCid)
-			if blk == nil || err != nil {
-				continue
-			}
-
-			r.Code = blk.RawData()
+			r.Code = *code // TODO is this a slow copy in go?
 		}
 	}
 	return nil
@@ -987,7 +982,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 		return nil, xerrors.Errorf("failed load computed state-tree: %w", err)
 	}
 
-	deployedCode := make(map[abi.ActorID]*cid.Cid)
+	deployedCode := make(map[abi.ActorID]*ethtypes.EthBytes)
 
 	allTraces := make([]*ethtypes.EthTraceReplayBlockTransaction, 0, len(trace))
 	for _, ir := range trace {
@@ -1009,12 +1004,12 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 			return nil, xerrors.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
 
-		var deployed map[abi.ActorID]*cid.Cid
+		var deployed map[abi.ActorID]*ethtypes.EthBytes
 		if ir.MsgRct.ExitCode.IsSuccess() {
 			deployed = deployedCode
 		}
 
-		err = buildTraces(env, []int{}, &ir.ExecutionTrace, deployed)
+		err = buildTraces(ctx, a, env, []int{}, &ir.ExecutionTrace, deployed)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
 		}
