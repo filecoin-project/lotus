@@ -2,10 +2,12 @@
 
 This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. The process involves making changes in multiple repositories in the following order:
 
-1. [`ref-fvm`](#ref-fvm-checklist)
-2. [`filecoin-ffi`](#filecoin-ffi-checklist)
-3. [`go-state-types`](#go-state-types-checklist)
-4. [`lotus`](#lotus-checklist)
+- [Network Upgrade Skeleton in Lotus](#network-upgrade-skeleton-in-lotus)
+  - [Setup](#setup)
+  - [Ref-FVM Checklist](#ref-fvm-checklist)
+  - [Filecoin-FFI Checklist](#filecoin-ffi-checklist)
+  - [Go-State-Types Checklist](#go-state-types-checklist)
+  - [Lotus Checklist](#lotus-checklist)
 
 Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository.
 
@@ -60,8 +62,24 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
 
 1. Follow the [go-state-types actor version checklist](https://github.com/filecoin-project/go-state-types/blob/master/actors_version_checklist.md):
 
-    - Copy `go-state-types/builtin/vX` to `go-state-types/builtin/v(X+1)`.
-    - Change all references from vX to v(X+1) in the new files.
+    - Setup
+        ```bash
+        # export these environment variables so they can read in the commands below
+        export CURRENT_VERSION=vXX # e.g., v14
+        export NEW_VERSION=vXX+1 # e.g., v15
+        ```
+    - Copy `go-state-types/builtin/vXX` to `go-state-types/builtin/v(XX+1)`.
+        ```bash
+        cp -r builtin/$CURRENT_VERSION builtin/$NEW_VERSION
+        ```
+    - Make a commit with this change.  That way the followup commit(s) will be separated out from the copy/paste change for easier reviewing.
+    - Change all references from vXX to v(XX+1) in the new files.
+        ```bash
+        # Find all the files that have a reference to vXX
+        # Update them to vXX+1
+        # "sed -i=''" is done for macOS compatibility per https://stackoverflow.com/questions/12272065/sed-undefined-label-on-macos
+        find builtin/$NEW_VERSION -type f -exec sh -c 'grep -q "builtin/$CURRENT_VERSION" "$1" && sed -i='' "s/builtin\/$CURRENT_VERSION/builtin\/$NEW_VERSION/g" "$1" && echo "$1"' _ {} \;
+        ```
     - Add new network version to `network/version.go`.
     - Add new actors version to `actors/version.go`.
         - Add `Version(XX+1) Version = XX+1` as a constant.
@@ -73,14 +91,14 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
     - Commit the above changes with a `Delete migration specific for nvXX` message so its easier to review.
     - Check your `/builtin/vXX+1/check.go` file, and see if there is any Invariant TODOs that stems from the previous migration that needs to be cleaned up.
 
-You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/257), which added the skeleton for network version 23.
+    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/257), which added the skeleton for network version 23.
 
-2. In a second PR based off your first PR, add a simple migration for the network upgrade:
+1. In a second PR based off your first PR, add a simple migration for the network upgrade:
 
-    - Copy the system.go template [^1], and add it to your `/builtin/vXX+1/migration` folder.
-    - Copy the top.go template [^2], and add it to your `/builtin/vXX+1/migration` folder.
+    - Copy the system.go template [^1], and add it to your `/builtin/vXXXX+1/migration` folder.
+    - Copy the top.go template [^2], and add it to your `/builtin/vXXXX+1/migration` folder.
 
-You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/258), which added added a simple migration for network version 23.
+    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/258), which added added a simple migration for network version 23.
 
 ## Lotus Checklist
 
