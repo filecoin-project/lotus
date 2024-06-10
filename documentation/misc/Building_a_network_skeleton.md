@@ -2,10 +2,12 @@
 
 This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. The process involves making changes in multiple repositories in the following order:
 
-1. [`ref-fvm`](#ref-fvm-checklist)
-2. [`filecoin-ffi`](#filecoin-ffi-checklist)
-3. [`go-state-types`](#go-state-types-checklist)
-4. [`lotus`](#lotus-checklist)
+- [Network Upgrade Skeleton in Lotus](#network-upgrade-skeleton-in-lotus)
+  - [Setup](#setup)
+  - [Ref-FVM Checklist](#ref-fvm-checklist)
+  - [Filecoin-FFI Checklist](#filecoin-ffi-checklist)
+  - [Go-State-Types Checklist](#go-state-types-checklist)
+  - [Lotus Checklist](#lotus-checklist)
 
 Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository.
 
@@ -93,8 +95,8 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
 
 1. In a second PR based off your first PR, add a simple migration for the network upgrade:
 
-    - Copy the system.go template [^1], and add it to your `/builtin/vXX+1/migration` folder.
-    - Copy the top.go template [^2], and add it to your `/builtin/vXX+1/migration` folder.
+    - Copy the system.go template [^1], and add it to your `/builtin/vXXXX+1/migration` folder.
+    - Copy the top.go template [^2], and add it to your `/builtin/vXXXX+1/migration` folder.
 
     👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/258), which added added a simple migration for network version 23.
 
