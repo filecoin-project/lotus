@@ -1028,25 +1028,26 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 		return nil, xerrors.Errorf("cannot get tipset: %w", err)
 	}
 
-	applyTsMessages := true
-	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTsMessages = false
+	if ts.Height() > 0 {
+		pts, err := a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+		}
+		// Check for expensive forks from the parents to the tipset, including nil tipsets
+		if a.StateManager.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			return nil, stmgr.ErrExpensiveFork
+		}
 	}
 
-	// Try calling until we find a height with no migration.
-	for {
-		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, applyTsMessages)
-		if err != stmgr.ErrExpensiveFork {
-			break
-		}
-		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("getting parent tipset: %w", err)
-		}
-	}
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("CallWithGas failed: %w", err)
+		return nil, xerrors.Errorf("cannot get tipset state: %w", err)
 	}
+	res, err = a.StateManager.ApplyOnStateWithGas(ctx, st, msg, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("ApplyWithGasOnState failed: %w", err)
+	}
+
 	if res.MsgRct.ExitCode.IsError() {
 		reason := parseEthRevert(res.MsgRct.Return)
 		return nil, xerrors.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
