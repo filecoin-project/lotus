@@ -77,6 +77,7 @@
   * [EthSyncing](#EthSyncing)
   * [EthTraceBlock](#EthTraceBlock)
   * [EthTraceReplayBlockTransactions](#EthTraceReplayBlockTransactions)
+  * [EthTraceTransaction](#EthTraceTransaction)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [Filecoin](#Filecoin)
@@ -2094,6 +2095,39 @@ Response:
     ],
     "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
     "vmTrace": "string value"
+  }
+]
+```
+
+### EthTraceTransaction
+Implmements OpenEthereum-compatible API method trace_transaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "type": "string value",
+    "error": "string value",
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "action": {},
+    "result": {},
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": 9,
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionPosition": 123
   }
 ]
 ```

@@ -6,6 +6,14 @@
 
 ## Improvements
 
+# v1.27.1 / 2024-06-10
+
+This is the first release candidate of the upcoming optional release of Lotus v1.27.1
+
+## ☢️ Upgrade Warnings ☢️
+
+There are no upgrade warnings for this release candidate.
+
 ### JSON-RPC 2.0 Specification Conformance
 
 The JSON-RPC 2.0 specification requires that a `"result"` property be present in the case of no error from an API call. This release ensures that all API calls that return a result have a `"result"` property in the response. This is a behaviour change over Lotus v1.26 and will impact any API call that only has a single error return value, where no error has occurred.
@@ -30,6 +38,318 @@ As of this change, in conformance with the JSON-RPC 2.0 specification it will re
 ```
 
 There is no change in the behaviour when a call returns an error, as the error object will still be present in the response.
+
+## New features
+
+- feat: Add trace transaction API supporting RPC method `trace_transaction` ([filecoin-project/lotus#12068](https://github.com/filecoin-project/lotus/pull/12068))
+- feat: Skeleton for nv23 (#11964) ([filecoin-project/lotus#11964](https://github.com/filecoin-project/lotus/pull/11964))
+- feat: state: Ignore market balance after nv23 (#11976) ([filecoin-project/lotus#11976](https://github.com/filecoin-project/lotus/pull/11976))
+- feat: ETH compatibility in Filecoin : Support Homestead and EIP-155 Ethereum transactions("legacy" transactions) in Filecoin after NV23 (#11969) ([filecoin-project/lotus#11969](https://github.com/filecoin-project/lotus/pull/11969))
+- fix: hello: avoid dialing when fetching hello tipset (#12032) ([filecoin-project/lotus#12032](https://github.com/filecoin-project/lotus/pull/12032))
+- feat: cli,events: speed up backfill with temporary index (#11953) ([filecoin-project/lotus#11953](https://github.com/filecoin-project/lotus/pull/11953))
+
+## Improvements
+- Event index should be unique for tipsets (#11952) ([filecoin-project/lotus#11952](https://github.com/filecoin-project/lotus/pull/11952))
+- cleanup: Lotus client: Remove markets and deal-making from Lotus Client (#11999) ([filecoin-project/lotus#11999](https://github.com/filecoin-project/lotus/pull/11999))
+- fix: ci: use filecoin-ffi hash to cache make deps outputs (#11961) ([filecoin-project/lotus#11961](https://github.com/filecoin-project/lotus/pull/11961))
+- add ETH addrs API to Gateway (#11979) ([filecoin-project/lotus#11979](https://github.com/filecoin-project/lotus/pull/11979))
+- chore: remove unmaintained bootstrappers (#11983) ([filecoin-project/lotus#11983](https://github.com/filecoin-project/lotus/pull/11983))
+- feat: api: add SectorNumber to MarketDealState (nv22)
+- fix: copy Flags field from SectorOnChainInfo
+
+## Dependencies
+
+- chore: libp2p: update to v0.34.1 (#12027) ([filecoin-project/lotus#12027](https://github.com/filecoin-project/lotus/pull/12027))
+- chore: update drand (#12021) ([filecoin-project/lotus#12021](https://github.com/filecoin-project/lotus/pull/12021))
+- Bump pubsub-dep (#11966) ([filecoin-project/lotus#11966](https://github.com/filecoin-project/lotus/pull/11966))
+- fix: update go-jsonrpc to v0.3.2
+- Bump go-jsonrpc to v0.4.0 (#12034) ([filecoin-project/lotus#12034](https://github.com/filecoin-project/lotus/pull/12034))
+- docs: rpc: document go-jsonrpc behaviour change
+- chore: update go-data-transfer and go-graphsync
+- github.com/filecoin-project/go-jsonrpc (v0.3.1 -> v0.3.2)
+- github.com/filecoin-project/go-state-types (v0.13.3 -> v0.14.0-dev)
+
+## Lotus-Miner / Curio related changes
+
+- fix logs (#12036) ([filecoin-project/lotus#12036](https://github.com/filecoin-project/lotus/pull/12036))
+- feat: curioweb: Improve task_history indexes (#11911) ([filecoin-project/lotus#11911](https://github.com/filecoin-project/lotus/pull/11911))
+- fix: curio taskstorage: Don't try to free reservations by nulled TaskID (#12018) ([filecoin-project/lotus#12018](https://github.com/filecoin-project/lotus/pull/12018))
+- fix actor string (#12019) ([filecoin-project/lotus#12019](https://github.com/filecoin-project/lotus/pull/12019))
+- fix: curio: Update pgx imports, fix db_storage alloc
+- feat: curioweb: Show piece info on the sector page (#11955) ([filecoin-project/lotus#11955](https://github.com/filecoin-project/lotus/pull/11955))
+- curio: feat: break trees task into TreeD(prefetch) and TreeRC (#11895) ([filecoin-project/lotus#11895](https://github.com/filecoin-project/lotus/pull/11895))
+- fix: curio: node UI & darwin gpu count (#11950) ([filecoin-project/lotus#11950](https://github.com/filecoin-project/lotus/pull/11950))
+- feat: curio: Keep more sector metadata in the DB long-term (#11933) ([filecoin-project/lotus#11933](https://github.com/filecoin-project/lotus/pull/11933))
+- fix: curio/lmrpc: Check ParkPiece success before creating sectors (#11975) ([filecoin-project/lotus#11975](https://github.com/filecoin-project/lotus/pull/11975))
+- feat: curio: docker devnet (#11954) ([filecoin-project/lotus#11954](https://github.com/filecoin-project/lotus/pull/11954))
+- feat: curio: alertManager (#11926) ([filecoin-project/lotus#11926](https://github.com/filecoin-project/lotus/pull/11926))
+- curio cfg edit: ux cleanups (#11985) ([filecoin-project/lotus#11985](https://github.com/filecoin-project/lotus/pull/11985))
+- fix: curio: Drop FKs from pipeline to fix retry loops (#11973) ([filecoin-project/lotus#11973](https://github.com/filecoin-project/lotus/pull/11973))
+- Produce DEB files for amd64 for openCL and cuda (#11885) ([filecoin-project/lotus#11885](https://github.com/filecoin-project/lotus/pull/11885))
+- gui-listen fix (#12013) ([filecoin-project/lotus#12013](https://github.com/filecoin-project/lotus/pull/12013))
+- feat: curio: allow multiple pieces per sector (#11935) ([filecoin-project/lotus#11935](https://github.com/filecoin-project/lotus/pull/11935))
+- chore: update yugabyte deps (#12022) ([filecoin-project/lotus#12022](https://github.com/filecoin-project/lotus/pull/12022))
+- fix: harmonydb: Use timestampz instead of timestamp across the schema (#12030) ([filecoin-project/lotus#12030](https://github.com/filecoin-project/lotus/pull/12030))
+- cleanup: miner: remove markets and deal-making from Lotus Miner (#12005) ([filecoin-project/lotus#12005](https://github.com/filecoin-project/lotus/pull/12005))
+- fix non existing sector (#12012) ([filecoin-project/lotus#12012](https://github.com/filecoin-project/lotus/pull/12012))
+- feat: curio ffiselect: Isolate gpu calls in a subprocess (#11994) ([filecoin-project/lotus#11994](https://github.com/filecoin-project/lotus/pull/11994))
+- feat: curio: jsonrpc in webui (#11904) ([filecoin-project/lotus#11904](https://github.com/filecoin-project/lotus/pull/11904))
+- fix: itests: Fix flaky curio itest (#12037) ([filecoin-project/lotus#12037](https://github.com/filecoin-project/lotus/pull/12037))
+- feat: curio: wdPost and wnPost alerts (#12029) ([filecoin-project/lotus#12029](https://github.com/filecoin-project/lotus/pull/12029))
+- fix: storage: Fix a race in GenerateWindowPoStAdv (#12064) ([filecoin-project/lotus#12064](https://github.com/filecoin-project/lotus/pull/12064))
+- Remove "provider" relics  (#11992) ([filecoin-project/lotus#11992](https://github.com/filecoin-project/lotus/pull/11992))
+- fix sector UI (#12016) ([filecoin-project/lotus#12016](https://github.com/filecoin-project/lotus/pull/12016))
+
+## Others
+- ci: deprecate circle ci in favour of github actions (#11786) ([filecoin-project/lotus#11786](https://github.com/filecoin-project/lotus/pull/11786))
+- src: chain: remove C dependency from builtin types (#12015) ([filecoin-project/lotus#12015](https://github.com/filecoin-project/lotus/pull/12015))
+- chore: fix function names (#12043) ([filecoin-project/lotus#12043](https://github.com/filecoin-project/lotus/pull/12043))
+- chore: bump build version in master (#11946) ([filecoin-project/lotus#11946](https://github.com/filecoin-project/lotus/pull/11946))
+- fix: test: no snap deals in immutable deadlines (#12071) ([filecoin-project/lotus#12071](https://github.com/filecoin-project/lotus/pull/12071))
+- test: actors: manual CC onboarding and proving integration test (#12017) ([filecoin-project/lotus#12017](https://github.com/filecoin-project/lotus/pull/12017))
+- fix: ci: keep lotus checkout clean in the release workflow (#12028) ([filecoin-project/lotus#12028](https://github.com/filecoin-project/lotus/pull/12028))
+- feat!: build: separate miner and node version strings
+- chore: lint: address feedback from reviews
+- chore: lint: fix lint errors with new linting config
+- chore: lint: update golangci lint config
+- ci: fix when sorted pr checks workflow is executed
+- doc: eth: restore comment lost in linter cleanup
+- fix: ci: publish correct docker tags on workflow dispatch (#12060) ([filecoin-project/lotus#12060](https://github.com/filecoin-project/lotus/pull/12060))
+- feat: libp2p: Lotus stream cleanup (#11993) ([filecoin-project/lotus#11993](https://github.com/filecoin-project/lotus/pull/11993))
+- Update SupportedProofTypes (#11988) ([filecoin-project/lotus#11988](https://github.com/filecoin-project/lotus/pull/11988))
+- Revert "Update SupportedProofTypes (#11988)" (#11990) ([filecoin-project/lotus#11990](https://github.com/filecoin-project/lotus/pull/11990))
+- chore: docs: Update skeleton guide (#11960) ([filecoin-project/lotus#11960](https://github.com/filecoin-project/lotus/pull/11960))
+- chore: ci: request contents read permissions explicitly in gha (#12055) ([filecoin-project/lotus#12055](https://github.com/filecoin-project/lotus/pull/12055))
+- fix: ci: use custom GITHUB_TOKEN for GoReleaser (#12059) ([filecoin-project/lotus#12059](https://github.com/filecoin-project/lotus/pull/12059))
+- chore: pin golanglint-ci to v1.58.2 (#12054) ([filecoin-project/lotus#12054](https://github.com/filecoin-project/lotus/pull/12054))
+- chore: fix some function names (#12031) ([filecoin-project/lotus#12031](https://github.com/filecoin-project/lotus/pull/12031))
+- src: lint: bump golangci-lint to 1.59, address unchecked fmt.Fprint*
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aarsh Shah | 9 | +5710/-35899 | 201 |
+| Łukasz Magiera | 21 | +1891/-33776 | 335 |
+| LexLuthr | 9 | +4916/-1637 | 107 |
+| Phi-rjan | 9 | +3544/-187 | 92 |
+| Rod Vagg | 15 | +2183/-479 | 164 |
+| Piotr Galar | 6 | +130/-2386 | 30 |
+| Andrew Jackson (Ajax) | 6 | +1072/-533 | 63 |
+| ZenGround0 | 1 | +235/-13 | 3 |
+| Hubert Bugaj | 3 | +57/-37 | 5 |
+| Steven Allen | 3 | +25/-15 | 6 |
+| Peter Rabbitson | 1 | +16/-8 | 4 |
+| tomfees | 1 | +6/-6 | 5 |
+| imxyb | 1 | +6/-0 | 1 |
+| yumeiyin | 1 | +2/-2 | 2 |
+| galargh | 1 | +2/-2 | 1 |
+
+# v1.27.0 / 2024-05-27
+
+This is an optional feature release of Lotus. Lotus v1.27.0 includes numerous improvements, bugfixes and enhancements for node operators, RPC- and ETH RPC-providers. This feature release also introduces Curio in a Beta release. Check out the Curio Beta release section for how you can get started with Curio.
+
+## ☢️ Upgrade Warnings ☢️
+
+- This feature release drops the Raft cluster code experiment from the codebase. This Raft cluster never graduated beyond an experiment, had poor UX (e.g. no way to manage a running cluster, so it didn't provide High Availability), and pulled in a lot of heavy dependencies. We keep the multi-node RPC feature, it is not perfect, but it is useful.
+- Event Database: Two sequential migrations will adjust indexes without altering data or columns, ensuring minimal invasiveness when upgrading to this release. However, these migrations may be time-consuming for nodes with extensive event databases.
+
+## Indexers, RPC- and ETH RPC-providers improvements
+
+This release includes a lot of improvements and fixes for indexers, RPC- and ETH RPC-providers. Specifically these PRs:
+
+- [Significant performance improvements of eth_getLog](https://github.com/filecoin-project/lotus/pull/11477)
+- [Return the correct block gas limit in the EthAP](https://github.com/filecoin-project/lotus/pull/11747)
+- [Accept input data in call arguments under field 'input'](https://github.com/filecoin-project/lotus/pull/11505)
+- [Length check the array sent to eth_feeHistory RPC](https://github.com/filecoin-project/lotus/pull/11696)
+- [ETH subscribe tipsets API should only return tipsets that have been executed](https://github.com/filecoin-project/lotus/pull/11858)
+- [Adjust indexes in event index db to match query patterns](https://github.com/filecoin-project/lotus/pull/111934)
+
+## ⭐️ Curio Beta Release  ⭐️
+
+**Curio**, the next generation of Lotus-Miner, also referred to as MinerV2! This release officially transitions Curio into beta and introduces a suite of powerful features designed to enhance your storage operations.
+
+### Highlights
+
+- **Curio as MinerV2**: Embrace the revolutionary upgrade from Lotus-Miner to Curio. This transition is not just a rebranding—it's an upgrade to a more robust, scalable, and user-friendly version.
+- **High Availability**: Curio is designed for high availability. You can run multiple instances of Curio nodes to handle similar type of tasks. The distributed scheduler and greedy worker design will ensure that tasks are completed on time despite most partial outages. You can safely update one of your Curio machines without disrupting the operation of the others.
+- **Node Heartbeat**: Each Curio node in a cluster must post a heartbeat message every 10 minutes in HarmonyDB updating its status. If a heartbeat is missed, the node is considered lost and all tasks can now be scheduled on remaining nodes.
+- **Task Retry**: Each task in Curio has a limit on how many times it should be tried before being declared lost. This ensures that Curio does not keep retrying bad tasks indefinitely. This safeguards against lost computation time and storage.
+- **Polling**: Curio avoids overloading nodes with a polling system. Nodes check for tasks they can handle, prioritizing idle nodes for even workload distribution.
+- **Simple Configuration Management**: The configuration is stored in the database in the forms of layers. These layers can be stacked on top of each other to create a final configuration. Users can reuse these layers to control the behavior of multiple machines without needing to maintain the configuration of each node. Start the binary with the appropriate flags to connect with YugabyteDB and specify which configuration layers to use to get desired behaviour.
+
+### Getting Started with Curio
+
+```bash
+cd lotus
+git pull
+make clean deps all
+sudo make install
+```
+
+On your local-dev-net or calibrationnet lotus-miner machine, initiate:
+
+`curio guided-setup`
+
+### Need More Info?
+
+For detailed documentation and additional information on Curio:
+
+Curio Overview <- insert link
+Visit the Curio Official Website insert link
+
+❗Curio is in Beta state, and we recommend our users to run Curio in a testing environment or on the Calibration network for the time being.
+
+## New features
+
+- feat: exchange: change GetBlocks to always fetch the requested number of tipsets ([filecoin-project/lotus#11565](https://github.com/filecoin-project/lotus/pull/11565))
+- feat: syncer: optimize syncFork for one-epoch forks ([filecoin-project/lotus#11533](https://github.com/filecoin-project/lotus/pull/11533))
+- feat: api: improve the correctness of Eth's trace_block (#11609) ([filecoin-project/lotus#11609](https://github.com/filecoin-project/lotus/pull/11609))
+- perf: api: add indexes to event topics and emitter addr (#11477) ([filecoin-project/lotus#11477](https://github.com/filecoin-project/lotus/pull/11477))
+- feat: drand: refactor round verification ([filecoin-project/lotus#11598](https://github.com/filecoin-project/lotus/pull/11598))
+- feat: add Forest bootstrap nodes (#11636) ([filecoin-project/lotus#11636](https://github.com/filecoin-project/lotus/pull/11636))
+- feat: curio: add miner init (#11775) ([filecoin-project/lotus#11775](https://github.com/filecoin-project/lotus/pull/11775))
+- feat: curio: sectors UI (#11869) ([filecoin-project/lotus#11869](https://github.com/filecoin-project/lotus/pull/11869))
+- feat: curio: storage index gc task (#11884) ([filecoin-project/lotus#11884](https://github.com/filecoin-project/lotus/pull/11884))
+- feat: curio: web based config edit (#11822) ([filecoin-project/lotus#11822](https://github.com/filecoin-project/lotus/pull/11822))
+- feat: spcli: sectors extend improvements (#11798) ([filecoin-project/lotus#11798](https://github.com/filecoin-project/lotus/pull/11798))
+- feat: curio: Add schemas for DDO deal support (#11805) ([filecoin-project/lotus#11805](https://github.com/filecoin-project/lotus/pull/11805))
+- feat: curioweb: add favicon (#11804) ([filecoin-project/lotus#11804](https://github.com/filecoin-project/lotus/pull/11804))
+- feat: lotus-provider: Fetch params on startup when needed ([filecoin-project/lotus#11650](https://github.com/filecoin-project/lotus/pull/11650))
+- feat: mpool: Cache actors in lite mode (#11668) ([filecoin-project/lotus#11668](https://github.com/filecoin-project/lotus/pull/11668))
+- feat: curio: simpler reservation release logic (#11900) ([filecoin-project/lotus#11900](https://github.com/filecoin-project/lotus/pull/11900))
+- feat: curio: add StorageInit api (#11918) ([filecoin-project/lotus#11918](https://github.com/filecoin-project/lotus/pull/11918))
+- feat: lotus-provider: SDR Sealing pipeline ([filecoin-project/lotus#11534](https://github.com/filecoin-project/lotus/pull/11534))
+- feat: curioweb: Sector info page (#11846) ([filecoin-project/lotus#11846](https://github.com/filecoin-project/lotus/pull/11846))
+- feat: curio web: node info page (#11745) ([filecoin-project/lotus#11745](https://github.com/filecoin-project/lotus/pull/11745))
+- feat: fvm: optimize FVM lanes a bit (#11875) ([filecoin-project/lotus#11875](https://github.com/filecoin-project/lotus/pull/11875))
+- feat: Gateway API: Add ETH -> FIL and FIL -> ETH address conversion APIs to the Gateway (#11979) ([filecoin-project/lotus#11979](https://github.com/filecoin-project/lotus/pull/11979))
+
+## Improvements
+
+- fix: api: return the correct block gas limit in the EthAPI (#11747) ([filecoin-project/lotus#11747](https://github.com/filecoin-project/lotus/pull/11747))
+- fix: exchange: explicitly cast the block message limit const (#11511) ([filecoin-project/lotus#11511](https://github.com/filecoin-project/lotus/pull/11511))
+- fix: Eth API: accept input data in call arguments under field 'input' (#11505) ([filecoin-project/lotus#11505](https://github.com/filecoin-project/lotus/pull/11505))
+- fix: api: Length check the array sent to eth_feeHistory RPC (#11696) ([filecoin-project/lotus#11696](https://github.com/filecoin-project/lotus/pull/11696))
+- fix: api: fix EthSubscribe tipsets off by one (#11858) ([filecoin-project/lotus#11858](https://github.com/filecoin-project/lotus/pull/11858))
+- fix: lotus-provider: Fix log output format in wdPostTaskCmd ([filecoin-project/lotus#11504](https://github.com/filecoin-project/lotus/pull/11504))
+- fix: lmcli: make 'sectors list' DDO-aware (#11839) ([filecoin-project/lotus#11839](https://github.com/filecoin-project/lotus/pull/11839))
+- fix: lpwinning: Fix MiningBase.afterPropDelay ([filecoin-project/lotus#11654](https://github.com/filecoin-project/lotus/pull/11654))
+- fix: exchange: allow up to 10k messages per block ([filecoin-project/lotus#11506](https://github.com/filecoin-project/lotus/pull/11506))
+- fix: harmony: Fix task reclaim on restart ([filecoin-project/lotus#11498](https://github.com/filecoin-project/lotus/pull/11498))
+- fix: lotus-provider: Wait for the correct taskID ([filecoin-project/lotus#11493](https://github.com/filecoin-project/lotus/pull/11493))
+- fix: lotus-provider: show addresses in log ([filecoin-project/lotus#11490](https://github.com/filecoin-project/lotus/pull/11490))
+- fix: sql Scan cannot write to an object ([filecoin-project/lotus#11485](https://github.com/filecoin-project/lotus/pull/11485))
+- fix: lotus-provider: Fix winning PoSt ([filecoin-project/lotus#11482](https://github.com/filecoin-project/lotus/pull/11482))
+- fix: lotus-provider: lotus-provider msg sending ([filecoin-project/lotus#11480](https://github.com/filecoin-project/lotus/pull/11480))
+- fix: chain: use latest go-state-types types for miner UI ([filecoin-project/lotus#11566](https://github.com/filecoin-project/lotus/pull/11566))
+- fix: Dockerfile non-interactive snapshot import (#11579) ([filecoin-project/lotus#11579](https://github.com/filecoin-project/lotus/pull/11579))
+- fix: daemon: avoid prompting to remove chain when noninteractive (#11582) ([filecoin-project/lotus#11582](https://github.com/filecoin-project/lotus/pull/11582))
+- fix: (events): check for sync-in-progress (#11932) ([filecoin-project/lotus#11932](https://github.com/filecoin-project/lotus/pull/11932))
+- fix: curio: common commands (#11879) ([filecoin-project/lotus#11879](https://github.com/filecoin-project/lotus/pull/11879))
+- fix: curio: fix incorrect null check for varchar column (#11881) ([filecoin-project/lotus#11881](https://github.com/filecoin-project/lotus/pull/11881))
+- fix: local storage reservations fixes (#11866) ([filecoin-project/lotus#11866](https://github.com/filecoin-project/lotus/pull/11866))
+- fix: curio: Check deal start epoch passed in PrecommitSubmit (#11873) ([filecoin-project/lotus#11873](https://github.com/filecoin-project/lotus/pull/11873))
+- fix: curio: base config by default (#11676) ([filecoin-project/lotus#11676](https://github.com/filecoin-project/lotus/pull/11676))
+- fix: curio: Start BoostAdapters before blocking rpc serve (#11871) ([filecoin-project/lotus#11871](https://github.com/filecoin-project/lotus/pull/11871))
+- fix: cli: json flag (#11868) ([filecoin-project/lotus#11868](https://github.com/filecoin-project/lotus/pull/11868))
+- feat: curio/lmrpc: Ingest backpressure (#11865) ([filecoin-project/lotus#11865](https://github.com/filecoin-project/lotus/pull/11865))
+- feat: curio: Cleanup data copies after seal ops (#11847) ([filecoin-project/lotus#11847](https://github.com/filecoin-project/lotus/pull/11847))
+- fix: spcli: add reference to the terminate command (#11851) ([filecoin-project/lotus#11851](https://github.com/filecoin-project/lotus/pull/11851))
+- fix: sealing: improve gasEstimate logging (#11840) ([filecoin-project/lotus#11840](https://github.com/filecoin-project/lotus/pull/11840))
+- fix: harmony: Try other tasks when storage claim fails
+- fix: test: TestForkPreMigration hanging when env-var is set (#11838) ([filecoin-project/lotus#11838](https://github.com/filecoin-project/lotus/pull/11838))
+- fix: piece: Don't return StartEport in PieceDealInfo.EndEpoch (#11832) ([filecoin-project/lotus#11832](https://github.com/filecoin-project/lotus/pull/11832))
+- fix: paths/local: Fix on-disk storage accounting in new reservations (#11825) ([filecoin-project/lotus#11825](https://github.com/filecoin-project/lotus/pull/11825))
+- fix: sealing pipeline: Fix panic on padding pieces in WaitDeals (#11708) ([filecoin-project/lotus#11708](https://github.com/filecoin-project/lotus/pull/11708))
+- feat: ipfs: remove IPFS client backend (#11661) ([filecoin-project/lotus#11661](https://github.com/filecoin-project/lotus/pull/11661))
+- fix: docs: Modify generate-lotus-cli.py to ignoring aliases. ([filecoin-project/lotus#11535](https://github.com/filecoin-project/lotus/pull/11535))
+- fix: eth: decode as actor creation iff "to" is the EAM (#11520) ([filecoin-project/lotus#11520](https://github.com/filecoin-project/lotus/pull/11520))
+- fix(events): properly decorate events db errors (#11856) ([filecoin-project/lotus#11856](https://github.com/filecoin-project/lotus/pull/11856))
+- fix: CLI: adjust TermMax for extend-claim used by a different client (#11764) ([filecoin-project/lotus#11764](https://github.com/filecoin-project/lotus/pull/111764))
+- fix: copy Flags field from SectorOnChainInfo (#11963) ([filecoin-project/lotus#11963](https://github.com/filecoin-project/lotus/pull/11963))
+- feat: libp2p: Lotus stream cleanup (#11993) ([filecoin-project/lotus#11993](https://github.com/filecoin-project/lotus/pull/11993))
+
+## Dependencies
+
+- chore: update deps (#11819) ([filecoin-project/lotus#11819](https://github.com/filecoin-project/lotus/pull/11819))
+- chore: mod: use upstream poseidon ([filecoin-project/lotus#11557](https://github.com/filecoin-project/lotus/pull/11557))
+- deps: multiaddress ([filecoin-project/lotus#11558](https://github.com/filecoin-project/lotus/pull/11558))
+- chore:libp2p: update libp2p deps in master ([filecoin-project/lotus#11522](https://github.com/filecoin-project/lotus/pull/11522))
+- dep: go-multi-address ([filecoin-project/lotus#11563](https://github.com/filecoin-project/lotus/pull/11563))
+- chore: update go-data-transfer and go-graphsync (#12000) ([filecoin-project/lotus#12000](https://github.com/filecoin-project/lotus/pull/2000))
+- chore: update drand (#12021) ([filecoin-project/lotus#12021](https://github.com/filecoin-project/lotus/pull/12021))
+- chore: libp2p: update to v0.34.1 (12027) ([filecoin-project/lotus#12027](https://github.com/filecoin-project/lotus/pull/12027))
+- github.com/filecoin-project/go-amt-ipld/ (v4.2.0 -> v4.3.0)
+- github.com/filecoin-project/go-state-types (v0.13.1 -> v0.13.3)
+- github.com/libp2p/go-libp2p-pubsub (v0.10.0 -> v0.10.1)
+- github.com/libp2p/go-libp2p (v0.33.2 -> v0.34.1)
+
+## Others
+
+- ci: ci: create gh workflow that runs go checks (#11761) ([filecoin-project/lotus#11761](https://github.com/filecoin-project/lotus/pull/11761))
+- ci: ci: create gh workflow that runs go build (#11760) ([filecoin-project/lotus#11760](https://github.com/filecoin-project/lotus/pull/11760))
+- ci: cancel in progress runs on pull requests only (#11842) ([filecoin-project/lotus#11842](https://github.com/filecoin-project/lotus/pull/11842))
+- ci: ci: list processes before calling apt-get to enable debugging (#11815) ([filecoin-project/lotus#11815](https://github.com/filecoin-project/lotus/pull/11815))
+- ci: ci: allow master main sync to write to the repository (#11784) ([filecoin-project/lotus#11784](https://github.com/filecoin-project/lotus/pull/11784))
+- ci: ci: create gh workflow that runs go tests (#11762) ([filecoin-project/lotus#11762](https://github.com/filecoin-project/lotus/pull/11762))
+- ci: ci: deprecate circle ci in favour of github actions (#11786) ([filecoin-project/lotus#11786](https://github.com/filecoin-project/lotus/pull/1786))
+- misc: Drop the raft-cluster experiment ([filecoin-project/lotus#11468](https://github.com/filecoin-project/lotus/pull/11468))
+- chore: fix some typos in comments (#11892) ([filecoin-project/lotus#11892](https://github.com/filecoin-project/lotus/pull/11892))
+- chore: fix typos (#11848) ([filecoin-project/lotus#11848](https://github.com/filecoin-project/lotus/pull/11848))
+- chore: fix typo (#11697) ([filecoin-project/lotus#11697](https://github.com/filecoin-project/lotus/pull/11697))
+- chore: fix 2 typo's (#11542) ([filecoin-project/lotus#11542](https://github.com/filecoin-project/lotus/pull/11542))
+- chore: calibnet: Update bootstrap peer list ([filecoin-project/lotus#11672](https://github.com/filecoin-project/lotus/pull/11672))
+- chore: build: Bump version in master ([filecoin-project/lotus#11475](https://github.com/filecoin-project/lotus/pull/11475))
+- chore: releases: merge releases branch to master ([filecoin-project/lotus#11578](https://github.com/filecoin-project/lotus/pull/11578))
+- chore: Add systemd memory note on install and in config (#11641) ([filecoin-project/lotus#11641](https://github.com/filecoin-project/lotus/pull/11641))
+- chore: switch back to upstream ledger library (#11651) ([filecoin-project/lotus#11651](https://github.com/filecoin-project/lotus/pull/11651))
+- chore: build: update minimum go version to 1.21.7 (#11652) ([filecoin-project/lotus#11652](https://github.com/filecoin-project/lotus/pull/11652))
+- chore: docs: nv-skeleton documentation (#11065) ([filecoin-project/lotus#11065](https://github.com/filecoin-project/lotus/pull/11065))
+- chore: Add v13 support to invariants-checker (#11931) ([filecoin-project/lotus#11931](https://github.com/filecoin-project/lotus/pull/11931))
+- chore: remove unmaintained bootstrappers (#11983) ([filecoin-project/lotus#11983](https://github.com/filecoin-project/lotus/pull/11983))
+- chore: go mod: revert go version change as it breaks Docker build (#12050) ([filecoin-project/lotus#12050](https://github.com/filecoin-project/lotus/pull/12050))
+- chore: pin golanglint-ci to v1.58.2 ([filecoin-project/lotus#12054](https://github.com/filecoin-project/lotus/pull/12054))
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Rod Vagg | 20 | +55315/-204 | 58 |
+| Łukasz Magiera | 201 | +16244/-6541 | 647 |
+| Andrew Jackson (Ajax) | 53 | +15293/-6764 | 394 |
+| Phi-rjan | 6 | +12669/-4521 | 221 |
+| LexLuthr | 20 | +5972/-2815 | 120 |
+| Steven Allen | 22 | +1626/-1264 | 77 |
+| Piotr Galar | 9 | +790/-412 | 33 |
+| Aayush Rajasekaran | 4 | +642/-509 | 12 |
+| Lee | 1 | +601/-533 | 9 |
+| qwdsds | 3 | +617/-510 | 11 |
+| Phi | 11 | +551/-83 | 32 |
+| Jiaying Wang | 5 | +433/-20 | 13 |
+| Masih H. Derkani | 4 | +350/-101 | 18 |
+| Aayush | 4 | +143/-76 | 17 |
+| Aarsh Shah | 3 | +63/-11 | 5 |
+| jennijuju | 3 | +22/-22 | 12 |
+| hunjixin | 1 | +21/-14 | 4 |
+| beck | 2 | +17/-17 | 2 |
+| tom123222 | 2 | +28/-4 | 2 |
+| Ian Norden | 1 | +21/-1 | 1 |
+| ZenGround0 | 1 | +3/-15 | 1 |
+| shuangcui | 1 | +7/-7 | 6 |
+| Vid Bregar | 1 | +7/-4 | 2 |
+| writegr | 1 | +5/-5 | 5 |
+| Nagaprasad V R | 1 | +9/-0 | 1 |
+| forcedebug | 1 | +4/-4 | 4 |
+| parthshah1 | 2 | +6/-1 | 2 |
+| fuyangpengqi | 1 | +3/-3 | 3 |
+| Samuel Arogbonlo | 1 | +6/-0 | 2 |
+| GlacierWalrus | 1 | +0/-6 | 1 |
+| Aloxaf | 1 | +6/-0 | 2 |
+| Rob Quist | 2 | +2/-3 | 3 |
+| wersfeds | 1 | +2/-2 | 1 |
+| Jon | 1 | +2/-0 | 1 |
+| 0x5459 | 1 | +1/-0 | 1 |
 
 # v1.26.3 / 2024-04-22
 
