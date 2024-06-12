@@ -470,6 +470,11 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 		return xerrors.Errorf("insert events into events_seen: %w", err)
 	}
 
+	_, err = tx.ExecContext(ctx, "INSERT OR IGNORE INTO _meta (version) VALUES (5)")
+	if err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return xerrors.Errorf("commit transaction: %w", err)
@@ -477,7 +482,7 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 
 	ei.vacuumDBAndCheckpointWAL(ctx)
 
-	log.Infof("Successfully migrated event index from version 4 to version 5 in %s", time.Since(now))
+	log.Infof("Successfully migrated event index from version 5 to version 6 in %s", time.Since(now))
 	return nil
 }
 
