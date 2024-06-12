@@ -85,6 +85,10 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, seen, "tipset key should be seen")
 
+	seen, err = ei.isTipsetProcessed(context.Background(), []byte{1})
+	require.NoError(t, err)
+	require.False(t, seen, "tipset key should not be seen")
+
 	testCases := []struct {
 		name   string
 		filter *eventFilter
