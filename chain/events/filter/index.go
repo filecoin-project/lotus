@@ -456,7 +456,7 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 		return xerrors.Errorf("create index events_seen_tipset_key: %w", err)
 	}
 
-	// INSERT an entry in the events_seen table for all epochs we do have have events for in our DB
+	// INSERT an entry in the events_seen table for all epochs we do have events for in our DB
 	_, err = tx.ExecContext(ctx, `
     INSERT INTO events_seen (height, tipset_key, tipset_key_cid)
     SELECT e.height, e.tipset_key, e.tipset_key_cid
@@ -470,7 +470,7 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 		return xerrors.Errorf("insert events into events_seen: %w", err)
 	}
 
-	_, err = tx.ExecContext(ctx, "INSERT OR IGNORE INTO _meta (version) VALUES (5)")
+	_, err = tx.ExecContext(ctx, "INSERT OR IGNORE INTO _meta (version) VALUES (6)")
 	if err != nil {
 		return xerrors.Errorf("increment _meta version: %w", err)
 	}
