@@ -67,7 +67,7 @@ var ddls = []string{
 	createIndexEventEntryCodecValue,
 	createIndexEventEntryEventId,
 	createIndexEventsSeenHeight,
-	createIndexEventsSeenTipsetKeyCid,
+	createIndexEventsSeenTipsetKey,
 
 	// metadata containing version of schema
 	`CREATE TABLE IF NOT EXISTS _meta (
@@ -112,8 +112,8 @@ const (
 		tipset_key_cid BLOB NOT NULL
 	)`
 
-	createIndexEventsSeenHeight       = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
-	createIndexEventsSeenTipsetKeyCid = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key_cid ON events_seen (tipset_key_cid);`
+	createIndexEventsSeenHeight    = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
+	createIndexEventsSeenTipsetKey = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key ON events_seen (tipset_key);`
 )
 
 type EventIndex struct {
@@ -451,9 +451,9 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("create index events_seen_height: %w", err)
 	}
-	_, err = tx.ExecContext(ctx, createIndexEventsSeenTipsetKeyCid)
+	_, err = tx.ExecContext(ctx, createIndexEventsSeenTipsetKey)
 	if err != nil {
-		return xerrors.Errorf("create index events_seen_tipset_key_cid: %w", err)
+		return xerrors.Errorf("create index events_seen_tipset_key: %w", err)
 	}
 
 	// INSERT an entry in the events_seen table for all epochs we do have have events for in our DB
