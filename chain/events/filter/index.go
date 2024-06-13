@@ -94,7 +94,9 @@ const (
 	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
 	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
 	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	insertEventsSeen     = `INSERT OR IGNORE INTO events_seen(height, tipset_key_cid) VALUES(?, ?)`
+	revertEventSeen      = `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`
+	restoreEventSeen     = `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`
+	insertEventsSeen     = `INSERT OR IGNORE INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, ?)`
 
 	createIndexEventEmitterAddr  = `CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)`
 	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
@@ -108,7 +110,8 @@ const (
 	createTableEventsSeen = `CREATE TABLE IF NOT EXISTS events_seen (
 		id INTEGER PRIMARY KEY,
 		height INTEGER NOT NULL,
-		tipset_key_cid BLOB NOT NULL
+		tipset_key_cid BLOB NOT NULL,
+		reverted INTEGER NOT NULL
 	)`
 
 	createIndexEventsSeenHeight       = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
@@ -124,6 +127,8 @@ type EventIndex struct {
 	stmtRevertEventsInTipset *sql.Stmt
 	stmtRestoreEvent         *sql.Stmt
 	stmtInsertEventsSeen     *sql.Stmt
+	stmtRevertEventSeen      *sql.Stmt
+	stmtRestoreEventSeen     *sql.Stmt
 }
 
 func (ei *EventIndex) initStatements() (err error) {
@@ -155,6 +160,16 @@ func (ei *EventIndex) initStatements() (err error) {
 	ei.stmtInsertEventsSeen, err = ei.db.Prepare(insertEventsSeen)
 	if err != nil {
 		return xerrors.Errorf("prepare stmtInsertEventsSeen: %w", err)
+	}
+
+	ei.stmtRevertEventSeen, err = ei.db.Prepare(revertEventSeen)
+	if err != nil {
+		return xerrors.Errorf("prepare stmtRevertEventSeen: %w", err)
+	}
+
+	ei.stmtRestoreEventSeen, err = ei.db.Prepare(restoreEventSeen)
+	if err != nil {
+		return xerrors.Errorf("prepare stmtRestoreEventSeen: %w", err)
 	}
 
 	return nil
@@ -455,12 +470,12 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 
 	// INSERT an entry in the events_seen table for all epochs we do have events for in our DB
 	_, err = tx.ExecContext(ctx, `
-    INSERT INTO events_seen (height, tipset_key, tipset_key_cid)
-    SELECT e.height, e.tipset_key, e.tipset_key_cid
+    INSERT INTO events_seen (height, tipset_key_cid, reverted)
+    SELECT e.height, e.tipset_key_cid, e.reverted
     FROM event e
     WHERE NOT EXISTS (
         SELECT 1 FROM events_seen es
-        WHERE es.height = e.height AND es.tipset_key = e.tipset_key AND es.tipset_key_cid = e.tipset_key_cid
+        WHERE es.height = e.height AND es.tipset_key_cid = e.tipset_key_cid
     )
 `)
 	if err != nil {
@@ -623,9 +638,19 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
+		tsKeyCid, err := te.msgTs.Key().Cid()
+		if err != nil {
+			return xerrors.Errorf("tipset key cid: %w", err)
+		}
+
 		_, err = tx.Stmt(ei.stmtRevertEventsInTipset).Exec(te.msgTs.Height(), te.msgTs.Key().Bytes())
 		if err != nil {
 			return xerrors.Errorf("revert event: %w", err)
+		}
+
+		_, err = tx.Stmt(ei.stmtRevertEventSeen).Exec(te.msgTs.Height(), tsKeyCid.Bytes())
+		if err != nil {
+			return xerrors.Errorf("revert event seen: %w", err)
 		}
 
 		err = tx.Commit()
@@ -738,6 +763,22 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				if rowsAffected != 1 {
 					log.Warnf("restored %d events but expected only one to exist", rowsAffected)
 				}
+
+				res, err = tx.Stmt(ei.stmtRestoreEventSeen).Exec(
+					te.msgTs.Height(),
+					tsKeyCid.Bytes(),
+				)
+				if err != nil {
+					return xerrors.Errorf("exec restore event seen: %w", err)
+				}
+
+				rowsAffected, err = res.RowsAffected()
+				if err != nil {
+					return xerrors.Errorf("error getting rows affected: %s", err)
+				}
+				if rowsAffected != 1 {
+					log.Warnf("restored %d events in events_seen but expected only one to exist", rowsAffected)
+				}
 			}
 			eventCount++
 		}
@@ -747,6 +788,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	_, err = tx.Stmt(ei.stmtInsertEventsSeen).Exec(
 		te.msgTs.Height(),
 		tsKeyCid.Bytes(),
+		false,
 	)
 	if err != nil {
 		return xerrors.Errorf("exec insert events seen: %w", err)
