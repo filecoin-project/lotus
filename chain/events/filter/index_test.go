@@ -81,7 +81,10 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	}
 
 	tsKey := events14000.msgTs.Key()
-	seen, err := ei.isTipsetProcessed(context.Background(), tsKey.Bytes())
+	tsKeyCid, err := tsKey.Cid()
+	require.NoError(t, err, "tipset key cid")
+
+	seen, err := ei.isTipsetProcessed(context.Background(), tsKeyCid.Bytes())
 	require.NoError(t, err)
 	require.True(t, seen, "tipset key should be seen")
 

@@ -67,7 +67,7 @@ var ddls = []string{
 	createIndexEventEntryCodecValue,
 	createIndexEventEntryEventId,
 	createIndexEventsSeenHeight,
-	createIndexEventsSeenTipsetKey,
+	createIndexEventsSeenTipsetKeyCid,
 
 	// metadata containing version of schema
 	`CREATE TABLE IF NOT EXISTS _meta (
@@ -94,7 +94,7 @@ const (
 	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
 	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
 	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	insertEventsSeen     = `INSERT OR IGNORE INTO events_seen(height, tipset_key, tipset_key_cid) VALUES(?, ?, ?)`
+	insertEventsSeen     = `INSERT OR IGNORE INTO events_seen(height, tipset_key_cid) VALUES(?, ?)`
 
 	createIndexEventEmitterAddr  = `CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)`
 	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
@@ -108,12 +108,11 @@ const (
 	createTableEventsSeen = `CREATE TABLE IF NOT EXISTS events_seen (
 		id INTEGER PRIMARY KEY,
 		height INTEGER NOT NULL,
-		tipset_key BLOB NOT NULL,
 		tipset_key_cid BLOB NOT NULL
 	)`
 
-	createIndexEventsSeenHeight    = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
-	createIndexEventsSeenTipsetKey = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key ON events_seen (tipset_key);`
+	createIndexEventsSeenHeight       = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
+	createIndexEventsSeenTipsetKeyCid = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key_cid ON events_seen (tipset_key_cid);`
 )
 
 type EventIndex struct {
@@ -423,8 +422,6 @@ func (ei *EventIndex) migrateToVersion5(ctx context.Context) error {
 		return xerrors.Errorf("commit transaction: %w", err)
 	}
 
-	ei.vacuumDBAndCheckpointWAL(ctx)
-
 	log.Infof("Successfully migrated event index from version 4 to version 5 in %s", time.Since(now))
 	return nil
 }
@@ -451,9 +448,9 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("create index events_seen_height: %w", err)
 	}
-	_, err = tx.ExecContext(ctx, createIndexEventsSeenTipsetKey)
+	_, err = tx.ExecContext(ctx, createIndexEventsSeenTipsetKeyCid)
 	if err != nil {
-		return xerrors.Errorf("create index events_seen_tipset_key: %w", err)
+		return xerrors.Errorf("create index events_seen_tipset_key_cid: %w", err)
 	}
 
 	// INSERT an entry in the events_seen table for all epochs we do have events for in our DB
@@ -609,8 +606,8 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
-func (ei *EventIndex) isTipsetProcessed(ctx context.Context, tipsetKey []byte) (bool, error) {
-	row := ei.db.QueryRowContext(ctx, "SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key = ?", tipsetKey)
+func (ei *EventIndex) isTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
+	row := ei.db.QueryRowContext(ctx, "SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid = ?", tipsetKeyCid)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -749,7 +746,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// add an entry to the event_seen table for this tipset
 	_, err = tx.Stmt(ei.stmtInsertEventsSeen).Exec(
 		te.msgTs.Height(),
-		te.msgTs.Key().Bytes(),
 		tsKeyCid.Bytes(),
 	)
 	if err != nil {
