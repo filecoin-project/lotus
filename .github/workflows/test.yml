@@ -147,8 +147,7 @@ jobs:
               "itest-worker",
               "multicore-sdr",
               "unit-cli",
-              "unit-storage",
-              "itest-curio"
+              "unit-storage"
             ]
         run: |
           # Create a list of integration test groups
