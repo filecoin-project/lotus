@@ -475,7 +475,7 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
     FROM event e
     WHERE NOT EXISTS (
         SELECT 1 FROM events_seen es
-        WHERE es.height = e.height AND es.tipset_key_cid = e.tipset_key_cid
+        WHERE es.height = e.height AND es.tipset_key_cid = e.tipset_key_cid	
     )
 `)
 	if err != nil {
@@ -623,6 +623,13 @@ func (ei *EventIndex) Close() error {
 
 func (ei *EventIndex) isTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
 	row := ei.db.QueryRowContext(ctx, "SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid = ?", tipsetKeyCid)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+func (ei *EventIndex) isTipsetEventsApplied(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
+	row := ei.db.QueryRowContext(ctx, "SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid = ? AND reverted = ?", tipsetKeyCid, false)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
