@@ -26,10 +26,11 @@ var pragmas = []string{
 	"PRAGMA temp_store = memory",
 	"PRAGMA mmap_size = 30000000000",
 	"PRAGMA page_size = 32768",
-	"PRAGMA auto_vacuum = NONE", // not useful until we implement GC
+	"PRAGMA auto_vacuum = NONE",
 	"PRAGMA automatic_index = OFF",
 	"PRAGMA journal_mode = WAL",
-	"PRAGMA read_uncommitted = ON",
+	"PRAGMA wal_autocheckpoint = 256", // checkpoint @ 256 pages
+	"PRAGMA journal_size_limit = 0",   // always reset journal and wal files
 }
 
 // Any changes to this schema should be matched for the `lotus-shed indexes backfill-events` command
@@ -751,6 +752,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		}
 		return xerrors.Errorf("exec prefill query: %w", err)
 	}
+	defer q.Close()
 
 	var ces []*CollectedEvent
 	var currentID int64 = -1
@@ -839,7 +841,6 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			Codec: row.codec,
 			Value: row.value,
 		})
-
 	}
 
 	if ce != nil {
