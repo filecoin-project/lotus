@@ -1321,8 +1321,8 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 		return xerrors.New("height is in the future")
 	}
 
-	subId, subCh := ei.SubscribeTipsetUpdates()
-	defer ei.UnsubscribeTipsetUpdates(subId)
+	subId, subCh := ei.SubscribeUpdates()
+	defer ei.UnsubscribeUpdates(subId)
 
 	for {
 		select {

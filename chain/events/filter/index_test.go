@@ -77,8 +77,8 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
 
-	_, subCh := ei.SubscribeTipsetUpdates()
-	out := make(chan *TipsetUpdate, 1)
+	_, subCh := ei.SubscribeUpdates()
+	out := make(chan *EventIndexUpdate, 1)
 	go func() {
 		tu := <-subCh
 		out <- tu
@@ -435,8 +435,8 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
 
-	tCh := make(chan *TipsetUpdate, 3)
-	_, subCh := ei.SubscribeTipsetUpdates()
+	tCh := make(chan *EventIndexUpdate, 3)
+	_, subCh := ei.SubscribeUpdates()
 	go func() {
 		cnt := 0
 		for tu := range subCh {

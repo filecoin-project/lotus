@@ -131,18 +131,18 @@ type EventIndex struct {
 	stmtRevertEventSeen      *sql.Stmt
 	stmtRestoreEventSeen     *sql.Stmt
 
-	mu                sync.Mutex
-	subIdCounter      uint64
-	subscribedTipsets map[uint64]*tipsetSub
+	mu           sync.Mutex
+	subIdCounter uint64
+	updateSubs   map[uint64]*updateSub
 }
 
-type tipsetSub struct {
+type updateSub struct {
 	ctx    context.Context
-	ch     chan *TipsetUpdate
+	ch     chan *EventIndexUpdate
 	cancel context.CancelFunc
 }
 
-type TipsetUpdate struct {
+type EventIndexUpdate struct {
 	Height    uint64
 	TipsetCid cid.Cid
 	Reverted  bool
@@ -628,7 +628,7 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 		return nil, xerrors.Errorf("error preparing eventIndex database statements: %w", err)
 	}
 
-	eventIndex.subscribedTipsets = make(map[uint64]*tipsetSub)
+	eventIndex.updateSubs = make(map[uint64]*updateSub)
 
 	return &eventIndex, nil
 }
@@ -640,11 +640,11 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
-func (ei *EventIndex) SubscribeTipsetUpdates() (uint64, chan *TipsetUpdate) {
+func (ei *EventIndex) SubscribeUpdates() (uint64, chan *EventIndexUpdate) {
 	subCtx, subCancel := context.WithCancel(context.Background())
-	ch := make(chan *TipsetUpdate)
+	ch := make(chan *EventIndexUpdate)
 
-	tSub := &tipsetSub{
+	tSub := &updateSub{
 		ctx:    subCtx,
 		cancel: subCancel,
 		ch:     ch,
@@ -653,20 +653,20 @@ func (ei *EventIndex) SubscribeTipsetUpdates() (uint64, chan *TipsetUpdate) {
 	ei.mu.Lock()
 	subId := ei.subIdCounter
 	ei.subIdCounter++
-	ei.subscribedTipsets[subId] = tSub
+	ei.updateSubs[subId] = tSub
 	ei.mu.Unlock()
 
 	return subId, tSub.ch
 }
 
-func (ei *EventIndex) UnsubscribeTipsetUpdates(subId uint64) {
+func (ei *EventIndex) UnsubscribeUpdates(subId uint64) {
 	ei.mu.Lock()
-	tSub, ok := ei.subscribedTipsets[subId]
+	tSub, ok := ei.updateSubs[subId]
 	if !ok {
 		ei.mu.Unlock()
 		return
 	}
-	delete(ei.subscribedTipsets, subId)
+	delete(ei.updateSubs, subId)
 	ei.mu.Unlock()
 
 	// cancel the subscription
@@ -726,13 +726,13 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		}
 
 		ei.mu.Lock()
-		tSubs := ei.subscribedTipsets
+		tSubs := ei.updateSubs
 		ei.mu.Unlock()
 
 		for _, tSub := range tSubs {
 			tSub := tSub
 			select {
-			case tSub.ch <- &TipsetUpdate{
+			case tSub.ch <- &EventIndexUpdate{
 				Height:    uint64(te.msgTs.Height()),
 				TipsetCid: tsKeyCid,
 				Reverted:  true,
@@ -886,13 +886,13 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	ei.mu.Lock()
-	tSubs := ei.subscribedTipsets
+	tSubs := ei.updateSubs
 	ei.mu.Unlock()
 
 	for _, tSub := range tSubs {
 		tSub := tSub
 		select {
-		case tSub.ch <- &TipsetUpdate{
+		case tSub.ch <- &EventIndexUpdate{
 			Height:    uint64(te.msgTs.Height()),
 			TipsetCid: tsKeyCid,
 			Reverted:  false,
