@@ -133,13 +133,19 @@ type EventIndex struct {
 
 	mu                sync.Mutex
 	subIdCounter      uint64
-	subscribedTipsets map[uint64]chan tipsetUpdate
+	subscribedTipsets map[uint64]*tipsetSub
 }
 
-type tipsetUpdate struct {
-	height    uint64
-	tipsetCid cid.Cid
-	revert    bool
+type tipsetSub struct {
+	ctx    context.Context
+	ch     chan *TipsetUpdate
+	cancel context.CancelFunc
+}
+
+type TipsetUpdate struct {
+	Height    uint64
+	TipsetCid cid.Cid
+	Reverted  bool
 }
 
 func (ei *EventIndex) initStatements() (err error) {
@@ -622,7 +628,7 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 		return nil, xerrors.Errorf("error preparing eventIndex database statements: %w", err)
 	}
 
-	eventIndex.subscribedTipsets = make(map[uint64]chan tipsetUpdate)
+	eventIndex.subscribedTipsets = make(map[uint64]*tipsetSub)
 
 	return &eventIndex, nil
 }
@@ -634,33 +640,56 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
-func (ei *EventIndex) subscribeTipsetUpdates() (uint64, chan<- tipsetUpdate) {
-	ch := make(chan tipsetUpdate)
+func (ei *EventIndex) SubscribeTipsetUpdates() (uint64, chan *TipsetUpdate) {
+	subCtx, subCancel := context.WithCancel(context.Background())
+	ch := make(chan *TipsetUpdate)
+
+	tSub := &tipsetSub{
+		ctx:    subCtx,
+		cancel: subCancel,
+		ch:     ch,
+	}
 
 	ei.mu.Lock()
 	subId := ei.subIdCounter
 	ei.subIdCounter++
-	ei.subscribedTipsets[subId] = ch
+	ei.subscribedTipsets[subId] = tSub
 	ei.mu.Unlock()
 
-	return subId, ch
+	return subId, tSub.ch
 }
 
-func (ei *EventIndex) unsubscribeTipsetUpdates(subId uint64) {
+func (ei *EventIndex) UnsubscribeTipsetUpdates(subId uint64) {
 	ei.mu.Lock()
+	tSub, ok := ei.subscribedTipsets[subId]
+	if !ok {
+		ei.mu.Unlock()
+		return
+	}
 	delete(ei.subscribedTipsets, subId)
 	ei.mu.Unlock()
+
+	// cancel the subscription
+	tSub.cancel()
 }
 
-func (ei *EventIndex) isTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
+func (ei *EventIndex) GetMaxHeightInIndex(ctx context.Context) (uint64, error) {
+	row := ei.db.QueryRowContext(ctx, "SELECT MAX(height) FROM events_seen")
+	var maxHeight uint64
+	err := row.Scan(&maxHeight)
+	return maxHeight, err
+}
+
+func (ei *EventIndex) IsHeightProcessed(ctx context.Context, height uint64) (bool, error) {
+	mh, err := ei.GetMaxHeightInIndex(ctx)
+	if err != nil {
+		return false, err
+	}
+	return height <= mh, nil
+}
+
+func (ei *EventIndex) IsTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
 	row := ei.db.QueryRowContext(ctx, "SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid = ?", tipsetKeyCid)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
-func (ei *EventIndex) isTipsetEventsApplied(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
-	row := ei.db.QueryRowContext(ctx, "SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid = ? AND reverted = ?", tipsetKeyCid, false)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -697,19 +726,23 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		}
 
 		ei.mu.Lock()
-		for _, ch := range ei.subscribedTipsets {
+		tSubs := ei.subscribedTipsets
+		ei.mu.Unlock()
+
+		for _, tSub := range tSubs {
+			tSub := tSub
 			select {
-			case ch <- tipsetUpdate{
-				height:    uint64(te.msgTs.Height()),
-				tipsetCid: tsKeyCid,
-				revert:    true,
+			case tSub.ch <- &TipsetUpdate{
+				Height:    uint64(te.msgTs.Height()),
+				TipsetCid: tsKeyCid,
+				Reverted:  true,
 			}:
+			case <-tSub.ctx.Done():
+				// subscription was cancelled, ignore
 			case <-ctx.Done():
 				return ctx.Err()
-			default:
 			}
 		}
-		ei.mu.Unlock()
 
 		return nil
 	}
@@ -853,19 +886,23 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	ei.mu.Lock()
-	for _, ch := range ei.subscribedTipsets {
+	tSubs := ei.subscribedTipsets
+	ei.mu.Unlock()
+
+	for _, tSub := range tSubs {
+		tSub := tSub
 		select {
-		case ch <- tipsetUpdate{
-			height:    uint64(te.msgTs.Height()),
-			tipsetCid: tsKeyCid,
-			revert:    false,
+		case tSub.ch <- &TipsetUpdate{
+			Height:    uint64(te.msgTs.Height()),
+			TipsetCid: tsKeyCid,
+			Reverted:  false,
 		}:
+		case <-tSub.ctx.Done():
+			// subscription was cancelled, ignore
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
 		}
 	}
-	ei.mu.Unlock()
 
 	return nil
 }

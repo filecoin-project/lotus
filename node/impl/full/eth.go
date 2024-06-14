@@ -1258,16 +1258,82 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		return nil, api.ErrNotSupported
 	}
 
-	// Create a temporary filter
-	f, err := e.installEthFilterSpec(ctx, filterSpec)
+	if e.EventFilterManager.EventIndex == nil {
+		return nil, xerrors.Errorf("cannot use eth_get_logs if historical event index is disabled")
+	}
+
+	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to parse eth filter spec: %w", err)
+	}
+
+	if pf.tipsetCid == cid.Undef {
+		maxHeight := pf.maxHeight
+		if maxHeight == -1 {
+			maxHeight = e.Chain.GetHeaviestTipSet().Height()
+		}
+		err := e.waitForHeightProcessed(ctx, maxHeight)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
+		}
+		err = e.waitForHeightProcessed(ctx, ts.Height())
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := e.EventFilterManager.EventIndex.IsTipsetProcessed(ctx, pf.tipsetCid.Bytes())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to check if tipset events have been indexed: %w", err)
+		}
+		if !b {
+			return nil, xerrors.Errorf("event index failed to index tipset %s", pf.tipsetCid.String())
+		}
+	}
+
+	// Create a temporary filter
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to install event filter: %w", err)
 	}
 	ces := f.TakeCollectedEvents(ctx)
 
 	_ = e.uninstallFilter(ctx, f)
 
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
+}
+
+func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
+	ei := e.EventFilterManager.EventIndex
+	b, err := ei.IsHeightProcessed(ctx, uint64(height))
+	if err != nil {
+		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
+	}
+	if b {
+		return nil
+	}
+
+	if height > e.Chain.GetHeaviestTipSet().Height() {
+		return xerrors.New("height is in the future")
+	}
+
+	subId, subCh := ei.SubscribeTipsetUpdates()
+	defer ei.UnsubscribeTipsetUpdates(subId)
+
+	for {
+		select {
+		case tu := <-subCh:
+			if tu.Height >= uint64(height) {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 func (e *EthEventHandler) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
@@ -1368,7 +1434,15 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 	return minHeight, maxHeight, nil
 }
 
-func (e *EthEventHandler) installEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (filter.EventFilter, error) {
+type parsedFilter struct {
+	minHeight abi.ChainEpoch
+	maxHeight abi.ChainEpoch
+	tipsetCid cid.Cid
+	addresses []address.Address
+	keys      map[string][]types.ActorEventBlock
+}
+
+func (e *EthEventHandler) parseEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*parsedFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -1405,7 +1479,13 @@ func (e *EthEventHandler) installEthFilterSpec(ctx context.Context, filterSpec *
 		return nil, err
 	}
 
-	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keysToKeysWithCodec(keys), true)
+	return &parsedFilter{
+		minHeight: minHeight,
+		maxHeight: maxHeight,
+		tipsetCid: tipsetCid,
+		addresses: addresses,
+		keys:      keysToKeysWithCodec(keys),
+	}, nil
 }
 
 func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
@@ -1426,9 +1506,14 @@ func (e *EthEventHandler) EthNewFilter(ctx context.Context, filterSpec *ethtypes
 		return ethtypes.EthFilterID{}, api.ErrNotSupported
 	}
 
-	f, err := e.installEthFilterSpec(ctx, filterSpec)
+	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
 	if err != nil {
 		return ethtypes.EthFilterID{}, err
+	}
+
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	if err != nil {
+		return ethtypes.EthFilterID{}, xerrors.Errorf("failed to install event filter: %w", err)
 	}
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {
