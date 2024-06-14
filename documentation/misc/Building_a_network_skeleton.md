@@ -2,11 +2,10 @@
 
 This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. The process involves making changes in multiple repositories in the following order:
 
-- [Setup](#setup)
-- [Ref-FVM Checklist](#ref-fvm-checklist)
-- [Filecoin-FFI Checklist](#filecoin-ffi-checklist)
-- [Go-State-Types Checklist](#go-state-types-checklist)
-- [Lotus Checklist](#lotus-checklist)
+1. [`ref-fvm`](#ref-fvm-checklist)
+2. [`filecoin-ffi`](#filecoin-ffi-checklist)
+3. [`go-state-types`](#go-state-types-checklist)
+4. [`lotus`](#lotus-checklist)
 
 Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository.
 
