@@ -216,6 +216,8 @@ github.com/drand/kyber v1.3.0 h1:TVd7+xoRgKQ4Ck1viNLPFy6IWhuZM36Bq6zDXD8Asls=
 github.com/drand/kyber v1.3.0/go.mod h1:f+mNHjiGT++CuueBrpeMhFNdKZAsy0tu03bKq9D5LPA=
 github.com/drand/kyber-bls12381 v0.3.1 h1:KWb8l/zYTP5yrvKTgvhOrk2eNPscbMiUOIeWBnmUxGo=
 github.com/drand/kyber-bls12381 v0.3.1/go.mod h1:H4y9bLPu7KZA/1efDg+jtJ7emKx+ro3PU7/jWUVt140=
+github.com/dreading/gospecfunc v0.0.0-20191105042551-e794f60da5c3 h1:oOp1la+wHlyd3ODqW2CbFj8w6Lod4gPMzHFbD0rbp88=
+github.com/dreading/gospecfunc v0.0.0-20191105042551-e794f60da5c3/go.mod h1:lkytgpljbGOM3VZj4Fm7FkGy/oUInQFklbkHBVAvJEg=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
@@ -1743,6 +1745,7 @@ golang.org/x/tools v0.0.0-20190816200558-6889da9d5479/go.mod h1:b+2E5dAYhXwXZwtn
 golang.org/x/tools v0.0.0-20190911174233-4f2ddba30aff/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20190927191325-030b2cf1153e/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20191012152004-8de300cfc20a/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
+golang.org/x/tools v0.0.0-20191022213345-0bbdf54effa2/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20191029041327-9cc4af7d6b2c/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20191029190741-b9c20aec41a5/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20191113191852-77e3bb0ad9e7/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=

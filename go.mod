@@ -184,6 +184,7 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/drand/kyber-bls12381 v0.3.1 // indirect
+	github.com/dreading/gospecfunc v0.0.0-20191105042551-e794f60da5c3 // indirect
 	github.com/elastic/go-windows v1.0.0 // indirect
 	github.com/etclabscore/go-jsonschema-walk v0.0.6 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 // indirect
