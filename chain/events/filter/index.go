@@ -522,7 +522,7 @@ func (ei *EventIndex) Close() error {
 }
 
 func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
-	tx, err := ei.db.Begin()
+	tx, err := ei.db.BeginTx(ctx, nil)
 	if err != nil {
 		return xerrors.Errorf("begin transaction: %w", err)
 	}
