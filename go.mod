@@ -6,6 +6,10 @@ retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
 retract v1.20.2 // Wrongfully cherry picked PR, use v1.20.2+ instead.
 
+replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // provided via a git submodule
+
+replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // provided via a git submodule
+
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.3.0
@@ -329,11 +333,3 @@ require (
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
-
-// https://github.com/magik6k/reflink/commit/cff5a40f3eeca17f44fc95a57ff3878e5ac761dc
-// https://github.com/KarpelesLab/reflink/pull/2
-replace github.com/KarpelesLab/reflink => github.com/magik6k/reflink v1.0.2-patch1
-
-replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
