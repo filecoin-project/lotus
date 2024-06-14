@@ -119,8 +119,8 @@ jobs:
       - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           distribution: goreleaser-pro
-          version: latest
-          args: release --clean --debug ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
+          version: 2.0.1
+          args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
           workdir: lotus
         env:
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_GITUB_TOKEN || github.token || '' }}
