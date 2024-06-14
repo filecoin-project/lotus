@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -129,6 +130,16 @@ type EventIndex struct {
 	stmtInsertEventsSeen     *sql.Stmt
 	stmtRevertEventSeen      *sql.Stmt
 	stmtRestoreEventSeen     *sql.Stmt
+
+	mu                sync.Mutex
+	subIdCounter      uint64
+	subscribedTipsets map[uint64]chan tipsetUpdate
+}
+
+type tipsetUpdate struct {
+	height    uint64
+	tipsetCid cid.Cid
+	revert    bool
 }
 
 func (ei *EventIndex) initStatements() (err error) {
@@ -611,6 +622,8 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 		return nil, xerrors.Errorf("error preparing eventIndex database statements: %w", err)
 	}
 
+	eventIndex.subscribedTipsets = make(map[uint64]chan tipsetUpdate)
+
 	return &eventIndex, nil
 }
 
@@ -619,6 +632,24 @@ func (ei *EventIndex) Close() error {
 		return nil
 	}
 	return ei.db.Close()
+}
+
+func (ei *EventIndex) subscribeTipsetUpdates() (uint64, chan<- tipsetUpdate) {
+	ch := make(chan tipsetUpdate)
+
+	ei.mu.Lock()
+	subId := ei.subIdCounter
+	ei.subIdCounter++
+	ei.subscribedTipsets[subId] = ch
+	ei.mu.Unlock()
+
+	return subId, ch
+}
+
+func (ei *EventIndex) unsubscribeTipsetUpdates(subId uint64) {
+	ei.mu.Lock()
+	delete(ei.subscribedTipsets, subId)
+	ei.mu.Unlock()
 }
 
 func (ei *EventIndex) isTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
@@ -664,6 +695,21 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		if err != nil {
 			return xerrors.Errorf("commit transaction: %w", err)
 		}
+
+		ei.mu.Lock()
+		for _, ch := range ei.subscribedTipsets {
+			select {
+			case ch <- tipsetUpdate{
+				height:    uint64(te.msgTs.Height()),
+				tipsetCid: tsKeyCid,
+				revert:    true,
+			}:
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+		}
+		ei.mu.Unlock()
 
 		return nil
 	}
@@ -805,6 +851,21 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	if err != nil {
 		return xerrors.Errorf("commit transaction: %w", err)
 	}
+
+	ei.mu.Lock()
+	for _, ch := range ei.subscribedTipsets {
+		select {
+		case ch <- tipsetUpdate{
+			height:    uint64(te.msgTs.Height()),
+			tipsetCid: tsKeyCid,
+			revert:    false,
+		}:
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+	}
+	ei.mu.Unlock()
 
 	return nil
 }
