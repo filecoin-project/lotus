@@ -439,6 +439,9 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 	eventIndex := EventIndex{db: db}
 
 	q, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
+	if q != nil {
+		defer func() { _ = q.Close() }()
+	}
 	if errors.Is(err, sql.ErrNoRows) || !q.Next() {
 		// empty database, create the schema
 		for _, ddl := range ddls {
@@ -744,7 +747,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	if err != nil {
 		return xerrors.Errorf("prepare prefill query: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	q, err := stmt.QueryContext(ctx, values...)
 	if err != nil {
@@ -753,7 +756,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		}
 		return xerrors.Errorf("exec prefill query: %w", err)
 	}
-	defer q.Close()
+	defer func() { _ = q.Close() }()
 
 	var ces []*CollectedEvent
 	var currentID int64 = -1
