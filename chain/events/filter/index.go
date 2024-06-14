@@ -744,6 +744,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	if err != nil {
 		return xerrors.Errorf("prepare prefill query: %w", err)
 	}
+	defer stmt.Close()
 
 	q, err := stmt.QueryContext(ctx, values...)
 	if err != nil {
