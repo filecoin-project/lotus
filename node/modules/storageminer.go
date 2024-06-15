@@ -44,10 +44,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
-var (
-	StagingAreaDirName = "deal-staging"
-)
-
 type UuidWrapper struct {
 	v1api.FullNode
 }
