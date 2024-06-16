@@ -1,17 +1,17 @@
 name: Release
 
+# TODO(p2): Restore worfklow_dispatch trigger
 on:
   push:
     branches:
-      - ci/*
-      - release/*
-    tags:
-      - v*
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: The GitHub ref (e.g. refs/tags/v1.0.0) to release
-        required: false
+      - master
+    paths:
+      - build/version.go
+  pull_request:
+    branches:
+      - master
+    paths:
+      - build/version.go
 
 defaults:
   run:
@@ -21,12 +21,42 @@ permissions:
   contents: read
 
 jobs:
+  check:
+    name: Check which projects need to be built
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.projects.outputs.projects }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: projects
+        run: |
+          projects=()
+          node_current_version=$(go run cmd/release/main.go --json node version | jq -r .msg)
+          node_current_version_exists=(git tag -l 'v*' | grep -q $node_current_version)
+          echo "node_current_version=$node_current_version"
+          echo "node_current_version_exists=$node_current_version_exists"
+          if [[ ! $node_current_version_exists ]]; then
+            projects+=('node')
+          fi
+          miner_current_version=$(go run cmd/release/main.go --json miner version | jq -r .msg)
+          miner_current_version_exists=(git tag -l 'miner/v*' | grep -q $miner_current_version)
+          echo "miner_current_version=$miner_current_version"
+          echo "miner_current_version_exists=$miner_current_version_exists"
+          if [[ ! $miner_current_version_exists ]]; then
+            projects+=('miner')
+          fi
+          echo "projects=$(echo "${projects[@]}" | jq -c .)" | tee -a $GITHUB_OUTPUT
   build:
-    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    needs: [check]
+    if: needs.check.outputs.projects != '[]'
+    name: Build ${{ matrix.project }} (${{ matrix.os }}/${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
+        project: ${{ fromJSON(needs.check.outputs.projects) }}
         include:
           - runner: ubuntu-latest
             os: Linux
@@ -48,94 +78,115 @@ jobs:
           fi
       - uses: actions/checkout@v4
         with:
-          path: actions
-      - uses: actions/checkout@v4
-        with:
           submodules: 'recursive'
-          ref: ${{ inputs.ref || github.ref }}
-          path: lotus
-      - uses: ./actions/.github/actions/install-system-dependencies
-      - uses: ./actions/.github/actions/install-go
-        with:
-          working-directory: lotus
+      - uses: ./.github/actions/install-system-dependencies
+      - uses: ./.github/actions/install-go
       - env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: make deps lotus lotus-miner lotus-worker
-        working-directory: lotus
-      - if: runner.os == 'macOS'
+        run: make deps
+      - if: matrix.project == 'node'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make lotus
+      - if: matrix.project == 'miner'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make lotus-miner lotus-worker
+      - if: matrix.project == 'lotus' && runner.os == 'macOS'
         run: otool -hv lotus
-        working-directory: lotus
-      - env:
-          INPUTS_REF: ${{ inputs.ref }}
-        run: |
-          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
-          ../actions/scripts/version-check.sh ./lotus
-        working-directory: lotus
       - uses: actions/upload-artifact@v4
         with:
-          name: lotus-${{ matrix.os }}-${{ matrix.arch }}
+          name: lotus-${{ matrix.project }}-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             lotus/lotus
             lotus/lotus-miner
             lotus/lotus-worker
   release:
-    name: Release [publish=${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}]
+    needs: [check, build]
+    if: needs.check.outputs.projects != '[]'
+    name: Release [publish=${{ github.event_name != 'pull_request' }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
     runs-on: ubuntu-latest
-    needs: [build]
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.check.outputs.projects) }}
     env:
-      PUBLISH: ${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}
+      PUBLISH: ${{ github.event_name != 'pull_request' }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          path: actions
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
-          path: lotus
-          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/download-artifact@v4
         with:
-          name: lotus-Linux-X64
+          name: lotus-${{ matrix.project }}-Linux-X64
           path: linux_amd64_v1
       - uses: actions/download-artifact@v4
         with:
-          name: lotus-macOS-X64
+          name: lotus-${{ matrix.project }}-macOS-X64
           path: darwin_amd64_v1
       - uses: actions/download-artifact@v4
         with:
-          name: lotus-macOS-ARM64
+          name: lotus-${{ matrix.project }}-macOS-ARM64
           path: darwin_arm64
-      - uses: ./actions/.github/actions/install-go
-        with:
-          working-directory: lotus
+      - uses: ./.github/actions/install-go
       - uses: ipfs/download-ipfs-distribution-action@v1
         with:
           name: kubo
           version: v0.16.0
+      - id: meta
+        run: |
+          version="$(go run cmd/release/main.go --json ${{ matrix.project }} version | jq -r .msg)"
+          if [[ "${{ matrix.project}}" == "miner" ]]; then
+            tag="miner/$version"
+            latest="$(git tag -l 'miner/v*' | sort -V | tail -n1)"
+          elif [[ "${{ matrix.project}}" == "node" ]]; then
+            tag="$version"
+            latest="$(git tag -l 'v*' | sort -V | tail -n1)"
+          else
+            echo "::error title=Unknown Project::${{ matrix.project }}"
+            exit 1
+          fi
+          latest="$(echo -e "$latest\n$version" | sort -V | tail -n1)"
+          echo "version=$version" | tee -a $GITHUB_OUTPUT
+          echo "latest=$latest" | tee -a $GITHUB_OUTPUT
+          echo "tag=$tag" | tee -a $GITHUB_OUTPUT
+      - env:
+          expected: ${{ steps.meta.outputs.version }}
+        run: |
+          for dir in linux_amd64_v1 darwin_amd64_v1 darwin_arm64; do
+            for bin in lotus lotus-miner lotus-worker; do
+              if [[ -f $dir/$bin ]]; then
+                actual=$(./$dir/$bin --version)
+                if [[ "$actual" != "$expected" ]]; then
+                  echo "::error title=Version Mismatch::Expected $expected, got $actual ($dir/$bin)"
+                  exit 1
+                fi
+              fi
+            done
+          done
       - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           distribution: goreleaser-pro
           version: 2.0.1
           args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
-          workdir: lotus
         env:
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_GITUB_TOKEN || github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
-      - env:
-          INPUTS_REF: ${{ inputs.ref }}
-        run: |
-          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
-          ../actions/scripts/generate-checksums.sh
-        working-directory: lotus
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          IS_LATEST: ${{ steps.meta.outputs.latest == steps.meta.outputs.version }}
+          IS_DRAFT: ${{ github.event_name == 'pull_request' }}
+          TARGET_COMMITISH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha }}
+          HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
+      - run: |
+          ./scripts/generate-checksums.sh
       - if: env.PUBLISH == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          INPUTS_REF: ${{ inputs.ref }}
+          TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
-          ../actions/scripts/publish-checksums.sh
-        working-directory: lotus
+          ./scripts/publish-checksums.sh

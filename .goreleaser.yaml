@@ -1,15 +1,10 @@
+# TODO(p0): Test if templating on boolean values is supported
 project_name: lotus
 
 universal_binaries:
   - id: lotus
     replace: true
     name_template: lotus
-  - id: lotus-miner
-    replace: true
-    name_template: lotus-miner
-  - id: lotus-worker
-    replace: true
-    name_template: lotus-worker
 
 builds:
   - id: lotus
@@ -28,6 +23,7 @@ builds:
         goarch: arm64
     prebuilt:
       path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus'
+    skip: '{{ .Env.PROJECT != "node" }}'
   - id: lotus-miner
     binary: lotus-miner
     builder: prebuilt
@@ -44,6 +40,7 @@ builds:
         goarch: arm64
     prebuilt:
       path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner'
+    skip: '{{ .Env.PROJECT != "miner" }}'
   - id: lotus-worker
     binary: lotus-worker
     builder: prebuilt
@@ -60,12 +57,13 @@ builds:
         goarch: arm64
     prebuilt:
       path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker'
+    skip: '{{ .Env.PROJECT != "miner" }}'
 
 archives:
   - id: primary
     format: tar.gz
     wrap_in_directory: true
-    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Env.VERSION }}_{{ .Os }}_{{ .Arch }}"
     files:
       # this is a dumb but required hack so it doesn't include the default files
       # https://github.com/goreleaser/goreleaser/issues/602
@@ -75,9 +73,18 @@ release:
   github:
     owner: filecoin-project
     name: lotus
+  draft: "{{ .Env.IS_DRAFT }}"
+  header: "{{ .Env.HEADER }}"
+  make_latest: "${{ .Env.IS_LATEST }}"
+  name_template: "{{ .Env.VERSION }}"
   prerelease: auto
-  name_template: "v{{.Version}}"
+  replace_existing_artifacts: true
+  # TODO(p0): Test if not replacing existing drafts updates them instead of failing the release
+  replace_existing_draft: false
+  tag: "{{ .Env.TAG }}"
+  target_commitish: "{{ .Env.TARGET_COMMITISH }}"
 
+# TODO(p0): Figure out how to perform partial Homebrew updates
 brews:
   - tap:
       owner: filecoin-project
@@ -106,4 +113,4 @@ checksum:
   disable: true
 
 snapshot:
-  name_template: "{{ .Version }}"
+  name_template: "{{ .Env.VERSION }}"
