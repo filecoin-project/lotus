@@ -7,7 +7,6 @@
 <h1 align="center">Project Lotus - 莲</h1>
 
 <p align="center">
-![example workflow](https://github.com/github/docs/actions/workflows/main.yml/badge.svg)
   <a href="https://github.com/filecoin-project/lotus/actions/workflows/build.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/build.yml/badge.svg"></a>
   <a href="https://github.com/filecoin-project/lotus/actions/workflows/check.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/check.yml/badge.svg"></a>
   <a href="https://github.com/filecoin-project/lotus/actions/workflows/test.yml"><img src="https://github.com/filecoin-project/lotus/actions/workflows/test.yml/badge.svg"></a>
