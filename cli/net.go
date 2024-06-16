@@ -66,7 +66,7 @@ var NetPeers = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ var NetPing = &cli.Command{
 			return IncorrectNumArgs(cctx)
 		}
 
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ var NetScores = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -244,7 +244,7 @@ var NetListen = &cli.Command{
 	Name:  "listen",
 	Usage: "List listen addresses",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -268,7 +268,7 @@ var NetDisconnect = &cli.Command{
 	Usage:     "Disconnect from a peer",
 	ArgsUsage: "[peerID]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -299,7 +299,7 @@ var NetConnect = &cli.Command{
 	Usage:     "Connect to a peer",
 	ArgsUsage: "[peerMultiaddr|minerActorAddress]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -374,7 +374,7 @@ var NetId = &cli.Command{
 	Name:  "id",
 	Usage: "Get node identity",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -408,7 +408,7 @@ var NetFindPeer = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -431,7 +431,7 @@ var NetReachability = &cli.Command{
 	Name:  "reachability",
 	Usage: "Print information about reachability from the internet",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -466,7 +466,7 @@ var NetBandwidthCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -585,7 +585,7 @@ var NetBlockAddPeer = &cli.Command{
 	Usage:     "Block a peer",
 	ArgsUsage: "<Peer> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -611,7 +611,7 @@ var NetBlockAddIP = &cli.Command{
 	Usage:     "Block an IP address",
 	ArgsUsage: "<IP> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -627,7 +627,7 @@ var NetBlockAddSubnet = &cli.Command{
 	Usage:     "Block an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -653,7 +653,7 @@ var NetBlockRemovePeer = &cli.Command{
 	Usage:     "Unblock a peer",
 	ArgsUsage: "<Peer> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -679,7 +679,7 @@ var NetBlockRemoveIP = &cli.Command{
 	Usage:     "Unblock an IP address",
 	ArgsUsage: "<IP> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -695,7 +695,7 @@ var NetBlockRemoveSubnet = &cli.Command{
 	Usage:     "Unblock an IP subnet",
 	ArgsUsage: "<CIDR> ...",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -710,7 +710,7 @@ var NetBlockListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list connection gating rules",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -799,7 +799,7 @@ var NetStatCmd = &cli.Command{
   - all           -- reports the resource usage for all currently active scopes.
 `,
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -906,7 +906,7 @@ var NetLimitCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -951,7 +951,7 @@ var NetProtectAdd = &cli.Command{
 	Usage:     "Add one or more peer IDs to the list of protected peer connections",
 	ArgsUsage: "<peer-id> [<peer-id>...]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -981,7 +981,7 @@ var NetProtectRemove = &cli.Command{
 	Usage:     "Remove one or more peer IDs from the list of protected peer connections.",
 	ArgsUsage: "<peer-id> [<peer-id>...]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -1033,7 +1033,7 @@ var NetProtectList = &cli.Command{
 	Name:  "list-protected",
 	Usage: "List the peer IDs with protected connection.",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
