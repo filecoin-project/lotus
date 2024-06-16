@@ -91,23 +91,6 @@ type CommonMethods struct {
 type CommonStub struct {
 }
 
-type CommonNetStruct struct {
-	CommonStruct
-
-	NetStruct
-
-	Internal CommonNetMethods
-}
-
-type CommonNetMethods struct {
-}
-
-type CommonNetStub struct {
-	CommonStub
-
-	NetStub
-}
-
 type EthSubscriberStruct struct {
 	Internal EthSubscriberMethods
 }
@@ -865,8 +848,6 @@ type SignableStub struct {
 type StorageMinerStruct struct {
 	CommonStruct
 
-	NetStruct
-
 	Internal StorageMinerMethods
 }
 
@@ -1050,8 +1031,6 @@ type StorageMinerMethods struct {
 
 type StorageMinerStub struct {
 	CommonStub
-
-	NetStub
 }
 
 type WalletStruct struct {
@@ -6629,7 +6608,6 @@ func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
 
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)
-var _ CommonNet = new(CommonNetStruct)
 var _ EthSubscriber = new(EthSubscriberStruct)
 var _ FullNode = new(FullNodeStruct)
 var _ Gateway = new(GatewayStruct)

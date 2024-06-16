@@ -66,11 +66,6 @@ type Net interface {
 	ID(context.Context) (peer.ID, error) //perm:read
 }
 
-type CommonNet interface {
-	Common
-	Net
-}
-
 type NatInfo struct {
 	Reachability network.Reachability
 	PublicAddrs  []string
