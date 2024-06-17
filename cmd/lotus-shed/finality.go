@@ -7,11 +7,11 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/dreading/gospecfunc/bessel"
-	"github.com/filecoin-project/lotus/build"
+	skellampmf "github.com/rvagg/go-skellam-pmf"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/constraints"
-	"gonum.org/v1/gonum/stat/distuv"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 var finalityCmd = &cli.Command{
@@ -25,6 +25,10 @@ var finalityCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "input",
 		},
+		&cli.IntFlag{
+			Name:  "target",
+			Usage: "target epoch for which finality is calculated",
+		},
 	},
 	ArgsUsage: "[inputFile]",
 	Action: func(cctx *cli.Context) error {
@@ -33,7 +37,7 @@ var finalityCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		var chain []int
 		scanner := bufio.NewScanner(file)
@@ -49,14 +53,15 @@ var finalityCmd = &cli.Command{
 			return err
 		}
 
-		blocksPerEpoch := 5.0            // Expected number of blocks per epoch
-		byzantineFraction := 0.3         // Upper bound on the fraction of malicious nodes in the network
-		currentEpoch := len(chain) - 1   // Current epoch (end of history)
-		targetEpoch := currentEpoch - 30 // Target epoch for which finality is calculated
+		blocksPerEpoch := 5.0          // Expected number of blocks per epoch
+		byzantineFraction := 0.3       // Upper bound on the fraction of malicious nodes in the network
+		currentEpoch := len(chain) - 1 // Current epoch (end of history)
+		// targetEpoch := currentEpoch - 30 // Target epoch for which finality is calculated
+		targetEpoch := cctx.Int("target")
 
 		finality := FinalityCalcValidator(chain, blocksPerEpoch, byzantineFraction, currentEpoch, targetEpoch)
 
-		fmt.Fprintf(cctx.App.Writer, "Finality probability: %f\n", finality)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Finality=%v @ %d for chain len=%d\n", finality, targetEpoch, currentEpoch)
 
 		return nil
 	},
@@ -69,10 +74,10 @@ func FinalityCalcValidator(chain []int, blocksPerEpoch float64, byzantineFractio
 	// Threshold at which the probability of an event is considered negligible
 	const negligibleThreshold = 1e-25
 
-	maxKL := 400                                                     // Max k for which to calculate Pr(L=k)
-	maxKB := int((currentEpoch - targetEpoch) * int(blocksPerEpoch)) // Max k for which to calculate Pr(B=k)
-	maxKM := 400                                                     // Max k for which to calculate Pr(M=k)
-	maxIM := 100                                                     // Maximum number of epochs for the calculation (after which the pr become negligible)
+	maxKL := 400                                                // Max k for which to calculate Pr(L=k)
+	maxKB := (currentEpoch - targetEpoch) * int(blocksPerEpoch) // Max k for which to calculate Pr(B=k)
+	maxKM := 400                                                // Max k for which to calculate Pr(M=k)
+	maxIM := 100                                                // Maximum number of epochs for the calculation (after which the pr become negligible)
 
 	rateMaliciousBlocks := blocksPerEpoch * byzantineFraction // upper bound
 	rateHonestBlocks := blocksPerEpoch - rateMaliciousBlocks  // lower bound
@@ -88,15 +93,14 @@ func FinalityCalcValidator(chain []int, blocksPerEpoch float64, byzantineFractio
 			sumExpectedAdversarialBlocksI += rateMaliciousBlocks
 			sumChainBlocksI += chain[i-1]
 			// Poisson(k=k, lambda=sum(f*e))
-			prLi := distuv.Poisson{Lambda: sumExpectedAdversarialBlocksI}.Prob(float64(k + sumChainBlocksI))
+			prLi := poissonProb(sumExpectedAdversarialBlocksI, float64(k+sumChainBlocksI))
 			prL[k] = math.Max(prL[k], prLi)
 
-			// Break if prL[k] becomes negligible
-			if k > 1 && prL[k] < negligibleThreshold && prL[k] < prL[k-1] {
-				maxKL = k
-				prL = prL[:k+1]
-				break
-			}
+		}
+		if k > 1 && prL[k] < negligibleThreshold && prL[k] < prL[k-1] {
+			maxKL = k
+			prL = prL[:k+1]
+			break
 		}
 	}
 
@@ -108,7 +112,7 @@ func FinalityCalcValidator(chain []int, blocksPerEpoch float64, byzantineFractio
 
 	// Calculate Pr(B=k) for each value of k
 	for k := 0; k <= maxKB; k++ {
-		prB[k] = distuv.Poisson{Lambda: float64(currentEpoch-targetEpoch) * rateMaliciousBlocks}.Prob(float64(k))
+		prB[k] = poissonProb(float64(currentEpoch-targetEpoch)*rateMaliciousBlocks, float64(k))
 
 		// Break if prB[k] becomes negligible
 		if k > 1 && prB[k] < negligibleThreshold && prB[k] < prB[k-1] {
@@ -119,11 +123,11 @@ func FinalityCalcValidator(chain []int, blocksPerEpoch float64, byzantineFractio
 	}
 
 	// Compute M
-	prHgt0 := 1 - distuv.Poisson{Lambda: rateHonestBlocks}.Prob(0)
+	prHgt0 := 1 - poissonProb(rateHonestBlocks, 0)
 
 	expZ := 0.0
 	for k := 0; k < int(4*blocksPerEpoch); k++ {
-		pmf := distuv.Poisson{Lambda: rateMaliciousBlocks}.Prob(float64(k))
+		pmf := poissonProb(rateMaliciousBlocks, float64(k))
 		expZ += ((rateHonestBlocks + float64(k)) / math.Pow(2, float64(k))) * pmf
 	}
 
@@ -132,7 +136,7 @@ func FinalityCalcValidator(chain []int, blocksPerEpoch float64, byzantineFractio
 	prM := make([]float64, maxKM+1)
 	for k := 0; k <= maxKM; k++ {
 		for i := maxIM; i > 0; i-- {
-			probMI := SkellamPMF(k, float64(i)*rateMaliciousBlocks, float64(i)*ratePublicChain)
+			probMI := skellampmf.SkellamPMF(k, float64(i)*rateMaliciousBlocks, float64(i)*ratePublicChain)
 
 			// Break if probMI becomes negligible
 			if probMI < negligibleThreshold && probMI < prM[k] {
@@ -186,6 +190,18 @@ func FinalityCalcValidator(chain []int, blocksPerEpoch float64, byzantineFractio
 	return math.Min(prError, 1.0)
 }
 
+func poissonProb(lambda float64, x float64) float64 {
+	return math.Exp(poissonLogProb(lambda, x))
+}
+
+func poissonLogProb(lambda float64, x float64) float64 {
+	if x < 0 || math.Floor(x) != x {
+		return math.Inf(-1)
+	}
+	lg, _ := math.Lgamma(math.Floor(x) + 1)
+	return x*math.Log(lambda) - lambda - lg
+}
+
 func sum[T constraints.Integer | constraints.Float](s []T) T {
 	var total T
 	for _, v := range s {
@@ -210,46 +226,3 @@ func min(a, b int) int {
 	}
 	return b
 }
-
-// SkellamPMF calculates the probability mass function (PMF) of a Skellam distribution.
-//
-// The Skellam distribution is the probability distribution of the difference
-// of two independent Poisson random variables.
-//
-// Arguments:
-// * k - The difference of two Poisson random variables.
-// * mu1 - The expected value of the first Poisson distribution.
-// * mu2 - The expected value of the second Poisson distribution.
-//
-// Returns:
-// * A float64 representing the PMF of the Skellam distribution at k.
-func SkellamPMF(k int, mu1 float64, mu2 float64) float64 {
-	// Based on https://github.com/jsoares/rusty-skellam/blob/main/src/lib.rs
-
-	// Return NaN if parameters outside range
-	if math.IsNaN(mu1) || mu1 <= 0 || math.IsNaN(mu2) || mu2 <= 0 {
-		return math.NaN()
-	}
-
-	// Parameterise and compute the Modified Bessel function of the first kind
-	nu := float64(k)
-	z := complex(2.0*math.Sqrt(mu1*mu2), 0)
-	besselResult := bessel.I(nu, z)
-
-	// Compute the pmf
-	return math.Exp(-(mu1 + mu2)) * math.Pow(mu1/mu2, nu/2.0) * real(besselResult)
-}
-
-/*
-func main() {
-	seed := rand.NewSource(1)
-	random := rand.New(seed)
-	chain := make([]int, 1000)
-	for i := range chain {
-		chain[i] = random.Intn(5) + 1
-	}
-
-	errorProbability := FinalityCalcValidator(chain, 5.0, 0.3, 1000, 900)
-	fmt.Printf("Error probability: %f\n", errorProbability)
-}
-*/
