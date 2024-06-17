@@ -98,6 +98,8 @@ const (
 	revertEventSeen      = `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`
 	restoreEventSeen     = `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`
 	insertEventsSeen     = `INSERT OR IGNORE INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, ?)`
+	isTipsetProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`
+	getMaxHeightInIndex  = `SELECT MAX(height) FROM events_seen`
 
 	createIndexEventEmitterAddr  = `CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)`
 	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
@@ -131,6 +133,9 @@ type EventIndex struct {
 	stmtRevertEventSeen      *sql.Stmt
 	stmtRestoreEventSeen     *sql.Stmt
 
+	stmtIsTipsetProcessed   *sql.Stmt
+	stmtGetMaxHeightInIndex *sql.Stmt
+
 	mu           sync.Mutex
 	subIdCounter uint64
 	updateSubs   map[uint64]*updateSub
@@ -143,9 +148,9 @@ type updateSub struct {
 }
 
 type EventIndexUpdate struct {
-	Height    uint64
-	TipsetCid cid.Cid
-	Reverted  bool
+	Height       abi.ChainEpoch
+	TipsetKeyCid cid.Cid
+	Reverted     bool
 }
 
 func (ei *EventIndex) initStatements() (err error) {
@@ -187,6 +192,16 @@ func (ei *EventIndex) initStatements() (err error) {
 	ei.stmtRestoreEventSeen, err = ei.db.Prepare(restoreEventSeen)
 	if err != nil {
 		return xerrors.Errorf("prepare stmtRestoreEventSeen: %w", err)
+	}
+
+	ei.stmtIsTipsetProcessed, err = ei.db.Prepare(isTipsetProcessed)
+	if err != nil {
+		return xerrors.Errorf("prepare isTipsetProcessed: %w", err)
+	}
+
+	ei.stmtGetMaxHeightInIndex, err = ei.db.Prepare(getMaxHeightInIndex)
+	if err != nil {
+		return xerrors.Errorf("prepare getMaxHeightInIndex: %w", err)
 	}
 
 	return nil
@@ -640,7 +655,7 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
-func (ei *EventIndex) SubscribeUpdates() (uint64, chan *EventIndexUpdate) {
+func (ei *EventIndex) SubscribeUpdates() (chan *EventIndexUpdate, func()) {
 	subCtx, subCancel := context.WithCancel(context.Background())
 	ch := make(chan *EventIndexUpdate)
 
@@ -656,25 +671,25 @@ func (ei *EventIndex) SubscribeUpdates() (uint64, chan *EventIndexUpdate) {
 	ei.updateSubs[subId] = tSub
 	ei.mu.Unlock()
 
-	return subId, tSub.ch
-}
-
-func (ei *EventIndex) UnsubscribeUpdates(subId uint64) {
-	ei.mu.Lock()
-	tSub, ok := ei.updateSubs[subId]
-	if !ok {
+	unSubscribeF := func() {
+		ei.mu.Lock()
+		tSub, ok := ei.updateSubs[subId]
+		if !ok {
+			ei.mu.Unlock()
+			return
+		}
+		delete(ei.updateSubs, subId)
 		ei.mu.Unlock()
-		return
-	}
-	delete(ei.updateSubs, subId)
-	ei.mu.Unlock()
 
-	// cancel the subscription
-	tSub.cancel()
+		// cancel the subscription
+		tSub.cancel()
+	}
+
+	return tSub.ch, unSubscribeF
 }
 
 func (ei *EventIndex) GetMaxHeightInIndex(ctx context.Context) (uint64, error) {
-	row := ei.db.QueryRowContext(ctx, "SELECT MAX(height) FROM events_seen")
+	row := ei.stmtGetMaxHeightInIndex.QueryRowContext(ctx)
 	var maxHeight uint64
 	err := row.Scan(&maxHeight)
 	return maxHeight, err
@@ -689,7 +704,7 @@ func (ei *EventIndex) IsHeightProcessed(ctx context.Context, height uint64) (boo
 }
 
 func (ei *EventIndex) IsTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
-	row := ei.db.QueryRowContext(ctx, "SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid = ?", tipsetKeyCid)
+	row := ei.stmtIsTipsetProcessed.QueryRowContext(ctx, tipsetKeyCid)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -703,13 +718,13 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// rollback the transaction (a no-op if the transaction was already committed)
 	defer func() { _ = tx.Rollback() }()
 
+	tsKeyCid, err := te.msgTs.Key().Cid()
+	if err != nil {
+		return xerrors.Errorf("tipset key cid: %w", err)
+	}
+
 	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
-		tsKeyCid, err := te.msgTs.Key().Cid()
-		if err != nil {
-			return xerrors.Errorf("tipset key cid: %w", err)
-		}
-
 		_, err = tx.Stmt(ei.stmtRevertEventsInTipset).Exec(te.msgTs.Height(), te.msgTs.Key().Bytes())
 		if err != nil {
 			return xerrors.Errorf("revert event: %w", err)
@@ -726,16 +741,19 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		}
 
 		ei.mu.Lock()
-		tSubs := ei.updateSubs
+		tSubs := make([]*updateSub, 0, len(ei.updateSubs))
+		for _, tSub := range ei.updateSubs {
+			tSubs = append(tSubs, tSub)
+		}
 		ei.mu.Unlock()
 
 		for _, tSub := range tSubs {
 			tSub := tSub
 			select {
 			case tSub.ch <- &EventIndexUpdate{
-				Height:    uint64(te.msgTs.Height()),
-				TipsetCid: tsKeyCid,
-				Reverted:  true,
+				Height:       te.msgTs.Height(),
+				TipsetKeyCid: tsKeyCid,
+				Reverted:     true,
 			}:
 			case <-tSub.ctx.Done():
 				// subscription was cancelled, ignore
@@ -754,12 +772,9 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	if err != nil {
 		return xerrors.Errorf("load executed messages: %w", err)
 	}
-	tsKeyCid, err := te.msgTs.Key().Cid()
-	if err != nil {
-		return xerrors.Errorf("tipset key cid: %w", err)
-	}
 
 	eventCount := 0
+	isTipSetRevertRestored := false
 	// iterate over all executed messages in this tipset and insert them into the database if they
 	// don't exist, otherwise mark them as not reverted
 	for msgIdx, em := range ems {
@@ -848,36 +863,41 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				// this is a sanity check as we should only ever be updating one event
 				if rowsAffected != 1 {
 					log.Warnf("restored %d events but expected only one to exist", rowsAffected)
-				}
-
-				res, err = tx.Stmt(ei.stmtRestoreEventSeen).Exec(
-					te.msgTs.Height(),
-					tsKeyCid.Bytes(),
-				)
-				if err != nil {
-					return xerrors.Errorf("exec restore event seen: %w", err)
-				}
-
-				rowsAffected, err = res.RowsAffected()
-				if err != nil {
-					return xerrors.Errorf("error getting rows affected: %s", err)
-				}
-				if rowsAffected != 1 {
-					log.Warnf("restored %d events in events_seen but expected only one to exist", rowsAffected)
+				} else {
+					isTipSetRevertRestored = true
 				}
 			}
 			eventCount++
 		}
 	}
 
-	// add an entry to the event_seen table for this tipset
-	_, err = tx.Stmt(ei.stmtInsertEventsSeen).Exec(
-		te.msgTs.Height(),
-		tsKeyCid.Bytes(),
-		false,
-	)
-	if err != nil {
-		return xerrors.Errorf("exec insert events seen: %w", err)
+	if isTipSetRevertRestored {
+		// restore a revert for the tipset if applicable
+		res, err := tx.Stmt(ei.stmtRestoreEventSeen).Exec(
+			te.msgTs.Height(),
+			tsKeyCid.Bytes(),
+		)
+		if err != nil {
+			return xerrors.Errorf("exec restore event seen: %w", err)
+		}
+
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			return xerrors.Errorf("error getting rows affected: %s", err)
+		}
+		if rowsAffected != 1 {
+			log.Warnf("restored %d events in events_seen but expected only one to exist", rowsAffected)
+		}
+	} else {
+		// add an entry to the event_seen table for this tipset
+		_, err = tx.Stmt(ei.stmtInsertEventsSeen).Exec(
+			te.msgTs.Height(),
+			tsKeyCid.Bytes(),
+			false,
+		)
+		if err != nil {
+			return xerrors.Errorf("exec insert events seen: %w", err)
+		}
 	}
 
 	err = tx.Commit()
@@ -886,16 +906,19 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	ei.mu.Lock()
-	tSubs := ei.updateSubs
+	tSubs := make([]*updateSub, 0, len(ei.updateSubs))
+	for _, tSub := range ei.updateSubs {
+		tSubs = append(tSubs, tSub)
+	}
 	ei.mu.Unlock()
 
 	for _, tSub := range tSubs {
 		tSub := tSub
 		select {
 		case tSub.ch <- &EventIndexUpdate{
-			Height:    uint64(te.msgTs.Height()),
-			TipsetCid: tsKeyCid,
-			Reverted:  false,
+			Height:       te.msgTs.Height(),
+			TipsetKeyCid: tsKeyCid,
+			Reverted:     false,
 		}:
 		case <-tSub.ctx.Done():
 			// subscription was cancelled, ignore

@@ -77,7 +77,9 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
 
-	_, subCh := ei.SubscribeUpdates()
+	subCh, unSubscribe := ei.SubscribeUpdates()
+	defer unSubscribe()
+
 	out := make(chan *EventIndexUpdate, 1)
 	go func() {
 		tu := <-subCh
@@ -113,8 +115,8 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	require.False(t, seen, "tipset key should not be seen")
 
 	tu := <-out
-	require.Equal(t, uint64(14000), tu.Height)
-	require.EqualValues(t, tsKeyCid, tu.TipsetCid)
+	require.Equal(t, abi.ChainEpoch(14000), tu.Height)
+	require.EqualValues(t, tsKeyCid, tu.TipsetKeyCid)
 	require.False(t, tu.Reverted)
 
 	testCases := []struct {
@@ -436,7 +438,8 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	require.NoError(t, err, "create event index")
 
 	tCh := make(chan *EventIndexUpdate, 3)
-	_, subCh := ei.SubscribeUpdates()
+	subCh, unSubscribe := ei.SubscribeUpdates()
+	defer unSubscribe()
 	go func() {
 		cnt := 0
 		for tu := range subCh {
@@ -462,17 +465,17 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	tu1 := <-tCh
 	require.EqualValues(t, 14000, tu1.Height)
 	require.False(t, tu1.Reverted)
-	require.EqualValues(t, reveredCID14000, tu1.TipsetCid)
+	require.EqualValues(t, reveredCID14000, tu1.TipsetKeyCid)
 
 	tu2 := <-tCh
 	require.EqualValues(t, 14000, tu2.Height)
 	require.True(t, tu2.Reverted)
-	require.EqualValues(t, reveredCID14000, tu2.TipsetCid)
+	require.EqualValues(t, reveredCID14000, tu2.TipsetKeyCid)
 
 	tu3 := <-tCh
 	require.EqualValues(t, 14000, tu3.Height)
 	require.False(t, tu3.Reverted)
-	require.EqualValues(t, cid14000, tu3.TipsetCid)
+	require.EqualValues(t, cid14000, tu3.TipsetKeyCid)
 
 	inclusiveTestCases := []struct {
 		name   string

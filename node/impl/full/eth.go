@@ -44,6 +44,11 @@ var ErrUnsupported = errors.New("unsupported method")
 
 const maxEthFeeHistoryRewardPercentiles = 100
 
+var (
+	// wait for 3 epochs
+	eventReadTimeout = 90 * time.Second
+)
+
 type EthModuleAPI interface {
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
 	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error)
@@ -1308,6 +1313,13 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 }
 
 func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
+	ctx, cancel := context.WithTimeout(ctx, eventReadTimeout)
+	defer cancel()
+
+	if height > e.Chain.GetHeaviestTipSet().Height() {
+		return xerrors.New("height is in the future")
+	}
+
 	ei := e.EventFilterManager.EventIndex
 	b, err := ei.IsHeightProcessed(ctx, uint64(height))
 	if err != nil {
@@ -1317,17 +1329,13 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 		return nil
 	}
 
-	if height > e.Chain.GetHeaviestTipSet().Height() {
-		return xerrors.New("height is in the future")
-	}
-
-	subId, subCh := ei.SubscribeUpdates()
-	defer ei.UnsubscribeUpdates(subId)
+	subCh, unSubscribeF := ei.SubscribeUpdates()
+	defer unSubscribeF()
 
 	for {
 		select {
 		case tu := <-subCh:
-			if tu.Height >= uint64(height) {
+			if tu.Height >= height {
 				return nil
 			}
 		case <-ctx.Done():
