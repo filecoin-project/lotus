@@ -1313,14 +1313,15 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 }
 
 func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
-	ctx, cancel := context.WithTimeout(ctx, eventReadTimeout)
-	defer cancel()
-
+	ei := e.EventFilterManager.EventIndex
 	if height > e.Chain.GetHeaviestTipSet().Height() {
 		return xerrors.New("height is in the future")
 	}
 
-	ei := e.EventFilterManager.EventIndex
+	ctx, cancel := context.WithTimeout(ctx, eventReadTimeout)
+	defer cancel()
+
+	// if the height we're interested in has already been indexed -> there's nothing to do here
 	b, err := ei.IsHeightProcessed(ctx, uint64(height))
 	if err != nil {
 		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
@@ -1329,13 +1330,27 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 		return nil
 	}
 
+	// subscribe for updates to the event index
 	subCh, unSubscribeF := ei.SubscribeUpdates()
 	defer unSubscribeF()
 
+	// it could be that the event index was update while the subscription was being processed -> check if index has what we need now
+	b, err = ei.IsHeightProcessed(ctx, uint64(height))
+	if err != nil {
+		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
+	}
+	if b {
+		return nil
+	}
+
 	for {
 		select {
-		case tu := <-subCh:
-			if tu.Height >= height {
+		case <-subCh:
+			b, err = ei.IsHeightProcessed(ctx, uint64(height))
+			if err != nil {
+				return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
+			}
+			if b {
 				return nil
 			}
 		case <-ctx.Done():

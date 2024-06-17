@@ -143,15 +143,11 @@ type EventIndex struct {
 
 type updateSub struct {
 	ctx    context.Context
-	ch     chan *EventIndexUpdate
+	ch     chan EventIndexUpdated
 	cancel context.CancelFunc
 }
 
-type EventIndexUpdate struct {
-	Height       abi.ChainEpoch
-	TipsetKeyCid cid.Cid
-	Reverted     bool
-}
+type EventIndexUpdated struct{}
 
 func (ei *EventIndex) initStatements() (err error) {
 	ei.stmtEventExists, err = ei.db.Prepare(eventExists)
@@ -655,9 +651,9 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
-func (ei *EventIndex) SubscribeUpdates() (chan *EventIndexUpdate, func()) {
+func (ei *EventIndex) SubscribeUpdates() (chan EventIndexUpdated, func()) {
 	subCtx, subCancel := context.WithCancel(context.Background())
-	ch := make(chan *EventIndexUpdate)
+	ch := make(chan EventIndexUpdated)
 
 	tSub := &updateSub{
 		ctx:    subCtx,
@@ -750,11 +746,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		for _, tSub := range tSubs {
 			tSub := tSub
 			select {
-			case tSub.ch <- &EventIndexUpdate{
-				Height:       te.msgTs.Height(),
-				TipsetKeyCid: tsKeyCid,
-				Reverted:     true,
-			}:
+			case tSub.ch <- EventIndexUpdated{}:
 			case <-tSub.ctx.Done():
 				// subscription was cancelled, ignore
 			case <-ctx.Done():
@@ -915,11 +907,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	for _, tSub := range tSubs {
 		tSub := tSub
 		select {
-		case tSub.ch <- &EventIndexUpdate{
-			Height:       te.msgTs.Height(),
-			TipsetKeyCid: tsKeyCid,
-			Reverted:     false,
-		}:
+		case tSub.ch <- EventIndexUpdated{}:
 		case <-tSub.ctx.Done():
 			// subscription was cancelled, ignore
 		case <-ctx.Done():
