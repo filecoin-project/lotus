@@ -1,6 +1,7 @@
 package ethhashlookup
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"strconv"
@@ -10,20 +11,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/lib/sqlite"
 )
 
-var ErrNotFound = errors.New("not found")
+const DefaultDbFilename = "txhash.db"
 
-var pragmas = []string{
-	"PRAGMA synchronous = normal",
-	"PRAGMA temp_store = memory",
-	"PRAGMA mmap_size = 30000000000",
-	"PRAGMA page_size = 32768",
-	"PRAGMA auto_vacuum = NONE",
-	"PRAGMA automatic_index = OFF",
-	"PRAGMA journal_mode = WAL",
-	"PRAGMA read_uncommitted = ON",
-}
+var ErrNotFound = errors.New("not found")
 
 var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS eth_tx_hashes (
@@ -33,17 +26,7 @@ var ddls = []string{
 	)`,
 
 	`CREATE INDEX IF NOT EXISTS insertion_time_index ON eth_tx_hashes (insertion_time)`,
-
-	// metadata containing version of schema
-	`CREATE TABLE IF NOT EXISTS _meta (
-    	version UINT64 NOT NULL UNIQUE
-	)`,
-
-	// version 1.
-	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
 }
-
-const schemaVersion = 1
 
 const (
 	insertTxHash = `INSERT INTO eth_tx_hashes
@@ -103,50 +86,18 @@ func (ei *EthTxHashLookup) DeleteEntriesOlderThan(days int) (int64, error) {
 	return res.RowsAffected()
 }
 
-func NewTransactionHashLookup(path string) (*EthTxHashLookup, error) {
-	db, err := sql.Open("sqlite3", path+"?mode=rwc")
+func NewTransactionHashLookup(ctx context.Context, path string) (*EthTxHashLookup, error) {
+	db, _, err := sqlite.Open(path)
 	if err != nil {
-		return nil, xerrors.Errorf("open sqlite3 database: %w", err)
+		return nil, xerrors.Errorf("failed to setup eth transaction hash lookup db: %w", err)
 	}
 
-	for _, pragma := range pragmas {
-		if _, err := db.Exec(pragma); err != nil {
-			_ = db.Close()
-			return nil, xerrors.Errorf("exec pragma %q: %w", pragma, err)
-		}
-	}
-
-	q, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
-	if err == sql.ErrNoRows || !q.Next() {
-		// empty database, create the schema
-		for _, ddl := range ddls {
-			if _, err := db.Exec(ddl); err != nil {
-				_ = db.Close()
-				return nil, xerrors.Errorf("exec ddl %q: %w", ddl, err)
-			}
-		}
-	} else if err != nil {
+	if err := sqlite.InitDb(ctx, "eth transaction hash lookup", db, ddls, []sqlite.MigrationFunc{}); err != nil {
 		_ = db.Close()
-		return nil, xerrors.Errorf("looking for _meta table: %w", err)
-	} else {
-		// Ensure we don't open a database from a different schema version
-
-		row := db.QueryRow("SELECT max(version) FROM _meta")
-		var version int
-		err := row.Scan(&version)
-		if err != nil {
-			_ = db.Close()
-			return nil, xerrors.Errorf("invalid database version: no version found")
-		}
-		if version != schemaVersion {
-			_ = db.Close()
-			return nil, xerrors.Errorf("invalid database version: got %d, expected %d", version, schemaVersion)
-		}
+		return nil, xerrors.Errorf("failed to init eth transaction hash lookup db: %w", err)
 	}
 
-	return &EthTxHashLookup{
-		db: db,
-	}, nil
+	return &EthTxHashLookup{db: db}, nil
 }
 
 func (ei *EthTxHashLookup) Close() error {
