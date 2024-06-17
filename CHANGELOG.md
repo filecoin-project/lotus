@@ -129,6 +129,7 @@ There is no change in the behaviour when a call returns an error, as the error o
 - fix: ci: do not use deprecated --debug goreleaser flag ([filecoin-project/lotus#12086](https://github.com/filecoin-project/lotus/pull/12086))
 - chore: Remove forgotten graphsync references ([filecoin-project/lotus#12084](https://github.com/filecoin-project/lotus/pull/12084))
 - chore: types: remove more items forgotten after markets ([filecoin-project/lotus#12095](https://github.com/filecoin-project/lotus/pull/12095))
+- chore: api: the Net API/CLI now remains only on daemon ([filecoin-project/lotus#12100](https://github.com/filecoin-project/lotus/pull/12100))
 
 ## Contributors
 
