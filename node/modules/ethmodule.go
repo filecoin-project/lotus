@@ -23,18 +23,20 @@ import (
 
 func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI) (*full.EthModule, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI) (*full.EthModule, error) {
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
 		sqlitePath, err := r.SqlitePath()
 		if err != nil {
 			return nil, err
 		}
 
-		dbPath := filepath.Join(sqlitePath, "txhash.db")
+		dbPath := filepath.Join(sqlitePath, ethhashlookup.DefaultDbFilename)
 
 		// Check if the db exists, if not, we'll back-fill some entries
 		_, err = os.Stat(dbPath)
 		dbAlreadyExists := err == nil
 
-		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(dbPath)
+		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(ctx, dbPath)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +70,6 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
 		}()
 
-		ctx := helpers.LifecycleCtx(mctx, lc)
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
 				ev, err := events.NewEvents(ctx, &evapi)
