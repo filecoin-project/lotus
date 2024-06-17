@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"path/filepath"
 
 	"go.uber.org/fx"
 
@@ -17,7 +18,7 @@ func MsgIndex(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r 
 		return nil, err
 	}
 
-	msgIndex, err := index.NewMsgIndex(helpers.LifecycleCtx(mctx, lc), basePath, cs)
+	msgIndex, err := index.NewMsgIndex(helpers.LifecycleCtx(mctx, lc), filepath.Join(basePath, index.DefaultDbFilename), cs)
 	if err != nil {
 		return nil, err
 	}
