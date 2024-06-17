@@ -2,10 +2,11 @@
 
 This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. The process involves making changes in multiple repositories in the following order:
 
-1. [`ref-fvm`](#ref-fvm-checklist)
-2. [`filecoin-ffi`](#filecoin-ffi-checklist)
-3. [`go-state-types`](#go-state-types-checklist)
-4. [`lotus`](#lotus-checklist)
+- [Setup](#setup)
+- [Ref-FVM Checklist](#ref-fvm-checklist)
+- [Filecoin-FFI Checklist](#filecoin-ffi-checklist)
+- [Go-State-Types Checklist](#go-state-types-checklist)
+- [Lotus Checklist](#lotus-checklist)
 
 Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository.
 
@@ -60,8 +61,24 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
 
 1. Follow the [go-state-types actor version checklist](https://github.com/filecoin-project/go-state-types/blob/master/actors_version_checklist.md):
 
-    - Copy `go-state-types/builtin/vX` to `go-state-types/builtin/v(X+1)`.
-    - Change all references from vX to v(X+1) in the new files.
+    - Setup
+        ```bash
+        # export these environment variables so they can read in the commands below
+        export CURRENT_VERSION=vXX # e.g., v14
+        export NEW_VERSION=vXX+1 # e.g., v15
+        ```
+    - Copy `go-state-types/builtin/vXX` to `go-state-types/builtin/v(XX+1)`.
+        ```bash
+        cp -r builtin/$CURRENT_VERSION builtin/$NEW_VERSION
+        ```
+    - Make a commit with this change.  That way the followup commit(s) will be separated out from the copy/paste change for easier reviewing.
+    - Change all references from vXX to v(XX+1) in the new files.
+        ```bash
+        # Find all the files that have a reference to vXX
+        # Update them to vXX+1
+        # "sed -i=''" is done for macOS compatibility per https://stackoverflow.com/questions/12272065/sed-undefined-label-on-macos
+        find builtin/$NEW_VERSION -type f -exec sh -c 'grep -q "builtin/$CURRENT_VERSION" "$1" && sed -i='' "s/builtin\/$CURRENT_VERSION/builtin\/$NEW_VERSION/g" "$1" && echo "$1"' _ {} \;
+        ```
     - Add new network version to `network/version.go`.
     - Add new actors version to `actors/version.go`.
         - Add `Version(XX+1) Version = XX+1` as a constant.
@@ -73,14 +90,14 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
     - Commit the above changes with a `Delete migration specific for nvXX` message so its easier to review.
     - Check your `/builtin/vXX+1/check.go` file, and see if there is any Invariant TODOs that stems from the previous migration that needs to be cleaned up.
 
-You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/257), which added the skeleton for network version 23.
+    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/257), which added the skeleton for network version 23.
 
-2. In a second PR based off your first PR, add a simple migration for the network upgrade:
+1. In a second PR based off your first PR, add a simple migration for the network upgrade:
 
     - Copy the system.go template [^1], and add it to your `/builtin/vXX+1/migration` folder.
     - Copy the top.go template [^2], and add it to your `/builtin/vXX+1/migration` folder.
 
-You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/258), which added added a simple migration for network version 23.
+    👉 You can take a look at this [Go-State-Types PR as a reference](https://github.com/filecoin-project/go-state-types/pull/258), which added added a simple migration for network version 23.
 
 ## Lotus Checklist
 
@@ -96,27 +113,27 @@ You can take a look at this [Go-State-Types PR as a reference](https://github.co
 
     - Update the following files:
         - `params_2k.go`
-            - Set previous `UpgradeXxxxxHeight = abi.ChainEpoch(-xx-1)`
-            - Add `var UpgradeXxxxxHeight = abi.ChainEpoch(200)`
-            - Add `UpgradeXxxxxHeight = getUpgradeHeight("LOTUS_XXXXX_HEIGHT", UpgradeXXXXHeight)`
+            - Set previous `UpgradeXxHeight = abi.ChainEpoch(-xx-1)`
+            - Add `var UpgradeXxHeight = abi.ChainEpoch(200)`
+            - Add `UpgradeXxHeight = getUpgradeHeight("LOTUS_XX_HEIGHT", UpgradeXXHeight)`
             - Set `const GenesisNetworkVersion = network.VersionXX` where XX is the network version you are upgrading from.
         - `params_butterfly.go`
-            - set previous upgrade to `var UpgradeXxxxxHeigh = abi.ChainEpoch(-xx-1)`
+            - set previous upgrade to `var UpgradeXxHeigh = abi.ChainEpoch(-xx-1)`
             - Add comment with ?????? signaling that the new upgrade date is unkown
-            - Add `const UpgradeXxxxxHeight = 999999999999999`
+            - Add `const UpgradeXxHeight = 999999999999999`
         - `params_calibnet.go`
             - Add comment with `??????` signaling that the new upgrade date is unkown
-            - Add `const UpgradeXxxxxHeight = 999999999999999`
+            - Add `const UpgradeXxHeight = 999999999999999`
         - `params_interop.go`
-            - set previous upgrade to `var UpgradeXxxxxHeigh = abi.ChainEpoch(-xx-1)`
-            - Add `const UpgradeXxxxxHeight = 50`
+            - set previous upgrade to `var UpgradeXxHeigh = abi.ChainEpoch(-xx-1)`
+            - Add `const UpgradeXxHeight = 50`
         - `params_mainnet.go`
-            - Set previous upgrade to `const UpgradeXxxxxHeight = XX`
+            - Set previous upgrade to `const UpgradeXxHeight = XX`
             - Add comment with ???? signaling that the new upgrade date is unkown
-            - Add `var UpgradeXxxxxxHeight = abi.ChainEpoch(9999999999)`
-            - Change the `LOTUS_DISABLE_XXXX` env variable to the new network name
+            - Add `var UpgradeXxHeight = abi.ChainEpoch(9999999999)`
+            - Change the `LOTUS_DISABLE_XX` env variable to the new network name
         - `params_testground.go`
-            - Add `UpgradeXxxxxHeight     abi.ChainEpoch = (-xx-1)`
+            - Add `UpgradeXxHeight     abi.ChainEpoch = (-xx-1)`
 
 3. Generate adapters:
 
@@ -135,10 +152,10 @@ You can take a look at this [Go-State-Types PR as a reference](https://github.co
     - Add `inv.Register(actorstypes.Version(XX+1), vm.ActorsVersionPredicate(actorstypes.Version(XX+1)), builtin.MakeRegistry(actorstypes.Version(XX+1))`.
 
 6. Add upgrade field to `api/types.go/ForkUpgradeParams`.
-    - Add `UpgradeXxxxxHeight      abi.ChainEpoch` to `ForkUpgradeParams` struct.
+    - Add `UpgradeXxHeight      abi.ChainEpoch` to `ForkUpgradeParams` struct.
 
 7. Add upgrade to `node/impl/full/state.go`.
-    - Add `UpgradeXxxxxHeight:      build.UpgradeXxxxxHeight,`.
+    - Add `UpgradeXxHeight:      build.UpgradeXxHeight,`.
 
 8. Add network version to `chain/state/statetree.go`.
     - Add `network.VersionXX+1` to `VersionForNetwork` function.
@@ -155,7 +172,7 @@ And you're done! These are all the steps necessary to create a network upgrade s
 - Complete the migration at upgrade epoch, with a succesful upgrade.
 - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
-You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11897), which added the skeleton for network version 23.
+You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11964), which added the skeleton for network version 23.
 
 [^1]: Here is system.go template for a simple migration:
 
@@ -315,7 +332,7 @@ You can take a look at this [Lotus PR as a reference](https://github.com/filecoi
 
     ```go
     {
-        Height:    build.UpgradeXxxxHeight,
+        Height:    build.UpgradeXxHeight,
         Network:   network.Version(XX+1),
         Migration: UpgradeActorsV(XX+1),
         PreMigrations: []stmgr.PreMigration{{
