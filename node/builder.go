@@ -7,7 +7,6 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	metricsi "github.com/ipfs/go-metrics-interface"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	ci "github.com/libp2p/go-libp2p/core/crypto"
@@ -201,7 +200,7 @@ var LibP2P = Options(
 	// Host
 	Override(new(lp2p.RawHost), lp2p.Host),
 	Override(new(host.Host), lp2p.RoutedHost),
-	Override(new(lp2p.BaseIpfsRouting), lp2p.DHTRouting(dht.ModeAuto)),
+	Override(new(lp2p.BaseIpfsRouting), lp2p.NilRouting),
 
 	Override(DiscoveryHandlerKey, lp2p.DiscoveryHandler),
 

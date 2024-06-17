@@ -36,6 +36,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/metrics"
+
+	// without loading these explicitly certain tests might fail
+	_ "github.com/ipld/go-ipld-prime/codec/cbor"
+	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 )
 
 var log = logging.Logger("chainstore")
