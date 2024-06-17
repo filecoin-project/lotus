@@ -58,6 +58,7 @@ There is no change in the behaviour when a call returns an error, as the error o
 - feat: api: add SectorNumber to MarketDealState (nv22)
 - fix: copy Flags field from SectorOnChainInfo
 - fix: ETH RPC API: ETH Call should use the parent state root of the subsequent tipset ([filecoin-project/lotus#11905](https://github.com/filecoin-project/lotus/pull/11905))
+- fix: events: sqlite db improvements ([filecoin-project/lotus#12090](https://github.com/filecoin-project/lotus/pull/12090))
 
 ## Dependencies
 
