@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -91,9 +90,6 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
-	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
-	apiSelExample := api.Selector("Links/21/Hash/Links/42/Hash")
-
 	block := blocks.Block(&blocks.BasicBlock{})
 	ExampleValues[reflect.TypeOf(&block).Elem()] = block
 
@@ -124,8 +120,6 @@ func init() {
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 
-	addExample(&textSelExample)
-	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
 	addExample(build.TestNetworkVersion)
 	allocationId := verifreg.AllocationId(0)

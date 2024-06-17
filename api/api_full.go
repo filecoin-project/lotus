@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
@@ -1052,8 +1051,6 @@ type MarketDeal struct {
 	State    MarketDealState
 }
 
-type RemoteStoreID = uuid.UUID
-
 type InvocResult struct {
 	MsgCid         cid.Cid
 	Msg            *types.Message
@@ -1062,11 +1059,6 @@ type InvocResult struct {
 	ExecutionTrace types.ExecutionTrace
 	Error          string
 	Duration       time.Duration
-}
-
-type MethodCall struct {
-	types.MessageReceipt
-	Error string
 }
 
 type IpldObject struct {
@@ -1180,21 +1172,6 @@ type BlockTemplate struct {
 	WinningPoStProof []builtin.PoStProof
 }
 
-type DataSize struct {
-	PayloadSize int64
-	PieceSize   abi.PaddedPieceSize
-}
-
-type DataCIDSize struct {
-	PayloadSize int64
-	PieceSize   abi.PaddedPieceSize
-	PieceCID    cid.Cid
-}
-
-type CommPRet struct {
-	Root cid.Cid
-	Size abi.UnpaddedPieceSize
-}
 type HeadChange struct {
 	Type string
 	Val  *types.TipSet
