@@ -6,13 +6,14 @@
 
 ## Improvements
 
-# v1.27.1 / 2024-06-10
+# v1.27.1-rc2 / 2024-06-17
 
 This is the first release candidate of the upcoming optional release of Lotus v1.27.1
 
 ## ☢️ Upgrade Warnings ☢️
 
-There are no upgrade warnings for this release candidate.
+- This Lotus release completely removes the Legacy Lotus/Lotus-Miner Markets sub-system from the codebase, which was announced to reach EOL on January 31, 2023.
+- The **Curio Storage** software, designed to simplify the setup and operation of storage providers, has moved to their own Github-repository: https://github.com/filecoin-project/curio.
 
 ### JSON-RPC 2.0 Specification Conformance
 
@@ -56,6 +57,7 @@ There is no change in the behaviour when a call returns an error, as the error o
 - chore: remove unmaintained bootstrappers (#11983) ([filecoin-project/lotus#11983](https://github.com/filecoin-project/lotus/pull/11983))
 - feat: api: add SectorNumber to MarketDealState (nv22)
 - fix: copy Flags field from SectorOnChainInfo
+- fix: ETH RPC API: ETH Call should use the parent state root of the subsequent tipset ([filecoin-project/lotus#11905](https://github.com/filecoin-project/lotus/pull/11905))
 
 ## Dependencies
 
@@ -124,6 +126,9 @@ There is no change in the behaviour when a call returns an error, as the error o
 - chore: pin golanglint-ci to v1.58.2 (#12054) ([filecoin-project/lotus#12054](https://github.com/filecoin-project/lotus/pull/12054))
 - chore: fix some function names (#12031) ([filecoin-project/lotus#12031](https://github.com/filecoin-project/lotus/pull/12031))
 - src: lint: bump golangci-lint to 1.59, address unchecked fmt.Fprint*
+- fix: ci: do not use deprecated --debug goreleaser flag ([filecoin-project/lotus#12086](https://github.com/filecoin-project/lotus/pull/12086))
+- chore: Remove forgotten graphsync references ([filecoin-project/lotus#12084](https://github.com/filecoin-project/lotus/pull/12084))
+- chore: types: remove more items forgotten after markets ([filecoin-project/lotus#12095](https://github.com/filecoin-project/lotus/pull/12095))
 
 ## Contributors
 
