@@ -46,7 +46,7 @@ const maxEthFeeHistoryRewardPercentiles = 100
 
 var (
 	// wait for 3 epochs
-	eventReadTimeout = 90 * time.Second
+	eventReadTimeout = time.Duration(3 * builtintypes.EpochDurationSeconds)
 )
 
 type EthModuleAPI interface {
