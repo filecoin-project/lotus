@@ -108,7 +108,7 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 				if err != nil {
 					return nil, xerrors.Errorf("failed to resolve event index database path: %w", err)
 				}
-				dbPath = filepath.Join(sqlitePath, "events.db")
+				dbPath = filepath.Join(sqlitePath, filter.DefaultDbFilename)
 			} else {
 				dbPath = cfg.DatabasePath
 			}
