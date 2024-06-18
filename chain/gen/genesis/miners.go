@@ -489,30 +489,34 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				}
 
 				// Commit one-by-one, otherwise pledge math tends to explode
-				var paramBytes []byte
+				if nv <= network.Version23 {
+					var paramBytes []byte
 
-				if av >= actorstypes.Version6 {
-					// TODO: fixup
-					confirmParams := &builtin6.ConfirmSectorProofsParams{
-						Sectors: []abi.SectorNumber{preseal.SectorID},
+					if av >= actorstypes.Version6 {
+						confirmParams := &builtin6.ConfirmSectorProofsParams{
+							Sectors: []abi.SectorNumber{preseal.SectorID},
+						}
+
+						paramBytes = mustEnc(confirmParams)
+					} else {
+						confirmParams := &builtin0.ConfirmSectorProofsParams{
+							Sectors: []abi.SectorNumber{preseal.SectorID},
+						}
+
+						paramBytes = mustEnc(confirmParams)
 					}
 
-					paramBytes = mustEnc(confirmParams)
+					_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
+					if err != nil {
+						return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
+					}
 				} else {
-					confirmParams := &builtin0.ConfirmSectorProofsParams{
-						Sectors: []abi.SectorNumber{preseal.SectorID},
-					}
-
-					paramBytes = mustEnc(confirmParams)
-				}
-
-				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
-				if err != nil {
-					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
+					// Prove commit 3
 				}
 
 				if av >= actorstypes.Version2 {
 					// post v0, we need to explicitly Claim this power since ConfirmSectorProofsValid doesn't do it anymore
+					// post v23 we use ProveCommitSectors3 which does this internally
 					claimParams := &power4.UpdateClaimedPowerParams{
 						RawByteDelta:         types.NewInt(uint64(m.SectorSize)),
 						QualityAdjustedDelta: sectorWeight,
