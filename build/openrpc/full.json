@@ -17971,7 +17971,7 @@
                                 "UpgradeWatermelonHeight": 10101,
                                 "UpgradeDragonHeight": 10101,
                                 "UpgradePhoenixHeight": 10101,
-                                "UpgradeAussieHeight": 10101
+                                "UpgradeWaffleHeight": 10101
                             },
                             "Eip155ChainID": 123
                         }
@@ -17998,10 +17998,6 @@
                                     "type": "number"
                                 },
                                 "UpgradeAssemblyHeight": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "UpgradeAussieHeight": {
                                     "title": "number",
                                     "type": "number"
                                 },
@@ -18098,6 +18094,10 @@
                                     "type": "number"
                                 },
                                 "UpgradeTurboHeight": {
+                                    "title": "number",
+                                    "type": "number"
+                                },
+                                "UpgradeWaffleHeight": {
                                     "title": "number",
                                     "type": "number"
                                 },
