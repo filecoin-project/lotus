@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	nilrouting "github.com/ipfs/boxo/routing/none"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"
+	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
@@ -115,7 +115,7 @@ func DHTRouting(mode dht.ModeOpt) interface{} {
 }
 
 func NilRouting(mctx helpers.MetricsCtx) (BaseIpfsRouting, error) {
-	return nilrouting.ConstructNilRouting(mctx, nil, nil, nil)
+	return &routinghelpers.Null{}, nil
 }
 
 func RoutedHost(rh RawHost, r BaseIpfsRouting) host.Host {
