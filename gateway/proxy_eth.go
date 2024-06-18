@@ -142,6 +142,9 @@ func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback eth
 			break
 		}
 		num = ethtypes.EthUint64(head.Height()) - lookback
+	case "safe":
+		safeEpochDelay := 30 // https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md
+		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(safeEpochDelay)
 	default:
 		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
 			return fmt.Errorf("cannot parse block number: %v", err)

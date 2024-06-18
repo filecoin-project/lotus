@@ -57,6 +57,15 @@ func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkPar
 			return nil, fmt.Errorf("cannot get parent tipset")
 		}
 		return parent, nil
+	case "safe":
+		safeEpochDelay := abi.ChainEpoch(30) // https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md
+		latestHeight := head.Height() - 1
+		safeHeight := latestHeight - safeEpochDelay
+		ts, err := chain.GetTipsetByHeight(ctx, abi.ChainEpoch(safeHeight), head, true)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
+		}
+		return ts, nil
 	default:
 		var num ethtypes.EthUint64
 		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
