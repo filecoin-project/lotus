@@ -455,7 +455,7 @@ func (tm *TestUnmanagedMiner) SubmitProveCommit(
 		tm.t.Log("Submitting ProveCommitSector ...")
 
 		var provingDeadline uint64 = 7
-		if tm.IsUmmutableDeadline(ctx, provingDeadline) {
+		if tm.IsImmutableDeadline(ctx, provingDeadline) {
 			// avoid immutable deadlines
 			provingDeadline = 5
 		}
@@ -1144,7 +1144,7 @@ func (tm *TestUnmanagedMiner) AssertDisputeFails(ctx context.Context, sector abi
 	require.Contains(tm.t, err.Error(), "(RetCode=16)")
 }
 
-func (tm *TestUnmanagedMiner) IsUmmutableDeadline(ctx context.Context, deadlineIndex uint64) bool {
+func (tm *TestUnmanagedMiner) IsImmutableDeadline(ctx context.Context, deadlineIndex uint64) bool {
 	di, err := tm.FullNode.StateMinerProvingDeadline(ctx, tm.ActorAddr, types.EmptyTSK)
 	require.NoError(tm.t, err)
 	// don't rely on di.Index because if we haven't enrolled in cron it won't be ticking
