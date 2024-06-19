@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # When --help is generated one needs to make sure none of the
     # urfave-cli `EnvVars:` defaults get triggered
     # Unset everything we can find via: grep -ho 'EnvVars:.*' -r * | sort -u
-    for e in [ "LOTUS_PATH", "LOTUS_MARKETS_PATH", "LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH", "LOTUS_WORKER_PATH", "WORKER_PATH", "LOTUS_PANIC_REPORT_PATH", "WALLET_PATH" ]:
+    for e in [ "LOTUS_PATH", "LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH", "LOTUS_WORKER_PATH", "WORKER_PATH", "LOTUS_PANIC_REPORT_PATH", "WALLET_PATH" ]:
         os.environ.pop(e, None)
 
     # Set env var telling the binaries that we're generating docs

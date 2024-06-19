@@ -43,7 +43,6 @@ type nodeOpts struct {
 	disableLibp2p          bool
 	optBuilders            []OptBuilder
 	sectorSize             abi.SectorSize
-	maxStagingDealsBytes   int64
 	minerNoLocalSealing    bool // use worker
 	minerAssigner          string
 	disallowRemoteFinalize bool
@@ -107,14 +106,6 @@ func WithSubsystems(systems ...MinerSubsystem) NodeOpt {
 		return nil
 	}
 }
-
-func WithMaxStagingDealsBytes(size int64) NodeOpt {
-	return func(opts *nodeOpts) error {
-		opts.maxStagingDealsBytes = size
-		return nil
-	}
-}
-
 func WithNoLocalSealing(nope bool) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.minerNoLocalSealing = nope
