@@ -99,7 +99,6 @@ const (
 
 	RunHelloKey
 	RunChainExchangeKey
-	RunChainGraphsync
 	RunPeerMgrKey
 
 	HandleIncomingBlocksKey

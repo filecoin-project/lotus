@@ -92,7 +92,6 @@ require (
 	github.com/ipld/go-car v0.6.2
 	github.com/ipld/go-car/v2 v2.13.1
 	github.com/ipld/go-ipld-prime v0.21.0
-	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/ipni/go-libipni v0.0.8
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/kelseyhightower/envconfig v1.4.0
