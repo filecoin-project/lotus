@@ -1,19 +1,8 @@
 package build
 
 import (
-	_ "embed"
+	proofparams "github.com/filecoin-project/lotus/build/proof-params"
 )
 
-//go:embed proof-params/parameters.json
-var params []byte
-
-//go:embed proof-params/srs-inner-product.json
-var srs []byte
-
-func ParametersJSON() []byte {
-	return params
-}
-
-func SrsJSON() []byte {
-	return srs
-}
+var ParametersJSON = proofparams.ParametersJSON
+var SrsJSON = proofparams.SrsJSON
