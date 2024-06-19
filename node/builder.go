@@ -128,6 +128,8 @@ const (
 
 	StoreEventsKey
 
+	F3Key
+
 	_nInvokes // keep this last
 )
 

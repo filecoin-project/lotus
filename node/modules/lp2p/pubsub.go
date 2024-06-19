@@ -16,6 +16,7 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/config"
@@ -377,6 +378,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		build.BlocksTopic(in.Nn),
 		build.MessagesTopic(in.Nn),
 		build.IndexerIngestTopic(in.Nn),
+		gpbft.NetworkName(in.Nn).PubSubTopic(),
 	}
 	allowTopics = append(allowTopics, drandTopics...)
 	options = append(options,
