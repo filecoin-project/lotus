@@ -63,6 +63,7 @@ jobs:
             {
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-manual_onboarding": ["self-hosted", "linux", "x64", "4xlarge"],
 
               "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
@@ -89,7 +90,6 @@ jobs:
               "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-manual_onboarding": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
