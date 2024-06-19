@@ -1277,10 +1277,15 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		if maxHeight == -1 {
 			maxHeight = e.Chain.GetHeaviestTipSet().Height()
 		}
+		if maxHeight > e.Chain.GetHeaviestTipSet().Height() {
+			return nil, xerrors.Errorf("max height requested is greater than the heaviest tipset")
+		}
+
 		err := e.waitForHeightProcessed(ctx, maxHeight)
 		if err != nil {
 			return nil, err
 		}
+
 	} else {
 		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
 		if err != nil {

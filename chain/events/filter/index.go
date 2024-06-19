@@ -97,7 +97,7 @@ const (
 	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
 	revertEventSeen      = `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`
 	restoreEventSeen     = `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`
-	insertEventsSeen     = `INSERT OR IGNORE INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, ?)`
+	upsertEventsSeen     = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, ?) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
 	isTipsetProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`
 	getMaxHeightInIndex  = `SELECT MAX(height) FROM events_seen`
 
@@ -129,7 +129,7 @@ type EventIndex struct {
 	stmtInsertEntry          *sql.Stmt
 	stmtRevertEventsInTipset *sql.Stmt
 	stmtRestoreEvent         *sql.Stmt
-	stmtInsertEventsSeen     *sql.Stmt
+	stmtUpsertEventsSeen     *sql.Stmt
 	stmtRevertEventSeen      *sql.Stmt
 	stmtRestoreEventSeen     *sql.Stmt
 
@@ -175,9 +175,9 @@ func (ei *EventIndex) initStatements() (err error) {
 		return xerrors.Errorf("prepare stmtRestoreEvent: %w", err)
 	}
 
-	ei.stmtInsertEventsSeen, err = ei.db.Prepare(insertEventsSeen)
+	ei.stmtUpsertEventsSeen, err = ei.db.Prepare(upsertEventsSeen)
 	if err != nil {
-		return xerrors.Errorf("prepare stmtInsertEventsSeen: %w", err)
+		return xerrors.Errorf("prepare stmtUpsertEventsSeen: %w", err)
 	}
 
 	ei.stmtRevertEventSeen, err = ei.db.Prepare(revertEventSeen)
@@ -498,13 +498,8 @@ func (ei *EventIndex) migrateToVersion6(ctx context.Context) error {
 
 	// INSERT an entry in the events_seen table for all epochs we do have events for in our DB
 	_, err = tx.ExecContext(ctx, `
-    INSERT INTO events_seen (height, tipset_key_cid, reverted)
-    SELECT e.height, e.tipset_key_cid, e.reverted
-    FROM event e
-    WHERE NOT EXISTS (
-        SELECT 1 FROM events_seen es
-        WHERE es.height = e.height AND es.tipset_key_cid = e.tipset_key_cid	
-    )
+    INSERT OR IGNORE INTO events_seen (height, tipset_key_cid, reverted)
+    SELECT DISTINCT height, tipset_key_cid, reverted FROM event
 `)
 	if err != nil {
 		return xerrors.Errorf("insert events into events_seen: %w", err)
@@ -766,7 +761,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	eventCount := 0
-	isTipSetRevertRestored := false
 	// iterate over all executed messages in this tipset and insert them into the database if they
 	// don't exist, otherwise mark them as not reverted
 	for msgIdx, em := range ems {
@@ -855,41 +849,21 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				// this is a sanity check as we should only ever be updating one event
 				if rowsAffected != 1 {
 					log.Warnf("restored %d events but expected only one to exist", rowsAffected)
-				} else {
-					isTipSetRevertRestored = true
 				}
 			}
 			eventCount++
 		}
 	}
 
-	if isTipSetRevertRestored {
-		// restore a revert for the tipset if applicable
-		res, err := tx.Stmt(ei.stmtRestoreEventSeen).Exec(
-			te.msgTs.Height(),
-			tsKeyCid.Bytes(),
-		)
-		if err != nil {
-			return xerrors.Errorf("exec restore event seen: %w", err)
-		}
-
-		rowsAffected, err := res.RowsAffected()
-		if err != nil {
-			return xerrors.Errorf("error getting rows affected: %s", err)
-		}
-		if rowsAffected != 1 {
-			log.Warnf("restored %d events in events_seen but expected only one to exist", rowsAffected)
-		}
-	} else {
-		// add an entry to the event_seen table for this tipset
-		_, err = tx.Stmt(ei.stmtInsertEventsSeen).Exec(
-			te.msgTs.Height(),
-			tsKeyCid.Bytes(),
-			false,
-		)
-		if err != nil {
-			return xerrors.Errorf("exec insert events seen: %w", err)
-		}
+	// this statement will mark the tipset as processed and will insert a new row if it doesn't exist
+	// or update the reverted field to false if it does
+	_, err = tx.Stmt(ei.stmtUpsertEventsSeen).Exec(
+		te.msgTs.Height(),
+		tsKeyCid.Bytes(),
+		false,
+	)
+	if err != nil {
+		return xerrors.Errorf("exec upsert events seen: %w", err)
 	}
 
 	err = tx.Commit()
