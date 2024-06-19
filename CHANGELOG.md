@@ -8,7 +8,7 @@
 
 # v1.27.1-rc2 / 2024-06-17
 
-This is the first release candidate of the upcoming optional release of Lotus v1.27.1
+This is the second release candidate of the upcoming optional release of Lotus v1.27.1
 
 ## ☢️ Upgrade Warnings ☢️
 
