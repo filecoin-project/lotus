@@ -26,8 +26,11 @@ func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 	return protocol.ID("/fil/kad/" + string(netName))
 }
 
+// Deprecated: Use buildconstants.SetAddressNetwork instead.
 var SetAddressNetwork = buildconstants.SetAddressNetwork
 
+// Deprecated: Use buildconstants.MustParseAddress instead.
 var MustParseAddress = buildconstants.MustParseAddress
 
+// Deprecated: Use buildconstants.MustParseCid instead.
 var MustParseCid = buildconstants.MustParseCid

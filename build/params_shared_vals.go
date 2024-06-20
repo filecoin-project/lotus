@@ -9,47 +9,47 @@ import (
 // /////
 // Storage
 
-var UnixfsChunkSize uint64 = buildconstants.UnixfsChunkSize
-var UnixfsLinksPerLevel = buildconstants.UnixfsLinksPerLevel
+var UnixfsChunkSize uint64 = buildconstants.UnixfsChunkSize  // Deprecated: Use buildconstants.UnixfsChunkSize instead
+var UnixfsLinksPerLevel = buildconstants.UnixfsLinksPerLevel // Deprecated: Use buildconstants.UnixfsLinksPerLevel instead
 
 // /////
 // Consensus / Network
 
-var AllowableClockDriftSecs = buildconstants.AllowableClockDriftSecs
+var AllowableClockDriftSecs = buildconstants.AllowableClockDriftSecs // Deprecated: Use buildconstants.AllowableClockDriftSecs instead
 
 // Epochs
-var ForkLengthThreshold = Finality
+var ForkLengthThreshold = Finality // Deprecated: Use Finality instead
 
 // Blocks (e)
-var BlocksPerEpoch = buildconstants.BlocksPerEpoch
+var BlocksPerEpoch = buildconstants.BlocksPerEpoch // Deprecated: Use buildconstants.BlocksPerEpoch instead
 
 // Epochs
-var MessageConfidence = buildconstants.MessageConfidence
+var MessageConfidence = buildconstants.MessageConfidence // Deprecated: Use buildconstants.MessageConfidence instead
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
-var WRatioNum = buildconstants.WRatioNum
-var WRatioDen = buildconstants.WRatioDen
+var WRatioNum = buildconstants.WRatioNum // Deprecated: Use buildconstants.WRatioNum instead
+var WRatioDen = buildconstants.WRatioDen // Deprecated: Use buildconstants.WRatioDen instead
 
 // /////
 // Mining
 
 // Epochs
-var TicketRandomnessLookback = buildconstants.TicketRandomnessLookback
+var TicketRandomnessLookback = buildconstants.TicketRandomnessLookback // Deprecated: Use buildconstants.TicketRandomnessLookback instead
 
 // the 'f' prefix doesn't matter
-var ZeroAddress = buildconstants.ZeroAddress
+var ZeroAddress = buildconstants.ZeroAddress // Deprecated: Use buildconstants.ZeroAddress instead
 
 // /////
 // Devnet settings
 
-var Devnet = buildconstants.Devnet
+var Devnet = buildconstants.Devnet // Deprecated: Use buildconstants.Devnet instead
 
-var FilBase = buildconstants.FilBase
-var FilAllocStorageMining = buildconstants.FilAllocStorageMining
+var FilBase = buildconstants.FilBase                             // Deprecated: Use buildconstants.FilBase instead
+var FilAllocStorageMining = buildconstants.FilAllocStorageMining // Deprecated: Use buildconstants.FilAllocStorageMining instead
 
-var FilecoinPrecision = buildconstants.FilecoinPrecision
-var FilReserved = buildconstants.FilReserved
+var FilecoinPrecision = buildconstants.FilecoinPrecision // Deprecated: Use buildconstants.FilecoinPrecision instead
+var FilReserved = buildconstants.FilReserved             // Deprecated: Use buildconstants.FilReserved instead
 
 var InitialRewardBalance *big.Int
 var InitialFilReserved *big.Int
@@ -65,32 +65,32 @@ func init() {
 }
 
 // Sync
-var BadBlockCacheSize = buildconstants.BadBlockCacheSize
+var BadBlockCacheSize = buildconstants.BadBlockCacheSize // Deprecated: Use buildconstants.BadBlockCacheSize instead
 
 // assuming 4000 messages per round, this lets us not lose any messages across a
 // 10 block reorg.
-var BlsSignatureCacheSize = buildconstants.BlsSignatureCacheSize
+var BlsSignatureCacheSize = buildconstants.BlsSignatureCacheSize // Deprecated: Use buildconstants.BlsSignatureCacheSize instead
 
 // Size of signature verification cache
 // 32k keeps the cache around 10MB in size, max
-var VerifSigCacheSize = buildconstants.VerifSigCacheSize
+var VerifSigCacheSize = buildconstants.VerifSigCacheSize // Deprecated: Use buildconstants.VerifSigCacheSize instead
 
 // ///////
 // Limits
 
 // TODO: If this is gonna stay, it should move to specs-actors
-var BlockMessageLimit = buildconstants.BlockMessageLimit
+var BlockMessageLimit = buildconstants.BlockMessageLimit // Deprecated: Use buildconstants.BlockMessageLimit instead
 
-var BlockGasLimit = buildconstants.BlockGasLimit
-var BlockGasTarget = buildconstants.BlockGasTarget
+var BlockGasLimit = buildconstants.BlockGasLimit   // Deprecated: Use buildconstants.BlockGasLimit instead
+var BlockGasTarget = buildconstants.BlockGasTarget // Deprecated: Use buildconstants.BlockGasTarget instead
 
-var BaseFeeMaxChangeDenom int64 = buildconstants.BaseFeeMaxChangeDenom
-var InitialBaseFee int64 = buildconstants.InitialBaseFee
-var MinimumBaseFee int64 = buildconstants.MinimumBaseFee
-var PackingEfficiencyNum int64 = buildconstants.PackingEfficiencyNum
-var PackingEfficiencyDenom int64 = buildconstants.PackingEfficiencyDenom
+var BaseFeeMaxChangeDenom int64 = buildconstants.BaseFeeMaxChangeDenom   // Deprecated: Use buildconstants.BaseFeeMaxChangeDenom instead
+var InitialBaseFee int64 = buildconstants.InitialBaseFee                 // Deprecated: Use buildconstants.InitialBaseFee instead
+var MinimumBaseFee int64 = buildconstants.MinimumBaseFee                 // Deprecated: Use buildconstants.MinimumBaseFee instead
+var PackingEfficiencyNum int64 = buildconstants.PackingEfficiencyNum     // Deprecated: Use buildconstants.PackingEfficiencyNum instead
+var PackingEfficiencyDenom int64 = buildconstants.PackingEfficiencyDenom // Deprecated: Use buildconstants.PackingEfficiencyDenom instead
 
-var MinDealDuration = buildconstants.MinDealDuration
-var MaxDealDuration = buildconstants.MaxDealDuration
+var MinDealDuration = buildconstants.MinDealDuration // Deprecated: Use buildconstants.MinDealDuration instead
+var MaxDealDuration = buildconstants.MaxDealDuration // Deprecated: Use buildconstants.MaxDealDuration instead
 
-const TestNetworkVersion = buildconstants.TestNetworkVersion
+const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use buildconstants.TestNetworkVersion instead
