@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -178,6 +179,7 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	}
 
 	build.EquivocationDelaySecs = 0
+	buildconstants.EquivocationDelaySecs = 0
 
 	return n
 }
