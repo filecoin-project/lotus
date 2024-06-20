@@ -114,7 +114,8 @@ const (
 		id INTEGER PRIMARY KEY,
 		height INTEGER NOT NULL,
 		tipset_key_cid BLOB NOT NULL,
-		reverted INTEGER NOT NULL
+		reverted INTEGER NOT NULL,
+	    UNIQUE(height, tipset_key_cid)
 	)`
 
 	createIndexEventsSeenHeight       = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
