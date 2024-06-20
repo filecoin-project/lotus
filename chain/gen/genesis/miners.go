@@ -13,14 +13,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
+	miner13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+
 	smoothing9 "github.com/filecoin-project/go-state-types/builtin/v9/util/smoothing"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
@@ -68,6 +72,18 @@ type fakedSigSyscalls struct {
 
 func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	return nil
+}
+
+func (fss *fakedSigSyscalls) BatchVerifySeals(vis map[address.Address][]prooftypes.SealVerifyInfo) (map[address.Address][]bool, error) {
+	// TODO double check the robot
+	result := make(map[address.Address][]bool)
+	for addr := range vis {
+		result[addr] = make([]bool, len(vis[addr]))
+		for i := range vis[addr] {
+			result[addr][i] = true
+		}
+	}
+	return result, nil
 }
 
 func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
@@ -512,11 +528,21 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 					}
 				} else {
 					// Prove commit 3
+					params := miner13.ProveCommitSectors3Params{
+						SectorActivations: []miner13.SectorActivationManifest{
+							{
+								SectorNumber: preseal.SectorID,
+							},
+						},
+					}
+					_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, m.Worker, big.Zero(), builtintypes.MethodsMiner.ProveCommitSectors3, mustEnc(&params))
+					if err != nil {
+						return cid.Undef, xerrors.Errorf("failed to prove commit sector: %w", err)
+					}
 				}
 
 				if av >= actorstypes.Version2 {
 					// post v0, we need to explicitly Claim this power since ConfirmSectorProofsValid doesn't do it anymore
-					// post v23 we use ProveCommitSectors3 which does this internally
 					claimParams := &power4.UpdateClaimedPowerParams{
 						RawByteDelta:         types.NewInt(uint64(m.SectorSize)),
 						QualityAdjustedDelta: sectorWeight,
