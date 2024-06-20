@@ -6,9 +6,9 @@
 
 ## Improvements
 
-# v1.27.1-rc2 / 2024-06-17
+# v1.27.1-rc2 / 2024-06-20
 
-This is the second release candidate of the upcoming optional release of Lotus v1.27.1
+This is the third release candidate of the upcoming optional release of Lotus v1.27.1
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -131,6 +131,7 @@ There is no change in the behaviour when a call returns an error, as the error o
 - chore: Remove forgotten graphsync references ([filecoin-project/lotus#12084](https://github.com/filecoin-project/lotus/pull/12084))
 - chore: types: remove more items forgotten after markets ([filecoin-project/lotus#12095](https://github.com/filecoin-project/lotus/pull/12095))
 - chore: api: the Net API/CLI now remains only on daemon ([filecoin-project/lotus#12100](https://github.com/filecoin-project/lotus/pull/12100))
+- fix: release: update goreleaser config filei #12120
 
 ## Contributors
 
