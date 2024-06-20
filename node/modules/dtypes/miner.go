@@ -1,14 +1,11 @@
 package dtypes
 
 import (
-	"context"
 	"time"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
@@ -89,11 +86,3 @@ type SetExpectedSealDurationFunc func(time.Duration) error
 // GetExpectedSealDurationFunc is a function which reads from miner
 // too determine how long sealing is expected to take
 type GetExpectedSealDurationFunc func() (time.Duration, error)
-
-type SetMaxDealStartDelayFunc func(time.Duration) error
-type GetMaxDealStartDelayFunc func() (time.Duration, error)
-
-type StorageDealFilter func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
-type RetrievalDealFilter func(ctx context.Context, deal retrievalmarket.ProviderDealState) (bool, string, error)
-
-type RetrievalPricingFunc func(ctx context.Context, dealPricingParams retrievalmarket.PricingInput) (retrievalmarket.Ask, error)

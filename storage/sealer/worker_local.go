@@ -675,6 +675,8 @@ func (l *LocalWorker) GenerateWindowPoStAdv(ctx context.Context, ppt abi.Registe
 
 		go func(i int, s storiface.PostSectorChallenge) {
 			defer wg.Done()
+			ctx := ctx
+
 			defer func() {
 				if l.challengeThrottle != nil {
 					<-l.challengeThrottle

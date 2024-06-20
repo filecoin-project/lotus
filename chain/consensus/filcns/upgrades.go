@@ -304,7 +304,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Network:   network.Version22,
 		Migration: upgradeActorsV13VerifregFix(calibnetv13BuggyVerifregCID1, calibnetv13CorrectManifestCID1),
 	}, {
-		Height:    build.UpgradeAussieHeight,
+		Height:    build.UpgradeWaffleHeight,
 		Network:   network.Version23,
 		Migration: UpgradeActorsV14,
 		PreMigrations: []stmgr.PreMigration{{

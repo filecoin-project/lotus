@@ -719,12 +719,12 @@ var actorControlSet = &cli.Command{
 				return err
 			}
 
-			fmt.Fprintln(cctx.App.Writer, hex.EncodeToString(msgBytes))
+			_, _ = fmt.Fprintln(cctx.App.Writer, hex.EncodeToString(msgBytes))
 			return nil
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
 			return nil
 		}
 
@@ -760,7 +760,7 @@ var actorProposeChangeWorker = &cli.Command{
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
 			return nil
 		}
 
@@ -840,7 +840,7 @@ var actorProposeChangeWorker = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
+		_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
 		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
@@ -850,7 +850,7 @@ var actorProposeChangeWorker = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Propose worker change failed!")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "Propose worker change failed!")
 			return err
 		}
 
@@ -862,8 +862,8 @@ var actorProposeChangeWorker = &cli.Command{
 			return fmt.Errorf("Proposed worker address change not reflected on chain: expected '%s', found '%s'", na, mi.NewWorker)
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully proposed.\n", na)
-		fmt.Fprintf(cctx.App.Writer, "Call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully proposed.\n", na)
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch)
 
 		return nil
 	},
@@ -890,7 +890,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
 			return nil
 		}
 
@@ -961,7 +961,7 @@ var actorConfirmChangeWorker = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "Confirm Message CID:", smsg.Cid())
+		_, _ = fmt.Fprintln(cctx.App.Writer, "Confirm Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
 		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
@@ -971,7 +971,7 @@ var actorConfirmChangeWorker = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
 			return err
 		}
 

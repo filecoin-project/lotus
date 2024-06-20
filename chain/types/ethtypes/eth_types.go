@@ -1011,6 +1011,14 @@ type EthTraceReplayBlockTransaction struct {
 	VmTrace         *string     `json:"vmTrace"`
 }
 
+type EthTraceTransaction struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
+}
+
 type EthCallTraceAction struct {
 	CallType string     `json:"callType"`
 	From     EthAddress `json:"from"`

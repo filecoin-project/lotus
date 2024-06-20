@@ -6,6 +6,8 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
+type BuildVersion string
+
 var CurrentCommit string
 var BuildType = buildconstants.BuildType
 
@@ -40,13 +42,24 @@ func BuildTypeString() string {
 	}
 }
 
-// BuildVersion is the local build version
-const BuildVersion = "1.27.1-dev"
+// NodeBuildVersion is the local build version of the Lotus daemon
+const NodeBuildVersion string = "1.27.2-dev"
 
-func UserVersion() string {
+func NodeUserVersion() BuildVersion {
 	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
-		return BuildVersion
+		return BuildVersion(NodeBuildVersion)
 	}
 
-	return BuildVersion + BuildTypeString() + CurrentCommit
+	return BuildVersion(NodeBuildVersion + BuildTypeString() + CurrentCommit)
+}
+
+// MinerBuildVersion is the local build version of the Lotus miner
+const MinerBuildVersion = "1.27.2-dev"
+
+func MinerUserVersion() BuildVersion {
+	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
+		return BuildVersion(MinerBuildVersion)
+	}
+
+	return BuildVersion(MinerBuildVersion + BuildTypeString() + CurrentCommit)
 }

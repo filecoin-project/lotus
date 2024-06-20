@@ -48,10 +48,10 @@ var upgradeList = &cli.Command{
 		}
 
 		tw := tabwriter.NewWriter(cctx.App.Writer, 8, 8, 0, ' ', 0)
-		fmt.Fprintf(tw, "version\theight\tepochs\tmigration\texpensive")
+		_, _ = fmt.Fprintf(tw, "version\theight\tepochs\tmigration\texpensive")
 		epoch := sim.GetHead().Height()
 		for _, upgrade := range upgrades {
-			fmt.Fprintf(
+			_, _ = fmt.Fprintf(
 				tw, "%d\t%d\t%+d\t%t\t%t",
 				upgrade.Network, upgrade.Height, upgrade.Height-epoch,
 				upgrade.Migration != nil,

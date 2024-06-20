@@ -217,7 +217,7 @@ var SendCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "%s\n", sm.Cid())
+		_, _ = fmt.Fprintf(cctx.App.Writer, "%s\n", sm.Cid())
 		return nil
 	},
 }

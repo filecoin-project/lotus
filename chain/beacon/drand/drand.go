@@ -97,7 +97,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		if err != nil {
 			return nil, xerrors.Errorf("could not create http drand client: %w", err)
 		}
-		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + build.BuildVersion)
+		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + build.NodeBuildVersion)
 		clients = append(clients, hc)
 
 	}

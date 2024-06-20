@@ -12,7 +12,6 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/metrics"
@@ -303,5 +302,3 @@ func (p *pieceReader) readInto(b []byte, off int64) (n int, err error) {
 
 	return n, cerr
 }
-
-var _ mount.Reader = (*pieceReader)(nil)

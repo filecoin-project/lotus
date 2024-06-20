@@ -1,8 +1,6 @@
 package config
 
 import (
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -22,7 +20,6 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client        Client
 	Wallet        Wallet
 	Fees          FeeConfig
 	Chainstore    Chainstore
@@ -53,31 +50,14 @@ type Logging struct {
 type StorageMiner struct {
 	Common
 
-	Subsystems    MinerSubsystemConfig
-	Dealmaking    DealmakingConfig
-	IndexProvider IndexProviderConfig
-	Proving       ProvingConfig
-	Sealing       SealingConfig
-	Storage       SealerConfig
-	Fees          MinerFeeConfig
-	Addresses     MinerAddressConfig
-	DAGStore      DAGStoreConfig
-
-	HarmonyDB HarmonyDB
-}
-
-type CurioConfig struct {
-	Subsystems CurioSubsystemsConfig
-
-	Fees CurioFees
-
-	// Addresses of wallets per MinerAddress (one of the fields).
-	Addresses []CurioAddresses
-	Proving   CurioProvingConfig
-	Ingest    CurioIngestConfig
-	Journal   JournalConfig
-	Apis      ApisConfig
-	Alerting  CurioAlerting
+	Subsystems MinerSubsystemConfig
+	Dealmaking DealmakingConfig
+	Proving    ProvingConfig
+	Sealing    SealingConfig
+	Storage    SealerConfig
+	Fees       MinerFeeConfig
+	Addresses  MinerAddressConfig
+	HarmonyDB  HarmonyDB
 }
 
 type ApisConfig struct {
@@ -95,189 +75,10 @@ type JournalConfig struct {
 	DisabledEvents string
 }
 
-type CurioSubsystemsConfig struct {
-	// EnableWindowPost enables window post to be executed on this curio instance. Each machine in the cluster
-	// with WindowPoSt enabled will also participate in the window post scheduler. It is possible to have multiple
-	// machines with WindowPoSt enabled which will provide redundancy, and in case of multiple partitions per deadline,
-	// will allow for parallel processing of partitions.
-	//
-	// It is possible to have instances handling both WindowPoSt and WinningPoSt, which can provide redundancy without
-	// the need for additional machines. In setups like this it is generally recommended to run
-	// partitionsPerDeadline+1 machines.
-	EnableWindowPost   bool
-	WindowPostMaxTasks int
-
-	// EnableWinningPost enables winning post to be executed on this curio instance.
-	// Each machine in the cluster with WinningPoSt enabled will also participate in the winning post scheduler.
-	// It is possible to mix machines with WindowPoSt and WinningPoSt enabled, for details see the EnableWindowPost
-	// documentation.
-	EnableWinningPost   bool
-	WinningPostMaxTasks int
-
-	// EnableParkPiece enables the "piece parking" task to run on this node. This task is responsible for fetching
-	// pieces from the network and storing them in the storage subsystem until sectors are sealed. This task is
-	// only applicable when integrating with boost, and should be enabled on nodes which will hold deal data
-	// from boost until sectors containing the related pieces have the TreeD/TreeR constructed.
-	// Note that future Curio implementations will have a separate task type for fetching pieces from the internet.
-	EnableParkPiece   bool
-	ParkPieceMaxTasks int
-
-	// EnableSealSDR enables SDR tasks to run. SDR is the long sequential computation
-	// creating 11 layer files in sector cache directory.
-	//
-	// SDR is the first task in the sealing pipeline. It's inputs are just the hash of the
-	// unsealed data (CommD), sector number, miner id, and the seal proof type.
-	// It's outputs are the 11 layer files in the sector cache directory.
-	//
-	// In lotus-miner this was run as part of PreCommit1.
-	EnableSealSDR bool
-
-	// The maximum amount of SDR tasks that can run simultaneously. Note that the maximum number of tasks will
-	// also be bounded by resources available on the machine.
-	SealSDRMaxTasks int
-
-	// EnableSealSDRTrees enables the SDR pipeline tree-building task to run.
-	// This task handles encoding of unsealed data into last sdr layer and building
-	// of TreeR, TreeC and TreeD.
-	//
-	// This task runs after SDR
-	// TreeD is first computed with optional input of unsealed data
-	// TreeR is computed from replica, which is first computed as field
-	//   addition of the last SDR layer and the bottom layer of TreeD (which is the unsealed data)
-	// TreeC is computed from the 11 SDR layers
-	// The 3 trees will later be used to compute the PoRep proof.
-	//
-	// In case of SyntheticPoRep challenges for PoRep will be pre-generated at this step, and trees and layers
-	// will be dropped. SyntheticPoRep works by pre-generating a very large set of challenges (~30GiB on disk)
-	// then using a small subset of them for the actual PoRep computation. This allows for significant scratch space
-	// saving between PreCommit and PoRep generation at the expense of more computation (generating challenges in this step)
-	//
-	// In lotus-miner this was run as part of PreCommit2 (TreeD was run in PreCommit1).
-	// Note that nodes with SDRTrees enabled will also answer to Finalize tasks,
-	// which just remove unneeded tree data after PoRep is computed.
-	EnableSealSDRTrees bool
-
-	// The maximum amount of SealSDRTrees tasks that can run simultaneously. Note that the maximum number of tasks will
-	// also be bounded by resources available on the machine.
-	SealSDRTreesMaxTasks int
-
-	// FinalizeMaxTasks is the maximum amount of finalize tasks that can run simultaneously.
-	// The finalize task is enabled on all machines which also handle SDRTrees tasks. Finalize ALWAYS runs on whichever
-	// machine holds sector cache files, as it removes unneeded tree data after PoRep is computed.
-	// Finalize will run in parallel with the SubmitCommitMsg task.
-	FinalizeMaxTasks int
-
-	// EnableSendPrecommitMsg enables the sending of precommit messages to the chain
-	// from this curio instance.
-	// This runs after SDRTrees and uses the output CommD / CommR (roots of TreeD / TreeR) for the message
-	EnableSendPrecommitMsg bool
-
-	// EnablePoRepProof enables the computation of the porep proof
-	//
-	// This task runs after interactive-porep seed becomes available, which happens 150 epochs (75min) after the
-	// precommit message lands on chain. This task should run on a machine with a GPU. Vanilla PoRep proofs are
-	// requested from the machine which holds sector cache files which most likely is the machine which ran the SDRTrees
-	// task.
-	//
-	// In lotus-miner this was Commit1 / Commit2
-	EnablePoRepProof bool
-
-	// The maximum amount of PoRepProof tasks that can run simultaneously. Note that the maximum number of tasks will
-	// also be bounded by resources available on the machine.
-	PoRepProofMaxTasks int
-
-	// EnableSendCommitMsg enables the sending of commit messages to the chain
-	// from this curio instance.
-	EnableSendCommitMsg bool
-
-	// Whether to abort if any sector activation in a batch fails (newly sealed sectors, only with ProveCommitSectors3).
-	RequireActivationSuccess bool
-	// Whether to abort if any sector activation in a batch fails (updating sectors, only with ProveReplicaUpdates3).
-	RequireNotificationSuccess bool
-
-	// EnableMoveStorage enables the move-into-long-term-storage task to run on this curio instance.
-	// This tasks should only be enabled on nodes with long-term storage.
-	//
-	// The MoveStorage task is the last task in the sealing pipeline. It moves the sealed sector data from the
-	// SDRTrees machine into long-term storage. This task runs after the Finalize task.
-	EnableMoveStorage bool
-
-	// The maximum amount of MoveStorage tasks that can run simultaneously. Note that the maximum number of tasks will
-	// also be bounded by resources available on the machine. It is recommended that this value is set to a number which
-	// uses all available network (or disk) bandwidth on the machine without causing bottlenecks.
-	MoveStorageMaxTasks int
-
-	// BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
-	// This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
-	// Strings should be in the format "actor:ip:port". IP cannot be 0.0.0.0. We recommend using a private IP.
-	// Example: "f0123:127.0.0.1:32100". Multiple addresses can be specified.
-	//
-	// When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
-	// deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
-	// node in the cluster has the EnableParkPiece option enabled and has sufficient scratch space to store the deal data.
-	// This is different from lotus-miner which stored the deal data into an "unsealed" sector as soon as the deal was
-	// received. Deal data in PiecePark is accessed when the sector TreeD and TreeR are computed, but isn't needed for
-	// the initial SDR layers computation. Pieces in PiecePark are removed after all sectors referencing the piece are
-	// sealed.
-	//
-	// To get API info for boost configuration run 'curio market rpc-info'
-	//
-	// NOTE: All deal data will flow through this service, so it should be placed on a machine running boost or on
-	// a machine which handles ParkPiece tasks.
-	BoostAdapters []string
-
-	// EnableWebGui enables the web GUI on this curio instance. The UI has minimal local overhead, but it should
-	// only need to be run on a single machine in the cluster.
-	EnableWebGui bool
-
-	// The address that should listen for Web GUI requests.
-	GuiAddress string
-}
-
-type DAGStoreConfig struct {
-	// Path to the dagstore root directory. This directory contains three
-	// subdirectories, which can be symlinked to alternative locations if
-	// need be:
-	//  - ./transients: caches unsealed deals that have been fetched from the
-	//    storage subsystem for serving retrievals.
-	//  - ./indices: stores shard indices.
-	//  - ./datastore: holds the KV store tracking the state of every shard
-	//    known to the DAG store.
-	// Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
-	// <LOTUS_MINER_PATH>/dagstore (monolith deployment)
-	RootDir string
-
-	// The maximum amount of indexing jobs that can run simultaneously.
-	// 0 means unlimited.
-	// Default value: 5.
-	MaxConcurrentIndex int
-
-	// The maximum amount of unsealed deals that can be fetched simultaneously
-	// from the storage subsystem. 0 means unlimited.
-	// Default value: 0 (unlimited).
-	MaxConcurrentReadyFetches int
-
-	// The maximum amount of unseals that can be processed simultaneously
-	// from the storage subsystem. 0 means unlimited.
-	// Default value: 0 (unlimited).
-	MaxConcurrentUnseals int
-
-	// The maximum number of simultaneous inflight API calls to the storage
-	// subsystem.
-	// Default value: 100.
-	MaxConcurrencyStorageCalls int
-
-	// The time between calls to periodic dagstore GC, in time.Duration string
-	// representation, e.g. 1m, 5m, 1h.
-	// Default value: 1 minute.
-	GCInterval Duration
-}
-
 type MinerSubsystemConfig struct {
 	EnableMining        bool
 	EnableSealing       bool
 	EnableSectorStorage bool
-	EnableMarkets       bool
 
 	// When enabled, the sector index will reside in an external database
 	// as opposed to the local KV store in the miner process
@@ -308,111 +109,8 @@ type MinerSubsystemConfig struct {
 }
 
 type DealmakingConfig struct {
-	// When enabled, the miner can accept online deals
-	ConsiderOnlineStorageDeals bool
-	// When enabled, the miner can accept offline deals
-	ConsiderOfflineStorageDeals bool
-	// When enabled, the miner can accept retrieval deals
-	ConsiderOnlineRetrievalDeals bool
-	// When enabled, the miner can accept offline retrieval deals
-	ConsiderOfflineRetrievalDeals bool
-	// When enabled, the miner can accept verified deals
-	ConsiderVerifiedStorageDeals bool
-	// When enabled, the miner can accept unverified deals
-	ConsiderUnverifiedStorageDeals bool
-	// A list of Data CIDs to reject when making deals
-	PieceCidBlocklist []cid.Cid
-	// Maximum expected amount of time getting the deal into a sealed sector will take
-	// This includes the time the deal will need to get transferred and published
-	// before being assigned to a sector
-	ExpectedSealDuration Duration
-	// Maximum amount of time proposed deal StartEpoch can be in future
-	MaxDealStartDelay Duration
-	// When a deal is ready to publish, the amount of time to wait for more
-	// deals to be ready to publish before publishing them all as a batch
-	PublishMsgPeriod Duration
-	// The maximum number of deals to include in a single PublishStorageDeals
-	// message
-	MaxDealsPerPublishMsg uint64
-	// The maximum collateral that the provider will put up against a deal,
-	// as a multiplier of the minimum collateral bound
-	MaxProviderCollateralMultiplier uint64
-	// The maximum allowed disk usage size in bytes of staging deals not yet
-	// passed to the sealing node by the markets service. 0 is unlimited.
-	MaxStagingDealsBytes int64
-	// The maximum number of parallel online data transfers for storage deals
-	SimultaneousTransfersForStorage uint64
-	// The maximum number of simultaneous data transfers from any single client
-	// for storage deals.
-	// Unset by default (0), and values higher than SimultaneousTransfersForStorage
-	// will have no effect; i.e. the total number of simultaneous data transfers
-	// across all storage clients is bound by SimultaneousTransfersForStorage
-	// regardless of this number.
-	SimultaneousTransfersForStoragePerClient uint64
-	// The maximum number of parallel online data transfers for retrieval deals
-	SimultaneousTransfersForRetrieval uint64
 	// Minimum start epoch buffer to give time for sealing of sector with deal.
 	StartEpochSealingBuffer uint64
-
-	// A command used for fine-grained evaluation of storage deals
-	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	Filter string
-	// A command used for fine-grained evaluation of retrieval deals
-	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	RetrievalFilter string
-
-	RetrievalPricing *RetrievalPricing
-}
-
-type IndexProviderConfig struct {
-	// Enable set whether to enable indexing announcement to the network and expose endpoints that
-	// allow indexer nodes to process announcements. Enabled by default.
-	Enable bool
-
-	// EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
-	// entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The
-	// maximum storage used by the cache is a factor of EntriesCacheCapacity, EntriesChunkSize and
-	// the length of multihashes being advertised. For example, advertising 128-bit long multihashes
-	// with the default EntriesCacheCapacity, and EntriesChunkSize means the cache size can grow to
-	// 256MiB when full.
-	EntriesCacheCapacity int
-
-	// EntriesChunkSize sets the maximum number of multihashes to include in a single entries chunk.
-	// Defaults to 16384 if not specified. Note that chunks are chained together for indexing
-	// advertisements that include more multihashes than the configured EntriesChunkSize.
-	EntriesChunkSize int
-
-	// TopicName sets the topic name on which the changes to the advertised content are announced.
-	// If not explicitly specified, the topic name is automatically inferred from the network name
-	// in following format: '/indexer/ingest/<network-name>'
-	// Defaults to empty, which implies the topic name is inferred from network name.
-	TopicName string
-
-	// PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
-	// starts. By default, the cache is rehydrated from previously cached entries stored in
-	// datastore if any is present.
-	PurgeCacheOnStart bool
-}
-
-type RetrievalPricing struct {
-	Strategy string // possible values: "default", "external"
-
-	Default  *RetrievalPricingDefault
-	External *RetrievalPricingExternal
-}
-
-type RetrievalPricingExternal struct {
-	// Path of the external script that will be run to price a retrieval deal.
-	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".
-	Path string
-}
-
-type RetrievalPricingDefault struct {
-	// VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
-	// of a payloadCid that belongs to a verified storage deal.
-	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
-	// default value is true
-	VerifiedDealsFreeTransfer bool
 }
 
 type ProvingConfig struct {
@@ -697,20 +395,6 @@ type MinerFeeConfig struct {
 	MaximizeWindowPoStFeeCap bool
 }
 
-type CurioFees struct {
-	DefaultMaxFee      types.FIL
-	MaxPreCommitGasFee types.FIL
-	MaxCommitGasFee    types.FIL
-
-	// maxBatchFee = maxBase + maxPerSector * nSectors
-	MaxPreCommitBatchGasFee BatchFeeConfig
-	MaxCommitBatchGasFee    BatchFeeConfig
-
-	MaxTerminateGasFee types.FIL
-	// WindowPoSt is a high-value operation, so the default fee should be high.
-	MaxWindowPoStGasFee types.FIL
-	MaxPublishDealsFee  types.FIL
-}
 type MinerAddressConfig struct {
 	// Addresses to send PreCommit messages from
 	PreCommitControl []string
@@ -727,145 +411,6 @@ type MinerAddressConfig struct {
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
-}
-
-type CurioAddresses struct {
-	// Addresses to send PreCommit messages from
-	PreCommitControl []string
-	// Addresses to send Commit messages from
-	CommitControl    []string
-	TerminateControl []string
-
-	// DisableOwnerFallback disables usage of the owner address for messages
-	// sent automatically
-	DisableOwnerFallback bool
-	// DisableWorkerFallback disables usage of the worker address for messages
-	// sent automatically, if control addresses are configured.
-	// A control address that doesn't have enough funds will still be chosen
-	// over the worker address if this flag is set.
-	DisableWorkerFallback bool
-
-	// MinerAddresses are the addresses of the miner actors to use for sending messages
-	MinerAddresses []string
-}
-
-type CurioProvingConfig struct {
-	// Maximum number of sector checks to run in parallel. (0 = unlimited)
-	//
-	// WARNING: Setting this value too high may make the node crash by running out of stack
-	// WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
-	// to late submission.
-	//
-	// After changing this option, confirm that the new value works in your setup by invoking
-	// 'lotus-miner proving compute window-post 0'
-	ParallelCheckLimit int
-
-	// Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
-	//
-	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
-	// test challenge took longer than this timeout
-	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this sector are
-	// blocked (e.g. in case of disconnected NFS mount)
-	SingleCheckTimeout Duration
-
-	// Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
-	// the partition which didn't get checked on time will be skipped
-	//
-	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
-	// test challenge took longer than this timeout
-	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this partition are
-	// blocked or slow
-	PartitionCheckTimeout Duration
-
-	// Disable WindowPoSt provable sector readability checks.
-	//
-	// In normal operation, when preparing to compute WindowPoSt, lotus-miner will perform a round of reading challenges
-	// from all sectors to confirm that those sectors can be proven. Challenges read in this process are discarded, as
-	// we're only interested in checking that sector data can be read.
-	//
-	// When using builtin proof computation (no PoSt workers, and DisableBuiltinWindowPoSt is set to false), this process
-	// can save a lot of time and compute resources in the case that some sectors are not readable - this is caused by
-	// the builtin logic not skipping snark computation when some sectors need to be skipped.
-	//
-	// When using PoSt workers, this process is mostly redundant, with PoSt workers challenges will be read once, and
-	// if challenges for some sectors aren't readable, those sectors will just get skipped.
-	//
-	// Disabling sector pre-checks will slightly reduce IO load when proving sectors, possibly resulting in shorter
-	// time to produce window PoSt. In setups with good IO capabilities the effect of this option on proving time should
-	// be negligible.
-	//
-	// NOTE: It likely is a bad idea to disable sector pre-checks in setups with no PoSt workers.
-	//
-	// NOTE: Even when this option is enabled, recovering sectors will be checked before recovery declaration message is
-	// sent to the chain
-	//
-	// After changing this option, confirm that the new value works in your setup by invoking
-	// 'lotus-miner proving compute window-post 0'
-	DisableWDPoStPreChecks bool
-
-	// Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (3 in nv21)
-	//
-	// A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
-	//	//
-	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
-	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
-	//
-	// Setting this value above the network limit has no effect
-	MaxPartitionsPerPoStMessage int
-
-	// Maximum number of partitions to declare in a single DeclareFaultsRecovered message. 0 = no limit.
-
-	// In some cases when submitting DeclareFaultsRecovered messages,
-	// there may be too many recoveries to fit in a BlockGasLimit.
-	// In those cases it may be necessary to set this value to something low (eg 1);
-	// Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
-	// resulting in more total gas use (but each message will have lower gas limit)
-	MaxPartitionsPerRecoveryMessage int
-
-	// Enable single partition per PoSt Message for partitions containing recovery sectors
-	//
-	// In cases when submitting PoSt messages which contain recovering sectors, the default network limit may still be
-	// too high to fit in the block gas limit. In those cases, it becomes useful to only house the single partition
-	// with recovering sectors in the post message
-	//
-	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
-	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
-	SingleRecoveringPartitionPerPostMessage bool
-}
-
-type CurioIngestConfig struct {
-	// Maximum number of sectors that can be queued waiting for deals to start processing.
-	// 0 = unlimited
-	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-	// The DealSector queue includes deals which are ready to enter the sealing pipeline but are not yet part of it -
-	// size of this queue will also impact the maximum number of ParkPiece tasks which can run concurrently.
-	// DealSector queue is the first queue in the sealing pipeline, meaning that it should be used as the primary backpressure mechanism.
-	MaxQueueDealSector int
-
-	// Maximum number of sectors that can be queued waiting for SDR to start processing.
-	// 0 = unlimited
-	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-	// The SDR queue includes deals which are in the process of entering the sealing pipeline. In case of the SDR tasks it is
-	// possible that this queue grows more than this limit(CC sectors), the backpressure is only applied to sectors
-	// entering the pipeline.
-	MaxQueueSDR int
-
-	// Maximum number of sectors that can be queued waiting for SDRTrees to start processing.
-	// 0 = unlimited
-	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-	// In case of the trees tasks it is possible that this queue grows more than this limit, the backpressure is only
-	// applied to sectors entering the pipeline.
-	MaxQueueTrees int
-
-	// Maximum number of sectors that can be queued waiting for PoRep to start processing.
-	// 0 = unlimited
-	// Note: This mechanism will delay taking deal data from markets, providing backpressure to the market subsystem.
-	// Like with the trees tasks, it is possible that this queue grows more than this limit, the backpressure is only
-	// applied to sectors entering the pipeline.
-	MaxQueuePoRep int
-
-	// Maximum time an open deal sector should wait for more deal before it starts sealing
-	MaxDealWaitTime Duration
 }
 
 // API contains configs for API endpoint
@@ -981,20 +526,6 @@ type Splitstore struct {
 }
 
 // // Full Node
-type Client struct {
-	// The maximum number of simultaneous data transfers between the client
-	// and storage providers for storage deals
-	SimultaneousTransfersForStorage uint64
-	// The maximum number of simultaneous data transfers between the client
-	// and storage providers for retrieval deals
-	SimultaneousTransfersForRetrieval uint64
-
-	// Require that retrievals perform no on-chain operations. Paid retrievals
-	// without existing payment channels with available funds will fail instead
-	// of automatically performing on-chain operations.
-	OffChainRetrieval bool
-}
-
 type Wallet struct {
 	RemoteBackend string
 	EnableLedger  bool
@@ -1124,19 +655,4 @@ type FaultReporterConfig struct {
 	// ReportConsensusFault messages. It will pay for gas fees, and receive any
 	// rewards. This address should have adequate funds to cover gas fees.
 	ConsensusFaultReporterAddress string
-}
-
-type CurioAlerting struct {
-	// PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
-	// routed to a PagerDuty.com service and processed.
-	// The default is sufficient for integration with the stock commercial PagerDuty.com company's service.
-	PagerDutyEventURL string
-
-	// PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
-	// identifier in the integration page for the service.
-	PageDutyIntegrationKey string
-
-	// MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
-	// alerts will be triggered for the wallet
-	MinimumWalletBalance types.FIL
 }

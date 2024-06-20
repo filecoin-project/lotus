@@ -19,7 +19,8 @@ defaults:
   run:
     shell: bash
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   docker:
@@ -67,6 +68,15 @@ jobs:
         with:
           submodules: 'recursive'
           ref: ${{ inputs.ref || github.ref }}
+      - id: git
+        env:
+          REF: ${{ inputs.ref || github.ref }}
+        run: |
+          ref="${REF#refs/heads/}"
+          ref="${ref#refs/tags/}"
+          sha="$(git rev-parse --short HEAD)"
+          echo "ref=$ref" | tee -a "$GITHUB_OUTPUT"
+          echo "sha=$sha" | tee -a "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Docker meta
@@ -75,10 +85,9 @@ jobs:
         with:
           images: filecoin/${{ matrix.image }}
           tags: |
-            type=schedule
-            type=raw,enable=${{ github.event_name != 'schedule' && steps.channel.outputs.channel != '' }},value=${{ steps.channel.outputs.channel }}
-            type=ref,event=tag
-            type=sha,prefix=
+            type=raw,enable=${{ steps.channel.outputs.channel != '' }},value=${{ steps.channel.outputs.channel }}
+            type=raw,enable=${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }},value=${{ steps.git.outputs.ref }}
+            type=raw,value=${{ steps.git.outputs.sha }}
           flavor: |
             latest=false
             suffix=${{ matrix.network != 'mainnet' && format('-{0}', matrix.network) || '' }}

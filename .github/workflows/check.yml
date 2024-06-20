@@ -16,7 +16,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   check-docsgen:
@@ -43,7 +44,6 @@ jobs:
       - uses: ./.github/actions/install-go
       - run: make deps lotus
       - run: go install golang.org/x/tools/cmd/goimports
-      - run: go install github.com/hannahhoward/cbor-gen-for
       - run: make gen
       - run: git diff --exit-code
       - run: make docsgen-cli
@@ -57,7 +57,7 @@ jobs:
           submodules: 'recursive'
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
-      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
       - run: make deps
       - run: golangci-lint run -v --timeout 10m --concurrency 4
   check-fmt:

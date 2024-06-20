@@ -2,7 +2,6 @@ package kit
 
 import (
 	"testing"
-	"time"
 )
 
 // EnsembleMinimal creates and starts an Ensemble with a single full node and a single miner.
@@ -35,29 +34,6 @@ func EnsembleWorker(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMine
 	)
 	ens := NewEnsemble(t, eopts...).FullNode(&full, nopts...).Miner(&miner, &full, nopts...).Worker(&miner, &worker, nopts...).Start()
 	return &full, &miner, &worker, ens
-}
-
-func EnsembleWithMinerAndMarketNodes(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
-	eopts, nopts := siftOptions(t, opts)
-
-	var (
-		fullnode     TestFullNode
-		main, market TestMiner
-	)
-
-	mainNodeOpts := []NodeOpt{WithSubsystems(SSealing, SSectorStorage, SMining), DisableLibp2p()}
-	mainNodeOpts = append(mainNodeOpts, nopts...)
-
-	blockTime := 100 * time.Millisecond
-	ens := NewEnsemble(t, eopts...).FullNode(&fullnode, nopts...).Miner(&main, &fullnode, mainNodeOpts...).Start()
-	ens.BeginMining(blockTime)
-
-	marketNodeOpts := []NodeOpt{OwnerAddr(fullnode.DefaultKey), MainMiner(&main), WithSubsystems(SMarkets)}
-	marketNodeOpts = append(marketNodeOpts, nopts...)
-
-	ens.Miner(&market, &fullnode, marketNodeOpts...).Start().Connect(market, fullnode)
-
-	return &fullnode, &main, &market, ens
 }
 
 // EnsembleTwoOne creates and starts an Ensemble with two full nodes and one miner.

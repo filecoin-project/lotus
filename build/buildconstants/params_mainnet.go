@@ -103,7 +103,7 @@ const UpgradeDragonHeight = 3855360
 const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
 // ??????
-var UpgradeAussieHeight = abi.ChainEpoch(9999999999)
+var UpgradeWaffleHeight = abi.ChainEpoch(9999999999)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
@@ -129,8 +129,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_AUSSIE") == "1" {
-		UpgradeAussieHeight = math.MaxInt64 - 1
+	if os.Getenv("LOTUS_DISABLE_WAFFLE") == "1" {
+		UpgradeWaffleHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

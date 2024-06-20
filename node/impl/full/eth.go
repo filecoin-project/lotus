@@ -44,6 +44,11 @@ var ErrUnsupported = errors.New("unsupported method")
 
 const maxEthFeeHistoryRewardPercentiles = 100
 
+var (
+	// wait for 3 epochs
+	eventReadTimeout = 90 * time.Second
+)
+
 type EthModuleAPI interface {
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
 	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error)
@@ -75,6 +80,7 @@ type EthModuleAPI interface {
 	Web3ClientVersion(ctx context.Context) (string, error)
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
+	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
 }
 
 type EthEventAPI interface {
@@ -294,14 +300,16 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 			// This should be "fine" as anyone using an "Ethereum-centric" block
 			// explorer shouldn't care about seeing pending messages from native
 			// accounts.
-			tx, err := ethtypes.EthTxFromSignedEthMessage(p)
+			ethtx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(p)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
 			}
-			tx.Hash, err = tx.TxHash()
+
+			tx, err := ethtx.ToEthTx(p)
 			if err != nil {
-				return nil, fmt.Errorf("could not compute tx hash for eth txn: %w", err)
+				return nil, fmt.Errorf("could not convert Eth transaction to EthTx: %w", err)
 			}
+
 			return &tx, nil
 		}
 	}
@@ -817,12 +825,12 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	txArgs, err := ethtypes.ParseEthTxArgs(rawTx)
+	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
 
-	smsg, err := txArgs.ToSignedMessage()
+	smsg, err := ethtypes.ToSignedFilecoinMessage(txArgs)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
@@ -836,7 +844,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 }
 
 func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
-	return build.UserVersion(), nil
+	return string(build.NodeUserVersion()), nil
 }
 
 func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
@@ -974,31 +982,77 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 	return allTraces, nil
 }
 
+func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) {
+
+	// convert from string to internal type
+	ethTxHash, err := ethtypes.ParseEthHash(txHash)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse eth hash: %w", err)
+	}
+
+	tx, err := a.EthGetTransactionByHash(ctx, &ethTxHash)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get transaction by hash: %w", err)
+	}
+
+	if tx == nil {
+		return nil, xerrors.Errorf("transaction not found")
+	}
+
+	// tx.BlockNumber is nil when the transaction is still in the mpool/pending
+	if tx.BlockNumber == nil {
+		return nil, xerrors.Errorf("no trace for pending transactions")
+	}
+
+	blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber), 10))
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get trace for block: %w", err)
+	}
+
+	txTraces := make([]*ethtypes.EthTraceTransaction, 0, len(blockTraces))
+	for _, blockTrace := range blockTraces {
+		if blockTrace.TransactionHash == ethTxHash {
+			// Create a new EthTraceTransaction from the block trace
+			txTrace := ethtypes.EthTraceTransaction{
+				EthTrace:            blockTrace.EthTrace,
+				BlockHash:           blockTrace.BlockHash,
+				BlockNumber:         blockTrace.BlockNumber,
+				TransactionHash:     blockTrace.TransactionHash,
+				TransactionPosition: blockTrace.TransactionPosition,
+			}
+			txTraces = append(txTraces, &txTrace)
+		}
+	}
+
+	return txTraces, nil
+}
+
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get tipset: %w", err)
 	}
 
-	applyTsMessages := true
-	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTsMessages = false
+	if ts.Height() > 0 {
+		pts, err := a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+		}
+		// Check for expensive forks from the parents to the tipset, including nil tipsets
+		if a.StateManager.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			return nil, stmgr.ErrExpensiveFork
+		}
 	}
 
-	// Try calling until we find a height with no migration.
-	for {
-		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, applyTsMessages)
-		if err != stmgr.ErrExpensiveFork {
-			break
-		}
-		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("getting parent tipset: %w", err)
-		}
-	}
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("CallWithGas failed: %w", err)
+		return nil, xerrors.Errorf("cannot get tipset state: %w", err)
 	}
+	res, err = a.StateManager.ApplyOnStateWithGas(ctx, st, msg, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("ApplyWithGasOnState failed: %w", err)
+	}
+
 	if res.MsgRct.ExitCode.IsError() {
 		reason := parseEthRevert(res.MsgRct.Return)
 		return nil, xerrors.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
@@ -1209,16 +1263,105 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		return nil, api.ErrNotSupported
 	}
 
-	// Create a temporary filter
-	f, err := e.installEthFilterSpec(ctx, filterSpec)
+	if e.EventFilterManager.EventIndex == nil {
+		return nil, xerrors.Errorf("cannot use eth_get_logs if historical event index is disabled")
+	}
+
+	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to parse eth filter spec: %w", err)
+	}
+
+	if pf.tipsetCid == cid.Undef {
+		maxHeight := pf.maxHeight
+		if maxHeight == -1 {
+			maxHeight = e.Chain.GetHeaviestTipSet().Height()
+		}
+		if maxHeight > e.Chain.GetHeaviestTipSet().Height() {
+			return nil, xerrors.Errorf("maxHeight requested is greater than the heaviest tipset")
+		}
+
+		err := e.waitForHeightProcessed(ctx, maxHeight)
+		if err != nil {
+			return nil, err
+		}
+
+		// should also have the minHeight in the filter indexed
+		if b, err := e.EventFilterManager.EventIndex.IsHeightProcessed(ctx, uint64(pf.minHeight)); err != nil {
+			return nil, xerrors.Errorf("failed to check if event index has events for the minHeight: %w", err)
+		} else if !b {
+			return nil, xerrors.Errorf("event index does not have event for epoch %d", pf.minHeight)
+		}
+	} else {
+		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
+		}
+		err = e.waitForHeightProcessed(ctx, ts.Height())
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := e.EventFilterManager.EventIndex.IsTipsetProcessed(ctx, pf.tipsetCid.Bytes())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to check if tipset events have been indexed: %w", err)
+		}
+		if !b {
+			return nil, xerrors.Errorf("event index failed to index tipset %s", pf.tipsetCid.String())
+		}
+	}
+
+	// Create a temporary filter
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to install event filter: %w", err)
 	}
 	ces := f.TakeCollectedEvents(ctx)
 
 	_ = e.uninstallFilter(ctx, f)
 
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
+}
+
+func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
+	ei := e.EventFilterManager.EventIndex
+	if height > e.Chain.GetHeaviestTipSet().Height() {
+		return xerrors.New("height is in the future")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, eventReadTimeout)
+	defer cancel()
+
+	// if the height we're interested in has already been indexed -> there's nothing to do here
+	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
+	} else if b {
+		return nil
+	}
+
+	// subscribe for updates to the event index
+	subCh, unSubscribeF := ei.SubscribeUpdates()
+	defer unSubscribeF()
+
+	// it could be that the event index was update while the subscription was being processed -> check if index has what we need now
+	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
+	} else if b {
+		return nil
+	}
+
+	for {
+		select {
+		case <-subCh:
+			if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+				return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
+			} else if b {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 func (e *EthEventHandler) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
@@ -1319,7 +1462,15 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 	return minHeight, maxHeight, nil
 }
 
-func (e *EthEventHandler) installEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (filter.EventFilter, error) {
+type parsedFilter struct {
+	minHeight abi.ChainEpoch
+	maxHeight abi.ChainEpoch
+	tipsetCid cid.Cid
+	addresses []address.Address
+	keys      map[string][]types.ActorEventBlock
+}
+
+func (e *EthEventHandler) parseEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*parsedFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -1356,7 +1507,13 @@ func (e *EthEventHandler) installEthFilterSpec(ctx context.Context, filterSpec *
 		return nil, err
 	}
 
-	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keysToKeysWithCodec(keys), true)
+	return &parsedFilter{
+		minHeight: minHeight,
+		maxHeight: maxHeight,
+		tipsetCid: tipsetCid,
+		addresses: addresses,
+		keys:      keysToKeysWithCodec(keys),
+	}, nil
 }
 
 func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
@@ -1377,9 +1534,14 @@ func (e *EthEventHandler) EthNewFilter(ctx context.Context, filterSpec *ethtypes
 		return ethtypes.EthFilterID{}, api.ErrNotSupported
 	}
 
-	f, err := e.installEthFilterSpec(ctx, filterSpec)
+	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
 	if err != nil {
 		return ethtypes.EthFilterID{}, err
+	}
+
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	if err != nil {
+		return ethtypes.EthFilterID{}, xerrors.Errorf("failed to install event filter: %w", err)
 	}
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {

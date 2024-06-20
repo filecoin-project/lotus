@@ -23,8 +23,7 @@ import (
 var log = logging.Logger("main")
 
 const (
-	FlagMinerRepo   = "miner-repo"
-	FlagMarketsRepo = "markets-repo"
+	FlagMinerRepo = "miner-repo"
 )
 
 // TODO remove after deprecation period
@@ -43,16 +42,10 @@ func main() {
 		backupCmd,
 		lcli.WithCategory("chain", actorCmd),
 		lcli.WithCategory("chain", infoCmd),
-		lcli.WithCategory("market", setHidden(storageDealsCmd)),
-		lcli.WithCategory("market", setHidden(retrievalDealsCmd)),
-		lcli.WithCategory("market", setHidden(dataTransfersCmd)),
-		lcli.WithCategory("market", setHidden(dagstoreCmd)),
-		lcli.WithCategory("market", setHidden(indexProvCmd)),
 		lcli.WithCategory("storage", sectorsCmd),
 		lcli.WithCategory("storage", provingCmd),
 		lcli.WithCategory("storage", storageCmd),
 		lcli.WithCategory("storage", sealingCmd),
-		lcli.WithCategory("retrieval", setHidden(piecesCmd)),
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")
@@ -83,25 +76,10 @@ func main() {
 		}
 	}
 
-	// adapt the Net* commands to always hit the node running the markets
-	// subsystem, as that is the only one that runs a libp2p node.
-	netCmd := *lcli.NetCmd // make a copy.
-	netCmd.Hidden = true
-	prev := netCmd.Before
-	netCmd.Before = func(c *cli.Context) error {
-		if prev != nil {
-			if err := prev(c); err != nil {
-				return err
-			}
-		}
-		c.App.Metadata["repoType"] = repo.Markets
-		return nil
-	}
-
 	app := &cli.App{
 		Name:                 "lotus-miner",
 		Usage:                "Filecoin decentralized storage network miner",
-		Version:              build.UserVersion(),
+		Version:              string(build.MinerUserVersion()),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -135,31 +113,13 @@ func main() {
 				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
 				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 			},
-			&cli.StringFlag{
-				Name:    FlagMarketsRepo,
-				EnvVars: []string{"LOTUS_MARKETS_PATH"},
-				Hidden:  true,
-			},
-			&cli.BoolFlag{
-				Name:   "call-on-markets",
-				Usage:  "(experimental; may be removed) call this command against a markets node; use only with common commands like net, auth, pprof, etc. whose target may be ambiguous",
-				Hidden: true,
-			},
 			cliutil.FlagVeryVerbose,
 		},
-		Commands: append(local, append(lcli.CommonCommands, &netCmd)...),
-		Before: func(c *cli.Context) error {
-			// this command is explicitly called on markets, inform
-			// common commands by overriding the repoType.
-			if c.Bool("call-on-markets") {
-				c.App.Metadata["repoType"] = repo.Markets
-			}
-			return nil
-		},
+		Commands: append(local, lcli.CommonCommands...),
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagMinerRepo), c.App.Name)
+				build.GenerateMinerPanicReport(c.String("panic-reports"), c.String(FlagMinerRepo), c.App.Name)
 				panic(r)
 			}
 			return nil
@@ -191,11 +151,6 @@ func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Addr
 	}
 
 	return maddr, nil
-}
-
-func setHidden(cmd *cli.Command) *cli.Command {
-	cmd.Hidden = true
-	return cmd
 }
 
 func LMActorOrEnvGetter(cctx *cli.Context) (address.Address, error) {

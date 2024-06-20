@@ -24,6 +24,8 @@ var session = uuid.New()
 type CommonAPI struct {
 	fx.In
 
+	BuildVersion build.BuildVersion
+
 	Alerting     *alerting.Alerting
 	APISecret    *dtypes.APIAlg
 	ShutdownChan dtypes.ShutdownChan
@@ -63,7 +65,7 @@ func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
 	}
 
 	return api.APIVersion{
-		Version:    build.UserVersion(),
+		Version:    string(a.BuildVersion),
 		APIVersion: v,
 
 		BlockDelay: build.BlockDelaySecs,
