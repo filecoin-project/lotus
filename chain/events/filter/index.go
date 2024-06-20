@@ -100,6 +100,7 @@ const (
 	upsertEventsSeen     = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, ?) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
 	isTipsetProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`
 	getMaxHeightInIndex  = `SELECT MAX(height) FROM events_seen`
+	isHeightProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE height=?`
 
 	createIndexEventEmitterAddr  = `CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)`
 	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
@@ -136,6 +137,7 @@ type EventIndex struct {
 
 	stmtIsTipsetProcessed   *sql.Stmt
 	stmtGetMaxHeightInIndex *sql.Stmt
+	stmtIsHeightProcessed   *sql.Stmt
 
 	mu           sync.Mutex
 	subIdCounter uint64
@@ -199,6 +201,11 @@ func (ei *EventIndex) initStatements() (err error) {
 	ei.stmtGetMaxHeightInIndex, err = ei.db.Prepare(getMaxHeightInIndex)
 	if err != nil {
 		return xerrors.Errorf("prepare getMaxHeightInIndex: %w", err)
+	}
+
+	ei.stmtIsHeightProcessed, err = ei.db.Prepare(isHeightProcessed)
+	if err != nil {
+		return xerrors.Errorf("prepare isHeightProcessed: %w", err)
 	}
 
 	return nil
@@ -688,11 +695,10 @@ func (ei *EventIndex) GetMaxHeightInIndex(ctx context.Context) (uint64, error) {
 }
 
 func (ei *EventIndex) IsHeightProcessed(ctx context.Context, height uint64) (bool, error) {
-	mh, err := ei.GetMaxHeightInIndex(ctx)
-	if err != nil {
-		return false, err
-	}
-	return height <= mh, nil
+	row := ei.stmtIsHeightProcessed.QueryRowContext(ctx, height)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 func (ei *EventIndex) IsTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {

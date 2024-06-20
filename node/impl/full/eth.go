@@ -1286,6 +1286,14 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 			return nil, err
 		}
 
+		// should also have the minHeight in the filter indexed
+		b, err := e.EventFilterManager.EventIndex.IsHeightProcessed(ctx, uint64(pf.minHeight))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to check if event index has events for the minheight: %w", err)
+		}
+		if !b {
+			return nil, xerrors.Errorf("event index does not have event for epoch %d", pf.minHeight)
+		}
 	} else {
 		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
 		if err != nil {

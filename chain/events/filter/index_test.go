@@ -102,6 +102,10 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, b)
 
+	b, err = ei.IsHeightProcessed(context.Background(), 13000)
+	require.NoError(t, err)
+	require.False(t, b)
+
 	tsKey := events14000.msgTs.Key()
 	tsKeyCid, err := tsKey.Cid()
 	require.NoError(t, err, "tipset key cid")
