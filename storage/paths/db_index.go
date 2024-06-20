@@ -17,9 +17,9 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/storage/paths/alertinginterface"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -31,18 +31,18 @@ const URLSeparator = ","
 var errAlreadyLocked = errors.New("already locked")
 
 type DBIndex struct {
-	alerting   *alerting.Alerting
-	pathAlerts map[storiface.ID]alerting.AlertType
+	alerting   alertinginterface.AlertingInterface
+	pathAlerts map[storiface.ID]alertinginterface.AlertType
 
 	harmonyDB *harmonydb.DB
 }
 
-func NewDBIndex(al *alerting.Alerting, db *harmonydb.DB) *DBIndex {
+func NewDBIndex(al alertinginterface.AlertingInterface, db *harmonydb.DB) *DBIndex {
 	return &DBIndex{
 		harmonyDB: db,
 
 		alerting:   al,
-		pathAlerts: map[storiface.ID]alerting.AlertType{},
+		pathAlerts: map[storiface.ID]alertinginterface.AlertType{},
 	}
 }
 
