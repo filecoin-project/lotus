@@ -11,8 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 const BootstrappersFile = ""
@@ -94,11 +92,6 @@ var MinVerifiedDealSize = abi.NewStoragePower(256)
 var PreCommitChallengeDelay = abi.ChainEpoch(10)
 
 func init() {
-	policy.SetSupportedProofTypes(SupportedProofTypes...)
-	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
-	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
-	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
-
 	getGenesisNetworkVersion := func(ev string, def network.Version) network.Version {
 		hs, found := os.LookupEnv(ev)
 		if found {

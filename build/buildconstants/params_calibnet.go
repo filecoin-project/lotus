@@ -13,8 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -108,11 +106,6 @@ var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 
 func init() {
-	policy.SetSupportedProofTypes(SupportedProofTypes...)
-	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
-	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
-	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
-
 	SetAddressNetwork(address.Testnet)
 
 	Devnet = true
