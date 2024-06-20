@@ -1029,10 +1029,12 @@ type EthTraceFilterResult struct {
 
 // EthTraceFilterCriteria defines the criteria for filtering traces.
 type EthTraceFilterCriteria struct {
-	FromBlock string     `json:"fromBlock,omitempty"`
-	ToBlock   string     `json:"toBlock,omitempty"`
-	Addresses []string   `json:"addresses,omitempty"`
-	Topics    [][]string `json:"topics,omitempty"`
+	FromBlock   string   `json:"fromBlock,omitempty"`
+	ToBlock     string   `json:"toBlock,omitempty"`
+	FromAddress []string `json:"fromAddress,omitempty"`
+	ToAddress   []string `json:"toAddress,omitempty"`
+	After       int      `json:"after,omitempty"`
+	Count       int      `json:"count,omitempty"`
 }
 
 type EthCallTraceAction struct {

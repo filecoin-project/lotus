@@ -1024,12 +1024,95 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 }
 
 func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
-	// Logic to implement the filter criteria for tracing
-	// This is a placeholder implementation. Replace it with actual logic.
-	var results []*ethtypes.EthTraceFilterResult
+	fromBlock, err := strconv.ParseUint(filter.FromBlock, 10, 64)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse fromBlock: %w", err)
+	}
 
-	// Add the actual implementation here
+	toBlock, err := strconv.ParseUint(filter.ToBlock, 10, 64)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
+	}
+
+	var results []*ethtypes.EthTraceFilterResult
+	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
+		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(blkNum, 10))
+		if err != nil {
+			return nil, xerrors.Errorf("cannot get trace for block %d: %w", blkNum, err)
+		}
+
+		for _, blockTrace := range blockTraces {
+			if matchFilterCriteria(blockTrace, filter) {
+				txTrace := ethtypes.EthTraceFilterResult{
+					EthTrace:            blockTrace.EthTrace,
+					BlockHash:           blockTrace.BlockHash,
+					BlockNumber:         blockTrace.BlockNumber,
+					TransactionHash:     blockTrace.TransactionHash,
+					TransactionPosition: blockTrace.TransactionPosition,
+				}
+				results = append(results, &txTrace)
+
+				// If Count is specified, limit the results
+				if filter.Count > 0 && len(results) >= filter.Count {
+					return results, nil
+				}
+			}
+		}
+	}
+
 	return results, nil
+}
+
+// matchFilterCriteria checks if a trace matches the filter criteria.
+func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTraceFilterCriteria) bool {
+	action, ok := trace.Action.(*ethtypes.EthCallTraceAction)
+	if !ok {
+		fmt.Printf("Action type: %T, value: %+v\n", trace.Action, trace.Action)
+		return false
+	}
+
+	// Match FromAddress
+	if len(filter.FromAddress) > 0 {
+		fromMatch := false
+		for _, addr := range filter.FromAddress {
+			ethAddr, err := ethtypes.ParseEthAddress(addr)
+			if err != nil {
+				continue
+			}
+			if action.From == ethAddr {
+				fromMatch = true
+				break
+			}
+		}
+		if !fromMatch {
+			return false
+		}
+	}
+
+	// Match ToAddress
+	if len(filter.ToAddress) > 0 {
+		toMatch := false
+		for _, addr := range filter.ToAddress {
+			ethAddr, err := ethtypes.ParseEthAddress(addr)
+			if err != nil {
+				continue
+			}
+			if action.To == ethAddr {
+				toMatch = true
+				break
+			}
+		}
+		if !toMatch {
+			return false
+		}
+	}
+
+	// Apply After offset
+	if filter.After > 0 && len(trace.TraceAddress) > 0 && trace.TraceAddress[0] <= filter.After {
+		return false
+	}
+
+	return true
 }
 
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
