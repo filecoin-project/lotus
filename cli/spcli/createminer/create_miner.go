@@ -5,18 +5,17 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"golang.org/x/xerrors"
-
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 )

@@ -1,9 +1,10 @@
 package buildconstants
 
 import (
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/go-address"
 )
 
 // moved from now-defunct build/paramfetch.go

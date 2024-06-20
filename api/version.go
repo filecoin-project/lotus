@@ -59,8 +59,6 @@ var (
 
 	MinerAPIVersion0  = newVer(1, 5, 0)
 	WorkerAPIVersion0 = newVer(1, 7, 0)
-
-	CurioAPIVersion0 = newVer(1, 0, 0)
 )
 
 //nolint:varcheck,deadcode
