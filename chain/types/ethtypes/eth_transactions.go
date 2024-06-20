@@ -9,7 +9,6 @@ import (
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
@@ -19,7 +18,6 @@ import (
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -189,103 +187,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 	}
 }
 
-func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
-	var (
-		to     *EthAddress
-		params []byte
-		err    error
-	)
-
-	if msg.Version != 0 {
-		return EthTxArgs{}, xerrors.Errorf("unsupported msg version: %d", msg.Version)
-	}
-
-	if len(msg.Params) > 0 {
-		paramsReader := bytes.NewReader(msg.Params)
-		params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-		if err != nil {
-			return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
-		}
-		if paramsReader.Len() != 0 {
-			return EthTxArgs{}, xerrors.Errorf("extra data found in params")
-		}
-		if len(params) == 0 {
-			return EthTxArgs{}, xerrors.Errorf("non-empty params encode empty byte array")
-		}
-	}
-
-	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		if msg.Method != builtintypes.MethodsEAM.CreateExternal {
-			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
-		}
-	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract {
-		addr, err := EthAddressFromFilecoinAddress(msg.To)
-		if err != nil {
-			return EthTxArgs{}, err
-		}
-		to = &addr
-	} else {
-		return EthTxArgs{},
-			xerrors.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
-				msg.Method, builtintypes.MethodsEVM.InvokeContract)
-	}
-
-	return EthTxArgs{
-		ChainID:              buildconstants.Eip155ChainId,
-		Nonce:                int(msg.Nonce),
-		To:                   to,
-		Value:                msg.Value,
-		Input:                params,
-		MaxFeePerGas:         msg.GasFeeCap,
-		MaxPriorityFeePerGas: msg.GasPremium,
-		GasLimit:             int(msg.GasLimit),
-	}, nil
-}
-
-func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, error) {
-	if tx.ChainID != buildconstants.Eip155ChainId {
-		return nil, xerrors.Errorf("unsupported chain id: %d", tx.ChainID)
-	}
-
-	var err error
-	var params []byte
-	if len(tx.Input) > 0 {
-		buf := new(bytes.Buffer)
-		if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
-			return nil, xerrors.Errorf("failed to write input args: %w", err)
-		}
-		params = buf.Bytes()
-	}
-
-	var to address.Address
-	var method abi.MethodNum
-	// nil indicates the EAM, only CreateExternal is allowed
-	if tx.To == nil {
-		method = builtintypes.MethodsEAM.CreateExternal
-		to = builtintypes.EthereumAddressManagerActorAddr
-	} else {
-		method = builtintypes.MethodsEVM.InvokeContract
-		to, err = tx.To.ToFilecoinAddress()
-		if err != nil {
-			return nil, xerrors.Errorf("failed to convert To into filecoin addr: %w", err)
-		}
-	}
-
-	return &types.Message{
-		Version:    0,
-		To:         to,
-		From:       from,
-		Nonce:      uint64(tx.Nonce),
-		Value:      tx.Value,
-		GasLimit:   int64(tx.GasLimit),
-		GasFeeCap:  tx.MaxFeePerGas,
-		GasPremium: tx.MaxPriorityFeePerGas,
-		Method:     method,
-		Params:     params,
-	}, nil
-}
-
-func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
+func ToSignedFilecoinMessage(tx EthTransaction) (*types.SignedMessage, error) {
 	from, err := tx.Sender()
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate sender: %w", err)

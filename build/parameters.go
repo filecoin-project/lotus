@@ -54,7 +54,7 @@ var UpgradeThunderHeight abi.ChainEpoch = buildconstants.UpgradeThunderHeight   
 var UpgradeWatermelonHeight abi.ChainEpoch = buildconstants.UpgradeWatermelonHeight // Deprecated: Use buildconstants.UpgradeWatermelonHeight instead
 var UpgradeDragonHeight abi.ChainEpoch = buildconstants.UpgradeDragonHeight         // Deprecated: Use buildconstants.UpgradeDragonHeight instead
 var UpgradePhoenixHeight abi.ChainEpoch = buildconstants.UpgradePhoenixHeight       // Deprecated: Use buildconstants.UpgradePhoenixHeight instead
-var UpgradeAussieHeight abi.ChainEpoch = buildconstants.UpgradeAussieHeight         // Deprecated: Use buildconstants.UpgradeAussieHeight instead
+var UpgradeWaffleHeight abi.ChainEpoch = buildconstants.UpgradeWaffleHeight         // Deprecated: Use buildconstants.UpgradeWaffleHeight instead
 
 // This fix upgrade only ran on calibrationnet
 var UpgradeWatermelonFixHeight abi.ChainEpoch = buildconstants.UpgradeWatermelonFixHeight // Deprecated: Use buildconstants.UpgradeWatermelonFixHeight instead
