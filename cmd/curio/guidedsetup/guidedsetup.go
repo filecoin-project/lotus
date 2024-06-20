@@ -42,7 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cli/spcli"
+	"github.com/filecoin-project/lotus/cli/spcli/createminer"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/curio/deps"
 	_ "github.com/filecoin-project/lotus/cmd/curio/internal/translations"
@@ -694,7 +694,7 @@ func stepCreateActor(d *MigrationData) {
 	}
 
 minerInit:
-	miner, err := spcli.CreateStorageMiner(d.ctx, d.full, d.owner, d.worker, d.sender, d.ssize, d.confidence)
+	miner, err := createminer.CreateStorageMiner(d.ctx, d.full, d.owner, d.worker, d.sender, d.ssize, d.confidence)
 	if err != nil {
 		d.say(notice, "Failed to create the miner actor: %s", err.Error())
 		os.Exit(1)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 type ElectionProof struct {
@@ -100,14 +100,14 @@ func polyval(p []*big.Int, x *big.Int) *big.Int {
 
 // computes lambda in Q.256
 func lambda(power, totalPower *big.Int) *big.Int {
-	blocksPerEpoch := NewInt(build.BlocksPerEpoch)
+	blocksPerEpoch := NewInt(buildconstants.BlocksPerEpoch)
 	lam := new(big.Int).Mul(power, blocksPerEpoch.Int)   // Q.0
 	lam = lam.Lsh(lam, precision)                        // Q.256
 	lam = lam.Div(lam /* Q.256 */, totalPower /* Q.0 */) // Q.256
 	return lam
 }
 
-var MaxWinCount = 3 * int64(build.BlocksPerEpoch)
+var MaxWinCount = 3 * int64(buildconstants.BlocksPerEpoch)
 
 type poiss struct {
 	lam  *big.Int

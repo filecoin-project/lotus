@@ -17,7 +17,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -151,7 +151,7 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 	}
 
 	return EthTxArgs{
-		ChainID:              build.Eip155ChainId,
+		ChainID:              buildconstants.Eip155ChainId,
 		Nonce:                int(msg.Nonce),
 		To:                   to,
 		Value:                msg.Value,
@@ -163,7 +163,7 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 }
 
 func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, error) {
-	if tx.ChainID != build.Eip155ChainId {
+	if tx.ChainID != buildconstants.Eip155ChainId {
 		return nil, xerrors.Errorf("unsupported chain id: %d", tx.ChainID)
 	}
 

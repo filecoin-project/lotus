@@ -1,18 +1,22 @@
 package build
 
-import "os"
+import (
+	"os"
+
+	"github.com/filecoin-project/lotus/build/buildconstants"
+)
 
 var CurrentCommit string
-var BuildType int
+var BuildType = buildconstants.BuildType
 
 const (
-	BuildDefault      = 0
-	BuildMainnet      = 0x1
-	Build2k           = 0x2
-	BuildDebug        = 0x3
-	BuildCalibnet     = 0x4
-	BuildInteropnet   = 0x5
-	BuildButterflynet = 0x7
+	BuildDefault      = buildconstants.BuildDefault
+	BuildMainnet      = buildconstants.BuildMainnet
+	Build2k           = buildconstants.Build2k
+	BuildDebug        = buildconstants.BuildDebug
+	BuildCalibnet     = buildconstants.BuildCalibnet
+	BuildInteropnet   = buildconstants.BuildInteropnet
+	BuildButterflynet = buildconstants.BuildButterflynet
 )
 
 func BuildTypeString() string {

@@ -1,11 +1,9 @@
 package build
 
 import (
-	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/filecoin-project/go-address"
-
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -28,24 +26,8 @@ func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 	return protocol.ID("/fil/kad/" + string(netName))
 }
 
-func SetAddressNetwork(n address.Network) {
-	address.CurrentNetwork = n
-}
+var SetAddressNetwork = buildconstants.SetAddressNetwork
 
-func MustParseAddress(addr string) address.Address {
-	ret, err := address.NewFromString(addr)
-	if err != nil {
-		panic(err)
-	}
+var MustParseAddress = buildconstants.MustParseAddress
 
-	return ret
-}
-
-func MustParseCid(c string) cid.Cid {
-	ret, err := cid.Decode(c)
-	if err != nil {
-		panic(err)
-	}
-
-	return ret
-}
+var MustParseCid = buildconstants.MustParseCid

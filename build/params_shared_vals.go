@@ -1,85 +1,55 @@
-//go:build !testground
-// +build !testground
-
 package build
 
 import (
 	"math/big"
-	"os"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 // /////
 // Storage
 
-const UnixfsChunkSize uint64 = 1 << 20
-const UnixfsLinksPerLevel = 1024
+var UnixfsChunkSize uint64 = buildconstants.UnixfsChunkSize
+var UnixfsLinksPerLevel = buildconstants.UnixfsLinksPerLevel
 
 // /////
 // Consensus / Network
 
-const AllowableClockDriftSecs = uint64(1)
-
-// Used by tests and some obscure tooling
-/* inline-gen template
-const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
-/* inline-gen start */
-const TestNetworkVersion = network.Version23
-
-/* inline-gen end */
+var AllowableClockDriftSecs = buildconstants.AllowableClockDriftSecs
 
 // Epochs
-const ForkLengthThreshold = Finality
+var ForkLengthThreshold = Finality
 
 // Blocks (e)
-var BlocksPerEpoch = uint64(builtin2.ExpectedLeadersPerEpoch)
+var BlocksPerEpoch = buildconstants.BlocksPerEpoch
 
 // Epochs
-const Finality = policy.ChainFinality
-const MessageConfidence = uint64(5)
+var MessageConfidence = buildconstants.MessageConfidence
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
-const WRatioNum = int64(1)
-const WRatioDen = uint64(2)
-
-// /////
-// Proofs
-
-// Epochs
-// TODO: unused
-const SealRandomnessLookback = policy.SealRandomnessLookback
+var WRatioNum = buildconstants.WRatioNum
+var WRatioDen = buildconstants.WRatioDen
 
 // /////
 // Mining
 
 // Epochs
-const TicketRandomnessLookback = abi.ChainEpoch(1)
-
-// /////
-// Address
-
-const AddressMainnetEnvVar = "_mainnet_"
+var TicketRandomnessLookback = buildconstants.TicketRandomnessLookback
 
 // the 'f' prefix doesn't matter
-var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
+var ZeroAddress = buildconstants.ZeroAddress
 
 // /////
 // Devnet settings
 
-var Devnet = true
+var Devnet = buildconstants.Devnet
 
-const FilBase = uint64(2_000_000_000)
-const FilAllocStorageMining = uint64(1_100_000_000)
+var FilBase = buildconstants.FilBase
+var FilAllocStorageMining = buildconstants.FilAllocStorageMining
 
-const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
-const FilReserved = uint64(300_000_000)
+var FilecoinPrecision = buildconstants.FilecoinPrecision
+var FilReserved = buildconstants.FilReserved
 
 var InitialRewardBalance *big.Int
 var InitialFilReserved *big.Int
@@ -92,39 +62,35 @@ func init() {
 
 	InitialFilReserved = big.NewInt(int64(FilReserved))
 	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
-
-	if os.Getenv("LOTUS_ADDRESS_TYPE") == AddressMainnetEnvVar {
-		SetAddressNetwork(address.Mainnet)
-	}
 }
 
 // Sync
-const BadBlockCacheSize = 1 << 15
+var BadBlockCacheSize = buildconstants.BadBlockCacheSize
 
 // assuming 4000 messages per round, this lets us not lose any messages across a
 // 10 block reorg.
-const BlsSignatureCacheSize = 40000
+var BlsSignatureCacheSize = buildconstants.BlsSignatureCacheSize
 
 // Size of signature verification cache
 // 32k keeps the cache around 10MB in size, max
-const VerifSigCacheSize = 32000
+var VerifSigCacheSize = buildconstants.VerifSigCacheSize
 
 // ///////
 // Limits
 
 // TODO: If this is gonna stay, it should move to specs-actors
-const BlockMessageLimit = 10000
+var BlockMessageLimit = buildconstants.BlockMessageLimit
 
-var BlockGasLimit = int64(10_000_000_000)
-var BlockGasTarget = BlockGasLimit / 2
+var BlockGasLimit = buildconstants.BlockGasLimit
+var BlockGasTarget = buildconstants.BlockGasTarget
 
-const BaseFeeMaxChangeDenom = 8 // 12.5%
-const InitialBaseFee = 100e6
-const MinimumBaseFee = 100
-const PackingEfficiencyNum = 4
-const PackingEfficiencyDenom = 5
+var BaseFeeMaxChangeDenom int64 = buildconstants.BaseFeeMaxChangeDenom
+var InitialBaseFee int64 = buildconstants.InitialBaseFee
+var MinimumBaseFee int64 = buildconstants.MinimumBaseFee
+var PackingEfficiencyNum int64 = buildconstants.PackingEfficiencyNum
+var PackingEfficiencyDenom int64 = buildconstants.PackingEfficiencyDenom
 
-// revive:disable-next-line:exported
-// Actor consts
-// TODO: pieceSize unused from actors
-var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
+var MinDealDuration = buildconstants.MinDealDuration
+var MaxDealDuration = buildconstants.MaxDealDuration
+
+const TestNetworkVersion = buildconstants.TestNetworkVersion

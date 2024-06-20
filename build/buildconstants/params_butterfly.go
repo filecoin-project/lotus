@@ -1,14 +1,13 @@
 //go:build butterflynet
 // +build butterflynet
 
-package build
+package buildconstants
 
 import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -23,7 +22,6 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 const GenesisNetworkVersion = network.Version21
 
 var NetworkBundle = "butterflynet"
-var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = false
 
 const BootstrappersFile = "butterflynet.pi"

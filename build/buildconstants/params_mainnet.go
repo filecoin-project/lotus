@@ -1,7 +1,7 @@
 //go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet
 // +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet
 
-package build
+package buildconstants
 
 import (
 	"math"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
@@ -22,9 +21,6 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 var NetworkBundle = "mainnet"
-
-// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-var BundleOverrides map[actorstypes.Version]string
 
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
 const ActorDebugging = false

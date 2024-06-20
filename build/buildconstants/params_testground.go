@@ -5,7 +5,7 @@
 //
 // Its purpose is to unlock various degrees of flexibility and parametrization
 // when writing Testground plans for Lotus.
-package build
+package buildconstants
 
 import (
 	"math/big"
@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -55,8 +54,6 @@ var (
 	BlsSignatureCacheSize = 40000
 	VerifSigCacheSize     = 32000
 
-	SealRandomnessLookback = policy.SealRandomnessLookback
-
 	TicketRandomnessLookback = abi.ChainEpoch(1)
 
 	FilBase               uint64 = 2_000_000_000
@@ -76,10 +73,6 @@ var (
 		v = v.Mul(v, big.NewInt(int64(FilecoinPrecision)))
 		return v
 	}()
-
-	// Actor consts
-	// TODO: pieceSize unused from actors
-	MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5
@@ -124,13 +117,11 @@ var (
 
 	GenesisNetworkVersion = network.Version0
 	NetworkBundle         = "devnet"
-	BundleOverrides       map[actorstypes.Version]string
 	ActorDebugging        = true
 
 	NewestNetworkVersion       = network.Version16
 	ActorUpgradeNetworkVersion = network.Version16
 
-	Devnet      = true
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
 	WhitelistedBlock  = cid.Undef
@@ -138,11 +129,14 @@ var (
 	GenesisFile       = ""
 )
 
-const Finality = policy.ChainFinality
-const ForkLengthThreshold = Finality
+func init() {
+	Devnet = true
+}
 
 const BootstrapPeerThreshold = 1
 
 // ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 // As per https://github.com/ethereum-lists/chains
 const Eip155ChainId = 31415926
+
+var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)

@@ -1,7 +1,7 @@
 //go:build debug
 // +build debug
 
-package build
+package buildconstants
 
 func init() {
 	InsecurePoStValidation = true

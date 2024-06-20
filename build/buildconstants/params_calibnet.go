@@ -1,7 +1,7 @@
 //go:build calibnet
 // +build calibnet
 
-package build
+package buildconstants
 
 import (
 	"os"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -26,7 +25,6 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 const GenesisNetworkVersion = network.Version0
 
 var NetworkBundle = "calibrationnet"
-var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = false
 
 const BootstrappersFile = "calibnet.pi"
