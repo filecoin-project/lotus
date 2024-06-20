@@ -1035,6 +1035,8 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 	}
 
 	var results []*ethtypes.EthTraceFilterResult
+	traceCounter := 0
+
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
 		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(blkNum, 10))
 		if err != nil {
@@ -1043,6 +1045,11 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 
 		for _, blockTrace := range blockTraces {
 			if matchFilterCriteria(blockTrace, filter) {
+				traceCounter++
+				if traceCounter <= filter.After {
+					continue
+				}
+
 				txTrace := ethtypes.EthTraceFilterResult{
 					EthTrace:            blockTrace.EthTrace,
 					BlockHash:           blockTrace.BlockHash,
@@ -1067,7 +1074,6 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTraceFilterCriteria) bool {
 	action, ok := trace.Action.(*ethtypes.EthCallTraceAction)
 	if !ok {
-		fmt.Printf("Action type: %T, value: %+v\n", trace.Action, trace.Action)
 		return false
 	}
 
@@ -1105,11 +1111,6 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTrace
 		if !toMatch {
 			return false
 		}
-	}
-
-	// Apply After offset
-	if filter.After > 0 && len(trace.TraceAddress) > 0 && trace.TraceAddress[0] <= filter.After {
-		return false
 	}
 
 	return true
