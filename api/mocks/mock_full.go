@@ -1092,6 +1092,21 @@ func (mr *MockFullNodeMockRecorder) EthTraceBlock(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceBlock", reflect.TypeOf((*MockFullNode)(nil).EthTraceBlock), arg0, arg1)
 }
 
+// EthTraceFilter mocks base method.
+func (m *MockFullNode) EthTraceFilter(arg0 context.Context, arg1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceFilter", arg0, arg1)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceFilterResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceFilter indicates an expected call of EthTraceFilter.
+func (mr *MockFullNodeMockRecorder) EthTraceFilter(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceFilter", reflect.TypeOf((*MockFullNode)(nil).EthTraceFilter), arg0, arg1)
+}
+
 // EthTraceReplayBlockTransactions mocks base method.
 func (m *MockFullNode) EthTraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
 	m.ctrl.T.Helper()

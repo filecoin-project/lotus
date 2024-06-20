@@ -76,6 +76,7 @@ type EthModuleAPI interface {
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
+	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
 }
 
 type EthEventAPI interface {
@@ -1020,6 +1021,15 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 	}
 
 	return txTraces, nil
+}
+
+func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	// Logic to implement the filter criteria for tracing
+	// This is a placeholder implementation. Replace it with actual logic.
+	var results []*ethtypes.EthTraceFilterResult
+
+	// Add the actual implementation here
+	return results, nil
 }
 
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {

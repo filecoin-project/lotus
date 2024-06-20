@@ -629,6 +629,14 @@ func (gw *Node) EthTraceTransaction(ctx context.Context, txHash string) ([]*etht
 	return gw.target.EthTraceTransaction(ctx, txHash)
 }
 
+func (gw *Node) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	return gw.target.EthTraceFilter(ctx, filter)
+}
+
 var EthMaxFiltersPerConn = 16 // todo make this configurable
 
 func addUserFilterLimited(ctx context.Context, cb func() (ethtypes.EthFilterID, error)) (ethtypes.EthFilterID, error) {

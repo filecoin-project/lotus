@@ -1019,6 +1019,22 @@ type EthTraceTransaction struct {
 	TransactionPosition int     `json:"transactionPosition"`
 }
 
+type EthTraceFilterResult struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
+}
+
+// EthTraceFilterCriteria defines the criteria for filtering traces.
+type EthTraceFilterCriteria struct {
+	FromBlock string     `json:"fromBlock,omitempty"`
+	ToBlock   string     `json:"toBlock,omitempty"`
+	Addresses []string   `json:"addresses,omitempty"`
+	Topics    [][]string `json:"topics,omitempty"`
+}
+
 type EthCallTraceAction struct {
 	CallType string     `json:"callType"`
 	From     EthAddress `json:"from"`

@@ -241,6 +241,8 @@ type FullNodeMethods struct {
 
 	EthTraceBlock func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) `perm:"read"`
 
+	EthTraceFilter func(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) `perm:"read"`
+
 	EthTraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) `perm:"read"`
 
 	EthTraceTransaction func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceTransaction, error) `perm:"read"`
@@ -672,6 +674,8 @@ type GatewayMethods struct {
 	EthSyncing func(p0 context.Context) (ethtypes.EthSyncingResult, error) ``
 
 	EthTraceBlock func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) ``
+
+	EthTraceFilter func(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) ``
 
 	EthTraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) ``
 
@@ -2017,6 +2021,17 @@ func (s *FullNodeStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtyp
 
 func (s *FullNodeStub) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {
 	return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	if s.Internal.EthTraceFilter == nil {
+		return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
+	}
+	return s.Internal.EthTraceFilter(p0, p1)
+}
+
+func (s *FullNodeStub) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
@@ -4327,6 +4342,17 @@ func (s *GatewayStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtype
 
 func (s *GatewayStub) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {
 	return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
+}
+
+func (s *GatewayStruct) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	if s.Internal.EthTraceFilter == nil {
+		return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
+	}
+	return s.Internal.EthTraceFilter(p0, p1)
+}
+
+func (s *GatewayStub) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
 }
 
 func (s *GatewayStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
