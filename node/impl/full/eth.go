@@ -1024,12 +1024,12 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 }
 
 func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
-	fromBlock, err := strconv.ParseUint(filter.FromBlock, 10, 64)
+	fromBlock, err := ethtypes.EthUint64FromHex(filter.FromBlock)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse fromBlock: %w", err)
 	}
 
-	toBlock, err := strconv.ParseUint(filter.ToBlock, 10, 64)
+	toBlock, err := ethtypes.EthUint64FromHex(filter.ToBlock)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
 	}
@@ -1038,7 +1038,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 	traceCounter := 0
 
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
-		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(blkNum, 10))
+		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get trace for block %d: %w", blkNum, err)
 		}
