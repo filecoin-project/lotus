@@ -13,10 +13,10 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
-
 // Manually onboard CC sectors, bypassing lotus-miner onboarding pathways
 func TestManualSectorOnboarding(t *testing.T) {
+	const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
+
 	req := require.New(t)
 
 	for _, withMockProofs := range []bool{true, false} {
@@ -41,11 +41,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 
 			// Setup and begin mining with a single miner (A)
 			// Miner A will only be a genesis Miner with power allocated in the genesis block and will not onboard any sectors from here on
-			kitOpts := []kit.EnsembleOpt{}
-			if withMockProofs {
-				kitOpts = append(kitOpts, kit.MockProofs())
-			}
-			ens := kit.NewEnsemble(t, kitOpts...).
+			ens := kit.NewEnsemble(t, kit.MockProofs(withMockProofs)).
 				FullNode(&client, kit.SectorSize(defaultSectorSize)).
 				// preseal more than the default number of sectors to ensure that the genesis miner has power
 				// because our unmanaged miners won't produce blocks so we may get null rounds
@@ -89,11 +85,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			var bRespCh chan kit.WindowPostResp
 			var bWdPostCancelF context.CancelFunc
 
-			if withMockProofs {
-				bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSectorWithMockProofs(ctx, kit.TestSpt)
-			} else {
-				bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSectorWithRealProofs(ctx, kit.TestSpt)
-			}
+			bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSector(ctx, kit.TestSpt)
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower(ctx)
 			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
@@ -103,72 +95,24 @@ func TestManualSectorOnboarding(t *testing.T) {
 			var cSectorNum abi.SectorNumber
 			var cRespCh chan kit.WindowPostResp
 
-			if withMockProofs {
-				cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPiecesAndMockProofs(ctx, kit.TestSpt)
-			} else {
-				cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPiecesAndRealProofs(ctx, kit.TestSpt)
-			}
+			cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPieces(ctx, kit.TestSpt)
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerC.AssertNoPower(ctx)
 			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
 			blockMiner.WatchMinerForPost(minerC.ActorAddr)
 
 			// Wait till both miners' sectors have had their first post and are activated and check that this is reflected in miner power
-			waitTillActivatedAndAssertPower(ctx, t, minerB, bRespCh, bSectorNum, uint64(defaultSectorSize), withMockProofs)
-			waitTillActivatedAndAssertPower(ctx, t, minerC, cRespCh, cSectorNum, uint64(defaultSectorSize), withMockProofs)
+			minerB.WaitTillActivatedAndAssertPower(ctx, bRespCh, bSectorNum)
+			minerC.WaitTillActivatedAndAssertPower(ctx, cRespCh, cSectorNum)
 
 			// Miner B has activated the CC sector -> upgrade it with snapdeals
 			// Note: We can't activate a sector with mock proofs as the WdPost is successfully disputed and so no point
 			// in snapping it as snapping is only for activated sectors
 			if !withMockProofs {
-				minerB.SnapDealWithRealProofs(ctx, kit.TestSpt, bSectorNum)
+				minerB.SnapDeal(ctx, kit.TestSpt, bSectorNum)
 				// cancel the WdPost for the CC sector as the corresponding CommR is no longer valid
 				bWdPostCancelF()
 			}
 		})
 	}
-}
-
-func waitTillActivatedAndAssertPower(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, respCh chan kit.WindowPostResp, sector abi.SectorNumber,
-	sectorSize uint64, withMockProofs bool) {
-	req := require.New(t)
-	// wait till sector is activated
-	select {
-	case resp := <-respCh:
-		req.NoError(resp.Error)
-		req.True(resp.Posted)
-	case <-ctx.Done():
-		t.Fatal("timed out waiting for sector activation")
-	}
-
-	// Fetch on-chain sector properties
-	head, err := miner.FullNode.ChainHead(ctx)
-	req.NoError(err)
-
-	soi, err := miner.FullNode.StateSectorGetInfo(ctx, miner.ActorAddr, sector, head.Key())
-	req.NoError(err)
-	t.Logf("Miner %s SectorOnChainInfo %d: %+v", miner.ActorAddr.String(), sector, soi)
-
-	_ = miner.FullNode.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+5))
-
-	t.Log("Checking power after PoSt ...")
-
-	// Miner B should now have power
-	miner.AssertPower(ctx, sectorSize, sectorSize)
-
-	if withMockProofs {
-		// WindowPost Dispute should succeed as we are using mock proofs
-		err := miner.SubmitPostDispute(ctx, sector)
-		require.NoError(t, err)
-	} else {
-		// WindowPost Dispute should fail
-		assertDisputeFails(ctx, t, miner, sector)
-	}
-}
-
-func assertDisputeFails(ctx context.Context, t *testing.T, miner *kit.TestUnmanagedMiner, sector abi.SectorNumber) {
-	err := miner.SubmitPostDispute(ctx, sector)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to dispute valid post")
-	require.Contains(t, err.Error(), "(RetCode=16)")
 }

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/system"
 )
 
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
@@ -30,10 +31,13 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	// persist anyways.
 	opts.Truncate = true
 
+	// DISABLE mmap: it is mostly downsides given the access patterns
+	// ( outdated text retained below )
+	//
 	// We mmap the index and the value logs; this is important to enable
 	// zero-copy value access.
-	opts.ValueLogLoadingMode = badgerbs.MemoryMap
-	opts.TableLoadingMode = badgerbs.MemoryMap
+	opts.ValueLogLoadingMode = badgerbs.FileIO
+	opts.TableLoadingMode = badgerbs.FileIO
 
 	// Embed only values < 128 bytes in the LSM tree; larger values are stored
 	// in value logs.
@@ -56,6 +60,13 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
 			opts.NumCompactors = numWorkers
 		}
+	}
+
+	if system.BadgerFsyncDisable {
+		opts.SyncWrites = false
+	}
+	if system.BadgerQueryLegacyKeys {
+		opts.QueryLegacyKeys = true
 	}
 
 	return opts, nil

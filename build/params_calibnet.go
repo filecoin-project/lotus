@@ -99,7 +99,7 @@ const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 const UpgradeCalibrationDragonFixHeight = 1493854
 
 // ?????
-const UpgradeAussieHeight = 999999999999999
+const UpgradeWaffleHeight = 999999999999999
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

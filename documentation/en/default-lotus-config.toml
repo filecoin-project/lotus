@@ -151,7 +151,7 @@
 [Chainstore]
   # type: bool
   # env var: LOTUS_CHAINSTORE_ENABLESPLITSTORE
-  EnableSplitstore = true
+  EnableSplitstore = false
 
   [Chainstore.Splitstore]
     # ColdStoreType specifies the type of the coldstore.
@@ -188,7 +188,7 @@
     #
     # type: uint64
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREFULLGCFREQUENCY
-    #HotStoreFullGCFrequency = 20
+    #HotStoreFullGCFrequency = 1
 
     # HotStoreMaxSpaceTarget sets a target max disk size for the hotstore. Splitstore GC
     # will run moving GC if disk utilization gets within a threshold (150 GB) of the target.

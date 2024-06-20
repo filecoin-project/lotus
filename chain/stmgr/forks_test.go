@@ -391,6 +391,9 @@ func TestForkPreMigration(t *testing.T) {
 	}()
 	//stm: @CHAIN_GEN_NEXT_TIPSET_001,
 	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
+	if err := os.Setenv("LOTUS_DISABLE_PRE_MIGRATIONS", "0"); err != nil {
+		t.Fatalf("failed to force LOTUS_DISABLE_PRE_MIGRATIONS: %v", err)
+	}
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	cg, err := gen.NewGenerator()

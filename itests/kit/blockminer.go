@@ -100,6 +100,7 @@ func newPartitionTracker(ctx context.Context, t *testing.T, client v1api.FullNod
 
 	parts, err := client.StateMinerPartitions(ctx, minerAddr, dlIdx, types.EmptyTSK)
 	require.NoError(t, err)
+
 	return &partitionTracker{
 		minerAddr:  minerAddr,
 		partitions: parts,
@@ -245,7 +246,9 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 				dlinfo, err := bm.miner.FullNode.StateMinerProvingDeadline(ctx, minerAddr, ts.Key())
 				require.NoError(bm.t, err)
 				require.NotNil(bm.t, dlinfo, "no deadline info for miner %s", minerAddr)
-				impendingDeadlines = append(impendingDeadlines, minerDeadline{addr: minerAddr, deadline: *dlinfo})
+				if dlinfo.Open < dlinfo.CurrentEpoch {
+					impendingDeadlines = append(impendingDeadlines, minerDeadline{addr: minerAddr, deadline: *dlinfo})
+				} // else this is probably a new miner, not starting in this proving period
 			}
 			bm.postWatchMinersLk.Unlock()
 			impendingDeadlines = impendingDeadlines.FilterByLast(ts.Height() + 5 + abi.ChainEpoch(nulls))

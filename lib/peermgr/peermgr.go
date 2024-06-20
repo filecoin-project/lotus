@@ -6,7 +6,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	net "github.com/libp2p/go-libp2p/core/network"
@@ -49,8 +48,7 @@ type PeerMgr struct {
 
 	expanding chan struct{}
 
-	h   host.Host
-	dht *dht.IpfsDHT
+	h host.Host
 
 	notifee *net.NotifyBundle
 	emitter event.Emitter
@@ -70,10 +68,9 @@ const (
 	RemoveFilPeerEvt
 )
 
-func NewPeerMgr(lc fx.Lifecycle, h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) (*PeerMgr, error) {
+func NewPeerMgr(lc fx.Lifecycle, h host.Host, bootstrap dtypes.BootstrapPeers) (*PeerMgr, error) {
 	pm := &PeerMgr{
 		h:             h,
-		dht:           dht,
 		bootstrappers: bootstrap,
 
 		peers:     make(map[peer.ID]time.Duration),
@@ -219,10 +216,5 @@ func (pmgr *PeerMgr) doExpand(ctx context.Context) {
 		}
 		wg.Wait()
 		return
-	}
-
-	// if we already have some peers and need more, the dht is really good at connecting to most peers. Use that for now until something better comes along.
-	if err := pmgr.dht.Bootstrap(ctx); err != nil {
-		log.Warnf("dht bootstrapping failed: %s", err)
 	}
 }

@@ -491,6 +491,9 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 		if err != nil {
 			return err
 		}
+		if err := sm.ChainStore().TipsetReached(ctx, cur); err != nil {
+			return err
+		}
 		lastState = st
 	}
 

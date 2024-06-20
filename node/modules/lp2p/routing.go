@@ -1,10 +1,8 @@
 package lp2p
 
 import (
-	"context"
 	"sort"
 
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"
 	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
 	"github.com/libp2p/go-libp2p/core/routing"
@@ -25,23 +23,13 @@ type p2pRouterOut struct {
 	Router Router `group:"routers"`
 }
 
-func BaseRouting(lc fx.Lifecycle, in BaseIpfsRouting) (out p2pRouterOut, dr *dht.IpfsDHT) {
-	if dht, ok := in.(*dht.IpfsDHT); ok {
-		dr = dht
-
-		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
-				return dr.Close()
-			},
-		})
-	}
-
+func BaseRouting(lc fx.Lifecycle, in BaseIpfsRouting) p2pRouterOut {
 	return p2pRouterOut{
 		Router: Router{
 			Priority: 1000,
 			Routing:  in,
 		},
-	}, dr
+	}
 }
 
 type p2pOnlineRoutingIn struct {

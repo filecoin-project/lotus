@@ -68,13 +68,13 @@ func DefaultFullNode() *FullNode {
 		},
 
 		Chainstore: Chainstore{
-			EnableSplitstore: true,
+			EnableSplitstore: false,
 			Splitstore: Splitstore{
 				ColdStoreType: "discard",
 				HotStoreType:  "badger",
 				MarkSetType:   "badger",
 
-				HotStoreFullGCFrequency:      20,
+				HotStoreFullGCFrequency:      1,
 				HotStoreMaxSpaceTarget:       650_000_000_000,
 				HotStoreMaxSpaceThreshold:    150_000_000_000,
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,

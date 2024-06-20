@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/filecoin-project/lotus/system"
 )
 
 const (
@@ -441,10 +440,6 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 		if err != nil {
 			fsr.bsErr = err
 			return
-		}
-
-		if system.BadgerFsyncDisable {
-			opts.SyncWrites = false
 		}
 
 		bs, err := badgerbs.Open(opts)

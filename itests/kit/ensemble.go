@@ -327,7 +327,7 @@ func (n *Ensemble) UnmanagedMiner(full *TestFullNode, opts ...NodeOpt) (*TestUnm
 	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
 	require.NoError(n.t, err)
 
-	minerNode := NewTestUnmanagedMiner(n.t, full, actorAddr, opts...)
+	minerNode := NewTestUnmanagedMiner(n.t, full, actorAddr, n.options.mockProofs, opts...)
 	n.AddInactiveUnmanagedMiner(minerNode)
 	return minerNode, n
 }

@@ -117,8 +117,6 @@ var ChainNode = Options(
 
 	Override(new(*full.GasPriceCache), full.NewGasPriceCache),
 
-	Override(RelayIndexerMessagesKey, modules.RelayIndexerMessages),
-
 	// Lite node API
 	ApplyIf(isLiteNode,
 		Override(new(messagepool.Provider), messagepool.NewProviderLite),
@@ -195,10 +193,14 @@ func ConfigFullNode(c interface{}) Option {
 			Override(SetupFallbackBlockstoresKey, modules.InitFallbackBlockstores),
 		),
 
+		// FORCE always storing events in the blockstore, making this conditional is pointless
+		//
+		// (ignore original text below)
+		//
 		// If the Eth JSON-RPC is enabled, enable storing events at the ChainStore.
 		// This is the case even if real-time and historic filtering are disabled,
 		// as it enables us to serve logs in eth_getTransactionReceipt.
-		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI, Override(StoreEventsKey, modules.EnableStoringEvents)),
+		Override(StoreEventsKey, modules.EnableStoringEvents),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),

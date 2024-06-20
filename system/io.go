@@ -5,9 +5,15 @@ import (
 	"strings"
 )
 
-var BadgerFsyncDisable bool
+var (
+	BadgerFsyncDisable    bool
+	BadgerQueryLegacyKeys bool
+)
 
 func init() {
+	// Do not fsync badgers, it does not add value at this stage
+	BadgerFsyncDisable = true
+
 	//
 	// Tri-state environment variable LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC
 	// - unset == the default (currently fsync enabled)
@@ -20,6 +26,13 @@ func init() {
 			BadgerFsyncDisable = false
 		} else {
 			BadgerFsyncDisable = true
+		}
+	}
+
+	if legacy, isSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_QUERY_LEGACY_KEYS"); isSet {
+		legacy = strings.ToLower(legacy)
+		if legacy != "" && legacy != "0" && legacy != "false" && legacy != "no" {
+			BadgerQueryLegacyKeys = true
 		}
 	}
 }

@@ -71,7 +71,7 @@ var UpgradeDragonHeight = abi.ChainEpoch(-24)
 
 var UpgradePhoenixHeight = abi.ChainEpoch(-25)
 
-var UpgradeAussieHeight = abi.ChainEpoch(200)
+var UpgradeWaffleHeight = abi.ChainEpoch(200)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
@@ -156,7 +156,7 @@ func init() {
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
 	UpgradeDragonHeight = getUpgradeHeight("LOTUS_DRAGON_HEIGHT", UpgradeDragonHeight)
-	UpgradeAussieHeight = getUpgradeHeight("LOTUS_AUSSIE_HEIGHT", UpgradeAussieHeight)
+	UpgradeWaffleHeight = getUpgradeHeight("LOTUS_WAFFLE_HEIGHT", UpgradeWaffleHeight)
 
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
