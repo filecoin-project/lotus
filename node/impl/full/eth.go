@@ -1287,11 +1287,9 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		}
 
 		// should also have the minHeight in the filter indexed
-		b, err := e.EventFilterManager.EventIndex.IsHeightProcessed(ctx, uint64(pf.minHeight))
-		if err != nil {
+		if b, err := e.EventFilterManager.EventIndex.IsHeightProcessed(ctx, uint64(pf.minHeight)); err != nil {
 			return nil, xerrors.Errorf("failed to check if event index has events for the minHeight: %w", err)
-		}
-		if !b {
+		} else if !b {
 			return nil, xerrors.Errorf("event index does not have event for epoch %d", pf.minHeight)
 		}
 	} else {
@@ -1346,22 +1344,18 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	defer unSubscribeF()
 
 	// it could be that the event index was update while the subscription was being processed -> check if index has what we need now
-	b, err = ei.IsHeightProcessed(ctx, uint64(height))
-	if err != nil {
+	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
 		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
-	}
-	if b {
+	} else if b {
 		return nil
 	}
 
 	for {
 		select {
 		case <-subCh:
-			b, err = ei.IsHeightProcessed(ctx, uint64(height))
-			if err != nil {
+			if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
 				return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
-			}
-			if b {
+			} else if b {
 				return nil
 			}
 		case <-ctx.Done():
