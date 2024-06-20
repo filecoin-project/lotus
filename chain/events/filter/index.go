@@ -97,7 +97,7 @@ const (
 	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
 	revertEventSeen      = `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`
 	restoreEventSeen     = `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`
-	upsertEventsSeen     = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, ?) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
+	upsertEventsSeen     = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
 	isTipsetProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`
 	getMaxHeightInIndex  = `SELECT MAX(height) FROM events_seen`
 	isHeightProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE height=?`
@@ -867,7 +867,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	_, err = tx.Stmt(ei.stmtUpsertEventsSeen).Exec(
 		te.msgTs.Height(),
 		tsKeyCid.Bytes(),
-		false,
 	)
 	if err != nil {
 		return xerrors.Errorf("exec upsert events seen: %w", err)

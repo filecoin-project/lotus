@@ -1278,7 +1278,7 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 			maxHeight = e.Chain.GetHeaviestTipSet().Height()
 		}
 		if maxHeight > e.Chain.GetHeaviestTipSet().Height() {
-			return nil, xerrors.Errorf("max height requested is greater than the heaviest tipset")
+			return nil, xerrors.Errorf("maxHeight requested is greater than the heaviest tipset")
 		}
 
 		err := e.waitForHeightProcessed(ctx, maxHeight)
@@ -1289,7 +1289,7 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		// should also have the minHeight in the filter indexed
 		b, err := e.EventFilterManager.EventIndex.IsHeightProcessed(ctx, uint64(pf.minHeight))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to check if event index has events for the minheight: %w", err)
+			return nil, xerrors.Errorf("failed to check if event index has events for the minHeight: %w", err)
 		}
 		if !b {
 			return nil, xerrors.Errorf("event index does not have event for epoch %d", pf.minHeight)
@@ -1335,11 +1335,9 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	defer cancel()
 
 	// if the height we're interested in has already been indexed -> there's nothing to do here
-	b, err := ei.IsHeightProcessed(ctx, uint64(height))
-	if err != nil {
+	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
 		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
-	}
-	if b {
+	} else if b {
 		return nil
 	}
 
