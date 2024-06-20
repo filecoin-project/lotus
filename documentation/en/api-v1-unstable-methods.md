@@ -2072,14 +2072,14 @@ Inputs:
   {
     "fromBlock": "string value",
     "toBlock": "string value",
-    "addresses": [
+    "fromAddress": [
       "string value"
     ],
-    "topics": [
-      [
-        "string value"
-      ]
-    ]
+    "toAddress": [
+      "string value"
+    ],
+    "after": 123,
+    "count": 123
   }
 ]
 ```

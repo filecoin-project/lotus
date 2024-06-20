@@ -4710,19 +4710,27 @@
                             {
                                 "fromBlock": "string value",
                                 "toBlock": "string value",
-                                "addresses": [
+                                "fromAddress": [
                                     "string value"
                                 ],
-                                "topics": [
-                                    [
-                                        "string value"
-                                    ]
-                                ]
+                                "toAddress": [
+                                    "string value"
+                                ],
+                                "after": 123,
+                                "count": 123
                             }
                         ],
                         "additionalProperties": false,
                         "properties": {
-                            "addresses": {
+                            "after": {
+                                "title": "number",
+                                "type": "number"
+                            },
+                            "count": {
+                                "title": "number",
+                                "type": "number"
+                            },
+                            "fromAddress": {
                                 "items": {
                                     "type": "string"
                                 },
@@ -4731,17 +4739,14 @@
                             "fromBlock": {
                                 "type": "string"
                             },
-                            "toBlock": {
-                                "type": "string"
-                            },
-                            "topics": {
+                            "toAddress": {
                                 "items": {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
+                                    "type": "string"
                                 },
                                 "type": "array"
+                            },
+                            "toBlock": {
+                                "type": "string"
                             }
                         },
                         "type": [
