@@ -66,7 +66,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed curio sptool
+build-devnets: build lotus-seed lotus-shed sptool
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -97,18 +97,6 @@ lotus-miner: $(BUILD_DEPS)
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
-curio: $(BUILD_DEPS)
-	rm -f curio
-	$(GOCC) build $(GOFLAGS) -o curio -ldflags " \
-	-X github.com/filecoin-project/lotus/curiosrc/build.IsOpencl=$(FFI_USE_OPENCL) \
-	-X github.com/filecoin-project/lotus/curiosrc/build.Commit=`git log -1 --format=%h_%cI`" \
-	./cmd/curio 
-.PHONY: curio
-BINS+=curio
-
-cu2k: GOFLAGS+=-tags=2k
-cu2k: curio
-
 sptool: $(BUILD_DEPS)
 	rm -f sptool
 	$(GOCC) build $(GOFLAGS) -o sptool ./cmd/sptool
@@ -133,22 +121,19 @@ lotus-gateway: $(BUILD_DEPS)
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
-build: lotus lotus-miner lotus-worker curio sptool
+build: lotus lotus-miner lotus-worker sptool
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker install-curio install-sptool
+install: install-daemon install-miner install-worker install-sptool
 
 install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
 
 install-miner:
 	install -C ./lotus-miner /usr/local/bin/lotus-miner
-
-install-curio:
-	install -C ./curio /usr/local/bin/curio
 
 install-sptool:
 	install -C ./sptool /usr/local/bin/sptool
@@ -167,9 +152,6 @@ uninstall-daemon:
 
 uninstall-miner:
 	rm -f /usr/local/bin/lotus-miner
-
-uninstall-curio:
-	rm -f /usr/local/bin/curio
 
 uninstall-sptool:
 	rm -f /usr/local/bin/sptool
@@ -275,14 +257,6 @@ install-miner-service: install-miner install-daemon-service
 	@echo "To start the service, run: 'sudo systemctl start lotus-miner'"
 	@echo "To enable the service on startup, run: 'sudo systemctl enable lotus-miner'"
 
-install-curio-service: install-curio install-sptool install-daemon-service
-	mkdir -p /etc/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/curio.service /etc/systemd/system/curio.service
-	systemctl daemon-reload
-	@echo
-	@echo "Curio service installed. Don't forget to run 'sudo systemctl start curio' to start it and 'sudo systemctl enable curio' for it to be enabled on startup."
-
 install-main-services: install-miner-service
 
 install-all-services: install-main-services
@@ -299,12 +273,6 @@ clean-miner-service:
 	-systemctl stop lotus-miner
 	-systemctl disable lotus-miner
 	rm -f /etc/systemd/system/lotus-miner.service
-	systemctl daemon-reload
-
-clean-curio-service:
-	-systemctl stop curio
-	-systemctl disable curio
-	rm -f /etc/systemd/system/curio.service
 	systemctl daemon-reload
 
 clean-main-services: clean-daemon-service
@@ -381,7 +349,7 @@ docsgen-md-bin: api-gen actors-gen
 docsgen-openrpc-bin: api-gen actors-gen
 	$(GOCC) build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
-docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker docsgen-md-curio
+docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
 
 docsgen-md-full: docsgen-md-bin
 	./docgen-md "api/api_full.go" "FullNode" "api" "./api" > documentation/en/api-v1-unstable-methods.md
@@ -390,8 +358,6 @@ docsgen-md-storage: docsgen-md-bin
 	./docgen-md "api/api_storage.go" "StorageMiner" "api" "./api" > documentation/en/api-v0-methods-miner.md
 docsgen-md-worker: docsgen-md-bin
 	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
-docsgen-md-curio: docsgen-md-bin
-	./docgen-md "api/api_curio.go" "Curio" "api" "./api" > documentation/en/api-v0-methods-curio.md
 
 docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker docsgen-openrpc-gateway
 
@@ -416,47 +382,16 @@ gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen
 
 jen: gen
 
-snap: lotus lotus-miner lotus-worker curio sptool
+snap: lotus lotus-miner lotus-worker sptool
 	snapcraft
 	# snapcraft upload ./lotus_*.snap
 
 # separate from gen because it needs binaries
-docsgen-cli: lotus lotus-miner lotus-worker curio sptool
+docsgen-cli: lotus lotus-miner lotus-worker sptool
 	python3 ./scripts/generate-lotus-cli.py
 	./lotus config default > documentation/en/default-lotus-config.toml
 	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
-	./curio config default > documentation/en/default-curio-config.toml
 .PHONY: docsgen-cli
 
 print-%:
 	@echo $*=$($*)
-
-### Curio devnet images
-curio_docker_user?=curio
-curio_base_image=$(curio_docker_user)/curio-all-in-one:latest-debug
-ffi_from_source?=0
-
-curio-devnet: lotus lotus-miner lotus-shed lotus-seed curio sptool
-.PHONY: curio-devnet
-
-curio_docker_build_cmd=docker build --build-arg CURIO_TEST_IMAGE=$(curio_base_image) \
-	--build-arg FFI_BUILD_FROM_SOURCE=$(ffi_from_source) $(docker_args)
-
-docker/curio-all-in-one:
-	$(curio_docker_build_cmd) -f Dockerfile.curio --target curio-all-in-one \
-		-t $(curio_base_image) --build-arg GOFLAGS=-tags=debug .
-.PHONY: docker/curio-all-in-one
-
-docker/%:
-	cd curiosrc/docker/$* && DOCKER_BUILDKIT=1 $(curio_docker_build_cmd) -t $(curio_docker_user)/$*-dev:dev \
-		--build-arg BUILD_VERSION=dev .
-
-docker/curio-devnet: $(lotus_build_cmd) \
-	docker/curio-all-in-one docker/lotus docker/lotus-miner docker/curio docker/yugabyte
-.PHONY: docker/curio-devnet
-
-curio-devnet/up:
-	rm -rf ./curiosrc/docker/data && docker compose -f ./curiosrc/docker/docker-compose.yaml up -d
-
-curio-devnet/down:
-	docker compose -f ./curiosrc/docker/docker-compose.yaml down --rmi=local && sleep 2 && rm -rf ./curiosrc/docker/data

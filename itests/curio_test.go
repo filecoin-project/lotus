@@ -1,50 +1,7 @@
 package itests
 
-import (
-	"context"
-	"encoding/base64"
-	"flag"
-	"fmt"
-	"net"
-	"os"
-	"path"
-	"testing"
-	"time"
-
-	"github.com/docker/go-units"
-	"github.com/gbrlsnchs/jwt/v3"
-	"github.com/google/uuid"
-	logging "github.com/ipfs/go-log/v2"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v1api"
-	miner2 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cli/spcli/createminer"
-	"github.com/filecoin-project/lotus/cmd/curio/deps"
-	"github.com/filecoin-project/lotus/cmd/curio/rpc"
-	"github.com/filecoin-project/lotus/cmd/curio/tasks"
-	"github.com/filecoin-project/lotus/curiosrc/market/lmrpc"
-	"github.com/filecoin-project/lotus/curiosrc/seal"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/lib/ffiselect"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/impl"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-)
-
-func TestCurioNewActor(t *testing.T) {
+/*
+func SKIPTestCurioNewActor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -93,7 +50,7 @@ func TestCurioNewActor(t *testing.T) {
 	require.Contains(t, baseCfg.Addresses[0].MinerAddresses, maddr.String())
 }
 
-func TestCurioHappyPath(t *testing.T) {
+func SKIPTestCurioHappyPath(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -397,3 +354,4 @@ func ConstructCurioTest(ctx context.Context, t *testing.T, dir string, db *harmo
 
 	return capi, taskEngine.GracefullyTerminate, ccloser, finishCh
 }
+*/
