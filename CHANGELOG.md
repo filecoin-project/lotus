@@ -6,7 +6,7 @@
 
 ## Improvements
 
-# v1.27.1-rc2 / 2024-06-20
+# v1.27.1-rc3 / 2024-06-20
 
 This is the third release candidate of the upcoming optional release of Lotus v1.27.1
 
