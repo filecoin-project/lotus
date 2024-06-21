@@ -119,15 +119,17 @@ type Ensemble struct {
 	options      *ensembleOpts
 
 	inactive struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
+		fullnodes       []*TestFullNode
+		miners          []*TestMiner
+		workers         []*TestWorker
+		unmanagedMiners []*TestUnmanagedMiner
 	}
 	active struct {
-		fullnodes []*TestFullNode
-		miners    []*TestMiner
-		workers   []*TestWorker
-		bms       map[*TestMiner]*BlockMiner
+		fullnodes       []*TestFullNode
+		miners          []*TestMiner
+		workers         []*TestWorker
+		bms             map[*TestMiner]*BlockMiner
+		unmanagedMiners []*TestUnmanagedMiner
 	}
 	genesis struct {
 		version  network.Version

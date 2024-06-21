@@ -7,6 +7,13 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+var DrandMainnet = buildconstants.DrandMainnet
+var DrandTestnet = buildconstants.DrandTestnet
+var DrandDevnet = buildconstants.DrandDevnet
+var DrandLocalnet = buildconstants.DrandLocalnet
+var DrandIncentinet = buildconstants.DrandIncentinet
+var DrandQuicknet = buildconstants.DrandQuicknet
+
 var DrandConfigs = map[buildconstants.DrandEnum]dtypes.DrandConfig{
 	buildconstants.DrandMainnet: {
 		Servers: []string{
