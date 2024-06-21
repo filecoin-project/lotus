@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -131,14 +132,24 @@ func (a *MpoolAPI) MpoolClear(ctx context.Context, local bool) error {
 }
 
 func (m *MpoolModule) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	if err := sanityCheckOutgoingMessage(&smsg.Message); err != nil {
+		return cid.Undef, xerrors.Errorf("message %s from %s with nonce %d failed sanity check: %w", smsg.Cid(), smsg.Message.From, smsg.Message.Nonce, err)
+	}
 	return m.Mpool.Push(ctx, smsg, true)
 }
 
 func (a *MpoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	if err := sanityCheckOutgoingMessage(&smsg.Message); err != nil {
+		return cid.Undef, xerrors.Errorf("message %s from %s with nonce %d failed sanity check: %w", smsg.Cid(), smsg.Message.From, smsg.Message.Nonce, err)
+	}
 	return a.Mpool.PushUntrusted(ctx, smsg)
 }
 
 func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	if err := sanityCheckOutgoingMessage(msg); err != nil {
+		return nil, xerrors.Errorf("message from %s failed sanity check: %w", msg.From, err)
+	}
+
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
@@ -223,6 +234,11 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 }
 
 func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
+	for _, msg := range smsgs {
+		if err := sanityCheckOutgoingMessage(&msg.Message); err != nil {
+			return nil, xerrors.Errorf("message %s from %s with nonce %d failed sanity check: %w", msg.Cid(), msg.Message.From, msg.Message.Nonce, err)
+		}
+	}
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
 		smsgCid, err := a.Mpool.Push(ctx, smsg, true)
@@ -235,6 +251,11 @@ func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMess
 }
 
 func (a *MpoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
+	for _, msg := range smsgs {
+		if err := sanityCheckOutgoingMessage(&msg.Message); err != nil {
+			return nil, xerrors.Errorf("message %s from %s with nonce %d failed sanity check: %w", msg.Cid(), msg.Message.From, msg.Message.Nonce, err)
+		}
+	}
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
 		smsgCid, err := a.Mpool.PushUntrusted(ctx, smsg)
@@ -247,6 +268,11 @@ func (a *MpoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.S
 }
 
 func (a *MpoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *api.MessageSendSpec) ([]*types.SignedMessage, error) {
+	for i, msg := range msgs {
+		if err := sanityCheckOutgoingMessage(msg); err != nil {
+			return nil, xerrors.Errorf("message #%d from %s with failed sanity check: %w", i, msg.From, err)
+		}
+	}
 	var smsgs []*types.SignedMessage
 	for _, msg := range msgs {
 		smsg, err := a.MpoolPushMessage(ctx, msg, spec)
@@ -276,4 +302,20 @@ func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uin
 
 func (a *MpoolAPI) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return a.Mpool.Updates(ctx)
+}
+
+func sanityCheckOutgoingMessage(msg *types.Message) error {
+	// Check that the message's TO address is a _valid_ Eth address if it's a delegated address.
+	//
+	// It's legal (from a consensus perspective) to send funds to any 0xf410f address as long as
+	// the payload is at most 54 bytes, but the vast majority of this address space is
+	// essentially a black-hole. Unfortunately, the conversion from 0x addresses to Filecoin
+	// native addresses has a few pitfalls (especially with respect to masked ID addresses), so
+	// we've added this check to the API to avoid accidentally (and avoidably) sending messages
+	// to these black-hole addresses.
+	if msg.To.Protocol() == address.Delegated && !ethtypes.IsEthAddress(msg.To) {
+		return xerrors.Errorf("message recipient %s is a delegated address but not a valid Eth Address", msg.To)
+	}
+
+	return nil
 }
