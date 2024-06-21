@@ -81,7 +81,7 @@ release:
   header: "{{ .Env.HEADER }}"
   make_latest: "${{ .Env.IS_LATEST }}"
   name_template: "{{ .Env.VERSION }}"
-  prerelease: auto
+  prerelease: "${{ .Env.VERSION | strings.hasSuffix '-rc' }}"
   replace_existing_artifacts: true
   # TODO(p0): Test if not replacing existing drafts updates them instead of failing the release
   replace_existing_draft: false
