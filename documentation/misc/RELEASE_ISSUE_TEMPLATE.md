@@ -23,7 +23,7 @@
 - [ ] Generate changelog using the script at scripts/mkreleaselog
 - [ ] Add contents of generated text to lotus/CHANGELOG.md in addition to other details
 - [ ] Commit using **PR** targetting `release/vX.Y.Z` branch
-  - Opening a PR should trigger a CI run that will build the release and create a draft release on GitHub
+  - Opening a PR should trigger a CI run that will build the release and run goreleaser in a dry/snapshot mode
   - Merging the PR should trigger a CI run that will publish the release to GitHub
 
 **Testing**
@@ -37,7 +37,7 @@ Test the release candidate thoroughly, including automated and manual tests to e
     - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
     - [ ] Commit using **PR** targetting `release/vX.Y.Z` branch or directly to the branch
     - [ ] Open a PR against the `releases` branch (base) from the `release/vX.Y.Z` branch (head)
-      - Opening a PR should trigger a CI run that will build the release and create a draft release on GitHub
+      - Opening a PR should trigger a CI run that will build the release and run goreleaser in a dry/snapshot mode
       - Merging the PR should trigger a CI run that will publish the release to GitHub
 
 **Post-Release**
