@@ -4,12 +4,14 @@ name: Release
 on:
   push:
     branches:
-      - master
+      - release/v*
+      - releases
     paths:
       - build/version.go
   pull_request:
     branches:
-      - master
+      - release/v*
+      - releases
     paths:
       - build/version.go
 
@@ -31,22 +33,32 @@ jobs:
         with:
           fetch-depth: 0
       - id: projects
+        env:
+          TARGET_REF: ${{ github.base_ref || github.ref }}
         run: |
           projects=()
-          node_current_version=$(go run cmd/release/main.go --json node version | jq -r .msg)
-          node_current_version_exists=(git tag -l 'v*' | grep -q $node_current_version)
-          echo "node_current_version=$node_current_version"
-          echo "node_current_version_exists=$node_current_version_exists"
-          if [[ ! $node_current_version_exists ]]; then
-            projects+=('node')
-          fi
-          miner_current_version=$(go run cmd/release/main.go --json miner version | jq -r .msg)
-          miner_current_version_exists=(git tag -l 'miner/v*' | grep -q $miner_current_version)
-          echo "miner_current_version=$miner_current_version"
-          echo "miner_current_version_exists=$miner_current_version_exists"
-          if [[ ! $miner_current_version_exists ]]; then
-            projects+=('miner')
-          fi
+          for project in node miner; do
+            echo "project=$project"
+            current_version=$(go run cmd/release/main.go --json $project version | jq -r .msg)
+            echo "${project}_current_version=$current_version"
+            if [[ $current_version =~ -dev$ ]]; then
+              echo "Skipping $project because it's a dev version"
+              continue
+            fi
+            if [[ $current_version =~ -rc$ && "$TARGET_REF" == 'refs/heads/releases' ]]; then
+              echo "Skipping $project because it's an RC version on the releases branch"
+              continue
+            fi
+            if [[ "$project" == "node" ]]; then
+              current_version_exists=(git tag -l 'v*' | grep -q $current_version)
+            else
+              current_version_exists=(git tag -l '$project/v*' | grep -q $current_version)
+            fi
+            echo "${project}_current_version_exists=$current_version_exists"
+            if [[ ! $current_version_exists ]]; then
+              projects+=($project)
+            fi
+          done
           echo "projects=$(echo "${projects[@]}" | jq -c .)" | tee -a $GITHUB_OUTPUT
   build:
     needs: [check]
