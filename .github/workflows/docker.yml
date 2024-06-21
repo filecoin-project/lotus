@@ -10,6 +10,8 @@ on:
   pull_request:
     branches:
       - master
+      - release/v*
+      - releases
   schedule:
     - cron: '0 0 * * *'
 
