@@ -22,9 +22,9 @@
 - [ ] run `make gen && make docsgen-cli`
 - [ ] Generate changelog using the script at scripts/mkreleaselog
 - [ ] Add contents of generated text to lotus/CHANGELOG.md in addition to other details
-- [ ] Commit using PR
-- [ ] tag commit with `vX.Y.Z-rcN`
-- [ ] cut a pre-release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true)
+- [ ] Commit using **PR** targetting `release/vX.Y.Z` branch
+  - Opening a PR should trigger a CI run that will build the release and create a draft release on GitHub
+  - Merging the PR should trigger a CI run that will publish the release to GitHub
 
 **Testing**
 
@@ -32,13 +32,13 @@ Test the release candidate thoroughly, including automated and manual tests to e
 
 **Stable Release**
   - [ ] Final preparation
-    - [ ] Verify that version string in [`version.go`](https://github.com/filecoin-project/lotus/blob/master/build/version.go) has been updated.
+    - [ ] Verify that version string in [`version.go`](https://github.com/filecoin-project/lotus/blob/master/build/version.go) has been updated **NOT** to end with '-rcX' (in the `release/vX.Y.Z` branch).
     - [ ] Verify that codegen is up to date (`make gen && make docsgen-cli`)
     - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
-    - [ ] Open a pull request against the `releases` branch with a merge of `release-vX.Y.Z`.
-    - [ ] Cut the release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=false&target=releases).
-      - The target should be the `releases` branch.
-      - Either make the tag locally and push to the `releases` branch, or allow GitHub to create a new tag via the UI when the release is published.
+    - [ ] Commit using **PR** targetting `release/vX.Y.Z` branch or directly to the branch
+    - [ ] Open a PR against the `releases` branch (base) from the `release/vX.Y.Z` branch (head)
+      - Opening a PR should trigger a CI run that will build the release and create a draft release on GitHub
+      - Merging the PR should trigger a CI run that will publish the release to GitHub
 
 **Post-Release**
   - [ ] Open a pull request against the `master` branch with a merge of the `releases` branch. Conflict resolution should ignore the changes to `version.go` (keep the `-dev` version from master). Do NOT delete the `releases` branch when doing so!
