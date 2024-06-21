@@ -124,3 +124,39 @@ func TestNetVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, strconv.Itoa(build.Eip155ChainId), version)
 }
+
+func TestEthBlockNumberAliases(t *testing.T) {
+	blockTime := 2 * time.Millisecond
+	kit.QuietMiningLogs()
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+	ens.Start()
+
+	build.Clock.Sleep(time.Second)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	head := client.WaitTillChain(ctx, kit.HeightAtLeast(build.Finality+100))
+
+	// latest should be head-1 (parents)
+	latestEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "latest", true)
+	require.NoError(t, err)
+	diff := int64(latestEthBlk.Number) - int64(head.Height()-1)
+	require.GreaterOrEqual(t, diff, int64(0))
+	require.LessOrEqual(t, diff, int64(2))
+
+	// safe should be latest-30
+	safeEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "safe", true)
+	require.NoError(t, err)
+	diff = int64(latestEthBlk.Number-30) - int64(safeEthBlk.Number)
+	require.GreaterOrEqual(t, diff, int64(0))
+	require.LessOrEqual(t, diff, int64(2))
+
+	// finalized should be Finality blocks behind latest
+	finalityEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "finalized", true)
+	require.NoError(t, err)
+	diff = int64(latestEthBlk.Number) - int64(build.Finality) - int64(finalityEthBlk.Number)
+	require.GreaterOrEqual(t, diff, int64(0))
+	require.LessOrEqual(t, diff, int64(2))
+}
