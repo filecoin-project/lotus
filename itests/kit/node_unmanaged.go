@@ -296,12 +296,8 @@ func (tm *TestUnmanagedMiner) OnboardSectorWithPieces(ctx context.Context, proof
 
 	tm.proofType[sectorNumber] = proofType
 
-	respCh := make(chan WindowPostResp, 1)
-
-	wdCtx, cancelF := context.WithCancel(ctx)
-	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
-
-	return sectorNumber, respCh, cancelF
+	respCh, cancelFn := tm.wdPostLoop(ctx, sectorNumber, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
+	return sectorNumber, respCh, cancelFn
 }
 
 func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(pt abi.RegisteredSealProof) ([]abi.PieceInfo, string) {
@@ -500,15 +496,28 @@ func (tm *TestUnmanagedMiner) OnboardCCSector(ctx context.Context, proofType abi
 
 	tm.proofType[sectorNumber] = proofType
 
-	respCh := make(chan WindowPostResp, 1)
-
-	wdCtx, cancelF := context.WithCancel(ctx)
-	go tm.wdPostLoop(wdCtx, sectorNumber, respCh, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
-
-	return sectorNumber, respCh, cancelF
+	respCh, cancelFn := tm.wdPostLoop(ctx, sectorNumber, tm.sealedCids[sectorNumber], tm.sealedSectorPaths[sectorNumber], tm.cacheDirPaths[sectorNumber])
+	return sectorNumber, respCh, cancelFn
 }
 
-func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.SectorNumber, respCh chan WindowPostResp, sealedCid cid.Cid, sealedPath, cacheDir string) {
+func (tm *TestUnmanagedMiner) wdPostLoop(
+	pctx context.Context,
+	sectorNumber abi.SectorNumber,
+	sealedCid cid.Cid,
+	sealedPath,
+	cacheDir string,
+) (chan WindowPostResp, context.CancelFunc) {
+
+	ctx, cancelFn := context.WithCancel(pctx)
+	respCh := make(chan WindowPostResp, 1)
+
+	head, err := tm.FullNode.ChainHead(ctx)
+	require.NoError(tm.t, err)
+
+	// wait one challenge window for cron to do its thing with deadlines, just to be sure so we get
+	// an accurate dline.Info whenever we ask for it
+	_ = tm.FullNode.WaitTillChain(ctx, HeightAtLeast(head.Height()+miner14.WPoStChallengeWindow+5))
+
 	go func() {
 		var firstPost bool
 
@@ -542,6 +551,8 @@ func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.S
 				return
 			}
 
+			nextPost += 5 // add some padding so we're properly into the window
+
 			if nextPost > currentEpoch {
 				if _, err := tm.FullNode.WaitTillChainOrError(ctx, HeightAtLeast(nextPost)); err != nil {
 					writeRespF(err)
@@ -551,10 +562,15 @@ func (tm *TestUnmanagedMiner) wdPostLoop(ctx context.Context, sectorNumber abi.S
 
 			err = tm.submitWindowPost(ctx, sectorNumber, sealedCid, sealedPath, cacheDir)
 			writeRespF(err) // send an error, or first post, or nothing if no error and this isn't the first post
+			if err != nil {
+				return
+			}
 			postCount++
 			tm.t.Logf("Sector %d: WindowPoSt #%d submitted", sectorNumber, postCount)
 		}
 	}()
+
+	return respCh, cancelFn
 }
 
 func (tm *TestUnmanagedMiner) SubmitPostDispute(ctx context.Context, sectorNumber abi.SectorNumber) error {
@@ -772,14 +788,6 @@ func (tm *TestUnmanagedMiner) calculateNextPostEpoch(
 		return 0, 0, fmt.Errorf("failed to get chain head: %w", err)
 	}
 
-	// Fetch the sector partition for the given sector number
-	sp, err := tm.FullNode.StateSectorPartition(ctx, tm.ActorAddr, sectorNumber, head.Key())
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get sector partition: %w", err)
-	}
-
-	tm.t.Logf("Miner %s: WindowPoST(%d): SectorPartition: %+v", tm.ActorAddr, sectorNumber, sp)
-
 	// Obtain the proving deadline information for the miner
 	di, err := tm.FullNode.StateMinerProvingDeadline(ctx, tm.ActorAddr, head.Key())
 	if err != nil {
@@ -788,15 +796,26 @@ func (tm *TestUnmanagedMiner) calculateNextPostEpoch(
 
 	tm.t.Logf("Miner %s: WindowPoST(%d): ProvingDeadline: %+v", tm.ActorAddr, sectorNumber, di)
 
+	// Fetch the sector partition for the given sector number
+	sp, err := tm.FullNode.StateSectorPartition(ctx, tm.ActorAddr, sectorNumber, head.Key())
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get sector partition: %w", err)
+	}
+
+	tm.t.Logf("Miner %s: WindowPoST(%d): SectorPartition: %+v", tm.ActorAddr, sectorNumber, sp)
+
 	// Calculate the start of the period, adjusting if the current deadline has passed
 	periodStart := di.PeriodStart
-	if di.PeriodStart < di.CurrentEpoch && sp.Deadline <= di.Index {
+	// calculate current deadline index because it won't be reliable from state until the first
+	// challenge window cron tick after first sector onboarded
+	curIdx := (di.CurrentEpoch - di.PeriodStart) / di.WPoStChallengeWindow
+	if di.PeriodStart < di.CurrentEpoch && sp.Deadline <= uint64(curIdx) {
 		// If the deadline has passed in the current proving period, calculate for the next period
 		periodStart += di.WPoStProvingPeriod
 	}
 
 	// Calculate the exact epoch when proving should occur
-	provingEpoch := periodStart + (di.WPoStProvingPeriod/abi.ChainEpoch(di.WPoStPeriodDeadlines))*abi.ChainEpoch(sp.Deadline)
+	provingEpoch := periodStart + di.WPoStChallengeWindow*abi.ChainEpoch(sp.Deadline)
 
 	tm.t.Logf("Miner %s: WindowPoST(%d): next ProvingEpoch: %d", tm.ActorAddr, sectorNumber, provingEpoch)
 

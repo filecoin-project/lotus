@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,7 +8,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,27 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
-
-type MultiaddrSlice []ma.Multiaddr
-
-func (m *MultiaddrSlice) UnmarshalJSON(raw []byte) (err error) {
-	var temp []string
-	if err := json.Unmarshal(raw, &temp); err != nil {
-		return err
-	}
-
-	res := make([]ma.Multiaddr, len(temp))
-	for i, str := range temp {
-		res[i], err = ma.NewMultiaddr(str)
-		if err != nil {
-			return err
-		}
-	}
-	*m = res
-	return nil
-}
-
-var _ json.Unmarshaler = new(MultiaddrSlice)
 
 type ObjStat struct {
 	Size  uint64
@@ -158,13 +135,6 @@ type MessagePrototype struct {
 	ValidNonce bool
 }
 
-// Selector specifies ipld selector string
-//   - if the string starts with '{', it's interpreted as json selector string
-//     see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
-//   - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
-//     see https://github.com/ipld/go-ipld-selector-text-lite
-type Selector string
-
 type MinerInfo struct {
 	Owner                      address.Address   // Must be an ID-address.
 	Worker                     address.Address   // Must be an ID-address.
@@ -221,7 +191,7 @@ type ForkUpgradeParams struct {
 	UpgradeWatermelonHeight  abi.ChainEpoch
 	UpgradeDragonHeight      abi.ChainEpoch
 	UpgradePhoenixHeight     abi.ChainEpoch
-	UpgradeAussieHeight      abi.ChainEpoch
+	UpgradeWaffleHeight      abi.ChainEpoch
 }
 
 // ChainExportConfig holds configuration for chain ranged exports.

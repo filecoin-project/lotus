@@ -4483,7 +4483,7 @@ Response:
     "UpgradeWatermelonHeight": 10101,
     "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101,
-    "UpgradeAussieHeight": 10101
+    "UpgradeWaffleHeight": 10101
   },
   "Eip155ChainID": 123
 }
