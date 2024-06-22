@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/market"
@@ -34,6 +35,7 @@ type FullNodeAPI struct {
 	full.SyncAPI
 	full.EthAPI
 	full.ActorEventsAPI
+	*lf3.F3
 
 	DS          dtypes.MetadataDS
 	NetworkName dtypes.NetworkName

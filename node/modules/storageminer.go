@@ -351,6 +351,18 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local,
 	return sst, nil
 }
 
+func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, minerAddress dtypes.MinerAddress) error {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	go func() {
+		err := api.F3Participate(ctx, address.Address(minerAddress))
+		if err != nil && !errors.Is(err, context.Canceled) {
+			// TODO: retry logic?
+			log.Errorf("error while participating in F3")
+		}
+	}()
+	return nil
+}
+
 func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
 	token, err := ca.AuthNew(ctx, []auth.Permission{"admin"})
 	if err != nil {

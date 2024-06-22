@@ -114,6 +114,7 @@ const (
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
+	F3Participation
 
 	// daemon
 	ExtractApiKey
@@ -127,8 +128,6 @@ const (
 	SetApiEndpointKey
 
 	StoreEventsKey
-
-	F3Key
 
 	_nInvokes // keep this last
 )

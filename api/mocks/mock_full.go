@@ -1152,6 +1152,20 @@ func (mr *MockFullNodeMockRecorder) EthUnsubscribe(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthUnsubscribe", reflect.TypeOf((*MockFullNode)(nil).EthUnsubscribe), arg0, arg1)
 }
 
+// F3Participate mocks base method.
+func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// F3Participate indicates an expected call of F3Participate.
+func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1)
+}
+
 // FilecoinAddressToEthAddress mocks base method.
 func (m *MockFullNode) FilecoinAddressToEthAddress(arg0 context.Context, arg1 address.Address) (ethtypes.EthAddress, error) {
 	m.ctrl.T.Helper()

@@ -80,6 +80,8 @@
   * [EthTraceTransaction](#EthTraceTransaction)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
+* [F3](#F3)
+  * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
 * [Gas](#Gas)
@@ -2161,6 +2163,26 @@ Inputs:
 ```
 
 Response: `true`
+
+## F3
+
+
+### F3Participate
+F3Participate should be called by a miner node to particpate in signing F3 consensus.
+The address should be of type ID
+This API call won't exit until the caller terminates it.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `{}`
 
 ## Filecoin
 

@@ -859,6 +859,12 @@ type FullNode interface {
 	// Note: this API is only available via websocket connections.
 	// This is an EXPERIMENTAL API and may be subject to change.
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
+
+	// F3Participate should be called by a miner node to particpate in signing F3 consensus.
+	// The address should be of type ID
+	// This API call won't exit until the caller terminates it.
+	// It is recommended to call this API through websocket connection.
+	F3Participate(ctx context.Context, minerID address.Address) error //perm:admin
 }
 
 // reverse interface to the client, called after EthSubscribe

@@ -5,16 +5,18 @@ import (
 	"sort"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/xerrors"
 )
 
 type ecWrapper struct {
@@ -32,8 +34,9 @@ func (ts *tsWrapper) Key() gpbft.TipSetKey {
 }
 
 func (ts *tsWrapper) Beacon() []byte {
-	// TOOD: verify if correct
-	return ts.inner.MinTicket().VRFProof
+	// TODO: verify if correct
+	entries := ts.inner.Blocks()[0].BeaconEntries
+	return entries[len(entries)-1].Data
 }
 
 func (ts *tsWrapper) Epoch() int64 {
@@ -62,7 +65,7 @@ func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (f3.TipS
 }
 
 func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (f3.TipSet, error) {
-	tskLotus, err := types.TipSetKeyFromBytes([]byte(tsk))
+	tskLotus, err := types.TipSetKeyFromBytes(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding tsk: %w", err)
 	}
@@ -84,7 +87,7 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 f3.TipSet) (f3.TipSet, 
 	if tsW, ok := tsF3.(*tsWrapper); ok {
 		ts = tsW.inner
 	} else {
-		tskLotus, err := types.TipSetKeyFromBytes([]byte(tsF3.Key()))
+		tskLotus, err := types.TipSetKeyFromBytes(tsF3.Key())
 		if err != nil {
 			return nil, xerrors.Errorf("decoding tsk: %w", err)
 		}
@@ -101,7 +104,7 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 f3.TipSet) (f3.TipSet, 
 }
 
 func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (gpbft.PowerEntries, error) {
-	tskLotus, err := types.TipSetKeyFromBytes([]byte(tskF3))
+	tskLotus, err := types.TipSetKeyFromBytes(tskF3)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding tsk: %w", err)
 	}
@@ -109,13 +112,20 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
 	}
-	log.Infof("collecting power table for: %d", ts.Height())
+	//log.Infof("collecting power table for: %d", ts.Height())
 	stCid := ts.ParentState()
 
 	sm := ec.StateManager
 
 	powerAct, err := sm.LoadActor(ctx, power.Address, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading power actor: %w", err)
+	}
+
 	powerState, err := power.Load(ec.ChainStore.ActorStore(ctx), powerAct)
+	if err != nil {
+		return nil, xerrors.Errorf("loading power actor state: %w", err)
+	}
 
 	var powerEntries gpbft.PowerEntries
 	err = powerState.ForEachClaim(func(miner address.Address, claim power.Claim) error {

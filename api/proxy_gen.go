@@ -249,6 +249,8 @@ type FullNodeMethods struct {
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"read"`
 
+	F3Participate func(p0 context.Context, p1 address.Address) error `perm:"admin"`
+
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
 	GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
@@ -2061,6 +2063,17 @@ func (s *FullNodeStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubsc
 
 func (s *FullNodeStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address) error {
+	if s.Internal.F3Participate == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.F3Participate(p0, p1)
+}
+
+func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {

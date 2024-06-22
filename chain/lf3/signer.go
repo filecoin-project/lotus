@@ -3,10 +3,12 @@ package lf3
 import (
 	"context"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/gpbft"
+
 	"github.com/filecoin-project/lotus/api"
-	"golang.org/x/xerrors"
 )
 
 type signer struct {
