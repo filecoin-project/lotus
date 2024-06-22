@@ -117,11 +117,13 @@ func (fff *F3) F3Participate(ctx context.Context, miner address.Address) error {
 				signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(actorID))
 				if err != nil {
 					log.Errorf("preparing signing inputs: %+v", err)
+					continue inner
 				}
 				// signatureBuilder can be sent over RPC
 				payloadSig, vrfSig, err := signatureBuilder.Sign(fff.signer)
 				if err != nil {
 					log.Errorf("signing message: %+v", err)
+					continue inner
 				}
 				// signatureBuilder and signatures can be returned back over RPC
 				fff.inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
