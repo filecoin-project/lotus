@@ -6145,7 +6145,7 @@
         {
             "name": "Filecoin.F3Participate",
             "description": "```go\nfunc (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address) error {\n\tif s.Internal.F3Participate == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.F3Participate(p0, p1)\n}\n```",
-            "summary": "F3Participate should be called by a miner node to particpate in signing F3 consensus.\nThe address should be of type ID\nThis API call won't exit until the caller terminates it.\n",
+            "summary": "F3Participate should be called by a miner node to particpate in signing F3 consensus.\nThe address should be of type ID\nThis API call won't exit until the caller terminates it.\nIt is recommended to call this API through websocket connection.\n",
             "paramStructure": "by-position",
             "params": [
                 {

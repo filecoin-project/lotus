@@ -2171,6 +2171,7 @@ Response: `true`
 F3Participate should be called by a miner node to particpate in signing F3 consensus.
 The address should be of type ID
 This API call won't exit until the caller terminates it.
+It is recommended to call this API through websocket connection.
 
 
 Perms: admin
