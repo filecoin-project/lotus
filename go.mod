@@ -10,8 +10,6 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi // pro
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // provided via a git submodule
 
-replace github.com/filecoin-project/go-f3 => ../go-f3
-
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BurntSushi/toml v1.3.2
@@ -43,7 +41,7 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837
 	github.com/filecoin-project/go-crypto v0.0.1
-	github.com/filecoin-project/go-f3 v0.0.0-20240619112353-e4ef2ea3078f
+	github.com/filecoin-project/go-f3 v0.0.0-20240622021508-dd16c861657a
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0
 	github.com/filecoin-project/go-jsonrpc v0.3.2
