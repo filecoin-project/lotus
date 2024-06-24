@@ -100,11 +100,14 @@ const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 const UpgradeWatermelonHeight = 3469380
 
 // 2024-04-24T14:00:00Z
-var UpgradeDragonHeight = abi.ChainEpoch(3855360)
+const UpgradeDragonHeight = 3855360
 
 // This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
 // 2024-04-11T15:00:00Z
-var UpgradePhoenixHeight = UpgradeDragonHeight + 120
+const UpgradePhoenixHeight = UpgradeDragonHeight + 120
+
+// ??????
+var UpgradeAussieHeight = abi.ChainEpoch(9999999999)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
@@ -130,10 +133,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_DRAGON") == "1" {
-		UpgradeDragonHeight = math.MaxInt64 - 1
-		delete(DrandSchedule, UpgradePhoenixHeight)
-		UpgradePhoenixHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_AUSSIE") == "1" {
+		UpgradeAussieHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

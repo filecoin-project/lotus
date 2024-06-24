@@ -38,7 +38,7 @@ func Peerstore() (peerstore.Peerstore, error) {
 	return pstoremem.NewPeerstore()
 }
 
-func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, error) {
+func Host(mctx helpers.MetricsCtx, buildVersion build.BuildVersion, lc fx.Lifecycle, params P2PHostIn) (RawHost, error) {
 	pkey := params.Peerstore.PrivKey(params.ID)
 	if pkey == nil {
 		return nil, fmt.Errorf("missing private key for node ID: %s", params.ID)
@@ -49,7 +49,7 @@ func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, 
 		libp2p.Peerstore(params.Peerstore),
 		libp2p.NoListenAddrs,
 		libp2p.Ping(true),
-		libp2p.UserAgent("lotus-" + build.UserVersion()),
+		libp2p.UserAgent("lotus-" + string(buildVersion)),
 	}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)

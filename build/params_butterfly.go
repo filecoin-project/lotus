@@ -56,10 +56,10 @@ const UpgradeHyggeHeight = -21
 const UpgradeLightningHeight = -22
 const UpgradeThunderHeight = -23
 const UpgradeWatermelonHeight = -24
+const UpgradeDragonHeight = -25
+const UpgradePhoenixHeight = -26
 
-const UpgradeDragonHeight = 5760
-
-const UpgradePhoenixHeight = UpgradeDragonHeight + 120
+const UpgradeAussieHeight = 400
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100

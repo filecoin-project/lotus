@@ -1,3 +1,7 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+version: 2
+
 project_name: lotus
 
 universal_binaries:
@@ -79,7 +83,7 @@ release:
   name_template: "v{{.Version}}"
 
 brews:
-  - tap:
+  - repository:
       owner: filecoin-project
       name: homebrew-lotus
       branch: master
@@ -93,7 +97,7 @@ brews:
       system "#{bin}/lotus --version"
       system "#{bin}/lotus-miner --version"
       system "#{bin}/lotus-worker --version"
-    folder: Formula
+    directory: Formula
     homepage: "https://filecoin.io"
     description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
     license: MIT

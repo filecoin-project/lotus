@@ -168,7 +168,7 @@ var msigCreateCmd = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			fmt.Fprintln(cctx.App.Writer, "actor creation failed!")
+			_, _ = fmt.Fprintln(cctx.App.Writer, "actor creation failed!")
 			return err
 		}
 
@@ -178,7 +178,7 @@ var msigCreateCmd = &cli.Command{
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
-		fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
+		_, _ = fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
 
 		// TODO: maybe register this somewhere
 		return nil
@@ -242,25 +242,25 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Balance: %s\n", types.FIL(act.Balance))
-		fmt.Fprintf(cctx.App.Writer, "Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Balance: %s\n", types.FIL(act.Balance))
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 
 		if cctx.Bool("vesting") {
 			ib, err := mstate.InitialBalance()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cctx.App.Writer, "InitialBalance: %s\n", types.FIL(ib))
+			_, _ = fmt.Fprintf(cctx.App.Writer, "InitialBalance: %s\n", types.FIL(ib))
 			se, err := mstate.StartEpoch()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cctx.App.Writer, "StartEpoch: %d\n", se)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "StartEpoch: %d\n", se)
 			ud, err := mstate.UnlockDuration()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cctx.App.Writer, "UnlockDuration: %d\n", ud)
+			_, _ = fmt.Fprintf(cctx.App.Writer, "UnlockDuration: %d\n", ud)
 		}
 
 		signers, err := mstate.Signers()
@@ -271,17 +271,17 @@ var msigInspectCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(cctx.App.Writer, "Threshold: %d / %d\n", threshold, len(signers))
-		fmt.Fprintln(cctx.App.Writer, "Signers:")
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Threshold: %d / %d\n", threshold, len(signers))
+		_, _ = fmt.Fprintln(cctx.App.Writer, "Signers:")
 
 		signerTable := tabwriter.NewWriter(cctx.App.Writer, 8, 4, 2, ' ', 0)
-		fmt.Fprintf(signerTable, "ID\tAddress\n")
+		_, _ = fmt.Fprintf(signerTable, "ID\tAddress\n")
 		for _, s := range signers {
 			signerActor, err := api.StateAccountKey(ctx, s, types.EmptyTSK)
 			if err != nil {
-				fmt.Fprintf(signerTable, "%s\t%s\n", s, "N/A")
+				_, _ = fmt.Fprintf(signerTable, "%s\t%s\n", s, "N/A")
 			} else {
-				fmt.Fprintf(signerTable, "%s\t%s\n", s, signerActor)
+				_, _ = fmt.Fprintf(signerTable, "%s\t%s\n", s, signerActor)
 			}
 		}
 		if err := signerTable.Flush(); err != nil {
@@ -297,7 +297,7 @@ var msigInspectCmd = &cli.Command{
 		}
 
 		decParams := cctx.Bool("decode-params")
-		fmt.Fprintln(cctx.App.Writer, "Transactions: ", len(pending))
+		_, _ = fmt.Fprintln(cctx.App.Writer, "Transactions: ", len(pending))
 		if len(pending) > 0 {
 			var txids []int64
 			for txid := range pending {
@@ -308,7 +308,7 @@ var msigInspectCmd = &cli.Command{
 			})
 
 			w := tabwriter.NewWriter(cctx.App.Writer, 8, 4, 2, ' ', 0)
-			fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
+			_, _ = fmt.Fprintf(w, "ID\tState\tApprovals\tTo\tValue\tMethod\tParams\n")
 			for _, txid := range txids {
 				tx := pending[txid]
 				target := tx.To.String()
@@ -320,9 +320,31 @@ var msigInspectCmd = &cli.Command{
 
 				if err != nil {
 					if tx.Method == 0 {
-						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "Send", tx.Method, paramStr)
+						_, _ = fmt.Fprintf(
+							w,
+							"%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n",
+							txid,
+							"pending",
+							len(tx.Approved),
+							target,
+							types.FIL(tx.Value),
+							"Send",
+							tx.Method,
+							paramStr,
+						)
 					} else {
-						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "new account, unknown method", tx.Method, paramStr)
+						_, _ = fmt.Fprintf(
+							w,
+							"%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n",
+							txid,
+							"pending",
+							len(tx.Approved),
+							target,
+							types.FIL(tx.Value),
+							"new account, unknown method",
+							tx.Method,
+							paramStr,
+						)
 					}
 				} else {
 					method := consensus.NewActorRegistry().Methods[targAct.Code][tx.Method] // TODO: use remote map
@@ -341,7 +363,18 @@ var msigInspectCmd = &cli.Command{
 						paramStr = string(b)
 					}
 
-					fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Name, tx.Method, paramStr)
+					_, _ = fmt.Fprintf(
+						w,
+						"%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n",
+						txid,
+						"pending",
+						len(tx.Approved),
+						target,
+						types.FIL(tx.Value),
+						method.Name,
+						tx.Method,
+						paramStr,
+					)
 				}
 			}
 			if err := w.Flush(); err != nil {
@@ -923,7 +956,7 @@ var msigAddProposeCmd = &cli.Command{
 
 		msgCid := sm.Cid()
 
-		fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid)
+		_, _ = fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid)
 
 		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {

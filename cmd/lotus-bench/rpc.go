@@ -395,10 +395,10 @@ func (rpc *RPCMethod) Stop() {
 
 func (rpc *RPCMethod) Report() {
 	total := time.Since(rpc.start)
-	fmt.Fprintf(rpc.w, "[%s]:\n", rpc.method)
-	fmt.Fprintf(rpc.w, "- Options:\n")
-	fmt.Fprintf(rpc.w, "  - concurrency: %d\n", rpc.concurrency)
-	fmt.Fprintf(rpc.w, "  - params: %s\n", rpc.params)
-	fmt.Fprintf(rpc.w, "  - qps: %d\n", rpc.qps)
+	fmt.Fprintf(rpc.w, "[%s]:\n", rpc.method)                    //nolint:errcheck
+	fmt.Fprintf(rpc.w, "- Options:\n")                           //nolint:errcheck
+	fmt.Fprintf(rpc.w, "  - concurrency: %d\n", rpc.concurrency) //nolint:errcheck
+	fmt.Fprintf(rpc.w, "  - params: %s\n", rpc.params)           //nolint:errcheck
+	fmt.Fprintf(rpc.w, "  - qps: %d\n", rpc.qps)                 //nolint:errcheck
 	rpc.reporter.Print(total, rpc.w)
 }

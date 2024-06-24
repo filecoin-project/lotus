@@ -16,6 +16,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/peer"
+	mh "github.com/multiformats/go-multihash"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
@@ -30,16 +31,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/sub/ratelimit"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
 var log = logging.Logger("sub")
+var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
 var msgCidPrefix = cid.Prefix{
 	Version:  1,
 	Codec:    cid.DagCBOR,
-	MhType:   client.DefaultHashFunction,
+	MhType:   DefaultHashFunction,
 	MhLength: 32,
 }
 

@@ -1,8 +1,6 @@
 package config
 
 import (
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -22,7 +20,6 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client        Client
 	Wallet        Wallet
 	Fees          FeeConfig
 	Chainstore    Chainstore
@@ -53,17 +50,14 @@ type Logging struct {
 type StorageMiner struct {
 	Common
 
-	Subsystems    MinerSubsystemConfig
-	Dealmaking    DealmakingConfig
-	IndexProvider IndexProviderConfig
-	Proving       ProvingConfig
-	Sealing       SealingConfig
-	Storage       SealerConfig
-	Fees          MinerFeeConfig
-	Addresses     MinerAddressConfig
-	DAGStore      DAGStoreConfig
-
-	HarmonyDB HarmonyDB
+	Subsystems MinerSubsystemConfig
+	Dealmaking DealmakingConfig
+	Proving    ProvingConfig
+	Sealing    SealingConfig
+	Storage    SealerConfig
+	Fees       MinerFeeConfig
+	Addresses  MinerAddressConfig
+	HarmonyDB  HarmonyDB
 }
 
 type CurioConfig struct {
@@ -77,6 +71,7 @@ type CurioConfig struct {
 	Ingest    CurioIngestConfig
 	Journal   JournalConfig
 	Apis      ApisConfig
+	Alerting  CurioAlerting
 }
 
 type ApisConfig struct {
@@ -203,8 +198,8 @@ type CurioSubsystemsConfig struct {
 
 	// BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
 	// This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
-	// Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
-	// Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+	// Strings should be in the format "actor:ip:port". IP cannot be 0.0.0.0. We recommend using a private IP.
+	// Example: "f0123:127.0.0.1:32100". Multiple addresses can be specified.
 	//
 	// When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
 	// deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
@@ -228,50 +223,10 @@ type CurioSubsystemsConfig struct {
 	GuiAddress string
 }
 
-type DAGStoreConfig struct {
-	// Path to the dagstore root directory. This directory contains three
-	// subdirectories, which can be symlinked to alternative locations if
-	// need be:
-	//  - ./transients: caches unsealed deals that have been fetched from the
-	//    storage subsystem for serving retrievals.
-	//  - ./indices: stores shard indices.
-	//  - ./datastore: holds the KV store tracking the state of every shard
-	//    known to the DAG store.
-	// Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
-	// <LOTUS_MINER_PATH>/dagstore (monolith deployment)
-	RootDir string
-
-	// The maximum amount of indexing jobs that can run simultaneously.
-	// 0 means unlimited.
-	// Default value: 5.
-	MaxConcurrentIndex int
-
-	// The maximum amount of unsealed deals that can be fetched simultaneously
-	// from the storage subsystem. 0 means unlimited.
-	// Default value: 0 (unlimited).
-	MaxConcurrentReadyFetches int
-
-	// The maximum amount of unseals that can be processed simultaneously
-	// from the storage subsystem. 0 means unlimited.
-	// Default value: 0 (unlimited).
-	MaxConcurrentUnseals int
-
-	// The maximum number of simultaneous inflight API calls to the storage
-	// subsystem.
-	// Default value: 100.
-	MaxConcurrencyStorageCalls int
-
-	// The time between calls to periodic dagstore GC, in time.Duration string
-	// representation, e.g. 1m, 5m, 1h.
-	// Default value: 1 minute.
-	GCInterval Duration
-}
-
 type MinerSubsystemConfig struct {
 	EnableMining        bool
 	EnableSealing       bool
 	EnableSectorStorage bool
-	EnableMarkets       bool
 
 	// When enabled, the sector index will reside in an external database
 	// as opposed to the local KV store in the miner process
@@ -302,111 +257,8 @@ type MinerSubsystemConfig struct {
 }
 
 type DealmakingConfig struct {
-	// When enabled, the miner can accept online deals
-	ConsiderOnlineStorageDeals bool
-	// When enabled, the miner can accept offline deals
-	ConsiderOfflineStorageDeals bool
-	// When enabled, the miner can accept retrieval deals
-	ConsiderOnlineRetrievalDeals bool
-	// When enabled, the miner can accept offline retrieval deals
-	ConsiderOfflineRetrievalDeals bool
-	// When enabled, the miner can accept verified deals
-	ConsiderVerifiedStorageDeals bool
-	// When enabled, the miner can accept unverified deals
-	ConsiderUnverifiedStorageDeals bool
-	// A list of Data CIDs to reject when making deals
-	PieceCidBlocklist []cid.Cid
-	// Maximum expected amount of time getting the deal into a sealed sector will take
-	// This includes the time the deal will need to get transferred and published
-	// before being assigned to a sector
-	ExpectedSealDuration Duration
-	// Maximum amount of time proposed deal StartEpoch can be in future
-	MaxDealStartDelay Duration
-	// When a deal is ready to publish, the amount of time to wait for more
-	// deals to be ready to publish before publishing them all as a batch
-	PublishMsgPeriod Duration
-	// The maximum number of deals to include in a single PublishStorageDeals
-	// message
-	MaxDealsPerPublishMsg uint64
-	// The maximum collateral that the provider will put up against a deal,
-	// as a multiplier of the minimum collateral bound
-	MaxProviderCollateralMultiplier uint64
-	// The maximum allowed disk usage size in bytes of staging deals not yet
-	// passed to the sealing node by the markets service. 0 is unlimited.
-	MaxStagingDealsBytes int64
-	// The maximum number of parallel online data transfers for storage deals
-	SimultaneousTransfersForStorage uint64
-	// The maximum number of simultaneous data transfers from any single client
-	// for storage deals.
-	// Unset by default (0), and values higher than SimultaneousTransfersForStorage
-	// will have no effect; i.e. the total number of simultaneous data transfers
-	// across all storage clients is bound by SimultaneousTransfersForStorage
-	// regardless of this number.
-	SimultaneousTransfersForStoragePerClient uint64
-	// The maximum number of parallel online data transfers for retrieval deals
-	SimultaneousTransfersForRetrieval uint64
 	// Minimum start epoch buffer to give time for sealing of sector with deal.
 	StartEpochSealingBuffer uint64
-
-	// A command used for fine-grained evaluation of storage deals
-	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	Filter string
-	// A command used for fine-grained evaluation of retrieval deals
-	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	RetrievalFilter string
-
-	RetrievalPricing *RetrievalPricing
-}
-
-type IndexProviderConfig struct {
-	// Enable set whether to enable indexing announcement to the network and expose endpoints that
-	// allow indexer nodes to process announcements. Enabled by default.
-	Enable bool
-
-	// EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
-	// entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The
-	// maximum storage used by the cache is a factor of EntriesCacheCapacity, EntriesChunkSize and
-	// the length of multihashes being advertised. For example, advertising 128-bit long multihashes
-	// with the default EntriesCacheCapacity, and EntriesChunkSize means the cache size can grow to
-	// 256MiB when full.
-	EntriesCacheCapacity int
-
-	// EntriesChunkSize sets the maximum number of multihashes to include in a single entries chunk.
-	// Defaults to 16384 if not specified. Note that chunks are chained together for indexing
-	// advertisements that include more multihashes than the configured EntriesChunkSize.
-	EntriesChunkSize int
-
-	// TopicName sets the topic name on which the changes to the advertised content are announced.
-	// If not explicitly specified, the topic name is automatically inferred from the network name
-	// in following format: '/indexer/ingest/<network-name>'
-	// Defaults to empty, which implies the topic name is inferred from network name.
-	TopicName string
-
-	// PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
-	// starts. By default, the cache is rehydrated from previously cached entries stored in
-	// datastore if any is present.
-	PurgeCacheOnStart bool
-}
-
-type RetrievalPricing struct {
-	Strategy string // possible values: "default", "external"
-
-	Default  *RetrievalPricingDefault
-	External *RetrievalPricingExternal
-}
-
-type RetrievalPricingExternal struct {
-	// Path of the external script that will be run to price a retrieval deal.
-	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".
-	Path string
-}
-
-type RetrievalPricingDefault struct {
-	// VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
-	// of a payloadCid that belongs to a verified storage deal.
-	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
-	// default value is true
-	VerifiedDealsFreeTransfer bool
 }
 
 type ProvingConfig struct {
@@ -965,20 +817,6 @@ type Splitstore struct {
 }
 
 // // Full Node
-type Client struct {
-	// The maximum number of simultaneous data transfers between the client
-	// and storage providers for storage deals
-	SimultaneousTransfersForStorage uint64
-	// The maximum number of simultaneous data transfers between the client
-	// and storage providers for retrieval deals
-	SimultaneousTransfersForRetrieval uint64
-
-	// Require that retrievals perform no on-chain operations. Paid retrievals
-	// without existing payment channels with available funds will fail instead
-	// of automatically performing on-chain operations.
-	OffChainRetrieval bool
-}
-
 type Wallet struct {
 	RemoteBackend string
 	EnableLedger  bool
@@ -1108,4 +946,19 @@ type FaultReporterConfig struct {
 	// ReportConsensusFault messages. It will pay for gas fees, and receive any
 	// rewards. This address should have adequate funds to cover gas fees.
 	ConsensusFaultReporterAddress string
+}
+
+type CurioAlerting struct {
+	// PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+	// routed to a PagerDuty.com service and processed.
+	// The default is sufficient for integration with the stock commercial PagerDuty.com company's service.
+	PagerDutyEventURL string
+
+	// PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
+	// identifier in the integration page for the service.
+	PageDutyIntegrationKey string
+
+	// MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+	// alerts will be triggered for the wallet
+	MinimumWalletBalance types.FIL
 }

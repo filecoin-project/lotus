@@ -2,7 +2,7 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.27.0"
+        "version": "1.27.1"
     },
     "methods": [
         {
@@ -30,7 +30,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5791"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5157"
             }
         },
         {
@@ -109,7 +109,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5802"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5168"
             }
         },
         {
@@ -155,7 +155,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5813"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5179"
             }
         },
         {
@@ -203,7 +203,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5824"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5190"
             }
         },
         {
@@ -251,7 +251,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5835"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5201"
             }
         },
         {
@@ -354,7 +354,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5846"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5212"
             }
         },
         {
@@ -428,7 +428,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5857"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5223"
             }
         },
         {
@@ -538,7 +538,7 @@
                         "title": "number",
                         "description": "Number is a number",
                         "examples": [
-                            22
+                            23
                         ],
                         "type": [
                             "number"
@@ -591,7 +591,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5868"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5234"
             }
         },
         {
@@ -742,7 +742,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5879"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5245"
             }
         },
         {
@@ -781,1842 +781,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5890"
-            }
-        },
-        {
-            "name": "Filecoin.DagstoreGC",
-            "description": "```go\nfunc (s *StorageMinerStruct) DagstoreGC(p0 context.Context) ([]DagstoreShardResult, error) {\n\tif s.Internal.DagstoreGC == nil {\n\t\treturn *new([]DagstoreShardResult), ErrNotSupported\n\t}\n\treturn s.Internal.DagstoreGC(p0)\n}\n```",
-            "summary": "DagstoreGC runs garbage collection on the DAG store.\n",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]DagstoreShardResult",
-                "description": "[]DagstoreShardResult",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
-                                "Success": false,
-                                "Error": "\u003cerror\u003e"
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Error": {
-                                    "type": "string"
-                                },
-                                "Key": {
-                                    "type": "string"
-                                },
-                                "Success": {
-                                    "type": "boolean"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5901"
-            }
-        },
-        {
-            "name": "Filecoin.DagstoreInitializeShard",
-            "description": "```go\nfunc (s *StorageMinerStruct) DagstoreInitializeShard(p0 context.Context, p1 string) error {\n\tif s.Internal.DagstoreInitializeShard == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DagstoreInitializeShard(p0, p1)\n}\n```",
-            "summary": "DagstoreInitializeShard initializes an uninitialized shard.\n\nInitialization consists of fetching the shard's data (deal payload) from\nthe storage subsystem, generating an index, and persisting the index\nto facilitate later retrievals, and/or to publish to external sources.\n\nThis operation is intended to complement the initial migration. The\nmigration registers a shard for every unique piece CID, with lazy\ninitialization. Thus, shards are not initialized immediately to avoid\nIO activity competing with proving. Instead, shard are initialized\nwhen first accessed. This method forces the initialization of a shard by\naccessing it and immediately releasing it. This is useful to warm up the\ncache to facilitate subsequent retrievals, and to generate the indexes\nto publish them externally.\n\nThis operation fails if the shard is not in ShardStateNew state.\nIt blocks until initialization finishes.\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "string",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "string value"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5923"
-            }
-        },
-        {
-            "name": "Filecoin.DagstoreListShards",
-            "description": "```go\nfunc (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {\n\tif s.Internal.DagstoreListShards == nil {\n\t\treturn *new([]DagstoreShardInfo), ErrNotSupported\n\t}\n\treturn s.Internal.DagstoreListShards(p0)\n}\n```",
-            "summary": "DagstoreListShards returns information about all shards known to the\nDAG store. Only available on nodes running the markets subsystem.\n",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]DagstoreShardInfo",
-                "description": "[]DagstoreShardInfo",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
-                                "State": "ShardStateAvailable",
-                                "Error": "\u003cerror\u003e"
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Error": {
-                                    "type": "string"
-                                },
-                                "Key": {
-                                    "type": "string"
-                                },
-                                "State": {
-                                    "type": "string"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5934"
-            }
-        },
-        {
-            "name": "Filecoin.DagstoreLookupPieces",
-            "description": "```go\nfunc (s *StorageMinerStruct) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {\n\tif s.Internal.DagstoreLookupPieces == nil {\n\t\treturn *new([]DagstoreShardInfo), ErrNotSupported\n\t}\n\treturn s.Internal.DagstoreLookupPieces(p0, p1)\n}\n```",
-            "summary": "DagstoreLookupPieces returns information about shards that contain the given CID.\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "title": "Content Identifier",
-                        "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                        "examples": [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "[]DagstoreShardInfo",
-                "description": "[]DagstoreShardInfo",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
-                                "State": "ShardStateAvailable",
-                                "Error": "\u003cerror\u003e"
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Error": {
-                                    "type": "string"
-                                },
-                                "Key": {
-                                    "type": "string"
-                                },
-                                "State": {
-                                    "type": "string"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5945"
-            }
-        },
-        {
-            "name": "Filecoin.DagstoreRecoverShard",
-            "description": "```go\nfunc (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string) error {\n\tif s.Internal.DagstoreRecoverShard == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DagstoreRecoverShard(p0, p1)\n}\n```",
-            "summary": "DagstoreRecoverShard attempts to recover a failed shard.\n\nThis operation fails if the shard is not in ShardStateErrored state.\nIt blocks until recovery finishes. If recovery failed, it returns the\nerror.\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "string",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "string value"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5956"
-            }
-        },
-        {
-            "name": "Filecoin.DagstoreRegisterShard",
-            "description": "```go\nfunc (s *StorageMinerStruct) DagstoreRegisterShard(p0 context.Context, p1 string) error {\n\tif s.Internal.DagstoreRegisterShard == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DagstoreRegisterShard(p0, p1)\n}\n```",
-            "summary": "DagstoreRegisterShard registers a shard manually with dagstore with given pieceCID\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "string",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "string value"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5967"
-            }
-        },
-        {
-            "name": "Filecoin.DealsConsiderOfflineRetrievalDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {\n\tif s.Internal.DealsConsiderOfflineRetrievalDeals == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.DealsConsiderOfflineRetrievalDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "bool",
-                "description": "bool",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        true
-                    ],
-                    "type": [
-                        "boolean"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5978"
-            }
-        },
-        {
-            "name": "Filecoin.DealsConsiderOfflineStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {\n\tif s.Internal.DealsConsiderOfflineStorageDeals == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.DealsConsiderOfflineStorageDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "bool",
-                "description": "bool",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        true
-                    ],
-                    "type": [
-                        "boolean"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5989"
-            }
-        },
-        {
-            "name": "Filecoin.DealsConsiderOnlineRetrievalDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {\n\tif s.Internal.DealsConsiderOnlineRetrievalDeals == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.DealsConsiderOnlineRetrievalDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "bool",
-                "description": "bool",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        true
-                    ],
-                    "type": [
-                        "boolean"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6000"
-            }
-        },
-        {
-            "name": "Filecoin.DealsConsiderOnlineStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {\n\tif s.Internal.DealsConsiderOnlineStorageDeals == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.DealsConsiderOnlineStorageDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "bool",
-                "description": "bool",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        true
-                    ],
-                    "type": [
-                        "boolean"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6011"
-            }
-        },
-        {
-            "name": "Filecoin.DealsConsiderUnverifiedStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {\n\tif s.Internal.DealsConsiderUnverifiedStorageDeals == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.DealsConsiderUnverifiedStorageDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "bool",
-                "description": "bool",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        true
-                    ],
-                    "type": [
-                        "boolean"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6022"
-            }
-        },
-        {
-            "name": "Filecoin.DealsConsiderVerifiedStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {\n\tif s.Internal.DealsConsiderVerifiedStorageDeals == nil {\n\t\treturn false, ErrNotSupported\n\t}\n\treturn s.Internal.DealsConsiderVerifiedStorageDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "bool",
-                "description": "bool",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        true
-                    ],
-                    "type": [
-                        "boolean"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6033"
-            }
-        },
-        {
-            "name": "Filecoin.DealsImportData",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {\n\tif s.Internal.DealsImportData == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsImportData(p0, p1, p2)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "title": "Content Identifier",
-                        "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                        "examples": [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "string",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "string value"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6044"
-            }
-        },
-        {
-            "name": "Filecoin.DealsList",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsList(p0 context.Context) ([]*MarketDeal, error) {\n\tif s.Internal.DealsList == nil {\n\t\treturn *new([]*MarketDeal), ErrNotSupported\n\t}\n\treturn s.Internal.DealsList(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]*MarketDeal",
-                "description": "[]*MarketDeal",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "Proposal": {
-                                    "PieceCID": {
-                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                    },
-                                    "PieceSize": 1032,
-                                    "VerifiedDeal": true,
-                                    "Client": "f01234",
-                                    "Provider": "f01234",
-                                    "Label": "",
-                                    "StartEpoch": 10101,
-                                    "EndEpoch": 10101,
-                                    "StoragePricePerEpoch": "0",
-                                    "ProviderCollateral": "0",
-                                    "ClientCollateral": "0"
-                                },
-                                "State": {
-                                    "SectorStartEpoch": 10101,
-                                    "LastUpdatedEpoch": 10101,
-                                    "SlashEpoch": 10101
-                                }
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Proposal": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "Client": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "ClientCollateral": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "EndEpoch": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "Label": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "PieceCID": {
-                                            "title": "Content Identifier",
-                                            "type": "string"
-                                        },
-                                        "PieceSize": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "Provider": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "ProviderCollateral": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "StartEpoch": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "StoragePricePerEpoch": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "VerifiedDeal": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "type": "object"
-                                },
-                                "State": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "LastUpdatedEpoch": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "SectorStartEpoch": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "SlashEpoch": {
-                                            "title": "number",
-                                            "type": "number"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6055"
-            }
-        },
-        {
-            "name": "Filecoin.DealsPieceCidBlocklist",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {\n\tif s.Internal.DealsPieceCidBlocklist == nil {\n\t\treturn *new([]cid.Cid), ErrNotSupported\n\t}\n\treturn s.Internal.DealsPieceCidBlocklist(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]cid.Cid",
-                "description": "[]cid.Cid",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "title": "Content Identifier",
-                            "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                            "type": [
-                                "string"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6066"
-            }
-        },
-        {
-            "name": "Filecoin.DealsSetConsiderOfflineRetrievalDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {\n\tif s.Internal.DealsSetConsiderOfflineRetrievalDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsSetConsiderOfflineRetrievalDeals(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6077"
-            }
-        },
-        {
-            "name": "Filecoin.DealsSetConsiderOfflineStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {\n\tif s.Internal.DealsSetConsiderOfflineStorageDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsSetConsiderOfflineStorageDeals(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6088"
-            }
-        },
-        {
-            "name": "Filecoin.DealsSetConsiderOnlineRetrievalDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {\n\tif s.Internal.DealsSetConsiderOnlineRetrievalDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsSetConsiderOnlineRetrievalDeals(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6099"
-            }
-        },
-        {
-            "name": "Filecoin.DealsSetConsiderOnlineStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {\n\tif s.Internal.DealsSetConsiderOnlineStorageDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsSetConsiderOnlineStorageDeals(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6110"
-            }
-        },
-        {
-            "name": "Filecoin.DealsSetConsiderUnverifiedStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {\n\tif s.Internal.DealsSetConsiderUnverifiedStorageDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsSetConsiderUnverifiedStorageDeals(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6121"
-            }
-        },
-        {
-            "name": "Filecoin.DealsSetConsiderVerifiedStorageDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {\n\tif s.Internal.DealsSetConsiderVerifiedStorageDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsSetConsiderVerifiedStorageDeals(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6132"
-            }
-        },
-        {
-            "name": "Filecoin.DealsSetPieceCidBlocklist",
-            "description": "```go\nfunc (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {\n\tif s.Internal.DealsSetPieceCidBlocklist == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.DealsSetPieceCidBlocklist(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "[]cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            [
-                                {
-                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                }
-                            ]
-                        ],
-                        "items": [
-                            {
-                                "title": "Content Identifier",
-                                "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                                "type": [
-                                    "string"
-                                ]
-                            }
-                        ],
-                        "type": [
-                            "array"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6143"
-            }
-        },
-        {
-            "name": "Filecoin.IndexerAnnounceAllDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) IndexerAnnounceAllDeals(p0 context.Context) error {\n\tif s.Internal.IndexerAnnounceAllDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.IndexerAnnounceAllDeals(p0)\n}\n```",
-            "summary": "IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.\n",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6154"
-            }
-        },
-        {
-            "name": "Filecoin.IndexerAnnounceDeal",
-            "description": "```go\nfunc (s *StorageMinerStruct) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {\n\tif s.Internal.IndexerAnnounceDeal == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.IndexerAnnounceDeal(p0, p1)\n}\n```",
-            "summary": "IndexerAnnounceDeal informs indexer nodes that a new deal was received,\nso they can download its index\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "title": "Content Identifier",
-                        "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                        "examples": [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6165"
-            }
-        },
-        {
-            "name": "Filecoin.MarketCancelDataTransfer",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {\n\tif s.Internal.MarketCancelDataTransfer == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)\n}\n```",
-            "summary": "MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "datatransfer.TransferID",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            3
-                        ],
-                        "type": [
-                            "number"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "peer.ID",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p3",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6176"
-            }
-        },
-        {
-            "name": "Filecoin.MarketDataTransferDiagnostics",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketDataTransferDiagnostics(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) {\n\tif s.Internal.MarketDataTransferDiagnostics == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.MarketDataTransferDiagnostics(p0, p1)\n}\n```",
-            "summary": "MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "peer.ID",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "*TransferDiagnostics",
-                "description": "*TransferDiagnostics",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "ReceivingTransfers": [
-                                {
-                                    "RequestID": {},
-                                    "RequestState": "string value",
-                                    "IsCurrentChannelRequest": true,
-                                    "ChannelID": {
-                                        "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                        "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                        "ID": 3
-                                    },
-                                    "ChannelState": {
-                                        "TransferID": 3,
-                                        "Status": 1,
-                                        "BaseCID": {
-                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                        },
-                                        "IsInitiator": true,
-                                        "IsSender": true,
-                                        "Voucher": "string value",
-                                        "Message": "string value",
-                                        "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                        "Transferred": 42,
-                                        "Stages": {
-                                            "Stages": [
-                                                {
-                                                    "Name": "string value",
-                                                    "Description": "string value",
-                                                    "CreatedTime": "0001-01-01T00:00:00Z",
-                                                    "UpdatedTime": "0001-01-01T00:00:00Z",
-                                                    "Logs": [
-                                                        {
-                                                            "Log": "string value",
-                                                            "UpdatedTime": "0001-01-01T00:00:00Z"
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    "Diagnostics": [
-                                        "string value"
-                                    ]
-                                }
-                            ],
-                            "SendingTransfers": [
-                                {
-                                    "RequestID": {},
-                                    "RequestState": "string value",
-                                    "IsCurrentChannelRequest": true,
-                                    "ChannelID": {
-                                        "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                        "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                        "ID": 3
-                                    },
-                                    "ChannelState": {
-                                        "TransferID": 3,
-                                        "Status": 1,
-                                        "BaseCID": {
-                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                        },
-                                        "IsInitiator": true,
-                                        "IsSender": true,
-                                        "Voucher": "string value",
-                                        "Message": "string value",
-                                        "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                        "Transferred": 42,
-                                        "Stages": {
-                                            "Stages": [
-                                                {
-                                                    "Name": "string value",
-                                                    "Description": "string value",
-                                                    "CreatedTime": "0001-01-01T00:00:00Z",
-                                                    "UpdatedTime": "0001-01-01T00:00:00Z",
-                                                    "Logs": [
-                                                        {
-                                                            "Log": "string value",
-                                                            "UpdatedTime": "0001-01-01T00:00:00Z"
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    "Diagnostics": [
-                                        "string value"
-                                    ]
-                                }
-                            ]
-                        }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "ReceivingTransfers": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "ChannelID": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "ID": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Initiator": {
-                                                "type": "string"
-                                            },
-                                            "Responder": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "ChannelState": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "BaseCID": {
-                                                "title": "Content Identifier",
-                                                "type": "string"
-                                            },
-                                            "IsInitiator": {
-                                                "type": "boolean"
-                                            },
-                                            "IsSender": {
-                                                "type": "boolean"
-                                            },
-                                            "Message": {
-                                                "type": "string"
-                                            },
-                                            "OtherPeer": {
-                                                "type": "string"
-                                            },
-                                            "Stages": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "Stages": {
-                                                        "items": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "CreatedTime": {
-                                                                    "additionalProperties": false,
-                                                                    "type": "object"
-                                                                },
-                                                                "Description": {
-                                                                    "type": "string"
-                                                                },
-                                                                "Logs": {
-                                                                    "items": {
-                                                                        "additionalProperties": false,
-                                                                        "properties": {
-                                                                            "Log": {
-                                                                                "type": "string"
-                                                                            },
-                                                                            "UpdatedTime": {
-                                                                                "additionalProperties": false,
-                                                                                "type": "object"
-                                                                            }
-                                                                        },
-                                                                        "type": "object"
-                                                                    },
-                                                                    "type": "array"
-                                                                },
-                                                                "Name": {
-                                                                    "type": "string"
-                                                                },
-                                                                "UpdatedTime": {
-                                                                    "additionalProperties": false,
-                                                                    "type": "object"
-                                                                }
-                                                            },
-                                                            "type": "object"
-                                                        },
-                                                        "type": "array"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            },
-                                            "Status": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "TransferID": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Transferred": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Voucher": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "Diagnostics": {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    "IsCurrentChannelRequest": {
-                                        "type": "boolean"
-                                    },
-                                    "RequestID": {
-                                        "additionalProperties": false,
-                                        "type": "object"
-                                    },
-                                    "RequestState": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
-                        "SendingTransfers": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "ChannelID": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "ID": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Initiator": {
-                                                "type": "string"
-                                            },
-                                            "Responder": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "ChannelState": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "BaseCID": {
-                                                "title": "Content Identifier",
-                                                "type": "string"
-                                            },
-                                            "IsInitiator": {
-                                                "type": "boolean"
-                                            },
-                                            "IsSender": {
-                                                "type": "boolean"
-                                            },
-                                            "Message": {
-                                                "type": "string"
-                                            },
-                                            "OtherPeer": {
-                                                "type": "string"
-                                            },
-                                            "Stages": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "Stages": {
-                                                        "items": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "CreatedTime": {
-                                                                    "additionalProperties": false,
-                                                                    "type": "object"
-                                                                },
-                                                                "Description": {
-                                                                    "type": "string"
-                                                                },
-                                                                "Logs": {
-                                                                    "items": {
-                                                                        "additionalProperties": false,
-                                                                        "properties": {
-                                                                            "Log": {
-                                                                                "type": "string"
-                                                                            },
-                                                                            "UpdatedTime": {
-                                                                                "additionalProperties": false,
-                                                                                "type": "object"
-                                                                            }
-                                                                        },
-                                                                        "type": "object"
-                                                                    },
-                                                                    "type": "array"
-                                                                },
-                                                                "Name": {
-                                                                    "type": "string"
-                                                                },
-                                                                "UpdatedTime": {
-                                                                    "additionalProperties": false,
-                                                                    "type": "object"
-                                                                }
-                                                            },
-                                                            "type": "object"
-                                                        },
-                                                        "type": "array"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            },
-                                            "Status": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "TransferID": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Transferred": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Voucher": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "Diagnostics": {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    "IsCurrentChannelRequest": {
-                                        "type": "boolean"
-                                    },
-                                    "RequestID": {
-                                        "additionalProperties": false,
-                                        "type": "object"
-                                    },
-                                    "RequestState": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6187"
-            }
-        },
-        {
-            "name": "Filecoin.MarketGetAsk",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {\n\tif s.Internal.MarketGetAsk == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.MarketGetAsk(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "*storagemarket.SignedStorageAsk",
-                "description": "*storagemarket.SignedStorageAsk",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "Ask": {
-                                "Price": "0",
-                                "VerifiedPrice": "0",
-                                "MinPieceSize": 1032,
-                                "MaxPieceSize": 1032,
-                                "Miner": "f01234",
-                                "Timestamp": 10101,
-                                "Expiry": 10101,
-                                "SeqNo": 42
-                            },
-                            "Signature": {
-                                "Type": 2,
-                                "Data": "Ynl0ZSBhcnJheQ=="
-                            }
-                        }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "Ask": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Expiry": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "MaxPieceSize": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "MinPieceSize": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Miner": {
-                                    "additionalProperties": false,
-                                    "type": "object"
-                                },
-                                "Price": {
-                                    "additionalProperties": false,
-                                    "type": "object"
-                                },
-                                "SeqNo": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Timestamp": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "VerifiedPrice": {
-                                    "additionalProperties": false,
-                                    "type": "object"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "Signature": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "Data": {
-                                    "media": {
-                                        "binaryEncoding": "base64"
-                                    },
-                                    "type": "string"
-                                },
-                                "Type": {
-                                    "title": "number",
-                                    "type": "number"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6209"
-            }
-        },
-        {
-            "name": "Filecoin.MarketGetRetrievalAsk",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {\n\tif s.Internal.MarketGetRetrievalAsk == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.MarketGetRetrievalAsk(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "*retrievalmarket.Ask",
-                "description": "*retrievalmarket.Ask",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "PricePerByte": "0",
-                            "UnsealPrice": "0",
-                            "PaymentInterval": 42,
-                            "PaymentIntervalIncrease": 42
-                        }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "PaymentInterval": {
-                            "title": "number",
-                            "type": "number"
-                        },
-                        "PaymentIntervalIncrease": {
-                            "title": "number",
-                            "type": "number"
-                        },
-                        "PricePerByte": {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        "UnsealPrice": {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6231"
-            }
-        },
-        {
-            "name": "Filecoin.MarketImportDealData",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {\n\tif s.Internal.MarketImportDealData == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.MarketImportDealData(p0, p1, p2)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "title": "Content Identifier",
-                        "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                        "examples": [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "string",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "string value"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6242"
-            }
-        },
-        {
-            "name": "Filecoin.MarketListDataTransfers",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketListDataTransfers(p0 context.Context) ([]DataTransferChannel, error) {\n\tif s.Internal.MarketListDataTransfers == nil {\n\t\treturn *new([]DataTransferChannel), ErrNotSupported\n\t}\n\treturn s.Internal.MarketListDataTransfers(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]DataTransferChannel",
-                "description": "[]DataTransferChannel",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "TransferID": 3,
-                                "Status": 1,
-                                "BaseCID": {
-                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                },
-                                "IsInitiator": true,
-                                "IsSender": true,
-                                "Voucher": "string value",
-                                "Message": "string value",
-                                "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                "Transferred": 42,
-                                "Stages": {
-                                    "Stages": [
-                                        {
-                                            "Name": "string value",
-                                            "Description": "string value",
-                                            "CreatedTime": "0001-01-01T00:00:00Z",
-                                            "UpdatedTime": "0001-01-01T00:00:00Z",
-                                            "Logs": [
-                                                {
-                                                    "Log": "string value",
-                                                    "UpdatedTime": "0001-01-01T00:00:00Z"
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "BaseCID": {
-                                    "title": "Content Identifier",
-                                    "type": "string"
-                                },
-                                "IsInitiator": {
-                                    "type": "boolean"
-                                },
-                                "IsSender": {
-                                    "type": "boolean"
-                                },
-                                "Message": {
-                                    "type": "string"
-                                },
-                                "OtherPeer": {
-                                    "type": "string"
-                                },
-                                "Stages": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "Stages": {
-                                            "items": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "CreatedTime": {
-                                                        "additionalProperties": false,
-                                                        "type": "object"
-                                                    },
-                                                    "Description": {
-                                                        "type": "string"
-                                                    },
-                                                    "Logs": {
-                                                        "items": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "Log": {
-                                                                    "type": "string"
-                                                                },
-                                                                "UpdatedTime": {
-                                                                    "additionalProperties": false,
-                                                                    "type": "object"
-                                                                }
-                                                            },
-                                                            "type": "object"
-                                                        },
-                                                        "type": "array"
-                                                    },
-                                                    "Name": {
-                                                        "type": "string"
-                                                    },
-                                                    "UpdatedTime": {
-                                                        "additionalProperties": false,
-                                                        "type": "object"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            },
-                                            "type": "array"
-                                        }
-                                    },
-                                    "type": "object"
-                                },
-                                "Status": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "TransferID": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Transferred": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "Voucher": {
-                                    "type": "string"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6253"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5256"
             }
         },
         {
@@ -2649,6 +814,7 @@
                                     "ClientCollateral": "0"
                                 },
                                 "State": {
+                                    "SectorNumber": 9,
                                     "SectorStartEpoch": 10101,
                                     "LastUpdatedEpoch": 10101,
                                     "SlashEpoch": 10101
@@ -2716,6 +882,10 @@
                                             "title": "number",
                                             "type": "number"
                                         },
+                                        "SectorNumber": {
+                                            "title": "number",
+                                            "type": "number"
+                                        },
                                         "SectorStartEpoch": {
                                             "title": "number",
                                             "type": "number"
@@ -2743,753 +913,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6264"
-            }
-        },
-        {
-            "name": "Filecoin.MarketListIncompleteDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {\n\tif s.Internal.MarketListIncompleteDeals == nil {\n\t\treturn *new([]storagemarket.MinerDeal), ErrNotSupported\n\t}\n\treturn s.Internal.MarketListIncompleteDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]storagemarket.MinerDeal",
-                "description": "[]storagemarket.MinerDeal",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "Proposal": {
-                                    "PieceCID": {
-                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                    },
-                                    "PieceSize": 1032,
-                                    "VerifiedDeal": true,
-                                    "Client": "f01234",
-                                    "Provider": "f01234",
-                                    "Label": "",
-                                    "StartEpoch": 10101,
-                                    "EndEpoch": 10101,
-                                    "StoragePricePerEpoch": "0",
-                                    "ProviderCollateral": "0",
-                                    "ClientCollateral": "0"
-                                },
-                                "ClientSignature": {
-                                    "Type": 2,
-                                    "Data": "Ynl0ZSBhcnJheQ=="
-                                },
-                                "ProposalCid": {
-                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                },
-                                "AddFundsCid": {
-                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                },
-                                "PublishCid": {
-                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                },
-                                "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                "State": 42,
-                                "PiecePath": ".lotusminer/fstmp123",
-                                "MetadataPath": ".lotusminer/fstmp123",
-                                "SlashEpoch": 10101,
-                                "FastRetrieval": true,
-                                "Message": "string value",
-                                "FundsReserved": "0",
-                                "Ref": {
-                                    "TransferType": "string value",
-                                    "Root": {
-                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                    },
-                                    "PieceCid": {
-                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                    },
-                                    "PieceSize": 1024,
-                                    "RawBlockSize": 42
-                                },
-                                "AvailableForRetrieval": true,
-                                "DealID": 5432,
-                                "CreationTime": "0001-01-01T00:00:00Z",
-                                "TransferChannelId": {
-                                    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-                                    "ID": 3
-                                },
-                                "SectorNumber": 9,
-                                "InboundCAR": "string value"
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "AddFundsCid": {
-                                    "title": "Content Identifier",
-                                    "type": "string"
-                                },
-                                "AvailableForRetrieval": {
-                                    "type": "boolean"
-                                },
-                                "Client": {
-                                    "type": "string"
-                                },
-                                "ClientSignature": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "Data": {
-                                            "media": {
-                                                "binaryEncoding": "base64"
-                                            },
-                                            "type": "string"
-                                        },
-                                        "Type": {
-                                            "title": "number",
-                                            "type": "number"
-                                        }
-                                    },
-                                    "type": "object"
-                                },
-                                "CreationTime": {
-                                    "additionalProperties": false,
-                                    "type": "object"
-                                },
-                                "DealID": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "FastRetrieval": {
-                                    "type": "boolean"
-                                },
-                                "FundsReserved": {
-                                    "additionalProperties": false,
-                                    "type": "object"
-                                },
-                                "InboundCAR": {
-                                    "type": "string"
-                                },
-                                "Message": {
-                                    "type": "string"
-                                },
-                                "MetadataPath": {
-                                    "type": "string"
-                                },
-                                "Miner": {
-                                    "type": "string"
-                                },
-                                "PiecePath": {
-                                    "type": "string"
-                                },
-                                "Proposal": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "Client": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "ClientCollateral": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "EndEpoch": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "Label": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "PieceCID": {
-                                            "title": "Content Identifier",
-                                            "type": "string"
-                                        },
-                                        "PieceSize": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "Provider": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "ProviderCollateral": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "StartEpoch": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "StoragePricePerEpoch": {
-                                            "additionalProperties": false,
-                                            "type": "object"
-                                        },
-                                        "VerifiedDeal": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "type": "object"
-                                },
-                                "ProposalCid": {
-                                    "title": "Content Identifier",
-                                    "type": "string"
-                                },
-                                "PublishCid": {
-                                    "title": "Content Identifier",
-                                    "type": "string"
-                                },
-                                "Ref": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "PieceCid": {
-                                            "title": "Content Identifier",
-                                            "type": "string"
-                                        },
-                                        "PieceSize": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "RawBlockSize": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "Root": {
-                                            "title": "Content Identifier",
-                                            "type": "string"
-                                        },
-                                        "TransferType": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                },
-                                "SectorNumber": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "SlashEpoch": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "State": {
-                                    "title": "number",
-                                    "type": "number"
-                                },
-                                "TransferChannelId": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "ID": {
-                                            "title": "number",
-                                            "type": "number"
-                                        },
-                                        "Initiator": {
-                                            "type": "string"
-                                        },
-                                        "Responder": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            },
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6275"
-            }
-        },
-        {
-            "name": "Filecoin.MarketListRetrievalDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketListRetrievalDeals(p0 context.Context) ([]struct{}, error) {\n\tif s.Internal.MarketListRetrievalDeals == nil {\n\t\treturn *new([]struct{}), ErrNotSupported\n\t}\n\treturn s.Internal.MarketListRetrievalDeals(p0)\n}\n```",
-            "summary": "MarketListRetrievalDeals is deprecated, returns empty list\n",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]struct{}",
-                "description": "[]struct{}",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {}
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "additionalProperties": false,
-                            "type": [
-                                "object"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6286"
-            }
-        },
-        {
-            "name": "Filecoin.MarketPendingDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketPendingDeals(p0 context.Context) (PendingDealInfo, error) {\n\tif s.Internal.MarketPendingDeals == nil {\n\t\treturn *new(PendingDealInfo), ErrNotSupported\n\t}\n\treturn s.Internal.MarketPendingDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "PendingDealInfo",
-                "description": "PendingDealInfo",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "Deals": [
-                                {
-                                    "Proposal": {
-                                        "PieceCID": {
-                                            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                        },
-                                        "PieceSize": 1032,
-                                        "VerifiedDeal": true,
-                                        "Client": "f01234",
-                                        "Provider": "f01234",
-                                        "Label": "",
-                                        "StartEpoch": 10101,
-                                        "EndEpoch": 10101,
-                                        "StoragePricePerEpoch": "0",
-                                        "ProviderCollateral": "0",
-                                        "ClientCollateral": "0"
-                                    },
-                                    "ClientSignature": {
-                                        "Type": 2,
-                                        "Data": "Ynl0ZSBhcnJheQ=="
-                                    }
-                                }
-                            ],
-                            "PublishPeriodStart": "0001-01-01T00:00:00Z",
-                            "PublishPeriod": 60000000000
-                        }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "Deals": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "ClientSignature": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "Data": {
-                                                "media": {
-                                                    "binaryEncoding": "base64"
-                                                },
-                                                "type": "string"
-                                            },
-                                            "Type": {
-                                                "title": "number",
-                                                "type": "number"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "Proposal": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "Client": {
-                                                "additionalProperties": false,
-                                                "type": "object"
-                                            },
-                                            "ClientCollateral": {
-                                                "additionalProperties": false,
-                                                "type": "object"
-                                            },
-                                            "EndEpoch": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Label": {
-                                                "additionalProperties": false,
-                                                "type": "object"
-                                            },
-                                            "PieceCID": {
-                                                "title": "Content Identifier",
-                                                "type": "string"
-                                            },
-                                            "PieceSize": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "Provider": {
-                                                "additionalProperties": false,
-                                                "type": "object"
-                                            },
-                                            "ProviderCollateral": {
-                                                "additionalProperties": false,
-                                                "type": "object"
-                                            },
-                                            "StartEpoch": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "StoragePricePerEpoch": {
-                                                "additionalProperties": false,
-                                                "type": "object"
-                                            },
-                                            "VerifiedDeal": {
-                                                "type": "boolean"
-                                            }
-                                        },
-                                        "type": "object"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
-                        "PublishPeriod": {
-                            "title": "number",
-                            "type": "number"
-                        },
-                        "PublishPeriodStart": {
-                            "format": "date-time",
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6297"
-            }
-        },
-        {
-            "name": "Filecoin.MarketPublishPendingDeals",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketPublishPendingDeals(p0 context.Context) error {\n\tif s.Internal.MarketPublishPendingDeals == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.MarketPublishPendingDeals(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6308"
-            }
-        },
-        {
-            "name": "Filecoin.MarketRestartDataTransfer",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {\n\tif s.Internal.MarketRestartDataTransfer == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.MarketRestartDataTransfer(p0, p1, p2, p3)\n}\n```",
-            "summary": "MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer\n",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "datatransfer.TransferID",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            3
-                        ],
-                        "type": [
-                            "number"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "peer.ID",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p3",
-                    "description": "bool",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            true
-                        ],
-                        "type": [
-                            "boolean"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6319"
-            }
-        },
-        {
-            "name": "Filecoin.MarketRetryPublishDeal",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {\n\tif s.Internal.MarketRetryPublishDeal == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.MarketRetryPublishDeal(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "title": "Content Identifier",
-                        "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                        "examples": [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6330"
-            }
-        },
-        {
-            "name": "Filecoin.MarketSetAsk",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {\n\tif s.Internal.MarketSetAsk == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "types.BigInt",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "0"
-                        ],
-                        "additionalProperties": false,
-                        "type": [
-                            "object"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
-                    "description": "types.BigInt",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            "0"
-                        ],
-                        "additionalProperties": false,
-                        "type": [
-                            "object"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p3",
-                    "description": "abi.ChainEpoch",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            10101
-                        ],
-                        "type": [
-                            "number"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p4",
-                    "description": "abi.PaddedPieceSize",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            1032
-                        ],
-                        "type": [
-                            "number"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p5",
-                    "description": "abi.PaddedPieceSize",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            1032
-                        ],
-                        "type": [
-                            "number"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6341"
-            }
-        },
-        {
-            "name": "Filecoin.MarketSetRetrievalAsk",
-            "description": "```go\nfunc (s *StorageMinerStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {\n\tif s.Internal.MarketSetRetrievalAsk == nil {\n\t\treturn ErrNotSupported\n\t}\n\treturn s.Internal.MarketSetRetrievalAsk(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "*retrievalmarket.Ask",
-                    "summary": "",
-                    "schema": {
-                        "examples": [
-                            {
-                                "PricePerByte": "0",
-                                "UnsealPrice": "0",
-                                "PaymentInterval": 42,
-                                "PaymentIntervalIncrease": 42
-                            }
-                        ],
-                        "additionalProperties": false,
-                        "properties": {
-                            "PaymentInterval": {
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "PaymentIntervalIncrease": {
-                                "title": "number",
-                                "type": "number"
-                            },
-                            "PricePerByte": {
-                                "additionalProperties": false,
-                                "type": "object"
-                            },
-                            "UnsealPrice": {
-                                "additionalProperties": false,
-                                "type": "object"
-                            }
-                        },
-                        "type": [
-                            "object"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "Null",
-                "description": "Null",
-                "schema": {
-                    "type": [
-                        "null"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6352"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5267"
             }
         },
         {
@@ -3521,266 +945,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6363"
-            }
-        },
-        {
-            "name": "Filecoin.PiecesGetCIDInfo",
-            "description": "```go\nfunc (s *StorageMinerStruct) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {\n\tif s.Internal.PiecesGetCIDInfo == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.PiecesGetCIDInfo(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "title": "Content Identifier",
-                        "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                        "examples": [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "*piecestore.CIDInfo",
-                "description": "*piecestore.CIDInfo",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "CID": {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            },
-                            "PieceBlockLocations": [
-                                {
-                                    "RelOffset": 42,
-                                    "BlockSize": 42,
-                                    "PieceCID": {
-                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                    }
-                                }
-                            ]
-                        }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "CID": {
-                            "title": "Content Identifier",
-                            "type": "string"
-                        },
-                        "PieceBlockLocations": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "BlockSize": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "PieceCID": {
-                                        "title": "Content Identifier",
-                                        "type": "string"
-                                    },
-                                    "RelOffset": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6374"
-            }
-        },
-        {
-            "name": "Filecoin.PiecesGetPieceInfo",
-            "description": "```go\nfunc (s *StorageMinerStruct) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {\n\tif s.Internal.PiecesGetPieceInfo == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.PiecesGetPieceInfo(p0, p1)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [
-                {
-                    "name": "p1",
-                    "description": "cid.Cid",
-                    "summary": "",
-                    "schema": {
-                        "title": "Content Identifier",
-                        "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                        "examples": [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ],
-                        "type": [
-                            "string"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                }
-            ],
-            "result": {
-                "name": "*piecestore.PieceInfo",
-                "description": "*piecestore.PieceInfo",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        {
-                            "PieceCID": {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            },
-                            "Deals": [
-                                {
-                                    "DealID": 5432,
-                                    "SectorID": 9,
-                                    "Offset": 1032,
-                                    "Length": 1032
-                                }
-                            ]
-                        }
-                    ],
-                    "additionalProperties": false,
-                    "properties": {
-                        "Deals": {
-                            "items": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "DealID": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Length": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "Offset": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "SectorID": {
-                                        "title": "number",
-                                        "type": "number"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
-                        "PieceCID": {
-                            "title": "Content Identifier",
-                            "type": "string"
-                        }
-                    },
-                    "type": [
-                        "object"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6385"
-            }
-        },
-        {
-            "name": "Filecoin.PiecesListCidInfos",
-            "description": "```go\nfunc (s *StorageMinerStruct) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {\n\tif s.Internal.PiecesListCidInfos == nil {\n\t\treturn *new([]cid.Cid), ErrNotSupported\n\t}\n\treturn s.Internal.PiecesListCidInfos(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]cid.Cid",
-                "description": "[]cid.Cid",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "title": "Content Identifier",
-                            "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                            "type": [
-                                "string"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6396"
-            }
-        },
-        {
-            "name": "Filecoin.PiecesListPieces",
-            "description": "```go\nfunc (s *StorageMinerStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {\n\tif s.Internal.PiecesListPieces == nil {\n\t\treturn *new([]cid.Cid), ErrNotSupported\n\t}\n\treturn s.Internal.PiecesListPieces(p0)\n}\n```",
-            "summary": "",
-            "paramStructure": "by-position",
-            "params": [],
-            "result": {
-                "name": "[]cid.Cid",
-                "description": "[]cid.Cid",
-                "summary": "",
-                "schema": {
-                    "examples": [
-                        [
-                            {
-                                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                            }
-                        ]
-                    ],
-                    "items": [
-                        {
-                            "title": "Content Identifier",
-                            "description": "Cid represents a self-describing content addressed identifier. It is formed by a Version, a Codec (which indicates a multicodec-packed content type) and a Multihash.",
-                            "type": [
-                                "string"
-                            ]
-                        }
-                    ],
-                    "type": [
-                        "array"
-                    ]
-                },
-                "required": true,
-                "deprecated": false
-            },
-            "deprecated": false,
-            "externalDocs": {
-                "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6407"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5278"
             }
         },
         {
@@ -3821,7 +986,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6418"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5289"
             }
         },
         {
@@ -3889,7 +1054,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6429"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5300"
             }
         },
         {
@@ -4020,7 +1185,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6440"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5311"
             }
         },
         {
@@ -4151,7 +1316,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6451"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5322"
             }
         },
         {
@@ -4251,7 +1416,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6462"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5333"
             }
         },
         {
@@ -4351,7 +1516,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6473"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5344"
             }
         },
         {
@@ -4451,7 +1616,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6484"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5355"
             }
         },
         {
@@ -4551,7 +1716,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6495"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5366"
             }
         },
         {
@@ -4651,7 +1816,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6506"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5377"
             }
         },
         {
@@ -4751,7 +1916,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6517"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5388"
             }
         },
         {
@@ -4875,7 +2040,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6528"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5399"
             }
         },
         {
@@ -4999,7 +2164,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6539"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5410"
             }
         },
         {
@@ -5114,7 +2279,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6550"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5421"
             }
         },
         {
@@ -5214,7 +2379,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6561"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5432"
             }
         },
         {
@@ -5347,7 +2512,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6572"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5443"
             }
         },
         {
@@ -5471,7 +2636,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6583"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5454"
             }
         },
         {
@@ -5595,7 +2760,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6594"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5465"
             }
         },
         {
@@ -5719,7 +2884,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6605"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5476"
             }
         },
         {
@@ -5852,7 +3017,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6616"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5487"
             }
         },
         {
@@ -5952,7 +3117,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6627"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5498"
             }
         },
         {
@@ -5970,8 +3135,7 @@
                         [
                             "Mining",
                             "Sealing",
-                            "SectorStorage",
-                            "Markets"
+                            "SectorStorage"
                         ]
                     ],
                     "items": [
@@ -5993,7 +3157,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6638"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5509"
             }
         },
         {
@@ -6065,7 +3229,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6649"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5520"
             }
         },
         {
@@ -6115,7 +3279,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6660"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5531"
             }
         },
         {
@@ -6159,7 +3323,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6671"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5542"
             }
         },
         {
@@ -6200,7 +3364,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6682"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5553"
             }
         },
         {
@@ -6444,7 +3608,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6693"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5564"
             }
         },
         {
@@ -6518,7 +3682,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6704"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5575"
             }
         },
         {
@@ -6568,7 +3732,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6715"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5586"
             }
         },
         {
@@ -6597,7 +3761,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6726"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5597"
             }
         },
         {
@@ -6626,7 +3790,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6737"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5608"
             }
         },
         {
@@ -6682,7 +3846,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6748"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5619"
             }
         },
         {
@@ -6705,7 +3869,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6759"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5630"
             }
         },
         {
@@ -6765,7 +3929,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6770"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5641"
             }
         },
         {
@@ -6804,7 +3968,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6781"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5652"
             }
         },
         {
@@ -6844,7 +4008,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6792"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5663"
             }
         },
         {
@@ -6917,7 +4081,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6803"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5674"
             }
         },
         {
@@ -6981,7 +4145,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6814"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5685"
             }
         },
         {
@@ -7044,7 +4208,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6825"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5696"
             }
         },
         {
@@ -7094,7 +4258,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6836"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5707"
             }
         },
         {
@@ -7653,7 +4817,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6847"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5718"
             }
         },
         {
@@ -7694,7 +4858,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6858"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5729"
             }
         },
         {
@@ -7735,7 +4899,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6869"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5740"
             }
         },
         {
@@ -7776,7 +4940,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6880"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5751"
             }
         },
         {
@@ -7817,7 +4981,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6891"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5762"
             }
         },
         {
@@ -7858,7 +5022,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6902"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5773"
             }
         },
         {
@@ -7889,7 +5053,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6913"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5784"
             }
         },
         {
@@ -7939,7 +5103,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6924"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5795"
             }
         },
         {
@@ -7980,7 +5144,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6935"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5806"
             }
         },
         {
@@ -8019,7 +5183,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6946"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5817"
             }
         },
         {
@@ -8083,7 +5247,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6957"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5828"
             }
         },
         {
@@ -8141,7 +5305,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6968"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5839"
             }
         },
         {
@@ -8588,7 +5752,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6979"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5850"
             }
         },
         {
@@ -8624,7 +5788,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6990"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5861"
             }
         },
         {
@@ -8767,7 +5931,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7001"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5872"
             }
         },
         {
@@ -8823,7 +5987,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7012"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5883"
             }
         },
         {
@@ -8862,7 +6026,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7023"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5894"
             }
         },
         {
@@ -9039,7 +6203,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7034"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5905"
             }
         },
         {
@@ -9091,7 +6255,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7045"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5916"
             }
         },
         {
@@ -9283,7 +6447,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7056"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5927"
             }
         },
         {
@@ -9383,7 +6547,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7067"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5938"
             }
         },
         {
@@ -9437,7 +6601,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7078"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5949"
             }
         },
         {
@@ -9476,7 +6640,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7089"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5960"
             }
         },
         {
@@ -9561,7 +6725,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7100"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5971"
             }
         },
         {
@@ -9755,7 +6919,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7111"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5982"
             }
         },
         {
@@ -9853,7 +7017,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7122"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L5993"
             }
         },
         {
@@ -9985,7 +7149,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7133"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6004"
             }
         },
         {
@@ -10039,7 +7203,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7144"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6015"
             }
         },
         {
@@ -10073,7 +7237,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7155"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6026"
             }
         },
         {
@@ -10160,7 +7324,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7166"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6037"
             }
         },
         {
@@ -10214,7 +7378,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7177"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6048"
             }
         },
         {
@@ -10314,7 +7478,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7188"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6059"
             }
         },
         {
@@ -10391,7 +7555,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7199"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6070"
             }
         },
         {
@@ -10482,7 +7646,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7210"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6081"
             }
         },
         {
@@ -10521,7 +7685,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7221"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6092"
             }
         },
         {
@@ -10637,7 +7801,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7232"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6103"
             }
         },
         {
@@ -12737,7 +9901,7 @@
             "deprecated": false,
             "externalDocs": {
                 "description": "Github remote link",
-                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L7243"
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/proxy_gen.go#L6114"
             }
         }
     ]

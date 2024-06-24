@@ -15,9 +15,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DataDog/zstd"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car/v2"
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -46,7 +46,9 @@ func TestEmbeddedBuiltinActorsMetadata(t *testing.T) {
 		cachedCar, err := os.Open(fmt.Sprintf("./actors/v%v.tar.zst", version))
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, cachedCar.Close()) })
-		tarReader := tar.NewReader(zstd.NewReader(cachedCar))
+		zstReader, err := zstd.NewReader(cachedCar)
+		require.NoError(t, err)
+		tarReader := tar.NewReader(zstReader)
 		for {
 			header, err := tarReader.Next()
 			if errors.Is(err, io.EOF) {

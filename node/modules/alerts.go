@@ -100,16 +100,6 @@ func CheckUDPBufferSize(wanted int) func(al *alerting.Alerting) {
 	}
 }
 
-func LegacyMarketsEOL(al *alerting.Alerting) {
-	// Add alert if lotus-miner legacy markets subsystem is still in use
-	alert := al.AddAlertType("system", "EOL")
-
-	// Alert with a message to migrate to Boost or similar markets subsystems
-	al.Raise(alert, map[string]string{
-		"message": "The lotus-miner legacy markets subsystem is deprecated and will be removed in a future release. Please migrate to [Boost](https://boost.filecoin.io) or similar markets subsystems.",
-	})
-}
-
 func CheckFvmConcurrency() func(al *alerting.Alerting) {
 	return func(al *alerting.Alerting) {
 		fvmConcurrency, ok := os.LookupEnv("LOTUS_FVM_CONCURRENCY")

@@ -128,7 +128,7 @@ var infoStateGrowthSimCommand = &cli.Command{
 					return err
 				}
 
-				fmt.Fprintf(cctx.App.Writer, "%d: %s\n", ts.Height(), types.SizeStr(types.NewInt(parentStateSize)))
+				_, _ = fmt.Fprintf(cctx.App.Writer, "%d: %s\n", ts.Height(), types.SizeStr(types.NewInt(parentStateSize)))
 			}
 
 			ts, err = sim.Node.Chainstore.LoadTipSet(cctx.Context, ts.Parents())

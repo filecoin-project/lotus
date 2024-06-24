@@ -16,8 +16,6 @@ import (
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-graphsync"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -27,9 +25,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
-	"github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -44,7 +39,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo/imports"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -96,11 +90,6 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
-	storeIDExample := imports.ID(50)
-	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
-	apiSelExample := api.Selector("Links/21/Hash/Links/42/Hash")
-	clientEvent := retrievalmarket.ClientEventDealAccepted
-
 	block := blocks.Block(&blocks.BasicBlock{})
 	ExampleValues[reflect.TypeOf(&block).Elem()] = block
 
@@ -130,17 +119,7 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
-	addExample(graphsync.NewRequestID())
-	addExample(datatransfer.TransferID(3))
-	addExample(datatransfer.Ongoing)
-	addExample(storeIDExample)
-	addExample(&storeIDExample)
-	addExample(clientEvent)
-	addExample(&clientEvent)
-	addExample(retrievalmarket.ClientEventDealAccepted)
-	addExample(retrievalmarket.DealStatusNew)
-	addExample(&textSelExample)
-	addExample(&apiSelExample)
+
 	addExample(network.ReachabilityPublic)
 	addExample(build.TestNetworkVersion)
 	allocationId := verifreg.AllocationId(0)
@@ -206,10 +185,9 @@ func init() {
 	ExampleValues[reflect.TypeOf(struct{ A multiaddr.Multiaddr }{}).Field(0).Type] = maddr
 
 	// miner specific
-	addExample(filestore.Path(".lotusminer/fstmp123"))
+
 	si := uint64(12)
 	addExample(&si)
-	addExample(retrievalmarket.DealID(5))
 	addExample(map[string]cid.Cid{})
 	addExample(map[string][]api.SealedRef{
 		"98000": {
@@ -313,17 +291,8 @@ func init() {
 		api.SubsystemMining,
 		api.SubsystemSealing,
 		api.SubsystemSectorStorage,
-		api.SubsystemMarkets,
 	})
-	addExample(api.DagstoreShardResult{
-		Key:   "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
-		Error: "<error>",
-	})
-	addExample(api.DagstoreShardInfo{
-		Key:   "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
-		State: "ShardStateAvailable",
-		Error: "<error>",
-	})
+
 	addExample(storiface.ResourceTable)
 	addExample(network.ScopeStat{
 		Memory:             123,
@@ -456,10 +425,6 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			i = &api.GatewayStruct{}
 			t = reflect.TypeOf(new(struct{ api.Gateway })).Elem()
 			permStruct = append(permStruct, reflect.TypeOf(api.GatewayStruct{}.Internal))
-		case "Curio":
-			i = &api.CurioStruct{}
-			t = reflect.TypeOf(new(struct{ api.Curio })).Elem()
-			permStruct = append(permStruct, reflect.TypeOf(api.CurioStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

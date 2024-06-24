@@ -212,6 +212,14 @@ type dealStateV{{.v}} struct {
 	ds{{.v}} market{{.v}}.DealState
 }
 
+func (d dealStateV{{.v}}) SectorNumber() abi.SectorNumber {
+{{if (le .v 12)}}
+	return 0
+{{else}}
+	return d.ds{{.v}}.SectorNumber
+{{end}}
+}
+
 func (d dealStateV{{.v}}) SectorStartEpoch() abi.ChainEpoch {
 	return d.ds{{.v}}.SectorStartEpoch
 }

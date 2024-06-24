@@ -26,11 +26,14 @@ var pragmas = []string{
 	"PRAGMA temp_store = memory",
 	"PRAGMA mmap_size = 30000000000",
 	"PRAGMA page_size = 32768",
-	"PRAGMA auto_vacuum = NONE", // not useful until we implement GC
+	"PRAGMA auto_vacuum = NONE",
 	"PRAGMA automatic_index = OFF",
 	"PRAGMA journal_mode = WAL",
-	"PRAGMA read_uncommitted = ON",
+	"PRAGMA wal_autocheckpoint = 256", // checkpoint @ 256 pages
+	"PRAGMA journal_size_limit = 0",   // always reset journal and wal files
 }
+
+// Any changes to this schema should be matched for the `lotus-shed indexes backfill-events` command
 
 var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS event (
@@ -72,6 +75,7 @@ var ddls = []string{
 	`INSERT OR IGNORE INTO _meta (version) VALUES (2)`,
 	`INSERT OR IGNORE INTO _meta (version) VALUES (3)`,
 	`INSERT OR IGNORE INTO _meta (version) VALUES (4)`,
+	`INSERT OR IGNORE INTO _meta (version) VALUES (5)`,
 }
 
 var (
@@ -79,7 +83,7 @@ var (
 )
 
 const (
-	schemaVersion = 4
+	schemaVersion = 5
 
 	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
 	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
@@ -365,9 +369,42 @@ func (ei *EventIndex) migrateToVersion4(ctx context.Context) error {
 		return xerrors.Errorf("commit transaction: %w", err)
 	}
 
+	log.Infof("Successfully migrated event index from version 3 to version 4 in %s", time.Since(now))
+	return nil
+}
+
+func (ei *EventIndex) migrateToVersion5(ctx context.Context) error {
+	now := time.Now()
+
+	tx, err := ei.db.BeginTx(ctx, nil)
+	if err != nil {
+		return xerrors.Errorf("begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	stmtEventIndexUpdate, err := tx.PrepareContext(ctx, "UPDATE event SET event_index = (SELECT COUNT(*) FROM event e2 WHERE e2.tipset_key_cid = event.tipset_key_cid AND e2.id <= event.id) - 1")
+	if err != nil {
+		return xerrors.Errorf("prepare stmtEventIndexUpdate: %w", err)
+	}
+
+	_, err = stmtEventIndexUpdate.ExecContext(ctx)
+	if err != nil {
+		return xerrors.Errorf("update event index: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, "INSERT OR IGNORE INTO _meta (version) VALUES (5)")
+	if err != nil {
+		return xerrors.Errorf("increment _meta version: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return xerrors.Errorf("commit transaction: %w", err)
+	}
+
 	ei.vacuumDBAndCheckpointWAL(ctx)
 
-	log.Infof("Successfully migrated event index from version 3 to version 4 in %s", time.Since(now))
+	log.Infof("Successfully migrated event index from version 4 to version 5 in %s", time.Since(now))
 	return nil
 }
 
@@ -402,6 +439,9 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 	eventIndex := EventIndex{db: db}
 
 	q, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
+	if q != nil {
+		defer func() { _ = q.Close() }()
+	}
 	if errors.Is(err, sql.ErrNoRows) || !q.Next() {
 		// empty database, create the schema
 		for _, ddl := range ddls {
@@ -452,6 +492,16 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 			version = 4
 		}
 
+		if version == 4 {
+			log.Infof("Upgrading event index from version 4 to version 5")
+			err = eventIndex.migrateToVersion5(ctx)
+			if err != nil {
+				_ = db.Close()
+				return nil, xerrors.Errorf("could not migrate event index schema from version 4 to version 5: %w", err)
+			}
+			version = 5
+		}
+
 		if version != schemaVersion {
 			_ = db.Close()
 			return nil, xerrors.Errorf("invalid database version: got %d, expected %d", version, schemaVersion)
@@ -475,7 +525,7 @@ func (ei *EventIndex) Close() error {
 }
 
 func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
-	tx, err := ei.db.Begin()
+	tx, err := ei.db.BeginTx(ctx, nil)
 	if err != nil {
 		return xerrors.Errorf("begin transaction: %w", err)
 	}
@@ -505,10 +555,11 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return xerrors.Errorf("load executed messages: %w", err)
 	}
 
+	eventCount := 0
 	// iterate over all executed messages in this tipset and insert them into the database if they
 	// don't exist, otherwise mark them as not reverted
 	for msgIdx, em := range ems {
-		for evIdx, ev := range em.Events() {
+		for _, ev := range em.Events() {
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
 				var ok bool
@@ -532,7 +583,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				te.msgTs.Key().Bytes(),     // tipset_key
 				tsKeyCid.Bytes(),           // tipset_key_cid
 				addr.Bytes(),               // emitter_addr
-				evIdx,                      // event_index
+				eventCount,                 // event_index
 				em.Message().Cid().Bytes(), // message_cid
 				msgIdx,                     // message_index
 			).Scan(&entryID)
@@ -547,7 +598,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
-					evIdx,                      // event_index
+					eventCount,                 // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
 					false,                      // reverted
@@ -582,7 +633,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
-					evIdx,                      // event_index
+					eventCount,                 // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
 				)
@@ -600,6 +651,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					log.Warnf("restored %d events but expected only one to exist", rowsAffected)
 				}
 			}
+			eventCount++
 		}
 	}
 
@@ -695,6 +747,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	if err != nil {
 		return xerrors.Errorf("prepare prefill query: %w", err)
 	}
+	defer func() { _ = stmt.Close() }()
 
 	q, err := stmt.QueryContext(ctx, values...)
 	if err != nil {
@@ -703,6 +756,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		}
 		return xerrors.Errorf("exec prefill query: %w", err)
 	}
+	defer func() { _ = q.Close() }()
 
 	var ces []*CollectedEvent
 	var currentID int64 = -1
@@ -791,7 +845,6 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			Codec: row.codec,
 			Value: row.value,
 		})
-
 	}
 
 	if ce != nil {

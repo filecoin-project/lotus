@@ -54,7 +54,6 @@ var GetFullNodeAPIV1 = cliutil.GetFullNodeAPIV1
 var GetGatewayAPI = cliutil.GetGatewayAPI
 
 var GetStorageMinerAPI = cliutil.GetStorageMinerAPI
-var GetMarketsAPI = cliutil.GetMarketsAPI
 var GetWorkerAPI = cliutil.GetWorkerAPI
 
 var CommonCommands = []*cli.Command{

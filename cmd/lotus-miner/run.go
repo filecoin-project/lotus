@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -57,7 +56,7 @@ var runCmd = &cli.Command{
 		}
 
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
-			tag.Insert(metrics.Version, build.BuildVersion),
+			tag.Insert(metrics.Version, build.MinerBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "miner"),
 		)
@@ -121,16 +120,6 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		c, err := lr.Config()
-		if err != nil {
-			return err
-		}
-		cfg, ok := c.(*config.StorageMiner)
-		if !ok {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
-		}
-
-		bootstrapLibP2P := cfg.Subsystems.EnableMarkets
 
 		err = lr.Close()
 		if err != nil {
@@ -141,7 +130,7 @@ var runCmd = &cli.Command{
 
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
-			node.StorageMiner(&minerapi, cfg.Subsystems),
+			node.StorageMiner(&minerapi),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Base(),
 			node.Repo(r),
@@ -159,20 +148,6 @@ var runCmd = &cli.Command{
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
 			return xerrors.Errorf("getting API endpoint: %w", err)
-		}
-
-		if bootstrapLibP2P {
-			log.Infof("Bootstrapping libp2p network with full node")
-
-			// Bootstrap with full node
-			remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
-			if err != nil {
-				return xerrors.Errorf("getting full node libp2p address: %w", err)
-			}
-
-			if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
-				return xerrors.Errorf("connecting to full node (libp2p): %w", err)
-			}
 		}
 
 		log.Infof("Remote version %s", v)

@@ -74,11 +74,6 @@ type RepoType interface {
 	APIInfoEnvVars() (string, []string, []string)
 }
 
-// SupportsStagingDeals is a trait for services that support staging deals
-type SupportsStagingDeals interface {
-	SupportsStagingDeals()
-}
-
 var FullNode fullNode
 
 type fullNode struct {
@@ -108,8 +103,6 @@ var StorageMiner storageMiner
 
 type storageMiner struct{}
 
-func (storageMiner) SupportsStagingDeals() {}
-
 func (storageMiner) Type() string {
 	return "StorageMiner"
 }
@@ -129,35 +122,6 @@ func (storageMiner) RepoFlags() []string {
 func (storageMiner) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
 	// TODO remove deprecated deprecation period
 	return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
-}
-
-var Markets markets
-
-type markets struct{}
-
-func (markets) SupportsStagingDeals() {}
-
-func (markets) Type() string {
-	return "Markets"
-}
-
-func (markets) Config() interface{} {
-	return config.DefaultStorageMiner()
-}
-
-func (markets) APIFlags() []string {
-	// support split markets-miner and monolith deployments.
-	return []string{"markets-api-url", "miner-api-url"}
-}
-
-func (markets) RepoFlags() []string {
-	// support split markets-miner and monolith deployments.
-	return []string{"markets-repo", "miner-repo"}
-}
-
-func (markets) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
-	// support split markets-miner and monolith deployments.
-	return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
 }
 
 type worker struct {
@@ -183,30 +147,6 @@ func (worker) RepoFlags() []string {
 
 func (worker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
 	return "WORKER_API_INFO", nil, nil
-}
-
-type curio struct{}
-
-var Curio curio
-
-func (curio) Type() string {
-	return "Curio"
-}
-
-func (curio) Config() interface{} {
-	return &struct{}{}
-}
-
-func (curio) APIFlags() []string {
-	return []string{"curio-api-url"}
-}
-
-func (curio) RepoFlags() []string {
-	return []string{"curio-repo"}
-}
-
-func (curio) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
-	return "CURIO_API_INFO", nil, nil
 }
 
 var Wallet wallet

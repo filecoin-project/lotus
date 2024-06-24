@@ -16,7 +16,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   discover:
@@ -96,6 +97,7 @@ jobs:
               "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
+              "itest-manual_onboarding": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
@@ -115,7 +117,7 @@ jobs:
             }
           # A list of test groups that require YugabyteDB to be running
           yugabytedb: |
-            ["itest-harmonydb", "itest-harmonytask", "itest-curio"]
+            ["itest-harmonydb"]
           # A list of test groups that require Proof Parameters to be fetched
           parameters: |
             [
@@ -128,6 +130,7 @@ jobs:
               "itest-deals",
               "itest-direct_data_onboard_verified",
               "itest-direct_data_onboard",
+              "itest-manual_onboarding",
               "itest-net",
               "itest-path_detach_redeclare",
               "itest-path_type_filters",
@@ -144,7 +147,8 @@ jobs:
               "itest-worker",
               "multicore-sdr",
               "unit-cli",
-              "unit-storage"
+              "unit-storage",
+              "itest-curio"
             ]
         run: |
           # Create a list of integration test groups
@@ -203,7 +207,7 @@ jobs:
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
       - id: make_deps
         env:
-          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./extern/filecoin-ffi/install-filcrypto') }}-${{ hashFiles('./extern/filecoin-ffi/rust/rustc-target-features-optimized.json') }}
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
           CACHE_PATH: |
             ./extern/filecoin-ffi/filcrypto.h
             ./extern/filecoin-ffi/libfilcrypto.a

@@ -35,7 +35,7 @@ var infoWindowPostBandwidthSimCommand = &cli.Command{
 
 		var postGas, totalGas int64
 		printStats := func() {
-			fmt.Fprintf(cctx.App.Writer, "%.4f%%\n", float64(100*postGas)/float64(totalGas))
+			_, _ = fmt.Fprintf(cctx.App.Writer, "%.4f%%\n", float64(100*postGas)/float64(totalGas))
 		}
 		idx := 0
 		err = sim.Walk(cctx.Context, 0, func(

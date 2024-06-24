@@ -76,15 +76,15 @@ func NewAppFmt(a *ufcli.App) *AppFmt {
 }
 
 func (a *AppFmt) Print(args ...interface{}) {
-	fmt.Fprint(a.app.Writer, args...)
+	_, _ = fmt.Fprint(a.app.Writer, args...)
 }
 
 func (a *AppFmt) Println(args ...interface{}) {
-	fmt.Fprintln(a.app.Writer, args...)
+	_, _ = fmt.Fprintln(a.app.Writer, args...)
 }
 
 func (a *AppFmt) Printf(fmtstr string, args ...interface{}) {
-	fmt.Fprintf(a.app.Writer, fmtstr, args...)
+	_, _ = fmt.Fprintf(a.app.Writer, fmtstr, args...)
 }
 
 func (a *AppFmt) Scan(args ...interface{}) (int, error) {
