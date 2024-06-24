@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -311,7 +312,7 @@ func TestTransactionHashLookupNonexistentMessage(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	cid := build.MustParseCid("bafk2bzacecapjnxnyw4talwqv5ajbtbkzmzqiosztj5cb3sortyp73ndjl76e")
+	cid := buildconstants.MustParseCid("bafk2bzacecapjnxnyw4talwqv5ajbtbkzmzqiosztj5cb3sortyp73ndjl76e")
 
 	// We shouldn't be able to return a hash for this fake cid
 	chainHash, err := client.EthGetTransactionHashByCid(ctx, cid)

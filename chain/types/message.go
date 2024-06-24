@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 const MessageVersion = 0
@@ -155,7 +155,7 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 		return xerrors.New("'To' address cannot be empty")
 	}
 
-	if m.To == build.ZeroAddress && version >= network.Version7 {
+	if m.To == buildconstants.ZeroAddress && version >= network.Version7 {
 		return xerrors.New("invalid 'To' address")
 	}
 
@@ -203,8 +203,8 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 		return xerrors.New("'GasFeeCap' less than 'GasPremium'")
 	}
 
-	if m.GasLimit > build.BlockGasLimit {
-		return xerrors.Errorf("'GasLimit' field cannot be greater than a block's gas limit (%d > %d)", m.GasLimit, build.BlockGasLimit)
+	if m.GasLimit > buildconstants.BlockGasLimit {
+		return xerrors.Errorf("'GasLimit' field cannot be greater than a block's gas limit (%d > %d)", m.GasLimit, buildconstants.BlockGasLimit)
 	}
 
 	if m.GasLimit <= 0 {
