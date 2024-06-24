@@ -2296,6 +2296,9 @@ The address should be of type ID
 F3Participate can only be used through websocket connection
 The returned channel will never be closed by the F3
 If it is closed without the context being cancelled, the caller should retry.
+The values rentured on the channel will inform the caller about participation
+Nil will be sent if participation succeeded, errors will be sent in case of errors
+The caller should not abort if an error is sent over the channel.
 
 
 Perms: admin
