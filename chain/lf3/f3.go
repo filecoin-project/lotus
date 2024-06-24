@@ -62,7 +62,7 @@ func New(lc fx.Lifecycle, params F3Params) (*F3, error) {
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	module, err := f3.New(context.TODO(), 1000 /*TODO expose signing*/, manifest, ds,
+	module, err := f3.New(context.TODO(), manifest, ds,
 		params.Host, params.PubSub, verif, ec, log, nil)
 
 	if err != nil {
