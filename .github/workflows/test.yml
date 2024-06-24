@@ -235,7 +235,7 @@ jobs:
   test:
     needs: [discover, cache]
     name: Test (${{ matrix.name }})
-    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository_owner == 'filecoin-project' && matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
