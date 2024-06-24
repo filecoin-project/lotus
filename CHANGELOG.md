@@ -6,9 +6,9 @@
 
 ## Improvements
 
-# v1.27.1-rc3 / 2024-06-20
+# v1.27.1 / 2024-06-24
 
-This is the third release candidate of the upcoming optional release of Lotus v1.27.1
+This release, v1.27.1, is an OPTIONAL lotus release. It is HIGHLY RECOMMENDED for node operators that are building Filecoin index off lotus!
 
 ## ☢️ Upgrade Warnings ☢️
 
