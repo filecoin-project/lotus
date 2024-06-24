@@ -149,10 +149,9 @@ var ChainNode = Options(
 		Override(RunPeerMgrKey, modules.RunPeerMgr),
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
-		//Override(F3Key, lf3.New),
 	),
 
-	Override(new(*lf3.F3), lf3.New),
+	ApplyIf(build.F3Enabled, Override(new(*lf3.F3), lf3.New)),
 )
 
 func ConfigFullNode(c interface{}) Option {

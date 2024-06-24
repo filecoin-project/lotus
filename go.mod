@@ -99,6 +99,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/ipni/go-libipni v0.0.8
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
+	github.com/jpillora/backoff v1.0.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.17.8
 	github.com/koalacxr/quantile v0.0.1

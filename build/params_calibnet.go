@@ -135,7 +135,6 @@ func init() {
 	}
 
 	BuildType = BuildCalibnet
-
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
@@ -152,3 +151,6 @@ const BootstrapPeerThreshold = 4
 const Eip155ChainId = 314159
 
 var WhitelistedBlock = cid.Undef
+
+const F3Enabled = false
+const F3BootstrapEpoch abi.ChainEpoch = 999999999999999

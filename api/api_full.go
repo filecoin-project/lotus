@@ -866,6 +866,9 @@ type FullNode interface {
 	// F3Participate can only be used through websocket connection
 	// The returned channel will never be closed by the F3
 	// If it is closed without the context being cancelled, the caller should retry.
+	// The values rentured on the channel will inform the caller about participation
+	// Nil will be sent if participation succeeded, errors will be sent in case of errors
+	// The caller should not abort if an error is sent over the channel.
 	F3Participate(ctx context.Context, minerID address.Address) (<-chan error, error) //perm:admin
 	// F3GetCertificate returns a finality certificate at given instance number
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read

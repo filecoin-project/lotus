@@ -15,7 +15,8 @@ type signer struct {
 	wallet api.Wallet
 }
 
-// Signs a message with the secret key corresponding to a public key.
+// Sign signs a message with the private key corresponding to a public key.
+// The the key must be known by the wallet and be of BLS type.
 func (s *signer) Sign(sender gpbft.PubKey, msg []byte) ([]byte, error) {
 	addr, err := address.NewBLSAddress(sender)
 	if err != nil {

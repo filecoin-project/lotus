@@ -106,3 +106,6 @@ const BootstrapPeerThreshold = 2
 const Eip155ChainId = 3141592
 
 var WhitelistedBlock = cid.Undef
+
+const F3Enabled = true
+const F3BootstrapEpoch abi.ChainEpoch = 1000

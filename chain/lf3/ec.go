@@ -114,7 +114,6 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
 	}
-	//log.Infof("collecting power table for: %d", ts.Height())
 	stCid := ts.ParentState()
 
 	sm := ec.StateManager

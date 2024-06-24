@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/jpillora/backoff"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
@@ -353,18 +354,33 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local,
 
 func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, minerAddress dtypes.MinerAddress) error {
 	ctx := helpers.LifecycleCtx(mctx, lc)
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    1 * time.Minute,
+		Factor: 1.5,
+		Jitter: false,
+	}
 	go func() {
 		for {
 			ch, err := api.F3Participate(ctx, address.Address(minerAddress))
+
 			if errors.Is(err, context.Canceled) {
 				return
 			} else if err != nil {
-				log.Errorf("error while trying to participate in F3: %+v", err)
-				time.Sleep(1 * time.Second)
+				log.Errorf("while starting to participate in F3: %+v", err)
+				// use exponential backoff to avoid hotloop
+				time.Sleep(b.Duration())
 				continue
 			}
-			<-ch
-			log.Warnf("F3Participate exited, retrying")
+
+			for err := range ch {
+				// we have communication with F3 in lotus, reset the backoff
+				b.Reset()
+				if err != nil {
+					log.Warnf("participating in F3 encountered an error: %v", err)
+				}
+			}
+			log.Info("F3Participate exited, retrying")
 		}
 	}()
 	return nil
