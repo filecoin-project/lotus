@@ -31,7 +31,6 @@ jobs:
           submodules: 'recursive'
       - id: test
         env:
-          custom-runners-enabled: ${{ vars.CUSTOM_RUNNERS_ENABLED || 'false' }}
           # Unit test groups other than unit-rest
           utests: |
             [
@@ -158,9 +157,7 @@ jobs:
           groups="$(jq -n --argjson i "$itests" --argjson u "$utests" --argjson r "$rest" --argjson o "$otests" '$i + $u + [$r] + $o')"
 
           # Apply custom runner labels to the groups
-          if [[ "$custom-runners-enabled" == "true" ]]; then
-            groups="$(jq -n --argjson g "$groups" --argjson r "$runners" '$g | map(. + {"runner": (.name as $n | $r | .[$n]) })')"
-          fi
+          groups="$(jq -n --argjson g "$groups" --argjson r "$runners" '$g | map(. + {"runner": (.name as $n | $r | .[$n]) })')"
 
           # Apply the needs_yugabytedb flag to the groups
           groups="$(jq -n --argjson g "$groups" --argjson y "$yugabytedb" '$g | map(. + {"needs_yugabytedb": ([.name] | inside($y)) })')"
@@ -238,7 +235,7 @@ jobs:
   test:
     needs: [discover, cache]
     name: Test (${{ matrix.name }})
-    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
