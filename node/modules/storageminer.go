@@ -362,6 +362,9 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 	}
 	go func() {
 		for {
+			if ctx.Err() != nil {
+				return
+			}
 			ch, err := api.F3Participate(ctx, address.Address(minerAddress))
 
 			if errors.Is(err, context.Canceled) {
@@ -381,6 +384,7 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 				}
 			}
 			log.Info("F3Participate exited, retrying")
+			time.Sleep(b.Duration())
 		}
 	}()
 	return nil
