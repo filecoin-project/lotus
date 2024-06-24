@@ -34,8 +34,10 @@ func (ts *tsWrapper) Key() gpbft.TipSetKey {
 }
 
 func (ts *tsWrapper) Beacon() []byte {
-	// TODO: verify if correct
 	entries := ts.inner.Blocks()[0].BeaconEntries
+	if len(entries) == 0 {
+		return []byte{}
+	}
 	return entries[len(entries)-1].Data
 }
 

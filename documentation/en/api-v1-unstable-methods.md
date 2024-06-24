@@ -81,6 +81,8 @@
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [F3](#F3)
+  * [F3GetCertificate](#F3GetCertificate)
+  * [F3GetLatestCertificate](#F3GetLatestCertificate)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2167,11 +2169,133 @@ Response: `true`
 ## F3
 
 
+### F3GetCertificate
+F3GetCertificate returns a finality certificate at given instance number
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response:
+```json
+{
+  "GPBFTInstance": 0,
+  "ECChain": null,
+  "SupplementalData": {
+    "Commitments": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PowerTable": null
+  },
+  "Signers": [
+    0
+  ],
+  "Signature": null,
+  "PowerTableDelta": null
+}
+```
+
+### F3GetLatestCertificate
+F3GetLatestCertificate returns the latest finality certificate
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "GPBFTInstance": 0,
+  "ECChain": null,
+  "SupplementalData": {
+    "Commitments": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PowerTable": null
+  },
+  "Signers": [
+    0
+  ],
+  "Signature": null,
+  "PowerTableDelta": null
+}
+```
+
 ### F3Participate
 F3Participate should be called by a miner node to particpate in signing F3 consensus.
 The address should be of type ID
-This API call won't exit until the caller terminates it.
-It is recommended to call this API through websocket connection.
+F3Participate can only be used through websocket connection
+The returned channel will never be closed by the F3
+If it is closed without the context being cancelled, the caller should retry.
 
 
 Perms: admin

@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -249,7 +250,11 @@ type FullNodeMethods struct {
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"read"`
 
-	F3Participate func(p0 context.Context, p1 address.Address) error `perm:"admin"`
+	F3GetCertificate func(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) `perm:"read"`
+
+	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
+
+	F3Participate func(p0 context.Context, p1 address.Address) (<-chan error, error) `perm:"admin"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
@@ -2065,15 +2070,37 @@ func (s *FullNodeStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscri
 	return false, ErrNotSupported
 }
 
-func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStruct) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetCertificate(p0, p1)
+}
+
+func (s *FullNodeStub) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetLatestCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetLatestCertificate(p0)
+}
+
+func (s *FullNodeStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address) (<-chan error, error) {
 	if s.Internal.F3Participate == nil {
-		return ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.F3Participate(p0, p1)
 }
 
-func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address) error {
-	return ErrNotSupported
+func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address) (<-chan error, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {

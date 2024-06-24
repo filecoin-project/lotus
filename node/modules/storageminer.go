@@ -354,10 +354,17 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local,
 func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, minerAddress dtypes.MinerAddress) error {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	go func() {
-		err := api.F3Participate(ctx, address.Address(minerAddress))
-		if err != nil && !errors.Is(err, context.Canceled) {
-			// TODO: retry logic?
-			log.Errorf("error while participating in F3")
+		for {
+			ch, err := api.F3Participate(ctx, address.Address(minerAddress))
+			if errors.Is(err, context.Canceled) {
+				return
+			} else if err != nil {
+				log.Errorf("error while trying to participate in F3: %+v", err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			<-ch
+			log.Warnf("F3Participate exited, retrying")
 		}
 	}()
 	return nil

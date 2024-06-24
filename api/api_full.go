@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -862,9 +863,14 @@ type FullNode interface {
 
 	// F3Participate should be called by a miner node to particpate in signing F3 consensus.
 	// The address should be of type ID
-	// This API call won't exit until the caller terminates it.
-	// It is recommended to call this API through websocket connection.
-	F3Participate(ctx context.Context, minerID address.Address) error //perm:admin
+	// F3Participate can only be used through websocket connection
+	// The returned channel will never be closed by the F3
+	// If it is closed without the context being cancelled, the caller should retry.
+	F3Participate(ctx context.Context, minerID address.Address) (<-chan error, error) //perm:admin
+	// F3GetCertificate returns a finality certificate at given instance number
+	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
+	// F3GetLatestCertificate returns the latest finality certificate
+	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
 }
 
 // reverse interface to the client, called after EthSubscribe

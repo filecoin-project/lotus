@@ -12,7 +12,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/blssig"
 	"github.com/filecoin-project/go-f3/gpbft"
@@ -25,7 +24,7 @@ import (
 )
 
 type F3 struct {
-	inner *f3.F3
+	Inner *f3.F3
 
 	signer gpbft.Signer
 }
@@ -68,7 +67,7 @@ func New(lc fx.Lifecycle, params F3Params) (*F3, error) {
 	}
 
 	fff := &F3{
-		inner:  module,
+		Inner:  module,
 		signer: &signer{params.Wallet},
 	}
 
@@ -78,7 +77,7 @@ func New(lc fx.Lifecycle, params F3Params) (*F3, error) {
 		func(ctx context.Context) {
 			liftimeContext, cancel = context.WithCancel(ctx)
 			go func() {
-				err := fff.inner.Run(liftimeContext)
+				err := fff.Inner.Run(liftimeContext)
 				if err != nil {
 					log.Errorf("running f3: %+v", err)
 				}
@@ -90,11 +89,9 @@ func New(lc fx.Lifecycle, params F3Params) (*F3, error) {
 	return fff, nil
 }
 
-func (fff *F3) F3Participate(ctx context.Context, miner address.Address) error {
-	actorID, err := address.IDFromAddress(miner)
-	if err != nil {
-		return xerrors.Errorf("miner address in F3Participate not of ID type: %w", err)
-	}
+// Participate runs the participation loop for givine minerID
+// it is blocking
+func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64) error {
 
 	for {
 		select {
@@ -104,7 +101,7 @@ func (fff *F3) F3Participate(ctx context.Context, miner address.Address) error {
 		}
 
 		ch := make(chan *gpbft.MessageBuilder, 4)
-		fff.inner.SubscribeForMessagesToSign(ch)
+		fff.Inner.SubscribeForMessagesToSign(ch)
 	inner:
 		for {
 			select {
@@ -114,19 +111,17 @@ func (fff *F3) F3Participate(ctx context.Context, miner address.Address) error {
 					log.Infof("lost message bus subscription, retrying")
 					break inner
 				}
-				signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(actorID))
+				signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerIDAddress))
 				if err != nil {
 					log.Errorf("preparing signing inputs: %+v", err)
-					continue inner
+					return err
 				}
-				// signatureBuilder can be sent over RPC
 				payloadSig, vrfSig, err := signatureBuilder.Sign(fff.signer)
 				if err != nil {
 					log.Errorf("signing message: %+v", err)
-					continue inner
+					return err
 				}
-				// signatureBuilder and signatures can be returned back over RPC
-				fff.inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
+				fff.Inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
 			case <-ctx.Done():
 				return nil
 			}
