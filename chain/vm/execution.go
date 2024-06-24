@@ -3,6 +3,7 @@ package vm
 import (
 	"context"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 
@@ -14,16 +15,15 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 )
 
-const (
-	// DefaultAvailableExecutionLanes is the number of available execution lanes; it is the bound of
-	// concurrent active executions.
-	// This is the default value in filecoin-ffi
-	DefaultAvailableExecutionLanes = 4
-	// DefaultPriorityExecutionLanes is the number of reserved execution lanes for priority computations.
-	// This is purely userspace, but we believe it is a reasonable default, even with more available
-	// lanes.
-	DefaultPriorityExecutionLanes = 2
-)
+// DefaultPriorityExecutionLanes is the number of reserved execution lanes for priority computations.
+// This is purely userspace, but we believe it is a reasonable default, even with more available
+// lanes.
+const DefaultPriorityExecutionLanes = 2
+
+// DefaultAvailableExecutionLanes is the number of available execution lanes; it is the bound of
+// concurrent active executions.
+// This is the default value in filecoin-ffi
+var DefaultAvailableExecutionLanes = runtime.NumCPU()
 
 // the execution environment; see below for definition, methods, and initialization
 var execution *executionEnv

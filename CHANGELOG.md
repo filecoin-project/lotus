@@ -34,6 +34,16 @@ There is no change in the behaviour when a call returns an error, as the error o
 
 ## New features
 
+### FVM RPC Concurrent Requests
+
+The default maximum FVM concurrency (`LOTUS_FVM_CONCURRENCY`) has increased from 4 to the number of available CPU threads. Furthermore, the FVM now allocates `LOTUS_FVM_CONCURRENCY` OS-level threads with 64MiB stacks (in 1.26, we allocated one thread per CPU core regardless of the value of `LOTUS_FVM_CONCURRENCY`).
+
+Impact:
+
+1. This will increase memory usage for nodes specifying a higher `LOTUS_FVM_CONCURRENCY` than the number of CPU threads they have available.
+2. This will allow such nodes to actually take advantage of this higher concurrency limit where the concurrency was previously capped at the number of available CPU threads.
+
+
 ## Improvements
 
 # v1.27.0 / 2024-05-27
