@@ -141,7 +141,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(config.HarmonyDB), cfg.HarmonyDB),
 		Override(new(harmonydb.ITestID), harmonydb.ITestID("")),
 		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
-		Override(F3Participation, modules.F3Participation),
+		If(build.F3Enabled, Override(F3Participation, modules.F3Participation)),
 	)
 }
 

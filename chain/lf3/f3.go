@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 type F3 struct {
@@ -44,9 +45,7 @@ type F3Params struct {
 
 var log = logging.Logger("f3")
 
-func New(lc fx.Lifecycle, params F3Params) (*F3, error) {
-	_ = logging.SetLogLevel("f3", "DEBUG")
-
+func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
 	manifest := f3.LocalnetManifest()
 	manifest.NetworkName = gpbft.NetworkName(params.NetworkName)
 	manifest.ECDelay = 2 * time.Duration(build.BlockDelaySecs) * time.Second
@@ -62,7 +61,7 @@ func New(lc fx.Lifecycle, params F3Params) (*F3, error) {
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	module, err := f3.New(context.TODO(), manifest, ds,
+	module, err := f3.New(mctx, manifest, ds,
 		params.Host, params.PubSub, verif, ec, log, nil)
 
 	if err != nil {
@@ -129,6 +128,7 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 				log.Errorf("signing message: %+v", err)
 				return err
 			}
+			log.Infof("miner with id %d is sending message in F3", minerIDAddress)
 			fff.Inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
 			return nil
 		}
