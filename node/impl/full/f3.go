@@ -21,9 +21,9 @@ type F3API struct {
 
 var ErrF3Disabled = errors.New("F3 is disabled")
 
-func (f3api *F3API) F3Participate(ctx context.Context, miner address.Address) (<-chan error, error) {
+func (f3api *F3API) F3Participate(ctx context.Context, miner address.Address) (<-chan string, error) {
 	// make channel with some buffere to avoid blocking under higher load
-	errCh := make(chan error, 4)
+	errCh := make(chan string, 4)
 
 	if f3api.F3 == nil {
 		log.Infof("F3Participate called for %v, F3 is disabled", miner)

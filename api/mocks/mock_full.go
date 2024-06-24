@@ -1184,10 +1184,10 @@ func (mr *MockFullNodeMockRecorder) F3GetLatestCertificate(arg0 interface{}) *go
 }
 
 // F3Participate mocks base method.
-func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address) (<-chan error, error) {
+func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address) (<-chan string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1)
-	ret0, _ := ret[0].(<-chan error)
+	ret0, _ := ret[0].(<-chan string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

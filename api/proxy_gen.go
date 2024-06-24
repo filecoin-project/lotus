@@ -254,7 +254,7 @@ type FullNodeMethods struct {
 
 	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
 
-	F3Participate func(p0 context.Context, p1 address.Address) (<-chan error, error) `perm:"admin"`
+	F3Participate func(p0 context.Context, p1 address.Address) (<-chan string, error) `perm:"admin"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
@@ -2092,14 +2092,14 @@ func (s *FullNodeStub) F3GetLatestCertificate(p0 context.Context) (*certs.Finali
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address) (<-chan error, error) {
+func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address) (<-chan string, error) {
 	if s.Internal.F3Participate == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.F3Participate(p0, p1)
 }
 
-func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address) (<-chan error, error) {
+func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address) (<-chan string, error) {
 	return nil, ErrNotSupported
 }
 

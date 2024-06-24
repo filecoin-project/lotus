@@ -93,7 +93,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 
 // Participate runs the participation loop for givine minerID
 // It is blocking
-func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh chan<- error) {
+func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh chan<- string) {
 	defer close(errCh)
 
 	for {
@@ -143,7 +143,13 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 					break inner
 				}
 
-				errCh <- participateOnce(mb)
+				err := participateOnce(mb)
+				if err != nil {
+					errCh <- err.Error()
+				} else {
+					errCh <- ""
+				}
+
 			case <-ctx.Done():
 				return
 			}

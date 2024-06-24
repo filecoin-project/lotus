@@ -379,7 +379,7 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			for err := range ch {
 				// we have communication with F3 in lotus, reset the backoff
 				b.Reset()
-				if err != nil {
+				if err != "" {
 					log.Warnf("participating in F3 encountered an error: %v", err)
 				}
 			}
