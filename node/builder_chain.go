@@ -151,7 +151,7 @@ var ChainNode = Options(
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
 
-	ApplyIf(build.F3Enabled, Override(new(*lf3.F3), lf3.New)),
+	If(build.F3Enabled, Override(new(*lf3.F3), lf3.New)),
 )
 
 func ConfigFullNode(c interface{}) Option {
