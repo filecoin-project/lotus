@@ -8,16 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 // Manually onboard CC sectors, bypassing lotus-miner onboarding pathways
 func TestManualSectorOnboarding(t *testing.T) {
-	const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
-
 	req := require.New(t)
+
+	const defaultSectorSize = abi.SectorSize(2 << 10) // 2KiB
+	sealProofType, err := miner.SealProofTypeFromSectorSize(defaultSectorSize, network.Version23, miner.SealProofVariant_Standard)
+	req.NoError(err)
 
 	for _, withMockProofs := range []bool{true, false} {
 		testName := "WithRealProofs"
@@ -25,7 +29,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			testName = "WithMockProofs"
 		}
 		t.Run(testName, func(t *testing.T) {
-			if testName == "WithRealProofs" {
+			if !withMockProofs {
 				kit.Expensive(t)
 			}
 			kit.QuietMiningLogs()
@@ -85,7 +89,7 @@ func TestManualSectorOnboarding(t *testing.T) {
 			var bRespCh chan kit.WindowPostResp
 			var bWdPostCancelF context.CancelFunc
 
-			bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSector(ctx, kit.TestSpt)
+			bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSector(ctx, sealProofType)
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
 			minerB.AssertNoPower(ctx)
 			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
@@ -106,13 +110,9 @@ func TestManualSectorOnboarding(t *testing.T) {
 			minerC.WaitTillActivatedAndAssertPower(ctx, cRespCh, cSectorNum)
 
 			// Miner B has activated the CC sector -> upgrade it with snapdeals
-			// Note: We can't activate a sector with mock proofs as the WdPost is successfully disputed and so no point
-			// in snapping it as snapping is only for activated sectors
-			if !withMockProofs {
-				minerB.SnapDeal(ctx, kit.TestSpt, bSectorNum)
-				// cancel the WdPost for the CC sector as the corresponding CommR is no longer valid
-				bWdPostCancelF()
-			}
+			_ = minerB.SnapDeal(ctx, kit.TestSpt, bSectorNum)
+			// cancel the WdPost for the CC sector as the corresponding CommR is no longer valid
+			bWdPostCancelF()
 		})
 	}
 }
