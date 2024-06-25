@@ -85,30 +85,6 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Client": {
-		{
-			Name: "SimultaneousTransfersForStorage",
-			Type: "uint64",
-
-			Comment: `The maximum number of simultaneous data transfers between the client
-and storage providers for storage deals`,
-		},
-		{
-			Name: "SimultaneousTransfersForRetrieval",
-			Type: "uint64",
-
-			Comment: `The maximum number of simultaneous data transfers between the client
-and storage providers for retrieval deals`,
-		},
-		{
-			Name: "OffChainRetrieval",
-			Type: "bool",
-
-			Comment: `Require that retrievals perform no on-chain operations. Paid retrievals
-without existing payment channels with available funds will fail instead
-of automatically performing on-chain operations.`,
-		},
-	},
 	"Common": {
 		{
 			Name: "API",
@@ -183,6 +159,30 @@ over the worker address if this flag is set.`,
 			Comment: `MinerAddresses are the addresses of the miner actors to use for sending messages`,
 		},
 	},
+	"CurioAlerting": {
+		{
+			Name: "PagerDutyEventURL",
+			Type: "string",
+
+			Comment: `PagerDutyEventURL is URL for PagerDuty.com Events API v2 URL. Events sent to this API URL are ultimately
+routed to a PagerDuty.com service and processed.
+The default is sufficient for integration with the stock commercial PagerDuty.com company's service.`,
+		},
+		{
+			Name: "PageDutyIntegrationKey",
+			Type: "string",
+
+			Comment: `PageDutyIntegrationKey is the integration key for a PagerDuty.com service. You can find this unique service
+identifier in the integration page for the service.`,
+		},
+		{
+			Name: "MinimumWalletBalance",
+			Type: "types.FIL",
+
+			Comment: `MinimumWalletBalance is the minimum balance all active wallets. If the balance is below this value, an
+alerts will be triggered for the wallet`,
+		},
+	},
 	"CurioConfig": {
 		{
 			Name: "Subsystems",
@@ -223,6 +223,12 @@ over the worker address if this flag is set.`,
 		{
 			Name: "Apis",
 			Type: "ApisConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Alerting",
+			Type: "CurioAlerting",
 
 			Comment: ``,
 		},
@@ -584,8 +590,8 @@ uses all available network (or disk) bandwidth on the machine without causing bo
 
 			Comment: `BoostAdapters is a list of tuples of miner address and port/ip to listen for market (e.g. boost) requests.
 This interface is compatible with the lotus-miner RPC, implementing a subset needed for storage market operations.
-Strings should be in the format "actor:port" or "actor:ip:port". Default listen address is 0.0.0.0
-Example: "f0123:32100", "f0123:127.0.0.1:32100". Multiple addresses can be specified.
+Strings should be in the format "actor:ip:port". IP cannot be 0.0.0.0. We recommend using a private IP.
+Example: "f0123:127.0.0.1:32100". Multiple addresses can be specified.
 
 When a market node like boost gives Curio's market RPC a deal to placing into a sector, Curio will first store the
 deal data in a temporary location "Piece Park" before assigning it to a sector. This requires that at least one
@@ -614,196 +620,12 @@ only need to be run on a single machine in the cluster.`,
 			Comment: `The address that should listen for Web GUI requests.`,
 		},
 	},
-	"DAGStoreConfig": {
-		{
-			Name: "RootDir",
-			Type: "string",
-
-			Comment: `Path to the dagstore root directory. This directory contains three
-subdirectories, which can be symlinked to alternative locations if
-need be:
-- ./transients: caches unsealed deals that have been fetched from the
-storage subsystem for serving retrievals.
-- ./indices: stores shard indices.
-- ./datastore: holds the KV store tracking the state of every shard
-known to the DAG store.
-Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
-<LOTUS_MINER_PATH>/dagstore (monolith deployment)`,
-		},
-		{
-			Name: "MaxConcurrentIndex",
-			Type: "int",
-
-			Comment: `The maximum amount of indexing jobs that can run simultaneously.
-0 means unlimited.
-Default value: 5.`,
-		},
-		{
-			Name: "MaxConcurrentReadyFetches",
-			Type: "int",
-
-			Comment: `The maximum amount of unsealed deals that can be fetched simultaneously
-from the storage subsystem. 0 means unlimited.
-Default value: 0 (unlimited).`,
-		},
-		{
-			Name: "MaxConcurrentUnseals",
-			Type: "int",
-
-			Comment: `The maximum amount of unseals that can be processed simultaneously
-from the storage subsystem. 0 means unlimited.
-Default value: 0 (unlimited).`,
-		},
-		{
-			Name: "MaxConcurrencyStorageCalls",
-			Type: "int",
-
-			Comment: `The maximum number of simultaneous inflight API calls to the storage
-subsystem.
-Default value: 100.`,
-		},
-		{
-			Name: "GCInterval",
-			Type: "Duration",
-
-			Comment: `The time between calls to periodic dagstore GC, in time.Duration string
-representation, e.g. 1m, 5m, 1h.
-Default value: 1 minute.`,
-		},
-	},
 	"DealmakingConfig": {
-		{
-			Name: "ConsiderOnlineStorageDeals",
-			Type: "bool",
-
-			Comment: `When enabled, the miner can accept online deals`,
-		},
-		{
-			Name: "ConsiderOfflineStorageDeals",
-			Type: "bool",
-
-			Comment: `When enabled, the miner can accept offline deals`,
-		},
-		{
-			Name: "ConsiderOnlineRetrievalDeals",
-			Type: "bool",
-
-			Comment: `When enabled, the miner can accept retrieval deals`,
-		},
-		{
-			Name: "ConsiderOfflineRetrievalDeals",
-			Type: "bool",
-
-			Comment: `When enabled, the miner can accept offline retrieval deals`,
-		},
-		{
-			Name: "ConsiderVerifiedStorageDeals",
-			Type: "bool",
-
-			Comment: `When enabled, the miner can accept verified deals`,
-		},
-		{
-			Name: "ConsiderUnverifiedStorageDeals",
-			Type: "bool",
-
-			Comment: `When enabled, the miner can accept unverified deals`,
-		},
-		{
-			Name: "PieceCidBlocklist",
-			Type: "[]cid.Cid",
-
-			Comment: `A list of Data CIDs to reject when making deals`,
-		},
-		{
-			Name: "ExpectedSealDuration",
-			Type: "Duration",
-
-			Comment: `Maximum expected amount of time getting the deal into a sealed sector will take
-This includes the time the deal will need to get transferred and published
-before being assigned to a sector`,
-		},
-		{
-			Name: "MaxDealStartDelay",
-			Type: "Duration",
-
-			Comment: `Maximum amount of time proposed deal StartEpoch can be in future`,
-		},
-		{
-			Name: "PublishMsgPeriod",
-			Type: "Duration",
-
-			Comment: `When a deal is ready to publish, the amount of time to wait for more
-deals to be ready to publish before publishing them all as a batch`,
-		},
-		{
-			Name: "MaxDealsPerPublishMsg",
-			Type: "uint64",
-
-			Comment: `The maximum number of deals to include in a single PublishStorageDeals
-message`,
-		},
-		{
-			Name: "MaxProviderCollateralMultiplier",
-			Type: "uint64",
-
-			Comment: `The maximum collateral that the provider will put up against a deal,
-as a multiplier of the minimum collateral bound`,
-		},
-		{
-			Name: "MaxStagingDealsBytes",
-			Type: "int64",
-
-			Comment: `The maximum allowed disk usage size in bytes of staging deals not yet
-passed to the sealing node by the markets service. 0 is unlimited.`,
-		},
-		{
-			Name: "SimultaneousTransfersForStorage",
-			Type: "uint64",
-
-			Comment: `The maximum number of parallel online data transfers for storage deals`,
-		},
-		{
-			Name: "SimultaneousTransfersForStoragePerClient",
-			Type: "uint64",
-
-			Comment: `The maximum number of simultaneous data transfers from any single client
-for storage deals.
-Unset by default (0), and values higher than SimultaneousTransfersForStorage
-will have no effect; i.e. the total number of simultaneous data transfers
-across all storage clients is bound by SimultaneousTransfersForStorage
-regardless of this number.`,
-		},
-		{
-			Name: "SimultaneousTransfersForRetrieval",
-			Type: "uint64",
-
-			Comment: `The maximum number of parallel online data transfers for retrieval deals`,
-		},
 		{
 			Name: "StartEpochSealingBuffer",
 			Type: "uint64",
 
 			Comment: `Minimum start epoch buffer to give time for sealing of sector with deal.`,
-		},
-		{
-			Name: "Filter",
-			Type: "string",
-
-			Comment: `A command used for fine-grained evaluation of storage deals
-see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details`,
-		},
-		{
-			Name: "RetrievalFilter",
-			Type: "string",
-
-			Comment: `A command used for fine-grained evaluation of retrieval deals
-see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details`,
-		},
-		{
-			Name: "RetrievalPricing",
-			Type: "*RetrievalPricing",
-
-			Comment: ``,
 		},
 	},
 	"EventsConfig": {
@@ -928,12 +750,6 @@ Set to 0 to keep all mappings`,
 	},
 	"FullNode": {
 		{
-			Name: "Client",
-			Type: "Client",
-
-			Comment: ``,
-		},
-		{
 			Name: "Wallet",
 			Type: "Wallet",
 
@@ -1016,51 +832,6 @@ in a cluster. Only 1 is required`,
 
 			Comment: `EXPERIMENTAL FEATURE. USE WITH CAUTION
 EnableMsgIndex enables indexing of messages on chain.`,
-		},
-	},
-	"IndexProviderConfig": {
-		{
-			Name: "Enable",
-			Type: "bool",
-
-			Comment: `Enable set whether to enable indexing announcement to the network and expose endpoints that
-allow indexer nodes to process announcements. Enabled by default.`,
-		},
-		{
-			Name: "EntriesCacheCapacity",
-			Type: "int",
-
-			Comment: `EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
-entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The
-maximum storage used by the cache is a factor of EntriesCacheCapacity, EntriesChunkSize and
-the length of multihashes being advertised. For example, advertising 128-bit long multihashes
-with the default EntriesCacheCapacity, and EntriesChunkSize means the cache size can grow to
-256MiB when full.`,
-		},
-		{
-			Name: "EntriesChunkSize",
-			Type: "int",
-
-			Comment: `EntriesChunkSize sets the maximum number of multihashes to include in a single entries chunk.
-Defaults to 16384 if not specified. Note that chunks are chained together for indexing
-advertisements that include more multihashes than the configured EntriesChunkSize.`,
-		},
-		{
-			Name: "TopicName",
-			Type: "string",
-
-			Comment: `TopicName sets the topic name on which the changes to the advertised content are announced.
-If not explicitly specified, the topic name is automatically inferred from the network name
-in following format: '/indexer/ingest/<network-name>'
-Defaults to empty, which implies the topic name is inferred from network name.`,
-		},
-		{
-			Name: "PurgeCacheOnStart",
-			Type: "bool",
-
-			Comment: `PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
-starts. By default, the cache is rehydrated from previously cached entries stored in
-datastore if any is present.`,
 		},
 	},
 	"JournalConfig": {
@@ -1259,12 +1030,6 @@ over the worker address if this flag is set.`,
 		},
 		{
 			Name: "EnableSectorStorage",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "EnableMarkets",
 			Type: "bool",
 
 			Comment: ``,
@@ -1497,46 +1262,6 @@ This property is used only if ElasticSearchTracer propery is set.`,
 			Type: "string",
 
 			Comment: `Auth token that will be passed with logs to elasticsearch - used for weighted peers score.`,
-		},
-	},
-	"RetrievalPricing": {
-		{
-			Name: "Strategy",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "Default",
-			Type: "*RetrievalPricingDefault",
-
-			Comment: ``,
-		},
-		{
-			Name: "External",
-			Type: "*RetrievalPricingExternal",
-
-			Comment: ``,
-		},
-	},
-	"RetrievalPricingDefault": {
-		{
-			Name: "VerifiedDealsFreeTransfer",
-			Type: "bool",
-
-			Comment: `VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
-of a payloadCid that belongs to a verified storage deal.
-This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
-default value is true`,
-		},
-	},
-	"RetrievalPricingExternal": {
-		{
-			Name: "Path",
-			Type: "string",
-
-			Comment: `Path of the external script that will be run to price a retrieval deal.
-This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".`,
 		},
 	},
 	"SealerConfig": {
@@ -1957,12 +1682,6 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 			Comment: ``,
 		},
 		{
-			Name: "IndexProvider",
-			Type: "IndexProviderConfig",
-
-			Comment: ``,
-		},
-		{
 			Name: "Proving",
 			Type: "ProvingConfig",
 
@@ -1989,12 +1708,6 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 		{
 			Name: "Addresses",
 			Type: "MinerAddressConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "DAGStore",
-			Type: "DAGStoreConfig",
 
 			Comment: ``,
 		},

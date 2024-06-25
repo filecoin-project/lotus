@@ -79,9 +79,3 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 	fmt.Println(c2)
 	require.True(t, reflect.DeepEqual(c, c2))
 }
-
-func TestDefaultStorageMiner_IsEmpty(t *testing.T) {
-	subject := DefaultStorageMiner()
-	require.True(t, subject.IndexProvider.Enable)
-	require.Equal(t, "", subject.IndexProvider.TopicName)
-}

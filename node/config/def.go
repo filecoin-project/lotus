@@ -2,11 +2,7 @@ package config
 
 import (
 	"encoding"
-	"os"
-	"strconv"
 	"time"
-
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -17,24 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-const (
-	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
-	RetrievalPricingDefaultMode = "default"
-	// RetrievalPricingExternal configures the node to use the external retrieval pricing script
-	// configured by the user.
-	RetrievalPricingExternalMode = "external"
-)
-
-// MaxTraversalLinks configures the maximum number of links to traverse in a DAG while calculating
-// CommP and traversing a DAG with graphsync; invokes a budget on DAG depth and density.
-var MaxTraversalLinks uint64 = 32 * (1 << 20)
-
-func init() {
-	if envMaxTraversal, err := strconv.ParseUint(os.Getenv("LOTUS_MAX_TRAVERSAL_LINKS"), 10, 64); err == nil {
-		MaxTraversalLinks = envMaxTraversal
-	}
-}
 
 func (b *BatchFeeConfig) FeeForSectors(nSectors int) abi.TokenAmount {
 	return big.Add(big.Int(b.Base), big.Mul(big.NewInt(int64(nSectors)), big.Int(b.PerSector)))
@@ -77,8 +55,6 @@ func defCommon() Common {
 	}
 }
 
-var DefaultSimultaneousTransfers = uint64(20)
-
 func DefaultDefaultMaxFee() types.FIL {
 	return types.MustParseFIL("0.07")
 }
@@ -90,10 +66,7 @@ func DefaultFullNode() *FullNode {
 		Fees: FeeConfig{
 			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},
-		Client: Client{
-			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
-			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
-		},
+
 		Chainstore: Chainstore{
 			EnableSplitstore: true,
 			Splitstore: Splitstore{
@@ -193,52 +166,13 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Dealmaking: DealmakingConfig{
-			ConsiderOnlineStorageDeals:     true,
-			ConsiderOfflineStorageDeals:    true,
-			ConsiderOnlineRetrievalDeals:   true,
-			ConsiderOfflineRetrievalDeals:  true,
-			ConsiderVerifiedStorageDeals:   true,
-			ConsiderUnverifiedStorageDeals: true,
-			PieceCidBlocklist:              []cid.Cid{},
-			// TODO: It'd be nice to set this based on sector size
-			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
-			ExpectedSealDuration:            Duration(time.Hour * 24),
-			PublishMsgPeriod:                Duration(time.Hour),
-			MaxDealsPerPublishMsg:           8,
-			MaxProviderCollateralMultiplier: 2,
-
-			SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
-			SimultaneousTransfersForStoragePerClient: 0,
-			SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,
-
 			StartEpochSealingBuffer: 480, // 480 epochs buffer == 4 hours from adding deal to sector to sector being sealed
-
-			RetrievalPricing: &RetrievalPricing{
-				Strategy: RetrievalPricingDefaultMode,
-				Default: &RetrievalPricingDefault{
-					VerifiedDealsFreeTransfer: true,
-				},
-				External: &RetrievalPricingExternal{
-					Path: "",
-				},
-			},
-		},
-
-		IndexProvider: IndexProviderConfig{
-			Enable:               true,
-			EntriesCacheCapacity: 1024,
-			EntriesChunkSize:     16384,
-			// The default empty TopicName means it is inferred from network name, in the following
-			// format: "/indexer/ingest/<network-name>"
-			TopicName:         "",
-			PurgeCacheOnStart: false,
 		},
 
 		Subsystems: MinerSubsystemConfig{
 			EnableMining:        true,
 			EnableSealing:       true,
 			EnableSectorStorage: true,
-			EnableMarkets:       false,
 			EnableSectorIndexDB: false,
 		},
 
@@ -270,12 +204,6 @@ func DefaultStorageMiner() *StorageMiner {
 			DealPublishControl: []string{},
 		},
 
-		DAGStore: DAGStoreConfig{
-			MaxConcurrentIndex:         5,
-			MaxConcurrencyStorageCalls: 100,
-			MaxConcurrentUnseals:       5,
-			GCInterval:                 Duration(1 * time.Minute),
-		},
 		HarmonyDB: HarmonyDB{
 			Hosts:    []string{"127.0.0.1"},
 			Username: "yugabyte",
@@ -327,46 +255,3 @@ const (
 	// worker. The scheduler may assign any task to this worker.
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
-
-func DefaultCurioConfig() *CurioConfig {
-	return &CurioConfig{
-		Subsystems: CurioSubsystemsConfig{
-			GuiAddress:    ":4701",
-			BoostAdapters: []string{},
-		},
-		Fees: CurioFees{
-			DefaultMaxFee:      DefaultDefaultMaxFee(),
-			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
-			MaxCommitGasFee:    types.MustParseFIL("0.05"),
-
-			MaxPreCommitBatchGasFee: BatchFeeConfig{
-				Base:      types.MustParseFIL("0"),
-				PerSector: types.MustParseFIL("0.02"),
-			},
-			MaxCommitBatchGasFee: BatchFeeConfig{
-				Base:      types.MustParseFIL("0"),
-				PerSector: types.MustParseFIL("0.03"), // enough for 6 agg and 1nFIL base fee
-			},
-
-			MaxTerminateGasFee:  types.MustParseFIL("0.5"),
-			MaxWindowPoStGasFee: types.MustParseFIL("5"),
-			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
-		},
-		Addresses: []CurioAddresses{{
-			PreCommitControl: []string{},
-			CommitControl:    []string{},
-			TerminateControl: []string{},
-			MinerAddresses:   []string{},
-		}},
-		Proving: CurioProvingConfig{
-			ParallelCheckLimit:    32,
-			PartitionCheckTimeout: Duration(20 * time.Minute),
-			SingleCheckTimeout:    Duration(10 * time.Minute),
-		},
-		Ingest: CurioIngestConfig{
-			MaxQueueSDR:   8, // default to 8 sectors before sdr
-			MaxQueueTrees: 0, // default don't use this limit
-			MaxQueuePoRep: 0, // default don't use this limit
-		},
-	}
-}

@@ -209,7 +209,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		ctx, _ := tag.New(context.Background(),
-			tag.Insert(metrics.Version, build.BuildVersion),
+			tag.Insert(metrics.Version, build.NodeBuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
 			tag.Insert(metrics.NodeType, "chain"),
 		)

@@ -106,7 +106,7 @@ func NewLotusOpenRPCDocument(Comments, GroupDocs map[string]string) *go_openrpc_
 			title := "Lotus RPC API"
 			info.Title = (*meta_schema.InfoObjectProperties)(&title)
 
-			version := build.BuildVersion
+			version := build.NodeBuildVersion
 			info.Version = (*meta_schema.InfoObjectVersion)(&version)
 			return info
 		},

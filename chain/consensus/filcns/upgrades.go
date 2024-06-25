@@ -27,6 +27,7 @@ import (
 	nv21 "github.com/filecoin-project/go-state-types/builtin/v12/migration"
 	system12 "github.com/filecoin-project/go-state-types/builtin/v12/system"
 	nv22 "github.com/filecoin-project/go-state-types/builtin/v13/migration"
+	nv23 "github.com/filecoin-project/go-state-types/builtin/v14/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/migration"
@@ -302,6 +303,17 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Height:    build.UpgradeCalibrationDragonFixHeight,
 		Network:   network.Version22,
 		Migration: upgradeActorsV13VerifregFix(calibnetv13BuggyVerifregCID1, calibnetv13CorrectManifestCID1),
+	}, {
+		Height:    build.UpgradeAussieHeight,
+		Network:   network.Version23,
+		Migration: UpgradeActorsV14,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV14,
+			StartWithin:     120,
+			DontStartWithin: 15,
+			StopWithin:      10,
+		}},
+		Expensive: true,
 	},
 	}
 
@@ -2466,6 +2478,108 @@ func upgradeActorsV13VerifregFix(oldBuggyVerifregCID, newManifestCID cid.Cid) fu
 
 		return newRoot, nil
 	}
+}
+
+func PreUpgradeActorsV14(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
+
+	_, err = upgradeActorsV14Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func UpgradeActorsV14(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+	newRoot, err := upgradeActorsV14Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v14 state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func upgradeActorsV14Common(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
+	adtStore := store.ActorStore(ctx, writeStore)
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, writeStore, actorstypes.Version14); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot types.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != types.StateTreeVersion5 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 5 for actors v14 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version14)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v14 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv23.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v14: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &types.StateRoot{
+		Version: types.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
 }
 
 ////////////////////

@@ -31,7 +31,7 @@ var listSimCommand = &cli.Command{
 				return err
 			}
 			head := sim.GetHead()
-			fmt.Fprintf(tw, "%s\t%s\t%s\n", name, head.Height(), head.Key())
+			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\n", name, head.Height(), head.Key())
 		}
 		return tw.Flush()
 	},
