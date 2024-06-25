@@ -14,6 +14,7 @@ This release, v1.27.1, is an OPTIONAL lotus release. It is HIGHLY RECOMMENDED fo
 
 - This Lotus release completely removes the Legacy Lotus/Lotus-Miner Markets sub-system from the codebase, which was announced to reach EOL on January 31, 2023.
 - The **Curio Storage** software, designed to simplify the setup and operation of storage providers, has moved to their own Github-repository: https://github.com/filecoin-project/curio.
+- The events subsystem includes some minor correctness fixes and performance improvements. Nodes operators running Lotus with events turned on (off by default) may experience some delay in initial start-up as a minor database migration takes place and the write-ahead log is compacted. See [filecoin-project/lotus#11952](https://github.com/filecoin-project/lotus/pull/11952) and [filecoin-project/lotus#12090](https://github.com/filecoin-project/lotus/pull/12090) for full details.
 
 ### JSON-RPC 2.0 Specification Conformance
 
