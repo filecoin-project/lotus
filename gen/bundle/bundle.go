@@ -18,7 +18,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMetadata{
+var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{
 {{- range . }} {
 	Network: {{printf "%q" .Network}},
 	Version: {{.Version}},
