@@ -43,7 +43,7 @@ func TestManualNISectorOnboarding(t *testing.T) {
 		}
 		t.Run(testName, func(t *testing.T) {
 			if !withMockProofs {
-				kit.Expensive(t)
+				kit.VeryExpensive(t)
 			}
 			kit.QuietMiningLogs()
 			ctx, cancel := context.WithCancel(context.Background())
