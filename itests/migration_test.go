@@ -868,15 +868,13 @@ func TestMigrationNV23(t *testing.T) {
 	require.Equal(t, types.StateTreeVersion5, preStateTree.Version())
 
 	// Check f090 actor before migration
-
 	msigCodeNv22, ok := actors.GetActorCodeID(actorstypes.Version13, manifest.MultisigKey)
 	assert.True(t, ok)
 	f090ActorPre, err := preStateTree.GetActor(f090Addr)
 	require.NoError(t, err)
 	require.True(t, f090ActorPre.Code.Equals(msigCodeNv22))
 
-	// Wait for the migration
-	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv23epoch+1))
+	// Get state after the migration
 	postMigrationTs, err := clientApi.ChainHead(ctx)
 	require.NoError(t, err)
 	postStateTree, err := state.LoadStateTree(ctxStore, postMigrationTs.Blocks()[0].ParentStateRoot)
