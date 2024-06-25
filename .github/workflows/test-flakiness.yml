@@ -1,0 +1,76 @@
+name: Test Flakiness
+
+on:
+  push:
+    paths:
+      - .github/workflows/test-flakiness.yml
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  actions: read
+
+jobs:
+  test-flakiness:
+    name: Test Flakiness
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Get last run
+        id: last_run
+        run: |
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow "$GITHUB_WORKFLOW" --status completed --status success --limit 1 --json databaseId |
+            jq -r '.[0].databaseId // ""' |
+            xargs -I {} -0 echo "id={}" |
+            tee -a $GITHUB_OUTPUT
+      - if: steps.last_run.outputs.id != ''
+        name: Download artifacts from the last run
+        env:
+          LAST_RUN_ID: ${{ steps.last_run.outputs.id }}
+        run: gh run download --repo "$GITHUB_REPOSITORY" "$LAST_RUN_ID"
+      - name: Prepare search window
+        run: |
+          echo "Created since:"
+          if [[ -f CREATED_UNTIL ]]; then
+            cat CREATED_UNTIL | tee CREATED_SINCE
+          else
+            date -u -d "1 days ago" +"%Y-%m-%dT%H:%M:%SZ" | tee CREATED_SINCE
+          fi
+          echo "Created until:"
+          date -u +"%Y-%m-%dT%H:%M:%SZ" | tee CREATED_UNTIL
+      - name: Get job urls
+        id: jobs
+        run: |
+          echo "urls<<EOF" | tee -a $GITHUB_OUTPUT
+          gh api --paginate -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/test.yml/runs" -f status=completed -F per_page=100 -f created="$(cat CREATED_SINCE)..$(cat CREATED_UNTIL)" |
+            jq -r '.workflow_runs[] | .jobs_url' |
+            tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+      - name: Iterate over jobs
+        env:
+          JOBS_URLS: ${{ steps.jobs.outputs.urls }}
+        run: |
+          if [[ ! -f JOBS ]]; then
+            echo "[]" > JOBS
+          fi
+          for url in $JOBS_URLS; do
+            if [[ -z "$url" ]]; then
+              continue
+            fi
+            echo "Processing $url"
+            gh api --paginate "${url#https://api.github.com}" |
+              jq '.jobs | map(del(.steps))' > JOB
+              jq --argjson job "$(cat JOB)" '. + $job' JOBS > JOBS.tmp
+              mv JOBS.tmp JOBS
+          done
+      - name: Archive jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobs
+          path: |
+            JOBS
+            CREATED_UNTIL
