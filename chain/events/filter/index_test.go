@@ -76,9 +76,49 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
+
+	subCh, unSubscribe := ei.SubscribeUpdates()
+	defer unSubscribe()
+
+	out := make(chan EventIndexUpdated, 1)
+	go func() {
+		tu := <-subCh
+		out <- tu
+	}()
+
 	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
 		require.NoError(t, err, "collect events")
 	}
+
+	mh, err := ei.GetMaxHeightInIndex(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, uint64(14000), mh)
+
+	b, err := ei.IsHeightProcessed(context.Background(), 14000)
+	require.NoError(t, err)
+	require.True(t, b)
+
+	b, err = ei.IsHeightProcessed(context.Background(), 14001)
+	require.NoError(t, err)
+	require.False(t, b)
+
+	b, err = ei.IsHeightProcessed(context.Background(), 13000)
+	require.NoError(t, err)
+	require.False(t, b)
+
+	tsKey := events14000.msgTs.Key()
+	tsKeyCid, err := tsKey.Cid()
+	require.NoError(t, err, "tipset key cid")
+
+	seen, err := ei.IsTipsetProcessed(context.Background(), tsKeyCid.Bytes())
+	require.NoError(t, err)
+	require.True(t, seen, "tipset key should be seen")
+
+	seen, err = ei.IsTipsetProcessed(context.Background(), []byte{1})
+	require.NoError(t, err)
+	require.False(t, seen, "tipset key should not be seen")
+
+	_ = <-out
 
 	testCases := []struct {
 		name   string
@@ -397,6 +437,22 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
+
+	tCh := make(chan EventIndexUpdated, 3)
+	subCh, unSubscribe := ei.SubscribeUpdates()
+	defer unSubscribe()
+	go func() {
+		cnt := 0
+		for tu := range subCh {
+			tCh <- tu
+			cnt++
+			if cnt == 3 {
+				close(tCh)
+				return
+			}
+		}
+	}()
+
 	if err := ei.CollectEvents(context.Background(), revertedEvents14000, false, addrMap.ResolveAddress); err != nil {
 		require.NoError(t, err, "collect reverted events")
 	}
@@ -406,6 +462,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
 		require.NoError(t, err, "collect events")
 	}
+
+	_ = <-tCh
+	_ = <-tCh
+	_ = <-tCh
 
 	inclusiveTestCases := []struct {
 		name   string
