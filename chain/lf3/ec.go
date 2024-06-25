@@ -13,10 +13,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 )
 
 type ecWrapper struct {
@@ -114,13 +116,16 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
 	}
-	stCid := ts.ParentState()
 
 	sm := ec.StateManager
 
-	powerAct, err := sm.LoadActor(ctx, power.Address, ts)
+	state, err := sm.ParentState(ts)
 	if err != nil {
-		return nil, xerrors.Errorf("loading power actor: %w", err)
+		return nil, xerrors.Errorf("loading the state tree: %w", err)
+	}
+	powerAct, err := state.GetActor(power.Address)
+	if err != nil {
+		return nil, xerrors.Errorf("getting the power actor: %w", err)
 	}
 
 	powerState, err := power.Load(ec.ChainStore.ActorStore(ctx), powerAct)
@@ -129,13 +134,13 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 	}
 
 	var powerEntries gpbft.PowerEntries
-	err = powerState.ForEachClaim(func(miner address.Address, claim power.Claim) error {
+	err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
 		if claim.QualityAdjPower.LessThanEqual(big.Zero()) {
 			return nil
 		}
 
 		// TODO: optimize
-		ok, err := powerState.MinerNominalPowerMeetsConsensusMinimum(miner)
+		ok, err := powerState.MinerNominalPowerMeetsConsensusMinimum(minerAddr)
 		if err != nil {
 			return xerrors.Errorf("checking consensus minimums: %w", err)
 		}
@@ -143,7 +148,7 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 			return nil
 		}
 
-		id, err := address.IDFromAddress(miner)
+		id, err := address.IDFromAddress(minerAddr)
 		if err != nil {
 			return xerrors.Errorf("transforming address to ID: %w", err)
 		}
@@ -152,10 +157,37 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 			ID:    gpbft.ActorID(id),
 			Power: claim.QualityAdjPower.Int,
 		}
-		waddr, err := stmgr.GetMinerWorkerRaw(ctx, sm, stCid, miner)
+
+		act, err := state.GetActor(minerAddr)
 		if err != nil {
-			return xerrors.Errorf("GetMinerWorkerRaw failed: %w", err)
+			return xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 		}
+		mstate, err := miner.Load(ec.ChainStore.ActorStore(ctx), act)
+		if err != nil {
+			return xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		}
+
+		info, err := mstate.Info()
+		if err != nil {
+			return xerrors.Errorf("failed to load actor info: %w", err)
+		}
+		// check fee debt
+		if debt, err := mstate.FeeDebt(); err != nil {
+			return err
+		} else if !debt.IsZero() {
+			// fee debt don't add the miner to power table
+			return nil
+		}
+		// check consensus faults
+		if ts.Height() <= info.ConsensusFaultElapsed {
+			return nil
+		}
+
+		waddr, err := vm.ResolveToDeterministicAddr(state, ec.ChainStore.ActorStore(ctx), info.Worker)
+		if err != nil {
+			return xerrors.Errorf("resolve miner worker address: %w", err)
+		}
+
 		if waddr.Protocol() != address.BLS {
 			return xerrors.Errorf("wrong type of worker address")
 		}
