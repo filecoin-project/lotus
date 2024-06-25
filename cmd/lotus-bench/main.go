@@ -338,7 +338,7 @@ var sealBenchCmd = &cli.Command{
 
 		if !skipc2 {
 			log.Info("generating winning post candidates")
-			wipt, err := spt(sectorSize, false).RegisteredWinningPoStProof()
+			wipt, err := spt(sectorSize, miner.SealProofVariant_Standard).RegisteredWinningPoStProof()
 			if err != nil {
 				return err
 			}
@@ -556,7 +556,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 				Miner:  mid,
 				Number: i,
 			},
-			ProofType: spt(sectorSize, false),
+			ProofType: spt(sectorSize, miner.SealProofVariant_Standard),
 		}
 
 		start := time.Now()
@@ -586,7 +586,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 							Miner:  mid,
 							Number: i,
 						},
-						ProofType: spt(sectorSize, false),
+						ProofType: spt(sectorSize, miner.SealProofVariant_Standard),
 					}
 
 					start := time.Now()
@@ -797,7 +797,7 @@ var proveCmd = &cli.Command{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(c2in.SectorNum),
 			},
-			ProofType: spt(abi.SectorSize(c2in.SectorSize), false),
+			ProofType: spt(abi.SectorSize(c2in.SectorSize), miner.SealProofVariant_Standard),
 		}
 
 		fmt.Printf("----\nstart proof computation\n")
@@ -828,8 +828,8 @@ func bps(sectorSize abi.SectorSize, sectorNum int, d time.Duration) string {
 	return types.SizeStr(types.BigInt{Int: bps}) + "/s"
 }
 
-func spt(ssize abi.SectorSize, synth bool) abi.RegisteredSealProof {
-	spt, err := miner.SealProofTypeFromSectorSize(ssize, build.TestNetworkVersion, synth)
+func spt(ssize abi.SectorSize, variant miner.SealProofVariant) abi.RegisteredSealProof {
+	spt, err := miner.SealProofTypeFromSectorSize(ssize, build.TestNetworkVersion, variant)
 	if err != nil {
 		panic(err)
 	}
