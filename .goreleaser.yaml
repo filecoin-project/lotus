@@ -63,7 +63,8 @@ archives:
   - id: primary
     format: tar.gz
     wrap_in_directory: true
-    name_template: "{{ .ProjectName }}_{{ .Env.TAG }}_{{ .Os }}_{{ .Arch }}"
+    name_template: |
+      lotus{{ if ne .Env.PROJECT "node" }}-{{ .Env.PROJECT }}{{ end }}_v{{ .Env.VERSION }}_{{ .Os }}_{{ .Arch }}
     files:
       # this is a dumb but required hack so it doesn't include the default files
       # https://github.com/goreleaser/goreleaser/issues/602
@@ -84,7 +85,7 @@ release:
   target_commitish: "{{ .Env.TARGET_COMMITISH }}"
 brews:
   - name: |
-      {{ if eq .Env.PROJECT "node" }}lotus{{ else }}lotus-{{ .Env.PROJECT }}{{ end }}"
+      lotus{{ if ne .Env.PROJECT "node" }}-{{ .Env.PROJECT }}{{ end }}"
     repository:
       owner: filecoin-project
       name: homebrew-lotus
@@ -112,4 +113,5 @@ brews:
 checksum:
   disable: true
 snapshot:
-  name_template: "{{ .Env.TAG }}"
+  name_template: |
+    lotus{{ if ne .Env.PROJECT "node" }}-{{ .Env.PROJECT }}{{ end }}_v{{ .Env.VERSION }}

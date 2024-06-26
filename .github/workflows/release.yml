@@ -107,7 +107,7 @@ jobs:
   release:
     needs: [check, build]
     if: needs.check.outputs.projects != '[]'
-    name: Release [publish=${{ github.event_name != 'pull_request' }}]
+    name: Release ${{ matrix.project }} [publish=${{ github.event_name != 'pull_request' }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
