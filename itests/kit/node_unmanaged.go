@@ -1148,6 +1148,6 @@ func (tm *TestUnmanagedMiner) IsImmutableDeadline(ctx context.Context, deadlineI
 	di, err := tm.FullNode.StateMinerProvingDeadline(ctx, tm.ActorAddr, types.EmptyTSK)
 	require.NoError(tm.t, err)
 	// don't rely on di.Index because if we haven't enrolled in cron it won't be ticking
-	currentDeadline := uint64((di.CurrentEpoch - di.PeriodStart) / di.WPoStChallengeWindow)
-	return currentDeadline == deadlineIndex || currentDeadline == deadlineIndex-1
+	currentDeadlineIdx := uint64(math.Abs(float64((di.CurrentEpoch - di.PeriodStart) / di.WPoStChallengeWindow)))
+	return currentDeadlineIdx == deadlineIndex || currentDeadlineIdx == deadlineIndex-1
 }
