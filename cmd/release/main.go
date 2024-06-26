@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/mod/semver"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/urfave/cli/v2"
 )
 
 var _tags []string
