@@ -2,14 +2,11 @@
 # TODO(p0): Test if templating on boolean values is supported
 
 version: 2
-
 project_name: lotus
-
 universal_binaries:
   - id: lotus
     replace: true
     name_template: lotus
-
 builds:
   - id: lotus
     binary: lotus
@@ -27,7 +24,7 @@ builds:
         goarch: arm64
     prebuilt:
       path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus'
-    skip: '{{ .Env.PROJECT != "node" }}'
+    skip: true
   - id: lotus-miner
     binary: lotus-miner
     builder: prebuilt
@@ -44,7 +41,7 @@ builds:
         goarch: arm64
     prebuilt:
       path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner'
-    skip: '{{ .Env.PROJECT != "miner" }}'
+    skip: true
   - id: lotus-worker
     binary: lotus-worker
     builder: prebuilt
@@ -61,60 +58,58 @@ builds:
         goarch: arm64
     prebuilt:
       path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker'
-    skip: '{{ .Env.PROJECT != "miner" }}'
-
+    skip: true
 archives:
   - id: primary
     format: tar.gz
     wrap_in_directory: true
-    name_template: "{{ .ProjectName }}_{{ .Env.VERSION }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Env.TAG }}_{{ .Os }}_{{ .Arch }}"
     files:
       # this is a dumb but required hack so it doesn't include the default files
       # https://github.com/goreleaser/goreleaser/issues/602
       - _n_o_n_e_*
-
 release:
   github:
     owner: filecoin-project
     name: lotus
-  draft: "{{ .Env.IS_DRAFT }}"
+  draft: true
   header: "{{ .Env.HEADER }}"
-  make_latest: "${{ .Env.IS_LATEST }}"
-  name_template: "{{ .Env.VERSION }}"
-  prerelease: "${{ .Env.VERSION | strings.hasSuffix '-rc' }}"
+  make_latest: "{{ .Env.IS_LATEST }}"
+  name_template: "{{ .Env.TAG }}"
+  prerelease: "{{ .Env.IS_PRERELEASE }}"
   replace_existing_artifacts: true
   # TODO(p0): Test if not replacing existing drafts updates them instead of failing the release
   replace_existing_draft: false
   tag: "{{ .Env.TAG }}"
   target_commitish: "{{ .Env.TARGET_COMMITISH }}"
-
-# TODO(p0): Figure out how to perform partial Homebrew updates
 brews:
-  - repository:
+  - name: |
+      {{ if eq .Env.PROJECT "node" }}lotus{{ else }}lotus-{{ .Env.PROJECT }}{{ end }}"
+    repository:
       owner: filecoin-project
       name: homebrew-lotus
       branch: master
     ids:
       - primary
+    custom_block: ""
     install: |
-      bin.install "lotus"
-      bin.install "lotus-miner"
-      bin.install "lotus-worker"
+      {{ if eq .Env.PROJECT "node" }}bin.install "lotus"{{ end }}
+      {{ if eq .Env.PROJECT "miner" }}bin.install "lotus-miner"{{ end }}
+      {{ if eq .Env.PROJECT "miner" }}bin.install "lotus-worker"{{ end }}
     test: |
-      system "#{bin}/lotus --version"
-      system "#{bin}/lotus-miner --version"
-      system "#{bin}/lotus-worker --version"
+      {{ if eq .Env.PROJECT "node" }}system "#{bin}/lotus --version"{{ end }}
+      {{ if eq .Env.PROJECT "miner" }}system "#{bin}/lotus-miner --version"{{ end }}
+      {{ if eq .Env.PROJECT "miner" }}system "#{bin}/lotus-worker --version"{{ end }}
     directory: Formula
     homepage: "https://filecoin.io"
     description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
     license: MIT
-    skip_upload: auto
+    skip_upload: |
+      {{ if and (eq .Env.IS_DRAFT "false") (eq .Env.IS_LATEST "true") }}false{{ else }}true{{ end }}
     dependencies:
       - name: hwloc
-
 # produced manually so we can include cid checksums
 checksum:
   disable: true
-
 snapshot:
-  name_template: "{{ .Env.VERSION }}"
+  name_template: "{{ .Env.TAG }}"
