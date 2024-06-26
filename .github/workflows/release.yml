@@ -168,7 +168,7 @@ jobs:
         run: |
           yq -i '(.builds[] | select(.id == "lotus")).skip = false' '.goreleaser.yaml'
           yq -i '.brews[0].install = strenv(BREW_INSTALL)' '.goreleaser.yaml'
-          yq -i '.brews[0].test = strenv(BREW_TEST)' '.goreleaser.yaml
+          yq -i '.brews[0].test = strenv(BREW_TEST)' '.goreleaser.yaml'
       - if: matrix.project == 'miner'
         env:
           BREW_INSTALL: |
