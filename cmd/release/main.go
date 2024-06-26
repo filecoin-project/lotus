@@ -1,13 +1,91 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
+	"os/exec"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/mod/semver"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/urfave/cli/v2"
 )
+
+var _tags []string
+
+func getTags() []string {
+	if _tags == nil {
+		output, err := exec.Command("git", "tag").Output()
+		if err != nil {
+			log.Fatal(err)
+		}
+		_tags = strings.Split(string(output), "\n")
+	}
+	return _tags
+}
+
+func isPrerelease(version string) bool {
+	return semver.Prerelease("v"+version) != ""
+}
+
+func isLatest(name, version string) bool {
+	if isPrerelease(version) {
+		return false
+	}
+	prefix := getPrefix(name)
+	tags := getTags()
+	for _, t := range tags {
+		if strings.HasPrefix(t, prefix) {
+			v := strings.TrimPrefix(t, prefix)
+			if !isPrerelease(v) {
+				if semver.Compare("v"+v, "v"+version) > 0 {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func isReleased(tag string) bool {
+	tags := getTags()
+	for _, t := range tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+func getPrefix(name string) string {
+	if name == "node" {
+		return "v"
+	}
+	return name + "/v"
+}
+
+type project struct {
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+	Tag        string `json:"tag"`
+	Latest     bool   `json:"latest"`
+	Prerelease bool   `json:"prerelease"`
+	Released   bool   `json:"released"`
+}
+
+func getProject(name, version string) project {
+	tag := getPrefix(name) + version
+	return project{
+		Name:       name,
+		Version:    version,
+		Tag:        getPrefix(name) + version,
+		Latest:     isLatest(name, version),
+		Prerelease: isPrerelease(version),
+		Released:   isReleased(tag),
+	}
+}
 
 func main() {
 	app := &cli.App{
@@ -33,31 +111,19 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:  "node",
-				Usage: "Commands related to the Lotus Node",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "version",
-						Usage: "Print the Lotus Node version",
-						Action: func(c *cli.Context) error {
-							log.Info(build.NodeUserVersion())
-							return nil
-						},
-					},
-				},
-			},
-			{
-				Name:  "miner",
-				Usage: "Commands related to the Lotus Miner",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "version",
-						Usage: "Print the Lotus Miner version",
-						Action: func(c *cli.Context) error {
-							log.Info(build.MinerUserVersion())
-							return nil
-						},
-					},
+				Name:  "list-projects",
+				Usage: "List all projects",
+				Action: func(c *cli.Context) error {
+					projects := []project{
+						getProject("node", build.NodeBuildVersion),
+						getProject("miner", build.MinerBuildVersion),
+					}
+					b, err := json.MarshalIndent(projects, "", "  ")
+					if err != nil {
+						log.Fatal(err)
+					}
+					log.Info(string(b))
+					return nil
 				},
 			},
 		},

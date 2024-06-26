@@ -36,58 +36,35 @@ jobs:
         env:
           TARGET_REF: ${{ github.base_ref || github.ref }}
         run: |
-          projects=()
-          for project in node miner; do
-            echo "project=$project"
-            current_version=$(go run cmd/release/main.go --json $project version | jq -r .msg)
-            echo "${project}_current_version=$current_version"
-            if [[ $current_version =~ -dev$ ]]; then
-              echo "Skipping $project because it's a dev version"
-              continue
-            fi
-            if [[ $current_version =~ -rc$ && "$TARGET_REF" == 'refs/heads/releases' ]]; then
-              echo "Skipping $project because it's an RC version on the releases branch"
-              continue
-            fi
-            if [[ "$project" == "node" ]]; then
-              current_version_exists=(git tag -l 'v*' | grep -q $current_version)
-            else
-              current_version_exists=(git tag -l '$project/v*' | grep -q $current_version)
-            fi
-            echo "${project}_current_version_exists=$current_version_exists"
-            if [[ ! $current_version_exists ]]; then
-              projects+=($project)
-            fi
-          done
-          echo "projects=$(echo "${projects[@]}" | jq -c .)" | tee -a $GITHUB_OUTPUT
+          go run cmd/release/main.go --json list-projects | jq -r '.msg' |
+            jq 'map(select(.version | endswith("-dev") | not))' |
+            jq 'map(select(.released | not))' |
+            jq 'map(select(.prerelease != (env.TARGET_REF == "refs/heads/releases")))' |
+            jq -c '.' | xargs -I {} -0 echo "projects={}" |
+            tee -a $GITHUB_OUTPUT
   build:
     needs: [check]
     if: needs.check.outputs.projects != '[]'
-    name: Build ${{ matrix.project }} (${{ matrix.os }}/${{ matrix.arch }})
+    name: Build ${{ matrix.project }} (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        project: ${{ fromJSON(needs.check.outputs.projects) }}
-        include:
-          - runner: ubuntu-latest
-            os: Linux
-            arch: X64
-          - runner: macos-13
-            os: macOS
-            arch: X64
-          - runner: macos-14
-            os: macOS
-            arch: ARM64
+        project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
+        runner:
+          - ubuntu-latest # Linux X64
+          - macos-13 # MacOs X64
+          - macos-14 # MacOS ARM64
     steps:
-      - env:
-          OS: ${{ matrix.os }}
-          ARCH: ${{ matrix.arch }}
+      - run: echo "Building on $RUNNER_OS/$RUNNER_ARCH"
+      - id: project
+        env:
+          projects: ${{ needs.check.outputs.projects }}
+          name: ${{ matrix.project }}
         run: |
-          if [[ "$OS" != "$RUNNER_OS" || "$ARCH" != "$RUNNER_ARCH" ]]; then
-            echo "::error title=Unexpected Runner::Expected $OS/$ARCH, got $RUNNER_OS/$RUNNER_ARCH"
-            exit 1
-          fi
+          jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
+            xargs -I {} -0 echo "config={}" |
+            tee -a $GITHUB_OUTPUT
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
@@ -104,15 +81,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: make lotus-miner lotus-worker
-      - if: matrix.project == 'lotus' && runner.os == 'macOS'
-        run: otool -hv lotus
+      - if: runner.os == 'macOS'
+        run: if [[ -f lotus ]]; then otool -hv lotus; fi
+      - env:
+          LOTUS_VERSION_IGNORE_COMMIT: 1
+          expected: ${{ fromJSON(steps.project.outputs.config).version }}
+        run: |
+          for bin in lotus lotus-miner lotus-worker; do
+            if [[ -f ./$bin ]]; then
+              chmod +x ./$bin
+              actual=$(./$bin --version | cut -d' ' -f3)
+              if [[ "$actual" != "$expected" ]]; then
+                echo "::error title=Version Mismatch::Expected $expected, got $actual (./$bin)"
+                exit 1
+              fi
+            fi
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: lotus-${{ matrix.project }}-${{ matrix.os }}-${{ matrix.arch }}
+          name: lotus-${{ matrix.project }}-${{ runner.os }}-${{ runner.arch }}
           path: |
-            lotus/lotus
-            lotus/lotus-miner
-            lotus/lotus-worker
+            lotus
+            lotus-miner
+            lotus-worker
   release:
     needs: [check, build]
     if: needs.check.outputs.projects != '[]'
@@ -124,10 +115,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: ${{ fromJSON(needs.check.outputs.projects) }}
+        project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
     env:
       PUBLISH: ${{ github.event_name != 'pull_request' }}
     steps:
+      - id: project
+        env:
+          projects: ${{ needs.check.outputs.projects }}
+          name: ${{ matrix.project }}
+        run: |
+          jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
+            xargs -I {} -0 echo "config={}" |
+            tee -a $GITHUB_OUTPUT
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
@@ -149,56 +148,37 @@ jobs:
         with:
           name: kubo
           version: v0.16.0
-      - id: meta
-        run: |
-          version="$(go run cmd/release/main.go --json ${{ matrix.project }} version | jq -r .msg)"
-          if [[ "${{ matrix.project}}" == "miner" ]]; then
-            tag="miner/$version"
-            latest="$(git tag -l 'miner/v*' | sort -V | tail -n1)"
-          elif [[ "${{ matrix.project}}" == "node" ]]; then
-            tag="$version"
-            latest="$(git tag -l 'v*' | sort -V | tail -n1)"
-          else
-            echo "::error title=Unknown Project::${{ matrix.project }}"
-            exit 1
-          fi
-          latest="$(echo -e "$latest\n$version" | sort -V | tail -n1)"
-          echo "version=$version" | tee -a $GITHUB_OUTPUT
-          echo "latest=$latest" | tee -a $GITHUB_OUTPUT
-          echo "tag=$tag" | tee -a $GITHUB_OUTPUT
-      - env:
-          expected: ${{ steps.meta.outputs.version }}
-        run: |
-          for dir in linux_amd64_v1 darwin_amd64_v1 darwin_arm64; do
-            for bin in lotus lotus-miner lotus-worker; do
-              if [[ -f $dir/$bin ]]; then
-                actual=$(./$dir/$bin --version)
-                if [[ "$actual" != "$expected" ]]; then
-                  echo "::error title=Version Mismatch::Expected $expected, got $actual ($dir/$bin)"
-                  exit 1
-                fi
-              fi
-            done
-          done
+      - if: github.event_name != 'pull_request'
+        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
+        with:
+          cmd: yq -i '.release.draft = false' '.goreleaser.yaml'
+      - if: matrix.project == 'node'
+        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
+        with:
+          cmd: yq -i '(.builds[] | select(.id == "lotus")).skip = false' '.goreleaser.yaml'
+      - if: matrix.project == 'miner'
+        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
+        with:
+          cmd: yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
       - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           distribution: goreleaser-pro
           version: 2.0.1
           args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
         env:
-          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_GITUB_TOKEN || github.token || '' }}
+          PROJECT: ${{ matrix.project }}
+          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
-          TAG: ${{ steps.meta.outputs.tag }}
-          VERSION: ${{ steps.meta.outputs.version }}
-          IS_LATEST: ${{ steps.meta.outputs.latest == steps.meta.outputs.version }}
+          TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
+          VERSION: ${{ fromJSON(steps.project.outputs.config).version }}
+          IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
           IS_DRAFT: ${{ github.event_name == 'pull_request' }}
+          IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
           TARGET_COMMITISH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha }}
           HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
-      - run: |
-          ./scripts/generate-checksums.sh
+      - run: ./scripts/generate-checksums.sh
       - if: env.PUBLISH == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.meta.outputs.tag }}
-        run: |
-          ./scripts/publish-checksums.sh
+          TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
+        run: ./scripts/publish-checksums.sh
