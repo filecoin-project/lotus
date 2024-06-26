@@ -90,14 +90,8 @@ brews:
       branch: master
     ids:
       - primary
-    install: |
-      {{ if eq .Env.PROJECT_NAME "lotus" }}bin.install "lotus"{{ end }}
-      {{ if eq .Env.PROJECT_NAME "lotus-miner" }}bin.install "lotus-miner"{{ end }}
-      {{ if eq .Env.PROJECT_NAME "lotus-miner" }}bin.install "lotus-worker"{{ end }}
-    test: |
-      {{ if eq .Env.PROJECT_NAME "lotus" }}system "#{bin}/lotus --version"{{ end }}
-      {{ if eq .Env.PROJECT_NAME "lotus-miner" }}system "#{bin}/lotus-miner --version"{{ end }}
-      {{ if eq .Env.PROJECT_NAME "lotus-miner" }}system "#{bin}/lotus-worker --version"{{ end }}
+    install: ""
+    test: ""
     directory: Formula
     homepage: "https://filecoin.io"
     description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
@@ -105,6 +99,7 @@ brews:
     skip_upload: true
     dependencies:
       - name: hwloc
+    commit_msg_template: "Brew formula update for {{ .Env.PROJECT_NAME }} version {{ .Env.TAG }}"
 # produced manually so we can include cid checksums
 checksum:
   disable: true

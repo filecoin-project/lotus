@@ -148,22 +148,37 @@ jobs:
         with:
           name: kubo
           version: v0.16.0
+      - name: Install yq
+        run: |
+          gh release --repo mikefarah/yq download v4.44.2 -p yq_linux_amd64
+          sudo mv yq_linux_amd64 /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
       # - if: github.event_name != 'pull_request'
-      #   uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-      #   with:
-      #     cmd: yq -i '.release.draft = false' '.goreleaser.yaml'
-      - if: matrix.project == 'node'
-        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-        with:
-          cmd: yq -i '(.builds[] | select(.id == "lotus")).skip = false' '.goreleaser.yaml'
-      - if: matrix.project == 'miner'
-        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-        with:
-          cmd: yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
+      #   run: yq -i '.release.draft = false' '.goreleaser.yaml'
       # - if: github.event_name != 'pull_request' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
-      #   uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-      #   with:
-      #     cmd: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
+      #   run: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
+      - if: matrix.project == 'node'
+        env:
+          BREW_INSTALL: |
+            bin.install "lotus"
+          BREW_TEST: |
+            system "#{bin}/lotus --version"
+        run: |
+          yq -i '(.builds[] | select(.id == "lotus")).skip = false' '.goreleaser.yaml'
+          yq -i '.brews.install = env.BREW_INSTALL' '.goreleaser.yaml'
+          yq -i '.brews.test = env.BREW_TEST' '.goreleaser.yaml
+      - if: matrix.project == 'miner'
+        env:
+          BREW_INSTALL: |
+            bin.install "lotus-miner"
+            bin.install "lotus-worker"
+          BREW_TEST: |
+            system "#{bin}/lotus-miner --version"
+            system "#{bin}/lotus-worker --version"
+        run: |
+          yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
+          yq -i '.brews.install = env.BREW_INSTALL' '.goreleaser.yaml'
+          yq -i '.brews.test = env.BREW_TEST' '.goreleaser.yaml'
       - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           distribution: goreleaser-pro
