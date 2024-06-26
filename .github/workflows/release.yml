@@ -160,19 +160,22 @@ jobs:
         uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
         with:
           cmd: yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
+      # - if: github.event_name != 'pull_request' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
+      #   uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
+      #   with:
+      #     cmd: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
       - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           distribution: goreleaser-pro
           version: 2.0.1
           args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
         env:
-          PROJECT: ${{ matrix.project }}
+          PROJECT_NAME: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
           TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
           VERSION: ${{ fromJSON(steps.project.outputs.config).version }}
           IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
-          IS_DRAFT: true # ${{ github.event_name == 'pull_request' }}
           IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
           TARGET_COMMITISH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha }}
           HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
