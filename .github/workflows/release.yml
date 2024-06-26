@@ -4,14 +4,14 @@ name: Release
 on:
   push:
     branches:
-      - release/v*
-      - releases
+      - ipdx/release-automation-release-v*
+      - ipdx/release-automation-releases
     paths:
       - build/version.go
   pull_request:
     branches:
-      - release/v*
-      - releases
+      - ipdx/release-automation-release-v*
+      - ipdx/release-automation-releases
     paths:
       - build/version.go
 
@@ -39,7 +39,7 @@ jobs:
           go run cmd/release/main.go --json list-projects | jq -r '.msg' |
             jq 'map(select(.version | endswith("-dev") | not))' |
             jq 'map(select(.released | not))' |
-            jq 'map(select(.prerelease != (env.TARGET_REF == "refs/heads/releases")))' |
+            jq 'map(select(.prerelease != (env.TARGET_REF == "refs/heads/ipdx/release-automation-releases")))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |
             tee -a $GITHUB_OUTPUT
   build:
@@ -148,10 +148,10 @@ jobs:
         with:
           name: kubo
           version: v0.16.0
-      - if: github.event_name != 'pull_request'
-        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-        with:
-          cmd: yq -i '.release.draft = false' '.goreleaser.yaml'
+      # - if: github.event_name != 'pull_request'
+      #   uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
+      #   with:
+      #     cmd: yq -i '.release.draft = false' '.goreleaser.yaml'
       - if: matrix.project == 'node'
         uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
         with:
@@ -172,7 +172,7 @@ jobs:
           TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
           VERSION: ${{ fromJSON(steps.project.outputs.config).version }}
           IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
-          IS_DRAFT: ${{ github.event_name == 'pull_request' }}
+          IS_DRAFT: true # ${{ github.event_name == 'pull_request' }}
           IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
           TARGET_COMMITISH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha }}
           HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
