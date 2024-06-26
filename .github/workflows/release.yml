@@ -149,6 +149,8 @@ jobs:
           name: kubo
           version: v0.16.0
       - name: Install yq
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           gh release --repo mikefarah/yq download v4.44.2 -p yq_linux_amd64
           sudo mv yq_linux_amd64 /usr/bin/yq
