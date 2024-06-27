@@ -209,7 +209,7 @@ jobs:
           IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
           IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
           TARGET_COMMITISH: ${{ inputs.target_commitish || (github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha) }}
-          HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
+          HEADER: ''
       - run: ./scripts/generate-checksums.sh
       - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false'
         env:
