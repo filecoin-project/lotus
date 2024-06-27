@@ -1,5 +1,4 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
-# TODO(p0): Test if templating on boolean values is supported
 
 version: 2
 project_name: "{{ .Env.PROJECT_NAME }}"
@@ -84,7 +83,6 @@ release:
   name_template: "{{ .Env.TAG }}"
   prerelease: "{{ .Env.IS_PRERELEASE }}"
   replace_existing_artifacts: true
-  # TODO(p0): Test if not replacing existing drafts updates them instead of failing the release
   replace_existing_draft: false
   tag: "{{ .Env.TAG }}"
   target_commitish: "{{ .Env.TARGET_COMMITISH }}"
