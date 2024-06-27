@@ -1,6 +1,5 @@
 name: Release
 
-# TODO(p2): Restore worfklow_dispatch trigger
 on:
   push:
     branches:
@@ -14,7 +13,20 @@ on:
       - releases
     paths:
       - build/version.go
-
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish the release'
+        required: false
+        default: 'false'
+      draft:
+        description: 'Create a draft release'
+        required: false
+        default: 'true'
+      target_commitish:
+        description: 'The commitish value that determines where the Git tag is created from'
+        required: false
+        default: ''
 defaults:
   run:
     shell: bash
@@ -39,7 +51,7 @@ jobs:
           go run cmd/release/main.go --json list-projects | jq -r '.msg' |
             jq 'map(select(.version | endswith("-dev") | not))' |
             jq 'map(select(.released | not))' |
-            jq 'map(select(.prerelease != (env.TARGET_REF == "refs/heads/releases")))' |
+            jq 'map(select(.prerelease != ((env.TARGET_REF | sub("^refs/heads/"; "")) == "releases")))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |
             tee -a $GITHUB_OUTPUT
   build:
@@ -107,7 +119,7 @@ jobs:
   release:
     needs: [check, build]
     if: needs.check.outputs.projects != '[]'
-    name: Release [publish=${{ github.event_name != 'pull_request' }}]
+    name: Release ${{ matrix.project }} [publish=${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
@@ -117,7 +129,8 @@ jobs:
       matrix:
         project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
     env:
-      PUBLISH: ${{ github.event_name != 'pull_request' }}
+      PUBLISH: ${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}
+      IS_DRAFT: ${{ inputs.draft == 'true' || github.event_name == 'pull_request' }}
     steps:
       - id: project
         env:
@@ -148,36 +161,57 @@ jobs:
         with:
           name: kubo
           version: v0.16.0
-      - if: github.event_name != 'pull_request'
-        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-        with:
-          cmd: yq -i '.release.draft = false' '.goreleaser.yaml'
+          cache: false
+      - name: Install yq
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh release --repo mikefarah/yq download v4.44.2 -p yq_linux_amd64
+          sudo mv yq_linux_amd64 /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+      - if: env.IS_DRAFT == 'false'
+        run: yq -i '.release.draft = false' '.goreleaser.yaml'
+      - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
+        run: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
       - if: matrix.project == 'node'
-        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-        with:
-          cmd: yq -i '(.builds[] | select(.id == "lotus")).skip = false' '.goreleaser.yaml'
+        env:
+          BREW_INSTALL: |
+            bin.install "lotus"
+          BREW_TEST: |
+            system "#{bin}/lotus --version"
+        run: |
+          yq -i '(.builds[] | select(.id == "lotus")).skip = false' '.goreleaser.yaml'
+          yq -i '.brews[0].install = strenv(BREW_INSTALL)' '.goreleaser.yaml'
+          yq -i '.brews[0].test = strenv(BREW_TEST)' '.goreleaser.yaml'
       - if: matrix.project == 'miner'
-        uses: mikefarah/yq@f15500b20a1c991c8729870ba60a4dc3524b6a94 # v4.44.2
-        with:
-          cmd: yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
+        env:
+          BREW_INSTALL: |
+            bin.install "lotus-miner"
+            bin.install "lotus-worker"
+          BREW_TEST: |
+            system "#{bin}/lotus-miner --version"
+            system "#{bin}/lotus-worker --version"
+        run: |
+          yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
+          yq -i '.brews[0].install = strenv(BREW_INSTALL)' '.goreleaser.yaml'
+          yq -i '.brews[0].test = strenv(BREW_TEST)' '.goreleaser.yaml'
       - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           distribution: goreleaser-pro
           version: 2.0.1
-          args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
+          args: release --clean --skip=validate ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
         env:
-          PROJECT: ${{ matrix.project }}
-          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
+          PROJECT_NAME: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
+          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && (secrets.GORELEASER_GITHUB_TOKEN || github.token) || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
           TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
           VERSION: ${{ fromJSON(steps.project.outputs.config).version }}
           IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
-          IS_DRAFT: ${{ github.event_name == 'pull_request' }}
           IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
-          TARGET_COMMITISH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha }}
+          TARGET_COMMITISH: ${{ inputs.target_commitish || (github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha) }}
           HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
       - run: ./scripts/generate-checksums.sh
-      - if: env.PUBLISH == 'true'
+      - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
