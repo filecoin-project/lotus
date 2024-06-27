@@ -362,34 +362,43 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 		Jitter: false,
 	}
 	go func() {
-		for {
-			if ctx.Err() != nil {
-				return
-			}
-			ch, err := api.F3Participate(ctx, address.Address(minerAddress))
+		timer := time.NewTimer(0)
+		defer timer.Stop()
 
-			if errors.Is(err, context.Canceled) {
+		// Backoff while obeying the context.
+		backoffWithContext := func() {
+			timer.Reset(b.Duration())
+			select {
+			case <-ctx.Done():
+				log.Errorf("Context is done while retrying F3 participation: %+v", ctx.Err())
+			case <-timer.C:
+			}
+		}
+
+		for ctx.Err() != nil {
+			switch ch, err := api.F3Participate(ctx, address.Address(minerAddress)); {
+			case errors.Is(err, context.Canceled):
 				log.Errorf("Context cancelled while attampting F3 participation: %+v", err)
 				return
-			} else if errors.Is(err, full.ErrF3Disabled) {
+			case errors.Is(err, full.ErrF3Disabled):
 				log.Errorf("Cannot participate in F3 as it is disabled: %+v", err)
 				return
-			} else if err != nil {
+			case err != nil:
 				log.Errorf("while starting to participate in F3: %+v", err)
 				// use exponential backoff to avoid hotloop
-				time.Sleep(b.Duration())
+				backoffWithContext()
 				continue
-			}
-
-			for err := range ch {
-				// we have communication with F3 in lotus, reset the backoff
-				b.Reset()
-				if err != "" {
-					log.Warnf("participating in F3 encountered an error: %v", err)
+			default:
+				for err := range ch {
+					// we have communication with F3 in lotus, reset the backoff
+					b.Reset()
+					if err != "" {
+						log.Warnf("participating in F3 encountered an error: %v", err)
+					}
 				}
+				log.Warn("F3Participate exited, retrying")
+				backoffWithContext()
 			}
-			log.Info("F3Participate exited, retrying")
-			time.Sleep(b.Duration())
 		}
 	}()
 	return nil

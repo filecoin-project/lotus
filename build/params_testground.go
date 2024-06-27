@@ -137,7 +137,7 @@ var (
 	BootstrappersFile                = ""
 	GenesisFile                      = ""
 	F3Enabled                        = false
-	F3BootstrapEpoch  abi.ChainEpoch = -30
+	F3BootstrapEpoch  abi.ChainEpoch = -1
 )
 
 const Finality = policy.ChainFinality

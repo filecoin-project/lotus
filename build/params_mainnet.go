@@ -170,4 +170,4 @@ const Eip155ChainId = 314
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
 const F3Enabled = false
-const F3BootstrapEpoch abi.ChainEpoch = 999999999999999
+const F3BootstrapEpoch abi.ChainEpoch = -1

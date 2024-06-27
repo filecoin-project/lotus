@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/blssig"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 
 	"github.com/filecoin-project/lotus/api"
@@ -26,7 +27,7 @@ import (
 )
 
 type F3 struct {
-	Inner *f3.F3
+	inner *f3.F3
 
 	signer gpbft.Signer
 }
@@ -69,7 +70,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	}
 
 	fff := &F3{
-		Inner:  module,
+		inner:  module,
 		signer: &signer{params.Wallet},
 	}
 
@@ -79,7 +80,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		func(ctx context.Context) {
 			liftimeContext, cancel = context.WithCancel(ctx)
 			go func() {
-				err := fff.Inner.Run(liftimeContext)
+				err := fff.inner.Run(liftimeContext)
 				if err != nil {
 					log.Errorf("running f3: %+v", err)
 				}
@@ -96,7 +97,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh chan<- string) {
 	defer close(errCh)
 
-	for {
+	for ctx.Err() == nil {
 		select {
 		case <-ctx.Done():
 			return
@@ -107,7 +108,7 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 		msgCh := make(chan *gpbft.MessageBuilder, 4)
 		// SubscribeForMessagesToSign will close the channel if it fills up
 		// so using the closer is not necessary, we can just drop it on the floor
-		_ = fff.Inner.SubscribeForMessagesToSign(msgCh)
+		_ = fff.inner.SubscribeForMessagesToSign(msgCh)
 
 		participateOnce := func(mb *gpbft.MessageBuilder) error {
 			signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerIDAddress))
@@ -129,7 +130,7 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 				return err
 			}
 			log.Infof("miner with id %d is sending message in F3", minerIDAddress)
-			fff.Inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
+			fff.inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
 			return nil
 		}
 
@@ -156,4 +157,12 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 		}
 
 	}
+}
+
+func (fff *F3) GetCert(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
+	return fff.inner.GetCert(ctx, instance)
+}
+
+func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, error) {
+	return fff.inner.GetLatestCert(ctx)
 }

@@ -46,12 +46,12 @@ func (f3api *F3API) F3GetCertificate(ctx context.Context, instance uint64) (*cer
 	if f3api.F3 == nil {
 		return nil, ErrF3Disabled
 	}
-	return f3api.F3.Inner.GetCert(ctx, instance)
+	return f3api.F3.GetCert(ctx, instance)
 }
 
 func (f3api *F3API) F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) {
 	if f3api.F3 == nil {
 		return nil, ErrF3Disabled
 	}
-	return f3api.F3.Inner.GetLatestCert(ctx)
+	return f3api.F3.GetLatestCert(ctx)
 }
