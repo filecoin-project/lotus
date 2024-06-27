@@ -18,32 +18,40 @@
 
 **Prepping an RC**:
 
-- [ ] version string in `build/version.go` needs to be updated to end with '-rcX' (in the `release/vX.Y.Z` branch)
-- [ ] run `make gen && make docsgen-cli`
-- [ ] Generate changelog using the script at scripts/mkreleaselog
-- [ ] Add contents of generated text to lotus/CHANGELOG.md in addition to other details
-- [ ] Commit using **PR** targetting `release/vX.Y.Z` branch
-  - Opening a PR should trigger a CI run that will build the release and run goreleaser in a dry/snapshot mode
-  - Merging the PR should trigger a CI run that will publish the release to GitHub
+Perform the following changes to the `release/vX.Y.Z` branch through a PR:
+- [ ] update the version string in `build/version.go` to one ending with '-rcX'
+- [ ] run `make gen && make docsgen-cli` to generate documentation
+- [ ] run `scripts/mkreleaselog` to generate changelog
+  - [ ] add the contents of generated changelog to `CHANGELOG.md`
+  - [ ] add any other details about the release to `CHANGELOG.md`
+- [ ] create a **PR** targetting `release/vX.Y.Z` branch
+  - Opening a PR will trigger a CI run that will build the release and run goreleaser in a dry/snapshot mode
+  - Merging the PR will trigger a CI run that will publish the release to GitHub (including the creation of a GitHub release and a tag)
+- [ ] find the newly created [GitHub release](https://github.com/filecoin-project/lotus/releases) and update its' description accordingly
 
 **Testing**
 
 Test the release candidate thoroughly, including automated and manual tests to ensure stability and functionality across various environments and scenarios.
 
 **Stable Release**
-  - [ ] Final preparation
-    - [ ] Verify that version string in [`version.go`](https://github.com/filecoin-project/lotus/blob/master/build/version.go) has been updated **NOT** to end with '-rcX' (in the `release/vX.Y.Z` branch).
-    - [ ] Verify that codegen is up to date (`make gen && make docsgen-cli`)
-    - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
-    - [ ] Commit using **PR** targetting `release/vX.Y.Z` branch or directly to the branch
-    - [ ] Open a PR against the `releases` branch (base) from the `release/vX.Y.Z` branch (head)
-      - Opening a PR should trigger a CI run that will build the release and run goreleaser in a dry/snapshot mode
-      - Merging the PR should trigger a CI run that will publish the release to GitHub
+
+Perform the following changes to the `release/vX.Y.Z` branch (optionally, through a PR):
+- [ ] update the version string in `build/version.go` to one **NOT** ending with '-rcX'
+- [ ] run `make gen && make docsgen-cli` to generate documentation
+- [ ] ensure `CHANGELOG.md` is up to date (run `scripts/mkreleaselog` and update `CHANGELOG.md` if needed)
+- [ ] either commit the changes directly or open a PR against the `release/vX.Y.Z` branch
+
+Perform the following changes to the `releases` branch through a PR:
+- [ ] create a **PR** targetting `releases` branch (base) from `release/vX.Y.Z` branch (head)
+  - Opening a PR will trigger a CI run that will build the release and run goreleaser in a dry/snapshot mode
+  - Merging the PR will trigger a CI run that will publish the release to GitHub (including the creation of a GitHub release and a tag)
+- [ ] find the newly created [GitHub release](https://github.com/filecoin-project/lotus/releases) and update its' description accordingly
 
 **Post-Release**
-  - [ ] Open a pull request against the `master` branch with a merge of the `releases` branch. Conflict resolution should ignore the changes to `version.go` (keep the `-dev` version from master). Do NOT delete the `releases` branch when doing so!
-  - [ ] Update [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with any improvements determined from this latest release iteration.
-  - [ ] Create an issue using [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) for the _next_ release.
+
+- [ ] Open a pull request against the `master` branch with a merge of the `releases` branch. Conflict resolution should ignore the changes to `version.go` (keep the `-dev` version from master). Do NOT delete the `releases` branch when doing so!
+- [ ] Update [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with any improvements determined from this latest release iteration.
+- [ ] Create an issue using [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) for the _next_ release.
 
 ## ❤️ Contributors
 
