@@ -48,7 +48,6 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 		Code:    codecid,
 		Head:    vm.EmptyObjectCid,
 		Balance: big.Zero(),
-		Address: &builtin.EthereumAddressManagerActorAddr, // so that it can create ETH0
 	}
 	return nst.SetActor(builtin.EthereumAddressManagerActorAddr, header)
 }
@@ -60,12 +59,16 @@ func MakeEthNullAddressActor(av actorstypes.Version, addr address.Address) (*typ
 		return nil, xerrors.Errorf("failed to get EthAccount actor code ID for actors version %d", av)
 	}
 
+	if addr.Protocol() != address.Delegated {
+		return nil, xerrors.Errorf("eth accounts must have f4 addresses, %s is not an f4 address", addr)
+	}
+
 	act := &types.Actor{
-		Code:    actcid,
-		Head:    vm.EmptyObjectCid,
-		Nonce:   0,
-		Balance: big.Zero(),
-		Address: &addr,
+		Code:             actcid,
+		Head:             vm.EmptyObjectCid,
+		Nonce:            0,
+		Balance:          big.Zero(),
+		DelegatedAddress: &addr,
 	}
 
 	return act, nil
