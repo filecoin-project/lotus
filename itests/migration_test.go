@@ -596,7 +596,7 @@ func TestMigrationNV18(t *testing.T) {
 	// check all actor's Address fields
 	require.NoError(t, newStateTree.ForEach(func(address address.Address, actor *types.Actor) error {
 		if address != ethZeroAddrID {
-			require.Nil(t, actor.Address)
+			require.Nil(t, actor.DelegatedAddress)
 		}
 		return nil
 	}))

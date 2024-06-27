@@ -138,11 +138,11 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 				}
 
 				actor, err := sm.LoadActor(ctx, idAddr, ts)
-				if err != nil || actor.Address == nil {
+				if err != nil || actor.DelegatedAddress == nil {
 					return idAddr, true
 				}
 
-				return *actor.Address, true
+				return *actor.DelegatedAddress, true
 			},
 
 			MaxFilterResults: cfg.MaxFilterResults,

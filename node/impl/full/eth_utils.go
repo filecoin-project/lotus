@@ -419,9 +419,9 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 	} else if err != nil {
 		// Any other error -> fail.
 		return ethtypes.EthAddress{}, err
-	} else if actor.Address == nil {
+	} else if actor.DelegatedAddress == nil {
 		// No delegated address -> use masked ID address.
-	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.DelegatedAddress); err == nil && !ethAddr.IsMaskedID() {
 		// Conversable into an eth address, use it.
 		return ethAddr, nil
 	}
