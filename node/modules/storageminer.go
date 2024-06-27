@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -368,6 +369,10 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			ch, err := api.F3Participate(ctx, address.Address(minerAddress))
 
 			if errors.Is(err, context.Canceled) {
+				log.Errorf("Context cancelled while attampting F3 participation: %+v", err)
+				return
+			} else if errors.Is(err, full.ErrF3Disabled) {
+				log.Errorf("Cannot participate in F3 as it is disabled: %+v", err)
 				return
 			} else if err != nil {
 				log.Errorf("while starting to participate in F3: %+v", err)

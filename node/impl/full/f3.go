@@ -19,18 +19,17 @@ type F3API struct {
 	F3 *lf3.F3 `optional:"true"`
 }
 
-var ErrF3Disabled = errors.New("F3 is disabled")
+var ErrF3Disabled = errors.New("f3 is disabled")
 
 func (f3api *F3API) F3Participate(ctx context.Context, miner address.Address) (<-chan string, error) {
-	// make channel with some buffere to avoid blocking under higher load
-	errCh := make(chan string, 4)
 
 	if f3api.F3 == nil {
 		log.Infof("F3Participate called for %v, F3 is disabled", miner)
-		// we return a channel that will never be closed
-		return errCh, nil
+		return nil, ErrF3Disabled
 	}
 
+	// Make channel with some buffer to avoid blocking under higher load.
+	errCh := make(chan string, 4)
 	log.Infof("starting F3 participation for %v", miner)
 
 	actorID, err := address.IDFromAddress(miner)
