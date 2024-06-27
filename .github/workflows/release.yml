@@ -14,7 +14,20 @@ on:
       - ipdx/release-automation-releases
     paths:
       - build/version.go
-
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish the release'
+        required: false
+        default: 'false'
+      draft:
+        description: 'Create a draft release'
+        required: false
+        default: 'true'
+      target_commitish:
+        description: 'The commitish value that determines where the Git tag is created from'
+        required: false
+        default: ''
 defaults:
   run:
     shell: bash
@@ -107,7 +120,7 @@ jobs:
   release:
     needs: [check, build]
     if: needs.check.outputs.projects != '[]'
-    name: Release ${{ matrix.project }} [publish=${{ github.event_name != 'pull_request' }}]
+    name: Release ${{ matrix.project }} [publish=${{ inputs.publish || github.event_name != 'pull_request' }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
@@ -117,7 +130,7 @@ jobs:
       matrix:
         project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
     env:
-      PUBLISH: ${{ github.event_name != 'pull_request' }}
+      PUBLISH: ${{ inputs.publish || github.event_name != 'pull_request' }}
     steps:
       - id: project
         env:
@@ -155,9 +168,9 @@ jobs:
           gh release --repo mikefarah/yq download v4.44.2 -p yq_linux_amd64
           sudo mv yq_linux_amd64 /usr/bin/yq
           sudo chmod +x /usr/bin/yq
-      # - if: github.event_name != 'pull_request'
+      # - if: inputs.draft || github.event_name != 'pull_request'
       #   run: yq -i '.release.draft = false' '.goreleaser.yaml'
-      # - if: github.event_name != 'pull_request' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
+      # - if: (inputs.publish || github.event_name != 'pull_request') && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
       #   run: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
       - if: matrix.project == 'node'
         env:
@@ -185,16 +198,16 @@ jobs:
         with:
           distribution: goreleaser-pro
           version: 2.0.1
-          args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
+          args: release --clean --skip=validate ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
         env:
           PROJECT_NAME: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
-          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && github.token || '' }}
+          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && (secrets.GORELEASER_GITHUB_TOKEN || github.token) || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
           TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
           VERSION: ${{ fromJSON(steps.project.outputs.config).version }}
           IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
           IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
-          TARGET_COMMITISH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha }}
+          TARGET_COMMITISH: ${{ inputs.target_commitish || (github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha) }}
           HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
       - run: ./scripts/generate-checksums.sh
       - if: env.PUBLISH == 'true'
