@@ -27,35 +27,37 @@ type ecWrapper struct {
 	Manifest     f3.Manifest
 }
 
-type tsWrapper struct {
-	inner *types.TipSet
+type f3TipSet types.TipSet
+
+func (ts *f3TipSet) cast() *types.TipSet {
+	return (*types.TipSet)(ts)
 }
 
-func (ts *tsWrapper) Key() gpbft.TipSetKey {
-	return ts.inner.Key().Bytes()
+func (ts *f3TipSet) Key() gpbft.TipSetKey {
+	return ts.cast().Key().Bytes()
 }
 
-func (ts *tsWrapper) Beacon() []byte {
-	entries := ts.inner.Blocks()[0].BeaconEntries
+func (ts *f3TipSet) Beacon() []byte {
+	entries := ts.cast().Blocks()[0].BeaconEntries
 	if len(entries) == 0 {
 		return []byte{}
 	}
 	return entries[len(entries)-1].Data
 }
 
-func (ts *tsWrapper) Epoch() int64 {
-	return int64(ts.inner.Height())
+func (ts *f3TipSet) Epoch() int64 {
+	return int64(ts.cast().Height())
 }
 
-func (ts *tsWrapper) Timestamp() time.Time {
-	return time.Unix(int64(ts.inner.Blocks()[0].Timestamp), 0)
+func (ts *f3TipSet) Timestamp() time.Time {
+	return time.Unix(int64(ts.cast().Blocks()[0].Timestamp), 0)
 }
 
 func wrapTS(ts *types.TipSet) f3.TipSet {
 	if ts == nil {
 		return nil
 	}
-	return &tsWrapper{ts}
+	return (*f3TipSet)(ts)
 }
 
 // GetTipsetByEpoch should return a tipset before the one requested if the requested
@@ -88,8 +90,8 @@ func (ec *ecWrapper) GetHead(_ context.Context) (f3.TipSet, error) {
 
 func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 f3.TipSet) (f3.TipSet, error) {
 	var ts *types.TipSet
-	if tsW, ok := tsF3.(*tsWrapper); ok {
-		ts = tsW.inner
+	if tsW, ok := tsF3.(*f3TipSet); ok {
+		ts = tsW.cast()
 	} else {
 		tskLotus, err := types.TipSetKeyFromBytes(tsF3.Key())
 		if err != nil {
