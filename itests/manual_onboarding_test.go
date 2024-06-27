@@ -61,9 +61,11 @@ func TestManualSectorOnboarding(t *testing.T) {
 			// performing all related tasks manually. Managed by the TestKit, MinerB has the capability to utilize actual proofs
 			// for the processes of sector onboarding and activation.
 			nodeOpts := []kit.NodeOpt{kit.SectorSize(defaultSectorSize), kit.OwnerAddr(client.DefaultKey)}
-			minerB, ens := ens.UnmanagedMiner(&client, nodeOpts...)
+			minerB, ens := ens.UnmanagedMiner(ctx, &client, nodeOpts...)
+			defer minerB.Stop()
 			// MinerC is similar to MinerB, but onboards pieces instead of a pure CC sector
-			minerC, ens := ens.UnmanagedMiner(&client, nodeOpts...)
+			minerC, ens := ens.UnmanagedMiner(ctx, &client, nodeOpts...)
+			defer minerC.Stop()
 
 			ens.Start()
 
@@ -79,40 +81,32 @@ func TestManualSectorOnboarding(t *testing.T) {
 			t.Logf("MinerA RBP: %v, QaP: %v", p.MinerPower.QualityAdjPower.String(), p.MinerPower.RawBytePower.String())
 
 			// Miner B should have no power as it has yet to onboard and activate any sectors
-			minerB.AssertNoPower(ctx)
+			minerB.AssertNoPower()
 
 			// Miner C should have no power as it has yet to onboard and activate any sectors
-			minerC.AssertNoPower(ctx)
+			minerC.AssertNoPower()
 
 			// ---- Miner B onboards a CC sector
-			var bSectorNum abi.SectorNumber
-			var bRespCh chan kit.WindowPostResp
-			var bWdPostCancelF context.CancelFunc
-
-			bSectorNum, bRespCh, bWdPostCancelF = minerB.OnboardCCSector(ctx, sealProofType)
+			bSectors := minerB.OnboardSectors(sealProofType, false, 1)
+			req.Len(bSectors, 1)
 			// Miner B should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
-			minerB.AssertNoPower(ctx)
+			minerB.AssertNoPower()
 			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
 			blockMiner.WatchMinerForPost(minerB.ActorAddr)
 
 			// --- Miner C onboards sector with data/pieces
-			var cSectorNum abi.SectorNumber
-			var cRespCh chan kit.WindowPostResp
-
-			cSectorNum, cRespCh, _ = minerC.OnboardSectorWithPieces(ctx, kit.TestSpt)
+			cSectors := minerC.OnboardSectors(sealProofType, true, 1)
 			// Miner C should still not have power as power can only be gained after sector is activated i.e. the first WindowPost is submitted for it
-			minerC.AssertNoPower(ctx)
+			minerC.AssertNoPower()
 			// Ensure that the block miner checks for and waits for posts during the appropriate proving window from our new miner with a sector
 			blockMiner.WatchMinerForPost(minerC.ActorAddr)
 
 			// Wait till both miners' sectors have had their first post and are activated and check that this is reflected in miner power
-			minerB.WaitTillActivatedAndAssertPower(ctx, bRespCh, bSectorNum)
-			minerC.WaitTillActivatedAndAssertPower(ctx, cRespCh, cSectorNum)
+			minerB.WaitTillActivatedAndAssertPower(bSectors, uint64(defaultSectorSize), uint64(defaultSectorSize))
+			minerC.WaitTillActivatedAndAssertPower(cSectors, uint64(defaultSectorSize), uint64(defaultSectorSize))
 
 			// Miner B has activated the CC sector -> upgrade it with snapdeals
-			_ = minerB.SnapDeal(ctx, kit.TestSpt, bSectorNum)
-			// cancel the WdPost for the CC sector as the corresponding CommR is no longer valid
-			bWdPostCancelF()
+			_ = minerB.SnapDeal(bSectors[0])
 		})
 	}
 }

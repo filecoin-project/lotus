@@ -323,11 +323,11 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	return n
 }
 
-func (n *Ensemble) UnmanagedMiner(full *TestFullNode, opts ...NodeOpt) (*TestUnmanagedMiner, *Ensemble) {
+func (n *Ensemble) UnmanagedMiner(ctx context.Context, full *TestFullNode, opts ...NodeOpt) (*TestUnmanagedMiner, *Ensemble) {
 	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
 	require.NoError(n.t, err)
 
-	minerNode := NewTestUnmanagedMiner(n.t, full, actorAddr, n.options.mockProofs, opts...)
+	minerNode := NewTestUnmanagedMiner(ctx, n.t, full, actorAddr, n.options.mockProofs, opts...)
 	n.AddInactiveUnmanagedMiner(minerNode)
 	return minerNode, n
 }
