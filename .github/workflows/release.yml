@@ -161,6 +161,7 @@ jobs:
         with:
           name: kubo
           version: v0.16.0
+          cache: false
       - name: Install yq
         env:
           GITHUB_TOKEN: ${{ github.token }}
