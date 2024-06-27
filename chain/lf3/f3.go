@@ -74,20 +74,16 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		signer: &signer{params.Wallet},
 	}
 
-	var liftimeContext context.Context
-	var cancel func()
+	lCtx, cancel := context.WithCancel(mctx)
 	lc.Append(fx.StartStopHook(
-		func(ctx context.Context) {
-			liftimeContext, cancel = context.WithCancel(ctx)
+		func() {
 			go func() {
-				err := fff.inner.Run(liftimeContext)
+				err := fff.inner.Run(lCtx)
 				if err != nil {
 					log.Errorf("running f3: %+v", err)
 				}
 			}()
-		}, func() {
-			cancel()
-		}))
+		}, cancel))
 
 	return fff, nil
 }
