@@ -6,7 +6,15 @@ project_name: "{{ .Env.PROJECT_NAME }}"
 universal_binaries:
   - id: lotus
     replace: true
+    ids:
+      - lotus
     name_template: "{{ .Env.PROJECT_NAME }}"
+  - id: lotus-miner
+    replace: true
+    ids:
+      - lotus-miner
+      - lotus-worker
+    name_template: "{{ .Env.PROJECT_NAME }}-miner"
 builds:
   - id: lotus
     binary: lotus
