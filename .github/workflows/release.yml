@@ -52,7 +52,7 @@ jobs:
           go run cmd/release/main.go --json list-projects | jq -r '.msg' |
             jq 'map(select(.version | endswith("-dev") | not))' |
             jq 'map(select(.released | not))' |
-            jq 'map(select(.prerelease != (env.TARGET_REF == "refs/heads/ipdx/release-automation-releases")))' |
+            jq 'map(select(.prerelease != ((env.TARGET_REF | sub("^refs/heads/"; "")) == "ipdx/release-automation-releases")))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |
             tee -a $GITHUB_OUTPUT
   build:
