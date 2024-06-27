@@ -198,7 +198,7 @@ jobs:
         with:
           distribution: goreleaser-pro
           version: 2.0.1
-          args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
+          args: release --clean --skip=validate ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
         env:
           PROJECT_NAME: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
           GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && (secrets.GORELEASER_GITHUB_TOKEN || github.token) || '' }}
