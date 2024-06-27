@@ -1029,7 +1029,6 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 }
 
 func (a *EthModule) EthBlockNumberFromString(ctx context.Context, block string) (ethtypes.EthUint64, error) {
-
 	head := a.Chain.GetHeaviestTipSet()
 	switch block {
 	case "earliest":
