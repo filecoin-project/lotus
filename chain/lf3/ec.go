@@ -137,7 +137,7 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 
 	var powerEntries gpbft.PowerEntries
 	err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
-		if claim.QualityAdjPower.LessThanEqual(big.Zero()) {
+		if claim.QualityAdjPower.Sign() <= 0 {
 			return nil
 		}
 
