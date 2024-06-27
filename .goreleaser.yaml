@@ -2,11 +2,17 @@
 # TODO(p0): Test if templating on boolean values is supported
 
 version: 2
-project_name: lotus
+project_name: "{{ .Env.PROJECT_NAME }}"
 universal_binaries:
   - id: lotus
     replace: true
     name_template: lotus
+  - id: lotus-miner
+    replace: true
+    name_template: lotus-miner
+  - id: lotus-worker
+    replace: true
+    name_template: lotus-worker
 builds:
   - id: lotus
     binary: lotus
@@ -23,7 +29,7 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus'
+      path: "{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus"
     skip: true
   - id: lotus-miner
     binary: lotus-miner
@@ -40,7 +46,7 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner'
+      path: "{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner"
     skip: true
   - id: lotus-worker
     binary: lotus-worker
@@ -57,13 +63,13 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker'
+      path: "{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker"
     skip: true
 archives:
   - id: primary
     format: tar.gz
     wrap_in_directory: true
-    name_template: "{{ .ProjectName }}_{{ .Env.TAG }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .Env.PROJECT_NAME }}_v{{ .Env.VERSION }}_{{ .Os }}_{{ .Arch }}"
     files:
       # this is a dumb but required hack so it doesn't include the default files
       # https://github.com/goreleaser/goreleaser/issues/602
@@ -83,33 +89,25 @@ release:
   tag: "{{ .Env.TAG }}"
   target_commitish: "{{ .Env.TARGET_COMMITISH }}"
 brews:
-  - name: |
-      {{ if eq .Env.PROJECT "node" }}lotus{{ else }}lotus-{{ .Env.PROJECT }}{{ end }}"
+  - name: "{{ .Env.PROJECT_NAME }}"
     repository:
       owner: filecoin-project
       name: homebrew-lotus
       branch: master
     ids:
       - primary
-    custom_block: ""
-    install: |
-      {{ if eq .Env.PROJECT "node" }}bin.install "lotus"{{ end }}
-      {{ if eq .Env.PROJECT "miner" }}bin.install "lotus-miner"{{ end }}
-      {{ if eq .Env.PROJECT "miner" }}bin.install "lotus-worker"{{ end }}
-    test: |
-      {{ if eq .Env.PROJECT "node" }}system "#{bin}/lotus --version"{{ end }}
-      {{ if eq .Env.PROJECT "miner" }}system "#{bin}/lotus-miner --version"{{ end }}
-      {{ if eq .Env.PROJECT "miner" }}system "#{bin}/lotus-worker --version"{{ end }}
+    install: ""
+    test: ""
     directory: Formula
     homepage: "https://filecoin.io"
     description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
     license: MIT
-    skip_upload: |
-      {{ if and (eq .Env.IS_DRAFT "false") (eq .Env.IS_LATEST "true") }}false{{ else }}true{{ end }}
+    skip_upload: true
     dependencies:
       - name: hwloc
+    commit_msg_template: "Brew formula update for {{ .Env.PROJECT_NAME }} version {{ .Env.TAG }}"
 # produced manually so we can include cid checksums
 checksum:
   disable: true
 snapshot:
-  name_template: "{{ .Env.TAG }}"
+  name_template: "{{ .Env.PROJECT_NAME }}_v{{ .Env.VERSION }}"

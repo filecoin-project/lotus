@@ -52,6 +52,9 @@ build/builtin-actors/v*
 build/builtin-actors/*.car
 
 dist/
+darwin_amd64_v1/
+darwin_arm64/
+linux_amd64_v1/
 
 
 # The following files are checked into git and result

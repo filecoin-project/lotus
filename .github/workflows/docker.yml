@@ -1,6 +1,5 @@
 name: Docker
 
-# TODO(p2): Restore worfklow_dispatch trigger
 on:
   push:
     branches:
@@ -14,6 +13,12 @@ on:
       - releases
   schedule:
     - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish the Docker image'
+        required: false
+        default: 'false'
 
 defaults:
   run:
@@ -24,7 +29,7 @@ permissions:
 
 jobs:
   docker:
-    name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.event_name != 'pull_request' }}]
+    name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -40,7 +45,7 @@ jobs:
           - image: lotus
             network: mainnet
     env:
-      PUBLISH: ${{ github.event_name != 'pull_request' }}
+      PUBLISH: ${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}
     steps:
       - id: channel
         env:
