@@ -120,7 +120,7 @@ jobs:
   release:
     needs: [check, build]
     if: needs.check.outputs.projects != '[]'
-    name: Release ${{ matrix.project }} [publish=${{ inputs.publish || github.event_name != 'pull_request' }}]
+    name: Release ${{ matrix.project }} [publish=${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
@@ -130,7 +130,8 @@ jobs:
       matrix:
         project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
     env:
-      PUBLISH: ${{ inputs.publish || github.event_name != 'pull_request' }}
+      PUBLISH: ${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}
+      IS_DRAFT: ${{ inputs.draft == 'true' || github.event_name == 'pull_request' }}
     steps:
       - id: project
         env:
@@ -169,9 +170,9 @@ jobs:
           gh release --repo mikefarah/yq download v4.44.2 -p yq_linux_amd64
           sudo mv yq_linux_amd64 /usr/bin/yq
           sudo chmod +x /usr/bin/yq
-      # - if: inputs.draft || github.event_name != 'pull_request'
+      # - if: env.IS_DRAFT == 'false'
       #   run: yq -i '.release.draft = false' '.goreleaser.yaml'
-      # - if: (inputs.publish || github.event_name != 'pull_request') && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
+      # - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
       #   run: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
       - if: matrix.project == 'node'
         env:
@@ -211,7 +212,7 @@ jobs:
           TARGET_COMMITISH: ${{ inputs.target_commitish || (github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha) }}
           HEADER: '' # TODO(p3): Extract release notes from CHANGELOG.md
       - run: ./scripts/generate-checksums.sh
-      - if: env.PUBLISH == 'true'
+      - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
