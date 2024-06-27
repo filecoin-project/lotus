@@ -365,6 +365,10 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 		timer := time.NewTimer(0)
 		defer timer.Stop()
 
+		if !timer.Stop() {
+			<-timer.C
+		}
+
 		// Backoff while obeying the context.
 		backoffWithContext := func() {
 			timer.Reset(b.Duration())
@@ -387,7 +391,6 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 				log.Errorf("while starting to participate in F3: %+v", err)
 				// use exponential backoff to avoid hotloop
 				backoffWithContext()
-				continue
 			default:
 				for err := range ch {
 					// we have communication with F3 in lotus, reset the backoff

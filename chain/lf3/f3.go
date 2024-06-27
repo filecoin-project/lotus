@@ -136,7 +136,7 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 			case mb, ok := <-msgCh:
 				if !ok {
 					// the broadcast bus kicked us out
-					log.Infof("lost message bus subscription, retrying")
+					log.Warnf("lost message bus subscription, retrying")
 					break inner
 				}
 
