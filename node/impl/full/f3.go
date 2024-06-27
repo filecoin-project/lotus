@@ -37,10 +37,8 @@ func (f3api *F3API) F3Participate(ctx context.Context, miner address.Address) (<
 		return nil, xerrors.Errorf("miner address in F3Participate not of ID type: %w", err)
 	}
 
-	go func() {
-		// Participate takes control of closing the channel
-		f3api.F3.Participate(ctx, actorID, errCh)
-	}()
+	// Participate takes control of closing the channel
+	go f3api.F3.Participate(ctx, actorID, errCh)
 	return errCh, nil
 }
 
