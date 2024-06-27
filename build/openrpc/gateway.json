@@ -6830,7 +6830,7 @@
                                         },
                                         "Nonce": 42,
                                         "Balance": "0",
-                                        "Address": "f01234"
+                                        "DelegatedAddress": "f01234"
                                     }
                                 },
                                 "GasCharges": [
@@ -6870,7 +6870,7 @@
                                                 },
                                                 "Nonce": 42,
                                                 "Balance": "0",
-                                                "Address": "f01234"
+                                                "DelegatedAddress": "f01234"
                                             }
                                         },
                                         "GasCharges": [
@@ -6940,10 +6940,6 @@
                                         "State": {
                                             "additionalProperties": false,
                                             "properties": {
-                                                "Address": {
-                                                    "additionalProperties": false,
-                                                    "type": "object"
-                                                },
                                                 "Balance": {
                                                     "additionalProperties": false,
                                                     "type": "object"
@@ -6951,6 +6947,10 @@
                                                 "Code": {
                                                     "title": "Content Identifier",
                                                     "type": "string"
+                                                },
+                                                "DelegatedAddress": {
+                                                    "additionalProperties": false,
+                                                    "type": "object"
                                                 },
                                                 "Head": {
                                                     "title": "Content Identifier",
@@ -7418,15 +7418,11 @@
                             },
                             "Nonce": 42,
                             "Balance": "0",
-                            "Address": "f01234"
+                            "DelegatedAddress": "f01234"
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
-                        "Address": {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
                         "Balance": {
                             "additionalProperties": false,
                             "type": "object"
@@ -7434,6 +7430,10 @@
                         "Code": {
                             "title": "Content Identifier",
                             "type": "string"
+                        },
+                        "DelegatedAddress": {
+                            "additionalProperties": false,
+                            "type": "object"
                         },
                         "Head": {
                             "title": "Content Identifier",
@@ -9316,7 +9316,7 @@
                                         },
                                         "Nonce": 42,
                                         "Balance": "0",
-                                        "Address": "f01234"
+                                        "DelegatedAddress": "f01234"
                                     }
                                 },
                                 "GasCharges": [
@@ -9356,7 +9356,7 @@
                                                 },
                                                 "Nonce": 42,
                                                 "Balance": "0",
-                                                "Address": "f01234"
+                                                "DelegatedAddress": "f01234"
                                             }
                                         },
                                         "GasCharges": [
@@ -9426,10 +9426,6 @@
                                         "State": {
                                             "additionalProperties": false,
                                             "properties": {
-                                                "Address": {
-                                                    "additionalProperties": false,
-                                                    "type": "object"
-                                                },
                                                 "Balance": {
                                                     "additionalProperties": false,
                                                     "type": "object"
@@ -9437,6 +9433,10 @@
                                                 "Code": {
                                                     "title": "Content Identifier",
                                                     "type": "string"
+                                                },
+                                                "DelegatedAddress": {
+                                                    "additionalProperties": false,
+                                                    "type": "object"
                                                 },
                                                 "Head": {
                                                     "title": "Content Identifier",

@@ -378,11 +378,16 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 		return nil, xerrors.Errorf("failed to get account actor code ID for actors version %d", av)
 	}
 
+	var delegatedAddr *address.Address
+	if addr.Protocol() == address.Delegated {
+		delegatedAddr = &addr
+	}
+
 	act := &types.Actor{
-		Code:    actcid,
-		Head:    statecid,
-		Balance: bal,
-		Address: &addr,
+		Code:             actcid,
+		Head:             statecid,
+		Balance:          bal,
+		DelegatedAddress: delegatedAddr,
 	}
 
 	return act, nil

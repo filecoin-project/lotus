@@ -471,8 +471,8 @@ func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi
 		if err != nil {
 			return ethtypes.EthAddress{}, addr, err
 		}
-		if fAct.Address != nil && (*fAct.Address).Protocol() == address.Delegated {
-			faddr = *fAct.Address
+		if fAct.DelegatedAddress != nil && (*fAct.DelegatedAddress).Protocol() == address.Delegated {
+			faddr = *fAct.DelegatedAddress
 		}
 	case address.Delegated:
 		faddr = addr
