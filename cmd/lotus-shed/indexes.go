@@ -146,11 +146,11 @@ var backfillEventsCmd = &cli.Command{
 			}
 
 			actor, err := api.StateGetActor(ctx, idAddr, ts.Key())
-			if err != nil || actor.Address == nil {
+			if err != nil || actor.DelegatedAddress == nil {
 				return idAddr, true
 			}
 
-			return *actor.Address, true
+			return *actor.DelegatedAddress, true
 		}
 
 		isIndexedValue := func(b uint8) bool {

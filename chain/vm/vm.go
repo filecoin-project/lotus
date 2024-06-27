@@ -59,9 +59,9 @@ func ResolveToDeterministicAddr(state types.StateTree, cst cbor.IpldStore, addr 
 	}
 
 	if state.Version() >= types.StateTreeVersion5 {
-		if act.Address != nil {
+		if act.DelegatedAddress != nil {
 			// If there _is_ an f4 address, return it as "key" address
-			return *act.Address, nil
+			return *act.DelegatedAddress, nil
 		}
 	}
 

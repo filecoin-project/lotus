@@ -1154,8 +1154,8 @@ func getEthAddress(ctx context.Context, t *testing.T, client *kit.TestFullNode, 
 
 	actor, err := client.StateGetActor(ctx, addr, head.Key())
 	require.NoError(t, err)
-	require.NotNil(t, actor.Address)
-	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
+	require.NotNil(t, actor.DelegatedAddress)
+	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.DelegatedAddress)
 	require.NoError(t, err)
 	return ethContractAddr
 }

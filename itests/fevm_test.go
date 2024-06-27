@@ -215,7 +215,7 @@ func TestFEVMETH0(t *testing.T) {
 
 	eth0Addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, make([]byte, 20))
 	require.NoError(t, err)
-	require.Equal(t, *act.Address, eth0Addr)
+	require.Equal(t, *act.DelegatedAddress, eth0Addr)
 }
 
 // TestFEVMDelegateCall deploys two contracts and makes a delegate call transaction
