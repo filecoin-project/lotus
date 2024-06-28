@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/jpillora/backoff"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -349,6 +351,60 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local,
 	})
 
 	return sst, nil
+}
+
+func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, minerAddress dtypes.MinerAddress) error {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    1 * time.Minute,
+		Factor: 1.5,
+		Jitter: false,
+	}
+	go func() {
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+
+		if !timer.Stop() {
+			<-timer.C
+		}
+
+		// Backoff while obeying the context.
+		backoffWithContext := func() {
+			timer.Reset(b.Duration())
+			select {
+			case <-ctx.Done():
+				log.Errorf("Context is done while retrying F3 participation: %+v", ctx.Err())
+			case <-timer.C:
+			}
+		}
+
+		for ctx.Err() == nil {
+			switch ch, err := api.F3Participate(ctx, address.Address(minerAddress)); {
+			case errors.Is(err, context.Canceled):
+				log.Errorf("Context cancelled while attampting F3 participation: %+v", err)
+				return
+			case errors.Is(err, full.ErrF3Disabled):
+				log.Errorf("Cannot participate in F3 as it is disabled: %+v", err)
+				return
+			case err != nil:
+				log.Errorf("while starting to participate in F3: %+v", err)
+				// use exponential backoff to avoid hotloop
+				backoffWithContext()
+			default:
+				for err := range ch {
+					// we have communication with F3 in lotus, reset the backoff
+					b.Reset()
+					if err != "" {
+						log.Warnf("participating in F3 encountered an error: %v", err)
+					}
+				}
+				log.Warn("F3Participate exited, retrying")
+				backoffWithContext()
+			}
+		}
+	}()
+	return nil
 }
 
 func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
