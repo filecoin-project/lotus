@@ -94,11 +94,6 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 	defer close(errCh)
 
 	for ctx.Err() == nil {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
 
 		// create channel for some buffer so we don't get dropped under high load
 		msgCh := make(chan *gpbft.MessageBuilder, 4)
@@ -131,7 +126,7 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 		}
 
 	inner:
-		for {
+		for ctx.Err() == nil {
 			select {
 			case mb, ok := <-msgCh:
 				if !ok {
@@ -151,7 +146,6 @@ func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh cha
 				return
 			}
 		}
-
 	}
 }
 
