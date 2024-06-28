@@ -39,6 +39,11 @@ func (ts *f3TipSet) Key() gpbft.TipSetKey {
 func (ts *f3TipSet) Beacon() []byte {
 	entries := ts.cast().Blocks()[0].BeaconEntries
 	if len(entries) == 0 {
+		// Set beacon to a non-nil slice to force the message builder to generate a
+		// ticket. Otherwise, messages that require ticket, i.e. CONVERGE will fail
+		// validation due to the absence of ticket. This is a convoluted way of doing it.
+		// TODO: Rework the F3 message builder APIs to include ticket when needed instead
+		//       of relying on the nil check of beacon.
 		return []byte{}
 	}
 	return entries[len(entries)-1].Data
