@@ -1,15 +1,15 @@
-## Related Issues
-<!-- Link issues that this PR might resolve/fix. If an issue doesn't exist, include a brief motivation for the change being made -->
+## Related Issues & Context
+<!-- Link issues that this PR might resolve/fix. If an issue doesn't exist, including the context for the change being made -->
 
 ## Proposed Changes
 <!-- A clear list of the changes being made -->
 
-## Additional Info
-<!-- Callouts, links to documentation, and etc -->
+## Test Plan
+<!-- PRs should include unit/integration tests, and/or IRL operational testing plans-->
 
 ## Checklist
 
-Before you mark the PR ready for review, please make sure that:
+@lotus-maintainers will only approve the PR if all boxes below are checked:
 
 - [ ] Commits have a clear commit message.
 - [ ] PR title is in the form of of `<PR type>: <area>: <change being made>`
@@ -17,8 +17,5 @@ Before you mark the PR ready for review, please make sure that:
   - `PR type`: fix, feat, build, chore, ci, docs, perf, refactor, revert, style, test
   - `area`, e.g. api, chain, state, mempool, multisig, networking, paych, proving, sealing, wallet, deps
 - [ ] If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
-- [ ] New features have usage guidelines and / or documentation updates in
-  - [ ] [Lotus Documentation](https://lotus.filecoin.io)
-  - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
 - [ ] Tests exist for new functionality or change in behavior
 - [ ] CI is green
