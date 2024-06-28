@@ -379,8 +379,12 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		build.BlocksTopic(in.Nn),
 		build.MessagesTopic(in.Nn),
 		build.IndexerIngestTopic(in.Nn),
-		gpbft.NetworkName(in.Nn).PubSubTopic(),
 	}
+
+	if build.F3Enabled {
+		allowTopics = append(allowTopics, gpbft.NetworkName(in.Nn).PubSubTopic())
+	}
+
 	allowTopics = append(allowTopics, drandTopics...)
 	options = append(options,
 		pubsub.WithSubscriptionFilter(
