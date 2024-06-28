@@ -34,6 +34,7 @@ type FullNodeAPI struct {
 	full.SyncAPI
 	full.EthAPI
 	full.ActorEventsAPI
+	full.F3API
 
 	DS          dtypes.MetadataDS
 	NetworkName dtypes.NetworkName
