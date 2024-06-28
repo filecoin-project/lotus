@@ -2291,9 +2291,8 @@ Response:
 ```
 
 ### F3Participate
-F3Participate should be called by a miner node to particpate in signing F3 consensus.
+F3Participate should be called by a miner node to participate in signing F3 consensus.
 The address should be of type ID
-F3Participate can only be used through websocket connection
 The returned channel will never be closed by the F3
 If it is closed without the context being cancelled, the caller should retry.
 The values returned on the channel will inform the caller about participation
