@@ -97,6 +97,11 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 f3.TipSet) (f3.TipSet, 
 	if tsW, ok := tsF3.(*f3TipSet); ok {
 		ts = tsW.cast()
 	} else {
+		// There are only two implementations of F3.TipSet: f3TipSet, and one in fake EC
+		// backend.
+		//
+		// TODO: Revisit the type check here and remove as needed once testing
+		//       is over and fake EC backend goes away.
 		tskLotus, err := types.TipSetKeyFromBytes(tsF3.Key())
 		if err != nil {
 			return nil, xerrors.Errorf("decoding tsk: %w", err)
