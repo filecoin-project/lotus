@@ -379,7 +379,7 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			}
 		}
 
-		for ctx.Err() != nil {
+		for ctx.Err() == nil {
 			switch ch, err := api.F3Participate(ctx, address.Address(minerAddress)); {
 			case errors.Is(err, context.Canceled):
 				log.Errorf("Context cancelled while attampting F3 participation: %+v", err)
