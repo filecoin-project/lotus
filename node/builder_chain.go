@@ -21,6 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
+	"github.com/filecoin-project/lotus/chain/proofs"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	rpcstmgr "github.com/filecoin-project/lotus/chain/stmgr/rpc"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -62,7 +64,8 @@ var ChainNode = Options(
 	Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 
 	// Consensus: crypto dependencies
-	Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
+	Override(new(proofs.Verifier), ffiwrapper.ProofVerifier),
+	Override(new(storiface.Verifier), proofsffi.ProofVerifier),
 	Override(new(storiface.Prover), ffiwrapper.ProofProver),
 
 	// Consensus: LegacyVM

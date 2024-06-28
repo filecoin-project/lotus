@@ -25,6 +25,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
@@ -343,7 +344,7 @@ var sealBenchCmd = &cli.Command{
 				return err
 			}
 
-			fcandidates, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(context.TODO(), wipt, mid, challenge[:], uint64(len(extendedSealedSectors)))
+			fcandidates, err := proofsffi.ProofVerifier.GenerateWinningPoStSectorChallenge(context.TODO(), wipt, mid, challenge[:], uint64(len(extendedSealedSectors)))
 			if err != nil {
 				return err
 			}
@@ -386,7 +387,7 @@ var sealBenchCmd = &cli.Command{
 				ChallengedSectors: candidates,
 				Prover:            mid,
 			}
-			ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi1)
+			ok, err := proofsffi.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi1)
 			if err != nil {
 				return err
 			}
@@ -403,7 +404,7 @@ var sealBenchCmd = &cli.Command{
 				Prover:            mid,
 			}
 
-			ok, err = ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi2)
+			ok, err = proofsffi.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi2)
 			if err != nil {
 				return err
 			}
@@ -444,7 +445,7 @@ var sealBenchCmd = &cli.Command{
 				ChallengedSectors: sealedSectors,
 				Prover:            mid,
 			}
-			ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi1)
+			ok, err = proofsffi.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi1)
 			if err != nil {
 				return err
 			}
@@ -460,7 +461,7 @@ var sealBenchCmd = &cli.Command{
 				ChallengedSectors: sealedSectors,
 				Prover:            mid,
 			}
-			ok, err = ffiwrapper.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi2)
+			ok, err = proofsffi.ProofVerifier.VerifyWindowPoSt(context.TODO(), wpvi2)
 			if err != nil {
 				return err
 			}
@@ -678,7 +679,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 							UnsealedCID:           cids.Unsealed,
 						}
 
-						ok, err := ffiwrapper.ProofVerifier.VerifySeal(svi)
+						ok, err := proofsffi.ProofVerifier.VerifySeal(svi)
 						if err != nil {
 							return err
 						}
