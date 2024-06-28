@@ -91,6 +91,7 @@ func main() {
 		mismatchesCmd,
 		blockCmd,
 		adlCmd,
+		finalityCmd,
 	}
 
 	app := &cli.App{
