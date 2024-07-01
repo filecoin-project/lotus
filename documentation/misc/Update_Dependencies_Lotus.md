@@ -25,7 +25,7 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 1. The Ref-FVM dependency is updated through Filecoin-FFI. So, if you need to update Ref-FVM, you would need create a Filecoin-FFI PR similar to this: [PR updating Ref-FVM in Filecoin-FFI](https://github.com/filecoin-project/filecoin-ffi/pull/447)
 
-2. After the PR has been merged you would need to create a [new Filecoin-FFI release.](https://github.com/filecoin-project/filecoin-ffi/pull/461)
+2. After the PR has been merged you would need to create a [new Filecoin-FFI release](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#release-process).
 
 3. After the Filecoin-FFI release is out, you can follow the process outlined in [Filecoin-FFI](#updating-filecoin-ffi).
 
