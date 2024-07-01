@@ -79,6 +79,7 @@ The NV23 upgrade migration is expected to be extremely light as only the FIP-008
 - Support for legacy Ethereum transactions (https://github.com/filecoin-project/lotus/pull/11969)
 - Ignore market balance after nv23 (https://github.com/filecoin-project/lotus/pull/11976)
 - Add finality-related params for `eth_getBlockByNumber` (https://github.com/filecoin-project/lotus/pull/12110)
+- rename `Actor.Address` to `Actor.DelegatedAddress` and only use it for f4 addresses (https://github.com/filecoin-project/lotus/pull/12155)
 
 
 # v1.27.1 / 2024-06-24
