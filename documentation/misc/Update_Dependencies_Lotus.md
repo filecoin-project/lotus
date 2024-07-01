@@ -2,10 +2,18 @@
 
 This guide will walk through how to update the most common dependencies in Lotus. These are the dependencies this guide currently covers:
 
-- [Filecoin-FFI](#updating-filecoin-ffi)
 - [Ref-FVM](#updating-ref-fvm)
+- [Filecoin-FFI](#updating-filecoin-ffi)
 - [Go-State-Types](#updating-go-state-types)
 - [Builtin-Actors](#updating-builtin-actors)
+
+## Updating Ref-FVM
+
+1. The Ref-FVM dependency is updated through Filecoin-FFI. So, if you need to update Ref-FVM, you would need create a Filecoin-FFI PR similar to this: [PR updating Ref-FVM in Filecoin-FFI](https://github.com/filecoin-project/filecoin-ffi/pull/447)
+
+2. After the PR has been merged you would need to create a [new Filecoin-FFI release](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#release-process).
+
+3. After the Filecoin-FFI release is out, you can follow the process outlined in [Filecoin-FFI](#updating-filecoin-ffi).
 
 ## Updating Filecoin-FFI
 
@@ -20,14 +28,6 @@ This guide will walk through how to update the most common dependencies in Lotus
 👉 Example of a [PR updating Filecoin-FFI](https://github.com/filecoin-project/lotus/pull/11431)
 
 👉 If you need to create a Filecoin-FFI release, you can follow [the release process](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#release-process).
-
-## Updating Ref-FVM
-
-1. The Ref-FVM dependency is updated through Filecoin-FFI. So, if you need to update Ref-FVM, you would need create a Filecoin-FFI PR similar to this: [PR updating Ref-FVM in Filecoin-FFI](https://github.com/filecoin-project/filecoin-ffi/pull/447)
-
-2. After the PR has been merged you would need to create a [new Filecoin-FFI release](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#release-process).
-
-3. After the Filecoin-FFI release is out, you can follow the process outlined in [Filecoin-FFI](#updating-filecoin-ffi).
 
 ## Updating Go-State-Types
 
