@@ -41,7 +41,7 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 ## Updating Builtin-Actors
 
-1. In your `/lotus` folder, run `cd build/actors`.
+1. In your `lotus` directory, `cd build/actors`.
 
 2. Run this script `./pack.sh vXX vXX.X.X-rcX` to pull in the builtin-actors bundle into your Lotus repo. 
 
