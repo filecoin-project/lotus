@@ -61,7 +61,7 @@ verifiedregistry  bafk2bzaceczw2kp6gjjdcjbso7mewp7guik7gr525pal6dotdja2lrct6ok3c
 ```
 
 ## Migration
-The NV23 upgrade migration is expected to be extremely light as only FIP-0085 requires a migration. With don't expect null tipsets after the upgrade epoch or heavy block validation times. We will updated this sections once we have ran the final benchmarks.
+The NV23 upgrade migration is expected to be extremely light as only FIP-0085 requires a migration. We don't expect null tipsets after the upgrade epoch or heavy block validation times. We will updated this sections once we have run the final benchmarks.
 
 ## Dependencies
 - github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
