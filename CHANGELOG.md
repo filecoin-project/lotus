@@ -16,7 +16,7 @@
 
 This is the first release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
-**This release does NOT set a calibration network upgrade epoch yet, which will be included in the subsequent release candidate. This release does NOT set the mainnet upgrade epoch yet, which will be updated in the final release.**
+**This release canidate does NOT set a calibration network upgrade epoch, it will be added in the second release candidate, expected to be released July 4th. This release candidate does NOT set the mainnet upgrade epoch yet, which will be updated in the final release.**
 
 ☢️ Upgrade Warnings ☢️
 
@@ -61,7 +61,7 @@ verifiedregistry  bafk2bzaceczw2kp6gjjdcjbso7mewp7guik7gr525pal6dotdja2lrct6ok3c
 ```
 
 ## Migration
-The NV23 upgrade migration is expected to be extremely light as only the FIP-0085 migration will be executed which will be very light. With don't expect null tipsets after the upgrade epoch or heavy block validation times. We will updated this sections once we have ran the final benchmarks.
+The NV23 upgrade migration is expected to be extremely light as only FIP-0085 requires a migration. With don't expect null tipsets after the upgrade epoch or heavy block validation times. We will updated this sections once we have ran the final benchmarks.
 
 ## Dependencies
 - github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
