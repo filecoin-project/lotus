@@ -37,7 +37,7 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 👉 Example of a [PR updating Go-State-Types](https://github.com/filecoin-project/lotus/pull/11732)
 
-👉 If you need to create a Go-State-Types release, you can follow the steps outlined here: [Creating a Go-State-TypesRelease](https://github.com/filecoin-project/go-state-types?tab=readme-ov-file#release-process)
+👉 If you need to create a Go-State-Types release, you can follow the steps to create a [new Go-State-Types release](https://github.com/filecoin-project/go-state-types?tab=readme-ov-file#release-process).
 
 ## Updating Builtin-Actors
 
