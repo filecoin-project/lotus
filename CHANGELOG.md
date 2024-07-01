@@ -30,7 +30,9 @@ If you are running the `v1.26.0` or an earlier version of Lotus, please go throu
 - [FIP-0085: Convert f090 Mining Reserve Actor to Keyless Account Actor](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0085.md)
 - [FIP-0091: Add support for legacy Ethereum transactions](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0091.md)
 - [FIP-0092: NI-PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0092.md)
-- [FIP-0086: Fast Finality Soft Launch](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+- [F3 (Fast Finality) Soft Launch](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+
+Note that we are only doing a "soft launch"/"passive testing" for F3 (Fast Finality) i.e. FIP-0086 in NV23. Please see [this doc](https://docs.google.com/document/d/14hMFN95_AsByBh7iMc4r_czUgg8tfjHQ1gTsmmHZ8jI/edit#heading=h.dhzqs3lisv24) for more details.
 
 ## v14 Builtin Actor Bundle
 The actor bundles for the **calibration network** can be checked as follows:
@@ -71,7 +73,7 @@ The NV23 upgrade migration is expected to be extremely light as only FIP-0085 re
 
 ## Others
 
-- Soft launch of F3 (https://github.com/filecoin-project/lotus/pull/12119)  
+- Soft launch for Filecoin F3 (https://github.com/filecoin-project/lotus/pull/12119)  
 - NI-PoRep changes (https://github.com/filecoin-project/lotus/pull/12130)
 - Fixes for the ETH events API (https://github.com/filecoin-project/lotus/pull/12080)
 - Support for legacy Ethereum transactions (https://github.com/filecoin-project/lotus/pull/11969)
