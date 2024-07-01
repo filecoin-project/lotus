@@ -15,6 +15,7 @@
 
 - [ ] Fork a new branch (`release/vX.Y.Z`) from `master` and make any further release related changes to this branch. If any "non-trivial" changes get added to the release, uncheck all the checkboxes and return to this stage.
 - [ ] Bump the version in `build/version.go` in the `master` branch to `vX.Y.(Z+1)-dev` (bump from feature release) or `vX.(Y+1).0-dev` (bump from mandatory release). Run make gen and make docsgen-cli before committing changes
+- [ ] *Optional:* If preparing a release for a network upgrade, make sure all [Lotus dependecies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
 
 **Prepping an RC**:
 
