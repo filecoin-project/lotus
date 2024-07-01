@@ -81,6 +81,7 @@ type EthModuleAPI interface {
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
+	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
 }
 
 type EthEventAPI interface {
@@ -1025,6 +1026,137 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 	}
 
 	return txTraces, nil
+}
+
+func (a *EthModule) EthBlockNumberFromString(ctx context.Context, block *string) (ethtypes.EthUint64, error) {
+	head := a.Chain.GetHeaviestTipSet()
+
+	blockValue := "latest"
+	if block != nil {
+		blockValue = *block
+	}
+
+	switch blockValue {
+	case "earliest":
+		return 0, xerrors.Errorf("block param \"earliest\" is not supported")
+	case "pending":
+		return ethtypes.EthUint64(head.Height()), nil
+	case "latest":
+		parent, err := a.Chain.GetTipSetFromKey(ctx, head.Parents())
+		if err != nil {
+			return 0, fmt.Errorf("cannot get parent tipset")
+		}
+		return ethtypes.EthUint64(parent.Height()), nil
+	case "safe":
+		latestHeight := head.Height() - 1
+		safeHeight := latestHeight - ethtypes.SafeEpochDelay
+		return ethtypes.EthUint64(safeHeight), nil
+	default:
+		blockNum, err := ethtypes.EthUint64FromHex(blockValue)
+		if err != nil {
+			return 0, xerrors.Errorf("cannot parse fromBlock: %w", err)
+		}
+		return blockNum, err
+	}
+}
+
+func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	fromBlock, err := a.EthBlockNumberFromString(ctx, filter.FromBlock)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse fromBlock: %w", err)
+	}
+
+	toBlock, err := a.EthBlockNumberFromString(ctx, filter.ToBlock)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
+	}
+
+	var results []*ethtypes.EthTraceFilterResult
+
+	// If filter.Count is specified and it is 0, return an empty result set immediately.
+	if filter.Count != nil && *filter.Count == 0 {
+		return []*ethtypes.EthTraceFilterResult{}, nil
+	}
+
+	traceCounter := 0
+
+	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
+		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
+		if err != nil {
+			return nil, xerrors.Errorf("cannot get trace for block %d: %w", blkNum, err)
+		}
+
+		for _, blockTrace := range blockTraces {
+			if matchFilterCriteria(blockTrace, filter) {
+				traceCounter++
+				if traceCounter <= *filter.After {
+					continue
+				}
+
+				txTrace := ethtypes.EthTraceFilterResult{
+					EthTrace:            blockTrace.EthTrace,
+					BlockHash:           blockTrace.BlockHash,
+					BlockNumber:         blockTrace.BlockNumber,
+					TransactionHash:     blockTrace.TransactionHash,
+					TransactionPosition: blockTrace.TransactionPosition,
+				}
+				results = append(results, &txTrace)
+
+				// If Count is specified, limit the results
+				if filter.Count != nil && len(results) >= *filter.Count {
+					return results, nil
+				}
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// matchFilterCriteria checks if a trace matches the filter criteria.
+func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTraceFilterCriteria) bool {
+	action, ok := trace.Action.(*ethtypes.EthCallTraceAction)
+	if !ok {
+		return false
+	}
+
+	// Match FromAddress
+	if filter.FromAddress != nil && len(*filter.FromAddress) > 0 {
+		fromMatch := false
+		for _, addr := range *filter.FromAddress {
+			ethAddr, err := ethtypes.ParseEthAddress(addr)
+			if err != nil {
+				continue
+			}
+			if action.From == ethAddr {
+				fromMatch = true
+				break
+			}
+		}
+		if !fromMatch {
+			return false
+		}
+	}
+
+	// Match ToAddress
+	if filter.ToAddress != nil && len(*filter.ToAddress) > 0 {
+		toMatch := false
+		for _, addr := range *filter.ToAddress {
+			ethAddr, err := ethtypes.ParseEthAddress(addr)
+			if err != nil {
+				continue
+			}
+			if action.To == ethAddr {
+				toMatch = true
+				break
+			}
+		}
+		if !toMatch {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {

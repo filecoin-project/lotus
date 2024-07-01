@@ -644,3 +644,48 @@ func TestTraceTransaction(t *testing.T) {
 	require.EqualValues(t, traces[0].TransactionHash, hash)
 	require.EqualValues(t, traces[0].BlockNumber, receipt.BlockNumber)
 }
+
+func TestTraceFilter(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Define filter criteria
+	filter := ethtypes.EthTraceFilterCriteria{
+		FromBlock: "0x1",
+		ToBlock:   "latest",
+	}
+
+	// Example of creating and submitting a transaction
+	// Replace with actual test setup as needed
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+
+	tx, err := deployContractTx(ctx, client, ethAddr, contract)
+	require.NoError(t, err)
+
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	// Wait for the transaction to be mined
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	// Trace filter should find the transaction
+	traces, err := client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.NotNil(t, traces)
+	require.NotEmpty(t, traces)
+}

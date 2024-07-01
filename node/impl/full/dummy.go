@@ -191,6 +191,10 @@ func (e *EthModuleDummy) EthTraceTransaction(ctx context.Context, txHash string)
 	return nil, ErrModuleDisabled
 }
 
+func (e *EthModuleDummy) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	return nil, ErrModuleDisabled
+}
+
 var _ EthModuleAPI = &EthModuleDummy{}
 var _ EthEventAPI = &EthModuleDummy{}
 

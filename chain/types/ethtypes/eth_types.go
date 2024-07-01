@@ -1025,6 +1025,47 @@ type EthTraceTransaction struct {
 	TransactionPosition int     `json:"transactionPosition"`
 }
 
+type EthTraceFilterResult struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
+}
+
+// EthTraceFilterCriteria defines the criteria for filtering traces.
+type EthTraceFilterCriteria struct {
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
+	// "pending" for not yet committed messages.
+	// Optional, default: "latest".
+	FromBlock *string `json:"fromBlock,omitempty"`
+
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
+	// "pending" for not yet committed messages.
+	// Optional, default: "latest".
+	ToBlock *string `json:"toBlock,omitempty"`
+
+	// Actor address or a list of addresses from which event logs should originate.
+	// Optional, default: nil.
+	// The JSON decoding must treat a string as equivalent to an array with one value, for example
+	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
+	FromAddress *[]string `json:"fromAddress,omitempty"`
+
+	// Actor address or a list of addresses to which event logs should be sent.
+	// Optional, default: nil.
+	// The JSON decoding must treat a string as equivalent to an array with one value, for example
+	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
+	ToAddress *[]string `json:"toAddress,omitempty"`
+
+	// Restricts traces returned to those emitted after this epoch (in hex).
+	// Optional, default: 0.
+	After *int `json:"after,omitempty"`
+
+	// Limits the number of traces returned.
+	// Optional, default: all traces.
+	Count *int `json:"count,omitempty"`
+}
+
 type EthCallTraceAction struct {
 	CallType string     `json:"callType"`
 	From     EthAddress `json:"from"`
