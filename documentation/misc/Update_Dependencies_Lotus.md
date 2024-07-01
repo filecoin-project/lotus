@@ -50,4 +50,4 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 👉 Example of a [PR updating Builtin-Actors bundle](https://github.com/filecoin-project/lotus/pull/11682/)
 
-👉 If you need to create a Builtin-Actors release, you can follow the steps outlined here: [Creating a Builtin-Actors Release](https://github.com/filecoin-project/builtin-actors/?tab=readme-ov-file#releasing)
+👉 If you need to create a Builtin-Actors release, you can follow the steps to create a [new Builtin-Actors release](https://github.com/filecoin-project/builtin-actors/?tab=readme-ov-file#releasing).
