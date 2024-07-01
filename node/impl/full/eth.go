@@ -1028,9 +1028,15 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 	return txTraces, nil
 }
 
-func (a *EthModule) EthBlockNumberFromString(ctx context.Context, block string) (ethtypes.EthUint64, error) {
+func (a *EthModule) EthBlockNumberFromString(ctx context.Context, block *string) (ethtypes.EthUint64, error) {
 	head := a.Chain.GetHeaviestTipSet()
-	switch block {
+
+	blockValue := "latest"
+	if block != nil {
+		blockValue = *block
+	}
+
+	switch blockValue {
 	case "earliest":
 		return 0, xerrors.Errorf("block param \"earliest\" is not supported")
 	case "pending":
@@ -1046,7 +1052,7 @@ func (a *EthModule) EthBlockNumberFromString(ctx context.Context, block string) 
 		safeHeight := latestHeight - ethtypes.SafeEpochDelay
 		return ethtypes.EthUint64(safeHeight), nil
 	default:
-		blockNum, err := ethtypes.EthUint64FromHex(block)
+		blockNum, err := ethtypes.EthUint64FromHex(blockValue)
 		if err != nil {
 			return 0, xerrors.Errorf("cannot parse fromBlock: %w", err)
 		}
@@ -1066,6 +1072,12 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 	}
 
 	var results []*ethtypes.EthTraceFilterResult
+
+	// If filter.Count is specified and it is 0, return an empty result set immediately.
+	if filter.Count != nil && *filter.Count == 0 {
+		return []*ethtypes.EthTraceFilterResult{}, nil
+	}
+
 	traceCounter := 0
 
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
@@ -1077,7 +1089,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 		for _, blockTrace := range blockTraces {
 			if matchFilterCriteria(blockTrace, filter) {
 				traceCounter++
-				if traceCounter <= filter.After {
+				if traceCounter <= *filter.After {
 					continue
 				}
 
@@ -1091,7 +1103,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 				results = append(results, &txTrace)
 
 				// If Count is specified, limit the results
-				if filter.Count > 0 && len(results) >= filter.Count {
+				if filter.Count != nil && len(results) >= *filter.Count {
 					return results, nil
 				}
 			}
@@ -1109,9 +1121,9 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTrace
 	}
 
 	// Match FromAddress
-	if len(filter.FromAddress) > 0 {
+	if filter.FromAddress != nil && len(*filter.FromAddress) > 0 {
 		fromMatch := false
-		for _, addr := range filter.FromAddress {
+		for _, addr := range *filter.FromAddress {
 			ethAddr, err := ethtypes.ParseEthAddress(addr)
 			if err != nil {
 				continue
@@ -1127,9 +1139,9 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTrace
 	}
 
 	// Match ToAddress
-	if len(filter.ToAddress) > 0 {
+	if filter.ToAddress != nil && len(*filter.ToAddress) > 0 {
 		toMatch := false
-		for _, addr := range filter.ToAddress {
+		for _, addr := range *filter.ToAddress {
 			ethAddr, err := ethtypes.ParseEthAddress(addr)
 			if err != nil {
 				continue
