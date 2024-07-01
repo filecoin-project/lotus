@@ -19,7 +19,7 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 👉 Example of a [PR updating Filecoin-FFI](https://github.com/filecoin-project/lotus/pull/11431)
 
-👉 If you need to create a Filecoin-FFI release, you can follow the steps outlined here: [Creating a Filecoin-FFI Release](https://github.com/filecoin-project/filecoin-ffi/pull/461)
+👉 If you need to create a Filecoin-FFI release, you can follow [the release process](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#release-process).
 
 ## Updating Ref-FVM
 
