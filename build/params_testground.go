@@ -133,9 +133,11 @@ var (
 	Devnet      = true
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
-	WhitelistedBlock  = cid.Undef
-	BootstrappersFile = ""
-	GenesisFile       = ""
+	WhitelistedBlock                 = cid.Undef
+	BootstrappersFile                = ""
+	GenesisFile                      = ""
+	F3Enabled                        = false
+	F3BootstrapEpoch  abi.ChainEpoch = -1
 )
 
 const Finality = policy.ChainFinality

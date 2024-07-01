@@ -81,6 +81,10 @@
   * [EthTraceTransaction](#EthTraceTransaction)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
+* [F3](#F3)
+  * [F3GetCertificate](#F3GetCertificate)
+  * [F3GetLatestCertificate](#F3GetLatestCertificate)
+  * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
 * [Gas](#Gas)
@@ -2206,6 +2210,150 @@ Inputs:
 ```
 
 Response: `true`
+
+## F3
+
+
+### F3GetCertificate
+F3GetCertificate returns a finality certificate at given instance number
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response:
+```json
+{
+  "GPBFTInstance": 0,
+  "ECChain": null,
+  "SupplementalData": {
+    "Commitments": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PowerTable": null
+  },
+  "Signers": [
+    0
+  ],
+  "Signature": null,
+  "PowerTableDelta": null
+}
+```
+
+### F3GetLatestCertificate
+F3GetLatestCertificate returns the latest finality certificate
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "GPBFTInstance": 0,
+  "ECChain": null,
+  "SupplementalData": {
+    "Commitments": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PowerTable": null
+  },
+  "Signers": [
+    0
+  ],
+  "Signature": null,
+  "PowerTableDelta": null
+}
+```
+
+### F3Participate
+F3Participate should be called by a miner node to participate in signing F3 consensus.
+The address should be of type ID
+The returned channel will never be closed by the F3
+If it is closed without the context being cancelled, the caller should retry.
+The values returned on the channel will inform the caller about participation
+Empty strings will be sent if participation succeeded, non-empty strings explain possible errors.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"string value"`
 
 ## Filecoin
 
@@ -5468,7 +5616,7 @@ Response:
         },
         "Nonce": 42,
         "Balance": "0",
-        "Address": "f01234"
+        "DelegatedAddress": "f01234"
       }
     },
     "GasCharges": [
@@ -5508,7 +5656,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [
@@ -5560,7 +5708,7 @@ Response:
     },
     "Nonce": 42,
     "Balance": "0",
-    "Address": "f01234"
+    "DelegatedAddress": "f01234"
   }
 }
 ```
@@ -5730,7 +5878,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [
@@ -5770,7 +5918,7 @@ Response:
                 },
                 "Nonce": 42,
                 "Balance": "0",
-                "Address": "f01234"
+                "DelegatedAddress": "f01234"
               }
             },
             "GasCharges": [
@@ -5932,7 +6080,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "f01234"
+  "DelegatedAddress": "f01234"
 }
 ```
 
@@ -7351,7 +7499,7 @@ Response:
         },
         "Nonce": 42,
         "Balance": "0",
-        "Address": "f01234"
+        "DelegatedAddress": "f01234"
       }
     },
     "GasCharges": [
@@ -7391,7 +7539,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [

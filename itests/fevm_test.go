@@ -51,48 +51,11 @@ func decodeOutputToUint64(output []byte) (uint64, error) {
 	err := binary.Read(buf, binary.BigEndian, &result)
 	return result, err
 }
-func buildInputFromuint64(number uint64) []byte {
+func buildInputFromUint64(number uint64) []byte {
 	// Convert the number to a binary uint64 array
 	binaryNumber := make([]byte, 8)
 	binary.BigEndian.PutUint64(binaryNumber, number)
 	return inputDataFromArray(binaryNumber)
-}
-
-// recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
-// before running out of gas
-func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	expectedIterationsBeforeFailing := int(220)
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	t.Log("recursion count - ", count)
-	inputData := buildInputFromuint64(count)
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-
-	require.NoError(t, err)
-
-	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-	require.NoError(t, err)
-
-	resultUint, err := decodeOutputToUint64(result)
-	require.NoError(t, err)
-
-	require.NotEqual(t, int(resultUint), int(count))
-	require.Equal(t, expectedIterationsBeforeFailing, int(resultUint))
-}
-func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	t.Log("Count - ", count)
-
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	inputData := buildInputFromuint64(count)
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-	require.NoError(t, err)
-
-	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-	require.NoError(t, err)
-
-	resultUint, err := decodeOutputToUint64(result)
-	require.NoError(t, err)
-
-	require.Equal(t, int(count), int(resultUint))
 }
 
 // TestFEVMRecursive does a basic fevm contract installation and invocation
@@ -107,7 +70,7 @@ func TestFEVMRecursive(t *testing.T) {
 	for _, callCount := range callCounts {
 		callCount := callCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callCount))
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(callCount))
 			require.NoError(t, err)
 		})
 	}
@@ -125,7 +88,7 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	for _, failCallCount := range failCallCounts {
 		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
-			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
+			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromUint64(failCallCount))
 			require.Error(t, err)
 			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
 		})
@@ -156,23 +119,51 @@ func TestFEVMRecursive2(t *testing.T) {
 
 // TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth.
 func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
-
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	highestSuccessCount := uint64(226)
+	// these depend on the actors bundle, may need to be adjusted with a network upgrade
+	const highestSuccessCount = 228
+	const expectedIterationsBeforeFailing = 222
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(2))
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(10))
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(100))
-	recursiveDelegatecallSuccess(ctx, t, client, filename, highestSuccessCount)
 
-	recursiveDelegatecallFail(ctx, t, client, filename, highestSuccessCount+1)
-	recursiveDelegatecallFail(ctx, t, client, filename, uint64(1000))
-	recursiveDelegatecallFail(ctx, t, client, filename, uint64(10000000))
+	testCases := []struct {
+		recursionCount uint64
+		expectSuccess  bool
+	}{
+		// success
+		{1, true},
+		{2, true},
+		{10, true},
+		{100, true},
+		{highestSuccessCount, true},
+		// failure
+		{highestSuccessCount + 1, false},
+		{1000, false},
+		{10000000, false},
+	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("recursionCount=%d,expectSuccess=%t", tc.recursionCount, tc.expectSuccess), func(t *testing.T) {
+			fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+			inputData := buildInputFromUint64(tc.recursionCount)
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+			require.NoError(t, err)
 
+			result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+			require.NoError(t, err)
+
+			resultUint, err := decodeOutputToUint64(result)
+			require.NoError(t, err)
+
+			if tc.expectSuccess {
+				require.Equal(t, int(tc.recursionCount), int(resultUint))
+			} else {
+				require.NotEqual(t, int(resultUint), int(tc.recursionCount), "unexpected recursion count, if the actors bundle has changed, this test may need to be adjusted")
+				require.Equal(t, int(expectedIterationsBeforeFailing), int(resultUint))
+			}
+		})
+	}
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
@@ -224,7 +215,7 @@ func TestFEVMETH0(t *testing.T) {
 
 	eth0Addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, make([]byte, 20))
 	require.NoError(t, err)
-	require.Equal(t, *act.Address, eth0Addr)
+	require.Equal(t, *act.DelegatedAddress, eth0Addr)
 }
 
 // TestFEVMDelegateCall deploys two contracts and makes a delegate call transaction
@@ -585,44 +576,52 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	filenameActor := "contracts/RecCall.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
-	testN := func(n, r int, ex exitcode.ExitCode) func(t *testing.T) {
-		return func(t *testing.T) {
-			inputData := make([]byte, 32*3)
-			binary.BigEndian.PutUint64(inputData[24:], uint64(n))
-			binary.BigEndian.PutUint64(inputData[32+24:], uint64(n))
-			binary.BigEndian.PutUint64(inputData[32+32+24:], uint64(r))
+	exitCodeStackOverflow := exitcode.ExitCode(37)
+	exitCodeTransactionReverted := exitcode.ExitCode(33)
 
-			client.EVM().InvokeContractByFuncNameExpectExit(ctx, fromAddr, actorAddr, "exec1(uint256,uint256,uint256)", inputData, ex)
-		}
+	testCases := []struct {
+		stackDepth     int
+		recursionLimit int
+		exitCode       exitcode.ExitCode
+	}{
+		{0, 1, exitcode.Ok},
+		{1, 1, exitcode.Ok},
+		{20, 1, exitcode.Ok},
+		{200, 1, exitcode.Ok},
+		{251, 1, exitcode.Ok},
+		{252, 1, exitCodeStackOverflow},
+		{0, 10, exitcode.Ok},
+		{1, 10, exitcode.Ok},
+		{20, 10, exitcode.Ok},
+		{200, 10, exitcode.Ok},
+		{251, 10, exitcode.Ok},
+		{252, 10, exitCodeStackOverflow},
+		{0, 32, exitcode.Ok},
+		{1, 32, exitcode.Ok},
+		{20, 32, exitcode.Ok},
+		{200, 32, exitcode.Ok},
+		{251, 32, exitcode.Ok},
+		{252, 32, exitCodeStackOverflow},
+		// the following are actors bundle dependent and may need to be tweaked with a network upgrade
+		{0, 255, exitcode.Ok},
+		{251, 164, exitcode.Ok},
+		{0, 261, exitCodeTransactionReverted},
+		{251, 173, exitCodeTransactionReverted},
 	}
+	for _, tc := range testCases {
+		var fail string
+		if tc.exitCode != exitcode.Ok {
+			fail = "-fails"
+		}
+		t.Run(fmt.Sprintf("stackDepth=%d,recursionLimit=%d%s", tc.stackDepth, tc.recursionLimit, fail), func(t *testing.T) {
+			inputData := make([]byte, 32*3)
+			binary.BigEndian.PutUint64(inputData[24:], uint64(tc.stackDepth))
+			binary.BigEndian.PutUint64(inputData[32+24:], uint64(tc.stackDepth))
+			binary.BigEndian.PutUint64(inputData[32+32+24:], uint64(tc.recursionLimit))
 
-	t.Run("n=0,r=1", testN(0, 1, exitcode.Ok))
-	t.Run("n=1,r=1", testN(1, 1, exitcode.Ok))
-	t.Run("n=20,r=1", testN(20, 1, exitcode.Ok))
-	t.Run("n=200,r=1", testN(200, 1, exitcode.Ok))
-	t.Run("n=251,r=1", testN(251, 1, exitcode.Ok))
-
-	t.Run("n=252,r=1-fails", testN(252, 1, exitcode.ExitCode(37))) // 37 means stack overflow
-
-	t.Run("n=0,r=10", testN(0, 10, exitcode.Ok))
-	t.Run("n=1,r=10", testN(1, 10, exitcode.Ok))
-	t.Run("n=20,r=10", testN(20, 10, exitcode.Ok))
-	t.Run("n=200,r=10", testN(200, 10, exitcode.Ok))
-	t.Run("n=251,r=10", testN(251, 10, exitcode.Ok))
-
-	t.Run("n=252,r=10-fails", testN(252, 10, exitcode.ExitCode(37)))
-
-	t.Run("n=0,r=32", testN(0, 32, exitcode.Ok))
-	t.Run("n=1,r=32", testN(1, 32, exitcode.Ok))
-	t.Run("n=20,r=32", testN(20, 32, exitcode.Ok))
-	t.Run("n=200,r=32", testN(200, 32, exitcode.Ok))
-	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
-
-	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
-	t.Run("n=251,r=164", testN(251, 164, exitcode.Ok))
-
-	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
-	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
+			client.EVM().InvokeContractByFuncNameExpectExit(ctx, fromAddr, actorAddr, "exec1(uint256,uint256,uint256)", inputData, tc.exitCode)
+		})
+	}
 }
 
 // TestFEVMRecursiveActorCallEstimate

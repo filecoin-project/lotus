@@ -25,6 +25,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -399,6 +400,7 @@ func init() {
 		FromHeight: epochPtr(1010),
 		ToHeight:   epochPtr(1020),
 	})
+	addExample(&certs.FinalityCertificate{})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

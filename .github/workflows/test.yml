@@ -61,6 +61,7 @@ jobs:
           #   to support resource intensive jobs.
           runners: |
             {
+              "itest-niporep_manual": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-manual_onboarding": ["self-hosted", "linux", "x64", "4xlarge"],
@@ -118,6 +119,7 @@ jobs:
               "itest-direct_data_onboard_verified",
               "itest-direct_data_onboard",
               "itest-manual_onboarding",
+              "itest-niporep_manual",
               "itest-net",
               "itest-path_detach_redeclare",
               "itest-sealing_resources",
