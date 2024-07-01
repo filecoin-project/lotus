@@ -18,6 +18,10 @@ This is the first release candidate of the upcoming MANDATORY Lotus v1.28.0 rele
 
 **This release does NOT set a calibration network upgrade epoch yet, which will be included in the subsequent release candidate. This release does NOT set the mainnet upgrade epoch yet, which will be updated in the final release.**
 
+☢️ Upgrade Warnings ☢️
+
+If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
+
 ## The Filecoin network version 23 delivers the following FIPs:
 
 - [FIP-0065: Ignore built-in market locked balance in circulating supply calculation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0065.md)
@@ -70,6 +74,7 @@ The NV23 upgrade migration is expected to be extremely light as only the FIP-008
 - Soft launch for Filecoin F3 (https://github.com/filecoin-project/lotus/pull/12119)  
 - NI-PoRep changes (https://github.com/filecoin-project/lotus/pull/12130)
 - Fixes for the ETH events API (https://github.com/filecoin-project/lotus/pull/12080)
+- Support for legacy Ethereum transactions (https://github.com/filecoin-project/lotus/pull/11969)
 
 # v1.27.1 / 2024-06-24
 
