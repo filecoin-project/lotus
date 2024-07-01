@@ -45,7 +45,7 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 2. Run this script `./pack.sh vXX vXX.X.X-rcX` to pull in the builtin-actors bundle into your Lotus repo. 
 
-- vXX is the network version you are bundling this builtin-actors for.
+- `vXX` is the network version you are bundling this builtin-actors for.
 - vXX.X.X-rcX is the builtin-actors release you are bundling.
 
 👉 Example of a [PR updating Builtin-Actors bundle](https://github.com/filecoin-project/lotus/pull/11682/)
