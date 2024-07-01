@@ -14,6 +14,65 @@
 
 ## Improvements
 
+# v1.28.0-rc1 / 2024-07-01
+
+This is the first release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle.
+
+**This release does NOT set a calibration network upgrade epoch yet, which will be included in the subsequent release candidate. This release does NOT set the mainnet upgrade epoch yet, which will be updated in the final release.**
+
+## The Filecoin network version 23 delivers the following FIPs:
+
+- [FIP-0065: Ignore built-in market locked balance in circulating supply calculation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0065.md)
+- [FIP-0079: Add BLS Aggregate Signatures to FVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0079.md)
+- [FIP-0084: Remove Storage Miner Actor Method ProveCommitSectors](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0084.md)
+- [FIP-0085: Convert f090 Mining Reserve Actor to Keyless Account Actor](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0085.md)
+- [FIP-0091: Add support for legacy Ethereum transactions](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0091.md)
+- [FIP-0092: NI-PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0092.md)
+- [F3 (Fast Finality) Soft Launch](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+
+## v14 Builtin Actor Bundle
+The actor bundles for the **calibration network** can be checked as follows:
+
+```
+lotus state actor-cids --network-version=23
+Network Version: 23
+Actor Version: 14
+Manifest CID: bafy2bzacebq3hncszqpojglh2dkwekybq4zn6qpc4gceqbx36wndps5qehtau
+
+Actor             CID  
+account           bafk2bzaced5ecfm56dvtw26q56j4d32yoccyd7ggxn3qdki2enxpqqav45ths
+cron              bafk2bzacedpbtttpyvtjncqoyobr63mhqqtlrygbnudhxyp2vha56f626dkfs
+datacap           bafk2bzacecded3lcvo7ndsk66samyecw2trnhrgzi7jxsary3sqgopxlk6rku
+eam               bafk2bzacecsda4uw7dcu76a27gnrrdcm73tgms7wrte6jbou63vloktkqc5ne
+ethaccount        bafk2bzacebu2lcxfmohomjj3umslnylwugf5gssywdq3575tjarta7o227dls
+evm               bafk2bzacea4xnekruhfmdnzvzeo6cbf7jsfgco6x5wje2ckwc2ui2ojzcrlgu
+init              bafk2bzacedfmsdlewihdcrkdepnfata26nj7akbvexzs3chicujhjf2uxsazc
+multisig          bafk2bzacedwx4svscsp6wqqu2vlcunjihvvm4u2jnsqjkwutjhir7dwtl7z6m
+paymentchannel    bafk2bzacedbit7oo6lryhbo64uikvtjtfcth6oxwy3eebxerenu2h7rj44n24
+placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
+reward            bafk2bzaced5rlycj7fzpscfc7p3wwxarngwqylqshj7te3uffey5tevunz4we
+storagemarket     bafk2bzaceatwbyrec2nnwggxc2alpqve7rl52fmbhqflebuxmmnvg3qckjb7c
+storageminer      bafk2bzacecr7ozkdz7l2pq3ig5qxae2ysivbnojhsn4gw3o57ov4mhksma7me
+storagepower      bafk2bzacedgeolvjtnw7fkji5kqmx322abv6uls2v34fuml6nw36dvfcw4mtu
+system            bafk2bzacederl6tlpieldsn6mkndqwd4wj5orfoqgab6p2klswfn3cjagxwla
+verifiedregistry  bafk2bzaceczw2kp6gjjdcjbso7mewp7guik7gr525pal6dotdja2lrct6ok3c
+```
+
+## Migration
+The NV23 upgrade migration is expected to be extremely light as only the FIP-0085 migration will be executed which will be very light. With don't expect null tipsets after the upgrade epoch or heavy block validation times. We will updated this sections once we have ran the final benchmarks.
+
+## Dependencies
+- github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
+- github.com/filecoin-project/filecoin-ffi (`v1.27.0-rc2` -> `v1.28.0-rc2`)
+- `ref-fvm4` (as part of `filecoin-ffi`) (`4.2.0` -> `4.3.1`)
+- A new `github.com/filecoin-project/go-f3` dependency for F3 soft launch (`v0.0.2`)
+
+## Others
+
+- Soft launch for Filecoin F3 (https://github.com/filecoin-project/lotus/pull/12119)  
+- NI-PoRep changes (https://github.com/filecoin-project/lotus/pull/12130)
+- Fixes for the ETH events API (https://github.com/filecoin-project/lotus/pull/12080)
+
 # v1.27.1 / 2024-06-24
 
 This release, v1.27.1, is an OPTIONAL lotus release. It is HIGHLY RECOMMENDED for node operators that are building Filecoin index off lotus!
