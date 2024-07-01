@@ -1193,6 +1193,16 @@ var ChainExportRangeCmd = &cli.Command{
 			Value:  true,
 			Hidden: true, // currently, non-internal export is not implemented.
 		},
+		&cli.StringFlag{
+			Name:   "filename",
+			Usage:  "name of exported CAR file for internal chain export",
+			Hidden: true, // currently, non-internal export is not implemented.
+		},
+		&cli.StringFlag{
+			Name:   "export-dir",
+			Usage:  "directory where to save the exported CAR file",
+			Hidden: true, // currently, non-internal export is not implemented.
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPIV1(cctx)
@@ -1242,6 +1252,8 @@ var ChainExportRangeCmd = &cli.Command{
 			IncludeMessages:   cctx.Bool("messages"),
 			IncludeReceipts:   cctx.Bool("receipts"),
 			IncludeStateRoots: cctx.Bool("stateroots"),
+			FileName:          cctx.String("filename"),
+			ExportDir:         cctx.String("export-dir"),
 		})
 		if err != nil {
 			return err
