@@ -14,7 +14,7 @@
 
 # v1.28.0-rc1 / 2024-07-01
 
-This is the first release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle.
+This is the first release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
 **This release does NOT set a calibration network upgrade epoch yet, which will be included in the subsequent release candidate. This release does NOT set the mainnet upgrade epoch yet, which will be updated in the final release.**
 
@@ -75,6 +75,9 @@ The NV23 upgrade migration is expected to be extremely light as only the FIP-008
 - NI-PoRep changes (https://github.com/filecoin-project/lotus/pull/12130)
 - Fixes for the ETH events API (https://github.com/filecoin-project/lotus/pull/12080)
 - Support for legacy Ethereum transactions (https://github.com/filecoin-project/lotus/pull/11969)
+- Ignore market balance after nv23 (https://github.com/filecoin-project/lotus/pull/11976)
+- Add finality-related params for `eth_getBlockByNumber` (https://github.com/filecoin-project/lotus/pull/12110)
+
 
 # v1.27.1 / 2024-06-24
 
