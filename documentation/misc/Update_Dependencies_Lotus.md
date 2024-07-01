@@ -9,7 +9,7 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 ## Updating Filecoin-FFI
 
-1. In your `/lotus` folder, run `cd extern/filecoin-ffi`.
+1. In your `lotus` directory, `cd extern/filecoin-ffi`.
 
 2. `git pull` to ensure you have the latests changes for *filecoin-ffi*.
 
