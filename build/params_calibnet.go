@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -153,4 +154,5 @@ const Eip155ChainId = 314159
 var WhitelistedBlock = cid.Undef
 
 const F3Enabled = false
+const ManifestServerID peer.ID = peer.ID("")
 const F3BootstrapEpoch abi.ChainEpoch = -1
