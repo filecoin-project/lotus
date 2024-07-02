@@ -160,8 +160,7 @@ func init() {
 
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-		0:                    DrandMainnet,
-		UpgradePhoenixHeight: DrandQuicknet,
+		0: DrandQuicknet,
 	}
 
 	BuildType |= Build2k
