@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
@@ -17,6 +18,33 @@ import (
 
 const mPoolThrottle = time.Millisecond * 100
 const mPoolTimeout = time.Second * 10
+
+func TestMemPoolPushOutgoingInvalidDelegated(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
+	//stm: @CHAIN_MEMPOOL_PUSH_002
+	ctx := context.Background()
+	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
+	ens.InterconnectAll()
+	kit.QuietMiningLogs()
+
+	sender := firstNode.DefaultKey.Address
+	badTo, err := address.NewFromString("f410f74aaaaaaaaaaaaaaaaaaaaaaaaac5sh2bf3lgta")
+	require.NoError(t, err)
+
+	bal, err := firstNode.WalletBalance(ctx, sender)
+	require.NoError(t, err)
+	toSend := big.Div(bal, big.NewInt(10))
+
+	msg := &types.Message{
+		From:  sender,
+		Value: toSend,
+		To:    badTo,
+	}
+
+	_, err = firstNode.MpoolPushMessage(ctx, msg, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "is a delegated address but not a valid Eth Address")
+}
 
 func TestMemPoolPushSingleNode(t *testing.T) {
 	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001
