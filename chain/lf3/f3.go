@@ -3,7 +3,6 @@ package lf3
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-f3/blssig"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -35,39 +35,34 @@ type F3 struct {
 type F3Params struct {
 	fx.In
 
-	NetworkName  dtypes.NetworkName
-	PubSub       *pubsub.PubSub
-	Host         host.Host
-	ChainStore   *store.ChainStore
-	StateManager *stmgr.StateManager
-	Datastore    dtypes.MetadataDS
-	Wallet       api.Wallet
+	NetworkName      dtypes.NetworkName
+	ManifestProvider manifest.ManifestProvider
+	PubSub           *pubsub.PubSub
+	Host             host.Host
+	ChainStore       *store.ChainStore
+	StateManager     *stmgr.StateManager
+	Datastore        dtypes.MetadataDS
+	Wallet           api.Wallet
 }
 
 var log = logging.Logger("f3")
 
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
-	manifest := f3.LocalnetManifest()
-	manifest.NetworkName = gpbft.NetworkName(params.NetworkName)
-	manifest.ECDelay = 2 * time.Duration(build.BlockDelaySecs) * time.Second
-	manifest.ECPeriod = manifest.ECDelay
-	manifest.BootstrapEpoch = int64(build.F3BootstrapEpoch)
-	manifest.ECFinality = int64(build.Finality)
 
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
-		Manifest:     manifest,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	module, err := f3.New(mctx, manifest, ds,
-		params.Host, params.PubSub, verif, ec, log, nil)
+	module, err := f3.New(mctx, params.ManifestProvider, ds,
+		params.Host, build.ManifestServerID, params.PubSub, verif, ec, log, nil)
 
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
 	}
+	params.ManifestProvider.SetManifestChangeCallback(f3.ManifestChangeCallback(module))
 
 	fff := &F3{
 		inner:  module,

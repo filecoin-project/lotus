@@ -13,6 +13,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -170,4 +171,5 @@ const Eip155ChainId = 314
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
 const F3Enabled = false
+const ManifestServerID peer.ID = peer.ID("")
 const F3BootstrapEpoch abi.ChainEpoch = -1
