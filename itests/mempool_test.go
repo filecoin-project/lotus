@@ -23,7 +23,6 @@ func TestMemPoolPushOutgoingInvalidDelegated(t *testing.T) {
 	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
 	//stm: @CHAIN_MEMPOOL_PUSH_002
 	ctx := context.Background()
-	const blockTime = 100 * time.Millisecond
 	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
 	ens.InterconnectAll()
 	kit.QuietMiningLogs()
