@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"reflect"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -18,11 +20,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/retry"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -234,52 +238,147 @@ func OnSingleNode(ctx context.Context) context.Context {
 	return context.WithValue(ctx, contextKey("retry-node"), new(*int))
 }
 
+const initialBackoff = time.Second
+const maxRetryAttempts = 5
+const maxBehinhBestHealthy = 1
+
+var errorsToRetry = []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
+
+const preferredAllBad = -1
+
 func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
+	providerCount := len(ins)
+
+	var healthyLk sync.Mutex
+	unhealthyProviders := make([]bool, providerCount)
+
+	nextHealthyProvider := func(start int) int {
+		healthyLk.Lock()
+		defer healthyLk.Unlock()
+
+		for i := 0; i < providerCount; i++ {
+			idx := (start + i) % providerCount
+			if !unhealthyProviders[idx] {
+				return idx
+			}
+		}
+		return preferredAllBad
+	}
+
+	// watch provider health
+	startWatch := func() {
+		if len(ins) == 1 {
+			// not like we have any onter node to go to..
+			return
+		}
+
+		// don't bother for short-running commands
+		time.Sleep(250 * time.Millisecond)
+
+		var bestKnownTipset, nextBestKnownTipset *types.TipSet
+
+		for {
+			var wg sync.WaitGroup
+			wg.Add(providerCount)
+
+			for i := 0; i < providerCount; i++ {
+				go func(i int) {
+					defer wg.Done()
+
+					toctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // todo better timeout
+					ch, err := ins[i].ChainHead(toctx)
+					cancel()
+
+					// error is definitely not healthy
+					if err != nil {
+						healthyLk.Lock()
+						unhealthyProviders[i] = true
+						healthyLk.Unlock()
+
+						log.Errorw("rpc check chain head call failed", "fail_type", "rpc_error", "provider", i, "error", err)
+						return
+					}
+
+					healthyLk.Lock()
+					// maybe set best next
+					if nextBestKnownTipset == nil || big.Cmp(ch.ParentWeight(), nextBestKnownTipset.ParentWeight()) > 0 || len(ch.Blocks()) > len(nextBestKnownTipset.Blocks()) {
+						nextBestKnownTipset = ch
+					}
+
+					if bestKnownTipset != nil {
+						// if we're behind the best tipset, mark as unhealthy
+						unhealthyProviders[i] = ch.Height() < bestKnownTipset.Height()-maxBehinhBestHealthy
+
+						if unhealthyProviders[i] {
+							log.Errorw("rpc check chain head call failed", "fail_type", "behind_best", "provider", i, "height", ch.Height(), "best_height", bestKnownTipset.Height())
+						}
+					}
+					healthyLk.Unlock()
+				}(i)
+			}
+
+			wg.Wait()
+			bestKnownTipset = nextBestKnownTipset
+
+			time.Sleep(5 * time.Second)
+		}
+	}
+	var starWatchOnce sync.Once
+
+	// populate output api proxy
 	outs := api.GetInternalStructs(outstr)
 
-	var rins []reflect.Value
+	var apiProviders []reflect.Value
 	for _, in := range ins {
-		rins = append(rins, reflect.ValueOf(in))
+		apiProviders = append(apiProviders, reflect.ValueOf(in))
 	}
 
 	for _, out := range outs {
-		rProxyInternal := reflect.ValueOf(out).Elem()
+		rOutStruct := reflect.ValueOf(out).Elem()
 
-		for f := 0; f < rProxyInternal.NumField(); f++ {
-			field := rProxyInternal.Type().Field(f)
+		for f := 0; f < rOutStruct.NumField(); f++ {
+			field := rOutStruct.Type().Field(f)
 
-			var fns []reflect.Value
-			for _, rin := range rins {
-				fns = append(fns, rin.MethodByName(field.Name))
+			var providerFuncs []reflect.Value
+			for _, rin := range apiProviders {
+				providerFuncs = append(providerFuncs, rin.MethodByName(field.Name))
 			}
 
-			rProxyInternal.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
-				errorsToRetry := []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
-				initialBackoff, err := time.ParseDuration("1s")
-				if err != nil {
-					return nil
-				}
+			rOutStruct.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+				starWatchOnce.Do(func() {
+					go startWatch()
+				})
 
 				ctx := args[0].Interface().(context.Context)
 
-				curr := -1
+				preferredProvider := new(int)
+				*preferredProvider = nextHealthyProvider(0)
+				if *preferredProvider == preferredAllBad {
+					// select at random, retry will do it's best..
+					*preferredProvider = rand.Intn(providerCount)
+				}
 
 				// for calls that need to be performed on the same node
 				// primarily for miner when calling create block and submit block subsequently
 				key := contextKey("retry-node")
 				if ctx.Value(key) != nil {
 					if (*ctx.Value(key).(**int)) == nil {
-						*ctx.Value(key).(**int) = &curr
+						*ctx.Value(key).(**int) = preferredProvider
 					} else {
-						curr = **ctx.Value(key).(**int) - 1
+						preferredProvider = *ctx.Value(key).(**int)
 					}
 				}
 
-				total := len(rins)
-				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() ([]reflect.Value, error) {
-					curr = (curr + 1) % total
+				result, _ := retry.Retry(ctx, maxRetryAttempts, initialBackoff, errorsToRetry, func(isRetry bool) ([]reflect.Value, error) {
+					if isRetry {
+						pp := nextHealthyProvider(*preferredProvider + 1)
+						if pp == -1 {
+							return nil, xerrors.Errorf("no healthy providers")
+						}
+						*preferredProvider = pp
+					}
 
-					result := fns[curr].Call(args)
+					result := providerFuncs[*preferredProvider].Call(args)
 					if result[len(result)-1].IsNil() {
 						return result, nil
 					}
