@@ -52,7 +52,7 @@ func testMsgIndex(
 	makeMsgIndex := func(cs *store.ChainStore) (index.MsgIndex, error) {
 		var err error
 		tmp := t.TempDir()
-		msgIndex, err := index.NewMsgIndex(context.Background(), tmp, cs)
+		msgIndex, err := index.NewMsgIndex(context.Background(), tmp+"/msgindex.db", cs)
 		if err == nil {
 			mx.Lock()
 			tmpDirs = append(tmpDirs, tmp)
