@@ -220,7 +220,9 @@ var migrationsCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-
+			cacheKeyCount := 0
+			cache.MigrationMap.Range(func(k, v any) bool { cacheKeyCount += 1; return true })
+			fmt.Printf("cache size == %d\n", cacheKeyCount)
 			preMigrationTime := time.Since(startTime)
 			fmt.Println("completed premigration, took ", preMigrationTime)
 
