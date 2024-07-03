@@ -19,7 +19,7 @@ This guide will walk through how to update the most common dependencies in Lotus
 
 1. In your `lotus` directory, `cd extern/filecoin-ffi`.
 
-2. `git pull` to ensure you have the latests changes for *filecoin-ffi*.
+2. `git fetch` to ensure you have the latests changes for *filecoin-ffi*.
 
 3. `git checkout vX.XX.X` to checkout the version you want to update to.
 
