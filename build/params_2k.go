@@ -83,8 +83,7 @@ const UpgradeWatermelonFix2Height = -101
 const UpgradeCalibrationDragonFixHeight = -102
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                    DrandMainnet,
-	UpgradePhoenixHeight: DrandQuicknet,
+	0: DrandQuicknet,
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
@@ -160,8 +159,7 @@ func init() {
 
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-		0:                    DrandMainnet,
-		UpgradePhoenixHeight: DrandQuicknet,
+		0: DrandQuicknet,
 	}
 
 	BuildType |= Build2k

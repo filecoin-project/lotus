@@ -69,8 +69,7 @@ const UpgradeWatermelonFix2Height = -2
 const UpgradeCalibrationDragonFixHeight = -3
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                    DrandMainnet,
-	UpgradePhoenixHeight: DrandQuicknet,
+	0: DrandQuicknet,
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
