@@ -639,12 +639,16 @@ func (gw *Node) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilt
 		return nil, err
 	}
 
-	if err := gw.checkBlkParam(ctx, filter.ToBlock, 0); err != nil {
-		return nil, err
+	if filter.ToBlock != nil {
+		if err := gw.checkBlkParam(ctx, *filter.ToBlock, 0); err != nil {
+			return nil, err
+		}
 	}
 
-	if err := gw.checkBlkParam(ctx, filter.FromBlock, 0); err != nil {
-		return nil, err
+	if filter.FromBlock != nil {
+		if err := gw.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
+			return nil, err
+		}
 	}
 
 	return gw.target.EthTraceFilter(ctx, filter)

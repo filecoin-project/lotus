@@ -1080,14 +1080,21 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 
 	traceCounter := 0
 
-	fromDecodedAddresses, fromErr := decodeAddressFilter(filter.FromAddress)
-	if fromErr != nil {
-		return nil, xerrors.Errorf("cannot decode FromAddress: %w", fromErr)
+	var fromDecodedAddresses *[]ethtypes.EthAddress
+	var toDecodedAddresses *[]ethtypes.EthAddress
+
+	if filter.FromAddress != nil {
+		fromDecodedAddresses, err = decodeAddressFilter(filter.FromAddress)
+		if err != nil {
+			return nil, xerrors.Errorf("cannot decode FromAddress: %w", err)
+		}
 	}
 
-	toDecodedAddresses, toErr := decodeAddressFilter(filter.ToAddress)
-	if toErr != nil {
-		return nil, xerrors.Errorf("cannot decode ToAddress: %w", toErr)
+	if filter.ToAddress != nil {
+		toDecodedAddresses, err = decodeAddressFilter(filter.ToAddress)
+		if err != nil {
+			return nil, xerrors.Errorf("cannot decode ToAddress: %w", err)
+		}
 	}
 
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
@@ -1099,7 +1106,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 		for _, blockTrace := range blockTraces {
 			if matchFilterCriteria(blockTrace, filter, fromDecodedAddresses, toDecodedAddresses) {
 				traceCounter++
-				if traceCounter <= *filter.After {
+				if filter.After != nil && traceCounter <= *filter.After {
 					continue
 				}
 
@@ -1142,16 +1149,35 @@ func decodeAddressFilter(addresses *[]string) (*[]ethtypes.EthAddress, error) {
 
 // matchFilterCriteria checks if a trace matches the filter criteria.
 func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTraceFilterCriteria, fromDecodedAddresses *[]ethtypes.EthAddress, toDecodedAddresses *[]ethtypes.EthAddress) bool {
+	var actionTo ethtypes.EthAddress
+	var actionFrom ethtypes.EthAddress
 	action, ok := trace.Action.(*ethtypes.EthCallTraceAction)
-	if !ok {
-		return false
+	if ok {
+		actionTo = action.To
+		actionFrom = action.From
+	} else {
+		actionCreate, okCreate := trace.Action.(*ethtypes.EthCreateTraceAction)
+		if okCreate {
+			//actionTo = actionCreate.To
+			actionFrom = actionCreate.From
+			resultCreate, okResult := trace.Action.(*ethtypes.EthCreateTraceResult)
+			if okResult {
+				if resultCreate.Address != nil {
+					actionTo = *resultCreate.Address
+				}
+			} else {
+				return false
+			}
+		} else {
+			return false
+		}
 	}
 
 	// Match FromAddress
 	if fromDecodedAddresses != nil && len(*fromDecodedAddresses) > 0 {
 		fromMatch := false
 		for _, ethAddr := range *fromDecodedAddresses {
-			if action.From == ethAddr {
+			if actionFrom == ethAddr {
 				fromMatch = true
 				break
 			}
@@ -1165,7 +1191,7 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTrace
 	if toDecodedAddresses != nil && len(*toDecodedAddresses) > 0 {
 		toMatch := false
 		for _, ethAddr := range *toDecodedAddresses {
-			if action.To == ethAddr {
+			if actionTo == ethAddr {
 				toMatch = true
 				break
 			}

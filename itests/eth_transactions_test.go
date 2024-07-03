@@ -655,9 +655,11 @@ func TestTraceFilter(t *testing.T) {
 	defer cancel()
 
 	// Define filter criteria
+	fromBlock := "0x1"
+	toBlock := "latest"
 	filter := ethtypes.EthTraceFilterCriteria{
-		FromBlock: "0x1",
-		ToBlock:   "latest",
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
 	}
 
 	// Example of creating and submitting a transaction
@@ -688,4 +690,10 @@ func TestTraceFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, traces)
 	require.NotEmpty(t, traces)
+
+	//our transaction will be in the third element of traces at block 8 with the expected hash
+	require.EqualValues(t, traces[2].BlockNumber, 8)
+	require.EqualValues(t, traces[2].TransactionPosition, 1)
+	require.EqualValues(t, traces[2].TransactionHash, hash)
+
 }
