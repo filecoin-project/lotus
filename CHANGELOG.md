@@ -6,6 +6,34 @@
 
 ## Improvements
 
+# v1.27.2-rc1 / 2024-07-10
+
+This is a release candidate of Lotus v1.27.2. This will be an OPTIONAL Lotus release. It contains some improvements that are relevant for node operators that are using or serving `eth_*` RPC methods.
+
+## ☢️ Upgrade Warnings ☢️
+
+- This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
+
+## Improvements
+
+- fix: events index: record processed epochs and tipsets for events and eth_get_log blocks till requested tipset has been indexed (#12080) ([filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080))
+- feat: eth: support "safe" and "finalized" for eth_getBlockByNumber (#12110) ([filecoin-project/lotus#12110](https://github.com/filecoin-project/lotus/pull/12110))
+- feat: api: sanity check the "to" address of outgoing messages (#12135) ([filecoin-project/lotus#12135](https://github.com/filecoin-project/lotus/pull/12135))
+- chore: ci: remove non-existent market tests from CI workflow (#12099) ([filecoin-project/lotus#12099](https://github.com/filecoin-project/lotus/pull/12099))
+- fix: bootstrap: remove unmaintained bootstrap node (#12133) ([filecoin-project/lotus#12133](https://github.com/filecoin-project/lotus/pull/12133))
+- Update bootstrap list to support both IPv4 and IPv6 (#12103) ([filecoin-project/lotus#12103](https://github.com/filecoin-project/lotus/pull/12103))
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aarsh Shah | 2 | +424/-28 | 4 |
+| Steven Allen | 1 | +137/-0 | 3 |
+| Mikers | 1 | +63/-0 | 4 |
+| Phi-rjan | 1 | +10/-10 | 2 |
+| Peter Rabbitson | 1 | +4/-8 | 1 |
+| Hubert | 1 | +0/-1 | 1 |
+
 # v1.27.1 / 2024-06-24
 
 This release, v1.27.1, is an OPTIONAL lotus release. It is HIGHLY RECOMMENDED for node operators that are building Filecoin index off lotus!
