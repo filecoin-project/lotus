@@ -3,6 +3,7 @@ package lf3
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/ipfs/go-datastore"
@@ -46,6 +47,12 @@ type F3Params struct {
 
 var log = logging.Logger("f3")
 
+const (
+	F3DisableEnvKey      = "DISABLE_F3"
+	F3DisableEnvValue    = "_yes_"
+	F3DisableCheckPeriod = 2 * time.Duration(build.BlockDelaySecs)
+)
+
 func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error) {
 	manifest := f3.LocalnetManifest()
 	manifest.NetworkName = gpbft.NetworkName(params.NetworkName)
@@ -81,6 +88,23 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 				err := fff.inner.Run(lCtx)
 				if err != nil {
 					log.Errorf("running f3: %+v", err)
+				}
+			}()
+			go func() {
+				ticker := time.NewTicker(F3DisableCheckPeriod)
+				for {
+					select {
+					case <-ticker.C:
+						if os.Getenv(F3DisableEnvKey) == F3DisableEnvValue {
+							// TODO: Once https://github.com/filecoin-project/lotus/pull/12173 is merged
+							// we can use fff.inner.Stop() instead of calling cancel()
+							cancel()
+							log.Errorf("F3 has been disabled in runtime")
+							return
+						}
+					case <-lCtx.Done():
+						return
+					}
 				}
 			}()
 		}, cancel))
