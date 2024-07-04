@@ -381,7 +381,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		build.IndexerIngestTopic(in.Nn),
 	}
 
-	if build.F3Enabled {
+	if build.IsF3Enabled() {
 		allowTopics = append(allowTopics, gpbft.NetworkName(in.Nn).PubSubTopic())
 	}
 
