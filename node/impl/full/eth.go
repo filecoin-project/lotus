@@ -1104,7 +1104,11 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 		}
 
 		for _, blockTrace := range blockTraces {
-			if matchFilterCriteria(blockTrace, filter, fromDecodedAddresses, toDecodedAddresses) {
+			match, err := matchFilterCriteria(blockTrace, filter, fromDecodedAddresses, toDecodedAddresses)
+			if err != nil {
+				return nil, xerrors.Errorf("cannot match filter for block %d: %w", blkNum, err)
+			}
+			if match {
 				traceCounter++
 				if filter.After != nil && traceCounter <= *filter.After {
 					continue
@@ -1148,41 +1152,47 @@ func decodeAddressFilter(addresses *[]string) (*[]ethtypes.EthAddress, error) {
 }
 
 // matchFilterCriteria checks if a trace matches the filter criteria.
-func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTraceFilterCriteria, fromDecodedAddresses *[]ethtypes.EthAddress, toDecodedAddresses *[]ethtypes.EthAddress) bool {
-	var actionTo ethtypes.EthAddress
-	var actionFrom ethtypes.EthAddress
-	action, ok := trace.Action.(*ethtypes.EthCallTraceAction)
-	if ok {
-		actionTo = action.To
-		actionFrom = action.From
-	} else {
-		actionCreate, okCreate := trace.Action.(*ethtypes.EthCreateTraceAction)
-		if okCreate {
-			actionFrom = actionCreate.From
-			resultCreate, okResult := trace.Action.(*ethtypes.EthCreateTraceResult)
-			if okResult {
-				if resultCreate.Address != nil {
-					actionTo = *resultCreate.Address
-				}
-			} else {
-				return false
-			}
-		} else {
-			return false
+func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTraceFilterCriteria, fromDecodedAddresses *[]ethtypes.EthAddress, toDecodedAddresses *[]ethtypes.EthAddress) (bool, error) {
+
+	var traceTo ethtypes.EthAddress
+	var traceFrom ethtypes.EthAddress
+
+	switch trace.Type {
+	case "call":
+		action, ok := trace.Action.(*ethtypes.EthCallTraceAction)
+		if !ok {
+			return false, xerrors.Errorf("invalid call trace action")
 		}
+		traceTo = action.To
+		traceFrom = action.From
+	case "create":
+		result, okResult := trace.Result.(*ethtypes.EthCreateTraceResult)
+		if !okResult {
+			return false, xerrors.Errorf("invalid create trace result")
+		}
+
+		action, okAction := trace.Action.(*ethtypes.EthCreateTraceAction)
+		if !okAction {
+			return false, xerrors.Errorf("invalid create trace action")
+		}
+
+		traceTo = *result.Address
+		traceFrom = action.From
+	default:
+		return false, xerrors.Errorf("invalid trace type: %s", trace.Type)
 	}
 
 	// Match FromAddress
 	if fromDecodedAddresses != nil && len(*fromDecodedAddresses) > 0 {
 		fromMatch := false
 		for _, ethAddr := range *fromDecodedAddresses {
-			if actionFrom == ethAddr {
+			if traceFrom == ethAddr {
 				fromMatch = true
 				break
 			}
 		}
 		if !fromMatch {
-			return false
+			return false, nil
 		}
 	}
 
@@ -1190,17 +1200,17 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTrace
 	if toDecodedAddresses != nil && len(*toDecodedAddresses) > 0 {
 		toMatch := false
 		for _, ethAddr := range *toDecodedAddresses {
-			if actionTo == ethAddr {
+			if traceTo == ethAddr {
 				toMatch = true
 				break
 			}
 		}
 		if !toMatch {
-			return false
+			return false, nil
 		}
 	}
 
-	return true
+	return true, nil
 }
 
 func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {

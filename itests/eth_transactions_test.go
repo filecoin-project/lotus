@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -653,15 +654,6 @@ func TestTraceFilter(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-
-	// Define filter criteria
-	fromBlock := "0x1"
-	toBlock := "latest"
-	filter := ethtypes.EthTraceFilterCriteria{
-		FromBlock: &fromBlock,
-		ToBlock:   &toBlock,
-	}
-
 	// Example of creating and submitting a transaction
 	// Replace with actual test setup as needed
 	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
@@ -685,15 +677,82 @@ func TestTraceFilter(t *testing.T) {
 	require.NotNil(t, receipt)
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
 
+	// Get contract address.
+	contractAddr := client.EVM().ComputeContractAddress(ethAddr, 0)
+
+	// get trace and verify values
+	tracesx, err := client.EthTraceTransaction(ctx, hash.String())
+	require.NoError(t, err)
+	require.NotNil(t, tracesx)
+	require.EqualValues(t, tracesx[0].TransactionHash, hash)
+	require.EqualValues(t, tracesx[0].BlockNumber, receipt.BlockNumber)
+
+	// Define filter criteria
+	fromBlock := "0x1"
+	toBlock := fmt.Sprint(receipt.BlockNumber)
+	filter := ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+	}
+
 	// Trace filter should find the transaction
 	traces, err := client.EthTraceFilter(ctx, filter)
 	require.NoError(t, err)
 	require.NotNil(t, traces)
 	require.NotEmpty(t, traces)
 
+	// Assert that iniital transactions returned by the trace are valid
+	require.EqualValues(t, len(traces), 3)
+	require.EqualValues(t, traces[0].BlockNumber, 1)
+	require.EqualValues(t, traces[0].TransactionPosition, 1)
+	require.EqualValues(t, traces[0].EthTrace.Type, "call")
+	require.EqualValues(t, traces[1].TransactionPosition, 1)
+	require.EqualValues(t, traces[1].EthTrace.Type, "call")
+
 	//our transaction will be in the third element of traces at block 8 with the expected hash
 	require.EqualValues(t, traces[2].BlockNumber, 8)
 	require.EqualValues(t, traces[2].TransactionPosition, 1)
 	require.EqualValues(t, traces[2].TransactionHash, hash)
+	require.EqualValues(t, traces[2].EthTrace.Type, "create")
+
+	toBlock = "latest"
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock:   &fromBlock,
+		ToBlock:     &toBlock,
+		FromAddress: &[]string{ethAddr.String()},
+		ToAddress:   &[]string{contractAddr.String()},
+	}
+
+	// Trace filter should find the transaction
+	tracesAddressFilter, err := client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.NotNil(t, tracesAddressFilter)
+	require.NotEmpty(t, tracesAddressFilter)
+
+	//we should only get our contract deploy transaction
+	require.EqualValues(t, len(tracesAddressFilter), 1)
+	require.EqualValues(t, tracesAddressFilter[0].BlockNumber, 8)
+	require.EqualValues(t, tracesAddressFilter[0].TransactionPosition, 1)
+	require.EqualValues(t, tracesAddressFilter[0].TransactionHash, hash)
+	require.EqualValues(t, tracesAddressFilter[0].EthTrace.Type, "create")
+
+	after := 1
+	count := 2
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+		After:     &after,
+		Count:     &count,
+	}
+	// Trace filter should find the transaction
+	tracesAfterCount, err := client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.NotNil(t, traces)
+	require.NotEmpty(t, traces)
+
+	//we should only get the last two results from the first trace query
+	require.EqualValues(t, len(tracesAfterCount), 2)
+	require.EqualValues(t, tracesAfterCount[0].TransactionHash, traces[1].TransactionHash)
+	require.EqualValues(t, tracesAfterCount[1].TransactionHash, traces[2].TransactionHash)
 
 }
