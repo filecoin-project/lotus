@@ -49,7 +49,7 @@ var log = logging.Logger("f3")
 
 const (
 	F3DisableEnvKey      = "DISABLE_F3"
-	F3DisableEnvValue    = "_yes_"
+	F3DisableEnvValue    = "1"
 	F3DisableCheckPeriod = 2 * time.Duration(build.BlockDelaySecs)
 )
 
