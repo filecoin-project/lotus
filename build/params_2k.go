@@ -189,6 +189,6 @@ const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = true
+const f3Enabled = true
 const ManifestServerID = "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG"
 const F3BootstrapEpoch abi.ChainEpoch = 100
