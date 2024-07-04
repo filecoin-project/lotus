@@ -98,8 +98,8 @@ const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 // 2024-04-03T11:00:00Z
 const UpgradeCalibrationDragonFixHeight = 1493854
 
-// ?????
-const UpgradeWaffleHeight = 999999999999999
+// 2024-07-11T12:00:00Z
+const UpgradeWaffleHeight = 1779094
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -152,5 +152,5 @@ const Eip155ChainId = 314159
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = false
-const F3BootstrapEpoch abi.ChainEpoch = -1
+const f3Enabled = true
+const F3BootstrapEpoch abi.ChainEpoch = UpgradeWaffleHeight + 100

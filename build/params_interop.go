@@ -69,8 +69,7 @@ const UpgradeWatermelonFix2Height = -2
 const UpgradeCalibrationDragonFixHeight = -3
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                    DrandMainnet,
-	UpgradePhoenixHeight: DrandQuicknet,
+	0: DrandQuicknet,
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
@@ -146,5 +145,5 @@ const Eip155ChainId = 3141592
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = true
+const f3Enabled = true
 const F3BootstrapEpoch abi.ChainEpoch = 1000
