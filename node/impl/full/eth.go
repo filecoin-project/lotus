@@ -1158,7 +1158,6 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTrace
 	} else {
 		actionCreate, okCreate := trace.Action.(*ethtypes.EthCreateTraceAction)
 		if okCreate {
-			//actionTo = actionCreate.To
 			actionFrom = actionCreate.From
 			resultCreate, okResult := trace.Action.(*ethtypes.EthCreateTraceResult)
 			if okResult {
