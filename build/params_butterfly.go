@@ -17,8 +17,7 @@ import (
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                    DrandMainnet,
-	UpgradePhoenixHeight: DrandQuicknet,
+	0: DrandQuicknet,
 }
 
 const GenesisNetworkVersion = network.Version21
