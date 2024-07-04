@@ -98,7 +98,7 @@ const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 // 2024-04-03T11:00:00Z
 const UpgradeCalibrationDragonFixHeight = 1493854
 
-// 2024-07-07T12:00:00Z
+// 2024-07-11T12:00:00Z
 const UpgradeWaffleHeight = 1779094
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
