@@ -14,15 +14,17 @@
 
 ## Improvements
 
-# v1.28.0-rc1 / 2024-07-01
+# v1.28.0-rc2 / 2024-07-04
 
-This is the first release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
+This is the second release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
-**This release canidate does NOT set a calibration network upgrade epoch, it will be added in the second release candidate, expected to be released July 4th. This release candidate does NOT set the mainnet upgrade epoch yet, which will be updated in the final release.**
+**This release candidate sets the calibration network to upgrade at epoch 1779094, corresponding to 2024-07-11T12:00:00Z.** This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
 
 ☢️ Upgrade Warnings ☢️
 
 If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
+
+- This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
 
 ## The Filecoin network version 23 delivers the following FIPs:
 
@@ -65,7 +67,15 @@ verifiedregistry  bafk2bzaceczw2kp6gjjdcjbso7mewp7guik7gr525pal6dotdja2lrct6ok3c
 ```
 
 ## Migration
-The NV23 upgrade migration is expected to be extremely light as only FIP-0085 requires a migration. We don't expect null tipsets after the upgrade epoch or heavy block validation times. We will updated this sections once we have run the final benchmarks.
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV23 upgrade is expected to be light with no heavy pre-migrations, here are some expected timings and resource consumption numbers:
+
+- Pre-Migration is expected to take less then 1 minute
+- The migration is expected to take less then 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
+
+We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
 
 ## Dependencies
 - github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
