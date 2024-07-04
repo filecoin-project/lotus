@@ -65,7 +65,15 @@ verifiedregistry  bafk2bzaceczw2kp6gjjdcjbso7mewp7guik7gr525pal6dotdja2lrct6ok3c
 ```
 
 ## Migration
-The NV23 upgrade migration is expected to be extremely light as only FIP-0085 requires a migration. We don't expect null tipsets after the upgrade epoch or heavy block validation times. We will updated this sections once we have run the final benchmarks.
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV23 upgrade is expected to be light with no heavy pre-migrations, here are some expected timings and resource consumption numbers:
+
+- Pre-Migration is expected to take less then 1 minute
+- The migration is expected to take less then 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
+
+We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
 
 ## Dependencies
 - github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
