@@ -12,7 +12,7 @@
 
 ## Improvements
 
-# v1.28.0-rc2 / 2024-07-04
+# v1.28.0-rc3 / 2024-07-04
 
 This is the second release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
@@ -90,7 +90,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - Ignore market balance after nv23 (https://github.com/filecoin-project/lotus/pull/11976)
 - Add finality-related params for `eth_getBlockByNumber` (https://github.com/filecoin-project/lotus/pull/12110)
 - rename `Actor.Address` to `Actor.DelegatedAddress` and only use it for f4 addresses (https://github.com/filecoin-project/lotus/pull/12155)
-
+- feat:ec: integrate F3 dynamic manifest #12185
 
 # v1.27.1 / 2024-06-24
 
