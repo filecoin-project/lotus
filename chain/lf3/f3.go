@@ -9,6 +9,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -56,8 +57,13 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
+	senderID, err := peer.Decode(build.ManifestServerID)
+	if err != nil {
+		return nil, xerrors.Errorf("decoding F3 manifest server identity: %w", err)
+	}
+
 	module, err := f3.New(mctx, params.ManifestProvider, ds,
-		params.Host, build.ManifestServerID, params.PubSub, verif, ec, log, nil)
+		params.Host, senderID, params.PubSub, verif, ec, log, nil)
 
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)

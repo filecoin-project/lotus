@@ -29,10 +29,11 @@ func NewManifestProvider(nn dtypes.NetworkName, cs *store.ChainStore, sm *stmgr.
 		StateManager: sm,
 	}
 
-	manifestServerID := build.ManifestServerID
-	if build.ManifestServerID == peer.ID("") {
+	switch manifestServerID, err := peer.Decode(build.ManifestServerID); {
+	case err != nil:
+		log.Warnw("Cannot decode F3 manifest sever identity; falling back on static manifest provider", "err", err)
+		return manifest.NewStaticManifestProvider(m)
+	default:
 		return manifest.NewDynamicManifestProvider(m, ps, ec, manifestServerID)
 	}
-
-	return manifest.NewStaticManifestProvider(m)
 }
