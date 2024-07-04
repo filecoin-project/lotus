@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"os"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-f3/gpbft"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -381,7 +383,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		build.IndexerIngestTopic(in.Nn),
 	}
 
-	if build.F3Enabled {
+	if build.F3Enabled && os.Getenv(lf3.F3DisableEnvKey) != lf3.F3DisableEnvValue {
 		allowTopics = append(allowTopics, gpbft.NetworkName(in.Nn).PubSubTopic())
 	}
 
