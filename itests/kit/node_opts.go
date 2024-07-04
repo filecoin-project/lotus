@@ -2,11 +2,14 @@ package kit
 
 import (
 	"math"
+	"time"
 
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/node"
@@ -213,6 +216,17 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 				return modules.ToSealingConfig(cf.Dealmaking, cf.Sealing), nil
 			}, nil
 		})))
+}
+
+func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch) NodeOpt {
+	build.F3Enabled = true
+	build.F3BootstrapEpoch = bootstrapEpoch
+	build.F3Finality = finality
+	build.F3BlockDelay = blockDelay
+	return ConstructorOpts(
+		node.Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
+		node.Override(new(*lf3.F3), lf3.New),
+	)
 }
 
 // SectorSize sets the sector size for this miner. Start() will populate the

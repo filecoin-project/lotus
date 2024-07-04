@@ -1,8 +1,6 @@
 package lf3
 
 import (
-	"time"
-
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -18,10 +16,10 @@ import (
 func NewManifestProvider(nn dtypes.NetworkName, cs *store.ChainStore, sm *stmgr.StateManager, ps *pubsub.PubSub) manifest.ManifestProvider {
 	m := manifest.LocalDevnetManifest()
 	m.NetworkName = gpbft.NetworkName(nn)
-	m.ECDelay = 2 * time.Duration(build.BlockDelaySecs) * time.Second
+	m.ECDelay = 2 * build.F3BlockDelay
 	m.ECPeriod = m.ECDelay
 	m.BootstrapEpoch = int64(build.F3BootstrapEpoch)
-	m.ECFinality = int64(build.Finality)
+	m.ECFinality = int64(build.F3Finality)
 	m.CommiteeLookback = 5
 
 	ec := &ecWrapper{

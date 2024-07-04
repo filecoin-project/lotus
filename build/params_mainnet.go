@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -171,6 +172,8 @@ const Eip155ChainId = 314
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
-const F3Enabled = false
-const ManifestServerID peer.ID = peer.ID("")
-const F3BootstrapEpoch abi.ChainEpoch = -1
+var F3Enabled = false
+var ManifestServerID peer.ID = peer.ID("")
+var F3BootstrapEpoch abi.ChainEpoch = -1
+var F3Finality abi.ChainEpoch = Finality
+var F3BlockDelay = time.Duration(BlockDelaySecs) * time.Second
