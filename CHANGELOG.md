@@ -16,7 +16,7 @@
 
 This is the second release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
-**This release canidate does NOT set a calibration network upgrade epoch, it will be added in the second release candidate, expected to be released July 4th. This release candidate does NOT set the mainnet upgrade epoch yet, which will be updated in the final release.**
+**This release candidate sets the calibration network to upgrade at epoch 1779094, corresponding to 2024-07-11T12:00:00Z.** This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
 
 ☢️ Upgrade Warnings ☢️
 
