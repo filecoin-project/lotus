@@ -152,5 +152,5 @@ const Eip155ChainId = 314159
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = false
+const f3Enabled = false
 const F3BootstrapEpoch abi.ChainEpoch = -1
