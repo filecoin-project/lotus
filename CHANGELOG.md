@@ -18,6 +18,8 @@ This is the third release candidate of the upcoming MANDATORY Lotus v1.28.0 rele
 
 **This release candidate sets the calibration network to upgrade at epoch 1779094, corresponding to 2024-07-11T12:00:00Z.** This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
 
+Compared to `Lotus v1.28.0-rc2`, the `Lotus v1.28.0-rc3` introduces the manifest for the "control" nodes for F3 passive testing. This change shouldn't have any impact on production nodes.
+
 ☢️ Upgrade Warnings ☢️
 
 If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
