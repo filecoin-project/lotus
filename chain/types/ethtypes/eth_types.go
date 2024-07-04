@@ -1049,13 +1049,13 @@ type EthTraceFilterCriteria struct {
 	// Optional, default: nil.
 	// The JSON decoding must treat a string as equivalent to an array with one value, for example
 	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
-	FromAddress *[]string `json:"fromAddress,omitempty"`
+	FromAddress []string `json:"fromAddress,omitempty"`
 
 	// Actor address or a list of addresses to which event logs should be sent.
 	// Optional, default: nil.
 	// The JSON decoding must treat a string as equivalent to an array with one value, for example
 	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
-	ToAddress *[]string `json:"toAddress,omitempty"`
+	ToAddress []string `json:"toAddress,omitempty"`
 
 	// Restricts traces returned to those emitted after this epoch (in hex).
 	// Optional, default: 0.
