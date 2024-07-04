@@ -8,7 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-f3"
+	"github.com/filecoin-project/go-f3/ec"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -23,7 +23,6 @@ import (
 type ecWrapper struct {
 	ChainStore   *store.ChainStore
 	StateManager *stmgr.StateManager
-	Manifest     f3.Manifest
 }
 
 type f3TipSet types.TipSet
@@ -57,7 +56,7 @@ func (ts *f3TipSet) Timestamp() time.Time {
 	return time.Unix(int64(ts.cast().Blocks()[0].Timestamp), 0)
 }
 
-func wrapTS(ts *types.TipSet) f3.TipSet {
+func wrapTS(ts *types.TipSet) ec.TipSet {
 	if ts == nil {
 		return nil
 	}
@@ -66,7 +65,7 @@ func wrapTS(ts *types.TipSet) f3.TipSet {
 
 // GetTipsetByEpoch should return a tipset before the one requested if the requested
 // tipset does not exist due to null epochs
-func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (f3.TipSet, error) {
+func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (ec.TipSet, error) {
 	ts, err := ec.ChainStore.GetTipsetByHeight(ctx, abi.ChainEpoch(epoch), nil, true)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by height: %w", err)
@@ -74,7 +73,7 @@ func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (f3.TipS
 	return wrapTS(ts), nil
 }
 
-func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (f3.TipSet, error) {
+func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (ec.TipSet, error) {
 	tskLotus, err := types.TipSetKeyFromBytes(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding tsk: %w", err)
@@ -88,16 +87,16 @@ func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (f3.Tip
 	return wrapTS(ts), nil
 }
 
-func (ec *ecWrapper) GetHead(_ context.Context) (f3.TipSet, error) {
+func (ec *ecWrapper) GetHead(_ context.Context) (ec.TipSet, error) {
 	return wrapTS(ec.ChainStore.GetHeaviestTipSet()), nil
 }
 
-func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 f3.TipSet) (f3.TipSet, error) {
+func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, error) {
 	var ts *types.TipSet
 	if tsW, ok := tsF3.(*f3TipSet); ok {
 		ts = tsW.cast()
 	} else {
-		// There are only two implementations of F3.TipSet: f3TipSet, and one in fake EC
+		// There are only two implementations of ec.TipSet: f3TipSet, and one in fake EC
 		// backend.
 		//
 		// TODO: Revisit the type check here and remove as needed once testing
