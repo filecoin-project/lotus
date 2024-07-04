@@ -2,7 +2,6 @@ package node
 
 import (
 	"errors"
-	"os"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -14,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
@@ -143,7 +141,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(config.HarmonyDB), cfg.HarmonyDB),
 		Override(new(harmonydb.ITestID), harmonydb.ITestID("")),
 		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
-		If(build.F3Enabled && os.Getenv(lf3.F3DisableEnvKey) != lf3.F3DisableEnvValue, Override(F3Participation, modules.F3Participation)),
+		If(build.IsF3Enabled(), Override(F3Participation, modules.F3Participation)),
 	)
 }
 

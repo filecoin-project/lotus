@@ -1,6 +1,8 @@
 package build
 
 import (
+	"os"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
@@ -48,4 +50,9 @@ func MustParseCid(c string) cid.Cid {
 	}
 
 	return ret
+}
+
+func IsF3Enabled() bool {
+	const F3DisableEnvKey = "LOTUS_DISABLE_F3"
+	return f3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
 }
