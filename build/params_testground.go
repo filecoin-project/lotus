@@ -136,7 +136,8 @@ var (
 	WhitelistedBlock                 = cid.Undef
 	BootstrappersFile                = ""
 	GenesisFile                      = ""
-	F3Enabled                        = false
+	f3Enabled                        = false
+	ManifestServerID                 = ""
 	F3BootstrapEpoch  abi.ChainEpoch = -1
 )
 
