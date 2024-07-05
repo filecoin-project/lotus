@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -172,8 +170,8 @@ const Eip155ChainId = 314
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
-var F3Enabled = false
-var ManifestServerID peer.ID = peer.ID("")
+var f3Enabled = false
+var ManifestServerID = "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7"
 var F3BootstrapEpoch abi.ChainEpoch = -1
-var F3Finality abi.ChainEpoch = Finality
-var F3BlockDelay = time.Duration(BlockDelaySecs) * time.Second
+var F3Finality = Finality
+var F3BlockDelay = 2 * time.Duration(BlockDelaySecs) * time.Second

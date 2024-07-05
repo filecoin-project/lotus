@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -84,8 +83,7 @@ const UpgradeWatermelonFix2Height = -101
 const UpgradeCalibrationDragonFixHeight = -102
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                    DrandMainnet,
-	UpgradePhoenixHeight: DrandQuicknet,
+	0: DrandQuicknet,
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
@@ -161,8 +159,7 @@ func init() {
 
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-		0:                    DrandMainnet,
-		UpgradePhoenixHeight: DrandQuicknet,
+		0: DrandQuicknet,
 	}
 
 	BuildType |= Build2k
@@ -192,6 +189,6 @@ const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = true
-const ManifestServerID peer.ID = peer.ID("")
+const f3Enabled = true
+const ManifestServerID = "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG"
 const F3BootstrapEpoch abi.ChainEpoch = 100

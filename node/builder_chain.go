@@ -153,7 +153,7 @@ var ChainNode = Options(
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
 
-	If(build.F3Enabled,
+	If(build.IsF3Enabled(),
 		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
 		Override(new(*lf3.F3), lf3.New),
 	),
