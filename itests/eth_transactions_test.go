@@ -719,8 +719,8 @@ func TestTraceFilter(t *testing.T) {
 	filter = ethtypes.EthTraceFilterCriteria{
 		FromBlock:   &fromBlock,
 		ToBlock:     &toBlock,
-		FromAddress: []string{ethAddr.String()},
-		ToAddress:   []string{contractAddr.String()},
+		FromAddress: ethtypes.EthAddressList{ethAddr},
+		ToAddress:   ethtypes.EthAddressList{contractAddr},
 	}
 
 	// Trace filter should find the transaction

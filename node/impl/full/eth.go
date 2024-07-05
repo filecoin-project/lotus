@@ -1080,19 +1080,6 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 
 	traceCounter := 0
 
-	var fromDecodedAddresses []ethtypes.EthAddress
-	var toDecodedAddresses []ethtypes.EthAddress
-
-	fromDecodedAddresses, err = decodeAddressFilter(filter.FromAddress)
-	if err != nil {
-		return nil, xerrors.Errorf("cannot decode FromAddress: %w", err)
-	}
-
-	toDecodedAddresses, err = decodeAddressFilter(filter.ToAddress)
-	if err != nil {
-		return nil, xerrors.Errorf("cannot decode ToAddress: %w", err)
-	}
-
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
 		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
 		if err != nil {
@@ -1100,7 +1087,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 		}
 
 		for _, blockTrace := range blockTraces {
-			match, err := matchFilterCriteria(blockTrace, filter, fromDecodedAddresses, toDecodedAddresses)
+			match, err := matchFilterCriteria(blockTrace, filter, filter.FromAddress, filter.ToAddress)
 			if err != nil {
 				return nil, xerrors.Errorf("cannot match filter for block %d: %w", blkNum, err)
 			}
