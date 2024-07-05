@@ -17,6 +17,9 @@ Before you mark the PR ready for review, please make sure that:
   - `PR type`: fix, feat, build, chore, ci, docs, perf, refactor, revert, style, test
   - `area`, e.g. api, chain, state, mempool, multisig, networking, paych, proving, sealing, wallet, deps
 - [ ] If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
+- [ ] If the change does not require a changelog entry, please do one of the following:
+  - [ ] Add `[skip changelog]` to the PR title
+  - [ ] Add the label `skip-changelog` to the PR
 - [ ] New features have usage guidelines and / or documentation updates in
   - [ ] [Lotus Documentation](https://lotus.filecoin.io)
   - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
