@@ -598,9 +598,19 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 		return xerrors.Errorf("Height of head-tipset (%d) must be greater or equal to the height of the tail-tipset (%d)", headTs.Height(), tailTs.Height())
 	}
 
-	fileName := filepath.Join(a.Repo.Path(), fmt.Sprintf("snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix()))
-	if err != nil {
-		return err
+	var fileName string
+	defaultFileName := fmt.Sprintf("snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix())
+	defaultFileDir := a.Repo.Path()
+	if cfg.FileName != "" {
+		if cfg.ExportDir != "" {
+			fileName = filepath.Join(cfg.ExportDir, cfg.FileName)
+		} else {
+			fileName = filepath.Join(defaultFileDir, cfg.FileName)
+		}
+	} else if cfg.ExportDir != "" {
+		fileName = filepath.Join(cfg.ExportDir, defaultFileName)
+	} else {
+		fileName = filepath.Join(defaultFileDir, defaultFileName)
 	}
 
 	f, err := os.Create(fileName)
