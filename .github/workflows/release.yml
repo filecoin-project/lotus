@@ -169,6 +169,31 @@ jobs:
           gh release --repo mikefarah/yq download v4.44.2 -p yq_linux_amd64
           sudo mv yq_linux_amd64 /usr/bin/yq
           sudo chmod +x /usr/bin/yq
+      - name: Prepare release log (contributors & external projects changes)
+        run: |
+          ./scripts/mkreleaselog 1>release-notes.md
+
+          # find first line that starts with `# v` in CHANGELOG.md (last release)
+          insertion_point=$(grep -n '^# v' CHANGELOG.md | head -n 1 | cut -d: -f1)
+
+          # insert release notes at the insertion point
+          if [[ -z "$insertion_point" ]]; then
+            cat release-notes.md >> CHANGELOG.md
+          else
+            head -n $((insertion_point - 1)) CHANGELOG.md > CHANGELOG.md.tmp
+            cat release-notes.md >> CHANGELOG.md.tmp
+            tail -n +$insertion_point CHANGELOG.md >> CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+          fi
+
+          cat CHANGELOG.md
+      # - name: Commit updated CHANGELOG.md
+      #   run: |
+      #     git config user.name github-actions
+      #     git config user.email
+      #     git add CHANGELOG.md
+      #     git commit -m "chore: update CHANGELOG.md"
+      #     git push
       - if: env.IS_DRAFT == 'false'
         run: yq -i '.release.draft = false' '.goreleaser.yaml'
       - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
