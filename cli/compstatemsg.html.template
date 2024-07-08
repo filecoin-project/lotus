@@ -1,0 +1,67 @@
+<div class="exec" id="{{.Hash}}">
+ {{$code := GetCode .Msg.To}}
+ <div>
+ <a href="#{{.Hash}}">
+  {{if not .Subcall}}
+   <h2 class="call">
+  {{else}}
+   <h4 class="call">
+  {{end}}
+   {{- CodeStr $code}}:{{GetMethod ($code) (.Msg.Method)}}
+  {{if not .Subcall}}
+   </h2>
+  {{else}}
+   </h4>
+  {{end}}
+ </a>
+ </div>
+
+ <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}}), M{{.Msg.Method}}</div>
+ {{if not .Subcall}}<div><small>Msg CID: {{.Hash}}</small></div>{{end}}
+ {{if gt (len .Msg.Params) 0}}
+  <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
+ {{end}}
+  <div><span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ {{if gt (len .MsgRct.Return) 0}}
+  <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
+ {{end}}
+
+ {{if ne .MsgRct.ExitCode 0}}
+  <div class="error">Exit: <pre>{{.MsgRct.ExitCode}}</pre></div>
+ {{end}}
+
+<details>
+<summary>Gas Trace</summary>
+<table>
+ <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th></tr>
+
+ {{define "gasC" -}}
+ <td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td>
+ {{- end}}
+
+ {{range .GasCharges}}
+  <tr>
+   <td>{{.Name}}</td>
+   {{template "gasC" .}}
+   <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
+  </tr>
+ {{end}}
+ {{with sumGas .GasCharges}}
+  <tr class="sum">
+    <td><b>Sum</b></td>
+    {{template "gasC" .}}
+    <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
+  </tr>
+ {{end}}
+</table>
+</details>
+
+
+ {{if gt (len .Subcalls) 0}}
+  <div>Subcalls:</div>
+  {{$hash := .Hash}}
+  {{range $i, $call := .Subcalls}}
+   {{template "message" (Call $call true (printf "%s-%d" $hash $i))}}
+  {{end}}
+ {{end}}
+</div>
