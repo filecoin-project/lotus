@@ -10,7 +10,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -61,18 +59,12 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	senderID, err := peer.Decode(build.ManifestServerID)
-	if err != nil {
-		return nil, xerrors.Errorf("decoding F3 manifest server identity: %w", err)
-	}
-
 	module, err := f3.New(mctx, params.ManifestProvider, ds,
-		params.Host, senderID, params.PubSub, verif, ec, log, nil)
+		params.Host, params.PubSub, verif, ec, nil)
 
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
 	}
-	params.ManifestProvider.SetManifestChangeCallback(f3.ManifestChangeCallback(module))
 
 	fff := &F3{
 		inner:     module,
@@ -84,12 +76,11 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	lCtx, cancel := context.WithCancel(mctx)
 	lc.Append(fx.StartStopHook(
 		func() {
-			go func() {
-				err := fff.inner.Run(lCtx)
-				if err != nil {
-					log.Errorf("running f3: %+v", err)
-				}
-			}()
+			err := fff.inner.Start(lCtx)
+			if err != nil {
+				log.Errorf("running f3: %+v", err)
+				return
+			}
 			go fff.runSigningLoop(lCtx)
 		}, cancel))
 
@@ -102,7 +93,7 @@ type lease struct {
 }
 
 func (fff *F3) runSigningLoop(ctx context.Context) {
-	participateOnce := func(mb *gpbft.MessageBuilder, minerID uint64) error {
+	participateOnce := func(ctx context.Context, mb *gpbft.MessageBuilder, minerID uint64) error {
 		signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerID))
 		if errors.Is(err, gpbft.ErrNoPower) {
 			// we don't have any power in F3, continue
@@ -115,7 +106,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 		// if worker keys were stored not in the node, the signatureBuilder can be send there
 		// the sign can be called where the keys are stored and then
 		// {signatureBuilder, payloadSig, vrfSig} can be sent back to lotus for broadcast
-		payloadSig, vrfSig, err := signatureBuilder.Sign(fff.signer)
+		payloadSig, vrfSig, err := signatureBuilder.Sign(ctx, fff.signer)
 		if err != nil {
 			return xerrors.Errorf("signing message: %+v", err)
 		}
@@ -147,7 +138,7 @@ loop:
 			}
 
 			for _, minerID := range leaseMngr.Active() {
-				err := participateOnce(mb, minerID)
+				err := participateOnce(ctx, mb, minerID)
 				if err != nil {
 					log.Errorf("while participating for miner f0%d: %+v", minerID, err)
 				}
