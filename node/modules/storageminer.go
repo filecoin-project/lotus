@@ -369,16 +369,23 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			<-timer.C
 		}
 
-		leaseTime := 10 * time.Minute
+		leaseTime := 120 * time.Second
+		// start with some time in the past
+		oldLease := time.Now().Add(-24 * time.Hour)
 
 		for ctx.Err() == nil {
-			switch err := api.F3Participate(ctx, address.Address(minerAddress), time.Now().Add(leaseTime)); {
-			case errors.Is(err, context.Canceled):
+			newLease := time.Now().Add(leaseTime)
+
+			ok, err := api.F3Participate(ctx, address.Address(minerAddress), newLease, oldLease)
+
+			if errors.Is(err, context.Canceled) {
 				return
-			case errors.Is(err, full.ErrF3Disabled):
+			}
+			if errors.Is(err, full.ErrF3Disabled) {
 				log.Errorf("Cannot participate in F3 as it is disabled: %+v", err)
 				return
-			case err != nil:
+			}
+			if err != nil {
 				log.Errorf("while starting to participate in F3: %+v", err)
 				// use exponential backoff to avoid hotloop
 				timer.Reset(b.Duration())
@@ -387,17 +394,34 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 					return
 				case <-timer.C:
 				}
-			default:
-				// we have communication with F3 in lotus, reset the backoff
-				b.Reset()
+				continue
+			}
+			if !ok {
+				log.Errorf("lotus node refused our lease, are you loadbalancing or did the miner just restart?")
 
-				// wait for the half of the lease time and then refresh
-				timer.Reset(leaseTime / 2)
+				sleepFor := b.Duration()
+				if time.Until(oldLease) > 0 {
+					sleepFor = min(sleepFor, time.Until(oldLease))
+				}
+				timer.Reset(sleepFor)
 				select {
 				case <-ctx.Done():
 					return
 				case <-timer.C:
 				}
+				continue
+			}
+
+			// we have succeded in giving a lease, reset the backoff
+			b.Reset()
+
+			oldLease = newLease
+			// wait for the half of the lease time and then refresh
+			timer.Reset(leaseTime / 2)
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
 			}
 		}
 	}()

@@ -32,7 +32,7 @@ type F3 struct {
 	ec    *ecWrapper
 
 	signer    gpbft.Signer
-	newLeases chan lease
+	newLeases chan leaseRequest
 }
 
 type F3Params struct {
@@ -70,7 +70,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 		inner:     module,
 		ec:        ec,
 		signer:    &signer{params.Wallet},
-		newLeases: make(chan lease, 4), // some buffer to avoid blocking
+		newLeases: make(chan leaseRequest, 4), // some buffer to avoid blocking
 	}
 
 	lCtx, cancel := context.WithCancel(mctx)
@@ -87,9 +87,11 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	return fff, nil
 }
 
-type lease struct {
-	minerID    uint64
-	expiration time.Time
+type leaseRequest struct {
+	minerID       uint64
+	newExpiration time.Time
+	oldExpiration time.Time
+	resultCh      chan<- bool
 }
 
 func (fff *F3) runSigningLoop(ctx context.Context) {
@@ -128,7 +130,9 @@ loop:
 		case <-ctx.Done():
 			return
 		case l := <-fff.newLeases:
-			leaseMngr.Upsert(l.minerID, l.expiration)
+			// resultCh has only one user and is buffered
+			l.resultCh <- leaseMngr.UpsertDefensive(l.minerID, l.newExpiration, l.oldExpiration)
+			close(l.resultCh)
 		case mb, ok := <-msgCh:
 			if !ok {
 				// we got dropped, resubscribe
@@ -148,10 +152,15 @@ loop:
 }
 
 // Participate notifies participation loop about a new lease
-func (fff *F3) Participate(ctx context.Context, minerID uint64, leaseExpiration time.Time) {
+// Returns true if lease was accepted
+func (fff *F3) Participate(ctx context.Context, minerID uint64, newLeaseExpiration, oldLeaseExpiration time.Time) bool {
+	resultCh := make(chan bool, 1) //buffer the channel to for sure avoid blocking
+	request := leaseRequest{minerID: minerID, newExpiration: newLeaseExpiration, resultCh: resultCh}
 	select {
-	case fff.newLeases <- lease{minerID: minerID, expiration: leaseExpiration}:
+	case fff.newLeases <- request:
+		return <-resultCh
 	case <-ctx.Done():
+		return false
 	}
 }
 

@@ -25,21 +25,24 @@ type F3API struct {
 var ErrF3Disabled = errors.New("f3 is disabled")
 
 func (f3api *F3API) F3Participate(ctx context.Context, miner address.Address,
-	leaseExpiration time.Time) error {
+	newLeaseExpiration time.Time, oldLeaseExpiration time.Time) (bool, error) {
 
-	if leaseDuration := time.Until(leaseExpiration); leaseDuration > 15*time.Minute {
-		return xerrors.Errorf("F3 participation lease too long: %v > 15 min", leaseDuration)
+	if leaseDuration := time.Until(newLeaseExpiration); leaseDuration > 5*time.Minute {
+		return false, xerrors.Errorf("F3 participation lease too long: %v > 15 min", leaseDuration)
 	} else if leaseDuration < 0 {
-		return xerrors.Errorf("F3 participation lease is in the past: %d < 0", leaseDuration)
+		return false, xerrors.Errorf("F3 participation lease is in the past: %d < 0", leaseDuration)
 	}
 
 	if f3api.F3 == nil {
 		log.Infof("F3Participate called for %v, F3 is disabled", miner)
-		return ErrF3Disabled
+		return false, ErrF3Disabled
 	}
-	//TODO
+	minerID, err := address.IDFromAddress(miner)
+	if err != nil {
+		return false, xerrors.Errorf("miner address is not of ID type: %v: %+v", miner, err)
+	}
 
-	return nil
+	return f3api.F3.Participate(ctx, minerID, newLeaseExpiration, oldLeaseExpiration), nil
 }
 
 func (f3api *F3API) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {

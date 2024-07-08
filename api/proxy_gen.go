@@ -7,6 +7,15 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
@@ -20,6 +29,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
+
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -33,14 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/metrics"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -255,7 +257,7 @@ type FullNodeMethods struct {
 
 	F3GetPowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
 
-	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time) error `perm:"sign"`
+	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
@@ -2104,15 +2106,15 @@ func (s *FullNodeStub) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (
 	return *new(gpbft.PowerEntries), ErrNotSupported
 }
 
-func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time) error {
+func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
 	if s.Internal.F3Participate == nil {
-		return ErrNotSupported
+		return false, ErrNotSupported
 	}
-	return s.Internal.F3Participate(p0, p1, p2)
+	return s.Internal.F3Participate(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time) error {
-	return ErrNotSupported
+func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
