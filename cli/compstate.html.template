@@ -1,0 +1,73 @@
+<html>
+ <head>
+  <meta charset="UTF-8">
+  <style>
+   html, body { font-family: monospace; }
+   a:link, a:visited { color: #004; }
+   pre { background: #ccc; }
+   small { color: #444; }
+   .call { color: #00a; }
+   .params { background: #dfd; }
+   .ret { background: #ddf; }
+   .error { color: red; }
+   .exit0 { color: green; }
+   .exec {
+    padding-left: 15px;
+    border-left: 2.5px solid;
+    margin-bottom: 45px;
+   }
+   .exec:hover {
+    background: #eee;
+   }
+   .slow-true-false { color: #660; }
+   .slow-true-true { color: #f80; }
+   .deemp { color: #444; }
+   table {
+    font-size: 12px;
+    border-collapse: collapse;
+   }
+   tr {
+   	border-top: 1px solid black;
+   	border-bottom: 1px solid black;
+   }
+   tr.sum { border-top: 2px solid black; }
+   tr:first-child { border-top: none; }
+   tr:last-child { border-bottom: none; }
+
+
+   .ellipsis-content,
+   .ellipsis-toggle input {
+     display: none;
+   }
+   .ellipsis-toggle {
+     cursor: pointer;
+   }
+   /**
+   Checked State
+   **/
+
+   .ellipsis-toggle input:checked + .ellipsis {
+     display: none;
+   }
+   .ellipsis-toggle input:checked ~ .ellipsis-content {
+     display: inline;
+	 background-color: #ddd;
+   }
+   hr {
+    border: none;
+    height: 1px;
+    background-color: black;
+	margin: 0;
+   }
+  </style>
+ </head>
+ <body>
+  <div>Tipset: <b>{{.TipSet.Key}}</b></div>
+  <div>Epoch: {{.TipSet.Height}}</div>
+  <div>State CID: <b>{{.Comp.Root}}</b></div>
+  <div>Calls</div>
+  {{range .Comp.Trace}}
+   {{template "message" (Call .ExecutionTrace false .MsgCid.String)}}
+  {{end}}
+ </body>
+</html>
