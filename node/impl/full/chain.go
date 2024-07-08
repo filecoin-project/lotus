@@ -599,10 +599,6 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 	}
 
 	fileName := filepath.Join(a.Repo.Path(), fmt.Sprintf("snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix()))
-	if err != nil {
-		return err
-	}
-
 	f, err := os.Create(fileName)
 	if err != nil {
 		return err
