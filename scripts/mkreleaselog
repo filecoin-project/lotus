@@ -231,8 +231,9 @@ recursive_release_log() {
 
         printf -- "Generating Changelog for %s %s..%s\n" "$module" "$start" "$end" >&2
 
-        printf -- "## %s\n\n" "$(as_md_link "$module")"
-        release_log "$module" "$start" "$end" | group_changes
+        # Skip the module itself - with the new changelog requirements for PR, this won't be needed anymore
+        # printf -- "## %s\n\n" "$(as_md_link "$module")"
+        # release_log "$module" "$start" "$end" | group_changes
 
         statlog "$module" "$start" "$end" > statlog.json
 
