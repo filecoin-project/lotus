@@ -126,6 +126,42 @@ indent() {
     sed -e 's/^/  /'
 }
 
+group_changes() {
+    content=$(cat)
+    new_features=$(echo "$content" | grep -i '^- feat:' || true)
+    improvements=$(echo "$content" | grep -i '^- fix:' || true)
+
+    used=$(echo -e "$new_features\n$improvements")
+    others=$(echo "$content" | comm -23 - <(echo "$used") | grep -v '^$' || true)
+
+    if [[ -n "$new_features" ]]; then
+        echo "### New Features"
+        echo
+        echo "$new_features"
+        echo
+    fi
+
+    if [[ -n "$improvements" ]]; then
+        echo "### Improvements"
+        echo
+        echo "$improvements"
+        echo
+    fi
+
+    if [[ -n "$others" ]]; then
+        echo "### Others"
+        echo
+        echo "$others"
+        echo
+    fi
+}
+
+as_md_link() {
+    repo_path=${1#github.com/}
+    base_url="https://github.com"
+    echo "[$repo_path]($base_url/$repo_path)"
+}
+
 mod_deps() {
     go list -mod=mod -json -m all | jq 'select(.Version != null)'
 }
@@ -159,6 +195,7 @@ strip_version() {
     fi
     echo "$repo"
 }
+
 
 recursive_release_log() {
     local start="${1:-$(git tag -l | sort -V | grep -v -- '-rc' | grep 'v'| tail -n1)}"
@@ -194,9 +231,8 @@ recursive_release_log() {
 
         printf -- "Generating Changelog for %s %s..%s\n" "$module" "$start" "$end" >&2
 
-        printf -- "- %s:\n" "$module"
-        release_log "$module" "$start" "$end" | indent
-
+        printf -- "## %s\n\n" "$(as_md_link "$module")"
+        release_log "$module" "$start" "$end" | group_changes
 
         statlog "$module" "$start" "$end" > statlog.json
 
@@ -213,13 +249,13 @@ recursive_release_log() {
                     local changelog="$(release_log "$module" "$old_ref" "$new_ref")"
                 fi
                 if [[ -n "$changelog" ]]; then
-                    printf -- "- %s (%s -> %s):\n" "$module" "$old" "$new"
-                    echo "$changelog" | indent
+                    printf -- "\n## %s (%s -> %s)\n\n" "$(as_md_link "$module")" "$old" "$new"
+                    echo "$changelog" | group_changes
                 fi
             done
 
         echo
-        echo "Contributors"
+        echo "## Contributors"
         echo
 
         echo "| Contributor | Commits | Lines ± | Files Changed |"
