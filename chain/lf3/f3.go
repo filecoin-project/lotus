@@ -60,7 +60,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	verif := blssig.VerifierWithKeyOnG1()
 
 	module, err := f3.New(mctx, params.ManifestProvider, ds,
-		params.Host, params.PubSub, verif, ec, nil)
+		params.Host, params.PubSub, verif, ec)
 
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
