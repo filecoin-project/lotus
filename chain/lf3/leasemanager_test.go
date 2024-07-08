@@ -54,3 +54,40 @@ func TestLeaseManager_Active(t *testing.T) {
 	activeLeases = lm.Active()
 	assert.Empty(t, activeLeases)
 }
+
+func TestLeaseManager_UpsertDefensive(t *testing.T) {
+	mockClock := clock.NewMock()
+	lm := &leaseManager{
+		clock: mockClock,
+	}
+
+	// Test inserting a new lease when oldExpiration is in the past
+	oldExpiration := mockClock.Now().Add(-1 * time.Hour)
+	newExpiration := mockClock.Now().Add(1 * time.Hour)
+	updated := lm.UpsertDefensive(1, newExpiration, oldExpiration)
+	assert.True(t, updated)
+	assert.Equal(t, newExpiration, lm.leases[1])
+
+	// Test updating an existing lease when oldExpiration matches
+	oldExpiration = newExpiration
+	newExpiration = mockClock.Now().Add(2 * time.Hour)
+	updated = lm.UpsertDefensive(1, newExpiration, oldExpiration)
+	assert.True(t, updated)
+	assert.Equal(t, newExpiration, lm.leases[1])
+
+	// Test not updating a lease when oldExpiration does not match
+	oldExpiration = mockClock.Now().Add(3 * time.Hour) // Different from the current lease expiration
+	newExpiration = mockClock.Now().Add(4 * time.Hour)
+	updated = lm.UpsertDefensive(1, newExpiration, oldExpiration)
+	assert.False(t, updated)
+	assert.NotEqual(t, newExpiration, lm.leases[1])
+
+	// Test not updating a lease when it is not known
+	unknownID := uint64(2)
+	oldExpiration = mockClock.Now().Add(1 * time.Hour)
+	newExpiration = mockClock.Now().Add(2 * time.Hour)
+	updated = lm.UpsertDefensive(unknownID, newExpiration, oldExpiration)
+	assert.False(t, updated)
+	_, exists := lm.leases[unknownID]
+	assert.False(t, exists)
+}
