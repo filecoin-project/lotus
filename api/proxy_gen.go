@@ -7,18 +7,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/metrics"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -28,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -42,6 +33,14 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -254,7 +253,9 @@ type FullNodeMethods struct {
 
 	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
 
-	F3Participate func(p0 context.Context, p1 address.Address) (<-chan string, error) `perm:"admin"`
+	F3GetPowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
+
+	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time) error `perm:"sign"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
@@ -2092,15 +2093,26 @@ func (s *FullNodeStub) F3GetLatestCertificate(p0 context.Context) (*certs.Finali
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address) (<-chan string, error) {
-	if s.Internal.F3Participate == nil {
-		return nil, ErrNotSupported
+func (s *FullNodeStruct) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	if s.Internal.F3GetPowerTable == nil {
+		return *new(gpbft.PowerEntries), ErrNotSupported
 	}
-	return s.Internal.F3Participate(p0, p1)
+	return s.Internal.F3GetPowerTable(p0, p1)
 }
 
-func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address) (<-chan string, error) {
-	return nil, ErrNotSupported
+func (s *FullNodeStub) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	return *new(gpbft.PowerEntries), ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time) error {
+	if s.Internal.F3Participate == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.F3Participate(p0, p1, p2)
+}
+
+func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {

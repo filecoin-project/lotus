@@ -369,20 +369,11 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			<-timer.C
 		}
 
-		// Backoff while obeying the context.
-		backoffWithContext := func() {
-			timer.Reset(b.Duration())
-			select {
-			case <-ctx.Done():
-				log.Errorf("Context is done while retrying F3 participation: %+v", ctx.Err())
-			case <-timer.C:
-			}
-		}
+		leaseTime := 10 * time.Minute
 
 		for ctx.Err() == nil {
-			switch ch, err := api.F3Participate(ctx, address.Address(minerAddress)); {
+			switch err := api.F3Participate(ctx, address.Address(minerAddress), time.Now().Add(leaseTime)); {
 			case errors.Is(err, context.Canceled):
-				log.Errorf("Context cancelled while attampting F3 participation: %+v", err)
 				return
 			case errors.Is(err, full.ErrF3Disabled):
 				log.Errorf("Cannot participate in F3 as it is disabled: %+v", err)
@@ -390,17 +381,23 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			case err != nil:
 				log.Errorf("while starting to participate in F3: %+v", err)
 				// use exponential backoff to avoid hotloop
-				backoffWithContext()
-			default:
-				for err := range ch {
-					// we have communication with F3 in lotus, reset the backoff
-					b.Reset()
-					if err != "" {
-						log.Warnf("participating in F3 encountered an error: %v", err)
-					}
+				timer.Reset(b.Duration())
+				select {
+				case <-ctx.Done():
+					return
+				case <-timer.C:
 				}
-				log.Warn("F3Participate exited, retrying")
-				backoffWithContext()
+			default:
+				// we have communication with F3 in lotus, reset the backoff
+				b.Reset()
+
+				// wait for the half of the lease time and then refresh
+				timer.Reset(leaseTime / 2)
+				select {
+				case <-ctx.Done():
+					return
+				case <-timer.C:
+				}
 			}
 		}
 	}()
