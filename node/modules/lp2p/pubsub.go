@@ -410,6 +410,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		// 				100)))
 		allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
 		for i := 0; i < MaxDynamicManifestChangesAllowed; i++ {
+			fmt.Println(">>>>>>>> ", f3TopicName+"/"+fmt.Sprintf("%d", i))
 			allowTopics = append(allowTopics, f3TopicName+"/"+fmt.Sprintf("%d", i))
 		}
 	}

@@ -170,7 +170,9 @@ const Eip155ChainId = 314
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
-var f3Enabled = false
+// TODO: We need F3Enabled to be public because without it there is no way to
+// allow f3 pubsub topics without a lot of refactoring.
+var F3Enabled = false
 var ManifestServerID = "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7"
 var F3BootstrapEpoch abi.ChainEpoch = -1
 var F3Finality = Finality

@@ -219,6 +219,8 @@ func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
 }
 
 func F3Enabled(bootstrapEpoch abi.ChainEpoch, blockDelay time.Duration, finality abi.ChainEpoch) NodeOpt {
+	// necessary even if we explicitly construct F3 in the node to allow
+	// the f3 topics
 	build.F3Enabled = true
 	build.F3BootstrapEpoch = bootstrapEpoch
 	build.F3Finality = finality

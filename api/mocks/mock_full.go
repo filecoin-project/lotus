@@ -22,6 +22,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
 	certs "github.com/filecoin-project/go-f3/certs"
+	manifest "github.com/filecoin-project/go-f3/manifest"
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -1181,6 +1182,21 @@ func (m *MockFullNode) F3GetLatestCertificate(arg0 context.Context) (*certs.Fina
 func (mr *MockFullNodeMockRecorder) F3GetLatestCertificate(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetLatestCertificate", reflect.TypeOf((*MockFullNode)(nil).F3GetLatestCertificate), arg0)
+}
+
+// F3GetManifest mocks base method.
+func (m *MockFullNode) F3GetManifest(arg0 context.Context) (*manifest.Manifest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetManifest", arg0)
+	ret0, _ := ret[0].(*manifest.Manifest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetManifest indicates an expected call of F3GetManifest.
+func (mr *MockFullNodeMockRecorder) F3GetManifest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetManifest", reflect.TypeOf((*MockFullNode)(nil).F3GetManifest), arg0)
 }
 
 // F3Participate mocks base method.

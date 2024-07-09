@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -872,6 +873,8 @@ type FullNode interface {
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
 	// F3GetLatestCertificate returns the latest finality certificate
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
+	// F3GetGetManifest returns the current manifest being used for F3
+	F3GetManifest(ctx context.Context) (*manifest.Manifest, error) //perm:read
 }
 
 // reverse interface to the client, called after EthSubscribe

@@ -83,6 +83,7 @@
 * [F3](#F3)
   * [F3GetCertificate](#F3GetCertificate)
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
+  * [F3GetManifest](#F3GetManifest)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2287,6 +2288,27 @@ Response:
   ],
   "Signature": null,
   "PowerTableDelta": null
+}
+```
+
+### F3GetManifest
+F3GetGetManifest returns the current manifest being used for F3
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Sequence": 0,
+  "InitialInstance": 0,
+  "BootstrapEpoch": 0,
+  "ReBootstrap": false,
+  "Pause": false,
+  "NetworkName": "",
+  "PowerUpdate": null
 }
 ```
 

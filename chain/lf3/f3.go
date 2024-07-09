@@ -157,3 +157,7 @@ func (fff *F3) GetCert(ctx context.Context, instance uint64) (*certs.FinalityCer
 func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, error) {
 	return fff.inner.GetLatestCert(ctx)
 }
+
+func (fff *F3) GetManifest() manifest.Manifest {
+	return fff.inner.Manifest()
+}

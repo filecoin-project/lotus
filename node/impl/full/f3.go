@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/chain/lf3"
 )
@@ -54,4 +55,12 @@ func (f3api *F3API) F3GetLatestCertificate(ctx context.Context) (*certs.Finality
 		return nil, ErrF3Disabled
 	}
 	return f3api.F3.GetLatestCert(ctx)
+}
+
+func (f3api *F3API) F3GetManifest(_ctx context.Context) (*manifest.Manifest, error) {
+	if f3api.F3 == nil {
+		return nil, ErrF3Disabled
+	}
+	m := f3api.F3.GetManifest()
+	return &m, nil
 }
