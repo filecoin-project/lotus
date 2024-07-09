@@ -4,29 +4,32 @@ on:
   push:
     branches:
       - release/v*
+      - release/miner/v*
       - releases
     paths:
       - build/version.go
   pull_request:
     branches:
       - release/v*
+      - release/miner/v*
       - releases
     paths:
       - build/version.go
   workflow_dispatch:
     inputs:
+      projects:
+        description: 'Projects to release (JSON array)'
+        required: false
+        default: '[]'
+      ref:
+        description: 'Ref to buuild the binaries from'
+        required: false
+        default: ''
       publish:
         description: 'Publish the release'
         required: false
         default: 'false'
-      draft:
-        description: 'Create a draft release'
-        required: false
-        default: 'true'
-      target_commitish:
-        description: 'The commitish value that determines where the Git tag is created from'
-        required: false
-        default: ''
+
 defaults:
   run:
     shell: bash
@@ -36,22 +39,29 @@ permissions:
 
 jobs:
   check:
-    name: Check which projects need to be built
+    name: Check which projects need to be released
     runs-on: ubuntu-latest
     outputs:
       projects: ${{ steps.projects.outputs.projects }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out lotus
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - id: projects
+          ref: ${{ github.event.inputs.ref }}
+      - name: Find projects that need to be released
+        id: projects
         env:
-          TARGET_REF: ${{ github.base_ref || github.ref }}
+          projects: ${{ github.event.inputs.projects }}
         run: |
           go run cmd/release/main.go --json list-projects | jq -r '.msg' |
             jq 'map(select(.version | endswith("-dev") | not))' |
             jq 'map(select(.released | not))' |
-            jq 'map(select(.prerelease != ((env.TARGET_REF | sub("^refs/heads/"; "")) == "releases")))' |
+            jq 'map(select(
+              (env.GITHUB_EVENT_NAME == "push" and ((env.GITHUB_REF == "refs/heads/releases" and .prerelease == false) or (env.GITHUB_REF != "refs/heads/releases" and .prerelease == true))) or
+              (env.GITHUB_EVENT_NAME == "pull_request" and ((env.GITHUB_BASE_REF == "releases" and .prerelease == false) or (env.GITHUB_BASE_REF != "releases" and .prerelease == true))) or
+              (env.GITHUB_EVENT_NAME == "workflow_dispatch" and (.name as $name | env.projects | fromjson | index($name) != null))
+            ))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |
             tee -a $GITHUB_OUTPUT
   build:
@@ -68,8 +78,10 @@ jobs:
           - macos-13 # MacOs X64
           - macos-14 # MacOS ARM64
     steps:
-      - run: echo "Building on $RUNNER_OS/$RUNNER_ARCH"
-      - id: project
+      - name: Print runner information
+        run: echo "Building on $RUNNER_OS/$RUNNER_ARCH"
+      - name: Make project config available
+        id: project
         env:
           projects: ${{ needs.check.outputs.projects }}
           name: ${{ matrix.project }}
@@ -77,25 +89,36 @@ jobs:
           jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
             xargs -I {} -0 echo "config={}" |
             tee -a $GITHUB_OUTPUT
-      - uses: actions/checkout@v4
+      - name: Check out lotus
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - uses: ./.github/actions/install-system-dependencies
-      - uses: ./.github/actions/install-go
-      - env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: make deps
-      - if: matrix.project == 'node'
+      - name: Install system dependencies
+        uses: ./.github/actions/install-system-dependencies
+      - name: Install Go
+        uses: ./.github/actions/install-go
+      - if: github.event.inputs.ref
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          ref: ${{ github.event.inputs.ref }}
+      - name: Build binaries
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: make lotus
-      - if: matrix.project == 'miner'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: make lotus-miner lotus-worker
-      - if: runner.os == 'macOS'
+          binaries: ${{ toJSON(fromJSON(steps.project.outputs.config).binaries) }}
+        run: |
+          make deps
+          while read -r binary; do
+            if [[ -z "$binary" ]]; then
+              continue
+            fi
+            make $binary
+          done <<< "$(jq -r '.[]' <<< "$binaries")"
+      - name: Run otool
+        if: runner.os == 'macOS'
         run: if [[ -f lotus ]]; then otool -hv lotus; fi
-      - env:
+      - name: Verify binary versions
+        env:
           LOTUS_VERSION_IGNORE_COMMIT: 1
           expected: ${{ fromJSON(steps.project.outputs.config).version }}
         run: |
@@ -109,7 +132,8 @@ jobs:
               fi
             fi
           done
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: lotus-${{ matrix.project }}-${{ runner.os }}-${{ runner.arch }}
           path: |
@@ -119,7 +143,7 @@ jobs:
   release:
     needs: [check, build]
     if: needs.check.outputs.projects != '[]'
-    name: Release ${{ matrix.project }} [publish=${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}]
+    name: Release ${{ matrix.project }}
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
@@ -128,11 +152,9 @@ jobs:
       fail-fast: false
       matrix:
         project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
-    env:
-      PUBLISH: ${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}
-      IS_DRAFT: ${{ inputs.draft == 'true' || github.event_name == 'pull_request' }}
     steps:
-      - id: project
+      - name: Make project config available
+        id: project
         env:
           projects: ${{ needs.check.outputs.projects }}
           name: ${{ matrix.project }}
@@ -140,79 +162,165 @@ jobs:
           jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
             xargs -I {} -0 echo "config={}" |
             tee -a $GITHUB_OUTPUT
-      - uses: actions/checkout@v4
+      - name: Check out lotus
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - name: Download Linux X64 binaries
+        uses: actions/download-artifact@v4
         with:
           name: lotus-${{ matrix.project }}-Linux-X64
           path: linux_amd64_v1
-      - uses: actions/download-artifact@v4
+      - name: Download macOS X64 binaries
+        uses: actions/download-artifact@v4
         with:
           name: lotus-${{ matrix.project }}-macOS-X64
           path: darwin_amd64_v1
-      - uses: actions/download-artifact@v4
+      - name: Download macOS ARM64 binaries
+        uses: actions/download-artifact@v4
         with:
           name: lotus-${{ matrix.project }}-macOS-ARM64
           path: darwin_arm64
-      - uses: ./.github/actions/install-go
-      - uses: ipfs/download-ipfs-distribution-action@v1
+      - name: Install Go (release body & archives generation dependency)
+        uses: ./.github/actions/install-go
+      - name: Install makefat (archives generation dependency)
+        run: go install github.com/randall77/makefat@7ddd0e42c8442593c87c1705a5545099604008e5
+      - name: Generate archives
+        env:
+          prefix: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
+          version: ${{ fromJSON(steps.project.outputs.config).version }}
+          binaries: ${{ toJSON(fromJSON(steps.project.outputs.config).binaries) }}
+        run: |
+          mkdir darwin_all
+          while read -r binary; do
+            if [[ -z "$binary" ]]; then
+              continue
+            fi
+            makefat ./darwin_all/$binary ./darwin_amd64_v1/$binary ./darwin_arm64/$binary
+          done <<< "$(jq -r '.[]' <<< "$binaries")"
+          mkdir dist
+          pushd dist
+          for directory in darwin_all linux_amd64_v1; do
+            archive_name="${prefix}_v${version}_${directory}"
+            cp -r ../$directory $archive_name
+            tar -czf $archive_name.tar.gz $archive_name
+            rm -r $archive_name
+          done
+          popd
+          ls -la dist
+      - name: Install Kubo (checksums generation dependency)
+        uses: ipfs/download-ipfs-distribution-action@v1
         with:
           name: kubo
           version: v0.16.0
           cache: false
-      - name: Install yq
+      - name: Generate checksums
+        run: |
+          ./scripts/generate-checksums.sh
+          ls -la dist
+      - name: Install zsh (release body generation dependency)
+        run: sudo apt update && sudo apt install -y zsh
+      - name: Generate release body
         env:
+          tag: ${{ fromJSON(steps.project.outputs.config).tag }}
+          previous: ${{ fromJSON(steps.project.outputs.config).previous }}
+          current: ${{ github.event.inputs.ref || github.sha }}
+        run: |
+          echo "# $tag" > release_body.md
+          echo "" >> release_body.md
+          csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
+          # Checking the files in reverse order to get to the UNRELEASED section last
+          for file in $(ls -r xx*); do
+            if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file; then
+              tail -n +3 $file >> release_body.md
+              break
+            fi
+          done
+          if [[ "$previous" != '' ]]; then
+            mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+            ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
+          fi
+          cat release_body.md
+      - name: Find release
+        id: before
+        env:
+          tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          gh release --repo mikefarah/yq download v4.44.2 -p yq_linux_amd64
-          sudo mv yq_linux_amd64 /usr/bin/yq
-          sudo chmod +x /usr/bin/yq
-      - if: env.IS_DRAFT == 'false'
-        run: yq -i '.release.draft = false' '.goreleaser.yaml'
-      - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
-        run: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
-      - if: matrix.project == 'node'
+          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
+          gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
+            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url}) | .[0]' | tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+      - name: Create or update release
+        id: after
         env:
-          BREW_INSTALL: |
-            bin.install "lotus"
-          BREW_TEST: |
-            system "#{bin}/lotus --version"
-        run: |
-          yq -i '(.builds[] | select(.id == "lotus")).skip = false' '.goreleaser.yaml'
-          yq -i '.brews[0].install = strenv(BREW_INSTALL)' '.goreleaser.yaml'
-          yq -i '.brews[0].test = strenv(BREW_TEST)' '.goreleaser.yaml'
-      - if: matrix.project == 'miner'
-        env:
-          BREW_INSTALL: |
-            bin.install "lotus-miner"
-            bin.install "lotus-worker"
-          BREW_TEST: |
-            system "#{bin}/lotus-miner --version"
-            system "#{bin}/lotus-worker --version"
-        run: |
-          yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
-          yq -i '.brews[0].install = strenv(BREW_INSTALL)' '.goreleaser.yaml'
-          yq -i '.brews[0].test = strenv(BREW_TEST)' '.goreleaser.yaml'
-      - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
-        with:
-          distribution: goreleaser-pro
-          version: 2.0.1
-          args: release --clean --skip=validate ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
-        env:
-          PROJECT_NAME: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
-          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && (secrets.GORELEASER_GITHUB_TOKEN || github.token) || '' }}
-          GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
-          TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
-          VERSION: ${{ fromJSON(steps.project.outputs.config).version }}
-          IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
-          IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
-          TARGET_COMMITISH: ${{ inputs.target_commitish || (github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha) }}
-          HEADER: ''
-      - run: ./scripts/generate-checksums.sh
-      - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false'
-        env:
+          method: ${{ steps.before.outputs.release == 'null' && 'POST' || 'PATCH' }}
+          endpoint: ${{ steps.before.outputs.release == 'null' && format('/repos/{0}/releases', github.repository) || format('/repos/{0}/releases/{1}', github.repository, fromJSON(steps.before.outputs.release).id) }}
+          tag_name: ${{ fromJSON(steps.project.outputs.config).tag }}
+          target_commitish: ${{ github.event.inputs.ref || github.base_ref || github.ref }}
+          name: ${{ fromJSON(steps.project.outputs.config).tag }}
+          draft: ${{ steps.before.outputs.release == 'null' && true || fromJSON(steps.before.outputs.release).draft }}
+          prerelease: ${{ fromJSON(steps.project.outputs.config).prerelease }}
+          make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
+          discussion_category_name: ""
           GITHUB_TOKEN: ${{ github.token }}
-          TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
-        run: ./scripts/publish-checksums.sh
+        run: |
+          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
+          gh api -X "$method" "$endpoint" \
+            --raw-field tag_name="$tag_name" \
+            --raw-field target_commitish="$target_commitish" \
+            --raw-field name="$name" \
+            --raw-field body="$(cat release_body.md | head -c 125000)" \
+            --field draft=$draft \
+            --field prerelease=$prerelease \
+            --raw-field make_latest="$make_latest" \
+            --raw-field discussion_category_name="$discussion_category_name" |
+            jq -r '{"id": .id, "assets": (.assets | map({"id": .id})), "html_url": .html_url}' |
+            tee -a $GITHUB_OUTPUT
+          echo "EOF" | tee -a $GITHUB_OUTPUT
+      - name: Delete old assets
+        env:
+          asset_ids: ${{ toJSON(fromJSON(steps.after.outputs.release).assets.*.id) }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          while read -r asset_id; do
+            if [[ -z "$asset_id" ]]; then
+              continue
+            fi
+            gh api -X DELETE /repos/$GITHUB_REPOSITORY/releases/assets/$asset_id |
+              jq -r '.'
+          done <<< "$(jq '.[]' <<< "$asset_ids")"
+      - name: Upload new assets
+        env:
+          release_id: ${{ fromJSON(steps.after.outputs.release).id }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          for asset in *.tar.gz *.cid *.sha512; do
+            if [[ ! -f "$asset" ]]; then
+              continue
+            fi
+            curl -L \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -H "Content-Type: application/octet-stream" \
+              "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$asset" \
+              --data-binary "@$asset" |
+              jq -r '.'
+          done
+        working-directory: dist
+      - name: Publish release
+        if: github.event.inputs.publish == 'true' || github.event_name == 'push'
+        env:
+          release_id: ${{ fromJSON(steps.after.outputs.release).id }}
+          make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PATCH /repos/$GITHUB_REPOSITORY/releases/$release_id \
+            --field draft=false \
+            --raw-field make_latest="$make_latest" |
+            jq -r '.'
