@@ -11,142 +11,136 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/lf3"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 const (
-	DefaultBootsrapEpoch = 30
+	DefaultBootsrapEpoch = 20
 	DefaultFinality      = 5
-	DefaultEpochBuffer   = 30
+	F3FriendlyDebugLogs  = true
 )
 
 type testEnv struct {
-	minerFullNode *kit.TestFullNode
-	observer      *kit.TestFullNode
-	ms            *manifest.ManifestSender
-	m             *manifest.Manifest
+	minerFullNodes []*kit.TestFullNode
+	// observer currently not use but may come handy to test certificate exchanges
+	observer *kit.TestFullNode
+	ms       *manifest.ManifestSender
+	m        *manifest.Manifest
 }
 
 // Test that checks that F3 is enabled successfully,
 // and miners are able to bootstrap and make progress
 func TestF3_Enabled(t *testing.T) {
-
-	lvl, err := logging.LevelFromString("error")
-	if err != nil {
-		panic(err)
-	}
-	logging.SetAllLoggers(lvl)
-
-	err = logging.SetLogLevel("f3", "debug")
-	if err != nil {
-		panic(err)
-	}
 	blocktime := 100 * time.Millisecond
 	e := setup(t, blocktime)
 
 	ctx := context.Background()
 
-	waitTillF3Instance(t, ctx, e.minerFullNode, 3, 20*time.Second)
+	e.waitTillF3Instance(t, ctx, 3, 20*time.Second)
 }
 
+// Test that checks that F3 can be rebootsrapped by changing the manifest
 func TestF3_Rebootstrap(t *testing.T) {
-	lvl, err := logging.LevelFromString("error")
-	if err != nil {
-		panic(err)
-	}
-	logging.SetAllLoggers(lvl)
-
-	err = logging.SetLogLevel("f3", "debug")
-	if err != nil {
-		panic(err)
-	}
-
 	blocktime := 100 * time.Millisecond
 	e := setup(t, blocktime)
+	n := e.minerFullNodes[0]
 
 	ctx := context.Background()
-	prevManifest, err := e.minerFullNode.F3GetManifest(ctx)
+	prevManifest, err := n.F3GetManifest(ctx)
 	require.NoError(t, err)
 
 	newInstance := uint64(3)
-	waitTillF3Instance(t, ctx, e.minerFullNode, newInstance, 20*time.Second)
-	prevHead, err := e.minerFullNode.ChainHead(ctx)
+	e.waitTillF3Instance(t, ctx, newInstance, 20*time.Second)
+
+	prevCert, err := n.F3GetCertificate(ctx, newInstance)
 	require.NoError(t, err)
 
 	cpy := *e.m
-	cpy.BootstrapEpoch = 50
+	cpy.BootstrapEpoch = 30
 	e.ms.UpdateManifest(&cpy)
 
-	waitTillManifestChange(t, ctx, e.minerFullNode, prevManifest, 20*time.Second)
+	// wait for manifest change, wait for the rebootstrap,
+	// and check that the chain finalised after rebootsrapping
+	// is different from the previous one.
+	e.waitTillManifestChange(t, ctx, prevManifest, 20*time.Second)
+	e.waitTillF3Rebootstrap(t, ctx, prevCert, 20*time.Second)
+	e.waitTillF3Instance(t, ctx, prevCert.GPBFTInstance+1, 20*time.Second)
 
-	newHead, err := e.minerFullNode.ChainHead(ctx)
+	curr, err := n.F3GetCertificate(ctx, prevCert.GPBFTInstance)
+	require.NoError(t, err)
+	require.NotNil(t, curr)
+	require.NotEqual(t, prevCert.ECChain, curr.ECChain)
+
+	// Check that we are bootstrapping from the right epoch
+	curr, err = n.F3GetCertificate(ctx, 0)
+	require.NoError(t, err)
+	require.NotNil(t, curr)
+	require.True(t, curr.ECChain[0].Epoch == cpy.BootstrapEpoch-int64(build.F3Finality))
+}
+
+// Tests that pause/resume and rebootstrapping F3 works
+func TestF3_PauseAndRebootstrap(t *testing.T) {
+	blocktime := 100 * time.Millisecond
+	e := setup(t, blocktime)
+	n := e.minerFullNodes[0]
+
+	ctx := context.Background()
+	prevManifest, err := n.F3GetManifest(ctx)
 	require.NoError(t, err)
 
-	e.minerFullNode.WaitTillChain(ctx, hasBootstrapped(abi.ChainEpoch(e.m.BootstrapEpoch), prevHead.Height()))
-	require.NotEqual(t, prevHead.Key(), newHead.Key())
+	newInstance := uint64(3)
+	e.waitTillF3Instance(t, ctx, newInstance, 20*time.Second)
+
+	e.ms.Pause()
+	e.waitTillF3Pauses(t, ctx, 20*time.Second)
+
+	e.ms.Resume()
+	e.waitTillF3Runs(t, ctx, 20*time.Second)
+
+	// after resuming try rebootstrapping to a new manifest
+	prevCert, err := n.F3GetCertificate(ctx, newInstance)
+	require.NoError(t, err)
+
+	cpy := *e.m
+	cpy.BootstrapEpoch = 30
+	e.ms.UpdateManifest(&cpy)
+
+	e.waitTillManifestChange(t, ctx, prevManifest, 20*time.Second)
+	e.waitTillF3Rebootstrap(t, ctx, prevCert, 20*time.Second)
 }
 
-func TestF3_PauseAndRebootstrap(t *testing.T) {
-	// TODO:
-	///
-	///
-
-	// lvl, err := logging.LevelFromString("error")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// logging.SetAllLoggers(lvl)
-
-	// err = logging.SetLogLevel("f3", "debug")
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// blocktime := 100 * time.Millisecond
-	// e := setup(t, blocktime)
-
-	// ctx := context.Background()
-	// prevManifest, err := e.minerFullNode.F3GetManifest(ctx)
-	// require.NoError(t, err)
-
-	// newInstance := uint64(3)
-	// waitTillF3Instance(t, ctx, e.minerFullNode, newInstance, 20*time.Second)
-	// prevHead, err := e.minerFullNode.ChainHead(ctx)
-	// require.NoError(t, err)
-
-	// e.m.Sequence++
-	// e.m.BootstrapEpoch = 50
-	// e.m.ReBootstrap = true
-	// e.ms.UpdateManifest(e.m)
-
-	// waitTillManifestChange(t, ctx, e.minerFullNode, prevManifest, 20*time.Second)
-
-	// newHead, err := e.minerFullNode.ChainHead(ctx)
-	// require.NoError(t, err)
-
-	// e.minerFullNode.WaitTillChain(ctx, hasBootstrapped(abi.ChainEpoch(e.m.BootstrapEpoch), prevHead.Height()))
-	// require.NotEqual(t, prevHead.Key(), newHead.Key())
+func (e *testEnv) waitTillF3Rebootstrap(t *testing.T, ctx context.Context, prev *certs.FinalityCertificate, timeout time.Duration) {
+	e.waitFor(t, func(n *kit.TestFullNode) bool {
+		curr, err := n.F3GetLatestCertificate(ctx)
+		require.NoError(t, err)
+		return curr != nil && curr.GPBFTInstance > 0 && curr.GPBFTInstance < prev.GPBFTInstance
+	}, timeout)
 }
 
-func hasBootstrapped(bootstrapEpoch, prevHead abi.ChainEpoch) kit.ChainPredicate {
-	return func(ts *types.TipSet) bool {
-		return ts.Height() >= bootstrapEpoch && ts.Height() < prevHead
-	}
+func (e *testEnv) waitTillF3Pauses(t *testing.T, ctx context.Context, timeout time.Duration) {
+	e.waitFor(t, func(n *kit.TestFullNode) bool {
+		r, err := n.F3IsRunning(ctx)
+		require.NoError(t, err)
+		return !r
+	}, timeout)
 }
 
-// TODO:
-// Sees that F3 makes progress with the chain (this one I have it but will have to bump the version).
-// Dynamic manifest successfully rebootstraps.
-// Dynamic manifest pauses F3 and the rebootstraps.
+func (e *testEnv) waitTillF3Runs(t *testing.T, ctx context.Context, timeout time.Duration) {
+	e.waitFor(t, func(n *kit.TestFullNode) bool {
+		r, err := n.F3IsRunning(ctx)
+		require.NoError(t, err)
+		return r
+	}, timeout)
+}
 
-func waitTillF3Instance(t *testing.T, ctx context.Context, n *kit.TestFullNode, i uint64, timeout time.Duration) {
-	require.Eventually(t, func() bool {
+func (e *testEnv) waitTillF3Instance(t *testing.T, ctx context.Context, i uint64, timeout time.Duration) {
+	e.waitFor(t, func(n *kit.TestFullNode) bool {
 		c, err := n.F3GetLatestCertificate(ctx)
 		require.NoError(t, err)
 		if c != nil {
@@ -154,12 +148,12 @@ func waitTillF3Instance(t *testing.T, ctx context.Context, n *kit.TestFullNode, 
 		}
 		return false
 
-	}, timeout, 100*time.Millisecond)
+	}, timeout)
 
 }
 
-func waitTillManifestChange(t *testing.T, ctx context.Context, n *kit.TestFullNode, prevManifest *manifest.Manifest, timeout time.Duration) {
-	require.Eventually(t, func() bool {
+func (e *testEnv) waitTillManifestChange(t *testing.T, ctx context.Context, prevManifest *manifest.Manifest, timeout time.Duration) {
+	e.waitFor(t, func(n *kit.TestFullNode) bool {
 		m, err := n.F3GetManifest(ctx)
 		require.NoError(t, err)
 		v1, err := prevManifest.Version()
@@ -168,17 +162,24 @@ func waitTillManifestChange(t *testing.T, ctx context.Context, n *kit.TestFullNo
 		require.NoError(t, err)
 		return v1 != v2
 
-	}, timeout, 100*time.Millisecond)
+	}, timeout)
 
 }
+func (e *testEnv) waitFor(t *testing.T, f func(n *kit.TestFullNode) bool, timeout time.Duration) {
+	require.Eventually(t, func() bool {
+		reached := 0
 
-func TestF3_Detection(t *testing.T) {}
-
-// Test dynamic parameter adjustement works.
-func TestF3_DynamicManifest(t *testing.T) {}
-
-// Fallback mechanism for when F3 fails
-func TestF3_Fallback(t *testing.T) {}
+		for _, n := range e.minerFullNodes {
+			if f(n) {
+				reached++
+			}
+			if reached == len(e.minerFullNodes) {
+				return true
+			}
+		}
+		return false
+	}, timeout, 500*time.Millisecond)
+}
 
 // Setup creates a new F3-enabled network with two miners and two full-nodes
 //
@@ -186,6 +187,7 @@ func TestF3_Fallback(t *testing.T) {}
 // and the second full-node is an observer that is not directly connected to
 // a miner. The last return value is the manifest sender for the network.
 func setup(t *testing.T, blocktime time.Duration) testEnv {
+	setUpF3DebugLogging()
 	ctx := context.Background()
 
 	// create manifest host first to get the manifest ID to setup F3
@@ -194,9 +196,8 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 	build.ManifestServerID = h.ID().String()
 
 	f3Opts := kit.F3Enabled(DefaultBootsrapEpoch, blocktime, DefaultFinality)
-	// miner is connected to the first node, and we want to observe the chain
-	// from the s/newecond node.
-	n1, m1, m2, ens := kit.EnsembleOneTwoF3(t,
+
+	n1, n2, _, _, ens := kit.EnsembleF3(t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 		f3Opts,
@@ -209,15 +210,15 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 		cancel()
 	}
 
-	var n2 kit.TestFullNode
-	ens.FullNode(&n2, kit.ThroughRPC(), f3Opts).Start().Connect(n2, n1)
+	var obs kit.TestFullNode
+	ens.FullNode(&obs, kit.ThroughRPC(), f3Opts).Start().Connect(n2, n1)
 
-	{
-		// find the first tipset where all miners mined a block.
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		n2.WaitTillChain(ctx, kit.BlocksMinedByAll(m1.ActorAddr, m2.ActorAddr))
-		cancel()
-	}
+	// {
+	// 	// find the first tipset where all miners mined a block.
+	// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// 	n2.WaitTillChain(ctx, kit.BlocksMinedByAll(m1.ActorAddr, m2.ActorAddr))
+	// 	cancel()
+	// }
 
 	head, err := n2.ChainHead(context.Background())
 	require.NoError(t, err)
@@ -228,8 +229,8 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 	nn, err := n1.StateNetworkName(context.Background())
 	require.NoError(t, err)
 	e := testEnv{m: lf3.NewManifest(nn)}
-	e.minerFullNode = n1
-	e.observer = &n2
+	e.minerFullNodes = []*kit.TestFullNode{n1, n2}
+	e.observer = &obs
 
 	// create manifest sender and connect to full-nodes
 	e.ms = e.newManifestSender(t, context.Background(), h, blocktime)
@@ -248,4 +249,23 @@ func (e *testEnv) newManifestSender(t *testing.T, ctx context.Context, h host.Ho
 	ms, err := manifest.NewManifestSender(h, ps, e.m, senderTimeout)
 	require.NoError(t, err)
 	return ms
+}
+
+// This is a convenient function to set up a combination of logging
+// levels that reduces the noise and eases the debugging of F3-related
+// issues.
+func setUpF3DebugLogging() {
+	if F3FriendlyDebugLogs {
+
+		lvl, err := logging.LevelFromString("error")
+		if err != nil {
+			panic(err)
+		}
+		logging.SetAllLoggers(lvl)
+
+		err = logging.SetLogLevel("f3", "debug")
+		if err != nil {
+			panic(err)
+		}
+	}
 }

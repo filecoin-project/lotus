@@ -64,8 +64,14 @@ func (f3api *F3API) F3GetManifest(_ctx context.Context) (*manifest.Manifest, err
 	if f3api.F3 == nil {
 		return nil, ErrF3Disabled
 	}
-	m := f3api.F3.GetManifest()
-	return m, nil
+	return f3api.F3.GetManifest(), nil
+}
+
+func (f3api *F3API) F3IsRunning(_ctx context.Context) (bool, error) {
+	if f3api.F3 == nil {
+		return false, ErrF3Disabled
+	}
+	return f3api.F3.IsRunning(), nil
 }
 
 func (f3api *F3API) F3GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {

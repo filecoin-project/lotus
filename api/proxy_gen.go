@@ -260,6 +260,8 @@ type FullNodeMethods struct {
 
 	F3GetPowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
 
+	F3IsRunning func(p0 context.Context) (bool, error) `perm:"read"`
+
 	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
@@ -2118,6 +2120,17 @@ func (s *FullNodeStruct) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey)
 
 func (s *FullNodeStub) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
 	return *new(gpbft.PowerEntries), ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3IsRunning(p0 context.Context) (bool, error) {
+	if s.Internal.F3IsRunning == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.F3IsRunning(p0)
+}
+
+func (s *FullNodeStub) F3IsRunning(p0 context.Context) (bool, error) {
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {

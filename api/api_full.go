@@ -884,6 +884,8 @@ type FullNode interface {
 	F3GetManifest(ctx context.Context) (*manifest.Manifest, error) //perm:read
 	// F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
 	F3GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3IsRunning returns true if the F3 instance is running, and an error if F3 is disabled in the node.
+	F3IsRunning(ctx context.Context) (bool, error) //perm:read
 }
 
 // reverse interface to the client, called after EthSubscribe

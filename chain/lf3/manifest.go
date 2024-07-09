@@ -1,8 +1,6 @@
 package lf3
 
 import (
-	"fmt"
-
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -40,8 +38,6 @@ func NewManifest(nn dtypes.NetworkName) *manifest.Manifest {
 	m.BootstrapEpoch = int64(build.F3BootstrapEpoch)
 	m.ECFinality = int64(build.F3Finality)
 	m.CommiteeLookback = 5
-	fmt.Println(">>>>>> Network name", nn)
-	fmt.Println(">>>>>> Pubsub topic", m.PubSubTopic())
 
 	return m
 }

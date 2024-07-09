@@ -80,31 +80,32 @@ func EnsembleOneTwo(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMine
 	return &full, &one, &two, ens
 }
 
-// EnsembleOneTwo creates and starts an Ensemble with one full node and two miners participating in F3.
+// EnsembleOneTwo creates and starts an Ensemble with two full nodes and two miners participating in F3.
 // It does not interconnect nodes nor does it begin mining.
 //
 // This ensemble only configured miners to participate in F3, and it expects to provide,
 // F3Enabled as an option to configure the parameters for F3. If F3Enabled is nos passed as a node option
 // to the ensemble, building the miner fails.
-func EnsembleOneTwoF3(t *testing.T, opts ...interface{}) (*TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
+func EnsembleF3(t *testing.T, opts ...interface{}) (*TestFullNode, *TestFullNode, *TestMiner, *TestMiner, *Ensemble) {
 	opts = append(opts, WithAllSubsystems())
 
 	eopts, nopts := siftOptions(t, opts)
 
 	var (
-		full     TestFullNode
-		one, two TestMiner
+		fullOne, fullTwo TestFullNode
+		one, two         TestMiner
 	)
 	minerOpts := append(nopts, ConstructorOpts(
 		node.Override(node.F3Participation, modules.F3Participation),
 	))
 	ens := NewEnsemble(t, eopts...).
-		FullNode(&full, nopts...).
-		Miner(&one, &full, minerOpts...).
-		Miner(&two, &full, minerOpts...).
+		FullNode(&fullOne, nopts...).
+		FullNode(&fullTwo, nopts...).
+		Miner(&one, &fullOne, minerOpts...).
+		Miner(&two, &fullTwo, minerOpts...).
 		Start()
 
-	return &full, &one, &two, ens
+	return &fullOne, &fullTwo, &one, &two, ens
 }
 
 func siftOptions(t *testing.T, opts []interface{}) (eopts []EnsembleOpt, nopts []NodeOpt) {

@@ -85,6 +85,7 @@
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
   * [F3GetManifest](#F3GetManifest)
   * [F3GetPowerTable](#F3GetPowerTable)
+  * [F3IsRunning](#F3IsRunning)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2340,6 +2341,16 @@ Response:
   }
 ]
 ```
+
+### F3IsRunning
+F3IsRunning returns true if the F3 instance is running, and an error if F3 is disabled in the node.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `true`
 
 ### F3Participate
 F3Participate should be called by a storage provider to participate in signing F3 consensus.

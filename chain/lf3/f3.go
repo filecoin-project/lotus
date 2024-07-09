@@ -179,3 +179,7 @@ func (fff *F3) GetManifest() *manifest.Manifest {
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
 }
+
+func (fff *F3) IsRunning() bool {
+	return fff.inner.IsRunning()
+}

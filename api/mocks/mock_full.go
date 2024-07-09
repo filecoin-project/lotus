@@ -1215,6 +1215,21 @@ func (mr *MockFullNodeMockRecorder) F3GetPowerTable(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetPowerTable", reflect.TypeOf((*MockFullNode)(nil).F3GetPowerTable), arg0, arg1)
 }
 
+// F3IsRunning mocks base method.
+func (m *MockFullNode) F3IsRunning(arg0 context.Context) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3IsRunning", arg0)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3IsRunning indicates an expected call of F3IsRunning.
+func (mr *MockFullNodeMockRecorder) F3IsRunning(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3IsRunning", reflect.TypeOf((*MockFullNode)(nil).F3IsRunning), arg0)
+}
+
 // F3Participate mocks base method.
 func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address, arg2, arg3 time.Time) (bool, error) {
 	m.ctrl.T.Helper()
