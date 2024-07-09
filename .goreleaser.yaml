@@ -2,6 +2,8 @@
 
 version: 2
 project_name: "{{ .Env.PROJECT_NAME }}"
+monorepo:
+  tag_prefix: v
 universal_binaries:
   - id: lotus
     replace: true
@@ -79,7 +81,9 @@ release:
     name: lotus
   draft: true
   header: "{{ .Env.HEADER }}"
-  make_latest: "{{ .Env.IS_LATEST }}"
+  footer: "{{ .Env.FOOTER }}"
+  mode: "keep-existing"
+  make_latest: false
   name_template: "{{ .Env.TAG }}"
   prerelease: "{{ .Env.IS_PRERELEASE }}"
   replace_existing_artifacts: true

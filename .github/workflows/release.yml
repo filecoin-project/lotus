@@ -27,6 +27,10 @@ on:
         description: 'The commitish value that determines where the Git tag is created from'
         required: false
         default: ''
+      ref:
+        description: 'The ref to checkout before building'
+        required: false
+        default: ''
 defaults:
   run:
     shell: bash
@@ -44,6 +48,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - if: github.event.inputs.ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.ref }}
       - id: projects
         env:
           TARGET_REF: ${{ github.base_ref || github.ref }}
@@ -51,7 +60,7 @@ jobs:
           go run cmd/release/main.go --json list-projects | jq -r '.msg' |
             jq 'map(select(.version | endswith("-dev") | not))' |
             jq 'map(select(.released | not))' |
-            jq 'map(select(.prerelease != ((env.TARGET_REF | sub("^refs/heads/"; "")) == "releases")))' |
+            jq 'map(select(.prerelease != ((env.TARGET_REF | sub("^refs/heads/"; "")) == "releases" or env.GITHUB_EVENT_NAME == "workflow_dispatch")))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |
             tee -a $GITHUB_OUTPUT
   build:
@@ -82,6 +91,11 @@ jobs:
           submodules: 'recursive'
       - uses: ./.github/actions/install-system-dependencies
       - uses: ./.github/actions/install-go
+      - if: github.event.inputs.ref
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          ref: ${{ github.event.inputs.ref }}
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: make deps
@@ -119,7 +133,7 @@ jobs:
   release:
     needs: [check, build]
     if: needs.check.outputs.projects != '[]'
-    name: Release ${{ matrix.project }} [publish=${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}]
+    name: Release ${{ matrix.project }} [publish=${{ github.event.inputs.publish == 'true' || github.event_name != 'workflow_dispatch' }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
@@ -129,8 +143,8 @@ jobs:
       matrix:
         project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
     env:
-      PUBLISH: ${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}
-      IS_DRAFT: ${{ inputs.draft == 'true' || github.event_name == 'pull_request' }}
+      PUBLISH: ${{ github.event.inputs.publish == 'true' || github.event_name != 'workflow_dispatch' }}
+      IS_DRAFT: ${{ github.event.inputs.draft == 'true' || github.event_name == 'pull_request' }}
     steps:
       - id: project
         env:
@@ -173,6 +187,10 @@ jobs:
         run: yq -i '.release.draft = false' '.goreleaser.yaml'
       - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false' && fromJSON(steps.project.outputs.config).latest && !fromJSON(steps.project.outputs.config).prerelease
         run: yq -i '.brews.[0].skip_upload = false' '.goreleaser.yaml'
+      - if: matrix.project == 'node' && fromJSON(steps.project.outputs.config).latest
+        run: yq -i '.release.make_latest = true' '.goreleaser.yaml'
+      - if: matrix.project != 'node'
+        run: yq -i '.monorepo.tag_prefix = "${{ matrix.project }}/v"' '.goreleaser.yaml'
       - if: matrix.project == 'node'
         env:
           BREW_INSTALL: |
@@ -195,21 +213,49 @@ jobs:
           yq -i '(.builds[] | select(.id == "lotus-miner" or .id == "lotus-worker")).skip = false' '.goreleaser.yaml'
           yq -i '.brews[0].install = strenv(BREW_INSTALL)' '.goreleaser.yaml'
           yq -i '.brews[0].test = strenv(BREW_TEST)' '.goreleaser.yaml'
+      - run: sudo apt update && sudo apt install -y zsh
+      - id: changelog
+        env:
+          tag: ${{ fromJSON(steps.project.outputs.config).tag }}
+          head: ${{ github.event.inputs.ref || github.sha }}
+          base: ${{ fromJSON(steps.project.outputs.config).previous }}
+        run: |
+          echo "content<<EOF" | tee -a $GITHUB_OUTPUT
+          echo "# $tag" | tee -a $GITHUB_OUTPUT
+          echo "" | tee -a $GITHUB_OUTPUT
+          csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
+          # Checking the files in reverse order to get to the UNRELEASED section last
+          for file in $(ls -r xx*); do
+            if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file; then
+              tail -n +3 $file | tee -a $GITHUB_OUTPUT
+              break
+            fi
+          done
+          if [[ "$base" != '' ]]; then
+            mkdir -p "$(go env GOPATH)/github.com/$GITHUB_REPOSITORY"
+            rm -rf "$(go env GOPATH)/github.com/$GITHUB_REPOSITORY"
+            ln "$(pwd)" "$(go env GOPATH)/github.com/$GITHUB_REPOSITORY"
+            ./scripts/mkreleaselog "$base" "$head" | tee -a $GITHUB_OUTPUT
+          fi
+          echo "EOF" | tee -a $GITHUB_OUTPUT
       - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           distribution: goreleaser-pro
           version: 2.0.1
-          args: release --clean --skip=validate ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
+          args: release --clean --skip=validate ${{ env.PUBLISH == 'false' && '--snapshot' || '' }} --verbose
         env:
           PROJECT_NAME: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
-          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && (secrets.GORELEASER_GITHUB_TOKEN || github.token) || '' }}
+          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && (secrets.GORELEASER_GITUB_TOKEN || github.token) || '' }}
           GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
           TAG: ${{ fromJSON(steps.project.outputs.config).tag }}
           VERSION: ${{ fromJSON(steps.project.outputs.config).version }}
-          IS_LATEST: ${{ fromJSON(steps.project.outputs.config).latest }}
           IS_PRERELEASE: ${{ fromJSON(steps.project.outputs.config).prerelease }}
-          TARGET_COMMITISH: ${{ inputs.target_commitish || (github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha) }}
-          HEADER: ''
+          TARGET_COMMITISH: ${{ github.event.inputs.target_commitish || (github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.sha) }}
+          HEADER: |
+            ${{ steps.changelog.outputs.content }}
+            <!--
+          FOOTER: |
+            -->
       - run: ./scripts/generate-checksums.sh
       - if: env.PUBLISH == 'true' && env.IS_DRAFT == 'false'
         env:
