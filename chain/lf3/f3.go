@@ -3,13 +3,13 @@ package lf3
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -20,17 +20,19 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 type F3 struct {
 	inner *f3.F3
+	ec    *ecWrapper
 
-	signer gpbft.Signer
+	signer    gpbft.Signer
+	newLeases chan leaseRequest
 }
 
 type F3Params struct {
@@ -57,96 +59,108 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	senderID, err := peer.Decode(build.ManifestServerID)
-	if err != nil {
-		return nil, xerrors.Errorf("decoding F3 manifest server identity: %w", err)
-	}
-
 	module, err := f3.New(mctx, params.ManifestProvider, ds,
-		params.Host, senderID, params.PubSub, verif, ec, log, nil)
+		params.Host, params.PubSub, verif, ec)
 
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
 	}
-	params.ManifestProvider.SetManifestChangeCallback(f3.ManifestChangeCallback(module))
 
 	fff := &F3{
-		inner:  module,
-		signer: &signer{params.Wallet},
+		inner:     module,
+		ec:        ec,
+		signer:    &signer{params.Wallet},
+		newLeases: make(chan leaseRequest, 4), // some buffer to avoid blocking
 	}
 
 	lCtx, cancel := context.WithCancel(mctx)
 	lc.Append(fx.StartStopHook(
 		func() {
-			go func() {
-				err := fff.inner.Run(lCtx)
-				if err != nil {
-					log.Errorf("running f3: %+v", err)
-				}
-			}()
+			err := fff.inner.Start(lCtx)
+			if err != nil {
+				log.Errorf("running f3: %+v", err)
+				return
+			}
+			go fff.runSigningLoop(lCtx)
 		}, cancel))
 
 	return fff, nil
 }
 
-// Participate runs the participation loop for givine minerID
-// It is blocking
-func (fff *F3) Participate(ctx context.Context, minerIDAddress uint64, errCh chan<- string) {
-	defer close(errCh)
+type leaseRequest struct {
+	minerID       uint64
+	newExpiration time.Time
+	oldExpiration time.Time
+	resultCh      chan<- bool
+}
 
-	for ctx.Err() == nil {
-
-		// create channel for some buffer so we don't get dropped under high load
-		msgCh := make(chan *gpbft.MessageBuilder, 4)
-		// SubscribeForMessagesToSign will close the channel if it fills up
-		// so using the closer is not necessary, we can just drop it on the floor
-		_ = fff.inner.SubscribeForMessagesToSign(msgCh)
-
-		participateOnce := func(mb *gpbft.MessageBuilder) error {
-			signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerIDAddress))
-			if errors.Is(err, gpbft.ErrNoPower) {
-				// we don't have any power in F3, continue
-				log.Debug("no power to participate in F3: %+v", err)
-				return nil
-			}
-			if err != nil {
-				log.Errorf("preparing signing inputs: %+v", err)
-				return err
-			}
-			// if worker keys were stored not in the node, the signatureBuilder can be send there
-			// the sign can be called where the keys are stored and then
-			// {signatureBuilder, payloadSig, vrfSig} can be sent back to lotus for broadcast
-			payloadSig, vrfSig, err := signatureBuilder.Sign(fff.signer)
-			if err != nil {
-				log.Errorf("signing message: %+v", err)
-				return err
-			}
-			log.Infof("miner with id %d is sending message in F3", minerIDAddress)
-			fff.inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
+func (fff *F3) runSigningLoop(ctx context.Context) {
+	participateOnce := func(ctx context.Context, mb *gpbft.MessageBuilder, minerID uint64) error {
+		signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerID))
+		if errors.Is(err, gpbft.ErrNoPower) {
+			// we don't have any power in F3, continue
+			log.Debug("no power to participate in F3: %+v", err)
 			return nil
 		}
+		if err != nil {
+			return xerrors.Errorf("preparing signing inputs: %+v", err)
+		}
+		// if worker keys were stored not in the node, the signatureBuilder can be send there
+		// the sign can be called where the keys are stored and then
+		// {signatureBuilder, payloadSig, vrfSig} can be sent back to lotus for broadcast
+		payloadSig, vrfSig, err := signatureBuilder.Sign(ctx, fff.signer)
+		if err != nil {
+			return xerrors.Errorf("signing message: %+v", err)
+		}
+		log.Infof("miner with id %d is sending message in F3", minerID)
+		fff.inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
+		return nil
+	}
 
-	inner:
-		for ctx.Err() == nil {
-			select {
-			case mb, ok := <-msgCh:
-				if !ok {
-					// the broadcast bus kicked us out
-					log.Warnf("lost message bus subscription, retrying")
-					break inner
-				}
+	leaseMngr := new(leaseManager)
+	// create channel for some buffer so we don't get dropped under high load
+	msgCh := make(chan *gpbft.MessageBuilder, 4)
+	// SubscribeForMessagesToSign will close the channel if it fills up
+	// so using the closer is not necessary, we can just drop it on the floor
+	_ = fff.inner.SubscribeForMessagesToSign(msgCh)
 
-				err := participateOnce(mb)
+loop:
+	for ctx.Err() == nil {
+		select {
+		case <-ctx.Done():
+			return
+		case l := <-fff.newLeases:
+			// resultCh has only one user and is buffered
+			l.resultCh <- leaseMngr.UpsertDefensive(l.minerID, l.newExpiration, l.oldExpiration)
+			close(l.resultCh)
+		case mb, ok := <-msgCh:
+			if !ok {
+				// we got dropped, resubscribe
+				msgCh = make(chan *gpbft.MessageBuilder, cap(msgCh))
+				_ = fff.inner.SubscribeForMessagesToSign(msgCh)
+				continue loop
+			}
+
+			for _, minerID := range leaseMngr.Active() {
+				err := participateOnce(ctx, mb, minerID)
 				if err != nil {
-					errCh <- err.Error()
-				} else {
-					errCh <- ""
+					log.Errorf("while participating for miner f0%d: %+v", minerID, err)
 				}
-
-			case <-ctx.Done():
-				return
 			}
 		}
+	}
+}
+
+// Participate notifies participation loop about a new lease
+// Returns true if lease was accepted
+func (fff *F3) Participate(ctx context.Context, minerID uint64, newLeaseExpiration, oldLeaseExpiration time.Time) bool {
+	resultCh := make(chan bool, 1) //buffer the channel to for sure avoid blocking
+	request := leaseRequest{minerID: minerID, newExpiration: newLeaseExpiration, resultCh: resultCh}
+	select {
+	case fff.newLeases <- request:
+		return <-resultCh
+	case <-ctx.Done():
+		return false
 	}
 }
 
@@ -158,6 +172,10 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
-func (fff *F3) GetManifest() manifest.Manifest {
+func (fff *F3) GetManifest() *manifest.Manifest {
 	return fff.inner.Manifest()
+}
+
+func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
 }

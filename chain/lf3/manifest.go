@@ -32,11 +32,11 @@ func NewManifestProvider(nn dtypes.NetworkName, cs *store.ChainStore, sm *stmgr.
 	}
 }
 
-func NewManifest(nn dtypes.NetworkName) manifest.Manifest {
+func NewManifest(nn dtypes.NetworkName) *manifest.Manifest {
 	m := manifest.LocalDevnetManifest()
 	m.NetworkName = gpbft.NetworkName(nn)
-	m.ECDelay = build.F3BlockDelay
-	m.ECPeriod = m.ECDelay
+	m.ECPeriod = build.F3BlockDelay
+	m.ECDelayMultiplier = 2.
 	m.BootstrapEpoch = int64(build.F3BootstrapEpoch)
 	m.ECFinality = int64(build.F3Finality)
 	m.CommiteeLookback = 5

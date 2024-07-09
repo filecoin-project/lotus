@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 const (
@@ -31,7 +30,7 @@ type testEnv struct {
 	minerFullNode *kit.TestFullNode
 	observer      *kit.TestFullNode
 	ms            *manifest.ManifestSender
-	m             manifest.Manifest
+	m             *manifest.Manifest
 }
 
 // Test that checks that F3 is enabled successfully,
@@ -80,10 +79,9 @@ func TestF3_Rebootstrap(t *testing.T) {
 	prevHead, err := e.minerFullNode.ChainHead(ctx)
 	require.NoError(t, err)
 
-	e.m.Sequence++
-	e.m.BootstrapEpoch = 50
-	e.m.ReBootstrap = true
-	e.ms.UpdateManifest(e.m)
+	cpy := *e.m
+	cpy.BootstrapEpoch = 50
+	e.ms.UpdateManifest(&cpy)
 
 	waitTillManifestChange(t, ctx, e.minerFullNode, prevManifest, 20*time.Second)
 
@@ -197,15 +195,13 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 
 	f3Opts := kit.F3Enabled(DefaultBootsrapEpoch, blocktime, DefaultFinality)
 	// miner is connected to the first node, and we want to observe the chain
-	// from the second node.
+	// from the s/newecond node.
 	n1, m1, m2, ens := kit.EnsembleOneTwoF3(t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 		f3Opts,
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
-	nn, err := n1.StateNetworkName(context.Background())
-	require.NoError(t, err)
 
 	{
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -229,24 +225,27 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 	// wait for the chain to be bootstrapped
 	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+DefaultBootsrapEpoch))
 
-	// create manifest sender and connect to full-nodes
-	ms := newManifestSender(t, context.Background(), h, nn, blocktime)
-	err = n1.NetConnect(ctx, ms.PeerInfo())
+	nn, err := n1.StateNetworkName(context.Background())
 	require.NoError(t, err)
-	err = n2.NetConnect(ctx, ms.PeerInfo())
-	require.NoError(t, err)
-	go ms.Start(ctx)
+	e := testEnv{m: lf3.NewManifest(nn)}
+	e.minerFullNode = n1
+	e.observer = &n2
 
-	return testEnv{n1, &n2, ms, lf3.NewManifest(nn)}
+	// create manifest sender and connect to full-nodes
+	e.ms = e.newManifestSender(t, context.Background(), h, blocktime)
+	err = n1.NetConnect(ctx, e.ms.PeerInfo())
+	require.NoError(t, err)
+	err = n2.NetConnect(ctx, e.ms.PeerInfo())
+	require.NoError(t, err)
+	go e.ms.Run(ctx)
+	return e
 }
 
-func newManifestSender(t *testing.T, ctx context.Context, h host.Host, nn dtypes.NetworkName, senderTimeout time.Duration) *manifest.ManifestSender {
-
+func (e *testEnv) newManifestSender(t *testing.T, ctx context.Context, h host.Host, senderTimeout time.Duration) *manifest.ManifestSender {
 	ps, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
 
-	m := lf3.NewManifest(nn)
-	ms, err := manifest.NewManifestSender(h, ps, m, senderTimeout)
+	ms, err := manifest.NewManifestSender(h, ps, e.m, senderTimeout)
 	require.NoError(t, err)
 	return ms
 }

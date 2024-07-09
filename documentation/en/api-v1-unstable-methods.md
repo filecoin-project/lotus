@@ -84,6 +84,7 @@
   * [F3GetCertificate](#F3GetCertificate)
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
   * [F3GetManifest](#F3GetManifest)
+  * [F3GetPowerTable](#F3GetPowerTable)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2302,35 +2303,71 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Sequence": 0,
   "InitialInstance": 0,
   "BootstrapEpoch": 0,
-  "ReBootstrap": false,
-  "Pause": false,
   "NetworkName": "",
   "PowerUpdate": null
 }
 ```
 
-### F3Participate
-F3Participate should be called by a miner node to participate in signing F3 consensus.
-The address should be of type ID
-The returned channel will never be closed by the F3
-If it is closed without the context being cancelled, the caller should retry.
-The values returned on the channel will inform the caller about participation
-Empty strings will be sent if participation succeeded, non-empty strings explain possible errors.
+### F3GetPowerTable
+F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
 
 
-Perms: admin
+Perms: read
 
 Inputs:
 ```json
 [
-  "f01234"
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
 ]
 ```
 
-Response: `"string value"`
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
+### F3Participate
+F3Participate should be called by a storage provider to participate in signing F3 consensus.
+Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
+The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
+To continue participating in F3 with the given node, call F3Participate again before
+the newLeaseExpiration time.
+newLeaseExpiration cannot be further than 5 minutes in the future.
+It is recommended to call F3Participate every 60 seconds
+with newLeaseExpiration set 2min into the future.
+The oldLeaseExpiration has to be set to newLeaseExpiration of the last successfull call.
+For the first call to F3Participate, set the oldLeaseExpiration to zero value/time in the past.
+F3Participate will return true if the lease was accepted.
+The minerID has to be the ID address of the miner.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "0001-01-01T00:00:00Z",
+  "0001-01-01T00:00:00Z"
+]
+```
+
+Response: `true`
 
 ## Filecoin
 
