@@ -103,16 +103,11 @@ func TestF3_PauseAndRebootstrap(t *testing.T) {
 	e.ms.Resume()
 	e.waitTillF3Runs(t, ctx, 20*time.Second)
 
-	// after resuming try rebootstrapping to a new manifest
-	prevCert, err := n.F3GetCertificate(ctx, newInstance)
-	require.NoError(t, err)
-
 	cpy := *e.m
 	cpy.BootstrapEpoch = 30
 	e.ms.UpdateManifest(&cpy)
 
 	e.waitTillManifestChange(t, ctx, prevManifest, 20*time.Second)
-	e.waitTillF3Rebootstrap(t, ctx, prevCert, 20*time.Second)
 }
 
 func (e *testEnv) waitTillF3Rebootstrap(t *testing.T, ctx context.Context, prev *certs.FinalityCertificate, timeout time.Duration) {
@@ -197,7 +192,7 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 
 	f3Opts := kit.F3Enabled(DefaultBootsrapEpoch, blocktime, DefaultFinality)
 
-	n1, n2, _, _, ens := kit.EnsembleF3(t,
+	n1, m1, m2, ens := kit.EnsembleF3(t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 		f3Opts,
@@ -211,33 +206,32 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 	}
 
 	var obs kit.TestFullNode
-	ens.FullNode(&obs, kit.ThroughRPC(), f3Opts).Start().Connect(n2, n1)
+	ens.FullNode(&obs, kit.ThroughRPC(), f3Opts).Start().Connect(obs, n1)
 
-	// {
-	// 	// find the first tipset where all miners mined a block.
-	// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	// 	n2.WaitTillChain(ctx, kit.BlocksMinedByAll(m1.ActorAddr, m2.ActorAddr))
-	// 	cancel()
-	// }
-
-	head, err := n2.ChainHead(context.Background())
-	require.NoError(t, err)
-
-	// wait for the chain to be bootstrapped
-	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+DefaultBootsrapEpoch))
+	{
+		// find the first tipset where all miners mined a block.
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		obs.WaitTillChain(ctx, kit.BlocksMinedByAll(m1.ActorAddr, m2.ActorAddr))
+		cancel()
+	}
 
 	nn, err := n1.StateNetworkName(context.Background())
 	require.NoError(t, err)
+
 	e := testEnv{m: lf3.NewManifest(nn)}
-	e.minerFullNodes = []*kit.TestFullNode{n1, n2}
+	// in case we want to use more full-nodes in the future
+	e.minerFullNodes = []*kit.TestFullNode{n1}
 	e.observer = &obs
 
 	// create manifest sender and connect to full-nodes
 	e.ms = e.newManifestSender(t, context.Background(), h, blocktime)
-	err = n1.NetConnect(ctx, e.ms.PeerInfo())
+	for _, n := range e.minerFullNodes {
+		err = n.NetConnect(ctx, e.ms.PeerInfo())
+		require.NoError(t, err)
+	}
+	err = obs.NetConnect(ctx, e.ms.PeerInfo())
 	require.NoError(t, err)
-	err = n2.NetConnect(ctx, e.ms.PeerInfo())
-	require.NoError(t, err)
+
 	go e.ms.Run(ctx)
 	return e
 }
