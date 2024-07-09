@@ -204,13 +204,17 @@ func init() {
 }
 
 func NewEthBlock(hasTransactions bool, tipsetLen int) EthBlock {
+	// make a copy of FullEthBloom
+	LogsBloom := make([]byte, len(FullEthBloom))
+	copy(LogsBloom, FullEthBloom[:])
+
 	b := EthBlock{
 		Sha3Uncles:       EmptyUncleHash, // Sha3Uncles set to a hardcoded value which is used by some clients to determine if has no uncles.
 		StateRoot:        EmptyEthHash,
 		TransactionsRoot: EmptyRootHash, // TransactionsRoot set to a hardcoded value which is used by some clients to determine if has no transactions.
 		ReceiptsRoot:     EmptyEthHash,
 		Difficulty:       EmptyEthInt,
-		LogsBloom:        FullEthBloom[:],
+		LogsBloom:        LogsBloom,
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
