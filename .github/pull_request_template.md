@@ -20,7 +20,7 @@ Before you mark the PR ready for review, please make sure that:
   - If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
   - If the change does not require a CHANGELOG.md entry, do one of the following:
     - Add `[skip changelog]` to the PR title
-    - Add the label `skip-changelog` to the PR
+    - Add the label `skip/changelog` to the PR
 - [ ] New features have usage guidelines and / or documentation updates in
   - [ ] [Lotus Documentation](https://lotus.filecoin.io)
   - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
