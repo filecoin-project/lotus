@@ -165,23 +165,21 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - name: Create dist directory
-        run: mkdir dist
       - name: Download Linux X64 binaries
         uses: actions/download-artifact@v4
         with:
           name: lotus-${{ matrix.project }}-Linux-X64
-          path: dist/linux_amd64_v1
+          path: linux_amd64_v1
       - name: Download macOS X64 binaries
         uses: actions/download-artifact@v4
         with:
           name: lotus-${{ matrix.project }}-macOS-X64
-          path: dist/darwin_amd64_v1
+          path: darwin_amd64_v1
       - name: Download macOS ARM64 binaries
         uses: actions/download-artifact@v4
         with:
           name: lotus-${{ matrix.project }}-macOS-ARM64
-          path: dist/darwin_arm64
+          path: darwin_arm64
       - name: Install Go (archives generation dependency)
         uses: ./.github/actions/install-go
       - name: Generate archives
@@ -197,13 +195,14 @@ jobs:
             fi
             go run github.com/randall77/makefat ./darwin_all/$binary ./darwin_amd64_v1/$binary ./darwin_arm64/$binary
           done <<< "$(jq -r '.[]' <<< "$binaries")"
-          rm -rf darwin_amd64_v1 darwin_arm64
+          mkdir dist
+          pushd dist
           for directory in darwin_all linux_amd64_v1; do
-            mv $directory $prefix_v$version_$directory
+            cp -r ../$directory $prefix_v$version_$directory
             tar -czf $prefix_v$version_$directory.tar.gz $directory
-            rm -rf $prefix_v$version_$directory
+            rm -r $prefix_v$version_$directory
           done
-        working-directory: dist
+          popd
       - name: Install Kubo (checksums generation dependency)
         uses: ipfs/download-ipfs-distribution-action@v1
         with:
