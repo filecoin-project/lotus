@@ -10,6 +10,7 @@ on:
     branches:
       - master
       - release/v*
+      - release/miner/v*
       - releases
   schedule:
     - cron: '0 0 * * *'
