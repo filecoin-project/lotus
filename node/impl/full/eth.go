@@ -1276,8 +1276,14 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 	if pf.tipsetCid == cid.Undef {
 		maxHeight := pf.maxHeight
 		if maxHeight == -1 {
-			maxHeight = e.Chain.GetHeaviestTipSet().Height()
+			// we can't use the heaviest tipset here as that could block the user on block execution
+			maxHeight = e.Chain.GetHeaviestTipSet().Height() - 1
 		}
+
+		if maxHeight < 0 {
+			return nil, xerrors.Errorf("maxHeight requested is less than 0")
+		}
+
 		if maxHeight > e.Chain.GetHeaviestTipSet().Height() {
 			return nil, xerrors.Errorf("maxHeight requested is greater than the heaviest tipset")
 		}
@@ -1285,13 +1291,6 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		err := e.waitForHeightProcessed(ctx, maxHeight)
 		if err != nil {
 			return nil, err
-		}
-
-		// should also have the minHeight in the filter indexed
-		if b, err := e.EventFilterManager.EventIndex.IsHeightProcessed(ctx, uint64(pf.minHeight)); err != nil {
-			return nil, xerrors.Errorf("failed to check if event index has events for the minHeight: %w", err)
-		} else if !b {
-			return nil, xerrors.Errorf("event index does not have event for epoch %d", pf.minHeight)
 		}
 	} else {
 		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
@@ -1324,6 +1323,8 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
 }
 
+// note that we can have null blocks at the given height and the event Index is not null block aware
+// so, what we do here is wait till we see the event index contain a block at a height greater than the given height
 func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
 	ei := e.EventFilterManager.EventIndex
 	if height > e.Chain.GetHeaviestTipSet().Height() {
@@ -1334,7 +1335,7 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	defer cancel()
 
 	// if the height we're interested in has already been indexed -> there's nothing to do here
-	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
 		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
 	} else if b {
 		return nil
@@ -1345,7 +1346,7 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	defer unSubscribeF()
 
 	// it could be that the event index was update while the subscription was being processed -> check if index has what we need now
-	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
 		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
 	} else if b {
 		return nil
@@ -1354,7 +1355,7 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	for {
 		select {
 		case <-subCh:
-			if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+			if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
 				return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
 			} else if b {
 				return nil
