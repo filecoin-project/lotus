@@ -72,6 +72,16 @@ func getPrevious(name, version string) string {
 	return prefix + previous
 }
 
+func getBinaries(name string) []string {
+	if name == "node" {
+		return []string{"lotus"}
+	}
+	if name == "miner" {
+		return []string{"lotus-miner", "lotus-worker"}
+	}
+	return nil
+}
+
 func isReleased(tag string) bool {
 	tags := getTags()
 	for _, t := range tags {
