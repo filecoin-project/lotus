@@ -11,6 +11,7 @@ on:
     branches:
       - release/v*
       - releases
+      - ipdx/*
     paths:
       - build/version.go
   workflow_dispatch:
@@ -57,7 +58,7 @@ jobs:
             # jq 'map(select(.released | not))' |
             jq 'map(select(
               (env.GITHUB_EVENT_NAME == "push" and ((env.GITHUB_REF == "releases" and .prerelease == false) or (env.GITHUB_REF != "releases" and .prerelease == true))) or
-              (env.GITHUB_EVENT_NAME == "pull_request" and ((env.GITHUB_BASE_REF == "refs/heads/releases" and .prerelease == false) or (env.GITHUB_BASE_REF != "refs/heads/releases" and .prerelease == true))) or
+              (env.GITHUB_EVENT_NAME == "pull_request" and ((env.GITHUB_BASE_REF == "refs/heads/ipdx/release-automation" and .prerelease == false) or (env.GITHUB_BASE_REF != "refs/heads/releases" and .prerelease == true))) or
               (env.GITHUB_EVENT_NAME == "workflow_dispatch" and (.name as $name | env.projects | fromjson | index($name) != null))
             ))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |
@@ -262,7 +263,7 @@ jobs:
           prerelease: ${{ fromJSON(steps.project.outputs.config).prerelease }}
           make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
           discussion_category_name: ""
-          GITHUB_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN: ${{ github.token }}
         run: |
           echo "release>>EOF" | tee -a $GITHUB_OUTPUT
           gh api -X "$method" "$endpoint" \
@@ -270,7 +271,7 @@ jobs:
             --field target_commitish="$target_commitish" \
             --field name="$name" \
             --field body="$body" \
-            --field draft=$draft \
+            --field draft=true \
             --field prerelease=$prerelease \
             --field make_latest=$make_latest \
             --field discussion_category_name="$discussion_category_name" |
@@ -280,7 +281,7 @@ jobs:
         env:
           asset_ids: ${{ toJSON(fromJSON(steps.after.outputs.release).assets.*.id) }}
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
-          GITHUB_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN: ${{ github.token }}
         run: |
           while read -r asset_id; do
             gh api -X DELETE /repos/$GITHUB_REPOSITORY/releases/$release_id/assets/$asset_id
@@ -288,7 +289,7 @@ jobs:
       - name: Upload new assets
         env:
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
-          GITHUB_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN: ${{ github.token }}
         run: |
           for asset in *.{tar.gz,cid,sha512}; do
             gh api -X POST /repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$asset \
@@ -299,7 +300,7 @@ jobs:
         if: github.event.inputs.publish == 'true' || github.event_name == 'push'
         env:
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
-          GITHUB_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN: ${{ github.token }}
         run: |
           gh api -X PATCH /repos/$GITHUB_REPOSITORY/releases/$release_id \
             --field draft=false
