@@ -100,13 +100,14 @@ func getPrefix(name string) string {
 }
 
 type project struct {
-	Name       string `json:"name"`
-	Version    string `json:"version"`
-	Tag        string `json:"tag"`
-	Previous   string `json:"previous"`
-	Latest     bool   `json:"latest"`
-	Prerelease bool   `json:"prerelease"`
-	Released   bool   `json:"released"`
+	Name       string   `json:"name"`
+	Version    string   `json:"version"`
+	Tag        string   `json:"tag"`
+	Previous   string   `json:"previous"`
+	Latest     bool     `json:"latest"`
+	Prerelease bool     `json:"prerelease"`
+	Released   bool     `json:"released"`
+	Binaries   []string `json:"binaries"`
 }
 
 func getProject(name, version string) project {
@@ -119,6 +120,7 @@ func getProject(name, version string) project {
 		Latest:     isLatest(name, version),
 		Prerelease: isPrerelease(version),
 		Released:   isReleased(tag),
+		Binaries:   getBinaries(name),
 	}
 }
 
