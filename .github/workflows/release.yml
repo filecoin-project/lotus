@@ -248,7 +248,7 @@ jobs:
           tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          echo "release>>EOF" | tee -a $GITHUB_OUTPUT
+          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
           gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
             jq -s add | jq -r '.[0]' | tee -a $GITHUB_OUTPUT
           echo "EOF" | tee -a $GITHUB_OUTPUT
@@ -267,7 +267,7 @@ jobs:
           discussion_category_name: ""
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          echo "release>>EOF" | tee -a $GITHUB_OUTPUT
+          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
           gh api -X "$method" "$endpoint" \
             --field tag_name="$tag_name" \
             --field target_commitish="$target_commitish" \
