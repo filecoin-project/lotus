@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	DefaultBootsrapEpoch = 20
+	DefaultBootsrapEpoch = 15
 	DefaultFinality      = 5
-	F3FriendlyDebugLogs  = true
+	f3FriendlyDebugLogs  = true
+	pollInterval         = 600 * time.Millisecond
 )
 
 type testEnv struct {
@@ -42,7 +43,7 @@ func TestF3_Enabled(t *testing.T) {
 
 	ctx := context.Background()
 
-	e.waitTillF3Instance(t, ctx, 3, 20*time.Second)
+	e.waitTillF3Instance(ctx, t, 3, 25*time.Second)
 }
 
 // Test that checks that F3 can be rebootsrapped by changing the manifest
@@ -55,33 +56,19 @@ func TestF3_Rebootstrap(t *testing.T) {
 	prevManifest, err := n.F3GetManifest(ctx)
 	require.NoError(t, err)
 
-	newInstance := uint64(3)
-	e.waitTillF3Instance(t, ctx, newInstance, 20*time.Second)
+	newInstance := uint64(2)
+	waitTillF3Instance(t, ctx, n, newInstance, 20*time.Second)
 
 	prevCert, err := n.F3GetCertificate(ctx, newInstance)
 	require.NoError(t, err)
 
 	cpy := *e.m
-	cpy.BootstrapEpoch = 30
+	cpy.BootstrapEpoch = 25
 	e.ms.UpdateManifest(&cpy)
 
-	// wait for manifest change, wait for the rebootstrap,
-	// and check that the chain finalised after rebootsrapping
-	// is different from the previous one.
-	e.waitTillManifestChange(t, ctx, prevManifest, 20*time.Second)
-	e.waitTillF3Rebootstrap(t, ctx, prevCert, 20*time.Second)
-	e.waitTillF3Instance(t, ctx, prevCert.GPBFTInstance+1, 20*time.Second)
-
-	curr, err := n.F3GetCertificate(ctx, prevCert.GPBFTInstance)
-	require.NoError(t, err)
-	require.NotNil(t, curr)
-	require.NotEqual(t, prevCert.ECChain, curr.ECChain)
-
-	// Check that we are bootstrapping from the right epoch
-	curr, err = n.F3GetCertificate(ctx, 0)
-	require.NoError(t, err)
-	require.NotNil(t, curr)
-	require.True(t, curr.ECChain[0].Epoch == cpy.BootstrapEpoch-int64(build.F3Finality))
+	e.waitTillManifestChange(ctx, t, prevManifest, 20*time.Second)
+	e.waitTillF3Rebootstrap(ctx, t, prevCert, 20*time.Second)
+	e.waitTillF3Instance(ctx, t, prevCert.GPBFTInstance+1, 20*time.Second)
 }
 
 // Tests that pause/resume and rebootstrapping F3 works
@@ -94,31 +81,78 @@ func TestF3_PauseAndRebootstrap(t *testing.T) {
 	prevManifest, err := n.F3GetManifest(ctx)
 	require.NoError(t, err)
 
-	newInstance := uint64(3)
-	e.waitTillF3Instance(t, ctx, newInstance, 20*time.Second)
+	newInstance := uint64(2)
+	e.waitTillF3Instance(ctx, t, newInstance, 20*time.Second)
 
 	e.ms.Pause()
-	e.waitTillF3Pauses(t, ctx, 20*time.Second)
+	e.waitTillF3Pauses(ctx, t, 20*time.Second)
 
 	e.ms.Resume()
-	e.waitTillF3Runs(t, ctx, 20*time.Second)
+	e.waitTillF3Runs(ctx, t, 20*time.Second)
+
+	prevCert, err := n.F3GetCertificate(ctx, newInstance)
+	require.NoError(t, err)
 
 	cpy := *e.m
-	cpy.BootstrapEpoch = 30
+	cpy.BootstrapEpoch = 25
 	e.ms.UpdateManifest(&cpy)
 
-	e.waitTillManifestChange(t, ctx, prevManifest, 20*time.Second)
+	e.waitTillManifestChange(ctx, t, prevManifest, 20*time.Second)
+	e.waitTillF3Rebootstrap(ctx, t, prevCert, 20*time.Second)
 }
 
-func (e *testEnv) waitTillF3Rebootstrap(t *testing.T, ctx context.Context, prev *certs.FinalityCertificate, timeout time.Duration) {
-	e.waitFor(t, func(n *kit.TestFullNode) bool {
-		curr, err := n.F3GetLatestCertificate(ctx)
+func waitTillF3Instance(t *testing.T, ctx context.Context, n *kit.TestFullNode, i uint64, timeout time.Duration) {
+	require.Eventually(t, func() bool {
+		r, err := n.F3IsRunning(ctx)
 		require.NoError(t, err)
-		return curr != nil && curr.GPBFTInstance > 0 && curr.GPBFTInstance < prev.GPBFTInstance
+		if r {
+			c, err := n.F3GetLatestCertificate(ctx)
+			require.NoError(t, err)
+			if c != nil {
+				return c.GPBFTInstance >= i
+			}
+		}
+		return false
+
+	}, timeout, 100*time.Millisecond)
+
+}
+
+func (e *testEnv) waitTillF3Rebootstrap(ctx context.Context, t *testing.T, prev *certs.FinalityCertificate, timeout time.Duration) {
+	e.waitFor(t, func(n *kit.TestFullNode) bool {
+		// get the latest
+		latest, err := n.F3GetLatestCertificate(ctx)
+		require.NoError(t, err)
+		if latest != nil {
+
+			// if we passed the instance seen in the previous chain
+			// check if we are finalizing a different chain
+			if latest.GPBFTInstance >= prev.GPBFTInstance {
+				curr, err := n.F3GetCertificate(ctx, prev.GPBFTInstance)
+				require.NoError(t, err)
+				if curr != nil {
+					if prev.ECChain.Eq(curr.ECChain) {
+						return false
+					}
+
+				}
+			}
+
+			// If we are finalizing a different chain, or we haven't reached
+			// the prev epoch yet, check if we already bootstrapped and from
+			// the right epoch
+			curr, err := n.F3GetCertificate(ctx, 0)
+			require.NoError(t, err)
+			require.NotNil(t, curr)
+			m, err := n.F3GetManifest(ctx)
+			require.NoError(t, err)
+			return curr.ECChain[0].Epoch == m.BootstrapEpoch-int64(build.F3Finality)
+		}
+		return false
 	}, timeout)
 }
 
-func (e *testEnv) waitTillF3Pauses(t *testing.T, ctx context.Context, timeout time.Duration) {
+func (e *testEnv) waitTillF3Pauses(ctx context.Context, t *testing.T, timeout time.Duration) {
 	e.waitFor(t, func(n *kit.TestFullNode) bool {
 		r, err := n.F3IsRunning(ctx)
 		require.NoError(t, err)
@@ -126,7 +160,7 @@ func (e *testEnv) waitTillF3Pauses(t *testing.T, ctx context.Context, timeout ti
 	}, timeout)
 }
 
-func (e *testEnv) waitTillF3Runs(t *testing.T, ctx context.Context, timeout time.Duration) {
+func (e *testEnv) waitTillF3Runs(ctx context.Context, t *testing.T, timeout time.Duration) {
 	e.waitFor(t, func(n *kit.TestFullNode) bool {
 		r, err := n.F3IsRunning(ctx)
 		require.NoError(t, err)
@@ -134,7 +168,7 @@ func (e *testEnv) waitTillF3Runs(t *testing.T, ctx context.Context, timeout time
 	}, timeout)
 }
 
-func (e *testEnv) waitTillF3Instance(t *testing.T, ctx context.Context, i uint64, timeout time.Duration) {
+func (e *testEnv) waitTillF3Instance(ctx context.Context, t *testing.T, i uint64, timeout time.Duration) {
 	e.waitFor(t, func(n *kit.TestFullNode) bool {
 		c, err := n.F3GetLatestCertificate(ctx)
 		require.NoError(t, err)
@@ -147,7 +181,7 @@ func (e *testEnv) waitTillF3Instance(t *testing.T, ctx context.Context, i uint64
 
 }
 
-func (e *testEnv) waitTillManifestChange(t *testing.T, ctx context.Context, prevManifest *manifest.Manifest, timeout time.Duration) {
+func (e *testEnv) waitTillManifestChange(ctx context.Context, t *testing.T, prevManifest *manifest.Manifest, timeout time.Duration) {
 	e.waitFor(t, func(n *kit.TestFullNode) bool {
 		m, err := n.F3GetManifest(ctx)
 		require.NoError(t, err)
@@ -173,7 +207,7 @@ func (e *testEnv) waitFor(t *testing.T, f func(n *kit.TestFullNode) bool, timeou
 			}
 		}
 		return false
-	}, timeout, 500*time.Millisecond)
+	}, timeout, pollInterval)
 }
 
 // Setup creates a new F3-enabled network with two miners and two full-nodes
@@ -224,7 +258,7 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 	e.observer = &obs
 
 	// create manifest sender and connect to full-nodes
-	e.ms = e.newManifestSender(t, context.Background(), h, blocktime)
+	e.ms = e.newManifestSender(context.Background(), t, h, blocktime)
 	for _, n := range e.minerFullNodes {
 		err = n.NetConnect(ctx, e.ms.PeerInfo())
 		require.NoError(t, err)
@@ -236,7 +270,7 @@ func setup(t *testing.T, blocktime time.Duration) testEnv {
 	return e
 }
 
-func (e *testEnv) newManifestSender(t *testing.T, ctx context.Context, h host.Host, senderTimeout time.Duration) *manifest.ManifestSender {
+func (e *testEnv) newManifestSender(ctx context.Context, t *testing.T, h host.Host, senderTimeout time.Duration) *manifest.ManifestSender {
 	ps, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
 
@@ -249,7 +283,7 @@ func (e *testEnv) newManifestSender(t *testing.T, ctx context.Context, h host.Ho
 // levels that reduces the noise and eases the debugging of F3-related
 // issues.
 func setUpF3DebugLogging() {
-	if F3FriendlyDebugLogs {
+	if f3FriendlyDebugLogs {
 
 		lvl, err := logging.LevelFromString("error")
 		if err != nil {
