@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - release/v*
+      - release/miner/v*
       - releases
     paths:
       - build/version.go
   pull_request:
     branches:
       - release/v*
+      - release/miner/v*
       - releases
     paths:
       - build/version.go
