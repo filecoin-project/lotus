@@ -184,6 +184,8 @@ jobs:
           path: darwin_arm64
       - name: Install Go (archives generation dependency)
         uses: ./.github/actions/install-go
+      - name: Install makefat (archives generation dependency)
+        run: go install github.com/randall77/makefat@7ddd0e42c8442593c87c1705a5545099604008e5
       - name: Generate archives
         env:
           prefix: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
@@ -195,7 +197,7 @@ jobs:
             if [[ -z "$binary" ]]; then
               continue
             fi
-            go run github.com/randall77/makefat ./darwin_all/$binary ./darwin_amd64_v1/$binary ./darwin_arm64/$binary
+            makefat ./darwin_all/$binary ./darwin_amd64_v1/$binary ./darwin_arm64/$binary
           done <<< "$(jq -r '.[]' <<< "$binaries")"
           mkdir dist
           pushd dist
