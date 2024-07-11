@@ -2,6 +2,8 @@
 
 # UNRELEASED
 
+- https://github.com/filecoin-project/lotus/pull/12203: Fix slice modification bug in ETH Tx Events Bloom Filter
+
 ## ☢️ Upgrade Warnings ☢️
 
 - This Lotus release includes some correctness improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for details.

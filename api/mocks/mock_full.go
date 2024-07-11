@@ -23,7 +23,10 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	certs "github.com/filecoin-project/go-f3/certs"
 	gpbft "github.com/filecoin-project/go-f3/gpbft"
+<<<<<<< HEAD
 	manifest "github.com/filecoin-project/go-f3/manifest"
+=======
+>>>>>>> 2822404b52a7f7e14ae186b638b2027a41512725
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"

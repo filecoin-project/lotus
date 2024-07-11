@@ -29,7 +29,7 @@ func (f3api *F3API) F3Participate(ctx context.Context, miner address.Address,
 	newLeaseExpiration time.Time, oldLeaseExpiration time.Time) (bool, error) {
 
 	if leaseDuration := time.Until(newLeaseExpiration); leaseDuration > 5*time.Minute {
-		return false, xerrors.Errorf("F3 participation lease too long: %v > 15 min", leaseDuration)
+		return false, xerrors.Errorf("F3 participation lease too long: %v > 5 min", leaseDuration)
 	} else if leaseDuration < 0 {
 		return false, xerrors.Errorf("F3 participation lease is in the past: %d < 0", leaseDuration)
 	}
@@ -40,7 +40,7 @@ func (f3api *F3API) F3Participate(ctx context.Context, miner address.Address,
 	}
 	minerID, err := address.IDFromAddress(miner)
 	if err != nil {
-		return false, xerrors.Errorf("miner address is not of ID type: %v: %+v", miner, err)
+		return false, xerrors.Errorf("miner address is not of ID type: %v: %w", miner, err)
 	}
 
 	return f3api.F3.Participate(ctx, minerID, newLeaseExpiration, oldLeaseExpiration), nil

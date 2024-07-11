@@ -378,7 +378,7 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 
 			ok, err := api.F3Participate(ctx, address.Address(minerAddress), newLease, oldLease)
 
-			if errors.Is(err, context.Canceled) {
+			if ctx.Err() != nil {
 				return
 			}
 			if errors.Is(err, full.ErrF3Disabled) {
@@ -400,8 +400,8 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 				log.Errorf("lotus node refused our lease, are you loadbalancing or did the miner just restart?")
 
 				sleepFor := b.Duration()
-				if time.Until(oldLease) > 0 {
-					sleepFor = min(sleepFor, time.Until(oldLease))
+				if d := time.Until(oldLease); d > 0 && d < sleepFor {
+					sleepFor = d
 				}
 				timer.Reset(sleepFor)
 				select {
