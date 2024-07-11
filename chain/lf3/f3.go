@@ -118,11 +118,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 	}
 
 	leaseMngr := new(leaseManager)
-	// create channel for some buffer so we don't get dropped under high load
-	msgCh := make(chan *gpbft.MessageBuilder, 4)
-	// SubscribeForMessagesToSign will close the channel if it fills up
-	// so using the closer is not necessary, we can just drop it on the floor
-	_ = fff.inner.SubscribeForMessagesToSign(msgCh)
+	msgCh := fff.inner.MessagesToSign()
 
 loop:
 	for ctx.Err() == nil {
@@ -135,9 +131,6 @@ loop:
 			close(l.resultCh)
 		case mb, ok := <-msgCh:
 			if !ok {
-				// we got dropped, resubscribe
-				msgCh = make(chan *gpbft.MessageBuilder, cap(msgCh))
-				_ = fff.inner.SubscribeForMessagesToSign(msgCh)
 				continue loop
 			}
 

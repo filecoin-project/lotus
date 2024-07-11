@@ -9,7 +9,6 @@ This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin net
 Compared to `Lotus v1.28.0-rc5`, the `Lotus v1.28.0` release:
 
 ## ☢️ Upgrade Warnings ☢️
-
 - If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
 
 - This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
