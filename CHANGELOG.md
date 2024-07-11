@@ -12,13 +12,14 @@
 
 ## Improvements
 
-# v1.28.0-rc4 / 2024-07-04
+# v1.28.0-rc5 / 2024-07-11
 
-This is the fourth release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
+This is the fifth release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
 **This release candidate sets the calibration network to upgrade at epoch 1779094, corresponding to 2024-07-11T12:00:00Z.** This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
 
-Compared to `Lotus v1.28.0-rc3`, the `Lotus v1.28.0-rc4` release addresses an issue that allows us to publish Docker builds.
+Compared to `Lotus v1.28.0-rc4`, the `Lotus v1.28.0-rc5` release addresses some performance problems in the `eth_getLogs` API.
+It also addresses a bug in the `eth_getLogs` API around handling null blocks.
 
 ☢️ Upgrade Warnings ☢️
 
