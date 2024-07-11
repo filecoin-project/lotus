@@ -2329,7 +2329,8 @@ The lease should be active only on one node. The lease will expire at the newLea
 To continue participating in F3 with the given node, call F3Participate again before
 the newLeaseExpiration time.
 newLeaseExpiration cannot be further than 5 minutes in the future.
-It is recommended to call F3Participate every 2min with newLeaseExpiration set 3min into the future.
+It is recommended to call F3Participate every 60 seconds
+with newLeaseExpiration set 2min into the future.
 The oldLeaseExpiration has to be set to newLeaseExpiration of the last successfull call.
 For the first call to F3Participate, set the oldLeaseExpiration to zero value/time in the past.
 F3Participate will return true if the lease was accepted.
