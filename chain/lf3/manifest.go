@@ -18,8 +18,8 @@ import (
 func NewManifestProvider(nn dtypes.NetworkName, cs *store.ChainStore, sm *stmgr.StateManager, ps *pubsub.PubSub) manifest.ManifestProvider {
 	m := manifest.LocalDevnetManifest()
 	m.NetworkName = gpbft.NetworkName(nn)
-	m.ECDelay = 2 * time.Duration(build.BlockDelaySecs) * time.Second
-	m.ECPeriod = m.ECDelay
+	m.ECDelayMultiplier = 2.
+	m.ECPeriod = time.Duration(build.BlockDelaySecs) * time.Second
 	m.BootstrapEpoch = int64(build.F3BootstrapEpoch)
 	m.ECFinality = int64(build.Finality)
 	m.CommiteeLookback = 5
