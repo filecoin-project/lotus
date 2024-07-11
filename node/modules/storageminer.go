@@ -369,38 +369,59 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			<-timer.C
 		}
 
-		// Backoff while obeying the context.
-		backoffWithContext := func() {
-			timer.Reset(b.Duration())
-			select {
-			case <-ctx.Done():
-				log.Errorf("Context is done while retrying F3 participation: %+v", ctx.Err())
-			case <-timer.C:
-			}
-		}
+		leaseTime := 120 * time.Second
+		// start with some time in the past
+		oldLease := time.Now().Add(-24 * time.Hour)
 
 		for ctx.Err() == nil {
-			switch ch, err := api.F3Participate(ctx, address.Address(minerAddress)); {
-			case errors.Is(err, context.Canceled):
-				log.Errorf("Context cancelled while attampting F3 participation: %+v", err)
+			newLease := time.Now().Add(leaseTime)
+
+			ok, err := api.F3Participate(ctx, address.Address(minerAddress), newLease, oldLease)
+
+			if ctx.Err() != nil {
 				return
-			case errors.Is(err, full.ErrF3Disabled):
+			}
+			if errors.Is(err, full.ErrF3Disabled) {
 				log.Errorf("Cannot participate in F3 as it is disabled: %+v", err)
 				return
-			case err != nil:
+			}
+			if err != nil {
 				log.Errorf("while starting to participate in F3: %+v", err)
 				// use exponential backoff to avoid hotloop
-				backoffWithContext()
-			default:
-				for err := range ch {
-					// we have communication with F3 in lotus, reset the backoff
-					b.Reset()
-					if err != "" {
-						log.Warnf("participating in F3 encountered an error: %v", err)
-					}
+				timer.Reset(b.Duration())
+				select {
+				case <-ctx.Done():
+					return
+				case <-timer.C:
 				}
-				log.Warn("F3Participate exited, retrying")
-				backoffWithContext()
+				continue
+			}
+			if !ok {
+				log.Errorf("lotus node refused our lease, are you loadbalancing or did the miner just restart?")
+
+				sleepFor := b.Duration()
+				if d := time.Until(oldLease); d > 0 && d < sleepFor {
+					sleepFor = d
+				}
+				timer.Reset(sleepFor)
+				select {
+				case <-ctx.Done():
+					return
+				case <-timer.C:
+				}
+				continue
+			}
+
+			// we have succeded in giving a lease, reset the backoff
+			b.Reset()
+
+			oldLease = newLease
+			// wait for the half of the lease time and then refresh
+			timer.Reset(leaseTime / 2)
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
 			}
 		}
 	}()
