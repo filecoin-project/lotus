@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -17,6 +18,7 @@ import (
 	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
 	adt11 "github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
+	account "github.com/filecoin-project/go-state-types/builtin/v14/account"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -302,7 +304,7 @@ func TestMigrationNV17(t *testing.T) {
 	minerInfo, err := testClient.StateMinerInfo(ctx, testMiner.ActorAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	spt, err := miner.SealProofTypeFromSectorSize(minerInfo.SectorSize, network.Version17, false)
+	spt, err := miner.SealProofTypeFromSectorSize(minerInfo.SectorSize, network.Version17, miner.SealProofVariant_Standard)
 	require.NoError(t, err)
 
 	preCommitParams := miner9.PreCommitSectorParams{
@@ -594,7 +596,7 @@ func TestMigrationNV18(t *testing.T) {
 	// check all actor's Address fields
 	require.NoError(t, newStateTree.ForEach(func(address address.Address, actor *types.Actor) error {
 		if address != ethZeroAddrID {
-			require.Nil(t, actor.Address)
+			require.Nil(t, actor.DelegatedAddress)
 		}
 		return nil
 	}))
@@ -827,4 +829,71 @@ func TestMigrationNV21(t *testing.T) {
 
 	//todo @zen Direct data onboarding tests
 
+}
+
+func TestMigrationNV23(t *testing.T) {
+	kit.QuietMiningLogs()
+	f090Addr, err := address.NewIDAddress(90)
+	require.NoError(t, err)
+	nv23epoch := abi.ChainEpoch(100)
+	testClient, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version22,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version23,
+			Height:    nv23epoch,
+			Migration: filcns.UpgradeActorsV14,
+		},
+		))
+
+	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+
+	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv23epoch+5))
+
+	bs := blockstore.NewAPIBlockstore(testClient)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	preMigrationTs, err := clientApi.ChainGetTipSetByHeight(ctx, nv23epoch-1, types.EmptyTSK)
+	require.NoError(t, err)
+
+	root := preMigrationTs.Blocks()[0].ParentStateRoot
+	preStateTree, err := state.LoadStateTree(ctxStore, root)
+	require.NoError(t, err)
+	require.Equal(t, types.StateTreeVersion5, preStateTree.Version())
+
+	// Check f090 actor before migration
+	msigCodeNv22, ok := actors.GetActorCodeID(actorstypes.Version13, manifest.MultisigKey)
+	assert.True(t, ok)
+	f090ActorPre, err := preStateTree.GetActor(f090Addr)
+	require.NoError(t, err)
+	require.True(t, f090ActorPre.Code.Equals(msigCodeNv22))
+
+	// Get state after the migration
+	postMigrationTs, err := clientApi.ChainHead(ctx)
+	require.NoError(t, err)
+	postStateTree, err := state.LoadStateTree(ctxStore, postMigrationTs.Blocks()[0].ParentStateRoot)
+	require.NoError(t, err)
+
+	// Check the new system actor
+	systemAct, err := postStateTree.GetActor(builtin.SystemActorAddr)
+	require.NoError(t, err)
+	systemCode, ok := actors.GetActorCodeID(actorstypes.Version14, manifest.SystemKey)
+	require.True(t, ok)
+	require.Equal(t, systemCode, systemAct.Code)
+
+	// Check f090 actor after migration
+	f090ActorPost, err := postStateTree.GetActor(f090Addr)
+	require.NoError(t, err)
+	accountNV23, ok := actors.GetActorCodeID(actorstypes.Version14, manifest.AccountKey)
+	assert.True(t, ok)
+	require.True(t, f090ActorPost.Code.Equals(accountNV23))
+	f090StatePost, err := clientApi.StateReadState(ctx, f090Addr, types.EmptyTSK)
+	require.NoError(t, err)
+	state := f090StatePost.State.(*account.State)
+	require.Equal(t, state.Address, f090Addr)
 }

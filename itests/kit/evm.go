@@ -332,14 +332,23 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 }
 
 func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	if mcid, err := e.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
-		return nil, err
-	} else if mcid == nil {
-		return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
-	} else {
+	retries := 3
+	var mcid *cid.Cid
+	var err error
+
+	for retries > 0 {
+		if mcid, err = e.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
+			return nil, err
+		} else if mcid == nil {
+			retries--
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
 		e.WaitMsg(ctx, *mcid)
 		return e.EthGetTransactionReceipt(ctx, hash)
 	}
+	return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
 }
 
 // function signatures are the first 4 bytes of the hash of the function name and types

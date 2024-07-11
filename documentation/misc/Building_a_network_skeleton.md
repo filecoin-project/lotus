@@ -169,7 +169,7 @@ And you're done! These are all the steps necessary to create a network upgrade s
 - Have a local developer network that starts at the current network version.
 - Be able to see the Actor CIDs/Actor version for the mock Actor-bundle through `lotus state actor-cids --network-version XX+1`
 - Have a successful pre-migration.
-- Complete the migration at upgrade epoch, with a succesful upgrade.
+- Complete the migration at upgrade epoch, with a successful upgrade.
 - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
 You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11964), which added the skeleton for network version 23.

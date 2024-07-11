@@ -115,6 +115,7 @@ const (
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
+	F3Participation
 
 	// daemon
 	ExtractApiKey

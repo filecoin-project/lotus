@@ -262,7 +262,7 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 		)
 
 		// Will use 2KiB sectors by default (default value of sectorSize).
-		proofType, err := miner.SealProofTypeFromSectorSize(options.sectorSize, n.genesis.version, false)
+		proofType, err := miner.SealProofTypeFromSectorSize(options.sectorSize, n.genesis.version, miner.SealProofVariant_Standard)
 		require.NoError(n.t, err)
 
 		// Create the preseal commitment.
@@ -325,11 +325,11 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	return n
 }
 
-func (n *Ensemble) UnmanagedMiner(full *TestFullNode, opts ...NodeOpt) (*TestUnmanagedMiner, *Ensemble) {
+func (n *Ensemble) UnmanagedMiner(ctx context.Context, full *TestFullNode, opts ...NodeOpt) (*TestUnmanagedMiner, *Ensemble) {
 	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
 	require.NoError(n.t, err)
 
-	minerNode := NewTestUnmanagedMiner(n.t, full, actorAddr, n.options.mockProofs, opts...)
+	minerNode := NewTestUnmanagedMiner(ctx, n.t, full, actorAddr, n.options.mockProofs, opts...)
 	n.AddInactiveUnmanagedMiner(minerNode)
 	return minerNode, n
 }

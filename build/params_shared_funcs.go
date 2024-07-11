@@ -1,6 +1,8 @@
 package build
 
 import (
+	"os"
+
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -34,3 +36,8 @@ var MustParseAddress = buildconstants.MustParseAddress
 
 // Deprecated: Use buildconstants.MustParseCid instead.
 var MustParseCid = buildconstants.MustParseCid
+
+func IsF3Enabled() bool {
+	const F3DisableEnvKey = "LOTUS_DISABLE_F3"
+	return buildconstants.F3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
+}

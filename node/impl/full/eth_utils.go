@@ -57,6 +57,22 @@ func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkPar
 			return nil, fmt.Errorf("cannot get parent tipset")
 		}
 		return parent, nil
+	case "safe":
+		latestHeight := head.Height() - 1
+		safeHeight := latestHeight - ethtypes.SafeEpochDelay
+		ts, err := chain.GetTipsetByHeight(ctx, safeHeight, head, true)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
+		}
+		return ts, nil
+	case "finalized":
+		latestHeight := head.Height() - 1
+		safeHeight := latestHeight - build.Finality
+		ts, err := chain.GetTipsetByHeight(ctx, safeHeight, head, true)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
+		}
+		return ts, nil
 	default:
 		var num ethtypes.EthUint64
 		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
@@ -403,9 +419,9 @@ func lookupEthAddress(addr address.Address, st *state.StateTree) (ethtypes.EthAd
 	} else if err != nil {
 		// Any other error -> fail.
 		return ethtypes.EthAddress{}, err
-	} else if actor.Address == nil {
+	} else if actor.DelegatedAddress == nil {
 		// No delegated address -> use masked ID address.
-	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+	} else if ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.DelegatedAddress); err == nil && !ethAddr.IsMaskedID() {
 		// Conversable into an eth address, use it.
 		return ethAddr, nil
 	}
@@ -684,7 +700,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		BlockNumber:      blockNumber,
 		Type:             ethtypes.EthUint64(2),
 		Logs:             []ethtypes.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
-		LogsBloom:        ethtypes.EmptyEthBloom[:],
+		LogsBloom:        ethtypes.NewEmptyEthBloom(),
 	}
 
 	if lookup.Receipt.ExitCode.IsSuccess() {
