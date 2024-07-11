@@ -95,6 +95,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - rename `Actor.Address` to `Actor.DelegatedAddress` and only use it for f4 addresses (https://github.com/filecoin-project/lotus/pull/12155)
 - feat:ec: integrate F3 dynamic manifest #12185
 - fix: f3: Fix F3 build parameters for testground target (#12189) ([filecoin-project/lotus#12189](https://github.com/filecoin-project/lotus/pull/12189))
+- fix: eth_getLogs: https://github.com/filecoin-project/lotus/pull/12212
 
 # v1.27.1 / 2024-06-24
 
