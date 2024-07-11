@@ -17,6 +17,7 @@
 
 - chore!: markets: remove stray unixfs constants, features and references ([filecoin-project/lotus#12217](https://github.com/filecoin-project/lotus/pull/12217))
 - [Upgrade to OpenTelemetry v1.28.0](https://github.com/filecoin-project/lotus/pull/12223)
+- [Upgrade to go-f3 v0.0.3](https://github.com/filecoin-project/lotus/pull/12216): This upgrade introduces multiple enhancements in Finality Certificate Exchange as well as bug fixes across the rebroadcast protocol.
 
 # v1.28.0-rc4 / 2024-07-04
 
