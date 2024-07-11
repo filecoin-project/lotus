@@ -255,7 +255,6 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fu
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return a.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
-
 }
 
 func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
@@ -1276,7 +1275,7 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 	if pf.tipsetCid == cid.Undef {
 		maxHeight := pf.maxHeight
 		if maxHeight == -1 {
-			// we can't use the heaviest tipset here as that could block the user on block execution
+			// heaviest tipset doesn't have events because its messages haven't been executed yet
 			maxHeight = e.Chain.GetHeaviestTipSet().Height() - 1
 		}
 
@@ -1284,7 +1283,9 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 			return nil, xerrors.Errorf("maxHeight requested is less than 0")
 		}
 
-		if maxHeight > e.Chain.GetHeaviestTipSet().Height() {
+		// we can't return events for the heaviest tipset as the transactions in that tipset will be executed
+		// in the next non null tipset (because of Filecoin's "deferred execution" model)
+		if maxHeight > e.Chain.GetHeaviestTipSet().Height()-1 {
 			return nil, xerrors.Errorf("maxHeight requested is greater than the heaviest tipset")
 		}
 
@@ -1292,6 +1293,13 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		if err != nil {
 			return nil, err
 		}
+		// TODO: Ideally we should also check that events for the epoch at `pf.minheight` have been indexed
+		// However, it is currently tricky to check/guarantee this for two reasons:
+		// a) Event Index is not aware of null-blocks. This means that the Event Index wont be able to say whether the block at
+		//    `pf.minheight` is a null block or whether it has no events
+		// b) There can be holes in the index where events at certain epoch simply haven't been indexed because of edge cases around
+		//    node restarts while indexing. This needs a long term "auto-repair"/"automated-backfilling" implementation in the index
+		// So, for now, the best we can do is ensure that the event index has evenets for events at height >= `pf.maxHeight`
 	} else {
 		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
 		if err != nil {
