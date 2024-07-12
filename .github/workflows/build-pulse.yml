@@ -1,0 +1,60 @@
+name: BuildPulse
+
+on:
+  workflow_run:
+    workflows: ["Test"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      artifacts_url:
+        description: The URL of the artifacts for the Test workflow run
+        required: true
+      head_commit_id:
+        description: The commit ID of the head commit of the Test workflow run
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  actions: read
+
+jobs:
+  buildpulse:
+    name: Upload JUnit XML report to BuildPulse
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+      - id: reports
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+      - name: Download all JUnit XML reports from the Test workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          artifacts_url: ${{ github.event.inputs.artifacts_url || github.event.workflow_run.artifacts_url }}
+          reports_path: ${{ steps.reports.outputs.path }}
+        run: |
+          pushd $reports_path
+          while read -r archive_download_url; do
+            if [[ -z "$archive_download_url" ]]; then
+              continue
+            fi
+            gh api "$archive_download_url" > archive.zip
+            unzip archive.zip
+            rm archive.zip
+          done <<< "$(gh api "$artifacts_url" | jq -r '.artifacts | map(.archive_download_url) | .[0]')"
+          popd
+      - name: Upload test results to BuildPulse for flaky test detection
+        uses: buildpulse/buildpulse-action@d4d8e00c645a2e3db0419a43664bbcf868080234
+        with:
+          account: vars.BUIDPULSE_ACCOUNT_ID
+          repository: vars.BUILDPULSE_REPOSITORY_ID
+          path: |
+            ${{ steps.reports.outputs.path }}/*.xml
+          key: ${{ vars.BUILDPULSE_ACCESS_KEY_ID }}
+          secret: ${{ secrets.BUILDPULSE_SECRET_ACCESS_KEY }}
+          commit: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
