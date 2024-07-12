@@ -796,7 +796,12 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 		if exitCodes[i].IsSuccess() {
 			req.NoError(err)
 			req.Equal(si.SectorNumber, sector.sectorNumber)
-			req.Equal(si.Activation, msgReturn.Height-1)
+			// To check the activation epoch, we use Parents() rather than Height-1 to account for null rounds
+			ts, err := tm.FullNode.ChainGetTipSet(tm.ctx, msgReturn.TipSet)
+			req.NoError(err)
+			parent, err := tm.FullNode.ChainGetTipSet(tm.ctx, ts.Parents())
+			req.NoError(err)
+			req.Equal(si.Activation, parent.Height())
 		} else {
 			req.Nil(si, "sector should not be on chain")
 		}
