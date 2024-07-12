@@ -16,6 +16,7 @@
 ## Improvements
 
 - chore!: markets: remove stray unixfs constants, features and references ([filecoin-project/lotus#12217](https://github.com/filecoin-project/lotus/pull/12217))
+- [Upgrade to OpenTelemetry v1.28.0](https://github.com/filecoin-project/lotus/pull/12223)
 
 # v1.28.0-rc4 / 2024-07-04
 
