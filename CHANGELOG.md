@@ -3,6 +3,7 @@
 # UNRELEASED
 
 - https://github.com/filecoin-project/lotus/pull/12203: Fix slice modification bug in ETH Tx Events Bloom Filter
+- https://github.com/filecoin-project/lotus/pull/12221: Fix a nil reference panic in the ETH Trace API
 
 ## ☢️ Upgrade Warnings ☢️
 
