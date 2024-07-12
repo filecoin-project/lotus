@@ -167,10 +167,10 @@ func (ts *apiSuite) testOutOfGasError(t *testing.T) {
 
 	// the gas estimator API executes the message with gasLimit = BlockGasLimit
 	// Lowering it to 2 will cause it to run out of gas, testing the failure case we want
-	originalLimit := buildconstants.BlockGasTarget
-	buildconstants.BlockGasTarget = 2
+	originalLimit := buildconstants.BlockGasLimit
+	buildconstants.BlockGasLimit = 2
 	defer func() {
-		buildconstants.BlockGasTarget = originalLimit
+		buildconstants.BlockGasLimit = originalLimit
 	}()
 
 	msg := &types.Message{

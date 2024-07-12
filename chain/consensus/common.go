@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -225,7 +226,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
 		// So below is overflow safe
 		sumGasLimit += m.GasLimit
-		if sumGasLimit > build.BlockGasLimit {
+		if sumGasLimit > buildconstants.BlockGasLimit {
 			return xerrors.Errorf("block gas limit exceeded")
 		}
 
