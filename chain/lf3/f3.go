@@ -112,7 +112,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 		if err != nil {
 			return xerrors.Errorf("signing message: %+v", err)
 		}
-		log.Infof("miner with id %d is sending message in F3", minerID)
+		log.Debugf("miner with id %d is sending message in F3", minerID)
 		fff.inner.Broadcast(ctx, signatureBuilder, payloadSig, vrfSig)
 		return nil
 	}
