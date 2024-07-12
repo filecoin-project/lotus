@@ -23,9 +23,6 @@ import (
 var (
 	TestNetworkVersion = network.Version23
 
-	UnixfsChunkSize     = uint64(1 << 20)
-	UnixfsLinksPerLevel = 1024
-
 	BlocksPerEpoch        = uint64(builtin2.ExpectedLeadersPerEpoch)
 	BlockMessageLimit     = 512
 	BlockGasLimit         = int64(100_000_000_000)
