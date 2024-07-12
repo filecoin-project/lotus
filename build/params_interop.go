@@ -25,7 +25,7 @@ var ActorDebugging = false
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"
 
-const GenesisNetworkVersion = network.Version16
+const GenesisNetworkVersion = network.Version22
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
