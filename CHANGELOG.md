@@ -14,6 +14,8 @@
 
 ## Improvements
 
+- chore!: markets: remove stray unixfs constants, features and references ([filecoin-project/lotus#12217](https://github.com/filecoin-project/lotus/pull/12217))
+
 # v1.27.1 / 2024-06-24
 
 This release, v1.27.1, is an OPTIONAL lotus release. It is HIGHLY RECOMMENDED for node operators that are building Filecoin index off lotus!
