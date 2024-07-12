@@ -172,7 +172,6 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 		require.NoError(t, build.UseNetworkBundle("testing"))
 	}
 
-	build.EquivocationDelaySecs = 0
 	buildconstants.EquivocationDelaySecs = 0
 
 	return n

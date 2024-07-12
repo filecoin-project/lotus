@@ -66,8 +66,6 @@ const FilReserved = uint64(300_000_000)
 var InitialRewardBalance *big.Int
 var InitialFilReserved *big.Int
 
-// TODO: Move other important consts here
-
 func init() {
 	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
@@ -94,7 +92,6 @@ const VerifSigCacheSize = 32000
 // ///////
 // Limits
 
-// TODO: If this is gonna stay, it should move to specs-actors
 const BlockMessageLimit = 10000
 
 var BlockGasLimit = int64(10_000_000_000)

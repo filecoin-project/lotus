@@ -52,8 +52,6 @@ var FilReserved = buildconstants.FilReserved             // Deprecated: Use buil
 var InitialRewardBalance *big.Int
 var InitialFilReserved *big.Int
 
-// TODO: Move other important consts here
-
 func init() {
 	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
@@ -72,7 +70,6 @@ var VerifSigCacheSize = buildconstants.VerifSigCacheSize // Deprecated: Use buil
 // ///////
 // Limits
 
-// TODO: If this is gonna stay, it should move to specs-actors
 var BlockMessageLimit = buildconstants.BlockMessageLimit // Deprecated: Use buildconstants.BlockMessageLimit instead
 
 var BlockGasLimit = buildconstants.BlockGasLimit   // Deprecated: Use buildconstants.BlockGasLimit instead

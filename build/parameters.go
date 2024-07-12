@@ -73,8 +73,6 @@ var BlockDelaySecs = buildconstants.BlockDelaySecs // Deprecated: Use buildconst
 
 var PropagationDelaySecs = buildconstants.PropagationDelaySecs // Deprecated: Use buildconstants.PropagationDelaySecs instead
 
-var EquivocationDelaySecs = buildconstants.EquivocationDelaySecs // Deprecated: Use buildconstants.EquivocationDelaySecs instead
-
 const BootstrapPeerThreshold = buildconstants.BootstrapPeerThreshold // Deprecated: Use buildconstants.BootstrapPeerThreshold instead
 
 // ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
