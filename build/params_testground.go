@@ -74,10 +74,6 @@ var (
 		return v
 	}()
 
-	// Actor consts
-	// TODO: pieceSize unused from actors
-	MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
-
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5
 
