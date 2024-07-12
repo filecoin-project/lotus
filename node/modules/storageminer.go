@@ -412,7 +412,7 @@ func F3Participation(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 				continue
 			}
 
-			// we have succeded in giving a lease, reset the backoff
+			// we have succeeded in giving a lease, reset the backoff
 			b.Reset()
 
 			oldLease = newLease

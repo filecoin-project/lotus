@@ -2331,7 +2331,7 @@ the newLeaseExpiration time.
 newLeaseExpiration cannot be further than 5 minutes in the future.
 It is recommended to call F3Participate every 60 seconds
 with newLeaseExpiration set 2min into the future.
-The oldLeaseExpiration has to be set to newLeaseExpiration of the last successfull call.
+The oldLeaseExpiration has to be set to newLeaseExpiration of the last successful call.
 For the first call to F3Participate, set the oldLeaseExpiration to zero value/time in the past.
 F3Participate will return true if the lease was accepted.
 The minerID has to be the ID address of the miner.
