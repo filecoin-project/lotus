@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 // /////
@@ -18,7 +19,7 @@ var UnixfsLinksPerLevel = buildconstants.UnixfsLinksPerLevel // Deprecated: Use 
 var AllowableClockDriftSecs = buildconstants.AllowableClockDriftSecs // Deprecated: Use buildconstants.AllowableClockDriftSecs instead
 
 // Epochs
-var ForkLengthThreshold = Finality // Deprecated: Use Finality instead
+const ForkLengthThreshold = Finality // Deprecated: Use Finality instead
 
 // Blocks (e)
 var BlocksPerEpoch = buildconstants.BlocksPerEpoch // Deprecated: Use buildconstants.BlocksPerEpoch instead
@@ -26,8 +27,6 @@ var BlocksPerEpoch = buildconstants.BlocksPerEpoch // Deprecated: Use buildconst
 // Epochs
 var MessageConfidence = buildconstants.MessageConfidence // Deprecated: Use buildconstants.MessageConfidence instead
 
-// constants for Weight calculation
-// The ratio of weight contributed by short-term vs long-term factors in a given round
 var WRatioNum = buildconstants.WRatioNum // Deprecated: Use buildconstants.WRatioNum instead
 var WRatioDen = buildconstants.WRatioDen // Deprecated: Use buildconstants.WRatioDen instead
 
@@ -39,7 +38,6 @@ var TicketRandomnessLookback = buildconstants.TicketRandomnessLookback // Deprec
 
 // the 'f' prefix doesn't matter
 var ZeroAddress = buildconstants.ZeroAddress // Deprecated: Use buildconstants.ZeroAddress instead
-
 // /////
 // Devnet settings
 
@@ -67,12 +65,8 @@ func init() {
 // Sync
 var BadBlockCacheSize = buildconstants.BadBlockCacheSize // Deprecated: Use buildconstants.BadBlockCacheSize instead
 
-// assuming 4000 messages per round, this lets us not lose any messages across a
-// 10 block reorg.
 var BlsSignatureCacheSize = buildconstants.BlsSignatureCacheSize // Deprecated: Use buildconstants.BlsSignatureCacheSize instead
 
-// Size of signature verification cache
-// 32k keeps the cache around 10MB in size, max
 var VerifSigCacheSize = buildconstants.VerifSigCacheSize // Deprecated: Use buildconstants.VerifSigCacheSize instead
 
 // ///////
@@ -94,3 +88,10 @@ var MinDealDuration = buildconstants.MinDealDuration // Deprecated: Use buildcon
 var MaxDealDuration = buildconstants.MaxDealDuration // Deprecated: Use buildconstants.MaxDealDuration instead
 
 const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use buildconstants.TestNetworkVersion instead
+
+func init() {
+	policy.SetSupportedProofTypes(buildconstants.SupportedProofTypes...)
+	policy.SetConsensusMinerMinPower(buildconstants.ConsensusMinerMinPower)
+	policy.SetMinVerifiedDealSize(buildconstants.MinVerifiedDealSize)
+	policy.SetPreCommitChallengeDelay(buildconstants.PreCommitChallengeDelay)
+}

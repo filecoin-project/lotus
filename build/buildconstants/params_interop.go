@@ -4,9 +4,10 @@
 package buildconstants
 
 import (
-	"log"
 	"os"
 	"strconv"
+
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/ipfs/go-cid"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
+
+var log = logging.Logger("buildconstants")
 
 var NetworkBundle = "caterpillarnet"
 var ActorDebugging = false

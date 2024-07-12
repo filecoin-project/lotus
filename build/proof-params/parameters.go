@@ -1,4 +1,4 @@
-package build
+package proofparams
 
 import (
 	_ "embed"
