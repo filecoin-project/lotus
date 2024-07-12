@@ -160,7 +160,7 @@ func defaults() []Option {
 		// global system journal.
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
-		Override(new(alerting.Alerting), alerting.NewAlertingSystem),
+		Override(new(*alerting.Alerting), alerting.NewAlertingSystem),
 		Override(new(alertinginterface.AlertingInterface), alerting.NewAlertingSystem),
 		Override(new(dtypes.NodeStartTime), FromVal(dtypes.NodeStartTime(time.Now()))),
 

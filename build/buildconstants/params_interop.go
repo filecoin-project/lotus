@@ -7,9 +7,8 @@ import (
 	"os"
 	"strconv"
 
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
