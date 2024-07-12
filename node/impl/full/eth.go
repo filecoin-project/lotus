@@ -831,6 +831,11 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 		return ethtypes.EmptyEthHash, err
 	}
 
+	txHash, err := txArgs.TxHash()
+	if err != nil {
+		return ethtypes.EmptyEthHash, err
+	}
+
 	smsg, err := ethtypes.ToSignedFilecoinMessage(txArgs)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -839,6 +844,12 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	_, err = a.MpoolAPI.MpoolPush(ctx, smsg)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
+	}
+
+	// make it immediately available in the transaction hash lookup db, even though it will also
+	// eventually get there via the mpool
+	if err := a.EthTxHashManager.TransactionHashLookup.UpsertHash(txHash, smsg.Cid()); err != nil {
+		log.Errorf("error inserting tx mapping to db: %s", err)
 	}
 
 	return ethtypes.EthHashFromTxBytes(rawTx), nil
