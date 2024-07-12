@@ -21,9 +21,6 @@ import (
 )
 
 var (
-	UnixfsChunkSize     = uint64(1 << 20)
-	UnixfsLinksPerLevel = 1024
-
 	BlocksPerEpoch        = uint64(builtin2.ExpectedLeadersPerEpoch)
 	BlockMessageLimit     = 512
 	BlockGasLimit         = int64(100_000_000_000)
@@ -76,10 +73,6 @@ var (
 		v = v.Mul(v, big.NewInt(int64(FilecoinPrecision)))
 		return v
 	}()
-
-	// Actor consts
-	// TODO: pieceSize unused from actors
-	MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5

@@ -14,6 +14,8 @@
 
 ## Improvements
 
+- chore!: markets: remove stray unixfs constants, features and references ([filecoin-project/lotus#12217](https://github.com/filecoin-project/lotus/pull/12217))
+
 # v1.28.0-rc4 / 2024-07-04
 
 This is the fourth release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
