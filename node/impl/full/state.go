@@ -30,6 +30,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
@@ -1929,11 +1930,11 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 
 	return &api.NetworkParams{
 		NetworkName:             networkName,
-		BlockDelaySecs:          build.BlockDelaySecs,
-		ConsensusMinerMinPower:  build.ConsensusMinerMinPower,
-		SupportedProofTypes:     build.SupportedProofTypes,
-		PreCommitChallengeDelay: build.PreCommitChallengeDelay,
-		Eip155ChainID:           build.Eip155ChainId,
+		BlockDelaySecs:          buildconstants.BlockDelaySecs,
+		ConsensusMinerMinPower:  buildconstants.ConsensusMinerMinPower,
+		SupportedProofTypes:     buildconstants.SupportedProofTypes,
+		PreCommitChallengeDelay: buildconstants.PreCommitChallengeDelay,
+		Eip155ChainID:           buildconstants.Eip155ChainId,
 		ForkUpgradeParams: api.ForkUpgradeParams{
 			UpgradeSmokeHeight:       build.UpgradeSmokeHeight,
 			UpgradeBreezeHeight:      build.UpgradeBreezeHeight,
@@ -1943,7 +1944,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeRefuelHeight:      build.UpgradeRefuelHeight,
 			UpgradeTapeHeight:        build.UpgradeTapeHeight,
 			UpgradeKumquatHeight:     build.UpgradeKumquatHeight,
-			BreezeGasTampingDuration: build.BreezeGasTampingDuration,
+			BreezeGasTampingDuration: buildconstants.BreezeGasTampingDuration,
 			UpgradeCalicoHeight:      build.UpgradeCalicoHeight,
 			UpgradePersianHeight:     build.UpgradePersianHeight,
 			UpgradeOrangeHeight:      build.UpgradeOrangeHeight,

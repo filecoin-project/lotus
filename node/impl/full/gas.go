@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -128,7 +129,7 @@ func gasEstimateFeeCap(cstore *store.ChainStore, msg *types.Message, maxqueueblk
 	ts := cstore.GetHeaviestTipSet()
 
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-	increaseFactor := math.Pow(1.+1./float64(build.BaseFeeMaxChangeDenom), float64(maxqueueblks))
+	increaseFactor := math.Pow(1.+1./float64(buildconstants.BaseFeeMaxChangeDenom), float64(maxqueueblks))
 
 	feeInFuture := types.BigMul(parentBaseFee, types.NewInt(uint64(increaseFactor*(1<<8))))
 	out := types.BigDiv(feeInFuture, types.NewInt(1<<8))
@@ -147,8 +148,8 @@ func medianGasPremium(prices []GasMeta, blocks int) abi.TokenAmount {
 		return prices[i].Price.GreaterThan(prices[j].Price)
 	})
 
-	at := build.BlockGasTarget * int64(blocks) / 2        // 50th
-	at += build.BlockGasTarget * int64(blocks) / (2 * 20) // move 5% further
+	at := buildconstants.BlockGasTarget * int64(blocks) / 2        // 50th
+	at += buildconstants.BlockGasTarget * int64(blocks) / (2 * 20) // move 5% further
 	prev1, prev2 := big.Zero(), big.Zero()
 	for _, price := range prices {
 		prev1, prev2 = price.Price, prev1
@@ -310,7 +311,7 @@ func gasEstimateGasLimit(
 	currTs *types.TipSet,
 ) (int64, error) {
 	msg := *msgIn
-	msg.GasLimit = build.BlockGasLimit
+	msg.GasLimit = buildconstants.BlockGasLimit
 	msg.GasFeeCap = big.Zero()
 	msg.GasPremium = big.Zero()
 
@@ -390,8 +391,8 @@ func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Messag
 		msg.GasLimit = int64(float64(gasLimit) * m.Mpool.GetConfig().GasLimitOverestimation)
 
 		// Gas overestimation can cause us to exceed the block gas limit, cap it.
-		if msg.GasLimit > build.BlockGasLimit {
-			msg.GasLimit = build.BlockGasLimit
+		if msg.GasLimit > buildconstants.BlockGasLimit {
+			msg.GasLimit = buildconstants.BlockGasLimit
 		}
 	}
 
