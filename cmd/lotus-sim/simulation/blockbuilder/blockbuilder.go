@@ -12,7 +12,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
@@ -36,7 +36,7 @@ const (
 // TODO: This will produce invalid blocks but it will accurately model the amount of gas
 // we're willing to use per-tipset.
 // A more correct approach would be to produce 5 blocks. We can do that later.
-var targetGas = build.BlockGasTarget * expectedBlocks
+var targetGas = buildconstants.BlockGasTarget * expectedBlocks
 
 type BlockBuilder struct {
 	ctx    context.Context
@@ -150,7 +150,7 @@ func (bb *BlockBuilder) PushMessage(msg *types.Message) (*types.MessageReceipt, 
 	}
 	msg.GasPremium = abi.NewTokenAmount(0)
 	msg.GasFeeCap = abi.NewTokenAmount(0)
-	msg.GasLimit = build.BlockGasTarget
+	msg.GasLimit = buildconstants.BlockGasTarget
 
 	// We manually snapshot so we can revert nonce changes, etc. on failure.
 	err = st.Snapshot(bb.ctx)
