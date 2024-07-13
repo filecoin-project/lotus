@@ -9,7 +9,13 @@ import (
 type BuildVersion string
 
 var CurrentCommit string
-var BuildType = buildconstants.BuildType // Deprecated: Use buildconstants.BuildType instead
+var BuildType = buildconstants.BuildType                 // Deprecated: Use buildconstants.BuildType instead
+var BuildMainnet = buildconstants.BuildMainnet           // Deprecated: Use buildconstants.BuildMainnet instead
+var Build2k = buildconstants.Build2k                     // Deprecated: Use buildconstants.Build2k instead
+var BuildDebug = buildconstants.BuildDebug               // Deprecated: Use buildconstants.BuildDebug instead
+var BuildCalibnet = buildconstants.BuildCalibnet         // Deprecated: Use buildconstants.BuildCalibnet instead
+var BuildInteropnet = buildconstants.BuildInteropnet     // Deprecated: Use buildconstants.BuildInteropnet instead
+var BuildButterflynet = buildconstants.BuildButterflynet // Deprecated: Use buildconstants.BuildButterflynet instead
 
 func BuildTypeString() string {
 	switch BuildType {
