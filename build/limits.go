@@ -1,6 +1,7 @@
 package build
 
+import "github.com/filecoin-project/lotus/build/buildconstants"
+
 var (
-	DefaultFDLimit uint64 = 16 << 10
-	MinerFDLimit   uint64 = 100_000
+	MinerFDLimit uint64 = buildconstants.MinerFDLimit
 )

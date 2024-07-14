@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -165,7 +165,7 @@ func (e *EVM) InvokeSolidityWithValue(ctx context.Context, sender address.Addres
 		From:     sender,
 		Value:    value,
 		Method:   builtintypes.MethodsEVM.InvokeContract,
-		GasLimit: build.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
+		GasLimit: buildconstants.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
 		Params:   params,
 	}
 

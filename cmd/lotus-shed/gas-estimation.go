@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -118,7 +119,7 @@ var gasTraceCmd = &cli.Command{
 		}
 
 		// Set to block limit so message will not run out of gas
-		msg.GasLimit = build.BlockGasLimit
+		msg.GasLimit = buildconstants.BlockGasLimit
 
 		err = cs.Load(ctx)
 		if err != nil {

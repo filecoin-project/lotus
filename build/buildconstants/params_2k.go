@@ -1,7 +1,7 @@
 //go:build debug || 2k
 // +build debug 2k
 
-package build
+package buildconstants
 
 import (
 	"os"
@@ -10,17 +10,13 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 const BootstrappersFile = ""
 const GenesisFile = ""
 
 var NetworkBundle = "devnet"
-var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = true
 
 var GenesisNetworkVersion = network.Version22
@@ -95,11 +91,6 @@ var MinVerifiedDealSize = abi.NewStoragePower(256)
 var PreCommitChallengeDelay = abi.ChainEpoch(10)
 
 func init() {
-	policy.SetSupportedProofTypes(SupportedProofTypes...)
-	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
-	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
-	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
-
 	getGenesisNetworkVersion := func(ev string, def network.Version) network.Version {
 		hs, found := os.LookupEnv(ev)
 		if found {
@@ -189,6 +180,6 @@ const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef
 
-const f3Enabled = true
+const F3Enabled = true
 const ManifestServerID = "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG"
 const F3BootstrapEpoch abi.ChainEpoch = 100
