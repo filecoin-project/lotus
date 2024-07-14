@@ -18,7 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -44,7 +44,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	msg = &msgCopy
 
 	if msg.GasLimit == 0 {
-		msg.GasLimit = build.BlockGasLimit
+		msg.GasLimit = buildconstants.BlockGasLimit
 	}
 	if msg.GasFeeCap == types.EmptyInt {
 		msg.GasFeeCap = types.NewInt(0)

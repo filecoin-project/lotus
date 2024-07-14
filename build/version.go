@@ -1,37 +1,37 @@
 package build
 
-import "os"
+import (
+	"os"
+
+	"github.com/filecoin-project/lotus/build/buildconstants"
+)
 
 type BuildVersion string
 
 var CurrentCommit string
-var BuildType int
-
-const (
-	BuildDefault      = 0
-	BuildMainnet      = 0x1
-	Build2k           = 0x2
-	BuildDebug        = 0x3
-	BuildCalibnet     = 0x4
-	BuildInteropnet   = 0x5
-	BuildButterflynet = 0x7
-)
+var BuildType = buildconstants.BuildType                 // Deprecated: Use buildconstants.BuildType instead
+var BuildMainnet = buildconstants.BuildMainnet           // Deprecated: Use buildconstants.BuildMainnet instead
+var Build2k = buildconstants.Build2k                     // Deprecated: Use buildconstants.Build2k instead
+var BuildDebug = buildconstants.BuildDebug               // Deprecated: Use buildconstants.BuildDebug instead
+var BuildCalibnet = buildconstants.BuildCalibnet         // Deprecated: Use buildconstants.BuildCalibnet instead
+var BuildInteropnet = buildconstants.BuildInteropnet     // Deprecated: Use buildconstants.BuildInteropnet instead
+var BuildButterflynet = buildconstants.BuildButterflynet // Deprecated: Use buildconstants.BuildButterflynet instead
 
 func BuildTypeString() string {
 	switch BuildType {
-	case BuildDefault:
+	case buildconstants.BuildDefault:
 		return ""
-	case BuildMainnet:
+	case buildconstants.BuildMainnet:
 		return "+mainnet"
-	case Build2k:
+	case buildconstants.Build2k:
 		return "+2k"
-	case BuildDebug:
+	case buildconstants.BuildDebug:
 		return "+debug"
-	case BuildCalibnet:
+	case buildconstants.BuildCalibnet:
 		return "+calibnet"
-	case BuildInteropnet:
+	case buildconstants.BuildInteropnet:
 		return "+interopnet"
-	case BuildButterflynet:
+	case buildconstants.BuildButterflynet:
 		return "+butterflynet"
 	default:
 		return "+huh?"

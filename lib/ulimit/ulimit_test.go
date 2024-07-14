@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 func TestManageFdLimit(t *testing.T) {
@@ -22,7 +22,7 @@ func TestManageFdLimit(t *testing.T) {
 		t.Errorf("Cannot manage file descriptors")
 	}
 
-	if build.DefaultFDLimit != uint64(16<<10) {
+	if buildconstants.DefaultFDLimit != uint64(16<<10) {
 		t.Errorf("Maximum file descriptors default value changed")
 	}
 }

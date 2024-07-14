@@ -15,12 +15,13 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
+var bigBlockGasLimit = big.NewInt(buildconstants.BlockGasLimit)
 
 const MaxBlocks = 15
 
@@ -268,7 +269,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTs, ts *typ
 	nextChain := 0
 	partitions := make([][]*msgChain, MaxBlocks)
 	for i := 0; i < MaxBlocks && nextChain < len(chains); i++ {
-		gasLimit := build.BlockGasLimit
+		gasLimit := buildconstants.BlockGasLimit
 		msgLimit := build.BlockMessageLimit
 		for nextChain < len(chains) {
 			chain := chains[nextChain]
@@ -600,7 +601,7 @@ func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[a
 	mpCfg := mp.getConfig()
 	result := &selectedMessages{
 		msgs:      make([]*types.SignedMessage, 0, mpCfg.SizeLimitLow),
-		gasLimit:  build.BlockGasLimit,
+		gasLimit:  buildconstants.BlockGasLimit,
 		blsLimit:  cbg.MaxLength,
 		secpLimit: cbg.MaxLength,
 	}
@@ -762,7 +763,7 @@ func (*MessagePool) getGasReward(msg *types.SignedMessage, baseFee types.BigInt)
 }
 
 func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
-	// gasPerf = gasReward * build.BlockGasLimit / gasLimit
+	// gasPerf = gasReward * buildconstants.BlockGasLimit / gasLimit
 	a := new(big.Rat).SetInt(new(big.Int).Mul(gasReward, bigBlockGasLimit))
 	b := big.NewRat(1, gasLimit)
 	c := new(big.Rat).Mul(a, b)
@@ -822,7 +823,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		}
 
 		gasLimit += m.Message.GasLimit
-		if gasLimit > build.BlockGasLimit {
+		if gasLimit > buildconstants.BlockGasLimit {
 			break
 		}
 

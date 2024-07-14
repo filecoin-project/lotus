@@ -27,6 +27,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	builtinevm "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
@@ -484,7 +485,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		Value:      big.Zero(),
 		Method:     builtintypes.MethodsEVM.GetBytecode,
 		Params:     nil,
-		GasLimit:   build.BlockGasLimit,
+		GasLimit:   buildconstants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}
@@ -582,7 +583,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		Value:      big.Zero(),
 		Method:     builtintypes.MethodsEVM.GetStorageAt,
 		Params:     params,
-		GasLimit:   build.BlockGasLimit,
+		GasLimit:   buildconstants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}
@@ -650,7 +651,7 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 }
 
 func (a *EthModule) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
-	return ethtypes.EthUint64(build.Eip155ChainId), nil
+	return ethtypes.EthUint64(buildconstants.Eip155ChainId), nil
 }
 
 func (a *EthModule) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
@@ -749,7 +750,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		}
 
 		rewards, totalGasUsed := calculateRewardsAndGasUsed(rewardPercentiles, txGasRewards)
-		maxGas := build.BlockGasLimit * int64(len(ts.Blocks()))
+		maxGas := buildconstants.BlockGasLimit * int64(len(ts.Blocks()))
 
 		// arrays should be reversed at the end
 		baseFeeArray = append(baseFeeArray, ethtypes.EthBigInt(basefee))
@@ -788,7 +789,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 }
 
 func (a *EthModule) NetVersion(_ context.Context) (string, error) {
-	return strconv.FormatInt(build.Eip155ChainId, 10), nil
+	return strconv.FormatInt(buildconstants.Eip155ChainId, 10), nil
 }
 
 func (a *EthModule) NetListening(ctx context.Context) (bool, error) {
@@ -1104,7 +1105,7 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (et
 		// So we re-execute the message with EthCall (well, applyMessage which contains the
 		// guts of EthCall). This will give us an ethereum specific error with revert
 		// information.
-		msg.GasLimit = build.BlockGasLimit
+		msg.GasLimit = buildconstants.BlockGasLimit
 		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
 			err = err2
 		}
@@ -1167,8 +1168,8 @@ func gasSearch(
 		low = high
 		high = high * 2
 
-		if high > build.BlockGasLimit {
-			high = build.BlockGasLimit
+		if high > buildconstants.BlockGasLimit {
+			high = buildconstants.BlockGasLimit
 			break
 		}
 	}
