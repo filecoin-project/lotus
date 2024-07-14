@@ -6,7 +6,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -79,7 +79,7 @@ var minerSelectMsgsCmd = &cli.Command{
 		fmt.Printf("Message selection took %s\n", duration)
 		fmt.Printf("Size of the mempool: %d\n", mpoolSize)
 		fmt.Println("selected messages: ", len(msgs))
-		fmt.Printf("total gas limit of selected messages: %d / %d (%0.2f%%)\n", totalGas, build.BlockGasLimit, 100*float64(totalGas)/float64(build.BlockGasLimit))
+		fmt.Printf("total gas limit of selected messages: %d / %d (%0.2f%%)\n", totalGas, buildconstants.BlockGasLimit, 100*float64(totalGas)/float64(buildconstants.BlockGasLimit))
 		return nil
 	},
 }

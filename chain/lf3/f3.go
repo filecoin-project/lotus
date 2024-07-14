@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -57,7 +57,7 @@ func New(mctx helpers.MetricsCtx, lc fx.Lifecycle, params F3Params) (*F3, error)
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	senderID, err := peer.Decode(build.ManifestServerID)
+	senderID, err := peer.Decode(buildconstants.ManifestServerID)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding F3 manifest server identity: %w", err)
 	}

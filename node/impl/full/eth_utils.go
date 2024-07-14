@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -202,7 +203,7 @@ func ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.
 		Value:      big.Int(tx.Value),
 		Method:     method,
 		Params:     params,
-		GasLimit:   build.BlockGasLimit,
+		GasLimit:   buildconstants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}, nil
@@ -558,7 +559,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		From:                 from,
 		Input:                encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params),
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
-		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
+		ChainID:              ethtypes.EthUint64(buildconstants.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),
 		Type:                 ethtypes.EIP1559TxType,
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),

@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -667,7 +668,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 
 			gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 			require.NoError(t, err)
-			require.LessOrEqual(t, int64(gaslimit), build.BlockGasLimit)
+			require.LessOrEqual(t, int64(gaslimit), buildconstants.BlockGasLimit)
 
 			t.Logf("EthEstimateGas GasLimit=%d", gaslimit)
 

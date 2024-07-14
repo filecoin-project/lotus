@@ -3,11 +3,9 @@ package build
 import (
 	"os"
 
-	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/filecoin-project/go-address"
-
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -30,29 +28,16 @@ func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 	return protocol.ID("/fil/kad/" + string(netName))
 }
 
-func SetAddressNetwork(n address.Network) {
-	address.CurrentNetwork = n
-}
+// Deprecated: Use buildconstants.SetAddressNetwork instead.
+var SetAddressNetwork = buildconstants.SetAddressNetwork
 
-func MustParseAddress(addr string) address.Address {
-	ret, err := address.NewFromString(addr)
-	if err != nil {
-		panic(err)
-	}
+// Deprecated: Use buildconstants.MustParseAddress instead.
+var MustParseAddress = buildconstants.MustParseAddress
 
-	return ret
-}
-
-func MustParseCid(c string) cid.Cid {
-	ret, err := cid.Decode(c)
-	if err != nil {
-		panic(err)
-	}
-
-	return ret
-}
+// Deprecated: Use buildconstants.MustParseCid instead.
+var MustParseCid = buildconstants.MustParseCid
 
 func IsF3Enabled() bool {
 	const F3DisableEnvKey = "LOTUS_DISABLE_F3"
-	return f3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
+	return buildconstants.F3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
 }
