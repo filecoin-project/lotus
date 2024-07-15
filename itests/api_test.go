@@ -173,6 +173,8 @@ func (ts *apiSuite) testOutOfGasError(t *testing.T) {
 		buildconstants.BlockGasLimit = originalLimit
 	}()
 
+	t.Logf("BlockGasLimit changed: %d", buildconstants.BlockGasLimit)
+
 	msg := &types.Message{
 		From:  senderAddr,
 		To:    senderAddr,
@@ -289,6 +291,7 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
 
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, append(ts.opts, kit.MockProofs())...)
+
 	ens.InterconnectAll().BeginMining(4 * time.Millisecond)
 
 	time.Sleep(1 * time.Second)

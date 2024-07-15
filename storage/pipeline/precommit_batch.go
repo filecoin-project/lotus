@@ -67,7 +67,7 @@ type PreCommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc) *PreCommitBatcher {
+func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc) (*PreCommitBatcher, error) {
 	b := &PreCommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -86,19 +86,19 @@ func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCom
 		stopped: make(chan struct{}),
 	}
 
-	go b.run()
-
-	return b
-}
-
-func (b *PreCommitBatcher) run() {
-	var forceRes chan []sealiface.PreCommitBatchRes
-	var lastRes []sealiface.PreCommitBatchRes
-
 	cfg, err := b.getConfig()
 	if err != nil {
-		panic(err)
+		return nil, xerrors.Errorf("failed to get sealer config: %w", err)
 	}
+
+	go b.run(cfg)
+
+	return b, nil
+}
+
+func (b *PreCommitBatcher) run(cfg sealiface.Config) {
+	var forceRes chan []sealiface.PreCommitBatchRes
+	var lastRes []sealiface.PreCommitBatchRes
 
 	timer := time.NewTimer(b.batchWait(cfg.PreCommitBatchWait, cfg.PreCommitBatchSlack))
 	for {

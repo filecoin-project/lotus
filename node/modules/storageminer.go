@@ -256,7 +256,10 @@ func SealingPipeline(fc config.MinerFeeConfig) func(params SealingPipelineParams
 		provingBuffer := md.WPoStProvingPeriod * 2
 		pcp := sealing.NewBasicPreCommitPolicy(api, gsd, provingBuffer)
 
-		pipeline := sealing.New(ctx, api, fc, evts, maddr, ds, sealer, verif, prover, &pcp, gsd, j, as)
+		pipeline, err := sealing.New(ctx, api, fc, evts, maddr, ds, sealer, verif, prover, &pcp, gsd, j, as)
+		if err != nil {
+			return nil, xerrors.Errorf("creating sealing pipeline: %w", err)
+		}
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
