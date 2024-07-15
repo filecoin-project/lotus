@@ -140,3 +140,8 @@ const BootstrapPeerThreshold = 1
 const Eip155ChainId = 31415926
 
 var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
+
+const UnixfsChunkSize uint64 = 1 << 20
+const UnixfsLinksPerLevel = 1024
+
+var MinVerifiedDealSize = abi.NewStoragePower(256)
