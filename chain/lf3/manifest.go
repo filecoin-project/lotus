@@ -19,6 +19,13 @@ import (
 func NewManifestProvider(nn dtypes.NetworkName, cs *store.ChainStore, sm *stmgr.StateManager, ps *pubsub.PubSub) manifest.ManifestProvider {
 	m := manifest.LocalDevnetManifest()
 	m.NetworkName = gpbft.NetworkName(nn)
+	m.GpbftConfig = manifest.DefaultGpbftConfig
+	m.CxConfig = &manifest.CxConfig{
+		ClientRequestTimeout: 10 * time.Second,
+		ServerRequestTimeout: time.Minute,
+		MinimumPollInterval:  time.Duration(build.BlockDelaySecs) * time.Second,
+		MaximumPollInterval:  4 * time.Duration(build.BlockDelaySecs) * time.Second,
+	}
 	m.ECDelayMultiplier = 2.
 	m.ECPeriod = time.Duration(build.BlockDelaySecs) * time.Second
 	m.BootstrapEpoch = int64(buildconstants.F3BootstrapEpoch)
