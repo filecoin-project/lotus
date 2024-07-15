@@ -19,7 +19,7 @@
 **Prepping an RC**:
 
 Perform the following changes to the `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch through a PR:
-- [ ] update the version string in `build/version.go` to one ending with '-rcX'
+- [ ] Update the version string in `build/version.go` to one ending with '-rcX'. Ensure you update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`) or both.
 - [ ] run `make gen && make docsgen-cli` to generate documentation
 - [ ] create a **PR** targetting `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch
   - Opening a PR will trigger a CI run that will build the release and publish it to GitHub as a draft
