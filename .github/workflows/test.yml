@@ -7,6 +7,8 @@ on:
       - master
       - release/*
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Runs nightly at 0AM UTC
 
 defaults:
   run:
@@ -25,10 +27,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       groups: ${{ steps.test.outputs.groups }}
+      run_very_expensive_tests: ${{ steps.envs.outputs.run_very_expensive_tests }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+      - id: envs
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          HAS_RUN_VERY_EXPENSIVE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'run-very-expensive-tests') }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" = "pull_request" && "${HAS_RUN_VERY_EXPENSIVE_LABEL}" = "true" ]]; then
+            echo "run_very_expensive_tests=1" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_EVENT_NAME}" = "schedule" ]]; then
+            echo "run_very_expensive_tests=1" >> $GITHUB_OUTPUT
+          else
+            echo "run_very_expensive_tests=0" >> $GITHUB_OUTPUT
+          fi
+
       - id: test
         env:
           # Unit test groups other than unit-rest
@@ -242,6 +258,9 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.discover.outputs.groups) }}
+    env:
+      LOTUS_RUN_EXPENSIVE_TESTS: 1
+      LOTUS_RUN_VERY_EXPENSIVE_TESTS: ${{ needs.discover.outputs.run_very_expensive_tests }}
     steps:
       - uses: actions/checkout@v4
         with:

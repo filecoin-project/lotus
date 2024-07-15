@@ -26,3 +26,4 @@ Before you mark the PR ready for review, please make sure that:
   - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
 - [ ] Tests exist for new functionality or change in behavior
 - [ ] CI is green
+- [ ] Add the label `run-very-expensive-tests` if the PR requires running very expensive tests
