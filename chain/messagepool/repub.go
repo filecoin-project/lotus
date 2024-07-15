@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -81,7 +82,7 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		return chains[i].Before(chains[j])
 	})
 
-	gasLimit := build.BlockGasLimit
+	gasLimit := buildconstants.BlockGasLimit
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
 loop:

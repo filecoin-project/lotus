@@ -18,6 +18,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -248,6 +250,14 @@ type FullNodeMethods struct {
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"read"`
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"read"`
+
+	F3GetCertificate func(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) `perm:"read"`
+
+	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
+
+	F3GetPowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
+
+	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
@@ -2060,6 +2070,50 @@ func (s *FullNodeStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubsc
 }
 
 func (s *FullNodeStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
+	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetCertificate(p0, p1)
+}
+
+func (s *FullNodeStub) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	if s.Internal.F3GetLatestCertificate == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.F3GetLatestCertificate(p0)
+}
+
+func (s *FullNodeStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	if s.Internal.F3GetPowerTable == nil {
+		return *new(gpbft.PowerEntries), ErrNotSupported
+	}
+	return s.Internal.F3GetPowerTable(p0, p1)
+}
+
+func (s *FullNodeStub) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	return *new(gpbft.PowerEntries), ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
+	if s.Internal.F3Participate == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.F3Participate(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
 	return false, ErrNotSupported
 }
 

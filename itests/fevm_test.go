@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -215,7 +216,7 @@ func TestFEVMETH0(t *testing.T) {
 
 	eth0Addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, make([]byte, 20))
 	require.NoError(t, err)
-	require.Equal(t, *act.Address, eth0Addr)
+	require.Equal(t, *act.DelegatedAddress, eth0Addr)
 }
 
 // TestFEVMDelegateCall deploys two contracts and makes a delegate call transaction
@@ -667,7 +668,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 
 			gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 			require.NoError(t, err)
-			require.LessOrEqual(t, int64(gaslimit), build.BlockGasLimit)
+			require.LessOrEqual(t, int64(gaslimit), buildconstants.BlockGasLimit)
 
 			t.Logf("EthEstimateGas GasLimit=%d", gaslimit)
 

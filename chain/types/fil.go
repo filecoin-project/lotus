@@ -8,7 +8,7 @@ import (
 
 	"github.com/invopop/jsonschema"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 type FIL BigInt
@@ -21,7 +21,7 @@ func (f FIL) String() string {
 }
 
 func (f FIL) Unitless() string {
-	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(build.FilecoinPrecision)))
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(buildconstants.FilecoinPrecision)))
 	if r.Sign() == 0 {
 		return "0"
 	}
@@ -117,7 +117,7 @@ func ParseFIL(s string) (FIL, error) {
 	}
 
 	if !attofil {
-		r = r.Mul(r, big.NewRat(int64(build.FilecoinPrecision), 1))
+		r = r.Mul(r, big.NewRat(int64(buildconstants.FilecoinPrecision), 1))
 	}
 
 	if !r.IsInt() {

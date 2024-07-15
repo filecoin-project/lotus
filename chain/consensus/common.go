@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -168,12 +169,12 @@ func IsValidForSending(nv network.Version, act *types.Actor) bool {
 
 	// Allow placeholder actors with a delegated address and nonce 0 to send a message.
 	// These will be converted to an EthAccount actor on first send.
-	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.DelegatedAddress == nil || act.DelegatedAddress.Protocol() != address.Delegated {
 		return false
 	}
 
 	// Only allow such actors to send if their delegated address is in the EAM's namespace.
-	id, _, err := varint.FromUvarint(act.Address.Payload())
+	id, _, err := varint.FromUvarint(act.DelegatedAddress.Payload())
 	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
 
@@ -225,7 +226,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
 		// So below is overflow safe
 		sumGasLimit += m.GasLimit
-		if sumGasLimit > build.BlockGasLimit {
+		if sumGasLimit > buildconstants.BlockGasLimit {
 			return xerrors.Errorf("block gas limit exceeded")
 		}
 

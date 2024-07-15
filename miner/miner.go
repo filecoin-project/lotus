@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -588,7 +589,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	// To safeguard against this, we make sure it's been EquivocationDelaySecs since our base was calculated,
 	// then re-calculate it.
 	// If the daemon detected equivocated blocks, those blocks will no longer be in the new base.
-	m.niceSleep(time.Until(base.ComputeTime.Add(time.Duration(build.EquivocationDelaySecs) * time.Second)))
+	m.niceSleep(time.Until(base.ComputeTime.Add(time.Duration(buildconstants.EquivocationDelaySecs) * time.Second)))
 	newBase, err := m.GetBestMiningCandidate(ctx)
 	if err != nil {
 		err = xerrors.Errorf("failed to refresh best mining candidate: %w", err)

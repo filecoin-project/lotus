@@ -62,7 +62,7 @@ A `flags` field is used to convey metadata or hints about the entry, currently t
 * A `flag` of `0x02` indicates that the value is suitable for indexing.
 * A `flag` of `0x03` indicates that both the key and value are suitable for indexing.
 
-Typically events contain entires that use either use `0x01` or `0x03` flags.
+Typically events contain entries that use either use `0x01` or `0x03` flags.
 
 The structured logging style of composition should be seen in contrast to an alternative representation as a plain map or struct where the keys represent the fields of the event and the values represent the values of those fields. Some entries may duplicate keys, in which case that particular field of the event could be represented as an array. Builtin actor events are sufficiently well defined that translation to such a format is possible, but left up to the user.
 
@@ -75,7 +75,7 @@ Two Lotus APIs are provided that can be used to obtain direct access to events s
 
 Both APIs take an `EventFilter`  as an argument to determine which events to return. This event filter optionally comprises the following:
 
-- `fromEpoch` determines when to start looking for matching events, either an epoch (in hex form), the string `earliest`  or `latest` . A node is not guaranteed to have historical blocks for a particular epoch however `earliest`  is intended to provide events from the begining of the available list.
+- `fromEpoch` determines when to start looking for matching events, either an epoch (in hex form), the string `earliest`  or `latest` . A node is not guaranteed to have historical blocks for a particular epoch however `earliest`  is intended to provide events from the beginning of the available list.
 - `toEpoch`  determines when to stop looking for matching events, either an epoch (in hex form), the string `earliest`  or `latest`.
 - `addresses` will match a list of addresses that an event comes *from* (currently just a builtin actor address).
 - `fields` is a key to value mapping that matches specific event entries. Each field being matched is a property in the `fields`  map and the value of that property is an array of maps, where each entry is a possible matching value for that entry. Each possible match contains a `codec`  integer (currently just CBOR `0x51` for builtin actor events described in this document) and a `value`  bytes blob (Base64 encoded) of the encoded field value (e.g. a Base64 encoded form of a CBOR encoded key string, such as an actor ID or an event ID). Matching first involves finding if an event’s entries contain one of the desired `key`s, then checking that one of the value matchers for that `key` field matches the value. Value matching is performed both on the `codec`  and the `value`  bytes. If an event’s entry is matched, the entire event is considered a match. This may be used to query for particular event types, such as `allocation`.

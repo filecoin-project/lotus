@@ -593,7 +593,7 @@ func TestTxReceiptBloom(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, th)
 
-	receipt, err := client.EthGetTransactionReceipt(ctx, *th)
+	receipt, err := client.EVM().WaitTransaction(ctx, *th)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 	require.Len(t, receipt.Logs, 1)
@@ -1154,8 +1154,8 @@ func getEthAddress(ctx context.Context, t *testing.T, client *kit.TestFullNode, 
 
 	actor, err := client.StateGetActor(ctx, addr, head.Key())
 	require.NoError(t, err)
-	require.NotNil(t, actor.Address)
-	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
+	require.NotNil(t, actor.DelegatedAddress)
+	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.DelegatedAddress)
 	require.NoError(t, err)
 	return ethContractAddr
 }

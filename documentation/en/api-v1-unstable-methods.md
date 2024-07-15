@@ -80,6 +80,11 @@
   * [EthTraceTransaction](#EthTraceTransaction)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
+* [F3](#F3)
+  * [F3GetCertificate](#F3GetCertificate)
+  * [F3GetLatestCertificate](#F3GetLatestCertificate)
+  * [F3GetPowerTable](#F3GetPowerTable)
+  * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
 * [Gas](#Gas)
@@ -2157,6 +2162,189 @@ Inputs:
 ```json
 [
   "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response: `true`
+
+## F3
+
+
+### F3GetCertificate
+F3GetCertificate returns a finality certificate at given instance number
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response:
+```json
+{
+  "GPBFTInstance": 0,
+  "ECChain": null,
+  "SupplementalData": {
+    "Commitments": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PowerTable": null
+  },
+  "Signers": [
+    0
+  ],
+  "Signature": null,
+  "PowerTableDelta": null
+}
+```
+
+### F3GetLatestCertificate
+F3GetLatestCertificate returns the latest finality certificate
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "GPBFTInstance": 0,
+  "ECChain": null,
+  "SupplementalData": {
+    "Commitments": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PowerTable": null
+  },
+  "Signers": [
+    0
+  ],
+  "Signature": null,
+  "PowerTableDelta": null
+}
+```
+
+### F3GetPowerTable
+F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
+### F3Participate
+F3Participate should be called by a storage provider to participate in signing F3 consensus.
+Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
+The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
+To continue participating in F3 with the given node, call F3Participate again before
+the newLeaseExpiration time.
+newLeaseExpiration cannot be further than 5 minutes in the future.
+It is recommended to call F3Participate every 60 seconds
+with newLeaseExpiration set 2min into the future.
+The oldLeaseExpiration has to be set to newLeaseExpiration of the last successful call.
+For the first call to F3Participate, set the oldLeaseExpiration to zero value/time in the past.
+F3Participate will return true if the lease was accepted.
+The minerID has to be the ID address of the miner.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "0001-01-01T00:00:00Z",
+  "0001-01-01T00:00:00Z"
 ]
 ```
 
@@ -5423,7 +5611,7 @@ Response:
         },
         "Nonce": 42,
         "Balance": "0",
-        "Address": "f01234"
+        "DelegatedAddress": "f01234"
       }
     },
     "GasCharges": [
@@ -5463,7 +5651,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [
@@ -5515,7 +5703,7 @@ Response:
     },
     "Nonce": 42,
     "Balance": "0",
-    "Address": "f01234"
+    "DelegatedAddress": "f01234"
   }
 }
 ```
@@ -5685,7 +5873,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [
@@ -5725,7 +5913,7 @@ Response:
                 },
                 "Nonce": 42,
                 "Balance": "0",
-                "Address": "f01234"
+                "DelegatedAddress": "f01234"
               }
             },
             "GasCharges": [
@@ -5887,7 +6075,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "f01234"
+  "DelegatedAddress": "f01234"
 }
 ```
 
@@ -7306,7 +7494,7 @@ Response:
         },
         "Nonce": 42,
         "Balance": "0",
-        "Address": "f01234"
+        "DelegatedAddress": "f01234"
       }
     },
     "GasCharges": [
@@ -7346,7 +7534,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [

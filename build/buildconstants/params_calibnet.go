@@ -1,7 +1,7 @@
 //go:build calibnet
 // +build calibnet
 
-package build
+package buildconstants
 
 import (
 	"os"
@@ -11,11 +11,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -26,7 +23,6 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 const GenesisNetworkVersion = network.Version0
 
 var NetworkBundle = "calibrationnet"
-var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = false
 
 const BootstrappersFile = "calibnet.pi"
@@ -98,8 +94,8 @@ const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 // 2024-04-03T11:00:00Z
 const UpgradeCalibrationDragonFixHeight = 1493854
 
-// ?????
-const UpgradeWaffleHeight = 999999999999999
+// 2024-07-11T12:00:00Z
+const UpgradeWaffleHeight = 1779094
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -110,11 +106,6 @@ var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 
 func init() {
-	policy.SetSupportedProofTypes(SupportedProofTypes...)
-	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
-	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
-	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
-
 	SetAddressNetwork(address.Testnet)
 
 	Devnet = true
@@ -135,7 +126,6 @@ func init() {
 	}
 
 	BuildType = BuildCalibnet
-
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
@@ -152,3 +142,7 @@ const BootstrapPeerThreshold = 4
 const Eip155ChainId = 314159
 
 var WhitelistedBlock = cid.Undef
+
+const F3Enabled = true
+const ManifestServerID = "12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr"
+const F3BootstrapEpoch abi.ChainEpoch = UpgradeWaffleHeight + 100

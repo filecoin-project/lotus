@@ -108,7 +108,7 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 				if err != nil {
 					return nil, xerrors.Errorf("failed to resolve event index database path: %w", err)
 				}
-				dbPath = filepath.Join(sqlitePath, "events.db")
+				dbPath = filepath.Join(sqlitePath, filter.DefaultDbFilename)
 			} else {
 				dbPath = cfg.DatabasePath
 			}
@@ -138,11 +138,11 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 				}
 
 				actor, err := sm.LoadActor(ctx, idAddr, ts)
-				if err != nil || actor.Address == nil {
+				if err != nil || actor.DelegatedAddress == nil {
 					return idAddr, true
 				}
 
-				return *actor.Address, true
+				return *actor.DelegatedAddress, true
 			},
 
 			MaxFilterResults: cfg.MaxFilterResults,
