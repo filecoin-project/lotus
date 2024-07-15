@@ -11,30 +11,23 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-func NewManifestProvider(nn dtypes.NetworkName, cs *store.ChainStore, sm *stmgr.StateManager, ps *pubsub.PubSub) manifest.ManifestProvider {
+func NewManifestProvider(nn dtypes.NetworkName, ps *pubsub.PubSub) manifest.ManifestProvider {
 	m := manifest.LocalDevnetManifest()
 	m.NetworkName = gpbft.NetworkName(nn)
 	m.ECDelayMultiplier = 2.
 	m.ECPeriod = time.Duration(build.BlockDelaySecs) * time.Second
 	m.BootstrapEpoch = int64(buildconstants.F3BootstrapEpoch)
 	m.ECFinality = int64(build.Finality)
-	m.CommiteeLookback = 5
-
-	ec := &ecWrapper{
-		ChainStore:   cs,
-		StateManager: sm,
-	}
+	m.CommitteeLookback = 5
 
 	switch manifestServerID, err := peer.Decode(buildconstants.ManifestServerID); {
 	case err != nil:
 		log.Warnw("Cannot decode F3 manifest sever identity; falling back on static manifest provider", "err", err)
 		return manifest.NewStaticManifestProvider(m)
 	default:
-		return manifest.NewDynamicManifestProvider(m, ps, ec, manifestServerID)
+		return manifest.NewDynamicManifestProvider(m, ps, manifestServerID)
 	}
 }

@@ -25,10 +25,16 @@ type ecWrapper struct {
 	StateManager *stmgr.StateManager
 }
 
+var _ ec.TipSet = (*f3TipSet)(nil)
+
 type f3TipSet types.TipSet
 
 func (ts *f3TipSet) cast() *types.TipSet {
 	return (*types.TipSet)(ts)
+}
+
+func (ts *f3TipSet) String() string {
+	return ts.cast().String()
 }
 
 func (ts *f3TipSet) Key() gpbft.TipSetKey {
