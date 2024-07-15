@@ -2,6 +2,13 @@ name: Test
 
 on:
   pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
   push:
     branches:
       - master
