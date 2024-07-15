@@ -230,7 +230,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
+func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) (*Sealing, error) {
 	s := &Sealing{
 		Api:      sapi,
 		DealInfo: &CurrentDealInfoManager{sapi},
@@ -257,9 +257,8 @@ func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events
 
 		addrSel: addrSel,
 
-		terminator:  NewTerminationBatcher(mctx, maddr, sapi, addrSel, fc, gc),
-		precommiter: NewPreCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc),
-		commiter:    NewCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc, prov),
+		terminator: NewTerminationBatcher(mctx, maddr, sapi, addrSel, fc, gc),
+		commiter:   NewCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc, prov),
 
 		getConfig: gc,
 
@@ -270,6 +269,11 @@ func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events
 			byState:  map[SectorState]int64{},
 		},
 	}
+	pc, err := NewPreCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc)
+	if err != nil {
+		return nil, err
+	}
+	s.precommiter = pc
 
 	s.notifee = func(before, after SectorInfo) {
 		s.journal.RecordEvent(s.sealingEvtType, func() interface{} {
@@ -287,7 +291,7 @@ func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
 
-	return s
+	return s, nil
 }
 
 func (m *Sealing) Run(ctx context.Context) {
