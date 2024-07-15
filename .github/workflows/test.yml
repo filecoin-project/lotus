@@ -35,7 +35,7 @@ jobs:
       - id: envs
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
-          HAS_RUN_VERY_EXPENSIVE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'run-very-expensive-tests') }}
+          HAS_RUN_VERY_EXPENSIVE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'need/very-expensive-tests') }}
         run: |
           if [[ "${GITHUB_EVENT_NAME}" = "pull_request" && "${HAS_RUN_VERY_EXPENSIVE_LABEL}" = "true" ]]; then
             echo "run_very_expensive_tests=1" >> $GITHUB_OUTPUT

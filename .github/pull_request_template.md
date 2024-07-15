@@ -21,9 +21,9 @@ Before you mark the PR ready for review, please make sure that:
   - If the change does not require a CHANGELOG.md entry, do one of the following:
     - Add `[skip changelog]` to the PR title
     - Add the label `skip/changelog` to the PR
+- [ ] Add the label `need/very-expensive-tests` if the PR requires running very expensive tests
 - [ ] New features have usage guidelines and / or documentation updates in
   - [ ] [Lotus Documentation](https://lotus.filecoin.io)
   - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
 - [ ] Tests exist for new functionality or change in behavior
 - [ ] CI is green
-- [ ] Add the label `run-very-expensive-tests` if the PR requires running very expensive tests
