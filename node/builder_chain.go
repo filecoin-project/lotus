@@ -6,6 +6,8 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-f3/manifest"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -151,7 +153,10 @@ var ChainNode = Options(
 		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 	),
 
-	If(build.F3Enabled, Override(new(*lf3.F3), lf3.New)),
+	If(build.IsF3Enabled(),
+		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
+		Override(new(*lf3.F3), lf3.New),
+	),
 )
 
 func ConfigFullNode(c interface{}) Option {

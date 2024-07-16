@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -165,7 +165,7 @@ func (e *EVM) InvokeSolidityWithValue(ctx context.Context, sender address.Addres
 		From:     sender,
 		Value:    value,
 		Method:   builtintypes.MethodsEVM.InvokeContract,
-		GasLimit: build.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
+		GasLimit: buildconstants.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
 		Params:   params,
 	}
 
@@ -332,14 +332,23 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 }
 
 func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	if mcid, err := e.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
-		return nil, err
-	} else if mcid == nil {
-		return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
-	} else {
+	retries := 3
+	var mcid *cid.Cid
+	var err error
+
+	for retries > 0 {
+		if mcid, err = e.EthGetMessageCidByTransactionHash(ctx, &hash); err != nil {
+			return nil, err
+		} else if mcid == nil {
+			retries--
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
 		e.WaitMsg(ctx, *mcid)
 		return e.EthGetTransactionReceipt(ctx, hash)
 	}
+	return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
 }
 
 // function signatures are the first 4 bytes of the hash of the function name and types

@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -162,7 +163,7 @@ func defaults() []Option {
 		Override(new(*alerting.Alerting), alerting.NewAlertingSystem),
 		Override(new(dtypes.NodeStartTime), FromVal(dtypes.NodeStartTime(time.Now()))),
 
-		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
+		Override(CheckFDLimit, modules.CheckFdLimit(buildconstants.DefaultFDLimit)),
 		Override(CheckFvmConcurrency, modules.CheckFvmConcurrency()),
 		Override(CheckUDPBufferSize, modules.CheckUDPBufferSize(2048*1024)),
 

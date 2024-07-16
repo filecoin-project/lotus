@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -120,15 +121,15 @@ type Ensemble struct {
 	inactive struct {
 		fullnodes       []*TestFullNode
 		miners          []*TestMiner
-		unmanagedMiners []*TestUnmanagedMiner
 		workers         []*TestWorker
+		unmanagedMiners []*TestUnmanagedMiner
 	}
 	active struct {
 		fullnodes       []*TestFullNode
 		miners          []*TestMiner
-		unmanagedMiners []*TestUnmanagedMiner
 		workers         []*TestWorker
 		bms             map[*TestMiner]*BlockMiner
+		unmanagedMiners []*TestUnmanagedMiner
 	}
 	genesis struct {
 		version  network.Version
@@ -171,7 +172,7 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 		require.NoError(t, build.UseNetworkBundle("testing"))
 	}
 
-	build.EquivocationDelaySecs = 0
+	buildconstants.EquivocationDelaySecs = 0
 
 	return n
 }
@@ -323,11 +324,11 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	return n
 }
 
-func (n *Ensemble) UnmanagedMiner(full *TestFullNode, opts ...NodeOpt) (*TestUnmanagedMiner, *Ensemble) {
+func (n *Ensemble) UnmanagedMiner(ctx context.Context, full *TestFullNode, opts ...NodeOpt) (*TestUnmanagedMiner, *Ensemble) {
 	actorAddr, err := address.NewIDAddress(genesis2.MinerStart + n.minerCount())
 	require.NoError(n.t, err)
 
-	minerNode := NewTestUnmanagedMiner(n.t, full, actorAddr, n.options.mockProofs, opts...)
+	minerNode := NewTestUnmanagedMiner(ctx, n.t, full, actorAddr, n.options.mockProofs, opts...)
 	n.AddInactiveUnmanagedMiner(minerNode)
 	return minerNode, n
 }

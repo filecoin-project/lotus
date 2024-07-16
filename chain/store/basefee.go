@@ -10,11 +10,12 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) types.BigInt {
-	// deta := gasLimitUsed/noOfBlocks - build.BlockGasTarget
+	// deta := gasLimitUsed/noOfBlocks - buildconstants.BlockGasTarget
 	// change := baseFee * deta / BlockGasTarget
 	// nextBaseFee = baseFee + change
 	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
@@ -22,22 +23,22 @@ func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int
 	var delta int64
 	if epoch > build.UpgradeSmokeHeight {
 		delta = gasLimitUsed / int64(noOfBlocks)
-		delta -= build.BlockGasTarget
+		delta -= buildconstants.BlockGasTarget
 	} else {
 		delta = build.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * build.PackingEfficiencyNum)
-		delta -= build.BlockGasTarget
+		delta -= buildconstants.BlockGasTarget
 	}
 
 	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
-	if delta > build.BlockGasTarget {
-		delta = build.BlockGasTarget
+	if delta > buildconstants.BlockGasTarget {
+		delta = buildconstants.BlockGasTarget
 	}
-	if delta < -build.BlockGasTarget {
-		delta = -build.BlockGasTarget
+	if delta < -buildconstants.BlockGasTarget {
+		delta = -buildconstants.BlockGasTarget
 	}
 
 	change := big.Mul(baseFee, big.NewInt(delta))
-	change = big.Div(change, big.NewInt(build.BlockGasTarget))
+	change = big.Div(change, big.NewInt(buildconstants.BlockGasTarget))
 	change = big.Div(change, big.NewInt(build.BaseFeeMaxChangeDenom))
 
 	nextBaseFee := big.Add(baseFee, change)

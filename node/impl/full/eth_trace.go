@@ -446,7 +446,7 @@ func decodeCreateViaEAM(et *types.ExecutionTrace) (initcode []byte, addr *ethtyp
 	}
 	ret, err := decodeReturn[eam12.CreateReturn](&et.MsgRct)
 	if err != nil {
-		return nil, (*ethtypes.EthAddress)(&ret.EthAddress), err
+		return nil, nil, err
 	}
 	return initcode, (*ethtypes.EthAddress)(&ret.EthAddress), nil
 }

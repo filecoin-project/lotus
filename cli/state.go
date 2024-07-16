@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -1022,150 +1023,11 @@ func printInternalExecutions(prefix string, trace []types.ExecutionTrace) {
 	}
 }
 
-var compStateTemplate = `
-<html>
- <head>
-  <meta charset="UTF-8">
-  <style>
-   html, body { font-family: monospace; }
-   a:link, a:visited { color: #004; }
-   pre { background: #ccc; }
-   small { color: #444; }
-   .call { color: #00a; }
-   .params { background: #dfd; }
-   .ret { background: #ddf; }
-   .error { color: red; }
-   .exit0 { color: green; }
-   .exec {
-    padding-left: 15px;
-    border-left: 2.5px solid;
-    margin-bottom: 45px;
-   }
-   .exec:hover {
-    background: #eee;
-   }
-   .slow-true-false { color: #660; }
-   .slow-true-true { color: #f80; }
-   .deemp { color: #444; }
-   table {
-    font-size: 12px;
-    border-collapse: collapse;
-   }
-   tr {
-   	border-top: 1px solid black;
-   	border-bottom: 1px solid black;
-   }
-   tr.sum { border-top: 2px solid black; }
-   tr:first-child { border-top: none; }
-   tr:last-child { border-bottom: none; }
+//go:embed compstate.html.template
+var compStateTemplate string
 
-
-   .ellipsis-content,
-   .ellipsis-toggle input {
-     display: none;
-   }
-   .ellipsis-toggle {
-     cursor: pointer;
-   }
-   /**
-   Checked State
-   **/
-
-   .ellipsis-toggle input:checked + .ellipsis {
-     display: none;
-   }
-   .ellipsis-toggle input:checked ~ .ellipsis-content {
-     display: inline;
-	 background-color: #ddd;
-   }
-   hr {
-    border: none;
-    height: 1px;
-    background-color: black;
-	margin: 0;
-   }
-  </style>
- </head>
- <body>
-  <div>Tipset: <b>{{.TipSet.Key}}</b></div>
-  <div>Epoch: {{.TipSet.Height}}</div>
-  <div>State CID: <b>{{.Comp.Root}}</b></div>
-  <div>Calls</div>
-  {{range .Comp.Trace}}
-   {{template "message" (Call .ExecutionTrace false .MsgCid.String)}}
-  {{end}}
- </body>
-</html>
-`
-
-var compStateMsg = `
-<div class="exec" id="{{.Hash}}">
- {{$code := GetCode .Msg.To}}
- <div>
- <a href="#{{.Hash}}">
-  {{if not .Subcall}}
-   <h2 class="call">
-  {{else}}
-   <h4 class="call">
-  {{end}}
-   {{- CodeStr $code}}:{{GetMethod ($code) (.Msg.Method)}}
-  {{if not .Subcall}}
-   </h2>
-  {{else}}
-   </h4>
-  {{end}}
- </a>
- </div>
-
- <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}}), M{{.Msg.Method}}</div>
- {{if not .Subcall}}<div><small>Msg CID: {{.Hash}}</small></div>{{end}}
- {{if gt (len .Msg.Params) 0}}
-  <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
- {{end}}
-  <div><span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
- {{if gt (len .MsgRct.Return) 0}}
-  <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
- {{end}}
-
- {{if ne .MsgRct.ExitCode 0}}
-  <div class="error">Exit: <pre>{{.MsgRct.ExitCode}}</pre></div>
- {{end}}
-
-<details>
-<summary>Gas Trace</summary>
-<table>
- <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th></tr>
-
- {{define "gasC" -}}
- <td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td>
- {{- end}}
-
- {{range .GasCharges}}
-  <tr>
-   <td>{{.Name}}</td>
-   {{template "gasC" .}}
-   <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
-  </tr>
- {{end}}
- {{with sumGas .GasCharges}}
-  <tr class="sum">
-    <td><b>Sum</b></td>
-    {{template "gasC" .}}
-    <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
-  </tr>
- {{end}}
-</table>
-</details>
-
-
- {{if gt (len .Subcalls) 0}}
-  <div>Subcalls:</div>
-  {{$hash := .Hash}}
-  {{range $i, $call := .Subcalls}}
-   {{template "message" (Call $call true (printf "%s-%d" $hash $i))}}
-  {{end}}
- {{end}}
-</div>`
+//go:embed compstatemsg.html.template
+var compStateMsg string
 
 type compStateHTMLIn struct {
 	TipSet *types.TipSet

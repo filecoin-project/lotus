@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -712,7 +712,7 @@ var MpoolGasPerfCmd = &cli.Command{
 
 		baseFee := ts.Blocks()[0].ParentBaseFee
 
-		bigBlockGasLimit := big.NewInt(build.BlockGasLimit)
+		bigBlockGasLimit := big.NewInt(buildconstants.BlockGasLimit)
 
 		getGasReward := func(msg *types.SignedMessage) big.Int {
 			maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
@@ -723,7 +723,7 @@ var MpoolGasPerfCmd = &cli.Command{
 		}
 
 		getGasPerf := func(gasReward big.Int, gasLimit int64) float64 {
-			// gasPerf = gasReward * build.BlockGasLimit / gasLimit
+			// gasPerf = gasReward * buildconstants.BlockGasLimit / gasLimit
 			a := new(stdbig.Rat).SetInt(new(stdbig.Int).Mul(gasReward.Int, bigBlockGasLimit.Int))
 			b := stdbig.NewRat(1, gasLimit)
 			c := new(stdbig.Rat).Mul(a, b)

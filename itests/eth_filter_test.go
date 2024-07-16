@@ -593,7 +593,7 @@ func TestTxReceiptBloom(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, th)
 
-	receipt, err := client.EthGetTransactionReceipt(ctx, *th)
+	receipt, err := client.EVM().WaitTransaction(ctx, *th)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 	require.Len(t, receipt.Logs, 1)

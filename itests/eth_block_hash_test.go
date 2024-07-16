@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -79,7 +79,7 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 		require.Equal(t, ethBlockA, ethBlockB)
 
 		numBlocks := len(ts.Blocks())
-		expGasLimit := ethtypes.EthUint64(int64(numBlocks) * build.BlockGasLimit)
+		expGasLimit := ethtypes.EthUint64(int64(numBlocks) * buildconstants.BlockGasLimit)
 		require.Equal(t, expGasLimit, ethBlockB.GasLimit)
 	}
 }
