@@ -4,6 +4,9 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 // moved from now-defunct build/paramfetch.go
@@ -20,4 +23,11 @@ func MustParseAddress(addr string) address.Address {
 	}
 
 	return ret
+}
+
+func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
+	if upgradeEpoch < 0 {
+		return false
+	}
+	return epoch > upgradeEpoch-policy.ChainFinality && epoch < upgradeEpoch+policy.ChainFinality
 }
