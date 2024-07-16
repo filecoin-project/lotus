@@ -1059,11 +1059,11 @@ type EthTraceFilterCriteria struct {
 
 	// Restricts traces returned to those emitted after this epoch (in hex).
 	// Optional, default: 0.
-	After *int `json:"after,omitempty"`
+	After *EthUint64 `json:"after,omitempty"`
 
 	// Limits the number of traces returned.
 	// Optional, default: all traces.
-	Count *int `json:"count,omitempty"`
+	Count *EthUint64 `json:"count,omitempty"`
 }
 
 type EthCallTraceAction struct {

@@ -5773,13 +5773,13 @@
                                 "fromBlock": "string value",
                                 "toBlock": "string value",
                                 "fromAddress": [
-                                    "string value"
+                                    "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
                                 ],
                                 "toAddress": [
-                                    "string value"
+                                    "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
                                 ],
-                                "after": 123,
-                                "count": 123
+                                "after": "0x5",
+                                "count": "0x5"
                             }
                         ],
                         "additionalProperties": false,
@@ -5794,7 +5794,14 @@
                             },
                             "fromAddress": {
                                 "items": {
-                                    "type": "string"
+                                    "items": {
+                                        "description": "Number is a number",
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "maxItems": 20,
+                                    "minItems": 20,
+                                    "type": "array"
                                 },
                                 "type": "array"
                             },
@@ -5803,7 +5810,14 @@
                             },
                             "toAddress": {
                                 "items": {
-                                    "type": "string"
+                                    "items": {
+                                        "description": "Number is a number",
+                                        "title": "number",
+                                        "type": "number"
+                                    },
+                                    "maxItems": 20,
+                                    "minItems": 20,
+                                    "type": "array"
                                 },
                                 "type": "array"
                             },

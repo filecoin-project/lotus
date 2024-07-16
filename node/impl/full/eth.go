@@ -1078,8 +1078,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 		return []*ethtypes.EthTraceFilterResult{}, nil
 	}
 
-	traceCounter := 0
-
+	traceCounter := ethtypes.EthUint64(0)
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
 		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
 		if err != nil {
@@ -1107,7 +1106,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 				results = append(results, &txTrace)
 
 				// If Count is specified, limit the results
-				if filter.Count != nil && len(results) >= *filter.Count {
+				if filter.Count != nil && ethtypes.EthUint64(len(results)) >= *filter.Count {
 					return results, nil
 				}
 			}
