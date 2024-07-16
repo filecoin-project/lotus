@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
@@ -358,5 +358,5 @@ func IsSyncDone(ctx context.Context, napi v0api.FullNode) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs), nil
+	return time.Now().Unix()-int64(head.MinTimestamp()) < int64(buildconstants.BlockDelaySecs), nil
 }

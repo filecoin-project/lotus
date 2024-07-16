@@ -20,7 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -159,7 +159,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	stateCreated := regexp.MustCompile("Channel exists").MatchString(out)
 	require.True(t, stateCreating || stateCreated)
 
-	channelAmtAtto := types.BigMul(types.NewInt(channelAmt), types.NewInt(build.FilecoinPrecision))
+	channelAmtAtto := types.BigMul(types.NewInt(channelAmt), types.NewInt(buildconstants.FilecoinPrecision))
 	channelAmtStr := fmt.Sprintf("%s", types.FIL(channelAmtAtto))
 	if stateCreating {
 		// If we're in the creating state (most likely) the amount should be pending
@@ -185,7 +185,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 
 	out = creatorCLI.RunCmd("paych", "status", chstr)
 	fmt.Println(out)
-	voucherAmtAtto := types.BigMul(types.NewInt(voucherAmt), types.NewInt(build.FilecoinPrecision))
+	voucherAmtAtto := types.BigMul(types.NewInt(voucherAmt), types.NewInt(buildconstants.FilecoinPrecision))
 	voucherAmtStr := fmt.Sprintf("%s", types.FIL(voucherAmtAtto))
 	// Output should include voucher amount
 	require.Regexp(t, regexp.MustCompile("Voucher.*"+voucherAmtStr), out)

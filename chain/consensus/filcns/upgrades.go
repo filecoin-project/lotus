@@ -51,6 +51,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -93,52 +94,52 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
 
 	updates := []stmgr.Upgrade{{
-		Height:    build.UpgradeBreezeHeight,
+		Height:    buildconstants.UpgradeBreezeHeight,
 		Network:   network.Version1,
 		Migration: UpgradeFaucetBurnRecovery,
 	}, {
-		Height:    build.UpgradeSmokeHeight,
+		Height:    buildconstants.UpgradeSmokeHeight,
 		Network:   network.Version2,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeIgnitionHeight,
+		Height:    buildconstants.UpgradeIgnitionHeight,
 		Network:   network.Version3,
 		Migration: UpgradeIgnition,
 	}, {
-		Height:    build.UpgradeRefuelHeight,
+		Height:    buildconstants.UpgradeRefuelHeight,
 		Network:   network.Version3,
 		Migration: UpgradeRefuel,
 	}, {
-		Height:    build.UpgradeAssemblyHeight,
+		Height:    buildconstants.UpgradeAssemblyHeight,
 		Network:   network.Version4,
 		Expensive: true,
 		Migration: UpgradeActorsV2,
 	}, {
-		Height:    build.UpgradeTapeHeight,
+		Height:    buildconstants.UpgradeTapeHeight,
 		Network:   network.Version5,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeLiftoffHeight,
+		Height:    buildconstants.UpgradeLiftoffHeight,
 		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
 	}, {
-		Height:    build.UpgradeKumquatHeight,
+		Height:    buildconstants.UpgradeKumquatHeight,
 		Network:   network.Version6,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeCalicoHeight,
+		Height:    buildconstants.UpgradeCalicoHeight,
 		Network:   network.Version7,
 		Migration: UpgradeCalico,
 	}, {
-		Height:    build.UpgradePersianHeight,
+		Height:    buildconstants.UpgradePersianHeight,
 		Network:   network.Version8,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeOrangeHeight,
+		Height:    buildconstants.UpgradeOrangeHeight,
 		Network:   network.Version9,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeTrustHeight,
+		Height:    buildconstants.UpgradeTrustHeight,
 		Network:   network.Version10,
 		Migration: UpgradeActorsV3,
 		PreMigrations: []stmgr.PreMigration{{
@@ -154,11 +155,11 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeNorwegianHeight,
+		Height:    buildconstants.UpgradeNorwegianHeight,
 		Network:   network.Version11,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeTurboHeight,
+		Height:    buildconstants.UpgradeTurboHeight,
 		Network:   network.Version12,
 		Migration: UpgradeActorsV4,
 		PreMigrations: []stmgr.PreMigration{{
@@ -174,7 +175,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeHyperdriveHeight,
+		Height:    buildconstants.UpgradeHyperdriveHeight,
 		Network:   network.Version13,
 		Migration: UpgradeActorsV5,
 		PreMigrations: []stmgr.PreMigration{{
@@ -190,7 +191,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeChocolateHeight,
+		Height:    buildconstants.UpgradeChocolateHeight,
 		Network:   network.Version14,
 		Migration: UpgradeActorsV6,
 		PreMigrations: []stmgr.PreMigration{{
@@ -206,7 +207,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeOhSnapHeight,
+		Height:    buildconstants.UpgradeOhSnapHeight,
 		Network:   network.Version15,
 		Migration: UpgradeActorsV7,
 		PreMigrations: []stmgr.PreMigration{{
@@ -217,7 +218,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeSkyrHeight,
+		Height:    buildconstants.UpgradeSkyrHeight,
 		Network:   network.Version16,
 		Migration: UpgradeActorsV8,
 		PreMigrations: []stmgr.PreMigration{{
@@ -228,7 +229,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeSharkHeight,
+		Height:    buildconstants.UpgradeSharkHeight,
 		Network:   network.Version17,
 		Migration: UpgradeActorsV9,
 		PreMigrations: []stmgr.PreMigration{{
@@ -244,7 +245,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeHyggeHeight,
+		Height:    buildconstants.UpgradeHyggeHeight,
 		Network:   network.Version18,
 		Migration: UpgradeActorsV10,
 		PreMigrations: []stmgr.PreMigration{{
@@ -255,7 +256,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeLightningHeight,
+		Height:    buildconstants.UpgradeLightningHeight,
 		Network:   network.Version19,
 		Migration: UpgradeActorsV11,
 		PreMigrations: []stmgr.PreMigration{{
@@ -266,11 +267,11 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeThunderHeight,
+		Height:    buildconstants.UpgradeThunderHeight,
 		Network:   network.Version20,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeWatermelonHeight,
+		Height:    buildconstants.UpgradeWatermelonHeight,
 		Network:   network.Version21,
 		Migration: UpgradeActorsV12,
 		PreMigrations: []stmgr.PreMigration{{
@@ -281,15 +282,15 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeWatermelonFixHeight,
+		Height:    buildconstants.UpgradeWatermelonFixHeight,
 		Network:   network.Version21,
 		Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID1, calibnetv12BuggyManifestCID2),
 	}, {
-		Height:    build.UpgradeWatermelonFix2Height,
+		Height:    buildconstants.UpgradeWatermelonFix2Height,
 		Network:   network.Version21,
 		Migration: buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID2, calibnetv12CorrectManifestCID1),
 	}, {
-		Height:    build.UpgradeDragonHeight,
+		Height:    buildconstants.UpgradeDragonHeight,
 		Network:   network.Version22,
 		Migration: UpgradeActorsV13,
 		PreMigrations: []stmgr.PreMigration{{
@@ -300,11 +301,11 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeCalibrationDragonFixHeight,
+		Height:    buildconstants.UpgradeCalibrationDragonFixHeight,
 		Network:   network.Version22,
 		Migration: upgradeActorsV13VerifregFix(calibnetv13BuggyVerifregCID1, calibnetv13CorrectManifestCID1),
 	}, {
-		Height:    build.UpgradeWaffleHeight,
+		Height:    buildconstants.UpgradeWaffleHeight,
 		Network:   network.Version23,
 		Migration: UpgradeActorsV14,
 		PreMigrations: []stmgr.PreMigration{{
@@ -572,7 +573,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ st
 		return cid.Undef, xerrors.Errorf("checking final state balance failed: %w", err)
 	}
 
-	exp := types.FromFil(build.FilBase)
+	exp := types.FromFil(buildconstants.FilBase)
 	if !exp.Equals(total) {
 		return cid.Undef, xerrors.Errorf("resultant state tree account balance was not correct: %s", total)
 	}
@@ -605,7 +606,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ st
 func UpgradeIgnition(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	store := sm.ChainStore().ActorStore(ctx)
 
-	if build.UpgradeLiftoffHeight <= epoch {
+	if buildconstants.UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
 	}
 
@@ -634,7 +635,7 @@ func UpgradeIgnition(ctx context.Context, sm *stmgr.StateManager, _ stmgr.Migrat
 		return cid.Undef, xerrors.Errorf("second split address: %w", err)
 	}
 
-	err = resetGenesisMsigs0(ctx, sm, store, tree, build.UpgradeLiftoffHeight)
+	err = resetGenesisMsigs0(ctx, sm, store, tree, buildconstants.UpgradeLiftoffHeight)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("resetting genesis msig start epochs: %w", err)
 	}
@@ -948,7 +949,7 @@ func UpgradeLiftoff(ctx context.Context, sm *stmgr.StateManager, _ stmgr.Migrati
 }
 
 func UpgradeCalico(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	if build.BuildType != build.BuildMainnet {
+	if buildconstants.BuildType != buildconstants.BuildMainnet {
 		return root, nil
 	}
 
@@ -1016,8 +1017,8 @@ func UpgradeActorsV3(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 		return cid.Undef, xerrors.Errorf("getting state tree: %w", err)
 	}
 
-	if build.BuildType == build.BuildMainnet {
-		err := stmgr.TerminateActor(ctx, tree, build.ZeroAddress, cb, epoch, ts)
+	if buildconstants.BuildType == buildconstants.BuildMainnet {
+		err := stmgr.TerminateActor(ctx, tree, buildconstants.ZeroAddress, cb, epoch, ts)
 		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %w", err)
 		}
@@ -2199,7 +2200,7 @@ func PreUpgradeActorsV13(ctx context.Context, sm *stmgr.StateManager, cache stmg
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
 		ProgressLogPeriod: time.Minute * 5,
-		UpgradeEpoch:      build.UpgradeDragonHeight,
+		UpgradeEpoch:      buildconstants.UpgradeDragonHeight,
 	}
 
 	_, err = upgradeActorsV13Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
@@ -2218,7 +2219,7 @@ func UpgradeActorsV13(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
 		ProgressLogPeriod: 10 * time.Second,
-		UpgradeEpoch:      build.UpgradeDragonHeight,
+		UpgradeEpoch:      buildconstants.UpgradeDragonHeight,
 	}
 	newRoot, err := upgradeActorsV13Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {

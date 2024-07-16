@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
@@ -172,7 +172,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 
-	ret, err := market.DecodePublishStorageDealsReturn(r.Receipt.Return, build.TestNetworkVersion)
+	ret, err := market.DecodePublishStorageDealsReturn(r.Receipt.Return, buildconstants.TestNetworkVersion)
 	require.NoError(t, err)
 	valid, _, err := ret.IsDealValid(0)
 	require.NoError(t, err)

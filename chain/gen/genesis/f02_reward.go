@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -37,7 +37,7 @@ func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int
 
 	act := &types.Actor{
 		Code:    actcid,
-		Balance: types.BigInt{Int: build.InitialRewardBalance},
+		Balance: types.BigInt{Int: buildconstants.InitialRewardBalance},
 		Head:    statecid,
 	}
 

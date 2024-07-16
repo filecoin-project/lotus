@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -59,7 +59,7 @@ func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message
 		return nil, xerrors.Errorf("failed to store block messages: %w", err)
 	}
 
-	uts := parentTs.MinTimestamp() + build.BlockDelaySecs
+	uts := parentTs.MinTimestamp() + buildconstants.BlockDelaySecs
 
 	blks := []*types.BlockHeader{{
 		Miner:                 parentTs.MinTicketBlock().Miner, // keep reusing the same miner.

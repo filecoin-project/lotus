@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -664,7 +665,7 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 	log.Infof("Submitted window post: %s (deadline %d)", sm.Cid(), proof.Deadline)
 
 	go func() {
-		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 		if err != nil {
 			log.Error(err)
 			return

@@ -35,7 +35,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -1162,7 +1162,7 @@ var StateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		mw, err := api.StateWaitMsg(ctx, msg, build.MessageConfidence)
+		mw, err := api.StateWaitMsg(ctx, msg, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}

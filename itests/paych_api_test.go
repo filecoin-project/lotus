@@ -16,7 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -154,7 +154,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		return true, nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
 		return nil
-	}, int(build.MessageConfidence)+1, build.Finality, func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
+	}, int(buildconstants.MessageConfidence)+1, policy.ChainFinality, func(oldTs, newTs *types.TipSet) (bool, events.StateChange, error) {
 		return preds.OnPaymentChannelActorChanged(channel, preds.OnToSendAmountChanges())(ctx, oldTs.Key(), newTs.Key())
 	})
 	require.NoError(t, err)

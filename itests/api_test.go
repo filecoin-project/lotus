@@ -173,7 +173,7 @@ func (ts *apiSuite) testOutOfGasError(t *testing.T) {
 		buildconstants.BlockGasLimit = originalLimit
 	}()
 
-	t.Logf("BlockGasLimit changed: %d", build.BlockGasLimit)
+	t.Logf("BlockGasLimit changed: %d", buildconstants.BlockGasLimit)
 
 	msg := &types.Message{
 		From:  senderAddr,

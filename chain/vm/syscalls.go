@@ -20,7 +20,6 @@ import (
 	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -116,10 +115,10 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 	}
 
 	// workaround chain halt
-	if buildconstants.IsNearUpgrade(blockA.Height, build.UpgradeOrangeHeight) {
+	if buildconstants.IsNearUpgrade(blockA.Height, buildconstants.UpgradeOrangeHeight) {
 		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
-	if buildconstants.IsNearUpgrade(blockB.Height, build.UpgradeOrangeHeight) {
+	if buildconstants.IsNearUpgrade(blockB.Height, buildconstants.UpgradeOrangeHeight) {
 		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 

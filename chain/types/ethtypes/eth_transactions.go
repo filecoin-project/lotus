@@ -17,7 +17,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -40,8 +40,8 @@ var (
 )
 
 func init() {
-	EthLegacy155TxSignatureLen0 = calcEIP155TxSignatureLen(build.Eip155ChainId, 35)
-	EthLegacy155TxSignatureLen1 = calcEIP155TxSignatureLen(build.Eip155ChainId, 36)
+	EthLegacy155TxSignatureLen0 = calcEIP155TxSignatureLen(buildconstants.Eip155ChainId, 35)
+	EthLegacy155TxSignatureLen1 = calcEIP155TxSignatureLen(buildconstants.Eip155ChainId, 36)
 }
 
 // EthTransaction defines the interface for Ethereum-like transactions.
@@ -140,7 +140,7 @@ func EthTransactionFromSignedFilecoinMessage(smsg *types.SignedMessage) (EthTran
 	switch len(smsg.Signature.Data) {
 	case EthEIP1559TxSignatureLen:
 		tx := Eth1559TxArgs{
-			ChainID:              build.Eip155ChainId,
+			ChainID:              buildconstants.Eip155ChainId,
 			Nonce:                int(smsg.Message.Nonce),
 			To:                   to,
 			Value:                smsg.Message.Value,

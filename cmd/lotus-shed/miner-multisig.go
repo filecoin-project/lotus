@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -96,7 +96,7 @@ var mmProposeWithdrawBalance = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, pcid, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -175,7 +175,7 @@ var mmApproveWithdrawBalance = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Approve Message CID:", acid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, acid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, acid, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -256,7 +256,7 @@ var mmProposeChangeOwner = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, pcid, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -346,7 +346,7 @@ var mmApproveChangeOwner = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Approve Message CID:", acid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, acid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, acid, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -443,7 +443,7 @@ var mmProposeChangeWorker = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, pcid, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -564,7 +564,7 @@ var mmProposeChangeBeneficiary = &cli.Command{
 		fmt.Println("Propose Message CID: ", pcid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, pcid, buildconstants.MessageConfidence)
 		if err != nil {
 			return xerrors.Errorf("waiting for message to be included in block: %w", err)
 		}
@@ -635,7 +635,7 @@ var mmConfirmChangeWorker = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, pcid, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -728,7 +728,7 @@ var mmConfirmChangeBeneficiary = &cli.Command{
 		fmt.Println("Confirm Message CID:", pcid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, pcid, buildconstants.MessageConfidence)
 		if err != nil {
 			return xerrors.Errorf("waiting for message to be included in block: %w", err)
 		}
@@ -842,7 +842,7 @@ var mmProposeControlSet = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, pcid, buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
