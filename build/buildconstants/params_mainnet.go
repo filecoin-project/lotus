@@ -22,8 +22,6 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 
 var NetworkBundle = "mainnet"
 
-var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
-
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
 const ActorDebugging = false
 
