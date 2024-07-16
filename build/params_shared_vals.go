@@ -64,7 +64,4 @@ var MinimumBaseFee int64 = buildconstants.MinimumBaseFee                 // Depr
 var PackingEfficiencyNum int64 = buildconstants.PackingEfficiencyNum     // Deprecated: Use buildconstants.PackingEfficiencyNum instead
 var PackingEfficiencyDenom int64 = buildconstants.PackingEfficiencyDenom // Deprecated: Use buildconstants.PackingEfficiencyDenom instead
 
-var MinDealDuration = buildconstants.MinDealDuration // Deprecated: Use buildconstants.MinDealDuration instead
-var MaxDealDuration = buildconstants.MaxDealDuration // Deprecated: Use buildconstants.MaxDealDuration instead
-
 const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use buildconstants.TestNetworkVersion instead
