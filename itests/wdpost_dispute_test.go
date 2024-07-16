@@ -297,7 +297,6 @@ waitForProof:
 
 		deadlines, err := client.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
-
 		for dlIdx, dl := range deadlines {
 			nonEmpty, err := dl.PostSubmissions.IsEmpty()
 			require.NoError(t, err)
@@ -319,6 +318,7 @@ waitForProof:
 			Deadline:  targetDeadline,
 			PoStIndex: 0,
 		}
+
 		enc, aerr := actors.SerializeParams(params)
 		require.NoError(t, aerr)
 
