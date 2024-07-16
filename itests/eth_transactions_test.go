@@ -736,8 +736,8 @@ func TestTraceFilter(t *testing.T) {
 	require.EqualValues(t, tracesAddressFilter[0].TransactionHash, hash)
 	require.EqualValues(t, tracesAddressFilter[0].EthTrace.Type, "create")
 
-	after := 1
-	count := 2
+	after := ethtypes.EthUint64(1)
+	count := ethtypes.EthUint64(2)
 	filter = ethtypes.EthTraceFilterCriteria{
 		FromBlock: &fromBlock,
 		ToBlock:   &toBlock,
