@@ -258,9 +258,7 @@ func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events
 		addrSel: addrSel,
 
 		terminator: NewTerminationBatcher(mctx, maddr, sapi, addrSel, fc, gc),
-		commiter:   NewCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc, prov),
-
-		getConfig: gc,
+		getConfig:  gc,
 
 		legacySc: storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix)),
 
@@ -274,6 +272,12 @@ func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events
 		return nil, err
 	}
 	s.precommiter = pc
+
+	cc, err := NewCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc, prov)
+	if err != nil {
+		return nil, err
+	}
+	s.commiter = cc
 
 	s.notifee = func(before, after SectorInfo) {
 		s.journal.RecordEvent(s.sealingEvtType, func() interface{} {
