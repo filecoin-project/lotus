@@ -34,9 +34,6 @@ var SetAddressNetwork = buildconstants.SetAddressNetwork
 // Deprecated: Use buildconstants.MustParseAddress instead.
 var MustParseAddress = buildconstants.MustParseAddress
 
-// Deprecated: Use buildconstants.MustParseCid instead.
-var MustParseCid = buildconstants.MustParseCid
-
 func IsF3Enabled() bool {
 	const F3DisableEnvKey = "LOTUS_DISABLE_F3"
 	return buildconstants.F3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
