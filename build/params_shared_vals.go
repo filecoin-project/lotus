@@ -1,8 +1,6 @@
 package build
 
 import (
-	"math/big"
-
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -43,16 +41,8 @@ var FilAllocStorageMining = buildconstants.FilAllocStorageMining // Deprecated: 
 var FilecoinPrecision = buildconstants.FilecoinPrecision // Deprecated: Use buildconstants.FilecoinPrecision instead
 var FilReserved = buildconstants.FilReserved             // Deprecated: Use buildconstants.FilReserved instead
 
-var InitialRewardBalance *big.Int
-var InitialFilReserved *big.Int
-
-func init() {
-	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
-	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
-
-	InitialFilReserved = big.NewInt(int64(FilReserved))
-	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
-}
+var InitialRewardBalance = buildconstants.InitialRewardBalance // Deprecated: Use buildconstants.InitialRewardBalance instead
+var InitialFilReserved = buildconstants.InitialFilReserved     // Deprecated: Use buildconstants.InitialFilReserved instead
 
 // Sync
 var BadBlockCacheSize = buildconstants.BadBlockCacheSize // Deprecated: Use buildconstants.BadBlockCacheSize instead
