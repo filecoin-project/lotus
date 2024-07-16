@@ -15,12 +15,6 @@ import (
 )
 
 // /////
-// Storage
-
-const UnixfsChunkSize uint64 = 1 << 20
-const UnixfsLinksPerLevel = 1024
-
-// /////
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)

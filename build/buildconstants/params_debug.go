@@ -3,8 +3,9 @@
 
 package buildconstants
 
+var InsecurePoStValidation = true
+
 func init() {
-	InsecurePoStValidation = true
 	BuildType |= BuildDebug
 }
 

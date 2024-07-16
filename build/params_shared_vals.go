@@ -8,12 +8,6 @@ import (
 )
 
 // /////
-// Storage
-
-var UnixfsChunkSize uint64 = buildconstants.UnixfsChunkSize  // Deprecated: Use buildconstants.UnixfsChunkSize instead
-var UnixfsLinksPerLevel = buildconstants.UnixfsLinksPerLevel // Deprecated: Use buildconstants.UnixfsLinksPerLevel instead
-
-// /////
 // Consensus / Network
 
 var AllowableClockDriftSecs = buildconstants.AllowableClockDriftSecs // Deprecated: Use buildconstants.AllowableClockDriftSecs instead
@@ -89,6 +83,5 @@ const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use 
 func init() {
 	policy.SetSupportedProofTypes(buildconstants.SupportedProofTypes...)
 	policy.SetConsensusMinerMinPower(buildconstants.ConsensusMinerMinPower)
-	policy.SetMinVerifiedDealSize(buildconstants.MinVerifiedDealSize)
 	policy.SetPreCommitChallengeDelay(buildconstants.PreCommitChallengeDelay)
 }
