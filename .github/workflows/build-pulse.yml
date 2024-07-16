@@ -1,0 +1,52 @@
+name: BuildPulse
+
+on:
+  workflow_run:
+    workflows: ["Test"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: The ID of the Test workflow run
+        required: true
+      head_commit_id:
+        description: The commit ID of the head commit of the Test workflow run
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  actions: read
+
+jobs:
+  buildpulse:
+    name: Upload JUnit XML report to BuildPulse
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Check out lotus
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+      - name: Create a temporary directory to store the JUnit XML reports
+        id: reports
+        run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
+      - name: Download the artifacts so can access the JUnit XML reports from the Test workflow run
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.inputs.run_id || github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ steps.reports.outputs.path }}
+      - name: Upload test results to BuildPulse for flaky test detection
+        uses: buildpulse/buildpulse-action@d4d8e00c645a2e3db0419a43664bbcf868080234
+        with:
+          account: vars.BUIDPULSE_ACCOUNT_ID
+          repository: vars.BUILDPULSE_REPOSITORY_ID
+          path: |
+            ${{ steps.reports.outputs.path }}/*.xml
+          key: ${{ vars.BUILDPULSE_ACCESS_KEY_ID }}
+          secret: ${{ secrets.BUILDPULSE_SECRET_ACCESS_KEY }}
+          commit: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
