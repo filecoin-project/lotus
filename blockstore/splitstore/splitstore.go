@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -59,7 +59,7 @@ var (
 	enableDebugLogWriteTraces = false
 
 	// upgradeBoundary is the boundary before and after an upgrade where we suppress compaction
-	upgradeBoundary = build.Finality
+	upgradeBoundary = policy.ChainFinality
 )
 
 type CompactType int

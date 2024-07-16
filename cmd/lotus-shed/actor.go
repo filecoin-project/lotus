@@ -22,7 +22,7 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -226,7 +226,7 @@ var actorWithdrawCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
+			Value: int(buildconstants.MessageConfidence),
 		},
 		&cli.BoolFlag{
 			Name:  "beneficiary",
@@ -451,7 +451,7 @@ var actorSetOwnerCmd = &cli.Command{
 		fmt.Println("Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
-		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -843,7 +843,7 @@ var actorProposeChangeWorker = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
-		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -964,7 +964,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		_, _ = fmt.Fprintln(cctx.App.Writer, "Confirm Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
-		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -1112,7 +1112,7 @@ var actorProposeChangeBeneficiary = &cli.Command{
 		fmt.Println("Propose Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return xerrors.Errorf("waiting for message to be included in block: %w", err)
 		}
@@ -1235,7 +1235,7 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 		fmt.Println("Confirm Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return xerrors.Errorf("waiting for message to be included in block: %w", err)
 		}

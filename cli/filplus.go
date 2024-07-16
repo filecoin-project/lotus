@@ -30,7 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
@@ -134,7 +134,7 @@ var filplusVerifyClientCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -614,7 +614,7 @@ var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -707,7 +707,7 @@ var filplusRemoveExpiredClaimsCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -973,7 +973,7 @@ If the client id different then claim can be extended up to maximum 5 years from
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
+			Value: int(buildconstants.MessageConfidence),
 		},
 		&cli.IntFlag{
 			Name:  "batch-size",

@@ -14,11 +14,12 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var (
-	BootstrapPeerThreshold = build.BootstrapPeerThreshold
+	BootstrapPeerThreshold = buildconstants.BootstrapPeerThreshold
 
 	RecentSyncBufferSize = 10
 	MaxSyncWorkers       = 5

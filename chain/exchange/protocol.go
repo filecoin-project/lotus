@@ -7,7 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -27,7 +27,7 @@ const (
 //	to partition and reassemble the requests if they go above the maximum.
 //	(Also as a consequence of this temporarily removing the `const`
 //	 qualifier to avoid "const initializer [...] is not a constant" error.)
-var MaxRequestLength = uint64(build.ForkLengthThreshold)
+var MaxRequestLength = uint64(policy.ChainFinality)
 
 const (
 	// Extracted constants from the code.

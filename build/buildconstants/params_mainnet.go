@@ -32,89 +32,89 @@ const GenesisNetworkVersion = network.Version0
 const BootstrappersFile = "mainnet.pi"
 const GenesisFile = "mainnet.car"
 
-const UpgradeBreezeHeight = 41280
+const UpgradeBreezeHeight abi.ChainEpoch = 41280
 
-const BreezeGasTampingDuration = 120
+const BreezeGasTampingDuration abi.ChainEpoch = 120
 
-const UpgradeSmokeHeight = 51000
+const UpgradeSmokeHeight abi.ChainEpoch = 51000
 
-const UpgradeIgnitionHeight = 94000
-const UpgradeRefuelHeight = 130800
+const UpgradeIgnitionHeight abi.ChainEpoch = 94000
+const UpgradeRefuelHeight abi.ChainEpoch = 130800
 
-const UpgradeAssemblyHeight = 138720
+const UpgradeAssemblyHeight abi.ChainEpoch = 138720
 
-const UpgradeTapeHeight = 140760
+const UpgradeTapeHeight abi.ChainEpoch = 140760
 
 // This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 // Miners, clients, developers, custodians all need time to prepare.
 // We still have upgrades and state changes to do, but can happen after signaling timing here.
-const UpgradeLiftoffHeight = 148888
+const UpgradeLiftoffHeight abi.ChainEpoch = 148888
 
-const UpgradeKumquatHeight = 170000
+const UpgradeKumquatHeight abi.ChainEpoch = 170000
 
-const UpgradeCalicoHeight = 265200
-const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
+const UpgradeCalicoHeight abi.ChainEpoch = 265200
+const UpgradePersianHeight abi.ChainEpoch = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
-const UpgradeOrangeHeight = 336458
+const UpgradeOrangeHeight abi.ChainEpoch = 336458
 
 // 2020-12-22T02:00:00Z
 // var because of wdpost_test.go
-var UpgradeClausHeight = abi.ChainEpoch(343200)
+var UpgradeClausHeight abi.ChainEpoch = 343200
 
 // 2021-03-04T00:00:30Z
-const UpgradeTrustHeight = 550321
+const UpgradeTrustHeight abi.ChainEpoch = 550321
 
 // 2021-04-12T22:00:00Z
-const UpgradeNorwegianHeight = 665280
+const UpgradeNorwegianHeight abi.ChainEpoch = 665280
 
 // 2021-04-29T06:00:00Z
-const UpgradeTurboHeight = 712320
+const UpgradeTurboHeight abi.ChainEpoch = 712320
 
 // 2021-06-30T22:00:00Z
-const UpgradeHyperdriveHeight = 892800
+const UpgradeHyperdriveHeight abi.ChainEpoch = 892800
 
 // 2021-10-26T13:30:00Z
-const UpgradeChocolateHeight = 1231620
+const UpgradeChocolateHeight abi.ChainEpoch = 1231620
 
 // 2022-03-01T15:00:00Z
-const UpgradeOhSnapHeight = 1594680
+const UpgradeOhSnapHeight abi.ChainEpoch = 1594680
 
 // 2022-07-06T14:00:00Z
-const UpgradeSkyrHeight = 1960320
+const UpgradeSkyrHeight abi.ChainEpoch = 1960320
 
 // 2022-11-30T14:00:00Z
-const UpgradeSharkHeight = 2383680
+const UpgradeSharkHeight abi.ChainEpoch = 2383680
 
 // 2023-03-14T15:14:00Z
-const UpgradeHyggeHeight = 2683348
+const UpgradeHyggeHeight abi.ChainEpoch = 2683348
 
 // 2023-04-27T13:00:00Z
-const UpgradeLightningHeight = 2809800
+const UpgradeLightningHeight abi.ChainEpoch = 2809800
 
 // 2023-05-18T13:00:00Z
-const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
+const UpgradeThunderHeight abi.ChainEpoch = UpgradeLightningHeight + 2880*21
 
 // 2023-12-12T13:30:00Z
-const UpgradeWatermelonHeight = 3469380
+const UpgradeWatermelonHeight abi.ChainEpoch = 3469380
 
 // 2024-04-24T14:00:00Z
-const UpgradeDragonHeight = 3855360
+const UpgradeDragonHeight abi.ChainEpoch = 3855360
 
 // This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
 // 2024-04-11T15:00:00Z
-const UpgradePhoenixHeight = UpgradeDragonHeight + 120
+const UpgradePhoenixHeight abi.ChainEpoch = UpgradeDragonHeight + 120
 
 // ??????
-var UpgradeWaffleHeight = abi.ChainEpoch(9999999999)
+var UpgradeWaffleHeight abi.ChainEpoch = 9999999999
 
 // This fix upgrade only ran on calibrationnet
-const UpgradeWatermelonFixHeight = -1
+const UpgradeWatermelonFixHeight abi.ChainEpoch = -1
 
 // This fix upgrade only ran on calibrationnet
-const UpgradeWatermelonFix2Height = -2
+const UpgradeWatermelonFix2Height abi.ChainEpoch = -2
 
 // This fix upgrade only ran on calibrationnet
-const UpgradeCalibrationDragonFixHeight = -3
+const UpgradeCalibrationDragonFixHeight abi.ChainEpoch = -3
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

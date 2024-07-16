@@ -1,7 +1,6 @@
 package build
 
 import (
-	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -26,46 +25,46 @@ var IsNearUpgrade = buildconstants.IsNearUpgrade // Deprecated: Use buildconstan
 
 var GenesisNetworkVersion = buildconstants.GenesisNetworkVersion // Deprecated: Use buildconstants.GenesisNetworkVersion instead
 
-var UpgradeBreezeHeight abi.ChainEpoch = buildconstants.UpgradeBreezeHeight // Deprecated: Use buildconstants.UpgradeBreezeHeight instead
+var UpgradeBreezeHeight = buildconstants.UpgradeBreezeHeight // Deprecated: Use buildconstants.UpgradeBreezeHeight instead
 
-var BreezeGasTampingDuration abi.ChainEpoch = buildconstants.BreezeGasTampingDuration // Deprecated: Use buildconstants.BreezeGasTampingDuration instead
+var BreezeGasTampingDuration = buildconstants.BreezeGasTampingDuration // Deprecated: Use buildconstants.BreezeGasTampingDuration instead
 
 // upgrade heights
-var UpgradeSmokeHeight abi.ChainEpoch = buildconstants.UpgradeSmokeHeight           // Deprecated: Use buildconstants.UpgradeSmokeHeight instead
-var UpgradeIgnitionHeight abi.ChainEpoch = buildconstants.UpgradeIgnitionHeight     // Deprecated: Use buildconstants.UpgradeIgnitionHeight instead
-var UpgradeRefuelHeight abi.ChainEpoch = buildconstants.UpgradeRefuelHeight         // Deprecated: Use buildconstants.UpgradeRefuelHeight instead
-var UpgradeTapeHeight abi.ChainEpoch = buildconstants.UpgradeTapeHeight             // Deprecated: Use buildconstants.UpgradeTapeHeight instead
-var UpgradeAssemblyHeight abi.ChainEpoch = buildconstants.UpgradeAssemblyHeight     // Deprecated: Use buildconstants.UpgradeAssemblyHeight instead
-var UpgradeLiftoffHeight abi.ChainEpoch = buildconstants.UpgradeLiftoffHeight       // Deprecated: Use buildconstants.UpgradeLiftoffHeight instead
-var UpgradeKumquatHeight abi.ChainEpoch = buildconstants.UpgradeKumquatHeight       // Deprecated: Use buildconstants.UpgradeKumquatHeight instead
-var UpgradeCalicoHeight abi.ChainEpoch = buildconstants.UpgradeCalicoHeight         // Deprecated: Use buildconstants.UpgradeCalicoHeight instead
-var UpgradePersianHeight abi.ChainEpoch = buildconstants.UpgradePersianHeight       // Deprecated: Use buildconstants.UpgradePersianHeight instead
-var UpgradeOrangeHeight abi.ChainEpoch = buildconstants.UpgradeOrangeHeight         // Deprecated: Use buildconstants.UpgradeOrangeHeight instead
-var UpgradeClausHeight abi.ChainEpoch = buildconstants.UpgradeClausHeight           // Deprecated: Use buildconstants.UpgradeClausHeight instead
-var UpgradeTrustHeight abi.ChainEpoch = buildconstants.UpgradeTrustHeight           // Deprecated: Use buildconstants.UpgradeTrustHeight instead
-var UpgradeNorwegianHeight abi.ChainEpoch = buildconstants.UpgradeNorwegianHeight   // Deprecated: Use buildconstants.UpgradeNorwegianHeight instead
-var UpgradeTurboHeight abi.ChainEpoch = buildconstants.UpgradeTurboHeight           // Deprecated: Use buildconstants.UpgradeTurboHeight instead
-var UpgradeHyperdriveHeight abi.ChainEpoch = buildconstants.UpgradeHyperdriveHeight // Deprecated: Use buildconstants.UpgradeHyperdriveHeight instead
-var UpgradeChocolateHeight abi.ChainEpoch = buildconstants.UpgradeChocolateHeight   // Deprecated: Use buildconstants.UpgradeChocolateHeight instead
-var UpgradeOhSnapHeight abi.ChainEpoch = buildconstants.UpgradeOhSnapHeight         // Deprecated: Use buildconstants.UpgradeOhSnapHeight instead
-var UpgradeSkyrHeight abi.ChainEpoch = buildconstants.UpgradeSkyrHeight             // Deprecated: Use buildconstants.UpgradeSkyrHeight instead
-var UpgradeSharkHeight abi.ChainEpoch = buildconstants.UpgradeSharkHeight           // Deprecated: Use buildconstants.UpgradeSharkHeight instead
-var UpgradeHyggeHeight abi.ChainEpoch = buildconstants.UpgradeHyggeHeight           // Deprecated: Use buildconstants.UpgradeHyggeHeight instead
-var UpgradeLightningHeight abi.ChainEpoch = buildconstants.UpgradeLightningHeight   // Deprecated: Use buildconstants.UpgradeLightningHeight instead
-var UpgradeThunderHeight abi.ChainEpoch = buildconstants.UpgradeThunderHeight       // Deprecated: Use buildconstants.UpgradeThunderHeight instead
-var UpgradeWatermelonHeight abi.ChainEpoch = buildconstants.UpgradeWatermelonHeight // Deprecated: Use buildconstants.UpgradeWatermelonHeight instead
-var UpgradeDragonHeight abi.ChainEpoch = buildconstants.UpgradeDragonHeight         // Deprecated: Use buildconstants.UpgradeDragonHeight instead
-var UpgradePhoenixHeight abi.ChainEpoch = buildconstants.UpgradePhoenixHeight       // Deprecated: Use buildconstants.UpgradePhoenixHeight instead
-var UpgradeWaffleHeight abi.ChainEpoch = buildconstants.UpgradeWaffleHeight         // Deprecated: Use buildconstants.UpgradeWaffleHeight instead
+var UpgradeSmokeHeight = buildconstants.UpgradeSmokeHeight           // Deprecated: Use buildconstants.UpgradeSmokeHeight instead
+var UpgradeIgnitionHeight = buildconstants.UpgradeIgnitionHeight     // Deprecated: Use buildconstants.UpgradeIgnitionHeight instead
+var UpgradeRefuelHeight = buildconstants.UpgradeRefuelHeight         // Deprecated: Use buildconstants.UpgradeRefuelHeight instead
+var UpgradeTapeHeight = buildconstants.UpgradeTapeHeight             // Deprecated: Use buildconstants.UpgradeTapeHeight instead
+var UpgradeAssemblyHeight = buildconstants.UpgradeAssemblyHeight     // Deprecated: Use buildconstants.UpgradeAssemblyHeight instead
+var UpgradeLiftoffHeight = buildconstants.UpgradeLiftoffHeight       // Deprecated: Use buildconstants.UpgradeLiftoffHeight instead
+var UpgradeKumquatHeight = buildconstants.UpgradeKumquatHeight       // Deprecated: Use buildconstants.UpgradeKumquatHeight instead
+var UpgradeCalicoHeight = buildconstants.UpgradeCalicoHeight         // Deprecated: Use buildconstants.UpgradeCalicoHeight instead
+var UpgradePersianHeight = buildconstants.UpgradePersianHeight       // Deprecated: Use buildconstants.UpgradePersianHeight instead
+var UpgradeOrangeHeight = buildconstants.UpgradeOrangeHeight         // Deprecated: Use buildconstants.UpgradeOrangeHeight instead
+var UpgradeClausHeight = buildconstants.UpgradeClausHeight           // Deprecated: Use buildconstants.UpgradeClausHeight instead
+var UpgradeTrustHeight = buildconstants.UpgradeTrustHeight           // Deprecated: Use buildconstants.UpgradeTrustHeight instead
+var UpgradeNorwegianHeight = buildconstants.UpgradeNorwegianHeight   // Deprecated: Use buildconstants.UpgradeNorwegianHeight instead
+var UpgradeTurboHeight = buildconstants.UpgradeTurboHeight           // Deprecated: Use buildconstants.UpgradeTurboHeight instead
+var UpgradeHyperdriveHeight = buildconstants.UpgradeHyperdriveHeight // Deprecated: Use buildconstants.UpgradeHyperdriveHeight instead
+var UpgradeChocolateHeight = buildconstants.UpgradeChocolateHeight   // Deprecated: Use buildconstants.UpgradeChocolateHeight instead
+var UpgradeOhSnapHeight = buildconstants.UpgradeOhSnapHeight         // Deprecated: Use buildconstants.UpgradeOhSnapHeight instead
+var UpgradeSkyrHeight = buildconstants.UpgradeSkyrHeight             // Deprecated: Use buildconstants.UpgradeSkyrHeight instead
+var UpgradeSharkHeight = buildconstants.UpgradeSharkHeight           // Deprecated: Use buildconstants.UpgradeSharkHeight instead
+var UpgradeHyggeHeight = buildconstants.UpgradeHyggeHeight           // Deprecated: Use buildconstants.UpgradeHyggeHeight instead
+var UpgradeLightningHeight = buildconstants.UpgradeLightningHeight   // Deprecated: Use buildconstants.UpgradeLightningHeight instead
+var UpgradeThunderHeight = buildconstants.UpgradeThunderHeight       // Deprecated: Use buildconstants.UpgradeThunderHeight instead
+var UpgradeWatermelonHeight = buildconstants.UpgradeWatermelonHeight // Deprecated: Use buildconstants.UpgradeWatermelonHeight instead
+var UpgradeDragonHeight = buildconstants.UpgradeDragonHeight         // Deprecated: Use buildconstants.UpgradeDragonHeight instead
+var UpgradePhoenixHeight = buildconstants.UpgradePhoenixHeight       // Deprecated: Use buildconstants.UpgradePhoenixHeight instead
+var UpgradeWaffleHeight = buildconstants.UpgradeWaffleHeight         // Deprecated: Use buildconstants.UpgradeWaffleHeight instead
 
 // This fix upgrade only ran on calibrationnet
-var UpgradeWatermelonFixHeight abi.ChainEpoch = buildconstants.UpgradeWatermelonFixHeight // Deprecated: Use buildconstants.UpgradeWatermelonFixHeight instead
+var UpgradeWatermelonFixHeight = buildconstants.UpgradeWatermelonFixHeight // Deprecated: Use buildconstants.UpgradeWatermelonFixHeight instead
 
 // This fix upgrade only ran on calibrationnet
-var UpgradeWatermelonFix2Height abi.ChainEpoch = buildconstants.UpgradeWatermelonFix2Height // Deprecated: Use buildconstants.UpgradeWatermelonFix2Height instead
+var UpgradeWatermelonFix2Height = buildconstants.UpgradeWatermelonFix2Height // Deprecated: Use buildconstants.UpgradeWatermelonFix2Height instead
 
 // This fix upgrade only ran on calibrationnet
-var UpgradeCalibrationDragonFixHeight abi.ChainEpoch = buildconstants.UpgradeCalibrationDragonFixHeight // Deprecated: Use buildconstants.UpgradeCalibrationDragonFixHeight instead
+var UpgradeCalibrationDragonFixHeight = buildconstants.UpgradeCalibrationDragonFixHeight // Deprecated: Use buildconstants.UpgradeCalibrationDragonFixHeight instead
 
 var SupportedProofTypes = buildconstants.SupportedProofTypes         // Deprecated: Use buildconstants.SupportedProofTypes instead
 var ConsensusMinerMinPower = buildconstants.ConsensusMinerMinPower   // Deprecated: Use buildconstants.ConsensusMinerMinPower instead

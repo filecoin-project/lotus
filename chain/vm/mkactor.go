@@ -19,7 +19,7 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -45,7 +45,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 		return nil, address.Undef, err
 	}
 
-	if addr == build.ZeroAddress && rt.NetworkVersion() >= network.Version10 {
+	if addr == buildconstants.ZeroAddress && rt.NetworkVersion() >= network.Version10 {
 		return nil, address.Undef, aerrors.New(exitcode.ErrIllegalArgument, "cannot create the zero bls actor")
 	}
 

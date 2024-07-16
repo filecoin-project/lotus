@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -46,7 +46,7 @@ func init() {
 // sectors arrives. That way, recoveries are declared in preparation for those
 // sectors to be proven.
 //
-// If a declaration is made, it awaits for build.MessageConfidence confirmations
+// If a declaration is made, it awaits for buildconstants.MessageConfidence confirmations
 // on chain before returning.
 //
 // TODO: the waiting should happen in the background. Right now this
@@ -182,7 +182,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 	}
 
 	for _, msg := range msgs {
-		rec, err := s.api.StateWaitMsg(context.TODO(), msg.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := s.api.StateWaitMsg(context.TODO(), msg.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 		if err != nil {
 			return batchedRecoveryDecls, msgs, xerrors.Errorf("declare faults recovered wait error: %w", err)
 		}
@@ -258,7 +258,7 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 // sectors arrives. That way, recoveries are declared in preparation for those
 // sectors to be proven.
 //
-// If a declaration is made, it awaits for build.MessageConfidence confirmations
+// If a declaration is made, it awaits for buildconstants.MessageConfidence confirmations
 // on chain before returning.
 func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber, tsk types.TipSetKey) ([]cid.Cid, error) {
 

@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -43,7 +43,7 @@ func (tx *EthLegacy155TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) 
 
 	gasPrice := EthBigInt(tx.legacyTx.GasPrice)
 	ethTx := EthTx{
-		ChainID:  build.Eip155ChainId,
+		ChainID:  buildconstants.Eip155ChainId,
 		Type:     EthLegacyTxType,
 		Nonce:    EthUint64(tx.legacyTx.Nonce),
 		Hash:     hash,
@@ -163,7 +163,7 @@ func (tx *EthLegacy155TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) 
 	}
 
 	// See https://github.com/ethereum/go-ethereum/blob/86a1f0c39494c8f5caddf6bd9fbddd4bdfa944fd/core/types/transaction_signing.go#L424
-	chainIdMul := big.Mul(big.NewIntUnsigned(build.Eip155ChainId), big.NewInt(2))
+	chainIdMul := big.Mul(big.NewIntUnsigned(buildconstants.Eip155ChainId), big.NewInt(2))
 	vValue = big.Sub(vValue, chainIdMul)
 	vValue = big.Sub(vValue, big8)
 
@@ -241,7 +241,7 @@ func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
 		return nil, err
 	}
 
-	chainIdBigInt := big.NewIntUnsigned(build.Eip155ChainId)
+	chainIdBigInt := big.NewIntUnsigned(buildconstants.Eip155ChainId)
 	chainId, err := formatBigInt(chainIdBigInt)
 	if err != nil {
 		return nil, err
@@ -272,8 +272,8 @@ func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
 
 func validateEIP155ChainId(v big.Int) error {
 	chainId := deriveEIP155ChainId(v)
-	if !chainId.Equals(big.NewIntUnsigned(build.Eip155ChainId)) {
-		return fmt.Errorf("invalid chain id, expected %d, got %s", build.Eip155ChainId, chainId.String())
+	if !chainId.Equals(big.NewIntUnsigned(buildconstants.Eip155ChainId)) {
+		return fmt.Errorf("invalid chain id, expected %d, got %s", buildconstants.Eip155ChainId, chainId.String())
 	}
 	return nil
 }

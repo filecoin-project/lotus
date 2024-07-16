@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -224,7 +224,7 @@ var minerCreateCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
+			Value: int(buildconstants.MessageConfidence),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -306,7 +306,7 @@ var minerCreateCmd = &cli.Command{
 			log.Infof("Initializing owner account %s, message: %s", worker, signed.Cid())
 			log.Infof("Wating for confirmation")
 
-			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
+			mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return xerrors.Errorf("waiting for owner init: %w", err)
 			}
@@ -353,7 +353,7 @@ var minerCreateCmd = &cli.Command{
 		log.Infof("Pushed CreateMiner message: %s", signed.Cid())
 		log.Infof("Waiting for confirmation")
 
-		mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence)
+		mw, err := wapi.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return xerrors.Errorf("waiting for createMiner message: %w", err)
 		}

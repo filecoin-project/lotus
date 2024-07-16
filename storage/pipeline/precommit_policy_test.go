@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -48,7 +48,7 @@ func fakeConfigGetter(stub *fakeConfigStub) dtypes.GetSealingConfigFunc {
 }
 
 func (f *fakeChain) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	return build.TestNetworkVersion, nil
+	return buildconstants.TestNetworkVersion, nil
 }
 
 func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.TipSet {
@@ -109,7 +109,7 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 	require.NoError(t, err)
 
 	// as set when there are no deal pieces
-	maxExtension, err := policy.GetMaxSectorExpirationExtension(build.TestNetworkVersion)
+	maxExtension, err := policy.GetMaxSectorExpirationExtension(buildconstants.TestNetworkVersion)
 	assert.NoError(t, err)
 	expected := h + maxExtension - pBuffer
 	assert.Equal(t, int(expected), int(exp))
@@ -201,7 +201,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	exp, err := pcp.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	maxLifetime, err := policy.GetMaxSectorExpirationExtension(build.TestNetworkVersion)
+	maxLifetime, err := policy.GetMaxSectorExpirationExtension(buildconstants.TestNetworkVersion)
 	require.NoError(t, err)
 
 	// Treated as a CC sector, so expiration becomes currEpoch + maxLifetime = 55 + 1555200

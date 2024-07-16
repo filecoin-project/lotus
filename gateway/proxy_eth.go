@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -146,7 +146,7 @@ func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback eth
 	case "safe":
 		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(ethtypes.SafeEpochDelay)
 	case "finalized":
-		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(build.Finality)
+		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(policy.ChainFinality)
 	default:
 		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
 			return fmt.Errorf("cannot parse block number: %v", err)

@@ -20,7 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 )
@@ -39,11 +39,11 @@ var (
 	// === :: cold (already archived)
 	// ≡≡≡ :: to be archived in this compaction
 	// --- :: hot
-	CompactionThreshold = 5 * build.Finality
+	CompactionThreshold = 5 * policy.ChainFinality
 
 	// CompactionBoundary is the number of epochs from the current epoch at which
 	// we will walk the chain for live objects.
-	CompactionBoundary = 4 * build.Finality
+	CompactionBoundary = 4 * policy.ChainFinality
 
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
 	// there is a sync gap
@@ -551,7 +551,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	boundaryEpoch := currentEpoch - CompactionBoundary
 
 	var inclMsgsEpoch abi.ChainEpoch
-	inclMsgsRange := abi.ChainEpoch(s.cfg.HotStoreMessageRetention) * build.Finality
+	inclMsgsRange := abi.ChainEpoch(s.cfg.HotStoreMessageRetention) * policy.ChainFinality
 	if inclMsgsRange < boundaryEpoch {
 		inclMsgsEpoch = boundaryEpoch - inclMsgsRange
 	}

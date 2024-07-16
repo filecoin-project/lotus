@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -192,7 +192,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	} else {
 
 		winRatio := new(corebig.Rat).SetFrac(
-			types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(build.BlocksPerEpoch)).Int,
+			types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(buildconstants.BlocksPerEpoch)).Int,
 			pow.TotalPower.QualityAdjPower.Int,
 		)
 

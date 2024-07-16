@@ -34,6 +34,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -51,9 +52,9 @@ var futureDebug = false
 var rbfNumBig = types.NewInt(uint64(ReplaceByFeePercentageMinimum))
 var rbfDenomBig = types.NewInt(100)
 
-var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+var RepublishInterval = time.Duration(10*buildconstants.BlockDelaySecs+buildconstants.PropagationDelaySecs) * time.Second
 
-var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
+var minimumBaseFee = types.NewInt(buildconstants.MinimumBaseFee)
 var baseFeeLowerBoundFactor = types.NewInt(10)
 var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
@@ -115,7 +116,7 @@ type MessagePoolEvtMessage struct {
 
 func init() {
 	// if the republish interval is too short compared to the pubsub timecache, adjust it
-	minInterval := pubsub.TimeCacheDuration + time.Duration(build.PropagationDelaySecs)*time.Second
+	minInterval := pubsub.TimeCacheDuration + time.Duration(buildconstants.PropagationDelaySecs)*time.Second
 	if RepublishInterval < minInterval {
 		RepublishInterval = minInterval
 	}
@@ -372,8 +373,8 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 }
 
 func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
-	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](build.BlsSignatureCacheSize)
-	verifcache, _ := lru.New2Q[string, struct{}](build.VerifSigCacheSize)
+	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](buildconstants.BlsSignatureCacheSize)
+	verifcache, _ := lru.New2Q[string, struct{}](buildconstants.VerifSigCacheSize)
 	stateNonceCache, _ := lru.New[stateNonceCacheKey, uint64](32768) // 32k * ~200 bytes = 6MB
 	keycache, _ := lru.New[address.Address, address.Address](1_000_000)
 

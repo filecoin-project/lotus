@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -163,7 +164,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 		t.Log("waiting dispute")
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "dispute not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
@@ -207,7 +208,7 @@ func TestWindowPostDispute(t *testing.T) {
 		require.NoError(t, err)
 
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "recovery not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
@@ -386,7 +387,7 @@ func submitBadProof(
 	}
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+	rec, err := client.StateWaitMsg(ctx, sm.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return err
 	}

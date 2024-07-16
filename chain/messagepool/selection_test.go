@@ -25,7 +25,6 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
@@ -623,7 +622,7 @@ func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
 	tma.setBalance(a1, 1) // in FIL
 
 	// create a larger than selectable chain
-	for i := 0; i < build.BlockMessageLimit; i++ {
+	for i := 0; i < buildconstants.BlockMessageLimit; i++ {
 		m := makeTestMessage(w1, a1, a1, uint64(i), 300000, 100)
 		mustAdd(t, mp, m)
 	}
@@ -681,7 +680,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
 	tma.setBalance(a2, 1) // in FIL
 
 	// create 2 larger than selectable chains
-	for i := 0; i < build.BlockMessageLimit; i++ {
+	for i := 0; i < buildconstants.BlockMessageLimit; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), 300000, 100)
 		mustAdd(t, mp, m)
 		// a2's messages are preferred
@@ -705,7 +704,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
 	}
 
-	expected := build.BlockMessageLimit
+	expected := buildconstants.BlockMessageLimit
 	if len(msgs) != expected {
 		t.Fatalf("expected %d messages, but got %d", expected, len(msgs))
 	}
@@ -786,7 +785,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersAdvanced(t *testing.T) {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
 	}
 
-	expected := build.BlockMessageLimit
+	expected := buildconstants.BlockMessageLimit
 	if len(msgs) != expected {
 		t.Fatalf("expected %d messages, but got %d", expected, len(msgs))
 	}
@@ -1599,7 +1598,7 @@ readLoop:
 
 	mp, tma := makeTestMpool()
 
-	block := tma.nextBlockWithHeight(uint64(build.UpgradeBreezeHeight + 10))
+	block := tma.nextBlockWithHeight(uint64(buildconstants.UpgradeBreezeHeight + 10))
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 
@@ -1775,7 +1774,7 @@ readLoop:
 
 	mp, tma := makeTestMpool()
 
-	block := tma.nextBlockWithHeight(uint64(build.UpgradeHyggeHeight) + 10)
+	block := tma.nextBlockWithHeight(uint64(buildconstants.UpgradeHyggeHeight) + 10)
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 

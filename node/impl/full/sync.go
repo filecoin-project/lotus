@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -57,7 +58,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("loading parent block: %w", err)
 	}
 
-	if a.SlashFilter != nil && os.Getenv("LOTUS_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" && !build.IsNearUpgrade(blk.Header.Height, build.UpgradeWatermelonFixHeight) {
+	if a.SlashFilter != nil && os.Getenv("LOTUS_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" && !buildconstants.IsNearUpgrade(blk.Header.Height, buildconstants.UpgradeWatermelonFixHeight) {
 		witness, fault, err := a.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height)
 		if err != nil {
 			log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
