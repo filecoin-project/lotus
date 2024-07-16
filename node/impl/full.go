@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/market"
@@ -87,7 +88,7 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 		}
 	}
 
-	if inclChainStatus && status.SyncStatus.Epoch > uint64(build.Finality) {
+	if inclChainStatus && status.SyncStatus.Epoch > uint64(policy.ChainFinality) {
 		blockCnt := 0
 		ts := curTs
 
@@ -102,7 +103,7 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 
 		status.ChainStatus.BlocksPerTipsetLast100 = float64(blockCnt) / 100
 
-		for i := 100; i < int(build.Finality); i++ {
+		for i := 100; i < int(policy.ChainFinality); i++ {
 			blockCnt += len(ts.Blocks())
 			tsk := ts.Parents()
 			ts, err = n.ChainGetTipSet(ctx, tsk)
@@ -111,7 +112,7 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 			}
 		}
 
-		status.ChainStatus.BlocksPerTipsetLastFinality = float64(blockCnt) / float64(build.Finality)
+		status.ChainStatus.BlocksPerTipsetLastFinality = float64(blockCnt) / float64(policy.ChainFinality)
 
 	}
 

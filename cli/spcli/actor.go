@@ -23,7 +23,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -43,7 +43,7 @@ func ActorWithdrawCmd(getActor ActorAddressGetter) *cli.Command {
 			&cli.IntFlag{
 				Name:  "confidence",
 				Usage: "number of block confirmations to wait for",
-				Value: int(build.MessageConfidence),
+				Value: int(buildconstants.MessageConfidence),
 			},
 			&cli.BoolFlag{
 				Name:  "beneficiary",
@@ -592,7 +592,7 @@ func ActorSetOwnerCmd(getActor ActorAddressGetter) *cli.Command {
 			fmt.Println("Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -694,7 +694,7 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -830,7 +830,7 @@ func ActorProposeChangeBeneficiaryCmd(getActor ActorAddressGetter) *cli.Command 
 			fmt.Println("Propose Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return xerrors.Errorf("waiting for message to be included in block: %w", err)
 			}
@@ -931,7 +931,7 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			fmt.Println("Confirm Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -1054,7 +1054,7 @@ func ActorConfirmChangeBeneficiaryCmd(getActor ActorAddressGetter) *cli.Command 
 			fmt.Println("Confirm Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return xerrors.Errorf("waiting for message to be included in block: %w", err)
 			}
@@ -1211,7 +1211,7 @@ func ActorCompactAllocatedCmd(getActor ActorAddressGetter) *cli.Command {
 			fmt.Println("CompactSectorNumbers Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -1267,7 +1267,7 @@ var ActorNewMinerCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
+			Value: int(buildconstants.MessageConfidence),
 		},
 	},
 	Action: func(cctx *cli.Context) error {

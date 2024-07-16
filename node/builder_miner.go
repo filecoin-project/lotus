@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -59,7 +60,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 		ConfigCommon(&cfg.Common, build.NodeUserVersion(), false),
 
-		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
+		Override(CheckFDLimit, modules.CheckFdLimit(buildconstants.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
 		Override(new(api.MinerSubsystems), modules.ExtractEnabledMinerSubsystems(cfg.Subsystems)),
 		Override(new(paths.LocalStorage), From(new(repo.LockedRepo))),

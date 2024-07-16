@@ -11,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -122,7 +124,7 @@ func TestNetVersion(t *testing.T) {
 
 	version, err := client.NetVersion(ctx)
 	require.NoError(t, err)
-	require.Equal(t, strconv.Itoa(build.Eip155ChainId), version)
+	require.Equal(t, strconv.Itoa(buildconstants.Eip155ChainId), version)
 }
 
 func TestEthBlockNumberAliases(t *testing.T) {
@@ -137,7 +139,7 @@ func TestEthBlockNumberAliases(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	head := client.WaitTillChain(ctx, kit.HeightAtLeast(build.Finality+100))
+	head := client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
 
 	// latest should be head-1 (parents)
 	latestEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "latest", true)
@@ -156,7 +158,7 @@ func TestEthBlockNumberAliases(t *testing.T) {
 	// finalized should be Finality blocks behind latest
 	finalityEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "finalized", true)
 	require.NoError(t, err)
-	diff = int64(latestEthBlk.Number) - int64(build.Finality) - int64(finalityEthBlk.Number)
+	diff = int64(latestEthBlk.Number) - int64(policy.ChainFinality) - int64(finalityEthBlk.Number)
 	require.GreaterOrEqual(t, diff, int64(0))
 	require.LessOrEqual(t, diff, int64(2))
 }

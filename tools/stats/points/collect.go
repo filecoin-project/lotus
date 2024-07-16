@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -192,7 +191,7 @@ func (c *ChainPointCollector) collectBlockheaderPoints(ctx context.Context, pl *
 		baseFeeIn := tipset.Blocks()[0].ParentBaseFee
 		newBaseFee := store.ComputeNextBaseFee(baseFeeIn, totalUniqGasLimit, len(tipset.Blocks()), tipset.Height())
 
-		baseFeeRat := new(big.Rat).SetFrac(newBaseFee.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
+		baseFeeRat := new(big.Rat).SetFrac(newBaseFee.Int, new(big.Int).SetUint64(buildconstants.FilecoinPrecision))
 		baseFeeFloat, _ := baseFeeRat.Float64()
 		p = influx.NewPoint("chain.basefee", baseFeeFloat)
 		pl.AddPoint(p)
@@ -223,7 +222,7 @@ func (c *ChainPointCollector) collectStaterootPoints(ctx context.Context, pl *in
 		done()
 	}()
 
-	attoFil := types.NewInt(build.FilecoinPrecision).Int
+	attoFil := types.NewInt(buildconstants.FilecoinPrecision).Int
 
 	netBal, err := c.api.WalletBalance(ctx, reward.Address)
 	if err != nil {

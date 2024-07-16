@@ -12,13 +12,13 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var (
 	// WarmupBoundary is the number of epochs to load state during warmup.
-	WarmupBoundary = build.Finality
+	WarmupBoundary = policy.ChainFinality
 )
 
 // warmup acquires the compaction lock and spawns a goroutine to warm up the hotstore;

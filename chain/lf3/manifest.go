@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -18,9 +18,9 @@ func NewManifestProvider(nn dtypes.NetworkName, ps *pubsub.PubSub) manifest.Mani
 	m := manifest.LocalDevnetManifest()
 	m.NetworkName = gpbft.NetworkName(nn)
 	m.ECDelayMultiplier = 2.
-	m.ECPeriod = time.Duration(build.BlockDelaySecs) * time.Second
+	m.ECPeriod = time.Duration(buildconstants.BlockDelaySecs) * time.Second
 	m.BootstrapEpoch = int64(buildconstants.F3BootstrapEpoch)
-	m.ECFinality = int64(build.Finality)
+	m.ECFinality = int64(policy.ChainFinality)
 	m.CommitteeLookback = 5
 
 	switch manifestServerID, err := peer.Decode(buildconstants.ManifestServerID); {

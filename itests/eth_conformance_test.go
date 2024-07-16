@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -464,7 +464,7 @@ func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFul
 	require.NoError(t, err)
 
 	tx := ethtypes.Eth1559TxArgs{
-		ChainID:              build.Eip155ChainId,
+		ChainID:              buildconstants.Eip155ChainId,
 		Value:                big.NewInt(100),
 		Nonce:                0,
 		To:                   &receiverEthAddr,

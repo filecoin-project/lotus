@@ -65,3 +65,5 @@ var PackingEfficiencyNum int64 = buildconstants.PackingEfficiencyNum     // Depr
 var PackingEfficiencyDenom int64 = buildconstants.PackingEfficiencyDenom // Deprecated: Use buildconstants.PackingEfficiencyDenom instead
 
 const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use buildconstants.TestNetworkVersion instead
+
+var MinerFDLimit = buildconstants.MinerFDLimit // Deprecated: Use buildconstants.MinerFDLimit instead

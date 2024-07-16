@@ -29,6 +29,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
@@ -348,8 +349,8 @@ Example invocation of lotus-bench as external executor:
 		case err != nil:
 			return xerrors.Errorf("checking fd limit: %w", err)
 		default:
-			if limit < build.MinerFDLimit {
-				return xerrors.Errorf("soft file descriptor limit (ulimit -n) too low, want %d, current %d", build.MinerFDLimit, limit)
+			if limit < buildconstants.MinerFDLimit {
+				return xerrors.Errorf("soft file descriptor limit (ulimit -n) too low, want %d, current %d", buildconstants.MinerFDLimit, limit)
 			}
 		}
 

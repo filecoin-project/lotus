@@ -23,11 +23,12 @@ import (
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -39,7 +40,7 @@ var MultisigCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
+			Value: int(buildconstants.MessageConfidence),
 		},
 	},
 	Subcommands: []*cli.Command{
@@ -161,7 +162,7 @@ var msigCreateCmd = &cli.Command{
 		fmt.Println("waiting for confirmation..")
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -484,7 +485,7 @@ var msigProposeCmd = &cli.Command{
 
 		fmt.Println("sent proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -633,7 +634,7 @@ var msigApproveCmd = &cli.Command{
 
 		fmt.Println("sent approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -758,7 +759,7 @@ var msigCancelCmd = &cli.Command{
 
 		fmt.Println("sent cancel in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -838,7 +839,7 @@ var msigRemoveProposeCmd = &cli.Command{
 
 		fmt.Println("sent remove proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -958,7 +959,7 @@ var msigAddProposeCmd = &cli.Command{
 
 		_, _ = fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1049,7 +1050,7 @@ var msigAddApproveCmd = &cli.Command{
 
 		fmt.Println("sent add approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1135,7 +1136,7 @@ var msigAddCancelCmd = &cli.Command{
 
 		fmt.Println("sent add cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1216,7 +1217,7 @@ var msigSwapProposeCmd = &cli.Command{
 
 		fmt.Println("sent swap proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1307,7 +1308,7 @@ var msigSwapApproveCmd = &cli.Command{
 
 		fmt.Println("sent swap approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1393,7 +1394,7 @@ var msigSwapCancelCmd = &cli.Command{
 
 		fmt.Println("sent swap cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1489,7 +1490,7 @@ var msigLockProposeCmd = &cli.Command{
 
 		fmt.Println("sent lock proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1595,7 +1596,7 @@ var msigLockApproveCmd = &cli.Command{
 
 		fmt.Println("sent lock approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1696,7 +1697,7 @@ var msigLockCancelCmd = &cli.Command{
 
 		fmt.Println("sent lock cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -1842,7 +1843,7 @@ var msigProposeThresholdCmd = &cli.Command{
 
 		fmt.Println("sent change threshold proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}

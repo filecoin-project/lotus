@@ -20,10 +20,10 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -68,7 +68,7 @@ func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkPar
 		return ts, nil
 	case "finalized":
 		latestHeight := head.Height() - 1
-		safeHeight := latestHeight - build.Finality
+		safeHeight := latestHeight - policy.ChainFinality
 		ts, err := chain.GetTipsetByHeight(ctx, safeHeight, head, true)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
