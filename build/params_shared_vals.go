@@ -1,10 +1,7 @@
 package build
 
 import (
-	"math/big"
-
 	"github.com/filecoin-project/lotus/build/buildconstants"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 // /////
@@ -43,16 +40,8 @@ var FilAllocStorageMining = buildconstants.FilAllocStorageMining // Deprecated: 
 var FilecoinPrecision = buildconstants.FilecoinPrecision // Deprecated: Use buildconstants.FilecoinPrecision instead
 var FilReserved = buildconstants.FilReserved             // Deprecated: Use buildconstants.FilReserved instead
 
-var InitialRewardBalance *big.Int
-var InitialFilReserved *big.Int
-
-func init() {
-	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
-	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
-
-	InitialFilReserved = big.NewInt(int64(FilReserved))
-	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
-}
+var InitialRewardBalance = buildconstants.InitialRewardBalance // Deprecated: Use buildconstants.InitialRewardBalance instead
+var InitialFilReserved = buildconstants.InitialFilReserved     // Deprecated: Use buildconstants.InitialFilReserved instead
 
 // Sync
 var BadBlockCacheSize = buildconstants.BadBlockCacheSize // Deprecated: Use buildconstants.BadBlockCacheSize instead
@@ -75,13 +64,4 @@ var MinimumBaseFee int64 = buildconstants.MinimumBaseFee                 // Depr
 var PackingEfficiencyNum int64 = buildconstants.PackingEfficiencyNum     // Deprecated: Use buildconstants.PackingEfficiencyNum instead
 var PackingEfficiencyDenom int64 = buildconstants.PackingEfficiencyDenom // Deprecated: Use buildconstants.PackingEfficiencyDenom instead
 
-var MinDealDuration = buildconstants.MinDealDuration // Deprecated: Use buildconstants.MinDealDuration instead
-var MaxDealDuration = buildconstants.MaxDealDuration // Deprecated: Use buildconstants.MaxDealDuration instead
-
 const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use buildconstants.TestNetworkVersion instead
-
-func init() {
-	policy.SetSupportedProofTypes(buildconstants.SupportedProofTypes...)
-	policy.SetConsensusMinerMinPower(buildconstants.ConsensusMinerMinPower)
-	policy.SetPreCommitChallengeDelay(buildconstants.PreCommitChallengeDelay)
-}
