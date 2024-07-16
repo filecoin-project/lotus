@@ -21001,7 +21001,7 @@
         {
             "name": "Filecoin.StateMinerPreCommitDepositForPower",
             "description": "```go\nfunc (s *FullNodeStruct) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerPreCommitDepositForPower == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerPreCommitDepositForPower(p0, p1, p2, p3)\n}\n```",
-            "summary": "StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector\n",
+            "summary": "StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector\n",
             "paramStructure": "by-position",
             "params": [
                 {
