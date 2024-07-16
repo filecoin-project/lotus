@@ -1128,20 +1128,6 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 	return results, nil
 }
 
-func decodeAddressFilter(addresses []string) ([]ethtypes.EthAddress, error) {
-	var decodedAddresses []ethtypes.EthAddress
-	for _, addr := range addresses {
-		ethAddr, err := ethtypes.ParseEthAddress(addr)
-		if err != nil {
-			return nil, xerrors.Errorf("invalid address: %w", err)
-		}
-		decodedAddresses = append(decodedAddresses, ethAddr)
-	}
-
-	return decodedAddresses, nil
-
-}
-
 // matchFilterCriteria checks if a trace matches the filter criteria.
 func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTraceFilterCriteria, fromDecodedAddresses []ethtypes.EthAddress, toDecodedAddresses []ethtypes.EthAddress) (bool, error) {
 
