@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -163,7 +165,7 @@ const BootstrapPeerThreshold = 4
 const Eip155ChainId = 314
 
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
-var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
+var WhitelistedBlock = cid.MustParse("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
 const F3Enabled = false
 const ManifestServerID = "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7"

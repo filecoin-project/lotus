@@ -17,6 +17,12 @@ import (
 // /////
 // Consensus / Network
 
+func init() {
+	policy.SetSupportedProofTypes(SupportedProofTypes...)
+	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
+	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
+}
+
 const AllowableClockDriftSecs = uint64(1)
 
 // Blocks (e)
@@ -96,8 +102,3 @@ const InitialBaseFee = 100e6
 const MinimumBaseFee = 100
 const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
-
-// revive:disable-next-line:exported
-// Actor consts
-// TODO: pieceSize unused from actors
-var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
