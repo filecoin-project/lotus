@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -286,23 +285,23 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	// Wait until a proof has been submitted.
 	var targetDeadline uint64
-	var dInfo *dline.Info
 waitForProof:
 	for {
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
-
-		di, err := client.StateMinerProvingDeadline(ctx, maddr, head.Key())
-		require.NoError(t, err)
 
 		deadlines, err := client.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 		for dlIdx, dl := range deadlines {
-			nonEmpty, err := dl.PostSubmissions.IsEmpty()
+			isEmpty, err := dl.PostSubmissions.IsEmpty()
 			require.NoError(t, err)
-			if nonEmpty && di.Index == uint64(dlIdx) {
+			if !isEmpty {
+				head, err := client.ChainHead(ctx)
+				require.NoError(t, err)
+				di, err := client.StateMinerProvingDeadline(ctx, maddr, head.Key())
+				require.NoError(t, err)
+				disputeEpoch := di.Close + 5
+				_ = client.WaitTillChain(ctx, kit.HeightAtLeast(disputeEpoch))
+
 				targetDeadline = uint64(dlIdx)
-				dInfo = di
 				break waitForProof
 			}
 		}
@@ -311,9 +310,6 @@ waitForProof:
 
 	// Try to object to the proof. This should fail.
 	{
-		disputeEpoch := dInfo.Close + 5
-		_ = client.WaitTillChain(ctx, heightAtLeast(disputeEpoch))
-
 		params := &minertypes.DisputeWindowedPoStParams{
 			Deadline:  targetDeadline,
 			PoStIndex: 0,
@@ -333,12 +329,6 @@ waitForProof:
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to dispute valid post")
 		require.Contains(t, err.Error(), "(RetCode=16)")
-	}
-}
-
-func heightAtLeast(target abi.ChainEpoch) func(set *types.TipSet) bool {
-	return func(ts *types.TipSet) bool {
-		return ts.Height() >= target
 	}
 }
 
