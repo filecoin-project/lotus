@@ -28,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -94,10 +95,10 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	}
 
 	// workaround chain halt
-	if build.IsNearUpgrade(blockA.Height, build.UpgradeWatermelonFixHeight) {
+	if buildconstants.IsNearUpgrade(blockA.Height, build.UpgradeWatermelonFixHeight) {
 		return ret, totalGas
 	}
-	if build.IsNearUpgrade(blockB.Height, build.UpgradeWatermelonFixHeight) {
+	if buildconstants.IsNearUpgrade(blockB.Height, build.UpgradeWatermelonFixHeight) {
 		return ret, totalGas
 	}
 
