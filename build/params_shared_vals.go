@@ -2,7 +2,6 @@ package build
 
 import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 // /////
@@ -69,9 +68,3 @@ var MinDealDuration = buildconstants.MinDealDuration // Deprecated: Use buildcon
 var MaxDealDuration = buildconstants.MaxDealDuration // Deprecated: Use buildconstants.MaxDealDuration instead
 
 const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use buildconstants.TestNetworkVersion instead
-
-func init() {
-	policy.SetSupportedProofTypes(buildconstants.SupportedProofTypes...)
-	policy.SetConsensusMinerMinPower(buildconstants.ConsensusMinerMinPower)
-	policy.SetPreCommitChallengeDelay(buildconstants.PreCommitChallengeDelay)
-}

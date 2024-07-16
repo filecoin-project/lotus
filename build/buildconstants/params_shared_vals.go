@@ -17,6 +17,12 @@ import (
 // /////
 // Consensus / Network
 
+func init() {
+	policy.SetSupportedProofTypes(SupportedProofTypes...)
+	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
+	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
+}
+
 const AllowableClockDriftSecs = uint64(1)
 
 // Blocks (e)
