@@ -11,7 +11,7 @@
 
 - This Lotus release includes some correctness improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for details.
 
-- Breaking change in public APIs `storage/pipeline.NewPreCommitBatcher` and `storage/pipeline.New` and `sealing.NewCommitBatcher`. They now have an additional error return to deal with errors arising from fetching the sealing config.
+- Breaking change in public APIs `storage/pipeline.NewPreCommitBatcher`, `sealing.NewCommitBatcher` and `storage/pipeline.New`. They now have an additional error return to deal with errors arising from fetching the sealing config.
 
 ## New features
 
