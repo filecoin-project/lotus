@@ -8,7 +8,7 @@ This patch release backports [PR #12341](https://github.com/filecoin-project/lot
 
 ## ☢️ Upgrade Warnings ☢️
 - The `releases` branch has been deprecated with the 202408 split of 'Lotus Node' and 'Lotus Miner'. See https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives for more info and alternatives for getting the latest release for both the 'Lotus Node' and 'Lotus Miner' based on the [Branch and Tag Strategy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy).
-- Breaking change in public APIs `storage/pipeline.NewPreCommitBatcher` and `storage/pipeline.New`. They now have an additional error return to deal with errors arising from fetching the sealing config.
+- Breaking change in public APIs `storage/pipeline.NewPreCommitBatcher` and `storage/pipeline.New` and `sealing.NewCommitBatcher`. They now have an additional error return to deal with errors arising from fetching the sealing config.
 
 # v1.28.1 / 2024-07-24
 
