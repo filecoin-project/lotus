@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -68,7 +69,7 @@ func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
 		Version:    string(a.BuildVersion),
 		APIVersion: v,
 
-		BlockDelay: build.BlockDelaySecs,
+		BlockDelay: buildconstants.BlockDelaySecs,
 	}, nil
 }
 

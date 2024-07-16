@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -218,7 +218,7 @@ func (gw *Node) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
 		return fmt.Errorf("tipset height in future")
 	}
 	tsBlock := ts.Blocks()[0]
-	heightDelta := time.Duration(uint64(tsBlock.Height-h)*build.BlockDelaySecs) * time.Second
+	heightDelta := time.Duration(uint64(tsBlock.Height-h)*buildconstants.BlockDelaySecs) * time.Second
 	timeAtHeight := time.Unix(int64(tsBlock.Timestamp), 0).Add(-heightDelta)
 
 	if err := gw.checkTimestamp(timeAtHeight); err != nil {

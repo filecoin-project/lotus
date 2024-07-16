@@ -17,7 +17,7 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -530,7 +530,7 @@ func (ca *channelAccessor) waitForPaychCreateMsg(ctx context.Context, channelID 
 }
 
 func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		log.Errorf("wait msg: %v", err)
 		return err
@@ -645,7 +645,7 @@ func (ca *channelAccessor) waitForAddFundsMsg(ctx context.Context, channelID str
 }
 
 func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		log.Error(err)
 		return err

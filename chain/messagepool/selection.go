@@ -14,7 +14,6 @@ import (
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -77,9 +76,9 @@ func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq 
 	}
 
 	// one last sanity check
-	if len(sm.msgs) > build.BlockMessageLimit {
-		log.Errorf("message selection chose too many messages %d > %d", len(sm.msgs), build.BlockMessageLimit)
-		sm.msgs = sm.msgs[:build.BlockMessageLimit]
+	if len(sm.msgs) > buildconstants.BlockMessageLimit {
+		log.Errorf("message selection chose too many messages %d > %d", len(sm.msgs), buildconstants.BlockMessageLimit)
+		sm.msgs = sm.msgs[:buildconstants.BlockMessageLimit]
 	}
 
 	return sm.msgs, nil
@@ -96,7 +95,7 @@ type selectedMessages struct {
 func (sm *selectedMessages) tryToAdd(mc *msgChain) bool {
 	l := len(mc.msgs)
 
-	if build.BlockMessageLimit < l+len(sm.msgs) || sm.gasLimit < mc.gasLimit {
+	if buildconstants.BlockMessageLimit < l+len(sm.msgs) || sm.gasLimit < mc.gasLimit {
 		return false
 	}
 
@@ -140,8 +139,8 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 		return false
 	}
 
-	if smMsgLimit > build.BlockMessageLimit-len(sm.msgs) {
-		smMsgLimit = build.BlockMessageLimit - len(sm.msgs)
+	if smMsgLimit > buildconstants.BlockMessageLimit-len(sm.msgs) {
+		smMsgLimit = buildconstants.BlockMessageLimit - len(sm.msgs)
 	}
 
 	var chainDeps []*msgChain
@@ -193,7 +192,7 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 }
 
 func (sm *selectedMessages) trimChain(mc *msgChain, mp *MessagePool, baseFee types.BigInt) {
-	msgLimit := build.BlockMessageLimit - len(sm.msgs)
+	msgLimit := buildconstants.BlockMessageLimit - len(sm.msgs)
 	if mc.sigType == crypto.SigTypeBLS {
 		if msgLimit > sm.blsLimit {
 			msgLimit = sm.blsLimit
@@ -238,7 +237,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTs, ts *typ
 	result := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
-	if result.gasLimit < minGas || len(result.msgs) >= build.BlockMessageLimit {
+	if result.gasLimit < minGas || len(result.msgs) >= buildconstants.BlockMessageLimit {
 		return result, nil
 	}
 
@@ -270,7 +269,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTs, ts *typ
 	partitions := make([][]*msgChain, MaxBlocks)
 	for i := 0; i < MaxBlocks && nextChain < len(chains); i++ {
 		gasLimit := buildconstants.BlockGasLimit
-		msgLimit := build.BlockMessageLimit
+		msgLimit := buildconstants.BlockMessageLimit
 		for nextChain < len(chains) {
 			chain := chains[nextChain]
 			nextChain++
@@ -411,7 +410,7 @@ tailLoop:
 
 	// if we have room to spare, pick some random (non-negative) chains to fill the block
 	// we pick randomly so that we minimize the probability of duplication among all block producers
-	if result.gasLimit >= minGas && len(result.msgs) <= build.BlockMessageLimit {
+	if result.gasLimit >= minGas && len(result.msgs) <= buildconstants.BlockMessageLimit {
 		preRandomLength := len(result.msgs)
 
 		startRandom := time.Now()
@@ -419,7 +418,7 @@ tailLoop:
 
 		for _, chain := range chains {
 			// have we filled the block
-			if result.gasLimit < minGas || len(result.msgs) >= build.BlockMessageLimit {
+			if result.gasLimit < minGas || len(result.msgs) >= buildconstants.BlockMessageLimit {
 				break
 			}
 
@@ -486,7 +485,7 @@ func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTs, ts *type
 	result := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
-	if result.gasLimit < minGas || len(result.msgs) > build.BlockMessageLimit {
+	if result.gasLimit < minGas || len(result.msgs) > buildconstants.BlockMessageLimit {
 		return result, nil
 	}
 
@@ -849,8 +848,8 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	}
 
 	// if we have more messages from this sender than can fit in a block, drop the extra ones
-	if len(msgs) > build.BlockMessageLimit {
-		msgs = msgs[:build.BlockMessageLimit]
+	if len(msgs) > buildconstants.BlockMessageLimit {
+		msgs = msgs[:buildconstants.BlockMessageLimit]
 	}
 
 	// ok, now we can construct the chains using the messages we have

@@ -26,6 +26,8 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/pubsub"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
@@ -171,14 +173,14 @@ func (syncer *Syncer) Start() {
 
 func (syncer *Syncer) runMetricsTricker(tickerCtx context.Context) {
 	genesisTime := time.Unix(int64(syncer.Genesis.MinTimestamp()), 0)
-	ticker := build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second)
+	ticker := build.Clock.Ticker(time.Duration(buildconstants.BlockDelaySecs) * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			sinceGenesis := build.Clock.Now().Sub(genesisTime)
-			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+			expectedHeight := int64(sinceGenesis.Seconds()) / int64(buildconstants.BlockDelaySecs)
 
 			stats.Record(tickerCtx, metrics.ChainNodeHeightExpected.M(expectedHeight))
 		case <-tickerCtx.Done():
@@ -287,7 +289,7 @@ func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 // messages within this block. If validation passes, it stores the messages in
 // the underlying IPLD block store.
 func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
-	if msgc := len(fblk.BlsMessages) + len(fblk.SecpkMessages); msgc > build.BlockMessageLimit {
+	if msgc := len(fblk.BlsMessages) + len(fblk.SecpkMessages); msgc > buildconstants.BlockMessageLimit {
 		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
 	}
 
@@ -873,7 +875,7 @@ var ErrForkCheckpoint = fmt.Errorf("fork would require us to diverge from checkp
 // syncFork tries to obtain the chain fragment that links a fork into a common
 // ancestor in our view of the chain.
 //
-// If the fork is too long (build.ForkLengthThreshold), or would cause us to diverge from the checkpoint (ErrForkCheckpoint),
+// If the fork is too long (policy.ChainFinality), or would cause us to diverge from the checkpoint (ErrForkCheckpoint),
 // we add the entire subchain to the denylist. Else, we find the common ancestor, and add the missing chain
 // fragment until the fork point to the returned []TipSet.
 func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet, ignoreCheckpoint bool) ([]*types.TipSet, error) {
@@ -917,7 +919,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2? Yes.
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
-	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(build.ForkLengthThreshold))
+	tips, err := syncer.Exchange.GetBlocks(ctx, incoming.Parents(), int(policy.ChainFinality))
 	if err != nil {
 		return nil, err
 	}
@@ -949,7 +951,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 			// Walk back one block in our synced chain to try to meet the fork's
 			// height.
 			forkLengthInHead++
-			if forkLengthInHead > int(build.ForkLengthThreshold) {
+			if forkLengthInHead > int(policy.ChainFinality) {
 				return nil, ErrForkTooLong
 			}
 
@@ -1057,7 +1059,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 
 func checkMsgMeta(ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) error {
 	for bi, b := range ts.Blocks() {
-		if msgc := len(bmi[bi]) + len(smi[bi]); msgc > build.BlockMessageLimit {
+		if msgc := len(bmi[bi]) + len(smi[bi]); msgc > buildconstants.BlockMessageLimit {
 			return fmt.Errorf("block %q has too many messages (%d)", b.Cid(), msgc)
 		}
 

@@ -555,7 +555,7 @@ func (n *Ensemble) Start() *Ensemble {
 				})
 				require.NoError(n.t, err)
 
-				mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+				mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 				require.NoError(n.t, err)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 
@@ -581,7 +581,7 @@ func (n *Ensemble) Start() *Ensemble {
 				})
 				require.NoError(n.t, err2)
 
-				mw, err2 := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+				mw, err2 := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 				require.NoError(n.t, err2)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 			}
@@ -845,7 +845,7 @@ func (n *Ensemble) Start() *Ensemble {
 		})
 		require.NoError(n.t, err)
 
-		mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(n.t, err)
 		require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 

@@ -36,9 +36,9 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -1099,8 +1099,8 @@ var ChainExportCmd = &cli.Command{
 		}
 
 		rsrs := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
-		if cctx.IsSet("recent-stateroots") && rsrs < build.Finality {
-			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", build.Finality)
+		if cctx.IsSet("recent-stateroots") && rsrs < policy.ChainFinality {
+			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", policy.ChainFinality)
 		}
 
 		fi, err := createExportFile(cctx.App, cctx.Args().First())

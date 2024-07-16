@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -35,7 +36,7 @@ var log = logging.Logger("drand")
 // We connect to drand peers via their public HTTP endpoints. The peers are
 // enumerated in the drandServers variable.
 //
-// The root trust for the Drand chain is configured from build.DrandChain.
+// The root trust for the Drand chain is configured from buildconstants.DrandConfigs
 type DrandBeacon struct {
 	isChained bool
 	client    dclient.Client
@@ -239,7 +240,7 @@ var _ beacon.RandomBeacon = (*DrandBeacon)(nil)
 func BeaconScheduleFromDrandSchedule(dcs dtypes.DrandSchedule, genesisTime uint64, ps *pubsub.PubSub) (beacon.Schedule, error) {
 	shd := beacon.Schedule{}
 	for _, dc := range dcs {
-		bc, err := NewDrandBeacon(genesisTime, build.BlockDelaySecs, ps, dc.Config)
+		bc, err := NewDrandBeacon(genesisTime, buildconstants.BlockDelaySecs, ps, dc.Config)
 		if err != nil {
 			return nil, xerrors.Errorf("creating drand beacon: %w", err)
 		}
