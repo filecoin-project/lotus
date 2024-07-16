@@ -22,6 +22,8 @@ var GenesisFile = buildconstants.GenesisFile // Deprecated: Use buildconstants.G
 var NetworkBundle = buildconstants.NetworkBundle   // Deprecated: Use buildconstants.NetworkBundle instead
 var ActorDebugging = buildconstants.ActorDebugging // Deprecated: Use buildconstants.ActorDebugging instead
 
+var IsNearUpgrade = buildconstants.IsNearUpgrade // Deprecated: Use buildconstants.IsNearUpgrade instead
+
 var GenesisNetworkVersion = buildconstants.GenesisNetworkVersion // Deprecated: Use buildconstants.GenesisNetworkVersion instead
 
 var UpgradeBreezeHeight abi.ChainEpoch = buildconstants.UpgradeBreezeHeight // Deprecated: Use buildconstants.UpgradeBreezeHeight instead
