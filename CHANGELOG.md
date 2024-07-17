@@ -6,6 +6,7 @@
 - https://github.com/filecoin-project/lotus/pull/12221: Fix a nil reference panic in the ETH Trace API
 - https://github.com/filecoin-project/lotus/pull/12112: Moved consts from build/ to build/buildconstants/ for ligher curio deps.
 - https://github.com/filecoin-project/lotus/pull/12237: Upgrade to go-f3 `v0.0.4`.
+- https://github.com/filecoin-project/lotus/pull/12251: Dropping support from ProveCommitSector1 method from lotus-miner
 
 ## ☢️ Upgrade Warnings ☢️
 
