@@ -5,14 +5,12 @@ on:
     branches:
       - release/v*
       - release/miner/v*
-      - releases
     paths:
       - build/version.go
   pull_request:
     branches:
       - release/v*
       - release/miner/v*
-      - releases
     paths:
       - build/version.go
   workflow_dispatch:
@@ -58,8 +56,8 @@ jobs:
             jq 'map(select(.version | endswith("-dev") | not))' |
             jq 'map(select(.released | not))' |
             jq 'map(select(
-              (env.GITHUB_EVENT_NAME == "push" and ((env.GITHUB_REF == "refs/heads/releases" and .prerelease == false) or (env.GITHUB_REF != "refs/heads/releases" and .prerelease == true))) or
-              (env.GITHUB_EVENT_NAME == "pull_request" and ((env.GITHUB_BASE_REF == "releases" and .prerelease == false) or (env.GITHUB_BASE_REF != "releases" and .prerelease == true))) or
+              (env.GITHUB_EVENT_NAME == "push") or
+              (env.GITHUB_EVENT_NAME == "pull_request") or
               (env.GITHUB_EVENT_NAME == "workflow_dispatch" and (.name as $name | env.projects | fromjson | index($name) != null))
             ))' |
             jq -c '.' | xargs -I {} -0 echo "projects={}" |

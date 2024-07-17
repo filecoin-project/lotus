@@ -32,13 +32,10 @@ Test the release candidate thoroughly, including automated and manual tests to e
 
 **Stable Release**
 
-Perform the following changes to the `release/vX.Y.Z` branch (optionally, through a PR):
+Perform the following changes to the `release/vX.Y.Z` branch through a PR:
 - [ ] update the version string in `build/version.go` to one **NOT** ending with '-rcX'
 - [ ] run `make gen && make docsgen-cli` to generate documentation
-- [ ] either commit the changes directly or open a PR against the `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch
-
-Perform the following changes to the `releases` branch through a PR:
-- [ ] create a **PR** targetting `releases` branch (base) from `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch (head)
+- [ ] create a **PR** targetting `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch
   - Opening a PR will trigger a CI run that will build the release and publish it to GitHub as a draft
   - Merging the PR will trigger a CI run that will publish the GitHub release (it will also create a git tag)
 
