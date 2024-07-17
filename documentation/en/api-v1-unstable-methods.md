@@ -2075,16 +2075,16 @@ Inputs:
 ```json
 [
   {
-    "fromBlock": "string value",
-    "toBlock": "string value",
+    "fromBlock": "latest",
+    "toBlock": "latest",
     "fromAddress": [
       "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
     ],
     "toAddress": [
       "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
     ],
-    "after": "0x5",
-    "count": "0x5"
+    "after": "0x0",
+    "count": "0x64"
   }
 ]
 ```

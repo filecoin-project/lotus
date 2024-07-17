@@ -372,6 +372,20 @@ func init() {
 		Address:   []ethtypes.EthAddress{ethaddr},
 	})
 
+	after := ethtypes.EthUint64(0)
+	count := ethtypes.EthUint64(100)
+
+	ethTraceFilterCriteria := ethtypes.EthTraceFilterCriteria{
+		FromBlock:   pstring("latest"),
+		ToBlock:     pstring("latest"),
+		FromAddress: ethtypes.EthAddressList{ethaddr},
+		ToAddress:   ethtypes.EthAddressList{ethaddr},
+		After:       &after,
+		Count:       &count,
+	}
+	addExample(&ethTraceFilterCriteria)
+	addExample(ethTraceFilterCriteria)
+
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
