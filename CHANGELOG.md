@@ -6,13 +6,13 @@
 
 ## Improvements
 
-# v1.27.2-rc1 / 2024-07-10
+# v1.27.2 / 2024-07-17
 
-This is a release candidate of Lotus v1.27.2. This will be an OPTIONAL Lotus release. It contains some improvements that are relevant for node operators that are using or serving `eth_*` RPC methods.
+This is the stable release of Lotus v1.27.2. This will be an OPTIONAL Lotus release. It contains some improvements that are relevant for node operators that are using or serving `eth_*` RPC methods. It also contains an upgraded libp2p to v0.35.3 which is included in this release for additional testing of some fixes that may solve some connectivity problems experienced by some users (See [libp2p/go-libp2p#2858](https://github.com/libp2p/go-libp2p/issues/2858) for more information).
 
 ## ☢️ Upgrade Warnings ☢️
 
-- This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
+- This Lotus release includes some correctness improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for details.
 
 ## Improvements
 
@@ -22,6 +22,10 @@ This is a release candidate of Lotus v1.27.2. This will be an OPTIONAL Lotus rel
 - chore: ci: remove non-existent market tests from CI workflow (#12099) ([filecoin-project/lotus#12099](https://github.com/filecoin-project/lotus/pull/12099))
 - fix: bootstrap: remove unmaintained bootstrap node (#12133) ([filecoin-project/lotus#12133](https://github.com/filecoin-project/lotus/pull/12133))
 - Update bootstrap list to support both IPv4 and IPv6 (#12103) ([filecoin-project/lotus#12103](https://github.com/filecoin-project/lotus/pull/12103))
+
+## Dependencies
+
+- chore: deps: upgrade to libp2p@v0.35.3 from v0.34.1 ([filecoin-project/lotus#12249](https://github.com/filecoin-project/lotus/pull/12249))
 
 Contributors
 
