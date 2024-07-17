@@ -233,10 +233,10 @@ jobs:
         env:
           tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           previous: ${{ fromJSON(steps.project.outputs.config).previous }}
-          body: ${{ fromJSON(steps.before.outputs.release).body }}
+          body: ${{ steps.before.outputs.release == 'null' && '' || fromJSON(steps.before.outputs.release).body }}
           current: ${{ github.event.inputs.ref || github.sha }}
         run: |
-          if [[ -z "$body" ]]; then
+          if [[ -n "$body" ]]; then
             echo "$body" >> release_body.md
           else
             csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
@@ -251,6 +251,8 @@ jobs:
               mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
               rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
               ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+              echo "## Release Log" >> release_body.md
+              echo "" >> release_body.md
               ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
             fi
           fi
@@ -265,7 +267,7 @@ jobs:
           name: ${{ fromJSON(steps.project.outputs.config).tag }}
           draft: ${{ steps.before.outputs.release == 'null' && true || fromJSON(steps.before.outputs.release).draft }}
           prerelease: ${{ fromJSON(steps.project.outputs.config).prerelease }}
-          make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
+          make_latest: ${{ matrix.project == 'node' && fromJSON(steps.project.outputs.config).latest || false }}
           discussion_category_name: ""
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -318,7 +320,7 @@ jobs:
         if: github.event.inputs.publish == 'true' || github.event_name == 'push'
         env:
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
-          make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
+          make_latest: ${{ matrix.project == 'node' && fromJSON(steps.project.outputs.config).latest || false }}
           GITHUB_TOKEN: ${{ secrets.TAG_CREATE_GITHUB_TOKEN || github.token }}
         run: |
           gh api -X PATCH /repos/$GITHUB_REPOSITORY/releases/$release_id \
