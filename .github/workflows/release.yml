@@ -219,29 +219,6 @@ jobs:
           ls -la dist
       - name: Install zsh (release body generation dependency)
         run: sudo apt update && sudo apt install -y zsh
-      - name: Generate release body
-        env:
-          tag: ${{ fromJSON(steps.project.outputs.config).tag }}
-          previous: ${{ fromJSON(steps.project.outputs.config).previous }}
-          current: ${{ github.event.inputs.ref || github.sha }}
-        run: |
-          echo "# $tag" > release_body.md
-          echo "" >> release_body.md
-          csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
-          # Checking the files in reverse order to get to the UNRELEASED section last
-          for file in $(ls -r xx*); do
-            if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file; then
-              tail -n +3 $file >> release_body.md
-              break
-            fi
-          done
-          if [[ "$previous" != '' ]]; then
-            mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
-          fi
-          cat release_body.md
       - name: Find release
         id: before
         env:
@@ -250,8 +227,34 @@ jobs:
         run: |
           echo "release<<EOF" | tee -a $GITHUB_OUTPUT
           gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
-            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url}) | .[0]' | tee -a $GITHUB_OUTPUT
+            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url, "body": .body}) | .[0]' | tee -a $GITHUB_OUTPUT
           echo "EOF" | tee -a $GITHUB_OUTPUT
+      - name: Generate release body
+        env:
+          tag: ${{ fromJSON(steps.project.outputs.config).tag }}
+          previous: ${{ fromJSON(steps.project.outputs.config).previous }}
+          body: ${{ fromJSON(steps.before.outputs.release).body }}
+          current: ${{ github.event.inputs.ref || github.sha }}
+        run: |
+          if [[ -z "$body" ]]; then
+            echo "$body" >> release_body.md
+          else
+            csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
+            # Checking the files in reverse order to get to the UNRELEASED section last
+            for file in $(ls -r xx*); do
+              if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file; then
+                tail -n +3 $file >> release_body.md
+                break
+              fi
+            done
+            if [[ "$previous" != '' ]]; then
+              mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+              rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+              ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
+              ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
+            fi
+          fi
+          cat release_body.md
       - name: Create or update release
         id: after
         env:
