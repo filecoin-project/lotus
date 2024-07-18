@@ -15,7 +15,8 @@ const EnvRunExpensiveTests = "LOTUS_RUN_EXPENSIVE_TESTS"
 // a standard CI setup, and should be skipped unless explicitly enabled.
 const EnvRunVeryExpensiveTests = "LOTUS_RUN_VERY_EXPENSIVE_TESTS"
 
-// Expensive marks a test as expensive, skipping it immediately if not running an
+// Expensive marks a test as expensive, skipping it immediately if not running in a CI environment
+// or if the LOTUS_RUN_EXPENSIVE_TESTS environment variable is not set to "1".
 func Expensive(t *testing.T) {
 	switch {
 	case os.Getenv("CI") == "true":
@@ -25,7 +26,8 @@ func Expensive(t *testing.T) {
 	}
 }
 
-// Expensive marks a test as expensive, skipping it immediately if not running an
+// VeryExpensive marks a test as VERY expensive, skipping it immediately if the
+// LOTUS_RUN_VERY_EXPENSIVE_TESTS environment variable is not set to "1".
 func VeryExpensive(t *testing.T) {
 	if os.Getenv(EnvRunVeryExpensiveTests) != "1" {
 		t.Skipf("skipping VERY expensive test outside of CI; enable by setting env var %s=1", EnvRunVeryExpensiveTests)

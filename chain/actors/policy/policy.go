@@ -195,8 +195,8 @@ func SetPreCommitChallengeDelay(delay abi.ChainEpoch) {
 
 }
 
-// TODO: this function shouldn't really exist. Instead, the API should expose the precommit delay.
 func GetPreCommitChallengeDelay() abi.ChainEpoch {
+	// TODO: this function shouldn't really exist. Instead, the API should expose the precommit delay.
 	return miner14.PreCommitChallengeDelay
 }
 
@@ -521,7 +521,7 @@ func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch)
 	return market14.DealDurationBounds(pieceSize)
 }
 
-// Sets the challenge window and scales the proving period to match (such that
+// SetWPoStChallengeWindow sets the challenge window and scales the proving period to match (such that
 // there are always 48 challenge windows in a proving period).
 func SetWPoStChallengeWindow(period abi.ChainEpoch) {
 

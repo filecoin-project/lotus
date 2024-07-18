@@ -95,7 +95,7 @@ func (h RateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
-// this blocks new connections if there have already been too many.
+// NewConnectionRateLimiterHandler blocks new connections if there have already been too many.
 func NewConnectionRateLimiterHandler(handler http.Handler, connPerMinute int64) *ConnectionRateLimiterHandler {
 	ipmap := make(map[string]int64)
 	return &ConnectionRateLimiterHandler{

@@ -137,6 +137,7 @@ func FetchMessagesByCids(
 }
 
 // FIXME: Duplicate of above.
+
 func FetchSignedMessagesByCids(
 	ctx context.Context,
 	bserv bserv.BlockGetter,
