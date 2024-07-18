@@ -276,15 +276,12 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search for message %s: %w", c, err)
-	}
-
-	if msgLookup != nil {
+	if err == nil && msgLookup != nil {
 		ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tipset %s: %w", msgLookup.TipSet, err)
 		}
+
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI, ts)
 		if err == nil {
 			return &tx, nil
