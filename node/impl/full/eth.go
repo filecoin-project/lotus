@@ -429,7 +429,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	if msgLookup == nil {
 		// This is the best we can do. In theory, we could have just not indexed this
 		// transaction, but there's no way to check that here.
-		return nil, fmt.Errorf("message not found: %s", c)
+		return nil, nil
 	}
 
 	ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
