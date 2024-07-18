@@ -235,6 +235,12 @@
   # env var: LOTUS_FEVM_ETHTXHASHMAPPINGLIFETIMEDAYS
   #EthTxHashMappingLifetimeDays = 0
 
+  # EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
+  #
+  # type: ethtypes.EthUint64
+  # env var: LOTUS_FEVM_ETHTRACEFILTERMAXRESULTS
+  #EthTraceFilterMaxResults = 100
+
 
 [Events]
   # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
