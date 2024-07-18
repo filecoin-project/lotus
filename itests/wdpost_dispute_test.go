@@ -287,29 +287,24 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	var targetDeadline uint64
 waitForProof:
 	for {
+
 		deadlines, err := client.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 		for dlIdx, dl := range deadlines {
-			nonEmpty, err := dl.PostSubmissions.IsEmpty()
+			isEmpty, err := dl.PostSubmissions.IsEmpty()
 			require.NoError(t, err)
-			if nonEmpty {
+			if !isEmpty {
+				head, err := client.ChainHead(ctx)
+				require.NoError(t, err)
+				di, err := client.StateMinerProvingDeadline(ctx, maddr, head.Key())
+				require.NoError(t, err)
+				disputeEpoch := di.Close + 5
+				_ = client.WaitTillChain(ctx, kit.HeightAtLeast(disputeEpoch))
+
 				targetDeadline = uint64(dlIdx)
 				break waitForProof
 			}
 		}
-
-		build.Clock.Sleep(blocktime)
-	}
-
-	for {
-		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
-		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-		require.NoError(t, err)
-		// wait until the deadline finishes.
-		if di.Index == ((targetDeadline + 1) % di.WPoStPeriodDeadlines) {
-			break
-		}
-
 		build.Clock.Sleep(blocktime)
 	}
 
@@ -330,7 +325,7 @@ waitForProof:
 			Value:  types.NewInt(0),
 			From:   defaultFrom,
 		}
-		_, err := client.MpoolPushMessage(ctx, msg, nil)
+		_, err = client.MpoolPushMessage(ctx, msg, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to dispute valid post")
 		require.Contains(t, err.Error(), "(RetCode=16)")

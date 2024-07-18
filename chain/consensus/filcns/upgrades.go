@@ -63,8 +63,8 @@ import (
 	"github.com/filecoin-project/lotus/node/bundle"
 )
 
-//go:embed FVMLiftoff.txt
-var fvmLiftoffBanner string
+//go:embed UpgradeSplash.txt
+var upgradeSplash string
 
 var (
 	MigrationMaxWorkerCount    int
@@ -1465,8 +1465,6 @@ func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 		return cid.Undef, xerrors.Errorf("migrating actors v7 state: %w", err)
 	}
 
-	fmt.Print(fvmLiftoffBanner)
-
 	return newRoot, nil
 }
 
@@ -2520,6 +2518,7 @@ func UpgradeActorsV14(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v14 state: %w", err)
 	}
+	fmt.Print(upgradeSplash)
 	return newRoot, nil
 }
 

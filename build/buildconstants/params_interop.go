@@ -8,15 +8,12 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
-
-var log = logging.Logger("buildconstants")
 
 var NetworkBundle = "caterpillarnet"
 var ActorDebugging = false
@@ -77,7 +74,6 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(2048)
-var MinVerifiedDealSize = abi.NewStoragePower(256)
 var PreCommitChallengeDelay = abi.ChainEpoch(10)
 
 func init() {

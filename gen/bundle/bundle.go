@@ -23,10 +23,10 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{
 	Network: {{printf "%q" .Network}},
 	Version: {{.Version}},
 	{{if .BundleGitTag}} BundleGitTag: {{printf "%q" .BundleGitTag}}, {{end}}
-	ManifestCid: MustParseCid({{printf "%q" .ManifestCid}}),
+	ManifestCid: cid.MustParse({{printf "%q" .ManifestCid}}),
 	Actors: map[string]cid.Cid {
 	{{- range $name, $cid := .Actors }}
-		{{printf "%q" $name}}: MustParseCid({{printf "%q" $cid}}),
+		{{printf "%q" $name}}: cid.MustParse({{printf "%q" $cid}}),
 	{{- end }}
 	},
 },

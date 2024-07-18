@@ -71,7 +71,6 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
-var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 
 func init() {

@@ -15,8 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 var (
@@ -138,5 +136,3 @@ const BootstrapPeerThreshold = 1
 // ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 // As per https://github.com/ethereum-lists/chains
 const Eip155ChainId = 31415926
-
-var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
