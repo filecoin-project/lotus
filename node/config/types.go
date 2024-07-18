@@ -525,7 +525,8 @@ type Splitstore struct {
 	HotstoreMaxSpaceSafetyBuffer uint64
 }
 
-// // Full Node
+// Full Node
+
 type Wallet struct {
 	RemoteBackend string
 	EnableLedger  bool

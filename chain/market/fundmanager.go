@@ -26,7 +26,7 @@ import (
 
 var log = logging.Logger("market_adapter")
 
-// API is the fx dependencies need to run a fund manager
+// FundManagerAPI is the fx dependencies need to run a fund manager
 type FundManagerAPI struct {
 	fx.In
 

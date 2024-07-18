@@ -45,6 +45,7 @@ type WorkerConfig struct {
 }
 
 // used do provide custom proofs impl (mostly used in testing)
+
 type ExecutorFunc func(w *LocalWorker) (storiface.Storage, error)
 type EnvFunc func(string) (string, bool)
 

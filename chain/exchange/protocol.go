@@ -41,8 +41,7 @@ const (
 	streamReadDeadline  = 10 * time.Second
 )
 
-// FIXME: Rename. Make private.
-type Request struct {
+type Request struct { // FIXME: Rename. Make private.
 	// List of ordered CIDs comprising a `TipSetKey` from where to start
 	// fetching backwards.
 	// FIXME: Consider using `TipSetKey` now (introduced after the creation
@@ -89,8 +88,7 @@ func parseOptions(optfield uint64) *parsedOptions {
 	}
 }
 
-// FIXME: Rename. Make private.
-type Response struct {
+type Response struct { // FIXME: Rename. Make private.
 	Status status
 	// String that complements the error status when converting to an
 	// internal error (see `statusToError()`).
@@ -134,15 +132,14 @@ func (res *Response) statusToError() error {
 	}
 }
 
-// FIXME: Rename.
-type BSTipSet struct {
+type BSTipSet struct { // FIXME: Rename.
 	// List of blocks belonging to a single tipset to which the
 	// `CompactedMessages` are linked.
 	Blocks   []*types.BlockHeader
 	Messages *CompactedMessages
 }
 
-// All messages of a single tipset compacted together instead
+// CompactedMessages has all messages of a single tipset compacted together instead
 // of grouped by block to save space, since there are normally
 // many repeated messages per tipset in different blocks.
 //

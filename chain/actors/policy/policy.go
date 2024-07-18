@@ -521,8 +521,8 @@ func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch)
 	return market14.DealDurationBounds(pieceSize)
 }
 
-// SetWPoStChallengeWindow sets the challenge window and scales the proving period to match (such that
-// there are always 48 challenge windows in a proving period).
+// SetWPoStChallengeWindow sets the challenge window and scales the proving period to match (such
+// that there are always 48 challenge windows in a proving period).
 func SetWPoStChallengeWindow(period abi.ChainEpoch) {
 
 	miner0.WPoStChallengeWindow = period
