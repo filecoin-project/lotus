@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
@@ -544,6 +545,9 @@ type FevmConfig struct {
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
+
+	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
+	EthTraceFilterMaxResults ethtypes.EthUint64
 
 	Events DeprecatedEvents `toml:"Events,omitempty"`
 }

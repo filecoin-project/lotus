@@ -101,7 +101,8 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			StateAPI: stateapi,
 			SyncAPI:  syncapi,
 
-			EthTxHashManager: &ethTxHashManager,
+			EthTxHashManager:         &ethTxHashManager,
+			EthTraceFilterMaxResults: cfg.EthTraceFilterMaxResults,
 		}, nil
 	}
 }

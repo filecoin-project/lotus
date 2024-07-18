@@ -132,10 +132,11 @@ var (
 // accepts as the best parent tipset, based on the blocks it is accumulating
 // within the HEAD tipset.
 type EthModule struct {
-	Chain            *store.ChainStore
-	Mpool            *messagepool.MessagePool
-	StateManager     *stmgr.StateManager
-	EthTxHashManager *EthTxHashManager
+	Chain                    *store.ChainStore
+	Mpool                    *messagepool.MessagePool
+	StateManager             *stmgr.StateManager
+	EthTxHashManager         *EthTxHashManager
+	EthTraceFilterMaxResults ethtypes.EthUint64
 
 	ChainAPI
 	MpoolAPI
@@ -1085,9 +1086,16 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 
 	var results []*ethtypes.EthTraceFilterResult
 
-	// If filter.Count is specified and it is 0, return an empty result set immediately.
-	if filter.Count != nil && *filter.Count == 0 {
-		return []*ethtypes.EthTraceFilterResult{}, nil
+	if filter.Count != nil {
+		// If filter.Count is specified and it is 0, return an empty result set immediately.
+		if *filter.Count == 0 {
+			return []*ethtypes.EthTraceFilterResult{}, nil
+		}
+
+		// If filter.Count is specified and is greater than the EthTraceFilterMaxResults config return error
+		if *filter.Count > a.EthTraceFilterMaxResults {
+			return nil, xerrors.Errorf("invalid response count")
+		}
 	}
 
 	traceCounter := ethtypes.EthUint64(0)
