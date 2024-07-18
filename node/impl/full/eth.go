@@ -276,8 +276,16 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	if err == nil && msgLookup != nil {
-		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search for message %s: %w", c, err)
+	}
+
+	if msgLookup != nil {
+		ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load tipset %s: %w", msgLookup.TipSet, err)
+		}
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI, ts)
 		if err == nil {
 			return &tx, nil
 		}
@@ -427,12 +435,47 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, nil
 	}
 
-	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
+	ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tipset %s: %w", msgLookup.TipSet, err)
+	}
+
+	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI)
+	// Load all messages in the tipset
+	msgs, err := a.Chain.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load messages for tipset: %w", err)
+	}
+	logIndexStart := uint64(0)
+	// Iterate over all messages till we get to message with cid c
+	for _, msg := range msgs {
+		if msg.Cid() == c {
+			break
+		}
+
+		// For each message, do a StateSearchMsg to get the msgLookup
+		msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), limit, true)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to search for message %s: %w", msg.Cid(), err)
+		}
+
+		if msgLookup != nil && msgLookup.Receipt.EventsRoot != nil {
+			// Load the receipt root from the msgLookup and read the events
+			events, err := a.ChainAPI.ChainGetEvents(ctx, *msgLookup.Receipt.EventsRoot)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to get events for message %s: %w", msg.Cid(), err)
+			}
+
+			// Update logIndexStart with the number of events
+			logIndexStart += uint64(len(events))
+		}
+	}
+
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, ts, logIndexStart+1)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
 	}

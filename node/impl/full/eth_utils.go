@@ -609,12 +609,7 @@ func getSignedMessage(ctx context.Context, cs *store.ChainStore, msgCid cid.Cid)
 // newEthTxFromMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
 // into the function, it looks up the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
 // function
-func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, sa StateAPI) (ethtypes.EthTx, error) {
-	ts, err := cs.LoadTipSet(ctx, msgLookup.TipSet)
-	if err != nil {
-		return ethtypes.EthTx{}, err
-	}
-
+func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, sa StateAPI, ts *types.TipSet) (ethtypes.EthTx, error) {
 	// This tx is located in the parent tipset
 	parentTs, err := cs.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
@@ -675,7 +670,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI, ts *types.TipSet, logIndexStart uint64) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -714,12 +709,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 
 	// TODO: handle CumulativeGasUsed
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
-
-	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
-	ts, err := ca.Chain.GetTipSetFromKey(ctx, lookup.TipSet)
-	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
-	}
 
 	st, err := sa.StateManager.StateTree(ts.ParentState())
 	if err != nil {
@@ -786,7 +775,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		for i, evt := range events {
 			l := ethtypes.EthLog{
 				Removed:          false,
-				LogIndex:         ethtypes.EthUint64(i),
+				LogIndex:         ethtypes.EthUint64(logIndexStart + uint64(i)),
 				TransactionHash:  tx.Hash,
 				TransactionIndex: transactionIndex,
 				BlockHash:        blockHash,
