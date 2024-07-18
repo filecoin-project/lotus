@@ -432,7 +432,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 	if msgLookup == nil {
 		// This is the best we can do. In theory, we could have just not indexed this
 		// transaction, but there's no way to check that here.
-		return nil, nil
+		return nil, fmt.Errorf("message not found: %s", c)
 	}
 
 	ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
@@ -462,12 +462,26 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		if err != nil {
 			return nil, xerrors.Errorf("failed to search for message %s: %w", msg.Cid(), err)
 		}
+		if msgLookup == nil {
+			// This is the best we can do. In theory, we could have just not indexed this
+			// transaction, but there's no way to check that here.
+			return nil, fmt.Errorf("message not found: %s", msg.Cid())
+		}
 
-		if msgLookup != nil && msgLookup.Receipt.EventsRoot != nil {
+		if msgLookup.Receipt.EventsRoot != nil {
 			// Load the receipt root from the msgLookup and read the events
 			events, err := a.ChainAPI.ChainGetEvents(ctx, *msgLookup.Receipt.EventsRoot)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to get events for message %s: %w", msg.Cid(), err)
+				// Fore-recompute, we must have enabled the Event APIs after computing this
+				// tipset.
+				if _, _, err := a.StateAPI.StateManager.RecomputeTipSetState(ctx, ts); err != nil {
+					return nil, xerrors.Errorf("failed get events: %w", err)
+				}
+				// Try again
+				events, err = a.ChainAPI.ChainGetEvents(ctx, *msgLookup.Receipt.EventsRoot)
+				if err != nil {
+					return nil, xerrors.Errorf("failed get events: %w", err)
+				}
 			}
 
 			// Update logIndexStart with the number of events
