@@ -39,10 +39,8 @@ var ddls = []string{
 		reverted INTEGER NOT NULL
 	)`,
 
-	createIndexEventEmitterAddr,
 	createIndexEventTipsetKeyCid,
 	createIndexEventHeight,
-	createIndexEventReverted,
 
 	`CREATE TABLE IF NOT EXISTS event_entry (
 		event_id INTEGER,
@@ -55,8 +53,6 @@ var ddls = []string{
 
 	createTableEventsSeen,
 
-	createIndexEventEntryIndexedKey,
-	createIndexEventEntryCodecValue,
 	createIndexEventEntryEventId,
 	createIndexEventsSeenHeight,
 	createIndexEventsSeenTipsetKeyCid,
@@ -67,27 +63,6 @@ var (
 )
 
 const (
-	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
-	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
-	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	revertEventSeen      = `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`
-	restoreEventSeen     = `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`
-	upsertEventsSeen     = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
-	isTipsetProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`
-	getMaxHeightInIndex  = `SELECT MAX(height) FROM events_seen`
-	isHeightProcessed    = `SELECT COUNT(*) > 0 FROM events_seen WHERE height=?`
-
-	createIndexEventEmitterAddr  = `CREATE INDEX IF NOT EXISTS event_emitter_addr ON event (emitter_addr)`
-	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
-	createIndexEventHeight       = `CREATE INDEX IF NOT EXISTS event_height ON event (height);`
-	createIndexEventReverted     = `CREATE INDEX IF NOT EXISTS event_reverted ON event (reverted);`
-
-	createIndexEventEntryIndexedKey = `CREATE INDEX IF NOT EXISTS event_entry_indexed_key ON event_entry (indexed, key);`
-	createIndexEventEntryCodecValue = `CREATE INDEX IF NOT EXISTS event_entry_codec_value ON event_entry (codec, value);`
-	createIndexEventEntryEventId    = `CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id);`
-
 	createTableEventsSeen = `CREATE TABLE IF NOT EXISTS events_seen (
 		id INTEGER PRIMARY KEY,
 		height INTEGER NOT NULL,
@@ -95,6 +70,61 @@ const (
 		reverted INTEGER NOT NULL,
 	    UNIQUE(height, tipset_key_cid)
 	)`
+
+	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
+	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
+	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	revertEventSeen      = `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`
+	restoreEventSeen     = `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`
+	upsertEventsSeen     = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
+
+	eventExists = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	// QUERY PLAN
+	// `--SEARCH event USING INDEX event_height (height=?)
+	isTipsetProcessed = `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`
+	// QUERY PLAN
+	// `--SEARCH events_seen USING COVERING INDEX events_seen_tipset_key_cid (tipset_key_cid=?)
+	getMaxHeightInIndex = `SELECT MAX(height) FROM events_seen`
+	// QUERY PLAN
+	// `--SEARCH events_seen USING COVERING INDEX events_seen_height
+	isHeightProcessed = `SELECT COUNT(*) > 0 FROM events_seen WHERE height=?`
+	// QUERY PLAN
+	// `--SEARCH events_seen USING COVERING INDEX events_seen_height (height=?)
+
+	// When modifying indexes in this file, it is critical to test the query plan (EXPLAIN QUERY PLAN)
+	// of all the variations of queries built by prefillFilter to ensure that the query first hits
+	// an index that narrows down results to an epoch or a reasonable range of epochs. Specifically,
+	// event_tipset_key_cid or event_height should be the first index. Then further narrowing can take
+	// place within the small subset of results.
+	// Unfortunately SQLite has some quirks in index selection that mean that certain query types will
+	// bypass these indexes if alternatives are available. This has been observed specifically on
+	// queries with height ranges: `height>=X AND height<=Y`.
+	//
+	// e.g. we want to see that `event_height` is the first index used in this query:
+	//
+	// EXPLAIN QUERY PLAN
+	// SELECT
+	// 	event.height, event.tipset_key_cid, event_entry.indexed, event_entry.codec, event_entry.key, event_entry.value
+	// FROM event
+	// JOIN
+	// 	event_entry ON event.id=event_entry.event_id,
+	// 	event_entry ee2 ON event.id=ee2.event_id
+	// WHERE event.height>=? AND event.height<=? AND event.reverted=? AND event.emitter_addr=? AND ee2.indexed=1 AND ee2.key=?
+	// ORDER BY event.height DESC, event_entry._rowid_ ASC
+	//
+	// ->
+	//
+	// QUERY PLAN
+	// |--SEARCH event USING INDEX event_height (height>? AND height<?)
+	// |--SEARCH ee2 USING INDEX event_entry_event_id (event_id=?)
+	// |--SEARCH event_entry USING INDEX event_entry_event_id (event_id=?)
+	// `--USE TEMP B-TREE FOR RIGHT PART OF ORDER BY
+
+	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
+	createIndexEventHeight       = `CREATE INDEX IF NOT EXISTS event_height ON event (height);`
+
+	createIndexEventEntryEventId = `CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id);`
 
 	createIndexEventsSeenHeight       = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
 	createIndexEventsSeenTipsetKeyCid = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key_cid ON events_seen (tipset_key_cid);`
@@ -200,6 +230,7 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 		migrationVersion4,
 		migrationVersion5,
 		migrationVersion6,
+		migrationVersion7,
 	})
 	if err != nil {
 		_ = db.Close()
@@ -470,7 +501,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	return nil
 }
 
-// PrefillFilter fills a filter's collection of events from the historic index
+// prefillFilter fills a filter's collection of events from the historic index
 func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
 	clauses := []string{}
 	values := []any{}
@@ -480,13 +511,20 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		clauses = append(clauses, "event.tipset_key_cid=?")
 		values = append(values, f.tipsetCid.Bytes())
 	} else {
-		if f.minHeight >= 0 {
-			clauses = append(clauses, "event.height>=?")
+		if f.minHeight >= 0 && f.minHeight == f.maxHeight {
+			clauses = append(clauses, "event.height=?")
 			values = append(values, f.minHeight)
-		}
-		if f.maxHeight >= 0 {
-			clauses = append(clauses, "event.height<=?")
-			values = append(values, f.maxHeight)
+		} else {
+			if f.maxHeight >= 0 && f.minHeight >= 0 {
+				clauses = append(clauses, "event.height BETWEEN ? AND ?")
+				values = append(values, f.minHeight, f.maxHeight)
+			} else if f.minHeight >= 0 {
+				clauses = append(clauses, "event.height >= ?")
+				values = append(values, f.minHeight)
+			} else if f.maxHeight >= 0 {
+				clauses = append(clauses, "event.height <= ?")
+				values = append(values, f.maxHeight)
+			}
 		}
 	}
 
@@ -496,12 +534,10 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	}
 
 	if len(f.addresses) > 0 {
-		subclauses := make([]string, 0, len(f.addresses))
 		for _, addr := range f.addresses {
-			subclauses = append(subclauses, "emitter_addr=?")
 			values = append(values, addr.Bytes())
 		}
-		clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
+		clauses = append(clauses, "event.emitter_addr IN ("+strings.Repeat("?,", len(f.addresses)-1)+"?)")
 	}
 
 	if len(f.keysWithCodec) > 0 {
@@ -510,7 +546,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			if len(vals) > 0 {
 				join++
 				joinAlias := fmt.Sprintf("ee%d", join)
-				joins = append(joins, fmt.Sprintf("event_entry %s on event.id=%[1]s.event_id", joinAlias))
+				joins = append(joins, fmt.Sprintf("event_entry %s ON event.id=%[1]s.event_id", joinAlias))
 				clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
 				values = append(values, key)
 				subclauses := make([]string, 0, len(vals))
