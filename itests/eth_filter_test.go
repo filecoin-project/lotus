@@ -509,6 +509,19 @@ func TestEthGetLogsBasic(t *testing.T) {
 	elogs, err := parseEthLogsFromFilterResult(res)
 	require.NoError(err)
 	AssertEthLogs(t, elogs, expected, received)
+
+	require.Len(elogs, 1)
+	rct, err := client.EthGetTransactionReceipt(ctx, elogs[0].TransactionHash)
+	require.NoError(err)
+	require.NotNil(rct)
+
+	require.Len(rct.Logs, 1)
+	var rctLogs []*ethtypes.EthLog
+	for _, rctLog := range rct.Logs {
+		rctLogs = append(rctLogs, &rctLog)
+	}
+
+	AssertEthLogs(t, rctLogs, expected, received)
 }
 
 func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
