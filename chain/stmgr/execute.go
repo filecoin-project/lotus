@@ -16,7 +16,8 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 	return sm.tipSetState(ctx, ts, false)
 }
 
-// Recompute the tipset state without trying to lookup a pre-computed result in the chainstore.
+// RecomputeTipSetState recomputes the tipset state without trying to lookup a pre-computed result
+// in the chainstore.
 // Useful if we know that our local chain-state isn't complete (e.g., we've discarded the events).
 func (sm *StateManager) RecomputeTipSetState(ctx context.Context, ts *types.TipSet) (st cid.Cid, rec cid.Cid, err error) {
 	return sm.tipSetState(ctx, ts, true)

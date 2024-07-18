@@ -224,9 +224,9 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 	return retCid, nil
 }
 
-// Returns true executing tipsets between the specified heights would trigger an expensive
-// migration. NOTE: migrations occurring _at_ the target height are not included, as they're
-// executed _after_ the target height.
+// HasExpensiveForkBetween returns true where executing tipsets between the specified heights would
+// trigger an expensive migration. NOTE: migrations occurring _at_ the target height are not
+// included, as they're executed _after_ the target height.
 func (sm *StateManager) HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool {
 	for h := parent; h < height; h++ {
 		if _, ok := sm.expensiveUpgrades[h]; ok {

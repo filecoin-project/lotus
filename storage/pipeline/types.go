@@ -241,7 +241,7 @@ func (sp *SafeSectorPiece) DealInfo() UniversalPieceInfo {
 	return sp.real.DealInfo
 }
 
-// cbor passthrough
+// UnmarshalCBOR is a cbor passthrough
 func (sp *SafeSectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 	return sp.real.UnmarshalCBOR(r)
 }
@@ -250,7 +250,7 @@ func (sp *SafeSectorPiece) MarshalCBOR(w io.Writer) error {
 	return sp.real.MarshalCBOR(w)
 }
 
-// json passthrough
+// UnmarshalJSON is a json passthrough
 func (sp *SafeSectorPiece) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, &sp.real)
 }

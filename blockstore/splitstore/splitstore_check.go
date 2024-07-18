@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// performs an asynchronous health-check on the splitstore; results are appended to
+// Check performs an asynchronous health-check on the splitstore; results are appended to
 // <splitstore-path>/check.txt
 func (s *SplitStore) Check() error {
 	s.headChangeMx.Lock()
@@ -141,7 +141,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	return nil
 }
 
-// provides some basic information about the splitstore
+// Info provides some basic information about the splitstore
 func (s *SplitStore) Info() map[string]interface{} {
 	info := make(map[string]interface{})
 	info["base epoch"] = s.baseEpoch

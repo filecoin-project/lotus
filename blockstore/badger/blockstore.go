@@ -986,7 +986,8 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return ch, nil
 }
 
-// Implementation of BlockstoreIterator interface
+// Implementation of BlockstoreIterator interface ------------------------------
+
 func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 	if err := b.access(); err != nil {
 		return err
@@ -1092,7 +1093,7 @@ func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
 	return dst[:reqsize]
 }
 
-// this method is added for lotus-shed needs
+// DB is added for lotus-shed needs
 // WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE
 func (b *Blockstore) DB() *badger.DB {
 	return b.db

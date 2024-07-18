@@ -81,7 +81,7 @@ func (k TipSetKey) String() string {
 	return b.String()
 }
 
-// Bytes() returns a binary representation of the key.
+// Bytes returns a binary representation of the key.
 func (k TipSetKey) Bytes() []byte {
 	return []byte(k.value)
 }
