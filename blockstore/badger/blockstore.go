@@ -1067,7 +1067,7 @@ func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 	return k, true // slicing upto length unnecessary; the pool has already done this.
 }
 
-// Storage acts like PooledStorageKey, but attempts to write the storage key
+// StorageKey acts like PooledStorageKey, but attempts to write the storage key
 // into the provided slice. If the slice capacity is insufficient, it allocates
 // a new byte slice with enough capacity to accommodate the result. This method
 // returns the resulting slice.

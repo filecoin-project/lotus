@@ -31,7 +31,7 @@ const (
 	metadataTraceContext = "traceContext"
 )
 
-// GetAPIInfo returns the API endpoint to use for the specified kind of repo.
+// GetAPIInfoMulti returns the API endpoints to use for the specified kind of repo.
 //
 // The order of precedence is as follows:
 //
