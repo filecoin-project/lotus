@@ -986,7 +986,8 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return ch, nil
 }
 
-// Implementation of BlockstoreIterator interface
+// Implementation of BlockstoreIterator interface ------------------------------
+
 func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 	if err := b.access(); err != nil {
 		return err
@@ -1067,7 +1068,7 @@ func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 	return k, true // slicing upto length unnecessary; the pool has already done this.
 }
 
-// Storage acts like PooledStorageKey, but attempts to write the storage key
+// StorageKey acts like PooledStorageKey, but attempts to write the storage key
 // into the provided slice. If the slice capacity is insufficient, it allocates
 // a new byte slice with enough capacity to accommodate the result. This method
 // returns the resulting slice.
@@ -1092,7 +1093,7 @@ func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
 	return dst[:reqsize]
 }
 
-// this method is added for lotus-shed needs
+// DB is added for lotus-shed needs
 // WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE
 func (b *Blockstore) DB() *badger.DB {
 	return b.db

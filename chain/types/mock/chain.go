@@ -91,7 +91,7 @@ func TipSet(blks ...*types.BlockHeader) *types.TipSet {
 	return ts
 }
 
-// Generates count new addresses using the provided seed, and returns them
+// RandomActorAddresses generates count new addresses using the provided seed, and returns them
 func RandomActorAddresses(seed int64, count int) ([]*address.Address, error) {
 	randAddrs := make([]*address.Address, count)
 	source := rand.New(rand.NewSource(seed))

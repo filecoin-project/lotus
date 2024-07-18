@@ -111,6 +111,7 @@ type workerStatus struct {
 }
 
 // sync manager interface
+
 func NewSyncManager(sync SyncFunc) SyncManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &syncManager{

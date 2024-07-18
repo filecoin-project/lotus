@@ -17,8 +17,9 @@ func NoRelay() func() (opts Libp2pOpts, err error) {
 	}
 }
 
-// TODO: should be use baseRouting or can we use higher level router here?
 func Discovery(router BaseIpfsRouting) (coredisc.Discovery, error) {
+	// TODO: should be use baseRouting or can we use higher level router here?
+
 	crouter, ok := router.(routing.ContentRouting)
 	if !ok {
 		return nil, fmt.Errorf("no suitable routing for discovery")

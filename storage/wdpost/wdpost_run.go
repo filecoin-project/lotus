@@ -524,6 +524,9 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 	return posts, nil
 }
 
+// BatchPartitions splits partitions into batches of partitions, so as not to exceed the number of
+// sectors allowed in a single message.
+//
 // Note: Partition order within batches must match original partition order in order
 // for code following the user code to work
 func (s *WindowPoStScheduler) BatchPartitions(partitions []api.Partition, nv network.Version) ([][]api.Partition, error) {

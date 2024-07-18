@@ -685,8 +685,8 @@ func (vm *LegacyVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return root, nil
 }
 
-// Get the buffered blockstore associated with the LegacyVM. This includes any temporary blocks produced
-// during this LegacyVM's execution.
+// ActorStore gets the buffered blockstore associated with the LegacyVM. This includes any temporary
+// blocks produced during this LegacyVM's execution.
 func (vm *LegacyVM) ActorStore(ctx context.Context) adt.Store {
 	return adt.WrapStore(ctx, vm.cst)
 }

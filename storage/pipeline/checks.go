@@ -21,6 +21,7 @@ import (
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
 //
 //	We should implement some wait-for-api logic
+
 type ErrApi struct{ error }
 
 type ErrNoDeals struct{ error }

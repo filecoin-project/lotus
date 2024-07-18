@@ -115,7 +115,7 @@ func (a *ActiveResources) hasWorkWaiting() bool {
 	return a.waiting > 0
 }
 
-// add task resources to ActiveResources and return utilization difference
+// Add task resources to ActiveResources and return utilization difference
 func (a *ActiveResources) Add(schedID uuid.UUID, tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
 	startUtil := a.utilization(wr)
 

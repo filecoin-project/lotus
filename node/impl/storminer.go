@@ -251,7 +251,7 @@ func (sm *StorageMinerAPI) SectorUnseal(ctx context.Context, sectorNum abi.Secto
 	return nil
 }
 
-// List all staged sectors
+// SectorsList lists all staged sectors
 func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, error) {
 	sectors, err := sm.Miner.ListSectors()
 	if err != nil {
@@ -297,8 +297,8 @@ func (sm *StorageMinerAPI) SectorsListInStates(ctx context.Context, states []api
 	return sns, nil
 }
 
-// Use SectorsSummary from stats (prometheus) for faster result
 func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorState]int, error) {
+	// Use SectorsSummary from stats (prometheus) for faster result
 	return sm.Miner.SectorsSummary(ctx), nil
 }
 

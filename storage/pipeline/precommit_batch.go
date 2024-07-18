@@ -323,7 +323,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKe
 	return b.processPreCommitBatch(cfg, bf, pcEntries, nv)
 }
 
-// register PreCommit, wait for batch message, return message CID
+// AddPreCommit registers PreCommit, waits for batch message, returns message CID
 func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner.SectorPreCommitInfo) (res sealiface.PreCommitBatchRes, err error) {
 	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {

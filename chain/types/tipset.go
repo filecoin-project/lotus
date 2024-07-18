@@ -98,7 +98,7 @@ func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
 	}
 }
 
-// Checks:
+// NewTipSet checks:
 //   - A tipset is composed of at least one block. (Because of our variable
 //     number of blocks per tipset, determined by randomness, we do not impose
 //     an upper limit.)

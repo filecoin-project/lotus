@@ -576,6 +576,7 @@ func (a *StateAPI) StateEncodeParams(ctx context.Context, toActCode cid.Cid, met
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
+
 func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
 	// XXX: Gets the state by computing the tipset state, instead of looking at the parent.
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, a.Beacon, tsk, epoch, maddr, a.ProofVerifier)
@@ -1174,7 +1175,7 @@ func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.A
 	return pci, err
 }
 
-// Returns nil, nil if sector is not found
+// StateSectorGetInfo returns nil, nil if sector is not found
 func (m *StateModule) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {

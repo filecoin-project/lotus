@@ -26,7 +26,7 @@ import (
 
 var log = logging.Logger("market_adapter")
 
-// API is the fx dependencies need to run a fund manager
+// FundManagerAPI is the fx dependencies need to run a fund manager
 type FundManagerAPI struct {
 	fx.In
 
@@ -121,7 +121,7 @@ func (fm *FundManager) Reserve(ctx context.Context, wallet, addr address.Address
 	return fm.getFundedAddress(addr).reserve(ctx, wallet, amt)
 }
 
-// Subtract from `reserved`.
+// Release subtracts from `reserved`.
 func (fm *FundManager) Release(addr address.Address, amt abi.TokenAmount) error {
 	return fm.getFundedAddress(addr).release(amt)
 }

@@ -297,7 +297,8 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	return ss, nil
 }
 
-// Blockstore interface
+// Blockstore interface --------------------------------------------------------
+
 func (s *SplitStore) DeleteBlock(_ context.Context, _ cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
 	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!") //nolint
@@ -686,7 +687,7 @@ func (s *SplitStore) isWarm() bool {
 	return s.warmupEpoch.Load() > 0
 }
 
-// State tracking
+// Start state tracking
 func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error {
 	s.chain = chain
 	curTs := chain.GetHeaviestTipSet()

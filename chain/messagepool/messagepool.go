@@ -1138,7 +1138,7 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 	return act.Balance, nil
 }
 
-// this method is provided for the gateway to push messages.
+// PushUntrusted is provided for the gateway to push messages.
 // differences from Push:
 //   - strict checks are enabled
 //   - extra strict add checks are used when adding the messages to the msgSet

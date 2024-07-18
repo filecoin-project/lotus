@@ -11,7 +11,7 @@ import (
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
-// Type used for encoding/decoding compacted messages. This is a ustom type as we need custom limits.
+// CompactedMessagesCBOR is used for encoding/decoding compacted messages. This is a ustom type as we need custom limits.
 // - Max messages is 150,000 as that's 15 times the max block size (in messages). It needs to be
 // large enough to cover a full tipset full of full blocks.
 type CompactedMessagesCBOR struct {
@@ -22,7 +22,7 @@ type CompactedMessagesCBOR struct {
 	SecpkIncludes []messageIndices
 }
 
-// Unmarshal into the "decoding" struct, then copy into the actual struct.
+// UnmarshalCBOR unmarshals into the "decoding" struct, then copies into the actual struct.
 func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 	var c CompactedMessagesCBOR
 	if err := c.UnmarshalCBOR(r); err != nil {
@@ -41,7 +41,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-// Copy into the encoding struct, then marshal.
+// MarshalCBOR copies into the encoding struct, then marshals.
 func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
