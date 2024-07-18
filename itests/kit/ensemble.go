@@ -222,7 +222,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	return n
 }
 
-// Miner enrolls a new miner, using the provided full node for chain
+// MinerEnroll enrolls a new miner, using the provided full node for chain
 // interactions.
 func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	require.NotNil(n.t, full, "full node required when instantiating miner")

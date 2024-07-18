@@ -332,8 +332,9 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	return pm.store.TrackChannel(ctx, stateCi)
 }
 
-// TODO: secret vs proof doesn't make sense, there is only one, not two
 func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paychtypes.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+	// TODO: secret vs proof doesn't make sense, there is only one, not two
+
 	if len(proof) > 0 {
 		return cid.Undef, errProofNotSupported
 	}

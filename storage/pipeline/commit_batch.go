@@ -755,7 +755,7 @@ func (b *CommitBatcher) processSingleV1(cfg sealiface.Config, mi api.MinerInfo, 
 	return mcid, nil
 }
 
-// register commit, wait for batch message, return message CID
+// AddCommit registers a commit, waits for batch message, returns message CID
 func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (res sealiface.CommitBatchRes, err error) {
 	sn := s.SectorNumber
 

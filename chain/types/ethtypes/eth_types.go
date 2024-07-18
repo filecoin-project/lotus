@@ -483,7 +483,7 @@ func (h EthHash) String() string {
 	return "0x" + hex.EncodeToString(h[:])
 }
 
-// Should ONLY be used for blocks and Filecoin messages. Eth transactions expect a different hashing scheme.
+// ToCid should ONLY be used for blocks and Filecoin messages. Eth transactions expect a different hashing scheme.
 func (h EthHash) ToCid() cid.Cid {
 	// err is always nil
 	mh, _ := multihash.EncodeName(h[:], "blake2b-256")
