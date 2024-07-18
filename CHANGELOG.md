@@ -149,7 +149,7 @@ This is the stable release of Lotus v1.27.2. This will be an OPTIONAL Lotus rele
 
 ## ☢️ Upgrade Warnings ☢️
 
-- This Lotus release includes some correctness improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for details.
+- This Lotus release includes some performance improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12261](https://github.com/filecoin-project/lotus/pull/12261) for details.
 
 ## Improvements
 
