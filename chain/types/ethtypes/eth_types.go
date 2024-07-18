@@ -73,7 +73,7 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 	return EthUint64(parsedInt), nil
 }
 
-// Parse a uint64 from big-endian encoded bytes.
+// EthUint64FromBytes parses a uint64 from big-endian encoded bytes.
 func EthUint64FromBytes(b []byte) (EthUint64, error) {
 	if len(b) != 32 {
 		return 0, xerrors.Errorf("eth int must be 32 bytes long")

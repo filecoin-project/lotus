@@ -351,7 +351,7 @@ func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.
 	return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
 }
 
-// function signatures are the first 4 bytes of the hash of the function name and types
+// CalcFuncSignature returns the first 4 bytes of the hash of the function name and types
 func CalcFuncSignature(funcName string) []byte {
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write([]byte(funcName))
