@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// Mock beacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
+// mockBeacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
 type mockBeacon struct {
 	interval time.Duration
 }
