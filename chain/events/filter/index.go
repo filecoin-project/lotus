@@ -71,27 +71,6 @@ const (
 	    UNIQUE(height, tipset_key_cid)
 	)`
 
-	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
-	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
-	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	revertEventSeen      = `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`
-	restoreEventSeen     = `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`
-	upsertEventsSeen     = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
-
-	eventExists = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	// QUERY PLAN
-	// `--SEARCH event USING INDEX event_height (height=?)
-	isTipsetProcessed = `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`
-	// QUERY PLAN
-	// `--SEARCH events_seen USING COVERING INDEX events_seen_tipset_key_cid (tipset_key_cid=?)
-	getMaxHeightInIndex = `SELECT MAX(height) FROM events_seen`
-	// QUERY PLAN
-	// `--SEARCH events_seen USING COVERING INDEX events_seen_height
-	isHeightProcessed = `SELECT COUNT(*) > 0 FROM events_seen WHERE height=?`
-	// QUERY PLAN
-	// `--SEARCH events_seen USING COVERING INDEX events_seen_height (height=?)
-
 	// When modifying indexes in this file, it is critical to test the query plan (EXPLAIN QUERY PLAN)
 	// of all the variations of queries built by prefillFilter to ensure that the query first hits
 	// an index that narrows down results to an epoch or a reasonable range of epochs. Specifically,
@@ -130,21 +109,45 @@ const (
 	createIndexEventsSeenTipsetKeyCid = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key_cid ON events_seen (tipset_key_cid);`
 )
 
+// preparedStatementMapping returns a map of fields of the preparedStatements struct to the SQL
+// query that should be prepared for that field. This is used to prepare all the statements in
+// the preparedStatements struct but it's also used by testing code to access the raw query strings
+// to ensure that the correct indexes are being used by SELECT queries.
+func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
+	return map[**sql.Stmt]string{
+		&ps.insertEvent:          `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+		&ps.insertEntry:          `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`,
+		&ps.revertEventsInTipset: `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`,
+		&ps.restoreEvent:         `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`,
+		&ps.revertEventSeen:      `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`,
+		&ps.restoreEventSeen:     `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`,
+		&ps.upsertEventsSeen:     `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`,
+		&ps.eventExists:          `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`, // QUERY PLAN: SEARCH event USING INDEX event_height (height=?)
+		&ps.isTipsetProcessed:    `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`,                                                                                               // QUERY PLAN: SEARCH events_seen USING COVERING INDEX events_seen_tipset_key_cid (tipset_key_cid=?)
+		&ps.getMaxHeightInIndex:  `SELECT MAX(height) FROM events_seen`,                                                                                                                       // QUERY PLAN: SEARCH events_seen USING COVERING INDEX events_seen_height
+		&ps.isHeightProcessed:    `SELECT COUNT(*) > 0 FROM events_seen WHERE height=?`,                                                                                                       // QUERY PLAN: SEARCH events_seen USING COVERING INDEX events_seen_height (height=?)
+
+	}
+}
+
+type preparedStatements struct {
+	insertEvent          *sql.Stmt
+	insertEntry          *sql.Stmt
+	revertEventsInTipset *sql.Stmt
+	restoreEvent         *sql.Stmt
+	upsertEventsSeen     *sql.Stmt
+	revertEventSeen      *sql.Stmt
+	restoreEventSeen     *sql.Stmt
+	eventExists          *sql.Stmt
+	isTipsetProcessed    *sql.Stmt
+	getMaxHeightInIndex  *sql.Stmt
+	isHeightProcessed    *sql.Stmt
+}
+
 type EventIndex struct {
 	db *sql.DB
 
-	stmtEventExists          *sql.Stmt
-	stmtInsertEvent          *sql.Stmt
-	stmtInsertEntry          *sql.Stmt
-	stmtRevertEventsInTipset *sql.Stmt
-	stmtRestoreEvent         *sql.Stmt
-	stmtUpsertEventsSeen     *sql.Stmt
-	stmtRevertEventSeen      *sql.Stmt
-	stmtRestoreEventSeen     *sql.Stmt
-
-	stmtIsTipsetProcessed   *sql.Stmt
-	stmtGetMaxHeightInIndex *sql.Stmt
-	stmtIsHeightProcessed   *sql.Stmt
+	stmt *preparedStatements
 
 	mu           sync.Mutex
 	subIdCounter uint64
@@ -158,65 +161,6 @@ type updateSub struct {
 }
 
 type EventIndexUpdated struct{}
-
-func (ei *EventIndex) initStatements() (err error) {
-	ei.stmtEventExists, err = ei.db.Prepare(eventExists)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtEventExists: %w", err)
-	}
-
-	ei.stmtInsertEvent, err = ei.db.Prepare(insertEvent)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtInsertEvent: %w", err)
-	}
-
-	ei.stmtInsertEntry, err = ei.db.Prepare(insertEntry)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtInsertEntry: %w", err)
-	}
-
-	ei.stmtRevertEventsInTipset, err = ei.db.Prepare(revertEventsInTipset)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtRevertEventsInTipset: %w", err)
-	}
-
-	ei.stmtRestoreEvent, err = ei.db.Prepare(restoreEvent)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtRestoreEvent: %w", err)
-	}
-
-	ei.stmtUpsertEventsSeen, err = ei.db.Prepare(upsertEventsSeen)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtUpsertEventsSeen: %w", err)
-	}
-
-	ei.stmtRevertEventSeen, err = ei.db.Prepare(revertEventSeen)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtRevertEventSeen: %w", err)
-	}
-
-	ei.stmtRestoreEventSeen, err = ei.db.Prepare(restoreEventSeen)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtRestoreEventSeen: %w", err)
-	}
-
-	ei.stmtIsTipsetProcessed, err = ei.db.Prepare(isTipsetProcessed)
-	if err != nil {
-		return xerrors.Errorf("prepare isTipsetProcessed: %w", err)
-	}
-
-	ei.stmtGetMaxHeightInIndex, err = ei.db.Prepare(getMaxHeightInIndex)
-	if err != nil {
-		return xerrors.Errorf("prepare getMaxHeightInIndex: %w", err)
-	}
-
-	ei.stmtIsHeightProcessed, err = ei.db.Prepare(isHeightProcessed)
-	if err != nil {
-		return xerrors.Errorf("prepare isHeightProcessed: %w", err)
-	}
-
-	return nil
-}
 
 func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStore) (*EventIndex, error) {
 	db, _, err := sqlite.Open(path)
@@ -237,7 +181,10 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 		return nil, xerrors.Errorf("failed to setup event index db: %w", err)
 	}
 
-	eventIndex := EventIndex{db: db}
+	eventIndex := EventIndex{
+		db:   db,
+		stmt: &preparedStatements{},
+	}
 
 	if err = eventIndex.initStatements(); err != nil {
 		_ = db.Close()
@@ -247,6 +194,19 @@ func NewEventIndex(ctx context.Context, path string, chainStore *store.ChainStor
 	eventIndex.updateSubs = make(map[uint64]*updateSub)
 
 	return &eventIndex, nil
+}
+
+func (ei *EventIndex) initStatements() error {
+	stmtMapping := preparedStatementMapping(ei.stmt)
+	for stmtPointer, query := range stmtMapping {
+		var err error
+		*stmtPointer, err = ei.db.Prepare(query)
+		if err != nil {
+			return xerrors.Errorf("prepare statement [%s]: %w", query, err)
+		}
+	}
+
+	return nil
 }
 
 func (ei *EventIndex) Close() error {
@@ -290,7 +250,7 @@ func (ei *EventIndex) SubscribeUpdates() (chan EventIndexUpdated, func()) {
 }
 
 func (ei *EventIndex) GetMaxHeightInIndex(ctx context.Context) (uint64, error) {
-	row := ei.stmtGetMaxHeightInIndex.QueryRowContext(ctx)
+	row := ei.stmt.getMaxHeightInIndex.QueryRowContext(ctx)
 	var maxHeight uint64
 	err := row.Scan(&maxHeight)
 	return maxHeight, err
@@ -305,7 +265,7 @@ func (ei *EventIndex) IsHeightPast(ctx context.Context, height uint64) (bool, er
 }
 
 func (ei *EventIndex) IsTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
-	row := ei.stmtIsTipsetProcessed.QueryRowContext(ctx, tipsetKeyCid)
+	row := ei.stmt.isTipsetProcessed.QueryRowContext(ctx, tipsetKeyCid)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -326,12 +286,12 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
-		_, err = tx.Stmt(ei.stmtRevertEventsInTipset).Exec(te.msgTs.Height(), te.msgTs.Key().Bytes())
+		_, err = tx.Stmt(ei.stmt.revertEventsInTipset).Exec(te.msgTs.Height(), te.msgTs.Key().Bytes())
 		if err != nil {
 			return xerrors.Errorf("revert event: %w", err)
 		}
 
-		_, err = tx.Stmt(ei.stmtRevertEventSeen).Exec(te.msgTs.Height(), tsKeyCid.Bytes())
+		_, err = tx.Stmt(ei.stmt.revertEventSeen).Exec(te.msgTs.Height(), tsKeyCid.Bytes())
 		if err != nil {
 			return xerrors.Errorf("revert event seen: %w", err)
 		}
@@ -388,7 +348,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 			// check if this event already exists in the database
 			var entryID sql.NullInt64
-			err = tx.Stmt(ei.stmtEventExists).QueryRow(
+			err = tx.Stmt(ei.stmt.eventExists).QueryRow(
 				te.msgTs.Height(),          // height
 				te.msgTs.Key().Bytes(),     // tipset_key
 				tsKeyCid.Bytes(),           // tipset_key_cid
@@ -403,7 +363,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 			if !entryID.Valid {
 				// event does not exist, lets insert it
-				res, err := tx.Stmt(ei.stmtInsertEvent).Exec(
+				res, err := tx.Stmt(ei.stmt.insertEvent).Exec(
 					te.msgTs.Height(),          // height
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
@@ -424,7 +384,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 				// insert all the entries for this event
 				for _, entry := range ev.Entries {
-					_, err = tx.Stmt(ei.stmtInsertEntry).Exec(
+					_, err = tx.Stmt(ei.stmt.insertEntry).Exec(
 						entryID.Int64,               // event_id
 						isIndexedValue(entry.Flags), // indexed
 						[]byte{entry.Flags},         // flags
@@ -438,7 +398,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				}
 			} else {
 				// event already exists, lets mark it as not reverted
-				res, err := tx.Stmt(ei.stmtRestoreEvent).Exec(
+				res, err := tx.Stmt(ei.stmt.restoreEvent).Exec(
 					te.msgTs.Height(),          // height
 					te.msgTs.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
@@ -467,7 +427,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 	// this statement will mark the tipset as processed and will insert a new row if it doesn't exist
 	// or update the reverted field to false if it does
-	_, err = tx.Stmt(ei.stmtUpsertEventsSeen).Exec(
+	_, err = tx.Stmt(ei.stmt.upsertEventsSeen).Exec(
 		te.msgTs.Height(),
 		tsKeyCid.Bytes(),
 	)
@@ -503,90 +463,9 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 // prefillFilter fills a filter's collection of events from the historic index
 func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
-	clauses := []string{}
-	values := []any{}
-	joins := []string{}
+	values, query := makePrefillFilterQuery(f, excludeReverted)
 
-	if f.tipsetCid != cid.Undef {
-		clauses = append(clauses, "event.tipset_key_cid=?")
-		values = append(values, f.tipsetCid.Bytes())
-	} else {
-		if f.minHeight >= 0 && f.minHeight == f.maxHeight {
-			clauses = append(clauses, "event.height=?")
-			values = append(values, f.minHeight)
-		} else {
-			if f.maxHeight >= 0 && f.minHeight >= 0 {
-				clauses = append(clauses, "event.height BETWEEN ? AND ?")
-				values = append(values, f.minHeight, f.maxHeight)
-			} else if f.minHeight >= 0 {
-				clauses = append(clauses, "event.height >= ?")
-				values = append(values, f.minHeight)
-			} else if f.maxHeight >= 0 {
-				clauses = append(clauses, "event.height <= ?")
-				values = append(values, f.maxHeight)
-			}
-		}
-	}
-
-	if excludeReverted {
-		clauses = append(clauses, "event.reverted=?")
-		values = append(values, false)
-	}
-
-	if len(f.addresses) > 0 {
-		for _, addr := range f.addresses {
-			values = append(values, addr.Bytes())
-		}
-		clauses = append(clauses, "event.emitter_addr IN ("+strings.Repeat("?,", len(f.addresses)-1)+"?)")
-	}
-
-	if len(f.keysWithCodec) > 0 {
-		join := 0
-		for key, vals := range f.keysWithCodec {
-			if len(vals) > 0 {
-				join++
-				joinAlias := fmt.Sprintf("ee%d", join)
-				joins = append(joins, fmt.Sprintf("event_entry %s ON event.id=%[1]s.event_id", joinAlias))
-				clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
-				values = append(values, key)
-				subclauses := make([]string, 0, len(vals))
-				for _, val := range vals {
-					subclauses = append(subclauses, fmt.Sprintf("(%s.value=? AND %[1]s.codec=?)", joinAlias))
-					values = append(values, val.Value, val.Codec)
-				}
-				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
-			}
-		}
-	}
-
-	s := `SELECT
-			event.id,
-			event.height,
-			event.tipset_key,
-			event.tipset_key_cid,
-			event.emitter_addr,
-			event.event_index,
-			event.message_cid,
-			event.message_index,
-			event.reverted,
-			event_entry.flags,
-			event_entry.key,
-			event_entry.codec,
-			event_entry.value
-		FROM event JOIN event_entry ON event.id=event_entry.event_id`
-
-	if len(joins) > 0 {
-		s = s + ", " + strings.Join(joins, ", ")
-	}
-
-	if len(clauses) > 0 {
-		s = s + " WHERE " + strings.Join(clauses, " AND ")
-	}
-
-	// retain insertion order of event_entry rows with the implicit _rowid_ column
-	s += " ORDER BY event.height DESC, event_entry._rowid_ ASC"
-
-	stmt, err := ei.db.Prepare(s)
+	stmt, err := ei.db.Prepare(query)
 	if err != nil {
 		return xerrors.Errorf("prepare prefill query: %w", err)
 	}
@@ -704,4 +583,90 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	f.setCollectedEvents(ces)
 
 	return nil
+}
+
+func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string) {
+	clauses := []string{}
+	values := []any{}
+	joins := []string{}
+
+	if f.tipsetCid != cid.Undef {
+		clauses = append(clauses, "event.tipset_key_cid=?")
+		values = append(values, f.tipsetCid.Bytes())
+	} else {
+		if f.minHeight >= 0 && f.minHeight == f.maxHeight {
+			clauses = append(clauses, "event.height=?")
+			values = append(values, f.minHeight)
+		} else {
+			if f.maxHeight >= 0 && f.minHeight >= 0 {
+				clauses = append(clauses, "event.height BETWEEN ? AND ?")
+				values = append(values, f.minHeight, f.maxHeight)
+			} else if f.minHeight >= 0 {
+				clauses = append(clauses, "event.height >= ?")
+				values = append(values, f.minHeight)
+			} else if f.maxHeight >= 0 {
+				clauses = append(clauses, "event.height <= ?")
+				values = append(values, f.maxHeight)
+			}
+		}
+	}
+
+	if excludeReverted {
+		clauses = append(clauses, "event.reverted=?")
+		values = append(values, false)
+	}
+
+	if len(f.addresses) > 0 {
+		for _, addr := range f.addresses {
+			values = append(values, addr.Bytes())
+		}
+		clauses = append(clauses, "event.emitter_addr IN ("+strings.Repeat("?,", len(f.addresses)-1)+"?)")
+	}
+
+	if len(f.keysWithCodec) > 0 {
+		join := 0
+		for key, vals := range f.keysWithCodec {
+			if len(vals) > 0 {
+				join++
+				joinAlias := fmt.Sprintf("ee%d", join)
+				joins = append(joins, fmt.Sprintf("event_entry %s ON event.id=%[1]s.event_id", joinAlias))
+				clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
+				values = append(values, key)
+				subclauses := make([]string, 0, len(vals))
+				for _, val := range vals {
+					subclauses = append(subclauses, fmt.Sprintf("(%s.value=? AND %[1]s.codec=?)", joinAlias))
+					values = append(values, val.Value, val.Codec)
+				}
+				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
+			}
+		}
+	}
+
+	s := `SELECT
+			event.id,
+			event.height,
+			event.tipset_key,
+			event.tipset_key_cid,
+			event.emitter_addr,
+			event.event_index,
+			event.message_cid,
+			event.message_index,
+			event.reverted,
+			event_entry.flags,
+			event_entry.key,
+			event_entry.codec,
+			event_entry.value
+		FROM event JOIN event_entry ON event.id=event_entry.event_id`
+
+	if len(joins) > 0 {
+		s = s + ", " + strings.Join(joins, ", ")
+	}
+
+	if len(clauses) > 0 {
+		s = s + " WHERE " + strings.Join(clauses, " AND ")
+	}
+
+	// retain insertion order of event_entry rows with the implicit _rowid_ column
+	s += " ORDER BY event.height DESC, event_entry._rowid_ ASC"
+	return values, s
 }
