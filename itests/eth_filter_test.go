@@ -509,6 +509,20 @@ func TestEthGetLogsBasic(t *testing.T) {
 	elogs, err := parseEthLogsFromFilterResult(res)
 	require.NoError(err)
 	AssertEthLogs(t, elogs, expected, received)
+
+	require.Len(elogs, 1)
+	rct, err := client.EthGetTransactionReceipt(ctx, elogs[0].TransactionHash)
+	require.NoError(err)
+	require.NotNil(rct)
+
+	require.Len(rct.Logs, 1)
+	var rctLogs []*ethtypes.EthLog
+	for _, rctLog := range rct.Logs {
+		addr := &rctLog
+		rctLogs = append(rctLogs, addr)
+	}
+
+	AssertEthLogs(t, rctLogs, expected, received)
 }
 
 func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
@@ -649,6 +663,20 @@ func TestEthGetLogs(t *testing.T) {
 			elogs, err := parseEthLogsFromFilterResult(res)
 			require.NoError(err)
 			AssertEthLogs(t, elogs, tc.expected, messages)
+
+			for _, elog := range elogs {
+				rct, err := client.EthGetTransactionReceipt(ctx, elog.TransactionHash)
+				require.NoError(err)
+				require.NotNil(rct)
+				require.Len(rct.Logs, 1)
+				require.EqualValues(rct.Logs[0].LogIndex, elog.LogIndex)
+				require.EqualValues(rct.Logs[0].BlockNumber, elog.BlockNumber)
+				require.EqualValues(rct.Logs[0].TransactionIndex, elog.TransactionIndex)
+				require.EqualValues(rct.Logs[0].TransactionHash, elog.TransactionHash)
+				require.EqualValues(rct.Logs[0].Data, elog.Data)
+				require.EqualValues(rct.Logs[0].Topics, elog.Topics)
+				require.EqualValues(rct.Logs[0].Address, elog.Address)
+			}
 		})
 	}
 }
