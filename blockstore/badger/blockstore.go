@@ -10,9 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
-	"github.com/dgraph-io/badger/v2/pb"
+	"github.com/dgraph-io/badger/options"
+	"github.com/dgraph-io/badger/pb"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -21,6 +20,8 @@ import (
 	"github.com/multiformats/go-base32"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
+
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 
 	"github.com/filecoin-project/lotus/blockstore"
 )
@@ -114,8 +115,9 @@ type Blockstore struct {
 	moveState bsMoveState
 	rlock     int
 
-	db     *badger.DB
-	dbNext *badger.DB // when moving
+	//change this
+	db     badger.BadgerDB
+	dbNext badger.BadgerDB // when moving
 	opts   Options
 
 	prefixing bool
@@ -391,7 +393,7 @@ func symlink(path, linkTo string) error {
 
 // doCopy copies a badger blockstore to another, with an optional filter; if the filter
 // is not nil, then only cids that satisfy the filter will be copied.
-func (b *Blockstore) doCopy(from, to *badger.DB) error {
+func (b *Blockstore) doCopy(from, to *badger.BadgerDB) error {
 	workers := runtime.NumCPU() / 2
 	if workers < 2 {
 		workers = 2
@@ -745,7 +747,7 @@ func (b *Blockstore) Put(ctx context.Context, block blocks.Block) error {
 		defer KeyPool.Put(k)
 	}
 
-	put := func(db *badger.DB) error {
+	put := func(db *badger.BadgerDB) error {
 		// Check if we have it before writing it.
 		switch err := db.View(func(txn *badger.Txn) error {
 			_, err := txn.Get(k)
@@ -832,7 +834,7 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		return err
 	}
 
-	put := func(db *badger.DB) error {
+	put := func(db *badger.BadgerDB) error {
 		batch := db.NewWriteBatch()
 		defer batch.Cancel()
 
@@ -1094,6 +1096,6 @@ func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
 
 // this method is added for lotus-shed needs
 // WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE
-func (b *Blockstore) DB() *badger.DB {
+func (b *Blockstore) DB() *badger.BadgerDB {
 	return b.db
 }
