@@ -135,6 +135,7 @@ type EthModule struct {
 	Mpool            *messagepool.MessagePool
 	StateManager     *stmgr.StateManager
 	EthTxHashManager *EthTxHashManager
+	EthEventHandler  *EthEventHandler
 
 	ChainAPI
 	MpoolAPI
@@ -432,7 +433,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI)
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, a.EthEventHandler)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
 	}
@@ -1270,7 +1271,33 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 	return ethtypes.EthBytes{}, nil
 }
 
+func (e *EthEventHandler) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
+	ces, err := e.ethGetEventsForFilter(ctx, &ethtypes.EthFilterSpec{BlockHash: blockHash})
+	if err != nil {
+		return nil, err
+	}
+	logs, err := ethFilterLogsFromEvents(ctx, ces, e.SubManager.StateAPI)
+	if err != nil {
+		return nil, err
+	}
+	var out []ethtypes.EthLog
+	for _, log := range logs {
+		if log.TransactionHash == txHash {
+			out = append(out, log)
+		}
+	}
+	return out, nil
+}
+
 func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
+	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
+	if err != nil {
+		return nil, err
+	}
+	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
+}
+
+func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) ([]*filter.CollectedEvent, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -1340,7 +1367,7 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 
 	_ = e.uninstallFilter(ctx, f)
 
-	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
+	return ces, nil
 }
 
 // note that we can have null blocks at the given height and the event Index is not null block aware
