@@ -340,6 +340,8 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				var ok bool
 				addr, ok = resolver(ctx, ev.Emitter, te.rctTs)
 				if !ok {
+					// we should still increment the event count as that is the index of the event in the tipset
+					eventCount++
 					// not an address we will be able to match against
 					continue
 				}
