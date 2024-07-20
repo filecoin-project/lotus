@@ -6,6 +6,9 @@ import (
 	"strconv"
 
 	"github.com/docker/go-units"
+	markettypes14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
+	"github.com/filecoin-project/lotus/build/buildconstants"
+	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -33,6 +36,101 @@ import (
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/impl"
 )
+
+func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
+	return &cli.Command{
+		Name:      "settle-deal",
+		Usage:     "Settle deals manually",
+		ArgsUsage: "[...dealIds]",
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:  "confidence",
+				Usage: "number of block confirmations to wait for",
+				Value: int(buildconstants.MessageConfidence),
+			},
+		},
+
+		Action: func(cctx *cli.Context) error {
+			api, acloser, err := lcli.GetFullNodeAPIV1(cctx)
+			if err != nil {
+				return err
+			}
+			defer acloser()
+
+			ctx := lcli.ReqContext(cctx)
+
+			var deals []uint64
+			for i, as := range cctx.Args().Slice() {
+				dealID, err := strconv.ParseUint(as, 10, 64)
+				if err != nil {
+					return xerrors.Errorf("parsing deal ID %d: %w", i, err)
+				}
+
+				deals = append(deals, dealID)
+			}
+
+			maddr, err := getActor(cctx)
+			if err != nil {
+				return err
+			}
+
+			mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("Error getting miner's owner address: %w", err)
+			}
+
+			dealParams := bitfield.NewFromSet(deals)
+			params, err := actors.SerializeParams(&dealParams)
+			if err != nil {
+				return err
+			}
+
+			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+				To:     maddr,
+				From:   mi.Owner,
+				Value:  types.NewInt(0),
+				Method: marketactor.Methods.SettleDealPaymentsExported,
+				Params: params,
+			}, nil)
+			if err != nil {
+				return err
+			}
+
+			res := smsg.Cid()
+
+			fmt.Printf("Requested deal settlement in message %s\nwaiting for it to be included in a block..\n", res)
+			// wait for it to get mined into a block
+			wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
+			if err != nil {
+				return xerrors.Errorf("Timeout waiting for deal settlement message %s", res)
+			}
+
+			if wait.Receipt.ExitCode.IsError() {
+				return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+			}
+
+			nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
+			if err != nil {
+				return err
+			}
+
+			if nv >= network.Version14 {
+				var settlementReturn markettypes14.SettleDealPaymentsReturn
+				if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+					return err
+				}
+
+				// if all the deals were successful
+				if settlementReturn.Results.SuccessCount == uint64(len(deals)) {
+					fmt.Printf("Successfully settled %d deals\n", settlementReturn.Results.SuccessCount)
+				} else {
+					fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.FailCount, len(deals))
+				}
+			}
+			return nil
+		},
+	}
+}
 
 func ActorWithdrawCmd(getActor ActorAddressGetter) *cli.Command {
 	return &cli.Command{
