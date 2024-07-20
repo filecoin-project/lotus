@@ -153,6 +153,10 @@
   # env var: LOTUS_CHAINSTORE_ENABLESPLITSTORE
   EnableSplitstore = true
 
+  # type: int
+  # env var: LOTUS_CHAINSTORE_BADGERVERSION
+  #BadgerVersion = 2
+
   [Chainstore.Splitstore]
     # ColdStoreType specifies the type of the coldstore.
     # It can be "discard" (default) for discarding cold blocks, "messages" to store only messages or "universal" to store all chain state..

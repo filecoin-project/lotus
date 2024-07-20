@@ -84,6 +84,12 @@ your node if metadata log is disabled`,
 
 			Comment: ``,
 		},
+		{
+			Name: "BadgerVersion",
+			Type: "int",
+
+			Comment: ``,
+		},
 	},
 	"Common": {
 		{

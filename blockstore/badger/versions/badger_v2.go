@@ -37,8 +37,8 @@ func (b *BadgerV2) View(fn func(txn Txn) error) error {
 	})
 }
 
-func (b *BadgerV2) NewTxn(update bool) Txn {
-	return &BadgerV2Txn{b.DB.NewTxn(update)}
+func (b *BadgerV2) NewTransaction(update bool) Txn {
+	return &BadgerV2Txn{b.DB.NewTransaction(update)}
 }
 
 func (b *BadgerV2) RunValueLogGC(discardRatio float64) error {
@@ -67,6 +67,34 @@ func (b *BadgerV2) BlockCacheMetrics() *ristretto.Metrics {
 
 func (b *BadgerV2) IndexCacheMetrics() *ristretto.Metrics {
 	return b.DB.IndexCacheMetrics()
+}
+
+func (b *BadgerV2) GetErrKeyNotFound() error {
+	return badger.ErrKeyNotFound
+}
+
+func (b *BadgerV2) NewWriteBatch() WriteBatch {
+	return &BadgerV2WriteBatch{b.DB.NewWriteBatch()}
+}
+
+type BadgerV2WriteBatch struct {
+	*badger.WriteBatch
+}
+
+func (wb *BadgerV2WriteBatch) Set(key, val []byte) error {
+	return wb.WriteBatch.Set(key, val)
+}
+
+func (wb *BadgerV2WriteBatch) Delete(key []byte) error {
+	return wb.WriteBatch.Delete(key)
+}
+
+func (wb *BadgerV2WriteBatch) Flush() error {
+	return wb.WriteBatch.Flush()
+}
+
+func (wb *BadgerV2WriteBatch) Cancel() {
+	wb.WriteBatch.Cancel()
 }
 
 type BadgerV2Stream struct {
@@ -130,4 +158,12 @@ func (item *BadgerV2Item) Key() []byte {
 
 func (item *BadgerV2Item) Version() uint64 {
 	return item.Item.Version()
+}
+
+func (item *BadgerV2Item) ValueCopy(dst []byte) ([]byte, error) {
+	return item.Item.ValueCopy(dst)
+}
+
+func (item *BadgerV2Item) ValueSize() int64 {
+	return item.Item.ValueSize()
 }

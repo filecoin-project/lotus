@@ -484,6 +484,7 @@ type Pubsub struct {
 type Chainstore struct {
 	EnableSplitstore bool
 	Splitstore       Splitstore
+	BadgerVersion    int
 }
 
 type Splitstore struct {

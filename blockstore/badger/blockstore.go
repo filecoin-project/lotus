@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/options"
 	"github.com/dgraph-io/badger/pb"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -26,6 +25,11 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 )
 
+// aliases to mask badger dependencies.
+const (
+	defaultGCThreshold = 0.125
+)
+
 var (
 	// KeyPool is the buffer pool we use to compute storage keys.
 	KeyPool *pool.BufferPool = pool.GlobalPool
@@ -38,33 +42,6 @@ var (
 
 	log = logger.Logger("badgerbs")
 )
-
-// aliases to mask badger dependencies.
-const (
-	// FileIO is equivalent to badger/options.FileIO.
-	FileIO = options.FileIO
-	// MemoryMap is equivalent to badger/options.MemoryMap.
-	MemoryMap = options.MemoryMap
-	// LoadToRAM is equivalent to badger/options.LoadToRAM.
-	LoadToRAM          = options.LoadToRAM
-	defaultGCThreshold = 0.125
-)
-
-// Options embeds the badger options themselves, and augments them with
-// blockstore-specific options.
-type Options struct {
-	badger.Options
-
-	// Prefix is an optional prefix to prepend to keys. Default: "".
-	Prefix string
-}
-
-func DefaultOptions(path string) Options {
-	return Options{
-		Options: badger.DefaultOptions(path),
-		Prefix:  "",
-	}
-}
 
 // badgerLogger is a local wrapper for go-log to make the interface
 // compatible with badger.Logger (namely, aliasing Warnf to Warningf)
@@ -118,7 +95,7 @@ type Blockstore struct {
 	//change this
 	db     badger.BadgerDB
 	dbNext badger.BadgerDB // when moving
-	opts   Options
+	opts   badger.Options
 
 	prefixing bool
 	prefix    []byte
@@ -133,13 +110,13 @@ var _ blockstore.BlockstoreSize = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
-func Open(opts Options) (*Blockstore, error) {
+func Open(opts badger.Options) (*Blockstore, error) {
 	opts.Logger = &badgerLogger{
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
 		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 	}
 
-	db, err := badger.Open(opts.Options)
+	db, err := badger.OpenBadgerDB(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open badger blockstore: %w", err)
 	}
@@ -319,7 +296,7 @@ func (b *Blockstore) movingGC() error {
 	opts.Dir = newPath
 	opts.ValueDir = newPath
 
-	dbNew, err := badger.Open(opts.Options)
+	dbNew, err := badger.OpenBadgerDB(opts)
 	if err != nil {
 		return fmt.Errorf("failed to open badger blockstore in %s: %w", newPath, err)
 	}
@@ -608,11 +585,14 @@ func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) erro
 		defer KeyPool.Put(k)
 	}
 
-	return b.db.View(func(txn *badger.Txn) error {
+	return b.db.View(func(txn badger.Txn) error {
+
+		errKeyNotFound := b.db.GetErrKeyNotFound()
+
 		switch item, err := txn.Get(k); err {
 		case nil:
 			return item.Value(fn)
-		case badger.ErrKeyNotFound:
+		case errKeyNotFound:
 			return ipld.ErrNotFound{Cid: cid}
 		default:
 			return fmt.Errorf("failed to view block from badger blockstore: %w", err)
@@ -647,13 +627,14 @@ func (b *Blockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 		defer KeyPool.Put(k)
 	}
 
-	err := b.db.View(func(txn *badger.Txn) error {
+	err := b.db.View(func(txn badger.Txn) error {
 		_, err := txn.Get(k)
 		return err
 	})
 
+	errKeyNotFound := b.db.GetErrKeyNotFound()
 	switch err {
-	case badger.ErrKeyNotFound:
+	case errKeyNotFound:
 		return false, nil
 	case nil:
 		return true, nil
@@ -682,12 +663,13 @@ func (b *Blockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 	}
 
 	var val []byte
-	err := b.db.View(func(txn *badger.Txn) error {
+	err := b.db.View(func(txn badger.Txn) error {
+		errKeyNotFound := b.db.GetErrKeyNotFound()
 		switch item, err := txn.Get(k); err {
 		case nil:
 			val, err = item.ValueCopy(nil)
 			return err
-		case badger.ErrKeyNotFound:
+		case errKeyNotFound:
 			return ipld.ErrNotFound{Cid: cid}
 		default:
 			return fmt.Errorf("failed to get block from badger blockstore: %w", err)
@@ -715,11 +697,12 @@ func (b *Blockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	}
 
 	var size int
-	err := b.db.View(func(txn *badger.Txn) error {
+	err := b.db.View(func(txn badger.Txn) error {
+		errKeyNotFound := b.db.GetErrKeyNotFound()
 		switch item, err := txn.Get(k); err {
 		case nil:
 			size = int(item.ValueSize())
-		case badger.ErrKeyNotFound:
+		case errKeyNotFound:
 			return ipld.ErrNotFound{Cid: cid}
 		default:
 			return fmt.Errorf("failed to get block size from badger blockstore: %w", err)
@@ -747,13 +730,15 @@ func (b *Blockstore) Put(ctx context.Context, block blocks.Block) error {
 		defer KeyPool.Put(k)
 	}
 
-	put := func(db *badger.BadgerDB) error {
+	put := func(db badger.BadgerDB) error {
+		errKeyNotFound := db.GetErrKeyNotFound()
+
 		// Check if we have it before writing it.
-		switch err := db.View(func(txn *badger.Txn) error {
+		switch err := db.View(func(txn badger.Txn) error {
 			_, err := txn.Get(k)
 			return err
 		}); err {
-		case badger.ErrKeyNotFound:
+		case errKeyNotFound:
 		case nil:
 			// Already exists, skip the put.
 			return nil
@@ -762,7 +747,7 @@ func (b *Blockstore) Put(ctx context.Context, block blocks.Block) error {
 		}
 
 		// Then write it.
-		err := db.Update(func(txn *badger.Txn) error {
+		err := db.Update(func(txn badger.Txn) error {
 			return txn.Set(k, block.RawData())
 		})
 		if err != nil {
@@ -817,10 +802,13 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		keys = append(keys, k)
 	}
 
-	err := b.db.View(func(txn *badger.Txn) error {
+	err := b.db.View(func(txn badger.Txn) error {
+
+		errKeyNotFound := b.db.GetErrKeyNotFound()
+
 		for i, k := range keys {
 			switch _, err := txn.Get(k); err {
-			case badger.ErrKeyNotFound:
+			case errKeyNotFound:
 			case nil:
 				keys[i] = nil
 			default:
@@ -834,7 +822,7 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		return err
 	}
 
-	put := func(db *badger.BadgerDB) error {
+	put := func(db badger.BadgerDB) error {
 		batch := db.NewWriteBatch()
 		defer batch.Cancel()
 
@@ -885,7 +873,7 @@ func (b *Blockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 		defer KeyPool.Put(k)
 	}
 
-	return b.db.Update(func(txn *badger.Txn) error {
+	return b.db.Update(func(txn badger.Txn) error {
 		return txn.Delete(k)
 	})
 }

@@ -15,7 +15,7 @@ type BadgerDB interface {
 	NewStream() BadgerStream
 	Update(func(txn Txn) error) error
 	View(func(txn Txn) error) error
-	NewTxn(update bool) Txn
+	NewTransaction(update bool) Txn
 	RunValueLogGC(discardRatio float64) error
 	Sync() error
 	MaxBatchCount() int64
@@ -23,6 +23,8 @@ type BadgerDB interface {
 	Subscribe(ctx context.Context, cb func(kv *KVList) error, prefixes ...[]byte) error
 	BlockCacheMetrics() *ristretto.Metrics
 	IndexCacheMetrics() *ristretto.Metrics
+	GetErrKeyNotFound() error
+	NewWriteBatch() WriteBatch
 }
 
 // BadgerStream defines the common interface for streaming data in Badger.
@@ -47,6 +49,8 @@ type Item interface {
 	Value(fn func([]byte) error) error
 	Key() []byte
 	Version() uint64
+	ValueCopy(dst []byte) ([]byte, error)
+	ValueSize() int64
 }
 
 // KVList is an alias for the KVList type from the Badger package.
@@ -55,4 +59,11 @@ type KVList = pb.KVList
 type Buffer struct {
 	kvList KVList
 	buf    z.Buffer
+}
+
+type WriteBatch interface {
+	Set(key, val []byte) error
+	Delete(key []byte) error
+	Flush() error
+	Cancel()
 }
