@@ -638,7 +638,7 @@ func TestTxReceiptBloom(t *testing.T) {
 }
 
 func TestMultipleEvents(t *testing.T) {
-	blockTime := 1 * time.Second
+	blockTime := 500 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
 	ens.InterconnectAll().BeginMining(blockTime)
@@ -686,35 +686,56 @@ func TestMultipleEvents(t *testing.T) {
 	require.NoError(t, err)
 
 	paramsArray := [][]byte{params4Events, params3Events, params3Events}
+
 	var receipts []*api.EthTxReceipt
 	var hashes []ethtypes.EthHash
 
-	for i, params := range paramsArray {
-		invokeTx := ethtypes.Eth1559TxArgs{
-			ChainID:              build.Eip155ChainId,
-			To:                   &contractAddr,
-			Value:                big.Zero(),
-			Nonce:                i + 1,
-			MaxFeePerGas:         types.NanoFil,
-			MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-			GasLimit:             int(gaslimit),
-			Input:                params,
-			V:                    big.Zero(),
-			R:                    big.Zero(),
-			S:                    big.Zero(),
+	nonce := 1
+	for {
+		receipts = nil
+		hashes = nil
+
+		for _, params := range paramsArray {
+			invokeTx := ethtypes.Eth1559TxArgs{
+				ChainID:              build.Eip155ChainId,
+				To:                   &contractAddr,
+				Value:                big.Zero(),
+				Nonce:                nonce,
+				MaxFeePerGas:         types.NanoFil,
+				MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+				GasLimit:             int(gaslimit),
+				Input:                params,
+				V:                    big.Zero(),
+				R:                    big.Zero(),
+				S:                    big.Zero(),
+			}
+
+			// Submit transaction with valid signature
+			client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
+			hash := client.EVM().SubmitTransaction(ctx, &invokeTx)
+			hashes = append(hashes, hash)
+			nonce++
 		}
 
-		// Submit transaction with valid signature
-		client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
-		hash := client.EVM().SubmitTransaction(ctx, &invokeTx)
-		hashes = append(hashes, hash)
-	}
+		for _, hash := range hashes {
+			receipt, err := client.EVM().WaitTransaction(ctx, hash)
+			require.NoError(t, err)
+			require.NotNil(t, receipt)
+			receipts = append(receipts, receipt)
+		}
 
-	for _, hash := range hashes {
-		receipt, err := client.EVM().WaitTransaction(ctx, hash)
-		require.NoError(t, err)
-		require.NotNil(t, receipt)
-		receipts = append(receipts, receipt)
+		// Check if all receipts are in the same tipset
+		allInSameTipset := true
+		for i := 1; i < len(receipts); i++ {
+			if receipts[i].BlockHash != receipts[0].BlockHash {
+				allInSameTipset = false
+				break
+			}
+		}
+
+		if allInSameTipset {
+			break
+		}
 	}
 
 	// Assert that first receipt has 4 event logs and the other two have 3 each

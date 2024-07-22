@@ -1271,7 +1271,10 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 	return ethtypes.EthBytes{}, nil
 }
 
-func (e *EthEventHandler) GetEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
+// TODO: For now, we're fetching logs from the index for the entire block and then filtering them by the transaction hash
+// This allows us to use the current schema of the event Index DB that has been optimised to use the "tipset_key_cid" index
+// However, this can be replaced to filter logs in the event Index DB by the "msgCid" once we've tuned the DB for that query pattern
+func (e *EthEventHandler) getEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
 	ces, err := e.ethGetEventsForFilter(ctx, &ethtypes.EthFilterSpec{BlockHash: blockHash})
 	if err != nil {
 		return nil, err
@@ -1306,7 +1309,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		return nil, xerrors.Errorf("cannot use eth_get_logs if historical event index is disabled")
 	}
 
-	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
+	pf, err := e.parseEthFilterSpec(filterSpec)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse eth filter spec: %w", err)
 	}
@@ -1519,7 +1522,7 @@ type parsedFilter struct {
 	keys      map[string][]types.ActorEventBlock
 }
 
-func (e *EthEventHandler) parseEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*parsedFilter, error) {
+func (e *EthEventHandler) parseEthFilterSpec(filterSpec *ethtypes.EthFilterSpec) (*parsedFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -1583,7 +1586,7 @@ func (e *EthEventHandler) EthNewFilter(ctx context.Context, filterSpec *ethtypes
 		return ethtypes.EthFilterID{}, api.ErrNotSupported
 	}
 
-	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
+	pf, err := e.parseEthFilterSpec(filterSpec)
 	if err != nil {
 		return ethtypes.EthFilterID{}, err
 	}

@@ -759,7 +759,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	if rct := lookup.Receipt; rct.EventsRoot != nil {
-		logs, err := ev.GetEthLogsForBlockAndTransaction(ctx, &blockHash, tx.Hash)
+		logs, err := ev.getEthLogsForBlockAndTransaction(ctx, &blockHash, tx.Hash)
 		if err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to get eth logs for block and transaction: %w", err)
 		}
