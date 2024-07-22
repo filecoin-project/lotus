@@ -14,7 +14,7 @@ func NodeUserVersion() BuildVersion {
 		return BuildVersion(NodeBuildVersion)
 	}
 
-	return BuildVersion(NodeBuildVersion + BuildTypeString() + CurrentCommit)
+	return BuildVersion(NodeBuildVersion + buildconstants.BuildTypeString() + CurrentCommit)
 }
 
 // MinerBuildVersion is the local build version of the Lotus miner
@@ -25,7 +25,7 @@ func MinerUserVersion() BuildVersion {
 		return BuildVersion(MinerBuildVersion)
 	}
 
-	return BuildVersion(MinerBuildVersion + BuildTypeString() + CurrentCommit)
+	return BuildVersion(MinerBuildVersion + buildconstants.BuildTypeString() + CurrentCommit)
 }
 
 var BuildType = buildconstants.BuildType                 // Deprecated: Use buildconstants.BuildType instead
