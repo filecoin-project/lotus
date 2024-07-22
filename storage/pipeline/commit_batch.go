@@ -460,7 +460,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	return []sealiface.CommitBatchRes{res}, nil
 }
 
-// register commit, wait for batch message, return message CID
+// AddCommit registers commit, wait for batch message, return message CID
 func (b *CommitBatcher) AddCommit(ctx context.Context, s SectorInfo, in AggregateInput) (res sealiface.CommitBatchRes, err error) {
 	sn := s.SectorNumber
 
