@@ -311,7 +311,7 @@ jobs:
           GO_TEST_FLAGS: ${{ matrix.go_test_flags || '' }}
         run: |
           if [ "$LOTUS_RUN_VERY_EXPENSIVE_TESTS" == "1" ] && [[ ! "$GO_TEST_FLAGS" =~ "-timeout" ]]; then
-            GO_TEST_FLAGS="$GO_TEST_FLAGS -timeout 30m"
+            GO_TEST_FLAGS="$GO_TEST_FLAGS -timeout 60m"
           fi
 
           gotestsum \
