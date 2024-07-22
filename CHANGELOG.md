@@ -1,29 +1,16 @@
 # Lotus changelog
 
-# UNRELEASED
+# v1.28.0 / 2024-07-23
+
+This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
+
+**This release sets the Mainnet to upgrade at epoch 4154640, corresponding to 2024-08-06T12:00:00Z.** 
+
+Compared to `Lotus v1.28.0-rc5`, the `Lotus v1.28.0` release:
 
 ## ☢️ Upgrade Warnings ☢️
 
-- This Lotus release includes some correctness improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for details.
-
-## New features
-
-- feat: Add trace transaction API supporting RPC method `trace_transaction` ([filecoin-project/lotus#12068](https://github.com/filecoin-project/lotus/pull/12068))
-
-## Improvements
-
-# v1.28.0-rc5 / 2024-07-11
-
-This is the fifth release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
-
-**This release candidate sets the calibration network to upgrade at epoch 1779094, corresponding to 2024-07-11T12:00:00Z.** This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
-
-Compared to `Lotus v1.28.0-rc4`, the `Lotus v1.28.0-rc5` release addresses some performance problems in the `eth_getLogs` API.
-It also addresses a bug in the `eth_getLogs` API around handling null blocks.
-
-☢️ Upgrade Warnings ☢️
-
-If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
+- If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
 
 - This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
 
@@ -40,43 +27,45 @@ If you are running the `v1.26.0` or an earlier version of Lotus, please go throu
 Note that we are only doing a "soft launch"/"passive testing" for F3 (Fast Finality) i.e. FIP-0086 in NV23. Please see [this doc](https://docs.google.com/document/d/14hMFN95_AsByBh7iMc4r_czUgg8tfjHQ1gTsmmHZ8jI/edit#heading=h.dhzqs3lisv24) for more details.
 
 ## v14 Builtin Actor Bundle
-The actor bundles for the **calibration network** can be checked as follows:
+The actor bundles for the **Mainnet network** can be checked as follows:
 
 ```
 lotus state actor-cids --network-version=23
 Network Version: 23
 Actor Version: 14
-Manifest CID: bafy2bzacebq3hncszqpojglh2dkwekybq4zn6qpc4gceqbx36wndps5qehtau
+Manifest CID: bafy2bzacecbueuzsropvqawsri27owo7isa5gp2qtluhrfsto2qg7wpgxnkba
 
 Actor             CID  
-account           bafk2bzaced5ecfm56dvtw26q56j4d32yoccyd7ggxn3qdki2enxpqqav45ths
-cron              bafk2bzacedpbtttpyvtjncqoyobr63mhqqtlrygbnudhxyp2vha56f626dkfs
-datacap           bafk2bzacecded3lcvo7ndsk66samyecw2trnhrgzi7jxsary3sqgopxlk6rku
-eam               bafk2bzacecsda4uw7dcu76a27gnrrdcm73tgms7wrte6jbou63vloktkqc5ne
-ethaccount        bafk2bzacebu2lcxfmohomjj3umslnylwugf5gssywdq3575tjarta7o227dls
-evm               bafk2bzacea4xnekruhfmdnzvzeo6cbf7jsfgco6x5wje2ckwc2ui2ojzcrlgu
-init              bafk2bzacedfmsdlewihdcrkdepnfata26nj7akbvexzs3chicujhjf2uxsazc
-multisig          bafk2bzacedwx4svscsp6wqqu2vlcunjihvvm4u2jnsqjkwutjhir7dwtl7z6m
-paymentchannel    bafk2bzacedbit7oo6lryhbo64uikvtjtfcth6oxwy3eebxerenu2h7rj44n24
+account           bafk2bzacebr7ik7lng7vysm754mu5x7sakphwm4soqi6zwbox4ukpd6ndwvqy
+cron              bafk2bzacecwn6eiwa7ysimmk6i57i5whj4cqzwijx3xdlxwb5canmweaez6xc
+datacap           bafk2bzacecidw7ajvtjhmygqs2yxhmuybyvtwp25dxpblvdxxo7u4gqfzirjg
+eam               bafk2bzaced2cxnfwngpcubg63h7zk4y5hjwwuhfjxrh43xozax2u6u2woweju
+ethaccount        bafk2bzacechu4u7asol5mpcsr6fo6jeaeltvayj5bllupyiux7tcynsxby7ko
+evm               bafk2bzacedupohbgwrcw5ztbbsvrpqyybnokr4ylegmk7hrbt3ueeykua6zxw
+init              bafk2bzacecbbcshenkb6z2v4irsudv7tyklfgphhizhghix6ke5gpl4r5f2b6
+multisig          bafk2bzaceajcmsngu3f2chk2y7nanlen5xlftzatytzm6hxwiiw5i5nz36bfc
+paymentchannel    bafk2bzaceavslp27u3f4zwjq45rlg6assj6cqod7r5f6wfwkptlpi6j4qkmne
 placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
-reward            bafk2bzaced5rlycj7fzpscfc7p3wwxarngwqylqshj7te3uffey5tevunz4we
-storagemarket     bafk2bzaceatwbyrec2nnwggxc2alpqve7rl52fmbhqflebuxmmnvg3qckjb7c
-storageminer      bafk2bzacecr7ozkdz7l2pq3ig5qxae2ysivbnojhsn4gw3o57ov4mhksma7me
-storagepower      bafk2bzacedgeolvjtnw7fkji5kqmx322abv6uls2v34fuml6nw36dvfcw4mtu
-system            bafk2bzacederl6tlpieldsn6mkndqwd4wj5orfoqgab6p2klswfn3cjagxwla
-verifiedregistry  bafk2bzaceczw2kp6gjjdcjbso7mewp7guik7gr525pal6dotdja2lrct6ok3c
+reward            bafk2bzacedvfnjittwrkhoar6n5xrykowg2e6rpur4poh2m572f7m7evyx4lc
+storagemarket     bafk2bzaceaju5wobednmornvdqcyi6khkvdttkru4dqduqicrdmohlwfddwhg
+storageminer      bafk2bzacea3f43rxzemmakjpktq2ukayngean3oo2de5cdxlg2wsyn53wmepc
+storagepower      bafk2bzacedo6scxizooytn53wjwg2ooiawnj4fsoylcadnp7mhgzluuckjl42
+system            bafk2bzacecak4ow7tmauku42s3u2yydonk4hx6ov6ov542hy7lcbji3nhrrhs
+verifiedregistry  bafk2bzacebvyzjzmvmjvpypphqsumpy6rzxuugnehgum7grc6sv3yqxzrshb4
 ```
 
 ## Migration
 
 All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV23 upgrade is expected to be light with no heavy pre-migrations, here are some expected timings and resource consumption numbers:
 
-- Pre-Migration is expected to take less then 1 minute
-- The migration is expected to take less then 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
+- Pre-migration is expected to take less than 1 minute.
+- The migration is expected to take less than 30 seconds on a node with an NVMe drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less than 1 minute.
+- Max memory usage during benchmarking the migration in "offline mode" (i.e., node not syncing) was 23GiB.
+- Max memory usage when benchmarking the migration in "online mode" (i.e., while the node is syncing) was 30GiB. Numbers here might vary depending on the load your node is under.
 
 We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
 
-For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and running the non-cached migration (i.e., just running the migration at the network upgrade epoch), and scheduling some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
 
 ## Dependencies
 - github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
