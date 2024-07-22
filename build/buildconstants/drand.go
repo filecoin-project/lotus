@@ -11,8 +11,8 @@ type DrandEnum int
 const (
 	DrandMainnet DrandEnum = iota + 1
 	DrandTestnet
-	DrandDevnet
-	DrandLocalnet
+	unusedDrandDevnet   // kept to retain iota numbering
+	unusedDrandLocalnet // kept to retain iota numbering
 	DrandIncentinet
 	DrandQuicknet
 )
@@ -73,18 +73,6 @@ var DrandConfigs = map[DrandEnum]DrandConfig{
 		},
 		IsChained:     true,
 		ChainInfoJSON: `{"public_key":"922a2e93828ff83345bae533f5172669a26c02dc76d6bf59c80892e12ab1455c229211886f35bb56af6d5bea981024df","period":25,"genesis_time":1590445175,"hash":"84b2234fb34e835dccd048255d7ad3194b81af7d978c3bf157e3469592ae4e02","groupHash":"4dd408e5fdff9323c76a9b6f087ba8fdc5a6da907bd9217d9d10f2287d081957"}`,
-	},
-	DrandDevnet: {
-		Servers: []string{
-			"https://dev1.drand.sh",
-			"https://dev2.drand.sh",
-		},
-		Relays: []string{
-			"/dnsaddr/dev1.drand.sh/",
-			"/dnsaddr/dev2.drand.sh/",
-		},
-		IsChained:     true,
-		ChainInfoJSON: `{"public_key":"8cda589f88914aa728fd183f383980b35789ce81b274e5daee1f338b77d02566ef4d3fb0098af1f844f10f9c803c1827","period":25,"genesis_time":1595348225,"hash":"e73b7dc3c4f6a236378220c0dd6aa110eb16eed26c11259606e07ee122838d4f","groupHash":"567d4785122a5a3e75a9bc9911d7ea807dd85ff76b78dc4ff06b075712898607"}`,
 	},
 	DrandIncentinet: {
 		IsChained:     true,
