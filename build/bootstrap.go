@@ -8,6 +8,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
 
@@ -18,8 +19,8 @@ func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 	if DisableBuiltinAssets {
 		return nil, nil
 	}
-	if BootstrappersFile != "" {
-		spi, err := bootstrapfs.ReadFile(path.Join("bootstrap", BootstrappersFile))
+	if buildconstants.BootstrappersFile != "" {
+		spi, err := bootstrapfs.ReadFile(path.Join("bootstrap", buildconstants.BootstrappersFile))
 		if err != nil {
 			return nil, err
 		}
