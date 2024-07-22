@@ -53,7 +53,7 @@ func (fs *FundingStage) Fund(bb *blockbuilder.BlockBuilder, target address.Addre
 	return fs.fund(bb, target, 0)
 }
 
-// sendAndFund "packs" the given message, funding the actor if necessary. It:
+// SendAndFund "packs" the given message, funding the actor if necessary. It:
 //
 //  1. Tries to send the given message.
 //  2. If that fails, it checks to see if the exit code was ErrInsufficientFunds.

@@ -1322,12 +1322,15 @@ func breakWeightTie(ts1, ts2 *types.TipSet) bool {
 	// blocks are already sorted by ticket
 	for i := 0; i < s; i++ {
 		if ts1.Blocks()[i].Ticket.Less(ts2.Blocks()[i].Ticket) {
-			log.Infof("weight tie broken in favour of %s", ts1.Key())
+			log.Infof("weight tie broken in favour of %s against %s", ts1.Key(), ts2.Key())
 			return true
+		} else if ts2.Blocks()[i].Ticket.Less(ts1.Blocks()[i].Ticket) {
+			log.Infof("weight tie broken in favour of %s against %s", ts2.Key(), ts1.Key())
+			return false
 		}
 	}
 
-	log.Infof("weight tie left unbroken, default to %s", ts2.Key())
+	log.Warnf("weight tie between %s and %s left unbroken, default to %s", ts1.Key(), ts2.Key(), ts2.Key())
 	return false
 }
 

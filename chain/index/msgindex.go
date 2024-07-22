@@ -52,7 +52,7 @@ var (
 	CoalesceMergeInterval = time.Second
 )
 
-// chain store interface; we could use store.ChainStore directly,
+// ChainStore interface; we could use store.ChainStore directly,
 // but this simplifies unit testing.
 type ChainStore interface {
 	SubscribeHeadChanges(f store.ReorgNotifee)

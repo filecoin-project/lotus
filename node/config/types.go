@@ -13,13 +13,13 @@ type Common struct {
 	API     API
 	Backup  Backup
 	Logging Logging
-	Libp2p  Libp2p
-	Pubsub  Pubsub
 }
 
 // FullNode is a full node config
 type FullNode struct {
 	Common
+	Libp2p        Libp2p
+	Pubsub        Pubsub
 	Wallet        Wallet
 	Fees          FeeConfig
 	Chainstore    Chainstore
@@ -525,7 +525,8 @@ type Splitstore struct {
 	HotstoreMaxSpaceSafetyBuffer uint64
 }
 
-// // Full Node
+// Full Node
+
 type Wallet struct {
 	RemoteBackend string
 	EnableLedger  bool

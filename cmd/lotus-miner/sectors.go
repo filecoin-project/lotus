@@ -1209,13 +1209,21 @@ var sectorsExpiredCmd = &cli.Command{
 				return xerrors.Errorf("value of confirm-remove-count doesn't match the number of sectors which can be removed (%d)", len(toRemove))
 			}
 
+			batchSizeReached := 0
+
 			for _, number := range toRemove {
 				fmt.Printf("Removing sector\t%s:\t", color.YellowString("%d", number))
+				if batchSizeReached == 5 {
+					fmt.Printf("Waiting for 2 seconds before starting next batch of 5 sectors")
+					batchSizeReached = 0
+					time.Sleep(2 * time.Second)
+				}
 
 				err := minerAPI.SectorRemove(ctx, number)
 				if err != nil {
 					color.Red("ERROR: %s\n", err.Error())
 				} else {
+					batchSizeReached++
 					color.Green("OK\n")
 				}
 			}
