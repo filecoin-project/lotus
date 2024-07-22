@@ -43,6 +43,10 @@ jobs:
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           HAS_RUN_VERY_EXPENSIVE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'need/very-expensive-tests') }}
+        # set the run_very_expensive_tests flag based on a few criteras:
+        # - if we're in a PR with the label 'need/very-expensive-tests'
+        # - if we're in the nightly cron job (schedule)
+        # this flag is used later to setup the env variable LOTUS_RUN_VERY_EXPENSIVE_TESTS
         run: |
           if [[ "${GITHUB_EVENT_NAME}" = "pull_request" && "${HAS_RUN_VERY_EXPENSIVE_LABEL}" = "true" ]]; then
             echo "run_very_expensive_tests=1" >> $GITHUB_OUTPUT
