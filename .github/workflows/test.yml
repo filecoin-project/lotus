@@ -54,6 +54,7 @@ jobs:
 
       - id: test
         env:
+          LOTUS_RUN_VERY_EXPENSIVE_TESTS: ${{ steps.envs.outputs.run_very_expensive_tests }}
           # Unit test groups other than unit-rest
           utests: |
             [
@@ -75,6 +76,11 @@ jobs:
                 "go_test_flags": "-run=TestConformance",
                 "skip_conformance": "0"
               }
+            ]
+          # Tests that are very expensive to run and need a higher timeout when activated
+          very_expensive_tests: |
+            [
+              "itest-niporep_manual"
             ]
           # Mapping from test group names to custom runner labels
           # The jobs default to running on the default hosted runners (4 CPU, 16 RAM).
@@ -189,6 +195,21 @@ jobs:
 
           # Apply the needs_parameters flag to the groups
           groups="$(jq -n --argjson g "$groups" --argjson p "$parameters" '$g | map(. + {"needs_parameters": ([.name] | inside($p)) })')"
+
+          # Update the timeout for very expensive tests
+          if [ "${LOTUS_RUN_VERY_EXPENSIVE_TESTS}" == "1" ]; then
+            groups="$(jq -n --argjson g "$groups" --argjson e "$very_expensive_tests" '$g | map(
+              if ([.name] | inside($e)) then
+                if .go_test_flags then
+                  .go_test_flags += " -timeout=60m"
+                else
+                  . + {"go_test_flags": "-timeout=60m"}
+                end
+              else
+                .
+              end
+            )')"
+          fi
 
           # Output the groups
           echo "groups=$groups"
