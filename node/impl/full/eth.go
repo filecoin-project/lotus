@@ -1041,45 +1041,46 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 	return txTraces, nil
 }
 
-func (a *EthModule) ethBlockNumberFromString(ctx context.Context, block *string) (ethtypes.EthUint64, error) {
-	head := a.Chain.GetHeaviestTipSet()
-
-	blockValue := "latest"
-	if block != nil {
-		blockValue = *block
-	}
-
-	switch blockValue {
-	case "earliest":
-		return 0, xerrors.Errorf("block param \"earliest\" is not supported")
-	case "pending":
-		return ethtypes.EthUint64(head.Height()), nil
-	case "latest":
-		parent, err := a.Chain.GetTipSetFromKey(ctx, head.Parents())
-		if err != nil {
-			return 0, fmt.Errorf("cannot get parent tipset")
-		}
-		return ethtypes.EthUint64(parent.Height()), nil
-	case "safe":
-		latestHeight := head.Height() - 1
-		safeHeight := latestHeight - ethtypes.SafeEpochDelay
-		return ethtypes.EthUint64(safeHeight), nil
-	default:
-		blockNum, err := ethtypes.EthUint64FromHex(blockValue)
-		if err != nil {
-			return 0, xerrors.Errorf("cannot parse fromBlock: %w", err)
-		}
-		return blockNum, err
-	}
-}
-
 func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
-	fromBlock, err := a.ethBlockNumberFromString(ctx, filter.FromBlock)
+	// Define EthBlockNumberFromString as a private function within EthTraceFilter
+	getEthBlockNumberFromString := func(ctx context.Context, block *string) (ethtypes.EthUint64, error) {
+		head := a.Chain.GetHeaviestTipSet()
+
+		blockValue := "latest"
+		if block != nil {
+			blockValue = *block
+		}
+
+		switch blockValue {
+		case "earliest":
+			return 0, xerrors.Errorf("block param \"earliest\" is not supported")
+		case "pending":
+			return ethtypes.EthUint64(head.Height()), nil
+		case "latest":
+			parent, err := a.Chain.GetTipSetFromKey(ctx, head.Parents())
+			if err != nil {
+				return 0, fmt.Errorf("cannot get parent tipset")
+			}
+			return ethtypes.EthUint64(parent.Height()), nil
+		case "safe":
+			latestHeight := head.Height() - 1
+			safeHeight := latestHeight - ethtypes.SafeEpochDelay
+			return ethtypes.EthUint64(safeHeight), nil
+		default:
+			blockNum, err := ethtypes.EthUint64FromHex(blockValue)
+			if err != nil {
+				return 0, xerrors.Errorf("cannot parse fromBlock: %w", err)
+			}
+			return blockNum, err
+		}
+	}
+
+	fromBlock, err := getEthBlockNumberFromString(ctx, filter.FromBlock)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse fromBlock: %w", err)
 	}
 
-	toBlock, err := a.ethBlockNumberFromString(ctx, filter.ToBlock)
+	toBlock, err := getEthBlockNumberFromString(ctx, filter.ToBlock)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
 	}
