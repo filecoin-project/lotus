@@ -137,17 +137,10 @@ func migrationVersion2(db *sql.DB, chainStore *store.ChainStore) sqlite.Migratio
 
 // migrationVersion3 migrates the schema from version 2 to version 3 by creating two indices:
 // 1) an index on the event.emitter_addr column, and 2) an index on the event_entry.key column.
+//
+// As of version 7, these indices have been removed as they were found to be a performance
+// hindrance. This migration is now a no-op.
 func migrationVersion3(ctx context.Context, tx *sql.Tx) error {
-	// create index on event.emitter_addr.
-	_, err := tx.ExecContext(ctx, createIndexEventEmitterAddr)
-	if err != nil {
-		return xerrors.Errorf("create index event_emitter_addr: %w", err)
-	}
-
-	// original v3 migration introduced an index:
-	//	CREATE INDEX IF NOT EXISTS event_entry_key_index ON event_entry (key)
-	// which has subsequently been removed in v4, so it's omitted here
-
 	return nil
 }
 
@@ -161,10 +154,13 @@ func migrationVersion3(ctx context.Context, tx *sql.Tx) error {
 // And then creating the following indices:
 //  1. an index on the event.tipset_key_cid column
 //  2. an index on the event.height column
-//  3. an index on the event.reverted column
-//  4. an index on the event_entry.indexed and event_entry.key columns
-//  5. an index on the event_entry.codec and event_entry.value columns
+//  3. an index on the event.reverted column (removed in version 7)
+//  4. a composite index on the event_entry.indexed and event_entry.key columns (removed in version 7)
+//  5. a composite index on the event_entry.codec and event_entry.value columns (removed in version 7)
 //  6. an index on the event_entry.event_id column
+//
+// Indexes 3, 4, and 5 were removed in version 7 as they were found to be a performance hindrance so
+// are omitted here.
 func migrationVersion4(ctx context.Context, tx *sql.Tx) error {
 	for _, create := range []struct {
 		desc  string
@@ -174,9 +170,6 @@ func migrationVersion4(ctx context.Context, tx *sql.Tx) error {
 		{"drop index event_entry_key_index", "DROP INDEX IF EXISTS event_entry_key_index;"},
 		{"create index event_tipset_key_cid", createIndexEventTipsetKeyCid},
 		{"create index event_height", createIndexEventHeight},
-		{"create index event_reverted", createIndexEventReverted},
-		{"create index event_entry_indexed_key", createIndexEventEntryIndexedKey},
-		{"create index event_entry_codec_value", createIndexEventEntryCodecValue},
 		{"create index event_entry_event_id", createIndexEventEntryEventId},
 	} {
 		if _, err := tx.ExecContext(ctx, create.query); err != nil {
@@ -232,6 +225,35 @@ func migrationVersion6(ctx context.Context, tx *sql.Tx) error {
 `)
 	if err != nil {
 		return xerrors.Errorf("insert events into events_seen: %w", err)
+	}
+
+	return nil
+}
+
+// migrationVersion7 migrates the schema from version 6 to version 7 by dropping the following
+// indices:
+//  1. the index on the event.emitter_addr column
+//  2. the index on the event.reverted column
+//  3. the composite index on the event_entry.indexed and event_entry.key columns
+//  4. the composite index on the event_entry.codec and event_entry.value columns
+//
+// These indices were found to be a performance hindrance as they prevent SQLite from using the
+// intended initial indexes on height or tipset_key_cid in many query variations. Without additional
+// indices to fall-back on, SQLite is forced to narrow down each query via height or tipset_key_cid
+// which is the desired behavior.
+func migrationVersion7(ctx context.Context, tx *sql.Tx) error {
+	for _, drop := range []struct {
+		desc  string
+		query string
+	}{
+		{"drop index event_emitter_addr", "DROP INDEX IF EXISTS event_emitter_addr;"},
+		{"drop index event_reverted", "DROP INDEX IF EXISTS event_reverted;"},
+		{"drop index event_entry_indexed_key", "DROP INDEX IF EXISTS event_entry_indexed_key;"},
+		{"drop index event_entry_codec_value", "DROP INDEX IF EXISTS event_entry_codec_value;"},
+	} {
+		if _, err := tx.ExecContext(ctx, drop.query); err != nil {
+			return xerrors.Errorf("%s: %w", drop.desc, err)
+		}
 	}
 
 	return nil
