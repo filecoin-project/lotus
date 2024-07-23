@@ -34,7 +34,8 @@ func NewLineCol(name string) Column {
 	}
 }
 
-// Unlike text/tabwriter, this works with CLI escape codes, and allows for info
+// New creates a new TableWriter. Unlike text/tabwriter, this works with CLI escape codes, and
+// allows for info
 //
 //	in separate lines
 func New(cols ...Column) *TableWriter {

@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/result"
@@ -148,7 +148,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 
 		// check deal age, start sealing when the deal closest to starting is within slack time
 		ts, err := m.Api.ChainHead(ctx.Context())
-		blockTime := time.Second * time.Duration(build.BlockDelaySecs)
+		blockTime := time.Second * time.Duration(buildconstants.BlockDelaySecs)
 		if err != nil {
 			return false, xerrors.Errorf("API error getting head: %w", err)
 		}

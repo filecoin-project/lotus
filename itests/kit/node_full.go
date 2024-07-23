@@ -98,8 +98,8 @@ func (f *TestFullNode) WaitTillChain(ctx context.Context, pred ChainPredicate) *
 	return nil
 }
 
-// WaitTillChain waits until a specified chain condition is met. It returns
-// the first tipset where the condition is met.
+// WaitTillChainOrError waits until a specified chain condition is met. It returns
+// the first tipset where the condition is met. In the case of an error it will return the error.
 func (f *TestFullNode) WaitTillChainOrError(ctx context.Context, pred ChainPredicate) (*types.TipSet, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

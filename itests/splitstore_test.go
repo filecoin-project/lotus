@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -434,7 +434,7 @@ func (g *Garbager) newPeerID(ctx context.Context) abi.ChainEpoch {
 	signed, err2 := g.node.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(g.t, err2)
 
-	mw, err2 := g.node.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+	mw, err2 := g.node.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	require.NoError(g.t, err2)
 	require.Equal(g.t, exitcode.Ok, mw.Receipt.ExitCode)
 	return mw.Height
@@ -486,7 +486,7 @@ func (g *Garbager) createMiner(ctx context.Context) *lapi.MsgLookup {
 
 	signed, err := g.node.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
 	require.NoError(g.t, err)
-	mw, err := g.node.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, lapi.LookbackNoLimit, true)
+	mw, err := g.node.StateWaitMsg(ctx, signed.Cid(), buildconstants.MessageConfidence, lapi.LookbackNoLimit, true)
 	require.NoError(g.t, err)
 	require.True(g.t, mw.Receipt.ExitCode == 0, "garbager's internal create miner message failed")
 	return mw

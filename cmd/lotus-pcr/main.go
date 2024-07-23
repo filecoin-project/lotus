@@ -33,6 +33,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -373,7 +374,7 @@ var runCmd = &cli.Command{
 			Name:    "head-delay",
 			EnvVars: []string{"LOTUS_PCR_HEAD_DELAY"},
 			Usage:   "the number of tipsets to delay message processing to smooth chain reorgs",
-			Value:   int(build.MessageConfidence),
+			Value:   int(buildconstants.MessageConfidence),
 		},
 		&cli.BoolFlag{
 			Name:    "miner-recovery",
@@ -572,7 +573,7 @@ var runCmd = &cli.Command{
 				msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 				if err != nil {
 					log.Warnw("failed to fetch pending messages", "err", err)
-					time.Sleep(time.Duration(int64(time.Second) * int64(build.BlockDelaySecs)))
+					time.Sleep(time.Duration(int64(time.Second) * int64(buildconstants.BlockDelaySecs)))
 					continue
 				}
 
@@ -588,7 +589,7 @@ var runCmd = &cli.Command{
 				}
 
 				log.Warnw("messages in mpool over max message queue", "message_count", count, "max_message_queue", maxMessageQueue)
-				time.Sleep(time.Duration(int64(time.Second) * int64(build.BlockDelaySecs)))
+				time.Sleep(time.Duration(int64(time.Second) * int64(buildconstants.BlockDelaySecs)))
 			}
 		}
 
@@ -842,7 +843,7 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 		}
 
 		totalAvailableBalance := big.Add(addrSum, minerAvailableBalance)
-		balanceCutoff := big.Mul(big.Div(big.NewIntUnsigned(faultsCount), big.NewInt(10)), big.NewIntUnsigned(build.FilecoinPrecision))
+		balanceCutoff := big.Mul(big.Div(big.NewIntUnsigned(faultsCount), big.NewInt(10)), big.NewIntUnsigned(buildconstants.FilecoinPrecision))
 
 		if totalAvailableBalance.GreaterThan(balanceCutoff) {
 			log.Debugw(
@@ -853,8 +854,8 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 				"available_balance", totalAvailableBalance,
 				"balance_cutoff", balanceCutoff,
 				"faults_count", faultsCount,
-				"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
-				"balance_cutoff_fil", big.Div(balanceCutoff, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+				"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
+				"balance_cutoff_fil", big.Div(balanceCutoff, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
 			)
 			continue
 		}
@@ -876,9 +877,9 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 				"balance_cutoff", balanceCutoff,
 				"faults_count", faultsCount,
 				"refund", refundValue,
-				"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
-				"balance_cutoff_fil", big.Div(balanceCutoff, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
-				"refund_fil", big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+				"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
+				"balance_cutoff_fil", big.Div(balanceCutoff, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
+				"refund_fil", big.Div(refundValue, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
 			)
 			continue
 		}
@@ -887,8 +888,8 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 		record := []string{
 			maddr.String(),
 			fmt.Sprintf("%d", faultsCount),
-			big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).String(),
-			big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).String(),
+			big.Div(totalAvailableBalance, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).String(),
+			big.Div(refundValue, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).String(),
 		}
 		if err := csvOut.Write(record); err != nil {
 			return nil, err
@@ -900,8 +901,8 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 			"faults_count", faultsCount,
 			"available_balance", totalAvailableBalance,
 			"refund", refundValue,
-			"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
-			"refund_fil", big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+			"available_balance_fil", big.Div(totalAvailableBalance, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
+			"refund_fil", big.Div(refundValue, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
 		)
 	}
 
@@ -1131,7 +1132,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			"gas_premium", m.GasPremium,
 			"gas_used", recps[i].GasUsed,
 			"refund", refundValue,
-			"refund_fil", big.Div(refundValue, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+			"refund_fil", big.Div(refundValue, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
 		)
 
 		refunds.Track(m.From, refundValue)
@@ -1143,7 +1144,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 		"height", tipset.Height(),
 		"key", tipset.Key(),
 		"total_refunds", tipsetRefunds.TotalRefunds(),
-		"total_refunds_fil", big.Div(tipsetRefunds.TotalRefunds(), big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+		"total_refunds_fil", big.Div(tipsetRefunds.TotalRefunds(), big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
 		"messages_processed", tipsetRefunds.Count(),
 	)
 
@@ -1215,7 +1216,7 @@ func (r *refunder) Refund(ctx context.Context, name string, tipset *types.TipSet
 		"key", tipset.Key(),
 		"messages_sent", len(messages)-failures,
 		"refund_sum", refundSum,
-		"refund_sum_fil", big.Div(refundSum, big.NewIntUnsigned(build.FilecoinPrecision)).Int64(),
+		"refund_sum_fil", big.Div(refundSum, big.NewIntUnsigned(buildconstants.FilecoinPrecision)).Int64(),
 		"messages_failures", failures,
 		"messages_processed", refunds.Count(),
 	)

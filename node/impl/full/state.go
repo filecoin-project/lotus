@@ -29,7 +29,6 @@ import (
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -577,6 +576,7 @@ func (a *StateAPI) StateEncodeParams(ctx context.Context, toActCode cid.Cid, met
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
+
 func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
 	// XXX: Gets the state by computing the tipset state, instead of looking at the parent.
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, a.Beacon, tsk, epoch, maddr, a.ProofVerifier)
@@ -1175,7 +1175,7 @@ func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.A
 	return pci, err
 }
 
-// Returns nil, nil if sector is not found
+// StateSectorGetInfo returns nil, nil if sector is not found
 func (m *StateModule) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1936,34 +1936,34 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 		PreCommitChallengeDelay: buildconstants.PreCommitChallengeDelay,
 		Eip155ChainID:           buildconstants.Eip155ChainId,
 		ForkUpgradeParams: api.ForkUpgradeParams{
-			UpgradeSmokeHeight:       build.UpgradeSmokeHeight,
-			UpgradeBreezeHeight:      build.UpgradeBreezeHeight,
-			UpgradeIgnitionHeight:    build.UpgradeIgnitionHeight,
-			UpgradeLiftoffHeight:     build.UpgradeLiftoffHeight,
-			UpgradeAssemblyHeight:    build.UpgradeAssemblyHeight,
-			UpgradeRefuelHeight:      build.UpgradeRefuelHeight,
-			UpgradeTapeHeight:        build.UpgradeTapeHeight,
-			UpgradeKumquatHeight:     build.UpgradeKumquatHeight,
+			UpgradeSmokeHeight:       buildconstants.UpgradeSmokeHeight,
+			UpgradeBreezeHeight:      buildconstants.UpgradeBreezeHeight,
+			UpgradeIgnitionHeight:    buildconstants.UpgradeIgnitionHeight,
+			UpgradeLiftoffHeight:     buildconstants.UpgradeLiftoffHeight,
+			UpgradeAssemblyHeight:    buildconstants.UpgradeAssemblyHeight,
+			UpgradeRefuelHeight:      buildconstants.UpgradeRefuelHeight,
+			UpgradeTapeHeight:        buildconstants.UpgradeTapeHeight,
+			UpgradeKumquatHeight:     buildconstants.UpgradeKumquatHeight,
 			BreezeGasTampingDuration: buildconstants.BreezeGasTampingDuration,
-			UpgradeCalicoHeight:      build.UpgradeCalicoHeight,
-			UpgradePersianHeight:     build.UpgradePersianHeight,
-			UpgradeOrangeHeight:      build.UpgradeOrangeHeight,
-			UpgradeClausHeight:       build.UpgradeClausHeight,
-			UpgradeTrustHeight:       build.UpgradeTrustHeight,
-			UpgradeNorwegianHeight:   build.UpgradeNorwegianHeight,
-			UpgradeTurboHeight:       build.UpgradeTurboHeight,
-			UpgradeHyperdriveHeight:  build.UpgradeHyperdriveHeight,
-			UpgradeChocolateHeight:   build.UpgradeChocolateHeight,
-			UpgradeOhSnapHeight:      build.UpgradeOhSnapHeight,
-			UpgradeSkyrHeight:        build.UpgradeSkyrHeight,
-			UpgradeSharkHeight:       build.UpgradeSharkHeight,
-			UpgradeHyggeHeight:       build.UpgradeHyggeHeight,
-			UpgradeLightningHeight:   build.UpgradeLightningHeight,
-			UpgradeThunderHeight:     build.UpgradeThunderHeight,
-			UpgradeWatermelonHeight:  build.UpgradeWatermelonHeight,
-			UpgradeDragonHeight:      build.UpgradeDragonHeight,
-			UpgradePhoenixHeight:     build.UpgradePhoenixHeight,
-			UpgradeWaffleHeight:      build.UpgradeWaffleHeight,
+			UpgradeCalicoHeight:      buildconstants.UpgradeCalicoHeight,
+			UpgradePersianHeight:     buildconstants.UpgradePersianHeight,
+			UpgradeOrangeHeight:      buildconstants.UpgradeOrangeHeight,
+			UpgradeClausHeight:       buildconstants.UpgradeClausHeight,
+			UpgradeTrustHeight:       buildconstants.UpgradeTrustHeight,
+			UpgradeNorwegianHeight:   buildconstants.UpgradeNorwegianHeight,
+			UpgradeTurboHeight:       buildconstants.UpgradeTurboHeight,
+			UpgradeHyperdriveHeight:  buildconstants.UpgradeHyperdriveHeight,
+			UpgradeChocolateHeight:   buildconstants.UpgradeChocolateHeight,
+			UpgradeOhSnapHeight:      buildconstants.UpgradeOhSnapHeight,
+			UpgradeSkyrHeight:        buildconstants.UpgradeSkyrHeight,
+			UpgradeSharkHeight:       buildconstants.UpgradeSharkHeight,
+			UpgradeHyggeHeight:       buildconstants.UpgradeHyggeHeight,
+			UpgradeLightningHeight:   buildconstants.UpgradeLightningHeight,
+			UpgradeThunderHeight:     buildconstants.UpgradeThunderHeight,
+			UpgradeWatermelonHeight:  buildconstants.UpgradeWatermelonHeight,
+			UpgradeDragonHeight:      buildconstants.UpgradeDragonHeight,
+			UpgradePhoenixHeight:     buildconstants.UpgradePhoenixHeight,
+			UpgradeWaffleHeight:      buildconstants.UpgradeWaffleHeight,
 		},
 	}, nil
 }

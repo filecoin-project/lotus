@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -373,7 +373,7 @@ var chainBalanceSanityCheckCmd = &cli.Command{
 			bal = big.Add(bal, act.Balance)
 		}
 
-		attoBase := big.Mul(big.NewInt(int64(build.FilBase)), big.NewInt(int64(build.FilecoinPrecision)))
+		attoBase := big.Mul(big.NewInt(int64(buildconstants.FilBase)), big.NewInt(int64(buildconstants.FilecoinPrecision)))
 
 		if big.Cmp(attoBase, bal) != 0 {
 			return xerrors.Errorf("sanity check failed (expected %s, actual %s)", attoBase, bal)

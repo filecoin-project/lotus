@@ -5,7 +5,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 var StatusCmd = &cli.Command{
@@ -38,7 +38,7 @@ var StatusCmd = &cli.Command{
 		fmt.Printf("Peers to Publish Messages: %d\n", status.PeerStatus.PeersToPublishMsgs)
 		fmt.Printf("Peers to Publish Blocks: %d\n", status.PeerStatus.PeersToPublishBlocks)
 
-		if inclChainStatus && status.SyncStatus.Epoch > uint64(build.Finality) {
+		if inclChainStatus && status.SyncStatus.Epoch > uint64(policy.ChainFinality) {
 			var ok100, okFin string
 			if status.ChainStatus.BlocksPerTipsetLast100 >= 4.75 {
 				ok100 = "[OK]"

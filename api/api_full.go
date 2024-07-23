@@ -886,7 +886,7 @@ type FullNode interface {
 	F3GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 }
 
-// reverse interface to the client, called after EthSubscribe
+// EthSubscriber is the reverse interface to the client, called after EthSubscribe
 type EthSubscriber interface {
 	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
 	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error // rpc_method:eth_subscription notify:true
@@ -920,11 +920,9 @@ type MsgGasCost struct {
 	TotalCost          abi.TokenAmount
 }
 
-// BlsMessages[x].cid = Cids[x]
-// SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
-	BlsMessages   []*types.Message
-	SecpkMessages []*types.SignedMessage
+	BlsMessages   []*types.Message       // BlsMessages [x].cid = Cids[x]
+	SecpkMessages []*types.SignedMessage // SecpkMessages [y].cid = Cids[BlsMessages.length + y]
 
 	Cids []cid.Cid
 }

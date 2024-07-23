@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -109,7 +110,7 @@ func MinerID(ma dtypes.MinerAddress) (dtypes.MinerID, error) {
 }
 
 func StorageNetworkName(ctx helpers.MetricsCtx, a v1api.FullNode) (dtypes.NetworkName, error) {
-	if !build.Devnet {
+	if !buildconstants.Devnet {
 		return "testnetnet", nil
 	}
 	return a.StateNetworkName(ctx)

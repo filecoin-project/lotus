@@ -264,7 +264,7 @@ func (evt SectorCommitted) apply(state *SectorInfo) {
 	state.Proof = evt.Proof
 }
 
-// like SectorCommitted, but finalizes before sending the proof to the chain
+// SectorProofReady is like SectorCommitted, but finalizes before sending the proof to the chain
 type SectorProofReady struct {
 	Proof []byte
 }

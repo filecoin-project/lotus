@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
@@ -211,7 +211,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, r.Receipt.ExitCode.IsSuccess())
 
-	ret, err := market.DecodePublishStorageDealsReturn(r.Receipt.Return, build.TestNetworkVersion)
+	ret, err := market.DecodePublishStorageDealsReturn(r.Receipt.Return, buildconstants.TestNetworkVersion)
 	require.NoError(t, err)
 	valid, _, err := ret.IsDealValid(0)
 	require.NoError(t, err)

@@ -227,7 +227,7 @@ func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	return need, nil
 }
 
-// The method takes in two parameters: allowTypes and denyTypes, both of which are slices of strings.
+// SubAllowed takes in two parameters: allowTypes and denyTypes, both of which are slices of strings.
 // If allowTypes is not empty, the method sets a denyMask with all bits set to 1, and then iterates over each allowType,
 // converting it to a SectorFileType using the TypeFromString function and unsetting the corresponding bit in the denyMask.
 // If a string in allowTypes cannot be converted to a valid SectorFileType, it is ignored.

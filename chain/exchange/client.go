@@ -437,9 +437,12 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 
 	connectionStart := build.Clock.Now()
 
+	sctx, cancel := context.WithTimeout(ctx, streamOpenTimeout)
+	defer cancel()
+
 	// Open stream to peer.
 	stream, err := c.host.NewStream(
-		network.WithNoDial(ctx, "should already have connection"),
+		network.WithNoDial(sctx, "should already have connection"),
 		peer,
 		ChainExchangeProtocolID)
 	if err != nil {

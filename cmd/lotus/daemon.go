@@ -32,6 +32,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -606,7 +607,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	if !snapshot {
-		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gen.Timestamp, nil)
+		shd, err := drand.BeaconScheduleFromDrandSchedule(buildconstants.DrandConfigSchedule(), gen.Timestamp, nil)
 		if err != nil {
 			return xerrors.Errorf("failed to construct beacon schedule: %w", err)
 		}

@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -171,7 +171,7 @@ func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, err
 		}
 	}
 
-	return build.GenesisNetworkVersion, nil
+	return buildconstants.GenesisNetworkVersion, nil
 }
 
 func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
@@ -224,9 +224,9 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 	return retCid, nil
 }
 
-// Returns true executing tipsets between the specified heights would trigger an expensive
-// migration. NOTE: migrations occurring _at_ the target height are not included, as they're
-// executed _after_ the target height.
+// HasExpensiveForkBetween returns true where executing tipsets between the specified heights would
+// trigger an expensive migration. NOTE: migrations occurring _at_ the target height are not
+// included, as they're executed _after_ the target height.
 func (sm *StateManager) HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool {
 	for h := parent; h < height; h++ {
 		if _, ok := sm.expensiveUpgrades[h]; ok {

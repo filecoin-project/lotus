@@ -10,14 +10,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("events")
 
-// HeightHandler `curH`-`ts.Height` = `confidence`
 type (
+	// HeightHandler `curH`-`ts.Height` = `confidence`
 	HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
 	RevertHandler func(ctx context.Context, ts *types.TipSet) error
 )
@@ -62,6 +62,6 @@ func newEventsWithGCConfidence(ctx context.Context, api EventHelperAPI, gcConfid
 }
 
 func NewEvents(ctx context.Context, api EventHelperAPI) (*Events, error) {
-	gcConfidence := 2 * build.ForkLengthThreshold
+	gcConfidence := 2 * policy.ChainFinality
 	return newEventsWithGCConfidence(ctx, api, gcConfidence)
 }

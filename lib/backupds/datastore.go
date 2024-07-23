@@ -50,7 +50,7 @@ func Wrap(child datastore.Batching, logdir string) (*Datastore, error) {
 	return ds, nil
 }
 
-// Writes a datastore dump into the provided writer as
+// Backup writes a datastore dump into the provided writer as
 // [array(*) of [key, value] tuples, checksum]
 func (d *Datastore) Backup(ctx context.Context, out io.Writer) error {
 	scratch := make([]byte, 9)

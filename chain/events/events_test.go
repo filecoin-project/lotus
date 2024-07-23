@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -56,7 +56,7 @@ func newFakeCS(t *testing.T) *fakeCS {
 		msgs:       make(map[cid.Cid]fakeMsg),
 		blkMsgs:    make(map[cid.Cid]cid.Cid),
 		tipsets:    make(map[types.TipSetKey]*types.TipSet),
-		tsc:        newTSCache(nil, 2*build.ForkLengthThreshold),
+		tsc:        newTSCache(nil, 2*policy.ChainFinality),
 		callNumber: map[string]int{},
 		waitSub:    make(chan struct{}),
 	}

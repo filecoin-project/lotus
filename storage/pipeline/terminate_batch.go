@@ -257,7 +257,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	return &mcid, nil
 }
 
-// register termination, wait for batch message, return message CID
+// AddTermination registers termination, waits for batch message, returns message CID
 // can return cid.Undef,true if the sector is already terminated on-chain
 func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (mcid cid.Cid, terminated bool, err error) {
 	maddr, err := address.NewIDAddress(uint64(s.Miner))

@@ -84,7 +84,7 @@ func Unset(typ interface{}) Option {
 	}
 }
 
-// From(*T) -> func(t T) T {return t}
+// From (*T) -> func(t T) T {return t}
 func From(typ interface{}) interface{} {
 	rt := []reflect.Type{reflect.TypeOf(typ).Elem()}
 	ft := reflect.FuncOf(rt, rt, false)

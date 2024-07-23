@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -311,7 +311,7 @@ func findDeadlineCrons(c *cli.Context) (map[address.Address]struct{}, error) {
 		// All miners have active cron before v4.
 		// v4 upgrade epoch is last epoch running v3 epoch and api.StateReadState reads
 		// parent state, so v4 state isn't read until upgrade epoch + 2
-		if ts.Height() <= build.UpgradeTurboHeight+1 {
+		if ts.Height() <= buildconstants.UpgradeTurboHeight+1 {
 			activeMiners[mAddr] = struct{}{}
 			continue
 		}
