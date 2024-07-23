@@ -1094,7 +1094,7 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 
 		// If filter.Count is specified and is greater than the EthTraceFilterMaxResults config return error
 		if *filter.Count > a.EthTraceFilterMaxResults {
-			return nil, xerrors.Errorf("invalid response count")
+			return nil, xerrors.Errorf("invalid response count, requested %d, maximum supported is %d", *filter.Count, a.EthTraceFilterMaxResults)
 		}
 	}
 
