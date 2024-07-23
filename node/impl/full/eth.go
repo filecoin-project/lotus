@@ -1041,7 +1041,7 @@ func (a *EthModule) EthTraceTransaction(ctx context.Context, txHash string) ([]*
 	return txTraces, nil
 }
 
-func (a *EthModule) EthBlockNumberFromString(ctx context.Context, block *string) (ethtypes.EthUint64, error) {
+func (a *EthModule) ethBlockNumberFromString(ctx context.Context, block *string) (ethtypes.EthUint64, error) {
 	head := a.Chain.GetHeaviestTipSet()
 
 	blockValue := "latest"
@@ -1074,12 +1074,12 @@ func (a *EthModule) EthBlockNumberFromString(ctx context.Context, block *string)
 }
 
 func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
-	fromBlock, err := a.EthBlockNumberFromString(ctx, filter.FromBlock)
+	fromBlock, err := a.ethBlockNumberFromString(ctx, filter.FromBlock)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse fromBlock: %w", err)
 	}
 
-	toBlock, err := a.EthBlockNumberFromString(ctx, filter.ToBlock)
+	toBlock, err := a.ethBlockNumberFromString(ctx, filter.ToBlock)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse toBlock: %w", err)
 	}
