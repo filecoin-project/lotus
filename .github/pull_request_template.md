@@ -21,7 +21,9 @@ Before you mark the PR ready for review, please make sure that:
   - If the change does not require a CHANGELOG.md entry, do one of the following:
     - Add `[skip changelog]` to the PR title
     - Add the label `skip/changelog` to the PR
-- [ ] Add the label `need/very-expensive-tests` if the PR requires running very expensive tests
+- [ ] Run [very expensive tests](https://github.com/search?q=repo%3Afilecoin-project%2Flotus+VeryExpensive&type=code) if useful or skip
+   - If touching codepaths affecting "very expensive tests", add the label `need/very-expensive-tests`.
+   - Otherwise skip (do nothing)
 - [ ] New features have usage guidelines and / or documentation updates in
   - [ ] [Lotus Documentation](https://lotus.filecoin.io)
   - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
