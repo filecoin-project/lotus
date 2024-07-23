@@ -652,7 +652,7 @@ func TestMultipleEvents(t *testing.T) {
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
 	// DEPLOY CONTRACT
-	tx := deployContract(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
+	tx := deployContractWithEthTx(ctx, t, client, ethAddr, "./contracts/MultipleEvents.hex")
 
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
@@ -715,6 +715,7 @@ func TestMultipleEvents(t *testing.T) {
 			hash := client.EVM().SubmitTransaction(ctx, &invokeTx)
 			hashes = append(hashes, hash)
 			nonce++
+			require.True(t, nonce <= 10, "tried too many times to land messages in same tipset")
 		}
 
 		for _, hash := range hashes {
@@ -2517,7 +2518,10 @@ func unpackUint64Values(data []byte) []uint64 {
 	return vals
 }
 
-func deployContract(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
+// deployContractWithEthTx returns an Ethereum transaction that can be used to deploy the smart contract at "contractPath" on chain
+// It is different from `DeployContractFromFilename` because it used an Ethereum transaction to deploy the contract whereas the
+// latter uses a FIL transaction.
+func deployContractWithEthTx(ctx context.Context, t *testing.T, client *kit.TestFullNode, ethAddr ethtypes.EthAddress,
 	contractPath string) *ethtypes.Eth1559TxArgs {
 	// install contract
 	contractHex, err := os.ReadFile(contractPath)
