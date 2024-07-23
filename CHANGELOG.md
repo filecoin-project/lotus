@@ -23,7 +23,8 @@ This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin net
 Note that we are only doing a "soft launch"/"passive testing" for F3 (Fast Finality) i.e. FIP-0086 in NV23. Please see [this doc](https://docs.google.com/document/d/14hMFN95_AsByBh7iMc4r_czUgg8tfjHQ1gTsmmHZ8jI/edit#heading=h.dhzqs3lisv24) for more details.
 
 ## v14 Builtin Actor Bundle
-The actor bundles for the **Mainnet network** can be checked as follows:
+
+[Builtin actor v14.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v14.0.0) is used for supporting this upgrade. Make sure that your lotus actor bundle matches the v14 actors manifest by running the following cli after upgrading:
 
 ```
 lotus state actor-cids --network-version=23
@@ -94,6 +95,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - [skip changelog] chore: config: yet more lp2p removal from miner #12252
 - fix(store): correctly break weight ties based on smaller ticket #12253
 - fix: exchange bug #12275
+- chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23 #12276
 
 # v1.27.1 / 2024-06-24
 
