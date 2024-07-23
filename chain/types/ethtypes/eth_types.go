@@ -1040,14 +1040,14 @@ type EthTraceFilterResult struct {
 
 // EthTraceFilterCriteria defines the criteria for filtering traces.
 type EthTraceFilterCriteria struct {
-	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
-	// "pending" for not yet committed messages.
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "pending" for not yet committed messages.
 	// Optional, default: "latest".
+	// Note: "earliest" is not a permitted value.
 	FromBlock *string `json:"fromBlock,omitempty"`
 
-	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
-	// "pending" for not yet committed messages.
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "pending" for not yet committed messages.
 	// Optional, default: "latest".
+	// Note: "earliest" is not a permitted value.
 	ToBlock *string `json:"toBlock,omitempty"`
 
 	// Actor address or a list of addresses from which transactions that generate traces should originate.
