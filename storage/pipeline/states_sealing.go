@@ -713,9 +713,8 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 // processPieces returns either:
 // - a list of piece activation manifests
 // - a list of deal IDs, if all non-filler pieces are deal-id pieces
-func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, bool, error) {
+func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, error) {
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
-	var preCommit bool
 
 	for _, piece := range sector.Pieces {
 		piece := piece
@@ -723,19 +722,18 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 			info := piece.DealInfo()
 			// If we have a dealID then covert to PAM
 			if info.Impl().DealID > 0 {
-				preCommit = true
 				alloc, err := m.Api.StateGetAllocationIdForPendingDeal(ctx, info.Impl().DealID, types.EmptyTSK)
 				if err != nil {
-					return nil, preCommit, xerrors.Errorf("getting allocation for deal %d: %w", info.Impl().DealID, err)
+					return nil, xerrors.Errorf("getting allocation for deal %d: %w", info.Impl().DealID, err)
 				}
 				clid, err := m.Api.StateLookupID(ctx, info.Impl().DealProposal.Client, types.EmptyTSK)
 				if err != nil {
-					return nil, preCommit, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+					return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
 				}
 
 				clientId, err := address.IDFromAddress(clid)
 				if err != nil {
-					return nil, preCommit, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+					return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
 				}
 
 				var vac *miner2.VerifiedAllocationKey
@@ -748,7 +746,7 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 
 				payload, err := cborutil.Dump(info.Impl().DealID)
 				if err != nil {
-					return nil, preCommit, xerrors.Errorf("serializing deal id: %w", err)
+					return nil, xerrors.Errorf("serializing deal id: %w", err)
 				}
 
 				pams = append(pams, miner.PieceActivationManifest{
@@ -769,7 +767,7 @@ func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner
 		}
 	}
 
-	return pams, preCommit, nil
+	return pams, nil
 }
 
 func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector SectorInfo) error {
@@ -777,7 +775,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	pams, preCommit, err := m.processPieces(ctx.Context(), sector)
+	pams, err := m.processPieces(ctx.Context(), sector)
 	if err != nil {
 		return err
 	}
@@ -797,7 +795,6 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			SectorNumber: sector.SectorNumber,
 			Pieces:       pams,
 		},
-		DealIDPrecommit: preCommit,
 	})
 
 	if err != nil || res.Error != "" {

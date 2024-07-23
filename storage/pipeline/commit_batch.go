@@ -241,36 +241,34 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		}
 	}
 
-	if nv >= MinDDONetworkVersion {
-		// After nv21, we have a new ProveCommitSectors2 method, which supports
-		// batching without aggregation, but it doesn't support onboarding
-		// sectors which were precommitted with DealIDs in the precommit message.
-		// We prefer it for all other sectors, so first we use the new processBatchV2
+	// After nv21, we have a new ProveCommitSectors2 method, which supports
+	// batching without aggregation, but it doesn't support onboarding
+	// sectors which were precommitted with DealIDs in the precommit message.
+	// We prefer it for all other sectors, so first we use the new processBatchV2
 
-		var sectors []abi.SectorNumber
-		for sn := range b.todo {
-			sectors = append(sectors, sn)
-		}
-		res, err = b.processBatchV2(cfg, sectors, nv, !individual)
+	var sectors []abi.SectorNumber
+	for sn := range b.todo {
+		sectors = append(sectors, sn)
+	}
+	res, err = b.processBatchV2(cfg, sectors, nv, !individual)
+	if err != nil {
+		err = xerrors.Errorf("processBatchV2: %w", err)
+	}
+
+	// Mark sectors as done
+	for _, r := range res {
 		if err != nil {
-			err = xerrors.Errorf("processBatchV2: %w", err)
+			r.Error = err.Error()
 		}
 
-		// Mark sectors as done
-		for _, r := range res {
-			if err != nil {
-				r.Error = err.Error()
+		for _, sn := range r.Sectors {
+			for _, ch := range b.waiting[sn] {
+				ch <- r // buffered
 			}
 
-			for _, sn := range r.Sectors {
-				for _, ch := range b.waiting[sn] {
-					ch <- r // buffered
-				}
-
-				delete(b.waiting, sn)
-				delete(b.todo, sn)
-				delete(b.cutoffs, sn)
-			}
+			delete(b.waiting, sn)
+			delete(b.todo, sn)
+			delete(b.cutoffs, sn)
 		}
 	}
 
@@ -318,7 +316,6 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 	for _, sector := range sectors {
 		if b.todo[sector].DealIDPrecommit {
-			// can't process sectors precommitted with deal IDs with ProveCommitSectors2
 			continue
 		}
 
