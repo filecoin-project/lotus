@@ -46,7 +46,7 @@ jobs:
           account: ${{ vars.BUIDPULSE_ACCOUNT_ID }}
           repository: ${{ vars.BUILDPULSE_REPOSITORY_ID }}
           path: |
-            ${{ steps.reports.outputs.path }}/*.xml
+            ${{ steps.reports.outputs.path }}/**/*.xml
           key: ${{ vars.BUILDPULSE_ACCESS_KEY_ID }}
           secret: ${{ secrets.BUILDPULSE_SECRET_ACCESS_KEY }}
           commit: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
