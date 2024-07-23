@@ -106,8 +106,8 @@ const UpgradeDragonHeight = 3855360
 // 2024-04-11T15:00:00Z
 const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
-// ??????
-var UpgradeWaffleHeight = abi.ChainEpoch(9999999999)
+// 2024-08-06T12:00:00Z
+var UpgradeWaffleHeight = abi.ChainEpoch(4154640)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
