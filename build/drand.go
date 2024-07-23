@@ -6,8 +6,6 @@ import (
 
 var DrandMainnet = buildconstants.DrandMainnet       // Deprecated: Use buildconstants.DrandMainnet instead
 var DrandTestnet = buildconstants.DrandTestnet       // Deprecated: Use buildconstants.DrandTestnet instead
-var DrandDevnet = buildconstants.DrandDevnet         // Deprecated: Use buildconstants.DrandDevnet instead
-var DrandLocalnet = buildconstants.DrandLocalnet     // Deprecated: Use buildconstants.DrandLocalnet instead
 var DrandIncentinet = buildconstants.DrandIncentinet // Deprecated: Use buildconstants.DrandIncentinet instead
 var DrandQuicknet = buildconstants.DrandQuicknet     // Deprecated: Use buildconstants.DrandQuicknet instead
 
