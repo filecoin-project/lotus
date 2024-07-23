@@ -1273,7 +1273,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 
 // TODO: For now, we're fetching logs from the index for the entire block and then filtering them by the transaction hash
 // This allows us to use the current schema of the event Index DB that has been optimised to use the "tipset_key_cid" index
-// However, this can be replaced to filter logs in the event Index DB by the "msgCid" once we've tuned the DB for that query pattern
+// However, this can be replaced to filter logs in the event Index DB by the "msgCid" if we pass it down to the query generator
 func (e *EthEventHandler) getEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
 	ces, err := e.ethGetEventsForFilter(ctx, &ethtypes.EthFilterSpec{BlockHash: blockHash})
 	if err != nil {
