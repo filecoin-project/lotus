@@ -97,8 +97,8 @@ const BlockMessageLimit = 10000
 var BlockGasLimit = int64(10_000_000_000)
 var BlockGasTarget = BlockGasLimit / 2
 
-const BaseFeeMaxChangeDenom = 8 // 12.5%
-const InitialBaseFee = 100e6
-const MinimumBaseFee = 100
-const PackingEfficiencyNum = 4
-const PackingEfficiencyDenom = 5
+const BaseFeeMaxChangeDenom int64 = 8 // 12.5%
+const InitialBaseFee int64 = 100e6
+const MinimumBaseFee int64 = 100
+const PackingEfficiencyNum int64 = 4
+const PackingEfficiencyDenom int64 = 5
