@@ -1110,27 +1110,28 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 			if err != nil {
 				return nil, xerrors.Errorf("cannot match filter for block %d: %w", blkNum, err)
 			}
-			if match {
-				traceCounter++
-				if filter.After != nil && traceCounter <= *filter.After {
-					continue
-				}
+			if !match {
+				continue
+			}
+			traceCounter++
+			if filter.After != nil && traceCounter <= *filter.After {
+				continue
+			}
 
-				txTrace := ethtypes.EthTraceFilterResult{
-					EthTrace:            blockTrace.EthTrace,
-					BlockHash:           blockTrace.BlockHash,
-					BlockNumber:         blockTrace.BlockNumber,
-					TransactionHash:     blockTrace.TransactionHash,
-					TransactionPosition: blockTrace.TransactionPosition,
-				}
-				results = append(results, &txTrace)
+			txTrace := ethtypes.EthTraceFilterResult{
+				EthTrace:            blockTrace.EthTrace,
+				BlockHash:           blockTrace.BlockHash,
+				BlockNumber:         blockTrace.BlockNumber,
+				TransactionHash:     blockTrace.TransactionHash,
+				TransactionPosition: blockTrace.TransactionPosition,
+			}
+			results = append(results, &txTrace)
 
-				// If Count is specified, limit the results
-				if filter.Count != nil && ethtypes.EthUint64(len(results)) >= *filter.Count {
-					return results, nil
-				} else if filter.Count == nil && ethtypes.EthUint64(len(results)) > a.EthTraceFilterMaxResults {
-					return nil, xerrors.Errorf("too many results, maximum supported is %d, try paginating requests with After and Count", *filter.Count, a.EthTraceFilterMaxResults)
-				}
+			// If Count is specified, limit the results
+			if filter.Count != nil && ethtypes.EthUint64(len(results)) >= *filter.Count {
+				return results, nil
+			} else if filter.Count == nil && ethtypes.EthUint64(len(results)) > a.EthTraceFilterMaxResults {
+				return nil, xerrors.Errorf("too many results, maximum supported is %d, try paginating requests with After and Count", *filter.Count, a.EthTraceFilterMaxResults)
 			}
 		}
 	}
