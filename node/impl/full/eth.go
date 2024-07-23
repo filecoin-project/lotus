@@ -1164,6 +1164,10 @@ func matchFilterCriteria(trace *ethtypes.EthTraceBlock, filter ethtypes.EthTrace
 			return false, xerrors.Errorf("invalid create trace action")
 		}
 
+		if result.Address == nil {
+			return false, xerrors.Errorf("address is nil in create trace result")
+		}
+
 		traceTo = *result.Address
 		traceFrom = action.From
 	default:
