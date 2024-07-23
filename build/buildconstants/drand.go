@@ -11,8 +11,8 @@ type DrandEnum int
 const (
 	DrandMainnet DrandEnum = iota + 1
 	DrandTestnet
-	unusedDrandDevnet   // kept to retain iota numbering
-	unusedDrandLocalnet // kept to retain iota numbering
+	_ // kept to retain iota numbering, used to be Devnet
+	_ // kept to retain iota numbering, used to be Localnet
 	DrandIncentinet
 	DrandQuicknet
 )
