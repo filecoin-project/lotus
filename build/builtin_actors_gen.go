@@ -144,7 +144,7 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{{
 	Network:      "butterflynet",
 	Version:      14,
 	BundleGitTag: "v14.0.0",
-	ManifestCid:  cid.MustParse("bafy2bzacecmkqezl3a5klkzz7z4ou4jwqk4zzd3nvz727l4qh44ngsxtxdblu"),
+	ManifestCid:  MustParseCid("bafy2bzacecmkqezl3a5klkzz7z4ou4jwqk4zzd3nvz727l4qh44ngsxtxdblu"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzaceazutruyfvvqxgp5qoneq36uv6yethps2bonil5psy2vivl5j2hks"),
 		"cron":             MustParseCid("bafk2bzacecsiz2nzjieposnkz2kqvjjnqyu5zwk6ccm4dbptx26v3qirm6zni"),
@@ -296,7 +296,7 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{{
 	Network:      "calibrationnet",
 	Version:      14,
 	BundleGitTag: "v14.0.0",
-	ManifestCid:  cid.MustParse("bafy2bzacebq3hncszqpojglh2dkwekybq4zn6qpc4gceqbx36wndps5qehtau"),
+	ManifestCid:  MustParseCid("bafy2bzacebq3hncszqpojglh2dkwekybq4zn6qpc4gceqbx36wndps5qehtau"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzaced5ecfm56dvtw26q56j4d32yoccyd7ggxn3qdki2enxpqqav45ths"),
 		"cron":             MustParseCid("bafk2bzacedpbtttpyvtjncqoyobr63mhqqtlrygbnudhxyp2vha56f626dkfs"),
@@ -457,7 +457,7 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{{
 	Network:      "caterpillarnet",
 	Version:      14,
 	BundleGitTag: "v14.0.0",
-	ManifestCid:  cid.MustParse("bafy2bzacecr6g2co4zkdvrsbz2z7wh44o6hrl3rpbgnlhe52772hhjs43vxge"),
+	ManifestCid:  MustParseCid("bafy2bzacecr6g2co4zkdvrsbz2z7wh44o6hrl3rpbgnlhe52772hhjs43vxge"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacecaoykugysdikvzptp5jc6qzhfxv3tsy7eggoabfk34jc6ozr3nju"),
 		"cron":             MustParseCid("bafk2bzacede6xljkkb6qww47hdho2dfs75bfxjwmxspldwclekd2ntdvcapj6"),
@@ -609,7 +609,7 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{{
 	Network:      "devnet",
 	Version:      14,
 	BundleGitTag: "v14.0.0",
-	ManifestCid:  cid.MustParse("bafy2bzacebwn7ymtozv5yz3x5hnxl4bds2grlgsk5kncyxjak3hqyhslb534m"),
+	ManifestCid:  MustParseCid("bafy2bzacebwn7ymtozv5yz3x5hnxl4bds2grlgsk5kncyxjak3hqyhslb534m"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacecqyi3xhyrze7hlo73zzyzz5jw5e6eqqyesmnbef4xr7br5amqsm2"),
 		"cron":             MustParseCid("bafk2bzacebmeovn3fehscsm2ejcd2vejgqmuqidzx3ytlvp4osa6fes3w73yy"),
@@ -784,7 +784,7 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{{
 	Network:      "mainnet",
 	Version:      14,
 	BundleGitTag: "v14.0.0",
-	ManifestCid:  cid.MustParse("bafy2bzacecbueuzsropvqawsri27owo7isa5gp2qtluhrfsto2qg7wpgxnkba"),
+	ManifestCid:  MustParseCid("bafy2bzacecbueuzsropvqawsri27owo7isa5gp2qtluhrfsto2qg7wpgxnkba"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacebr7ik7lng7vysm754mu5x7sakphwm4soqi6zwbox4ukpd6ndwvqy"),
 		"cron":             MustParseCid("bafk2bzacecwn6eiwa7ysimmk6i57i5whj4cqzwijx3xdlxwb5canmweaez6xc"),
@@ -936,7 +936,7 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{{
 	Network:      "testing",
 	Version:      14,
 	BundleGitTag: "v14.0.0",
-	ManifestCid:  cid.MustParse("bafy2bzacebgc3zha33w7wggshqjeeomjnxfsqdezpt6e5w4tcqnfp42hvhqyy"),
+	ManifestCid:  MustParseCid("bafy2bzacebgc3zha33w7wggshqjeeomjnxfsqdezpt6e5w4tcqnfp42hvhqyy"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacedz5ko33xyknznoj5mcwnijhggapvn7hzmec3ix3vlqjg6uuwownm"),
 		"cron":             MustParseCid("bafk2bzacebifywvakusxpvnzn33qneqm46g3trnqvuvaw5cgslfg5cl7prtwa"),
@@ -1088,7 +1088,7 @@ var EmbeddedBuiltinActorsMetadata = []*BuiltinActorsMetadata{{
 	Network:      "testing-fake-proofs",
 	Version:      14,
 	BundleGitTag: "v14.0.0",
-	ManifestCid:  cid.MustParse("bafy2bzacebca2c7r6m47fv5ojbzfgqxw74zxyzphlkxigj75q7vobbe6vm4x4"),
+	ManifestCid:  MustParseCid("bafy2bzacebca2c7r6m47fv5ojbzfgqxw74zxyzphlkxigj75q7vobbe6vm4x4"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacedz5ko33xyknznoj5mcwnijhggapvn7hzmec3ix3vlqjg6uuwownm"),
 		"cron":             MustParseCid("bafk2bzacebifywvakusxpvnzn33qneqm46g3trnqvuvaw5cgslfg5cl7prtwa"),
