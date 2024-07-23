@@ -96,6 +96,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - fix(store): correctly break weight ties based on smaller ticket #12253
 - fix: exchange bug #12275
 - chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23 #12276
+- metrics: f3: Set up otel metrics reporting to prometheus #12285
 
 # v1.27.1 / 2024-06-24
 
