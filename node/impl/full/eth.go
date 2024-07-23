@@ -135,6 +135,7 @@ type EthModule struct {
 	Mpool            *messagepool.MessagePool
 	StateManager     *stmgr.StateManager
 	EthTxHashManager *EthTxHashManager
+	EthEventHandler  *EthEventHandler
 
 	ChainAPI
 	MpoolAPI
@@ -432,7 +433,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI)
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, a.EthEventHandler)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
 	}
@@ -1270,7 +1271,36 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 	return ethtypes.EthBytes{}, nil
 }
 
+// TODO: For now, we're fetching logs from the index for the entire block and then filtering them by the transaction hash
+// This allows us to use the current schema of the event Index DB that has been optimised to use the "tipset_key_cid" index
+// However, this can be replaced to filter logs in the event Index DB by the "msgCid" if we pass it down to the query generator
+func (e *EthEventHandler) getEthLogsForBlockAndTransaction(ctx context.Context, blockHash *ethtypes.EthHash, txHash ethtypes.EthHash) ([]ethtypes.EthLog, error) {
+	ces, err := e.ethGetEventsForFilter(ctx, &ethtypes.EthFilterSpec{BlockHash: blockHash})
+	if err != nil {
+		return nil, err
+	}
+	logs, err := ethFilterLogsFromEvents(ctx, ces, e.SubManager.StateAPI)
+	if err != nil {
+		return nil, err
+	}
+	var out []ethtypes.EthLog
+	for _, log := range logs {
+		if log.TransactionHash == txHash {
+			out = append(out, log)
+		}
+	}
+	return out, nil
+}
+
 func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
+	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
+	if err != nil {
+		return nil, err
+	}
+	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
+}
+
+func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) ([]*filter.CollectedEvent, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -1279,7 +1309,7 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		return nil, xerrors.Errorf("cannot use eth_get_logs if historical event index is disabled")
 	}
 
-	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
+	pf, err := e.parseEthFilterSpec(filterSpec)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse eth filter spec: %w", err)
 	}
@@ -1340,7 +1370,7 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 
 	_ = e.uninstallFilter(ctx, f)
 
-	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
+	return ces, nil
 }
 
 // note that we can have null blocks at the given height and the event Index is not null block aware
@@ -1492,7 +1522,7 @@ type parsedFilter struct {
 	keys      map[string][]types.ActorEventBlock
 }
 
-func (e *EthEventHandler) parseEthFilterSpec(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*parsedFilter, error) {
+func (e *EthEventHandler) parseEthFilterSpec(filterSpec *ethtypes.EthFilterSpec) (*parsedFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -1556,7 +1586,7 @@ func (e *EthEventHandler) EthNewFilter(ctx context.Context, filterSpec *ethtypes
 		return ethtypes.EthFilterID{}, api.ErrNotSupported
 	}
 
-	pf, err := e.parseEthFilterSpec(ctx, filterSpec)
+	pf, err := e.parseEthFilterSpec(filterSpec)
 	if err != nil {
 		return ethtypes.EthFilterID{}, err
 	}
