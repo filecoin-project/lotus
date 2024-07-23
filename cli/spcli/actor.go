@@ -6,9 +6,6 @@ import (
 	"strconv"
 
 	"github.com/docker/go-units"
-	markettypes14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
-	"github.com/filecoin-project/lotus/build/buildconstants"
-	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -21,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	markettypes14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -29,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -40,7 +39,7 @@ import (
 func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 	return &cli.Command{
 		Name:      "settle-deal",
-		Usage:     "Settle deals manually",
+		Usage:     "Settle deals manually, if dealIds are not provided all deals will be settled",
 		ArgsUsage: "[...dealIds]",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
@@ -58,28 +57,38 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			defer acloser()
 
 			ctx := lcli.ReqContext(cctx)
-
-			var deals []uint64
-			for i, as := range cctx.Args().Slice() {
-				dealID, err := strconv.ParseUint(as, 10, 64)
-				if err != nil {
-					return xerrors.Errorf("parsing deal ID %d: %w", i, err)
-				}
-
-				deals = append(deals, dealID)
-			}
-
 			maddr, err := getActor(cctx)
 			if err != nil {
 				return err
 			}
 
-			mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-			if err != nil {
-				return xerrors.Errorf("Error getting miner's owner address: %w", err)
+			var (
+				dealIDs []uint64
+				dealId  uint64
+			)
+
+			// if no deal ids are provided, get all the deals for the miner
+			if dealsIdArgs := cctx.Args().Slice(); len(dealsIdArgs) != 0 {
+				for _, d := range dealsIdArgs {
+					dealId, err = strconv.ParseUint(d, 10, 64)
+					if err != nil {
+						return xerrors.Errorf("Error parsing deal id: %w", err)
+					}
+
+					dealIDs = append(dealIDs, dealId)
+				}
+			} else {
+				if dealIDs, err = GetMinerAllDeals(ctx, api, maddr, types.EmptyTSK); err != nil {
+					return xerrors.Errorf("Error getting all deals for miner: %w", err)
+				}
 			}
 
-			dealParams := bitfield.NewFromSet(deals)
+			mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("Error getting miner info: %w", err)
+			}
+
+			dealParams := bitfield.NewFromSet(dealIDs)
 			params, err := actors.SerializeParams(&dealParams)
 			if err != nil {
 				return err
@@ -99,6 +108,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 			res := smsg.Cid()
 
 			fmt.Printf("Requested deal settlement in message %s\nwaiting for it to be included in a block..\n", res)
+
 			// wait for it to get mined into a block
 			wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
 			if err != nil {
@@ -121,10 +131,10 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				}
 
 				// if all the deals were successful
-				if settlementReturn.Results.SuccessCount == uint64(len(deals)) {
+				if settlementReturn.Results.SuccessCount == uint64(len(dealIDs)) {
 					fmt.Printf("Successfully settled %d deals\n", settlementReturn.Results.SuccessCount)
 				} else {
-					fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.FailCount, len(deals))
+					fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.FailCount, len(dealIDs))
 				}
 			}
 			return nil
