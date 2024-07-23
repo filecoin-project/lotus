@@ -60,6 +60,7 @@ All node operators, including storage providers, should be aware that ONE pre-mi
 - The migration is expected to take less than 30 seconds on a node with an NVMe drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less than 1 minute.
 - Max memory usage during benchmarking the migration in "offline mode" (i.e., node not syncing) was 23GiB.
 - Max memory usage when benchmarking the migration in "online mode" (i.e., while the node is syncing) was 30GiB. Numbers here might vary depending on the load your node is under.
+More details on the migration benchmarking can be found in https://github.com/filecoin-project/lotus/issues/12128
 
 We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
 
