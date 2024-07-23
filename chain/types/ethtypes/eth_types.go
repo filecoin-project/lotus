@@ -1050,20 +1050,20 @@ type EthTraceFilterCriteria struct {
 	// Optional, default: "latest".
 	ToBlock *string `json:"toBlock,omitempty"`
 
-	// Actor address or a list of addresses from which event logs should originate.
+	// Actor address or a list of addresses from which transactions that generate traces should originate.
 	// Optional, default: nil.
 	// The JSON decoding must treat a string as equivalent to an array with one value, for example
 	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
 	FromAddress EthAddressList `json:"fromAddress,omitempty"`
 
-	// Actor address or a list of addresses to which event logs should be sent.
+	// Actor address or a list of addresses to which transactions that generate traces are sent.
 	// Optional, default: nil.
 	// The JSON decoding must treat a string as equivalent to an array with one value, for example
 	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
 	ToAddress EthAddressList `json:"toAddress,omitempty"`
 
-	// Restricts traces returned to those emitted after this epoch (in hex).
-	// Optional, default: 0.
+	// After specifies the offset for pagination of trace results. The number of traces to skip before returning results.
+	// Optional, default: nil.
 	After *EthUint64 `json:"after,omitempty"`
 
 	// Limits the number of traces returned.
