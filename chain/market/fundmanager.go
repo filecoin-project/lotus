@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -724,6 +724,6 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {
-	_, err := env.api.StateWaitMsg(ctx, c, build.MessageConfidence, api.LookbackNoLimit, true)
+	_, err := env.api.StateWaitMsg(ctx, c, buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	return err
 }

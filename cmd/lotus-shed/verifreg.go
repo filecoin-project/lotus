@@ -16,11 +16,12 @@ import (
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -98,7 +99,7 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", msgCid)
 
-		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}
@@ -164,7 +165,7 @@ var verifRegAddVerifierFromAccountCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -240,7 +241,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 
 		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
 
-		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 		if err != nil {
 			return err
 		}
@@ -516,7 +517,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 		msgCid := sm.Cid()
 		fmt.Println("sending msg: ", msgCid)
 
-		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), policy.ChainFinality, true)
 		if err != nil {
 			return err
 		}

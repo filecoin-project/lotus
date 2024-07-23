@@ -24,6 +24,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -829,7 +830,7 @@ func bps(sectorSize abi.SectorSize, sectorNum int, d time.Duration) string {
 }
 
 func spt(ssize abi.SectorSize, variant miner.SealProofVariant) abi.RegisteredSealProof {
-	spt, err := miner.SealProofTypeFromSectorSize(ssize, build.TestNetworkVersion, variant)
+	spt, err := miner.SealProofTypeFromSectorSize(ssize, buildconstants.TestNetworkVersion, variant)
 	if err != nil {
 		panic(err)
 	}

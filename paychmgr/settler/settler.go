@@ -14,7 +14,7 @@ import (
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -59,7 +59,7 @@ func SettlePaymentChannels(mctx helpers.MetricsCtx, lc fx.Lifecycle, papi API) e
 			if err != nil {
 				return err
 			}
-			return ev.Called(ctx, pcs.check, pcs.messageHandler, pcs.revertHandler, int(build.MessageConfidence+1), events.NoTimeout, pcs.matcher)
+			return ev.Called(ctx, pcs.check, pcs.messageHandler, pcs.revertHandler, int(buildconstants.MessageConfidence+1), events.NoTimeout, pcs.matcher)
 		},
 	})
 	return nil
@@ -95,7 +95,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 		}
 		go func(voucher *paychtypes.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
-			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, build.MessageConfidence, api.LookbackNoLimit, true)
+			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 			if err != nil {
 				log.Errorf("submitting voucher: %s", err.Error())
 				return

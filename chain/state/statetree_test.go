@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -48,7 +48,7 @@ func BenchmarkStateTreeSet(b *testing.B) {
 func BenchmarkStateTreeSetFlush(b *testing.B) {
 	//stm: @CHAIN_STATETREE_SET_ACTOR_001
 	cst := cbor.NewMemCborStore()
-	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	sv, err := VersionForNetwork(buildconstants.TestNetworkVersion)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestResolveCache(t *testing.T) {
 	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
 	//stm: @CHAIN_STATETREE_SNAPSHOT_001, @CHAIN_STATETREE_SNAPSHOT_CLEAR_001
 	cst := cbor.NewMemCborStore()
-	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	sv, err := VersionForNetwork(buildconstants.TestNetworkVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
 	//stm: @CHAIN_STATETREE_FLUSH_001
 	cst := cbor.NewMemCborStore()
-	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	sv, err := VersionForNetwork(buildconstants.TestNetworkVersion)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 func TestSetCache(t *testing.T) {
 	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
 	cst := cbor.NewMemCborStore()
-	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	sv, err := VersionForNetwork(buildconstants.TestNetworkVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestSnapshots(t *testing.T) {
 	ctx := context.Background()
 	cst := cbor.NewMemCborStore()
 
-	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	sv, err := VersionForNetwork(buildconstants.TestNetworkVersion)
 	if err != nil {
 		t.Fatal(err)
 	}

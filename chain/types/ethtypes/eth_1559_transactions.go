@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -30,7 +30,7 @@ type Eth1559TxArgs struct {
 }
 
 func (tx *Eth1559TxArgs) ToUnsignedFilecoinMessage(from address.Address) (*types.Message, error) {
-	if tx.ChainID != build.Eip155ChainId {
+	if tx.ChainID != buildconstants.Eip155ChainId {
 		return nil, fmt.Errorf("invalid chain id: %d", tx.ChainID)
 	}
 	mi, err := getFilecoinMethodInfo(tx.To, tx.Input)
@@ -123,7 +123,7 @@ func (tx *Eth1559TxArgs) ToEthTx(smsg *types.SignedMessage) (EthTx, error) {
 	gasPremium := EthBigInt(tx.MaxPriorityFeePerGas)
 
 	ethTx := EthTx{
-		ChainID:              EthUint64(build.Eip155ChainId),
+		ChainID:              EthUint64(buildconstants.Eip155ChainId),
 		Type:                 EIP1559TxType,
 		Nonce:                EthUint64(tx.Nonce),
 		Hash:                 hash,
@@ -330,7 +330,7 @@ func Eth1559TxArgsFromUnsignedFilecoinMessage(msg *types.Message) (*Eth1559TxArg
 	}
 
 	return &Eth1559TxArgs{
-		ChainID:              build.Eip155ChainId,
+		ChainID:              buildconstants.Eip155ChainId,
 		Nonce:                int(msg.Nonce),
 		To:                   to,
 		Value:                msg.Value,

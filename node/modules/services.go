@@ -16,6 +16,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
@@ -92,7 +93,7 @@ func RunChainExchange(h host.Host, svc exchange.Server) {
 }
 
 func waitForSync(stmgr *stmgr.StateManager, epochs int, subscribe func()) {
-	nearsync := time.Duration(epochs*int(build.BlockDelaySecs)) * time.Second
+	nearsync := time.Duration(epochs*int(buildconstants.BlockDelaySecs)) * time.Second
 
 	// early check, are we synced at start up?
 	ts := stmgr.ChainStore().GetHeaviestTipSet()
@@ -227,7 +228,7 @@ type RandomBeaconParams struct {
 }
 
 func BuiltinDrandConfig() dtypes.DrandSchedule {
-	return build.DrandConfigSchedule()
+	return buildconstants.DrandConfigSchedule()
 }
 
 func RandomSchedule(lc fx.Lifecycle, mctx helpers.MetricsCtx, p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {

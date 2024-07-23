@@ -31,6 +31,7 @@ const ProtocolID = "/fil/hello/1.0.0"
 
 var log = logging.Logger("hello")
 var streamDeadline = 10 * time.Second
+var streamOpenTimeout = 1 * time.Minute
 
 type HelloMessage struct {
 	HeaviestTipSet       []cid.Cid
@@ -141,7 +142,9 @@ func (hs *Service) HandleStream(s inet.Stream) {
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
-	s, err := hs.h.NewStream(ctx, pid, ProtocolID)
+	sctx, cancel := context.WithTimeout(ctx, streamOpenTimeout)
+	defer cancel()
+	s, err := hs.h.NewStream(sctx, pid, ProtocolID)
 	if err != nil {
 		return xerrors.Errorf("error opening stream: %w", err)
 	}

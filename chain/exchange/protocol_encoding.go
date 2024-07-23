@@ -7,7 +7,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -79,7 +79,7 @@ func (t *messageIndices) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra > uint64(build.BlockMessageLimit) {
+	if extra > uint64(buildconstants.BlockMessageLimit) {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -109,7 +109,7 @@ func (t *messageIndices) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if len(t.v) > build.BlockMessageLimit {
+	if len(t.v) > buildconstants.BlockMessageLimit {
 		return xerrors.Errorf("Slice value in field v was too long")
 	}
 

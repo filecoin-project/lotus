@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -26,7 +26,7 @@ func (m *Sealing) handleFaultReported(ctx statemachine.Context, sector SectorInf
 		return xerrors.Errorf("entered fault reported state without a FaultReportMsg cid")
 	}
 
-	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg, build.MessageConfidence, api.LookbackNoLimit, true)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg, buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return xerrors.Errorf("failed to wait for fault declaration: %w", err)
 	}
@@ -89,7 +89,7 @@ func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorTerminated{TerminatedAt: ts.Height()})
 	}
 
-	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage, build.MessageConfidence, api.LookbackNoLimit, true)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage, buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("waiting for terminate message to land on chain: %w", err)})
 	}
@@ -117,7 +117,7 @@ func (m *Sealing) handleTerminateFinality(ctx statemachine.Context, sector Secto
 			return ctx.Send(SectorRemove{})
 		}
 
-		toWait := time.Duration(ts.Height()-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(build.BlockDelaySecs) * time.Second
+		toWait := time.Duration(ts.Height()-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(buildconstants.BlockDelaySecs) * time.Second
 		select {
 		case <-time.After(toWait):
 			continue

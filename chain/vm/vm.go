@@ -26,6 +26,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -640,7 +641,7 @@ func (vm *LegacyVM) ShouldBurn(ctx context.Context, st *state.StateTree, msg *ty
 		// Check to see if we should burn funds. We avoid burning on successful
 		// window post. This won't catch _indirect_ window post calls, but this
 		// is the best we can get for now.
-		if vm.blockHeight > build.UpgradeClausHeight && errcode == exitcode.Ok && msg.Method == builtin_types.MethodsMiner.SubmitWindowedPoSt {
+		if vm.blockHeight > buildconstants.UpgradeClausHeight && errcode == exitcode.Ok && msg.Method == builtin_types.MethodsMiner.SubmitWindowedPoSt {
 			// Ok, we've checked the _method_, but we still need to check
 			// the target actor. It would be nice if we could just look at
 			// the trace, but I'm not sure if that's safe?

@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -58,7 +58,7 @@ var genesisNewCmd = &cli.Command{
 			return xerrors.New("seed genesis new [genesis.json]")
 		}
 		out := genesis.Template{
-			NetworkVersion:   build.GenesisNetworkVersion,
+			NetworkVersion:   buildconstants.GenesisNetworkVersion,
 			Accounts:         []genesis.Actor{},
 			Miners:           []genesis.Miner{},
 			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
@@ -145,7 +145,7 @@ var genesisAddMinerCmd = &cli.Command{
 			log.Infof("Giving %s some initial balance", miner.Owner)
 			template.Accounts = append(template.Accounts, genesis.Actor{
 				Type:    genesis.TAccount,
-				Balance: big.Mul(big.NewInt(50_000_000), big.NewInt(int64(build.FilecoinPrecision))),
+				Balance: big.Mul(big.NewInt(50_000_000), big.NewInt(int64(buildconstants.FilecoinPrecision))),
 				Meta:    (&genesis.AccountMeta{Owner: miner.Owner}).ActorMeta(),
 			})
 		}
@@ -245,7 +245,7 @@ var genesisAddMsigsCmd = &cli.Command{
 
 func monthsToBlocks(nmonths int) int {
 	days := uint64((365 * nmonths) / 12)
-	return int(days * 24 * 60 * 60 / build.BlockDelaySecs)
+	return int(days * 24 * 60 * 60 / buildconstants.BlockDelaySecs)
 }
 
 func parseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
@@ -513,7 +513,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "network-version",
 			Usage: "network version to start genesis with",
-			Value: int(build.GenesisNetworkVersion),
+			Value: int(buildconstants.GenesisNetworkVersion),
 		},
 	},
 	ArgsUsage: "<genesisFile>",
@@ -538,7 +538,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 		}
 
 		nv := network.Version(cctx.Int("network-version"))
-		if nv > build.TestNetworkVersion {
+		if nv > buildconstants.TestNetworkVersion {
 			return xerrors.Errorf("invalid network version: %d", nv)
 		}
 
@@ -626,7 +626,7 @@ var genesisSetVRKSignersCmd = &cli.Command{
 				signers = append(signers, signer)
 				template.Accounts = append(template.Accounts, genesis.Actor{
 					Type:    genesis.TAccount,
-					Balance: big.Mul(big.NewInt(50_000), big.NewInt(int64(build.FilecoinPrecision))),
+					Balance: big.Mul(big.NewInt(50_000), big.NewInt(int64(buildconstants.FilecoinPrecision))),
 					Meta:    (&genesis.AccountMeta{Owner: signer}).ActorMeta(),
 				})
 			}
