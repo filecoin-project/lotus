@@ -5,10 +5,8 @@ This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin net
 
 **This release sets the Mainnet to upgrade at epoch 4154640, corresponding to 2024-08-06T12:00:00Z.** 
 
-Compared to `Lotus v1.28.0-rc5`, the `Lotus v1.28.0` release:
-
 ## ☢️ Upgrade Warnings ☢️
-- If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
+- If you are running the `v1.26.x` version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
 
 - This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
 
@@ -67,10 +65,12 @@ We recommend node operators (who haven't enabled splitstore discard mode) that d
 For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and running the non-cached migration (i.e., just running the migration at the network upgrade epoch), and scheduling some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
 
 ## Dependencies
-- github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
-- github.com/filecoin-project/filecoin-ffi (`v1.27.0-rc2` -> `v1.28.0-rc2`)
+
+- github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0`)
+- github.com/filecoin-project/filecoin-ffi (`v1.27.0-rc2` -> `v1.28.0`)
+- github.com/filecoin-project/go-libp2p2 (`v0.35.3` -> `v0.35.4`)
 - `ref-fvm4` (as part of `filecoin-ffi`) (`4.2.0` -> `4.3.1`)
-- A new `github.com/filecoin-project/go-f3` dependency for F3 soft launch (`v0.0.2`)
+- A new `github.com/filecoin-project/go-f3` dependency for F3 soft launch (`v0.0.5`)
 
 ## Others
 
@@ -84,6 +84,16 @@ For certain node operators, such as full archival nodes or systems that need to 
 - feat:ec: integrate F3 dynamic manifest #12185
 - fix: f3: Fix F3 build parameters for testground target (#12189) ([filecoin-project/lotus#12189](https://github.com/filecoin-project/lotus/pull/12189))
 - fix: eth_getLogs: https://github.com/filecoin-project/lotus/pull/12212
+- chore: lotus-shed: Add support for nv23 in migrate-state cmd #12172
+- feat: F3: Update go-f3, change the style of participation call #12196
+- chore: f3: Upgrade go mod F3 dependency to v0.0.3 tagged release #12216
+- fix: Eth Trace Block: nil access panic #12221
+- chore!: markets: remove stray unixfs constants, features and references #12217
+- chore: metrics: Upgrade to OpenTelemetry v1.28.0 #12223
+- fix: bug: Reduce log level in F3 message sending to Debug #12224
+- [skip changelog] chore: config: yet more lp2p removal from miner #12252
+- fix(store): correctly break weight ties based on smaller ticket #12253
+- fix: exchange bug #12275
 
 # v1.27.1 / 2024-06-24
 
