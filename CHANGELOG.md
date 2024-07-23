@@ -9,6 +9,7 @@
 - https://github.com/filecoin-project/lotus/pull/12276: chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23
 - https://github.com/filecoin-project/lotus/pull/12278: chore: Set Mainnet upgrade epoch for NV23.
 - https://github.com/filecoin-project/lotus/pull/12269 Fix `logIndex` ordering in `EthGetTransactionReceipt` by using the EventIndex to fetch logs
+- https://github.com/filecoin-project/lotus/pull/12285 Set up OpenTelemetry metrics reporting to prometheus
 
 ## ☢️ Upgrade Warnings ☢️
 
