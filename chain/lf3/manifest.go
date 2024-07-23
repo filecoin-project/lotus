@@ -19,7 +19,6 @@ import (
 func NewManifestProvider(nn dtypes.NetworkName, ps *pubsub.PubSub, mds dtypes.MetadataDS) manifest.ManifestProvider {
 	m := manifest.LocalDevnetManifest()
 	m.NetworkName = gpbft.NetworkName(nn)
-	m.EC.DelayMultiplier = 2.
 	m.EC.Period = time.Duration(build.BlockDelaySecs) * time.Second
 	if build.F3BootstrapEpoch < 0 {
 		// if unset, set to a sane default so we don't get scary logs and pause.
