@@ -1128,6 +1128,8 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 				// If Count is specified, limit the results
 				if filter.Count != nil && ethtypes.EthUint64(len(results)) >= *filter.Count {
 					return results, nil
+				} else if filter.Count == nil && len(results) > a.EthTraceFilterMaxResults {
+					return nil, xerrors.Errorf("too many results, maximum supported is %d, try paginating requests with After and Count", *filter.Count, a.EthTraceFilterMaxResults)
 				}
 			}
 		}
