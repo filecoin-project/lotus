@@ -328,3 +328,12 @@ jobs:
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
         continue-on-error: true
+
+      - name: Create issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: ./.github/actions/create-or-update-issue
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          title: "Fix Expensive Tests"
+          label: "expensive-test-failure"
+          body: "During a scheduled run, the test ${{ matrix.name }} failed."

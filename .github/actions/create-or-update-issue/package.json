@@ -1,0 +1,10 @@
+{
+    "name": "create-or-update-issue",
+    "version": "1.0.0",
+    "description": "Creates an issue or comments on an existing issue if a build fails.",
+    "main": "index.js",
+    "dependencies": {
+        "@actions/core": "^1.2.6",
+        "@actions/github": "^4.0.0"
+    }
+}

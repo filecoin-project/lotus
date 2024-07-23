@@ -1,0 +1,21 @@
+name: 'Create Issue on Failure'
+description: 'Creates an issue or comments on an existing issue if a build fails.'
+inputs:
+  GITHUB_TOKEN:
+    description: 'GitHub token'
+    required: true
+  title:
+    description: 'The title of the issue to create or update'
+    required: true
+  body:
+    description: 'The body of the issue to create or update'
+    required: true
+  label:
+    description: 'The label to add to the issue'
+    required: true
+outputs:
+  issue-number:
+    description: 'The issue number if one was found'
+runs:
+  using: 'node20'
+  main: 'index.js'
