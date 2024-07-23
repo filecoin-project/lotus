@@ -1105,8 +1105,10 @@ func (a *EthModule) EthTraceFilter(ctx context.Context, filter ethtypes.EthTrace
 			return nil, xerrors.Errorf("cannot get trace for block %d: %w", blkNum, err)
 		}
 
-		for _, blockTrace := range blockTraces {
-			match, err := matchFilterCriteria(blockTrace, filter, filter.FromAddress, filter.ToAddress)
+		for _, _blockTrace := range blockTraces {
+			// Create a copy of blockTrace to avoid pointer quirks
+			blockTrace := *_blockTrace
+			match, err := matchFilterCriteria(&blockTrace, filter, filter.FromAddress, filter.ToAddress)
 			if err != nil {
 				return nil, xerrors.Errorf("cannot match filter for block %d: %w", blkNum, err)
 			}
