@@ -104,18 +104,6 @@ your node if metadata log is disabled`,
 
 			Comment: ``,
 		},
-		{
-			Name: "Libp2p",
-			Type: "Libp2p",
-
-			Comment: ``,
-		},
-		{
-			Name: "Pubsub",
-			Type: "Pubsub",
-
-			Comment: ``,
-		},
 	},
 	"DealmakingConfig": {
 		{
@@ -246,6 +234,18 @@ Set to 0 to keep all mappings`,
 		},
 	},
 	"FullNode": {
+		{
+			Name: "Libp2p",
+			Type: "Libp2p",
+
+			Comment: ``,
+		},
+		{
+			Name: "Pubsub",
+			Type: "Pubsub",
+
+			Comment: ``,
+		},
 		{
 			Name: "Wallet",
 			Type: "Wallet",

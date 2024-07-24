@@ -21,6 +21,8 @@ import (
 )
 
 var (
+	TestNetworkVersion = network.Version23
+
 	UnixfsChunkSize     = uint64(1 << 20)
 	UnixfsLinksPerLevel = 1024
 
@@ -76,10 +78,6 @@ var (
 		v = v.Mul(v, big.NewInt(int64(FilecoinPrecision)))
 		return v
 	}()
-
-	// Actor consts
-	// TODO: pieceSize unused from actors
-	MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 	PackingEfficiencyNum   int64 = 4
 	PackingEfficiencyDenom int64 = 5
