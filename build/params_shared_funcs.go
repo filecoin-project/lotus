@@ -54,5 +54,5 @@ func MustParseCid(c string) cid.Cid {
 
 func IsF3Enabled() bool {
 	const F3DisableEnvKey = "LOTUS_DISABLE_F3"
-	return f3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
+	return F3Enabled && len(os.Getenv(F3DisableEnvKey)) == 0
 }
