@@ -49,39 +49,6 @@ func isLatest(name, version string) bool {
 	return true
 }
 
-func getPrevious(name, version string) string {
-	prerelease := isPrerelease(version)
-	prefix := getPrefix(name)
-	tags := getTags()
-	previous := ""
-	for _, t := range tags {
-		if strings.HasPrefix(t, prefix) {
-			v := strings.TrimPrefix(t, prefix)
-			if prerelease || !isPrerelease(v) {
-				if semver.Compare("v"+v, "v"+version) < 0 {
-					if previous == "" || semver.Compare("v"+v, "v"+previous) > 0 {
-						previous = v
-					}
-				}
-			}
-		}
-	}
-	if previous == "" {
-		return ""
-	}
-	return prefix + previous
-}
-
-func getBinaries(name string) []string {
-	if name == "node" {
-		return []string{"lotus"}
-	}
-	if name == "miner" {
-		return []string{"lotus-miner", "lotus-worker"}
-	}
-	return nil
-}
-
 func isReleased(tag string) bool {
 	tags := getTags()
 	for _, t := range tags {
@@ -100,14 +67,12 @@ func getPrefix(name string) string {
 }
 
 type project struct {
-	Name       string   `json:"name"`
-	Version    string   `json:"version"`
-	Tag        string   `json:"tag"`
-	Previous   string   `json:"previous"`
-	Latest     bool     `json:"latest"`
-	Prerelease bool     `json:"prerelease"`
-	Released   bool     `json:"released"`
-	Binaries   []string `json:"binaries"`
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+	Tag        string `json:"tag"`
+	Latest     bool   `json:"latest"`
+	Prerelease bool   `json:"prerelease"`
+	Released   bool   `json:"released"`
 }
 
 func getProject(name, version string) project {
@@ -116,11 +81,9 @@ func getProject(name, version string) project {
 		Name:       name,
 		Version:    version,
 		Tag:        getPrefix(name) + version,
-		Previous:   getPrevious(name, version),
 		Latest:     isLatest(name, version),
 		Prerelease: isPrerelease(version),
 		Released:   isReleased(tag),
-		Binaries:   getBinaries(name),
 	}
 }
 

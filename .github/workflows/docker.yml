@@ -10,7 +10,6 @@ on:
     branches:
       - master
       - release/v*
-      - release/miner/v*
       - releases
   schedule:
     - cron: '0 0 * * *'
@@ -30,7 +29,7 @@ permissions:
 
 jobs:
   docker:
-    name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}]
+    name: Docker (${{ matrix.image }} / ${{ matrix.network }}) [publish=${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -46,7 +45,7 @@ jobs:
           - image: lotus
             network: mainnet
     env:
-      PUBLISH: ${{ github.event.inputs.publish == 'true' || github.event_name != 'pull_request' }}
+      PUBLISH: ${{ inputs.publish == 'true' || github.event_name != 'pull_request' }}
     steps:
       - id: channel
         env:
