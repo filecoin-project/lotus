@@ -32,18 +32,6 @@ func defCommon() Common {
 		Backup: Backup{
 			DisableMetadataLog: true,
 		},
-	}
-}
-
-func DefaultDefaultMaxFee() types.FIL {
-	return types.MustParseFIL("0.07")
-}
-
-// DefaultFullNode returns the default config
-func DefaultFullNode() *FullNode {
-	return &FullNode{
-		Common: defCommon(),
-
 		Libp2p: Libp2p{
 			ListenAddresses: []string{
 				"/ip4/0.0.0.0/tcp/0",
@@ -64,7 +52,17 @@ func DefaultFullNode() *FullNode {
 			Bootstrapper: false,
 			DirectPeers:  nil,
 		},
+	}
+}
 
+func DefaultDefaultMaxFee() types.FIL {
+	return types.MustParseFIL("0.07")
+}
+
+// DefaultFullNode returns the default config
+func DefaultFullNode() *FullNode {
+	return &FullNode{
+		Common: defCommon(),
 		Fees: FeeConfig{
 			DefaultMaxFee: DefaultDefaultMaxFee(),
 		},

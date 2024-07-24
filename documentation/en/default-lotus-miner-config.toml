@@ -32,6 +32,102 @@
     #example-subsystem = "INFO"
 
 
+[Libp2p]
+  # Binding address for the libp2p host - 0 means random port.
+  # Format: multiaddress; see https://multiformats.io/multiaddr/
+  #
+  # type: []string
+  # env var: LOTUS_LIBP2P_LISTENADDRESSES
+  #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1", "/ip6/::/udp/0/quic-v1", "/ip4/0.0.0.0/udp/0/quic-v1/webtransport", "/ip6/::/udp/0/quic-v1/webtransport"]
+
+  # Addresses to explicitally announce to other peers. If not specified,
+  # all interface addresses are announced
+  # Format: multiaddress
+  #
+  # type: []string
+  # env var: LOTUS_LIBP2P_ANNOUNCEADDRESSES
+  #AnnounceAddresses = []
+
+  # Addresses to not announce
+  # Format: multiaddress
+  #
+  # type: []string
+  # env var: LOTUS_LIBP2P_NOANNOUNCEADDRESSES
+  #NoAnnounceAddresses = []
+
+  # When not disabled (default), lotus asks NAT devices (e.g., routers), to
+  # open up an external port and forward it to the port lotus is running on.
+  # When this works (i.e., when your router supports NAT port forwarding),
+  # it makes the local lotus node accessible from the public internet
+  #
+  # type: bool
+  # env var: LOTUS_LIBP2P_DISABLENATPORTMAP
+  #DisableNatPortMap = false
+
+  # ConnMgrLow is the number of connections that the basic connection manager
+  # will trim down to.
+  #
+  # type: uint
+  # env var: LOTUS_LIBP2P_CONNMGRLOW
+  #ConnMgrLow = 150
+
+  # ConnMgrHigh is the number of connections that, when exceeded, will trigger
+  # a connection GC operation. Note: protected/recently formed connections don't
+  # count towards this limit.
+  #
+  # type: uint
+  # env var: LOTUS_LIBP2P_CONNMGRHIGH
+  #ConnMgrHigh = 180
+
+  # ConnMgrGrace is a time duration that new connections are immune from being
+  # closed by the connection manager.
+  #
+  # type: Duration
+  # env var: LOTUS_LIBP2P_CONNMGRGRACE
+  #ConnMgrGrace = "20s"
+
+
+[Pubsub]
+  # Run the node in bootstrap-node mode
+  #
+  # type: bool
+  # env var: LOTUS_PUBSUB_BOOTSTRAPPER
+  #Bootstrapper = false
+
+  # type: string
+  # env var: LOTUS_PUBSUB_REMOTETRACER
+  #RemoteTracer = ""
+
+  # Path to file that will be used to output tracer content in JSON format.
+  # If present tracer will save data to defined file.
+  # Format: file path
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_JSONTRACER
+  #JsonTracer = ""
+
+  # Connection string for elasticsearch instance.
+  # If present tracer will save data to elasticsearch.
+  # Format: https://<username>:<password>@<elasticsearch_url>:<port>/
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_ELASTICSEARCHTRACER
+  #ElasticSearchTracer = ""
+
+  # Name of elasticsearch index that will be used to save tracer data.
+  # This property is used only if ElasticSearchTracer propery is set.
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_ELASTICSEARCHINDEX
+  #ElasticSearchIndex = ""
+
+  # Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_TRACERSOURCEAUTH
+  #TracerSourceAuth = ""
+
+
 [Subsystems]
   # type: bool
   # env var: LOTUS_SUBSYSTEMS_ENABLEMINING
