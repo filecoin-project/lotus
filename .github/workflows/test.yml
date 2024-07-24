@@ -332,9 +332,9 @@ jobs:
 
       - name: Create issue on failure
         if: failure() && github.event_name == 'schedule'
-        uses: ipdxco/create-or-update-issue@0265e9148d6c26f6cdb0abb9c47df048a585c2fe # v1.0.0
+        uses: ipdxco/create-or-update-issue@1c3635e06dd2f09272e49c6f1ad4619ba949120b # v1.0.1
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           title: "Fix Expensive Tests"
-          label: "expensive-test-failure"
+          label: "area/expensive-test-failure"
           body: "During a scheduled run, the test ${{ matrix.name }} failed."
