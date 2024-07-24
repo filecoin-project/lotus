@@ -82,8 +82,9 @@
   * [EthUnsubscribe](#EthUnsubscribe)
 * [F3](#F3)
   * [F3GetCertificate](#F3GetCertificate)
+  * [F3GetECPowerTable](#F3GetECPowerTable)
+  * [F3GetF3PowerTable](#F3GetF3PowerTable)
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
-  * [F3GetPowerTable](#F3GetPowerTable)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2233,6 +2234,68 @@ Response:
 }
 ```
 
+### F3GetECPowerTable
+F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
+### F3GetF3PowerTable
+F3GetF3PowerTable returns a F3 specific power table.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
 ### F3GetLatestCertificate
 F3GetLatestCertificate returns the latest finality certificate
 
@@ -2289,37 +2352,6 @@ Response:
   "Signature": null,
   "PowerTableDelta": null
 }
-```
-
-### F3GetPowerTable
-F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-[
-  {
-    "ID": 1000,
-    "Power": 0,
-    "PubKey": "Bw=="
-  }
-]
 ```
 
 ### F3Participate

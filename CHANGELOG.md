@@ -65,6 +65,14 @@ We recommend node operators (who haven't enabled splitstore discard mode) that d
 
 For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and running the non-cached migration (i.e., just running the migration at the network upgrade epoch), and scheduling some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
 
+## Fast Finality for Filecoin (f3) soft launch
+
+We are one step closer to reduce Filecoin's finality from 7.5 hours to a minute or so, you can checkout the [FIP](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md) for more details.  Changing the consensus protocol is not trivial, and the f3 implementation team has designed a [passive testing plan to verify the protocol](https://github.com/filecoin-project/go-f3/issues/213) and give time for client implementation teams to integrate and test F3 before it is fully activated in the network consensus. That said, the lotus team has implemented f3 & the manifest for passive testing in this release, and we would like to ask node operators, especially storage providers, to participate in the testing by participating in F3 on the mainnet (which is enabled by default in this release)! We will keep updating [this discussion](https://github.com/filecoin-project/lotus/discussions/12287) to capture "what can you expect" & testing status. If you notice any unexpected behaviour caused by f3, please do not hesitate to reach out to us in #fil-fast-finality. 
+
+F3 (Fast Finality) is experimental in this release. All the new F3 APIs  are unstable and subject to until nv24 release (assuming f3 will be fully activated in this upgrade).
+
+Exchanges and RPC providers are recommended to opt-out of F3 functionality for now. You can disable F3 by adding the `DISABLE_F3 = 1` environment variable, which will output a log saying that F3 has been disabled.
+
 ## Dependencies
 
 - github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0`)
@@ -97,6 +105,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 - fix: exchange bug #12275
 - chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23 #12276
 - metrics: f3: Set up otel metrics reporting to prometheus #12285
+- Upgrade to go-f3 v0.0.5 #12279
 
 # v1.27.1 / 2024-06-24
 

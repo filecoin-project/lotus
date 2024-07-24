@@ -58,9 +58,16 @@ func (f3api *F3API) F3GetLatestCertificate(ctx context.Context) (*certs.Finality
 	}
 	return f3api.F3.GetLatestCert(ctx)
 }
-func (f3api *F3API) F3GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+func (f3api *F3API) F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	if f3api.F3 == nil {
 		return nil, ErrF3Disabled
 	}
 	return f3api.F3.GetPowerTable(ctx, tsk)
+}
+
+func (f3api *F3API) F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	if f3api.F3 == nil {
+		return nil, ErrF3Disabled
+	}
+	return f3api.F3.GetF3PowerTable(ctx, tsk)
 }
