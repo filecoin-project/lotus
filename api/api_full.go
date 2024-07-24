@@ -879,8 +879,10 @@ type FullNode interface {
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
 	// F3GetLatestCertificate returns the latest finality certificate
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
-	// F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
-	F3GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
+	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetF3PowerTable returns a F3 specific power table.
+	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 }
 
 // EthSubscriber is the reverse interface to the client, called after EthSubscribe
