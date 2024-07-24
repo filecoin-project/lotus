@@ -21,9 +21,18 @@ func NewManifestProvider(nn dtypes.NetworkName, ps *pubsub.PubSub, mds dtypes.Me
 	m.NetworkName = gpbft.NetworkName(nn)
 	m.EC.DelayMultiplier = 2.
 	m.EC.Period = time.Duration(buildconstants.BlockDelaySecs) * time.Second
-	m.BootstrapEpoch = int64(buildconstants.F3BootstrapEpoch)
+	if buildconstants.F3BootstrapEpoch < 0 {
+		// if unset, set to a sane default so we don't get scary logs and pause.
+		m.BootstrapEpoch = 2 * int64(policy.ChainFinality)
+		m.Pause = true
+	} else {
+		m.BootstrapEpoch = int64(buildconstants.F3BootstrapEpoch)
+	}
 	m.EC.Finality = int64(policy.ChainFinality)
 	m.CommitteeLookback = 5
+
+	// TODO: We're forcing this to start paused for now. We need to remove this for the final
+	// mainnet launch.
 	m.Pause = true
 
 	switch manifestServerID, err := peer.Decode(buildconstants.ManifestServerID); {
