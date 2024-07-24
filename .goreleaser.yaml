@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
 
 version: 2
-project_name: "{{ .Env.PROJECT_NAME }}"
+
+project_name: lotus
+
 universal_binaries:
   - id: lotus
     replace: true
@@ -12,6 +14,7 @@ universal_binaries:
   - id: lotus-worker
     replace: true
     name_template: lotus-worker
+
 builds:
   - id: lotus
     binary: lotus
@@ -28,8 +31,7 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: "{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus"
-    skip: true
+      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus'
   - id: lotus-miner
     binary: lotus-miner
     builder: prebuilt
@@ -45,8 +47,7 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: "{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner"
-    skip: true
+      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner'
   - id: lotus-worker
     binary: lotus-worker
     builder: prebuilt
@@ -62,50 +63,51 @@ builds:
       - goos: linux
         goarch: arm64
     prebuilt:
-      path: "{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker"
-    skip: true
+      path: '{{ .Env.GITHUB_WORKSPACE }}/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker'
+
 archives:
   - id: primary
     format: tar.gz
     wrap_in_directory: true
-    name_template: "{{ .Env.PROJECT_NAME }}_v{{ .Env.VERSION }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       # this is a dumb but required hack so it doesn't include the default files
       # https://github.com/goreleaser/goreleaser/issues/602
       - _n_o_n_e_*
+
 release:
   github:
     owner: filecoin-project
     name: lotus
-  draft: true
-  header: "{{ .Env.HEADER }}"
-  make_latest: "{{ .Env.IS_LATEST }}"
-  name_template: "{{ .Env.TAG }}"
-  prerelease: "{{ .Env.IS_PRERELEASE }}"
-  replace_existing_artifacts: true
-  replace_existing_draft: false
-  tag: "{{ .Env.TAG }}"
-  target_commitish: "{{ .Env.TARGET_COMMITISH }}"
+  prerelease: auto
+  name_template: "v{{.Version}}"
+
 brews:
-  - name: "{{ .Env.PROJECT_NAME }}"
-    repository:
+  - repository:
       owner: filecoin-project
       name: homebrew-lotus
       branch: master
     ids:
       - primary
-    install: ""
-    test: ""
+    install: |
+      bin.install "lotus"
+      bin.install "lotus-miner"
+      bin.install "lotus-worker"
+    test: |
+      system "#{bin}/lotus --version"
+      system "#{bin}/lotus-miner --version"
+      system "#{bin}/lotus-worker --version"
     directory: Formula
     homepage: "https://filecoin.io"
     description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
     license: MIT
-    skip_upload: true
+    skip_upload: auto
     dependencies:
       - name: hwloc
-    commit_msg_template: "Brew formula update for {{ .Env.PROJECT_NAME }} version {{ .Env.TAG }}"
+
 # produced manually so we can include cid checksums
 checksum:
   disable: true
+
 snapshot:
-  name_template: "{{ .Env.PROJECT_NAME }}_v{{ .Env.VERSION }}"
+  name_template: "{{ .Version }}"
