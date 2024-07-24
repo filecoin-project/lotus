@@ -136,7 +136,7 @@ type EthModule struct {
 	Mpool                    *messagepool.MessagePool
 	StateManager             *stmgr.StateManager
 	EthTxHashManager         *EthTxHashManager
-	EthTraceFilterMaxResults ethtypes.EthUint64
+	EthTraceFilterMaxResults uint64
 	EthEventHandler          *EthEventHandler
 	ChainAPI
 	MpoolAPI
