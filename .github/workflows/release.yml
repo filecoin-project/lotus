@@ -318,7 +318,7 @@ jobs:
         env:
           release_id: ${{ fromJSON(steps.after.outputs.release).id }}
           make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
-          GITHUB_TOKEN: ${{ secrets.TAG_CREATE_GITHUB_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           gh api -X PATCH /repos/$GITHUB_REPOSITORY/releases/$release_id \
             --field draft=false \
