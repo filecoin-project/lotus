@@ -21,6 +21,8 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
+	certs "github.com/filecoin-project/go-f3/certs"
+	gpbft "github.com/filecoin-project/go-f3/gpbft"
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -1150,6 +1152,81 @@ func (m *MockFullNode) EthUnsubscribe(arg0 context.Context, arg1 ethtypes.EthSub
 func (mr *MockFullNodeMockRecorder) EthUnsubscribe(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthUnsubscribe", reflect.TypeOf((*MockFullNode)(nil).EthUnsubscribe), arg0, arg1)
+}
+
+// F3GetCertificate mocks base method.
+func (m *MockFullNode) F3GetCertificate(arg0 context.Context, arg1 uint64) (*certs.FinalityCertificate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetCertificate", arg0, arg1)
+	ret0, _ := ret[0].(*certs.FinalityCertificate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetCertificate indicates an expected call of F3GetCertificate.
+func (mr *MockFullNodeMockRecorder) F3GetCertificate(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetCertificate", reflect.TypeOf((*MockFullNode)(nil).F3GetCertificate), arg0, arg1)
+}
+
+// F3GetECPowerTable mocks base method.
+func (m *MockFullNode) F3GetECPowerTable(arg0 context.Context, arg1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetECPowerTable", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetECPowerTable indicates an expected call of F3GetECPowerTable.
+func (mr *MockFullNodeMockRecorder) F3GetECPowerTable(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetECPowerTable", reflect.TypeOf((*MockFullNode)(nil).F3GetECPowerTable), arg0, arg1)
+}
+
+// F3GetF3PowerTable mocks base method.
+func (m *MockFullNode) F3GetF3PowerTable(arg0 context.Context, arg1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetF3PowerTable", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetF3PowerTable indicates an expected call of F3GetF3PowerTable.
+func (mr *MockFullNodeMockRecorder) F3GetF3PowerTable(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetF3PowerTable", reflect.TypeOf((*MockFullNode)(nil).F3GetF3PowerTable), arg0, arg1)
+}
+
+// F3GetLatestCertificate mocks base method.
+func (m *MockFullNode) F3GetLatestCertificate(arg0 context.Context) (*certs.FinalityCertificate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetLatestCertificate", arg0)
+	ret0, _ := ret[0].(*certs.FinalityCertificate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetLatestCertificate indicates an expected call of F3GetLatestCertificate.
+func (mr *MockFullNodeMockRecorder) F3GetLatestCertificate(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetLatestCertificate", reflect.TypeOf((*MockFullNode)(nil).F3GetLatestCertificate), arg0)
+}
+
+// F3Participate mocks base method.
+func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address, arg2, arg3 time.Time) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3Participate indicates an expected call of F3Participate.
+func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1, arg2, arg3)
 }
 
 // FilecoinAddressToEthAddress mocks base method.

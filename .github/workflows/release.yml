@@ -3,32 +3,15 @@ name: Release
 on:
   push:
     branches:
-      - release/v*
-      - release/miner/v*
-      - releases
-    paths:
-      - build/version.go
-  pull_request:
-    branches:
-      - release/v*
-      - release/miner/v*
-      - releases
-    paths:
-      - build/version.go
+      - ci/*
+      - release/*
+    tags:
+      - v*
   workflow_dispatch:
     inputs:
-      projects:
-        description: 'Projects to release (JSON array)'
-        required: false
-        default: '[]'
       ref:
-        description: 'Ref to buuild the binaries from'
+        description: The GitHub ref (e.g. refs/tags/v1.0.0) to release
         required: false
-        default: ''
-      publish:
-        description: 'Publish the release'
-        required: false
-        default: 'false'
 
 defaults:
   run:
@@ -38,289 +21,121 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Check which projects need to be released
-    runs-on: ubuntu-latest
-    outputs:
-      projects: ${{ steps.projects.outputs.projects }}
-    steps:
-      - name: Check out lotus
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.inputs.ref }}
-      - name: Find projects that need to be released
-        id: projects
-        env:
-          projects: ${{ github.event.inputs.projects }}
-        run: |
-          go run cmd/release/main.go --json list-projects | jq -r '.msg' |
-            jq 'map(select(.version | endswith("-dev") | not))' |
-            jq 'map(select(.released | not))' |
-            jq 'map(select(
-              (env.GITHUB_EVENT_NAME == "push" and ((env.GITHUB_REF == "refs/heads/releases" and .prerelease == false) or (env.GITHUB_REF != "refs/heads/releases" and .prerelease == true))) or
-              (env.GITHUB_EVENT_NAME == "pull_request" and ((env.GITHUB_BASE_REF == "releases" and .prerelease == false) or (env.GITHUB_BASE_REF != "releases" and .prerelease == true))) or
-              (env.GITHUB_EVENT_NAME == "workflow_dispatch" and (.name as $name | env.projects | fromjson | index($name) != null))
-            ))' |
-            jq -c '.' | xargs -I {} -0 echo "projects={}" |
-            tee -a $GITHUB_OUTPUT
   build:
-    needs: [check]
-    if: needs.check.outputs.projects != '[]'
-    name: Build ${{ matrix.project }} (${{ matrix.runner }})
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
-        runner:
-          - ubuntu-latest # Linux X64
-          - macos-13 # MacOs X64
-          - macos-14 # MacOS ARM64
+        include:
+          - runner: ubuntu-latest
+            os: Linux
+            arch: X64
+          - runner: macos-13
+            os: macOS
+            arch: X64
+          - runner: macos-14
+            os: macOS
+            arch: ARM64
     steps:
-      - name: Print runner information
-        run: echo "Building on $RUNNER_OS/$RUNNER_ARCH"
-      - name: Make project config available
-        id: project
-        env:
-          projects: ${{ needs.check.outputs.projects }}
-          name: ${{ matrix.project }}
+      - env:
+          OS: ${{ matrix.os }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
-            xargs -I {} -0 echo "config={}" |
-            tee -a $GITHUB_OUTPUT
-      - name: Check out lotus
-        uses: actions/checkout@v4
+          if [[ "$OS" != "$RUNNER_OS" || "$ARCH" != "$RUNNER_ARCH" ]]; then
+            echo "::error title=Unexpected Runner::Expected $OS/$ARCH, got $RUNNER_OS/$RUNNER_ARCH"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          path: actions
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - name: Install system dependencies
-        uses: ./.github/actions/install-system-dependencies
-      - name: Install Go
-        uses: ./.github/actions/install-go
-      - if: github.event.inputs.ref
-        uses: actions/checkout@v4
+          ref: ${{ inputs.ref || github.ref }}
+          path: lotus
+      - uses: ./actions/.github/actions/install-system-dependencies
+      - uses: ./actions/.github/actions/install-go
         with:
-          submodules: 'recursive'
-          ref: ${{ github.event.inputs.ref }}
-      - name: Build binaries
-        env:
+          working-directory: lotus
+      - env:
           GITHUB_TOKEN: ${{ github.token }}
-          binaries: ${{ toJSON(fromJSON(steps.project.outputs.config).binaries) }}
+        run: make deps lotus lotus-miner lotus-worker
+        working-directory: lotus
+      - if: runner.os == 'macOS'
+        run: otool -hv lotus
+        working-directory: lotus
+      - env:
+          INPUTS_REF: ${{ inputs.ref }}
         run: |
-          make deps
-          while read -r binary; do
-            if [[ -z "$binary" ]]; then
-              continue
-            fi
-            make $binary
-          done <<< "$(jq -r '.[]' <<< "$binaries")"
-      - name: Run otool
-        if: runner.os == 'macOS'
-        run: if [[ -f lotus ]]; then otool -hv lotus; fi
-      - name: Verify binary versions
-        env:
-          LOTUS_VERSION_IGNORE_COMMIT: 1
-          expected: ${{ fromJSON(steps.project.outputs.config).version }}
-        run: |
-          for bin in lotus lotus-miner lotus-worker; do
-            if [[ -f ./$bin ]]; then
-              chmod +x ./$bin
-              actual=$(./$bin --version | cut -d' ' -f3)
-              if [[ "$actual" != "$expected" ]]; then
-                echo "::error title=Version Mismatch::Expected $expected, got $actual (./$bin)"
-                exit 1
-              fi
-            fi
-          done
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
+          ../actions/scripts/version-check.sh ./lotus
+        working-directory: lotus
+      - uses: actions/upload-artifact@v4
         with:
-          name: lotus-${{ matrix.project }}-${{ runner.os }}-${{ runner.arch }}
+          name: lotus-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            lotus
-            lotus-miner
-            lotus-worker
+            lotus/lotus
+            lotus/lotus-miner
+            lotus/lotus-worker
   release:
-    needs: [check, build]
-    if: needs.check.outputs.projects != '[]'
-    name: Release ${{ matrix.project }}
+    name: Release [publish=${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}]
     permissions:
       # This enables the job to create and/or update GitHub releases
       contents: write
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: ${{ fromJSON(needs.check.outputs.projects).*.name }}
+    needs: [build]
+    env:
+      PUBLISH: ${{ startsWith(inputs.ref || github.ref, 'refs/tags/') }}
     steps:
-      - name: Make project config available
-        id: project
-        env:
-          projects: ${{ needs.check.outputs.projects }}
-          name: ${{ matrix.project }}
-        run: |
-          jq -nc 'env.projects | fromjson | map(select(.name == env.name)) | .[0]' |
-            xargs -I {} -0 echo "config={}" |
-            tee -a $GITHUB_OUTPUT
-      - name: Check out lotus
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          path: actions
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
-      - name: Download Linux X64 binaries
-        uses: actions/download-artifact@v4
+          path: lotus
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: actions/download-artifact@v4
         with:
-          name: lotus-${{ matrix.project }}-Linux-X64
+          name: lotus-Linux-X64
           path: linux_amd64_v1
-      - name: Download macOS X64 binaries
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: lotus-${{ matrix.project }}-macOS-X64
+          name: lotus-macOS-X64
           path: darwin_amd64_v1
-      - name: Download macOS ARM64 binaries
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: lotus-${{ matrix.project }}-macOS-ARM64
+          name: lotus-macOS-ARM64
           path: darwin_arm64
-      - name: Install Go (release body & archives generation dependency)
-        uses: ./.github/actions/install-go
-      - name: Install makefat (archives generation dependency)
-        run: go install github.com/randall77/makefat@7ddd0e42c8442593c87c1705a5545099604008e5
-      - name: Generate archives
-        env:
-          prefix: ${{ matrix.project == 'node' && 'lotus' || format('lotus-{0}', matrix.project) }}
-          version: ${{ fromJSON(steps.project.outputs.config).version }}
-          binaries: ${{ toJSON(fromJSON(steps.project.outputs.config).binaries) }}
-        run: |
-          mkdir darwin_all
-          while read -r binary; do
-            if [[ -z "$binary" ]]; then
-              continue
-            fi
-            makefat ./darwin_all/$binary ./darwin_amd64_v1/$binary ./darwin_arm64/$binary
-          done <<< "$(jq -r '.[]' <<< "$binaries")"
-          mkdir dist
-          pushd dist
-          for directory in darwin_all linux_amd64_v1; do
-            archive_name="${prefix}_v${version}_${directory}"
-            cp -r ../$directory $archive_name
-            tar -czf $archive_name.tar.gz $archive_name
-            rm -r $archive_name
-          done
-          popd
-          ls -la dist
-      - name: Install Kubo (checksums generation dependency)
-        uses: ipfs/download-ipfs-distribution-action@v1
+      - uses: ./actions/.github/actions/install-go
+        with:
+          working-directory: lotus
+      - uses: ipfs/download-ipfs-distribution-action@v1
         with:
           name: kubo
           version: v0.16.0
-          cache: false
-      - name: Generate checksums
-        run: |
-          ./scripts/generate-checksums.sh
-          ls -la dist
-      - name: Install zsh (release body generation dependency)
-        run: sudo apt update && sudo apt install -y zsh
-      - name: Generate release body
+      - uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
+        with:
+          distribution: goreleaser-pro
+          version: 2.0.1
+          args: release --clean ${{ env.PUBLISH == 'false' && '--snapshot' || '' }}
+          workdir: lotus
         env:
-          tag: ${{ fromJSON(steps.project.outputs.config).tag }}
-          previous: ${{ fromJSON(steps.project.outputs.config).previous }}
-          current: ${{ github.event.inputs.ref || github.sha }}
+          GITHUB_TOKEN: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_GITUB_TOKEN || github.token || '' }}
+          GORELEASER_KEY: ${{ env.PUBLISH == 'true' && secrets.GORELEASER_KEY || '' }}
+      - env:
+          INPUTS_REF: ${{ inputs.ref }}
         run: |
-          echo "# $tag" > release_body.md
-          echo "" >> release_body.md
-          csplit --digits=4 --quiet --elide-empty-files CHANGELOG.md '/^# /' '{*}'
-          # Checking the files in reverse order to get to the UNRELEASED section last
-          for file in $(ls -r xx*); do
-            if grep -q "^# $tag " $file || grep -q "^# UNRELEASED" $file; then
-              tail -n +3 $file >> release_body.md
-              break
-            fi
-          done
-          if [[ "$previous" != '' ]]; then
-            mkdir -p "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            rm -rf "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            ln -s "$(pwd)" "$(go env GOPATH)/src/github.com/filecoin-project/lotus"
-            ./scripts/mkreleaselog "$previous" "$current" >> release_body.md
-          fi
-          cat release_body.md
-      - name: Find release
-        id: before
+          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
+          ../actions/scripts/generate-checksums.sh
+        working-directory: lotus
+      - if: env.PUBLISH == 'true'
         env:
-          tag: ${{ fromJSON(steps.project.outputs.config).tag }}
           GITHUB_TOKEN: ${{ github.token }}
+          INPUTS_REF: ${{ inputs.ref }}
         run: |
-          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
-          gh api --paginate /repos/$GITHUB_REPOSITORY/releases --jq 'map(select(.tag_name == env.tag))' |
-            jq -s add | jq -r 'map({"id": .id, "draft": .draft, "html_url": .html_url}) | .[0]' | tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
-      - name: Create or update release
-        id: after
-        env:
-          method: ${{ steps.before.outputs.release == 'null' && 'POST' || 'PATCH' }}
-          endpoint: ${{ steps.before.outputs.release == 'null' && format('/repos/{0}/releases', github.repository) || format('/repos/{0}/releases/{1}', github.repository, fromJSON(steps.before.outputs.release).id) }}
-          tag_name: ${{ fromJSON(steps.project.outputs.config).tag }}
-          target_commitish: ${{ github.event.inputs.ref || github.base_ref || github.ref }}
-          name: ${{ fromJSON(steps.project.outputs.config).tag }}
-          draft: ${{ steps.before.outputs.release == 'null' && true || fromJSON(steps.before.outputs.release).draft }}
-          prerelease: ${{ fromJSON(steps.project.outputs.config).prerelease }}
-          make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
-          discussion_category_name: ""
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          echo "release<<EOF" | tee -a $GITHUB_OUTPUT
-          gh api -X "$method" "$endpoint" \
-            --raw-field tag_name="$tag_name" \
-            --raw-field target_commitish="$target_commitish" \
-            --raw-field name="$name" \
-            --raw-field body="$(cat release_body.md | head -c 125000)" \
-            --field draft=$draft \
-            --field prerelease=$prerelease \
-            --raw-field make_latest="$make_latest" \
-            --raw-field discussion_category_name="$discussion_category_name" |
-            jq -r '{"id": .id, "assets": (.assets | map({"id": .id})), "html_url": .html_url}' |
-            tee -a $GITHUB_OUTPUT
-          echo "EOF" | tee -a $GITHUB_OUTPUT
-      - name: Delete old assets
-        env:
-          asset_ids: ${{ toJSON(fromJSON(steps.after.outputs.release).assets.*.id) }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          while read -r asset_id; do
-            if [[ -z "$asset_id" ]]; then
-              continue
-            fi
-            gh api -X DELETE /repos/$GITHUB_REPOSITORY/releases/assets/$asset_id |
-              jq -r '.'
-          done <<< "$(jq '.[]' <<< "$asset_ids")"
-      - name: Upload new assets
-        env:
-          release_id: ${{ fromJSON(steps.after.outputs.release).id }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          for asset in *.tar.gz *.cid *.sha512; do
-            if [[ ! -f "$asset" ]]; then
-              continue
-            fi
-            curl -L \
-              -X POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              -H "Content-Type: application/octet-stream" \
-              "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$asset" \
-              --data-binary "@$asset" |
-              jq -r '.'
-          done
-        working-directory: dist
-      - name: Publish release
-        if: github.event.inputs.publish == 'true' || github.event_name == 'push'
-        env:
-          release_id: ${{ fromJSON(steps.after.outputs.release).id }}
-          make_latest: ${{ fromJSON(steps.project.outputs.config).latest }}
-          GITHUB_TOKEN: ${{ secrets.TAG_CREATE_GITHUB_TOKEN || github.token }}
-        run: |
-          gh api -X PATCH /repos/$GITHUB_REPOSITORY/releases/$release_id \
-            --field draft=false \
-            --raw-field make_latest="$make_latest" |
-            jq -r '.'
+          export GITHUB_REF=${INPUTS_REF:-$GITHUB_REF}
+          ../actions/scripts/publish-checksums.sh
+        working-directory: lotus

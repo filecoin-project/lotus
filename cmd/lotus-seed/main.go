@@ -137,9 +137,8 @@ var preSealCmd = &cli.Command{
 			nv = network.Version(c.Uint64("network-version"))
 		}
 
-		var synthetic = false // there's little reason to have this for a seed.
-
-		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, synthetic)
+		var variant = miner.SealProofVariant_Standard // there's little reason to have this for a seed.
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, variant)
 		if err != nil {
 			return err
 		}

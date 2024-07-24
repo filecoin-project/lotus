@@ -61,8 +61,10 @@ jobs:
           #   to support resource intensive jobs.
           runners: |
             {
+              "itest-niporep_manual": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-sector_pledge": ["self-hosted", "linux", "x64", "4xlarge"],
               "itest-worker": ["self-hosted", "linux", "x64", "4xlarge"],
+              "itest-manual_onboarding": ["self-hosted", "linux", "x64", "4xlarge"],
 
               "itest-gateway": ["self-hosted", "linux", "x64", "2xlarge"],
               "itest-sector_import_full": ["self-hosted", "linux", "x64", "2xlarge"],
@@ -89,7 +91,6 @@ jobs:
               "itest-get_messages_in_ts": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lite_migration": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-lookup_robust_address": ["self-hosted", "linux", "x64", "xlarge"],
-              "itest-manual_onboarding": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mempool": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_msg_uuid": ["self-hosted", "linux", "x64", "xlarge"],
               "itest-mpool_push_with_uuid": ["self-hosted", "linux", "x64", "xlarge"],
@@ -118,6 +119,7 @@ jobs:
               "itest-direct_data_onboard_verified",
               "itest-direct_data_onboard",
               "itest-manual_onboarding",
+              "itest-niporep_manual",
               "itest-net",
               "itest-path_detach_redeclare",
               "itest-sealing_resources",
@@ -131,8 +133,7 @@ jobs:
               "itest-worker",
               "multicore-sdr",
               "unit-cli",
-              "unit-storage",
-              "itest-curio"
+              "unit-storage"
             ]
         run: |
           # Create a list of integration test groups
@@ -236,7 +237,7 @@ jobs:
   test:
     needs: [discover, cache]
     name: Test (${{ matrix.name }})
-    runs-on: ${{ github.repository == 'filecoin-project/lotus' && matrix.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository_owner == 'filecoin-project' && matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
