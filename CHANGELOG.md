@@ -1,14 +1,5 @@
 # Lotus changelog
 
-# Unreleased
-- https://github.com/filecoin-project/lotus/pull/12203: Fix slice modification bug in ETH Tx Events Bloom Filter
-- https://github.com/filecoin-project/lotus/pull/12221: Fix a nil reference panic in the ETH Trace API
-- https://github.com/filecoin-project/lotus/pull/12112: Moved consts from build/ to build/buildconstants/ for ligher curio deps.
-- https://github.com/filecoin-project/lotus/pull/12237: Upgrade to go-f3 `v0.0.4`.
-- https://github.com/filecoin-project/lotus/pull/12276: chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23
-- https://github.com/filecoin-project/lotus/pull/12278: chore: Set Mainnet upgrade epoch for NV23.
-- https://github.com/filecoin-project/lotus/pull/12269 Fix `logIndex` ordering in `EthGetTransactionReceipt` by using the EventIndex to fetch logs
-
 # v1.28.0 / 2024-07-23
 This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
