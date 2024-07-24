@@ -7,8 +7,11 @@
 - https://github.com/filecoin-project/lotus/pull/12112: Moved consts from build/ to build/buildconstants/ for ligher curio deps.
 - https://github.com/filecoin-project/lotus/pull/12237: Upgrade to go-f3 `v0.0.4`.
 - https://github.com/filecoin-project/lotus/pull/12251: Dropping support from ProveCommitSector1 method from lotus-miner
+- https://github.com/filecoin-project/lotus/pull/12276: chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23
 - https://github.com/filecoin-project/lotus/pull/12278: chore: Set Mainnet upgrade epoch for NV23.
 - https://github.com/filecoin-project/lotus/pull/12269 Fix `logIndex` ordering in `EthGetTransactionReceipt` by using the EventIndex to fetch logs
+- https://github.com/filecoin-project/lotus/pull/12285 Set up OpenTelemetry metrics reporting to prometheus
+- https://github.com/filecoin-project/lotus/pull/12279 Upgrade to go-f3 v0.0.5
 
 ## ☢️ Upgrade Warnings ☢️
 

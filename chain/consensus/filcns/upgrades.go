@@ -13,6 +13,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/term"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -2519,7 +2520,11 @@ func UpgradeActorsV14(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v14 state: %w", err)
 	}
-	fmt.Print(upgradeSplash)
+
+	if term.IsTerminal(int(os.Stderr.Fd())) {
+		fmt.Print(upgradeSplash)
+	}
+
 	return newRoot, nil
 }
 

@@ -862,6 +862,8 @@ type FullNode interface {
 	// This is an EXPERIMENTAL API and may be subject to change.
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
 
+	//*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
+
 	// F3Participate should be called by a storage provider to participate in signing F3 consensus.
 	// Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
 	// The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
@@ -879,8 +881,10 @@ type FullNode interface {
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
 	// F3GetLatestCertificate returns the latest finality certificate
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
-	// F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
-	F3GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
+	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetF3PowerTable returns a F3 specific power table.
+	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 }
 
 // EthSubscriber is the reverse interface to the client, called after EthSubscribe

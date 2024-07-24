@@ -54,7 +54,7 @@ var rbfDenomBig = types.NewInt(100)
 
 var RepublishInterval = time.Duration(10*buildconstants.BlockDelaySecs+buildconstants.PropagationDelaySecs) * time.Second
 
-var minimumBaseFee = types.NewInt(buildconstants.MinimumBaseFee)
+var minimumBaseFee = types.NewInt(uint64(buildconstants.MinimumBaseFee))
 var baseFeeLowerBoundFactor = types.NewInt(10)
 var baseFeeLowerBoundFactorConservative = types.NewInt(100)
 
