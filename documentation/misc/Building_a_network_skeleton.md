@@ -160,9 +160,13 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
 8. Add network version to `chain/state/statetree.go`.
     - Add `network.VersionXX+1` to `VersionForNetwork` function.
 
-9. Run `make gen`.
+9. Copy the latest version case block in `cmd/lotus-shed/invariants.go`, paste it below and increment the network version number.
 
-10. Run `make docsgen-cli`.
+10. In the [getMigrationFuncsForNetwork](https://github.com/filecoin-project/lotus/blob/4f63a0860542140e1efd7045ca49cab3463f6761/cmd/lotus-shed/migrations.go#L283-L301) function, add a new case for the latest network version, and create the corresponding `checkNvXXInvariants` function.
+
+11. Run `make gen`.
+
+12. Run `make docsgen-cli`.
 
 And you're done! These are all the steps necessary to create a network upgrade skeleton that you will be able to run in a local devnet, and creates a basis where you can start testing new FIPs. When running a local developer network from this Lotus branch, bringing in all it dependencies, you should be able to:
 

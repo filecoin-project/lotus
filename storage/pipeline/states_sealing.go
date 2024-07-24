@@ -430,42 +430,6 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 	if sector.hasData() {
 		// only CC sectors don't have UnsealedCID
 		params.UnsealedCid = sector.CommD
-
-		// true when the sector has non-builtin-marked data
-		sectorIsDDO := false
-
-		for _, piece := range sector.Pieces {
-			err := piece.handleDealInfo(handleDealInfoParams{
-				FillerHandler: func(info UniversalPieceInfo) error {
-					return nil // ignore
-				},
-				BuiltinMarketHandler: func(info UniversalPieceInfo) error {
-					if sectorIsDDO {
-						return nil // will be passed later in the Commit message
-					}
-					params.DealIDs = append(params.DealIDs, info.Impl().DealID)
-					return nil
-				},
-				DDOHandler: func(info UniversalPieceInfo) error {
-					if nv < MinDDONetworkVersion {
-						return xerrors.Errorf("DDO sectors are not supported on network version %d", nv)
-					}
-
-					log.Infow("DDO piece in sector", "sector", sector.SectorNumber, "piece", info.String())
-
-					sectorIsDDO = true
-
-					// DDO sectors don't carry DealIDs, we will pass those
-					// deals in the Commit message later
-					params.DealIDs = nil
-					return nil
-				},
-			})
-
-			if err != nil {
-				return nil, big.Zero(), types.EmptyTSK, xerrors.Errorf("handleDealInfo: %w", err)
-			}
-		}
 	}
 
 	collateral, err := m.Api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, ts.Key())
@@ -749,101 +713,61 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 // processPieces returns either:
 // - a list of piece activation manifests
 // - a list of deal IDs, if all non-filler pieces are deal-id pieces
-func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo, forceDDO bool) ([]miner.PieceActivationManifest, []abi.DealID, error) {
+func (m *Sealing) processPieces(ctx context.Context, sector SectorInfo) ([]miner.PieceActivationManifest, error) {
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
-	dealIDs := make([]abi.DealID, 0, len(sector.Pieces))
-	hasDDO := forceDDO
 
-	if !forceDDO {
-		// if not forcing DDO, check if we have any DDO pieces
-		for _, piece := range sector.Pieces {
-			piece := piece
+	for _, piece := range sector.Pieces {
+		piece := piece
+		if piece.HasDealInfo() {
+			info := piece.DealInfo()
+			// If we have a dealID then covert to PAM
+			if info.Impl().DealID > 0 {
+				alloc, err := m.Api.StateGetAllocationIdForPendingDeal(ctx, info.Impl().DealID, types.EmptyTSK)
+				if err != nil {
+					return nil, xerrors.Errorf("getting allocation for deal %d: %w", info.Impl().DealID, err)
+				}
+				clid, err := m.Api.StateLookupID(ctx, info.Impl().DealProposal.Client, types.EmptyTSK)
+				if err != nil {
+					return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+				}
 
-			// first figure out if this is a ddo sector
-			err := piece.handleDealInfo(handleDealInfoParams{
-				FillerHandler: func(info UniversalPieceInfo) error {
-					// Fillers are implicit (todo review: Are they??)
-					return nil
-				},
-				BuiltinMarketHandler: func(info UniversalPieceInfo) error {
-					return nil
-				},
-				DDOHandler: func(info UniversalPieceInfo) error {
-					hasDDO = true
-					return nil
-				},
-			})
-			if err != nil {
-				return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
+				clientId, err := address.IDFromAddress(clid)
+				if err != nil {
+					return nil, xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
+				}
+
+				var vac *miner2.VerifiedAllocationKey
+				if alloc != verifreg.NoAllocationID {
+					vac = &miner2.VerifiedAllocationKey{
+						Client: abi.ActorID(clientId),
+						ID:     verifreg13.AllocationId(alloc),
+					}
+				}
+
+				payload, err := cborutil.Dump(info.Impl().DealID)
+				if err != nil {
+					return nil, xerrors.Errorf("serializing deal id: %w", err)
+				}
+
+				pams = append(pams, miner.PieceActivationManifest{
+					CID:                   piece.Piece().PieceCID,
+					Size:                  piece.Piece().Size,
+					VerifiedAllocationKey: vac,
+					Notify: []miner2.DataActivationNotification{
+						{
+							Address: market.Address,
+							Payload: payload,
+						},
+					},
+				})
+			} else {
+				// Add PAM directly
+				pams = append(pams, *info.Impl().PieceActivationManifest)
 			}
 		}
 	}
-	for _, piece := range sector.Pieces {
-		piece := piece
 
-		err := piece.handleDealInfo(handleDealInfoParams{
-			FillerHandler: func(info UniversalPieceInfo) error {
-				// Fillers are implicit (todo review: Are they??)
-				return nil
-			},
-			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
-				if hasDDO {
-					alloc, err := m.Api.StateGetAllocationIdForPendingDeal(ctx, info.Impl().DealID, types.EmptyTSK)
-					if err != nil {
-						return xerrors.Errorf("getting allocation for deal %d: %w", info.Impl().DealID, err)
-					}
-					clid, err := m.Api.StateLookupID(ctx, info.Impl().DealProposal.Client, types.EmptyTSK)
-					if err != nil {
-						return xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
-					}
-
-					clientId, err := address.IDFromAddress(clid)
-					if err != nil {
-						return xerrors.Errorf("getting client address for deal %d: %w", info.Impl().DealID, err)
-					}
-
-					var vac *miner2.VerifiedAllocationKey
-					if alloc != verifreg.NoAllocationID {
-						vac = &miner2.VerifiedAllocationKey{
-							Client: abi.ActorID(clientId),
-							ID:     verifreg13.AllocationId(alloc),
-						}
-					}
-
-					payload, err := cborutil.Dump(info.Impl().DealID)
-					if err != nil {
-						return xerrors.Errorf("serializing deal id: %w", err)
-					}
-
-					pams = append(pams, miner.PieceActivationManifest{
-						CID:                   piece.Piece().PieceCID,
-						Size:                  piece.Piece().Size,
-						VerifiedAllocationKey: vac,
-						Notify: []miner2.DataActivationNotification{
-							{
-								Address: market.Address,
-								Payload: payload,
-							},
-						},
-					})
-
-					return nil
-				}
-
-				dealIDs = append(dealIDs, info.Impl().DealID)
-				return nil
-			},
-			DDOHandler: func(info UniversalPieceInfo) error {
-				pams = append(pams, *piece.Impl().PieceActivationManifest)
-				return nil
-			},
-		})
-		if err != nil {
-			return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
-		}
-	}
-
-	return pams, dealIDs, nil
+	return pams, nil
 }
 
 func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector SectorInfo) error {
@@ -851,7 +775,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	pams, dealIDs, err := m.processPieces(ctx.Context(), sector, false)
+	pams, err := m.processPieces(ctx.Context(), sector)
 	if err != nil {
 		return err
 	}
@@ -871,7 +795,6 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			SectorNumber: sector.SectorNumber,
 			Pieces:       pams,
 		},
-		DealIDPrecommit: len(dealIDs) > 0,
 	})
 
 	if err != nil || res.Error != "" {
