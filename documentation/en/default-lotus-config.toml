@@ -237,9 +237,9 @@
 
   # EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
   #
-  # type: ethtypes.EthUint64
+  # type: uint64
   # env var: LOTUS_FEVM_ETHTRACEFILTERMAXRESULTS
-  #EthTraceFilterMaxResults = 100
+  #EthTraceFilterMaxResults = 500
 
 
 [Events]
