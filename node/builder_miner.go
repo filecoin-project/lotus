@@ -53,7 +53,11 @@ func ConfigStorageMiner(c interface{}) Option {
 	return Options(
 
 		Override(new(v1api.FullNode), modules.MakeUuidWrapper),
-		ConfigCommon(&cfg.Common, build.NodeUserVersion()),
+		// Needed to instantiate pubsub used by index provider via ConfigCommon
+		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
+		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
+		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
+		ConfigCommon(&cfg.Common, build.NodeUserVersion(), false),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
