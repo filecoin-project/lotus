@@ -25,10 +25,16 @@ type ecWrapper struct {
 	StateManager *stmgr.StateManager
 }
 
+var _ ec.TipSet = (*f3TipSet)(nil)
+
 type f3TipSet types.TipSet
 
 func (ts *f3TipSet) cast() *types.TipSet {
 	return (*types.TipSet)(ts)
+}
+
+func (ts *f3TipSet) String() string {
+	return ts.cast().String()
 }
 
 func (ts *f3TipSet) Key() gpbft.TipSetKey {
@@ -38,12 +44,11 @@ func (ts *f3TipSet) Key() gpbft.TipSetKey {
 func (ts *f3TipSet) Beacon() []byte {
 	entries := ts.cast().Blocks()[0].BeaconEntries
 	if len(entries) == 0 {
-		// Set beacon to a non-nil slice to force the message builder to generate a
+		// This should never happen in practice, but set beacon to a non-nil
+		// 32byte slice to force the message builder to generate a
 		// ticket. Otherwise, messages that require ticket, i.e. CONVERGE will fail
 		// validation due to the absence of ticket. This is a convoluted way of doing it.
-		// TODO: Rework the F3 message builder APIs to include ticket when needed instead
-		//       of relying on the nil check of beacon.
-		return []byte{}
+		return make([]byte, 32)
 	}
 	return entries[len(entries)-1].Data
 }
@@ -118,11 +123,15 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, 
 }
 
 func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (gpbft.PowerEntries, error) {
-	tskLotus, err := types.TipSetKeyFromBytes(tskF3)
+	tsk, err := types.TipSetKeyFromBytes(tskF3)
 	if err != nil {
 		return nil, xerrors.Errorf("decoding tsk: %w", err)
 	}
-	ts, err := ec.ChainStore.GetTipSetFromKey(ctx, tskLotus)
+	return ec.getPowerTableLotusTSK(ctx, tsk)
+}
+
+func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	ts, err := ec.ChainStore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
 	}
