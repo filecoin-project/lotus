@@ -185,3 +185,7 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
 }
+
+func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	return fff.inner.GetPowerTable(ctx, tsk.Bytes())
+}
