@@ -12,6 +12,7 @@
 - https://github.com/filecoin-project/lotus/pull/12269 Fix `logIndex` ordering in `EthGetTransactionReceipt` by using the EventIndex to fetch logs
 - https://github.com/filecoin-project/lotus/pull/12285 Set up OpenTelemetry metrics reporting to prometheus
 - https://github.com/filecoin-project/lotus/pull/12279 Upgrade to go-f3 v0.0.5
+- https://github.com/filecoin-project/lotus/pull/12295 Upgrade to go-f3 v0.0.6
 
 ## ☢️ Upgrade Warnings ☢️
 
