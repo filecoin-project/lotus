@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"embed"
+	"os"
 	"path"
 	"strings"
 
@@ -18,6 +19,10 @@ var bootstrapfs embed.FS
 func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 	if DisableBuiltinAssets {
 		return nil, nil
+	}
+	if bootstrappers, found := os.LookupEnv(buildconstants.BootstrappersOverrideEnvVarKey); found {
+		log.Infof("Using bootstrap nodes overridden by environment variable %s", buildconstants.BootstrappersOverrideEnvVarKey)
+		return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(bootstrappers), ","))
 	}
 	if buildconstants.BootstrappersFile != "" {
 		spi, err := bootstrapfs.ReadFile(path.Join("bootstrap", buildconstants.BootstrappersFile))
