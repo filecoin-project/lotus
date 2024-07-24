@@ -3,6 +3,7 @@ package lp2p
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"time"
 
@@ -15,6 +16,9 @@ import (
 	"go.opencensus.io/stats"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/metrics"
@@ -44,6 +48,12 @@ const (
 	GraylistScoreThreshold           = -2500
 	AcceptPXScoreThreshold           = 1000
 	OpportunisticGraftScoreThreshold = 3.5
+
+	// Determines the max. number of configuration changes
+	// that are allowed for the dynamic manifest.
+	// If the manifest changes more than this number, the F3
+	// message topic will be filtered
+	MaxDynamicManifestChangesAllowed = 1000
 )
 
 func ScoreKeeper() *dtypes.ScoreKeeper {
@@ -378,6 +388,32 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		build.MessagesTopic(in.Nn),
 		build.IndexerIngestTopic(in.Nn),
 	}
+
+	if build.IsF3Enabled() {
+		f3TopicName := manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(in.Nn))
+		allowTopics = append(allowTopics, f3TopicName)
+
+		// allow dynamic manifest topic and the new topic names after a reconfiguration.
+		// Note: This is pretty ugly, but I tried to use a regex subscription filter
+		// as the commented code below, but unfortunately it overwrites previous filters. A simple fix would
+		// be to allow combining several topic filters, but for now this works.
+		//
+		// 	pattern := fmt.Sprintf(`^\/f3\/%s\/0\.0\.1\/?[0-9]*$`, in.Nn)
+		// 	rx, err := regexp.Compile(pattern)
+		// 	if err != nil {
+		// 		return nil, xerrors.Errorf("failed to compile manifest topic regex: %w", err)
+		// 	}
+		// 	options = append(options,
+		// 		pubsub.WithSubscriptionFilter(
+		// 			pubsub.WrapLimitSubscriptionFilter(
+		// 				pubsub.NewRegexpSubscriptionFilter(rx),
+		// 				100)))
+		allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
+		for i := 0; i < MaxDynamicManifestChangesAllowed; i++ {
+			allowTopics = append(allowTopics, f3TopicName+"/"+fmt.Sprintf("%d", i))
+		}
+	}
+
 	allowTopics = append(allowTopics, drandTopics...)
 	options = append(options,
 		pubsub.WithSubscriptionFilter(

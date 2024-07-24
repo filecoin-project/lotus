@@ -1,10 +1,121 @@
 # Lotus changelog
 
-# UNRELEASED
+# v1.28.0 / 2024-07-23
+This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
-## New features
+**This release sets the Mainnet to upgrade at epoch 4154640, corresponding to 2024-08-06T12:00:00Z.** 
 
-## Improvements
+## ☢️ Upgrade Warnings ☢️
+- If you are running the `v1.26.x` version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
+
+- This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
+
+## The Filecoin network version 23 delivers the following FIPs:
+
+- [FIP-0065: Ignore built-in market locked balance in circulating supply calculation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0065.md)
+- [FIP-0079: Add BLS Aggregate Signatures to FVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0079.md)
+- [FIP-0084: Remove Storage Miner Actor Method ProveCommitSectors](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0084.md)
+- [FIP-0085: Convert f090 Mining Reserve Actor to Keyless Account Actor](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0085.md)
+- [FIP-0091: Add support for legacy Ethereum transactions](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0091.md)
+- [FIP-0092: NI-PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0092.md)
+- [FIP-0086: Fast Finality Soft Launch](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md)
+
+Note that we are only doing a "soft launch"/"passive testing" for F3 (Fast Finality) i.e. FIP-0086 in NV23. Please see [this doc](https://docs.google.com/document/d/14hMFN95_AsByBh7iMc4r_czUgg8tfjHQ1gTsmmHZ8jI/edit#heading=h.dhzqs3lisv24) for more details.
+
+## v14 Builtin Actor Bundle
+
+[Builtin actor v14.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v14.0.0) is used for supporting this upgrade. Make sure that your lotus actor bundle matches the v14 actors manifest by running the following cli after upgrading:
+
+```
+lotus state actor-cids --network-version=23
+Network Version: 23
+Actor Version: 14
+Manifest CID: bafy2bzacecbueuzsropvqawsri27owo7isa5gp2qtluhrfsto2qg7wpgxnkba
+
+Actor             CID  
+account           bafk2bzacebr7ik7lng7vysm754mu5x7sakphwm4soqi6zwbox4ukpd6ndwvqy
+cron              bafk2bzacecwn6eiwa7ysimmk6i57i5whj4cqzwijx3xdlxwb5canmweaez6xc
+datacap           bafk2bzacecidw7ajvtjhmygqs2yxhmuybyvtwp25dxpblvdxxo7u4gqfzirjg
+eam               bafk2bzaced2cxnfwngpcubg63h7zk4y5hjwwuhfjxrh43xozax2u6u2woweju
+ethaccount        bafk2bzacechu4u7asol5mpcsr6fo6jeaeltvayj5bllupyiux7tcynsxby7ko
+evm               bafk2bzacedupohbgwrcw5ztbbsvrpqyybnokr4ylegmk7hrbt3ueeykua6zxw
+init              bafk2bzacecbbcshenkb6z2v4irsudv7tyklfgphhizhghix6ke5gpl4r5f2b6
+multisig          bafk2bzaceajcmsngu3f2chk2y7nanlen5xlftzatytzm6hxwiiw5i5nz36bfc
+paymentchannel    bafk2bzaceavslp27u3f4zwjq45rlg6assj6cqod7r5f6wfwkptlpi6j4qkmne
+placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
+reward            bafk2bzacedvfnjittwrkhoar6n5xrykowg2e6rpur4poh2m572f7m7evyx4lc
+storagemarket     bafk2bzaceaju5wobednmornvdqcyi6khkvdttkru4dqduqicrdmohlwfddwhg
+storageminer      bafk2bzacea3f43rxzemmakjpktq2ukayngean3oo2de5cdxlg2wsyn53wmepc
+storagepower      bafk2bzacedo6scxizooytn53wjwg2ooiawnj4fsoylcadnp7mhgzluuckjl42
+system            bafk2bzacecak4ow7tmauku42s3u2yydonk4hx6ov6ov542hy7lcbji3nhrrhs
+verifiedregistry  bafk2bzacebvyzjzmvmjvpypphqsumpy6rzxuugnehgum7grc6sv3yqxzrshb4
+```
+
+## Migration
+
+All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV23 upgrade is expected to be light with no heavy pre-migrations, here are some expected timings and resource consumption numbers:
+
+- Pre-migration is expected to take less than 1 minute.
+- The migration is expected to take less than 30 seconds on a node with an NVMe drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less than 1 minute.
+- Max memory usage during benchmarking the migration in "offline mode" (i.e., node not syncing) was 23GiB.
+- Max memory usage when benchmarking the migration in "online mode" (i.e., while the node is syncing) was 30GiB. Numbers here might vary depending on the load your node is under.
+More details on the migration benchmarking can be found in https://github.com/filecoin-project/lotus/issues/12128
+
+We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and running the non-cached migration (i.e., just running the migration at the network upgrade epoch), and scheduling some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
+
+## Fast Finality for Filecoin (f3) soft launch
+
+We are one step closer to reduce Filecoin's finality from 7.5 hours to a minute or so, you can checkout the [FIP](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md) for more details.  Changing the consensus protocol is not trivial, and the f3 implementation team has designed a [passive testing plan to verify the protocol](https://github.com/filecoin-project/go-f3/issues/213) and give time for client implementation teams to integrate and test F3 before it is fully activated in the network consensus. That said, the lotus team has implemented f3 & the manifest for passive testing in this release, and we would like to ask node operators, especially storage providers, to participate in the testing by participating in F3 on the mainnet (which is enabled by default in this release)! We will keep updating [this discussion](https://github.com/filecoin-project/lotus/discussions/12287) to capture "what can you expect" & testing status. If you notice any unexpected behaviour caused by f3, please do not hesitate to reach out to us in #fil-fast-finality. 
+
+F3 (Fast Finality) is experimental in this release. All the new F3 APIs  are unstable and subject to until nv24 release (assuming f3 will be fully activated in this upgrade).
+
+Exchanges and RPC providers are recommended to opt-out of F3 functionality for now. You can disable F3 by adding the `DISABLE_F3 = 1` environment variable, which will output a log saying that F3 has been disabled.
+
+## Dependencies
+
+- github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0`)
+- github.com/filecoin-project/filecoin-ffi (`v1.27.0-rc2` -> `v1.28.0`)
+- github.com/filecoin-project/go-libp2p2 (`v0.35.3` -> `v0.35.4`)
+- `ref-fvm4` (as part of `filecoin-ffi`) (`4.2.0` -> `4.3.1`)
+- A new `github.com/filecoin-project/go-f3` dependency for F3 soft launch (`v0.0.5`)
+
+## Others
+
+- Soft launch of F3 (https://github.com/filecoin-project/lotus/pull/12119)
+- NI-PoRep changes (https://github.com/filecoin-project/lotus/pull/12130)
+- Fixes for the ETH events API (https://github.com/filecoin-project/lotus/pull/12080)
+- Support for legacy Ethereum transactions (https://github.com/filecoin-project/lotus/pull/11969)
+- Ignore market balance after nv23 (https://github.com/filecoin-project/lotus/pull/11976)
+- Add finality-related params for `eth_getBlockByNumber` (https://github.com/filecoin-project/lotus/pull/12110)
+- rename `Actor.Address` to `Actor.DelegatedAddress` and only use it for f4 addresses (https://github.com/filecoin-project/lotus/pull/12155)
+- feat:ec: integrate F3 dynamic manifest #12185
+- fix: f3: Fix F3 build parameters for testground target (#12189) ([filecoin-project/lotus#12189](https://github.com/filecoin-project/lotus/pull/12189))
+- fix: eth_getLogs: https://github.com/filecoin-project/lotus/pull/12212
+- chore: lotus-shed: Add support for nv23 in migrate-state cmd #12172
+- feat: F3: Update go-f3, change the style of participation call #12196
+- chore: f3: Upgrade go mod F3 dependency to v0.0.3 tagged release #12216
+- fix: Eth Trace Block: nil access panic #12221
+- chore!: markets: remove stray unixfs constants, features and references #12217
+- chore: metrics: Upgrade to OpenTelemetry v1.28.0 #12223
+- fix: bug: Reduce log level in F3 message sending to Debug #12224
+- [skip changelog] chore: config: yet more lp2p removal from miner #12252
+- fix(store): correctly break weight ties based on smaller ticket #12253
+- fix: exchange bug #12275
+- chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23 #12276
+- metrics: f3: Set up otel metrics reporting to prometheus #12285
+- Upgrade to go-f3 v0.0.5 #12279
+
+# v1.27.1 / 2024-06-24
+
+This release, v1.27.1, is an OPTIONAL lotus release. It is HIGHLY RECOMMENDED for node operators that are building Filecoin index off lotus!
+
+## ☢️ Upgrade Warnings ☢️
+
+- This Lotus release completely removes the Legacy Lotus/Lotus-Miner Markets sub-system from the codebase, which was announced to reach EOL on January 31, 2023.
+- The **Curio Storage** software, designed to simplify the setup and operation of storage providers, has moved to their own Github-repository: https://github.com/filecoin-project/curio.
+- The events subsystem includes some minor correctness fixes and performance improvements. Nodes operators running Lotus with events turned on (off by default) may experience some delay in initial start-up as a minor database migration takes place and the write-ahead log is compacted. See [filecoin-project/lotus#11952](https://github.com/filecoin-project/lotus/pull/11952) and [filecoin-project/lotus#12090](https://github.com/filecoin-project/lotus/pull/12090) for full details.
 
 # v1.27.2 / 2024-07-17
 
@@ -1356,7 +1467,7 @@ Please read carefully through the **upgrade warnings** section if you are upgrad
 
 - Starting from this release, the SplitStore feature is automatically activated on new nodes. However, for existing Lotus users, you need to explicitly configure SplitStore by uncommenting the `EnableSplitstore` option in your `config.toml` file. To enable SplitStore, set `EnableSplitstore=true`, and to disable it, set `EnableSplitstore=false`. **It's important to note that your Lotus node will not start unless this configuration is properly set. Set it to false if you are running a full archival node!**
 - This feature release requires a **minimum Go version of v1.19.7 or higher to successfully build Lotus**. Additionally, Go version v1.20 and higher is now also supported.
-- **Storage Providers:** The proofs libraries now have CUDA enabled by default, which requires you to install (CUDA)[https://lotus.filecoin.io/tutorials/lotus-miner/cuda/] if you haven't already done so. If you prefer to use OpenCL on your GPUs instead, you can use the `FFI_USE_OPENCL=1` flag when building from source. On the other hand, if you want to disable GPUs altogether, you can use the `FFI_NO_GPU=1` environment variable when building from source.
+- **Storage Providers:** The proofs libraries now have CUDA enabled by default, which requires you to install [CUDA](https://lotus.filecoin.io/tutorials/lotus-miner/cuda/) if you haven't already done so. If you prefer to use OpenCL on your GPUs instead, you can use the `FFI_USE_OPENCL=1` flag when building from source. On the other hand, if you want to disable GPUs altogether, you can use the `FFI_NO_GPU=1` environment variable when building from source.
 - **Storage Providers:** The `lotus-miner sectors extend` command has been refactored to the functionality of `lotus-miner sectors renew`.
 - **Exchanges/Node operators/RPC-providers::** Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the by the FVM. **Please make sure to read the `Execution trace format change` section carefully, as these are interface breaking changes**
 - **Syncing issues:** If you have been struggling with syncing issues in normal operations you can try to adjust the amount of threads used for more concurrent FMV execution through via the `LOTUS_FVM_CONCURRENCY` enviroment variable. It is set to 4 threads by default. Recommended formula for concurrency == YOUR_RAM/4 , but max during a network upgrade is 24. If you are a Storage Provider and are pushing many messages within a short period of time, exporting `LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS=1` will also help with keeping in sync.

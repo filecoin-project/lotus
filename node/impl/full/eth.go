@@ -255,7 +255,6 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fu
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return a.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
-
 }
 
 func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
@@ -734,6 +733,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	)
 
 	for blocksIncluded < int(params.BlkCount) && ts.Height() > 0 {
+		basefee = ts.Blocks()[0].ParentBaseFee
 		_, msgs, rcpts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
 		if err != nil {
 			return ethtypes.EthFeeHistory{}, xerrors.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)
@@ -1275,9 +1275,17 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 	if pf.tipsetCid == cid.Undef {
 		maxHeight := pf.maxHeight
 		if maxHeight == -1 {
-			maxHeight = e.Chain.GetHeaviestTipSet().Height()
+			// heaviest tipset doesn't have events because its messages haven't been executed yet
+			maxHeight = e.Chain.GetHeaviestTipSet().Height() - 1
 		}
-		if maxHeight > e.Chain.GetHeaviestTipSet().Height() {
+
+		if maxHeight < 0 {
+			return nil, xerrors.Errorf("maxHeight requested is less than 0")
+		}
+
+		// we can't return events for the heaviest tipset as the transactions in that tipset will be executed
+		// in the next non null tipset (because of Filecoin's "deferred execution" model)
+		if maxHeight > e.Chain.GetHeaviestTipSet().Height()-1 {
 			return nil, xerrors.Errorf("maxHeight requested is greater than the heaviest tipset")
 		}
 
@@ -1285,13 +1293,13 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 		if err != nil {
 			return nil, err
 		}
-
-		// should also have the minHeight in the filter indexed
-		if b, err := e.EventFilterManager.EventIndex.IsHeightProcessed(ctx, uint64(pf.minHeight)); err != nil {
-			return nil, xerrors.Errorf("failed to check if event index has events for the minHeight: %w", err)
-		} else if !b {
-			return nil, xerrors.Errorf("event index does not have event for epoch %d", pf.minHeight)
-		}
+		// TODO: Ideally we should also check that events for the epoch at `pf.minheight` have been indexed
+		// However, it is currently tricky to check/guarantee this for two reasons:
+		// a) Event Index is not aware of null-blocks. This means that the Event Index wont be able to say whether the block at
+		//    `pf.minheight` is a null block or whether it has no events
+		// b) There can be holes in the index where events at certain epoch simply haven't been indexed because of edge cases around
+		//    node restarts while indexing. This needs a long term "auto-repair"/"automated-backfilling" implementation in the index
+		// So, for now, the best we can do is ensure that the event index has evenets for events at height >= `pf.maxHeight`
 	} else {
 		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
 		if err != nil {
@@ -1323,6 +1331,8 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
 }
 
+// note that we can have null blocks at the given height and the event Index is not null block aware
+// so, what we do here is wait till we see the event index contain a block at a height greater than the given height
 func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
 	ei := e.EventFilterManager.EventIndex
 	if height > e.Chain.GetHeaviestTipSet().Height() {
@@ -1333,7 +1343,7 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	defer cancel()
 
 	// if the height we're interested in has already been indexed -> there's nothing to do here
-	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
 		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
 	} else if b {
 		return nil
@@ -1344,7 +1354,7 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	defer unSubscribeF()
 
 	// it could be that the event index was update while the subscription was being processed -> check if index has what we need now
-	if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
 		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
 	} else if b {
 		return nil
@@ -1353,7 +1363,7 @@ func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi
 	for {
 		select {
 		case <-subCh:
-			if b, err := ei.IsHeightProcessed(ctx, uint64(height)); err != nil {
+			if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
 				return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
 			} else if b {
 				return nil

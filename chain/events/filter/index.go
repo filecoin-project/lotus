@@ -698,11 +698,12 @@ func (ei *EventIndex) GetMaxHeightInIndex(ctx context.Context) (uint64, error) {
 	return maxHeight, err
 }
 
-func (ei *EventIndex) IsHeightProcessed(ctx context.Context, height uint64) (bool, error) {
-	row := ei.stmtIsHeightProcessed.QueryRowContext(ctx, height)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+func (ei *EventIndex) IsHeightPast(ctx context.Context, height uint64) (bool, error) {
+	maxHeight, err := ei.GetMaxHeightInIndex(ctx)
+	if err != nil {
+		return false, err
+	}
+	return height <= maxHeight, nil
 }
 
 func (ei *EventIndex) IsTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {

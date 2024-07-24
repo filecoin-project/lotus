@@ -71,7 +71,7 @@ var UpgradeDragonHeight = abi.ChainEpoch(-24)
 
 var UpgradePhoenixHeight = abi.ChainEpoch(-25)
 
-var UpgradeAussieHeight = abi.ChainEpoch(200)
+var UpgradeWaffleHeight = abi.ChainEpoch(200)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100
@@ -83,8 +83,7 @@ const UpgradeWatermelonFix2Height = -101
 const UpgradeCalibrationDragonFixHeight = -102
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-	0:                    DrandMainnet,
-	UpgradePhoenixHeight: DrandQuicknet,
+	0: DrandQuicknet,
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
@@ -156,12 +155,11 @@ func init() {
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 	UpgradeWatermelonHeight = getUpgradeHeight("LOTUS_WATERMELON_HEIGHT", UpgradeWatermelonHeight)
 	UpgradeDragonHeight = getUpgradeHeight("LOTUS_DRAGON_HEIGHT", UpgradeDragonHeight)
-	UpgradeAussieHeight = getUpgradeHeight("LOTUS_AUSSIE_HEIGHT", UpgradeAussieHeight)
+	UpgradeWaffleHeight = getUpgradeHeight("LOTUS_WAFFLE_HEIGHT", UpgradeWaffleHeight)
 
 	UpgradePhoenixHeight = getUpgradeHeight("LOTUS_PHOENIX_HEIGHT", UpgradePhoenixHeight)
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
-		0:                    DrandMainnet,
-		UpgradePhoenixHeight: DrandQuicknet,
+		0: DrandQuicknet,
 	}
 
 	BuildType |= Build2k
@@ -190,3 +188,7 @@ const BootstrapPeerThreshold = 1
 const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef
+
+const f3Enabled = true
+const ManifestServerID = "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG"
+const F3BootstrapEpoch abi.ChainEpoch = 1000

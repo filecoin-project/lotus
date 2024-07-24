@@ -94,17 +94,21 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(14000), mh)
 
-	b, err := ei.IsHeightProcessed(context.Background(), 14000)
+	b, err := ei.IsHeightPast(context.Background(), 14000)
 	require.NoError(t, err)
 	require.True(t, b)
 
-	b, err = ei.IsHeightProcessed(context.Background(), 14001)
+	b, err = ei.IsHeightPast(context.Background(), 14001)
 	require.NoError(t, err)
 	require.False(t, b)
 
-	b, err = ei.IsHeightProcessed(context.Background(), 13000)
+	b, err = ei.IsHeightPast(context.Background(), 13000)
 	require.NoError(t, err)
-	require.False(t, b)
+	require.True(t, b)
+
+	b, err = ei.IsHeightPast(context.Background(), 13001)
+	require.NoError(t, err)
+	require.True(t, b)
 
 	tsKey := events14000.msgTs.Key()
 	tsKeyCid, err := tsKey.Cid()

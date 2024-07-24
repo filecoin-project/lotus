@@ -304,7 +304,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Network:   network.Version22,
 		Migration: upgradeActorsV13VerifregFix(calibnetv13BuggyVerifregCID1, calibnetv13CorrectManifestCID1),
 	}, {
-		Height:    build.UpgradeAussieHeight,
+		Height:    build.UpgradeWaffleHeight,
 		Network:   network.Version23,
 		Migration: UpgradeActorsV14,
 		PreMigrations: []stmgr.PreMigration{{
@@ -2115,11 +2115,11 @@ func buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestCID cid.Cid) fun
 			}
 
 			return actorsOut.SetActor(a, &types.ActorV5{
-				Code:    newCid,
-				Head:    actor.Head,
-				Nonce:   actor.Nonce,
-				Balance: actor.Balance,
-				Address: actor.Address,
+				Code:             newCid,
+				Head:             actor.Head,
+				Nonce:            actor.Nonce,
+				Balance:          actor.Balance,
+				DelegatedAddress: actor.DelegatedAddress,
 			})
 		})
 		if err != nil {
@@ -2153,8 +2153,8 @@ func buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestCID cid.Cid) fun
 				return xerrors.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
 			}
 
-			if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
-				return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+			if inActor.DelegatedAddress != outActor.DelegatedAddress && inActor.DelegatedAddress.String() != outActor.DelegatedAddress.String() {
+				return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.DelegatedAddress, outActor.DelegatedAddress)
 			}
 
 			if inActor.Head != outActor.Head && a != builtin.SystemActorAddr {
@@ -2413,11 +2413,11 @@ func upgradeActorsV13VerifregFix(oldBuggyVerifregCID, newManifestCID cid.Cid) fu
 			}
 
 			return actorsOut.SetActor(a, &types.ActorV5{
-				Code:    newCid,
-				Head:    actor.Head,
-				Nonce:   actor.Nonce,
-				Balance: actor.Balance,
-				Address: actor.Address,
+				Code:             newCid,
+				Head:             actor.Head,
+				Nonce:            actor.Nonce,
+				Balance:          actor.Balance,
+				DelegatedAddress: actor.DelegatedAddress,
 			})
 		})
 		if err != nil {
@@ -2451,8 +2451,8 @@ func upgradeActorsV13VerifregFix(oldBuggyVerifregCID, newManifestCID cid.Cid) fu
 				return xerrors.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
 			}
 
-			if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
-				return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+			if inActor.DelegatedAddress != outActor.DelegatedAddress && inActor.DelegatedAddress.String() != outActor.DelegatedAddress.String() {
+				return xerrors.Errorf("mismatched address for actor %s: %s != %s", a, inActor.DelegatedAddress, outActor.DelegatedAddress)
 			}
 
 			if inActor.Head != outActor.Head && a != builtin.SystemActorAddr {

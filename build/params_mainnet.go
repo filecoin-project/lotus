@@ -106,8 +106,8 @@ const UpgradeDragonHeight = 3855360
 // 2024-04-11T15:00:00Z
 const UpgradePhoenixHeight = UpgradeDragonHeight + 120
 
-// ??????
-var UpgradeAussieHeight = abi.ChainEpoch(9999999999)
+// 2024-08-06T12:00:00Z
+var UpgradeWaffleHeight = abi.ChainEpoch(4154640)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1
@@ -133,8 +133,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_AUSSIE") == "1" {
-		UpgradeAussieHeight = math.MaxInt64 - 1
+	if os.Getenv("LOTUS_DISABLE_WAFFLE") == "1" {
+		UpgradeWaffleHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
@@ -168,3 +168,7 @@ const Eip155ChainId = 314
 
 // WhitelistedBlock skips checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
+
+const f3Enabled = false
+const ManifestServerID = "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7"
+const F3BootstrapEpoch abi.ChainEpoch = -1

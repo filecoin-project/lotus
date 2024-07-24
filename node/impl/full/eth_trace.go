@@ -103,8 +103,8 @@ func baseEnvironment(st *state.StateTree, from address.Address) (*environment, e
 }
 
 func traceToAddress(act *types.ActorTrace) ethtypes.EthAddress {
-	if act.State.Address != nil {
-		if addr, err := ethtypes.EthAddressFromFilecoinAddress(*act.State.Address); err == nil {
+	if act.State.DelegatedAddress != nil {
+		if addr, err := ethtypes.EthAddressFromFilecoinAddress(*act.State.DelegatedAddress); err == nil {
 			return addr
 		}
 	}
@@ -446,7 +446,7 @@ func decodeCreateViaEAM(et *types.ExecutionTrace) (initcode []byte, addr *ethtyp
 	}
 	ret, err := decodeReturn[eam12.CreateReturn](&et.MsgRct)
 	if err != nil {
-		return nil, (*ethtypes.EthAddress)(&ret.EthAddress), err
+		return nil, nil, err
 	}
 	return initcode, (*ethtypes.EthAddress)(&ret.EthAddress), nil
 }
