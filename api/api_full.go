@@ -862,6 +862,8 @@ type FullNode interface {
 	// This is an EXPERIMENTAL API and may be subject to change.
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
 
+	//*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
+
 	// F3Participate should be called by a storage provider to participate in signing F3 consensus.
 	// Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
 	// The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
