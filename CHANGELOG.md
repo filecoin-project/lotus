@@ -1,8 +1,8 @@
 # Lotus changelog
 
 # v1.28.0 / 2024-07-23
-This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
+This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 **This release sets the Mainnet to upgrade at epoch 4154640, corresponding to 2024-08-06T12:00:00Z.** 
 
 ## ☢️ Upgrade Warnings ☢️
