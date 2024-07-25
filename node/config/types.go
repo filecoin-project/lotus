@@ -546,6 +546,9 @@ type FevmConfig struct {
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
 
+	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
+	EthTraceFilterMaxResults uint64
+
 	Events DeprecatedEvents `toml:"Events,omitempty"`
 }
 

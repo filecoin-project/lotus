@@ -1030,6 +1030,47 @@ type EthTraceTransaction struct {
 	TransactionPosition int     `json:"transactionPosition"`
 }
 
+type EthTraceFilterResult struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
+}
+
+// EthTraceFilterCriteria defines the criteria for filtering traces.
+type EthTraceFilterCriteria struct {
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "pending" for not yet committed messages.
+	// Optional, default: "latest".
+	// Note: "earliest" is not a permitted value.
+	FromBlock *string `json:"fromBlock,omitempty"`
+
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "pending" for not yet committed messages.
+	// Optional, default: "latest".
+	// Note: "earliest" is not a permitted value.
+	ToBlock *string `json:"toBlock,omitempty"`
+
+	// Actor address or a list of addresses from which transactions that generate traces should originate.
+	// Optional, default: nil.
+	// The JSON decoding must treat a string as equivalent to an array with one value, for example
+	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
+	FromAddress EthAddressList `json:"fromAddress,omitempty"`
+
+	// Actor address or a list of addresses to which transactions that generate traces are sent.
+	// Optional, default: nil.
+	// The JSON decoding must treat a string as equivalent to an array with one value, for example
+	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
+	ToAddress EthAddressList `json:"toAddress,omitempty"`
+
+	// After specifies the offset for pagination of trace results. The number of traces to skip before returning results.
+	// Optional, default: nil.
+	After *EthUint64 `json:"after,omitempty"`
+
+	// Limits the number of traces returned.
+	// Optional, default: all traces.
+	Count *EthUint64 `json:"count,omitempty"`
+}
+
 type EthCallTraceAction struct {
 	CallType string     `json:"callType"`
 	From     EthAddress `json:"from"`
