@@ -9,7 +9,7 @@ This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin net
 - If you are running the `v1.26.x` version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
 - Note that v1.28.0 needed a bug fix and a feature enhancement to ensure a smooth support for nv23 and it was retracted. Please update your node to v1.28.1 or above before the nv23 upgrade!
 - This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
-- All SPs MUST finish onboarding all sectors that have deal IDs in the PreCommitSectors OnChainSectorInfos before upgrading the lotus miner OR THEY WILL BE WASTED. Please see more details in the next section.
+- All **Storage Providers MUST finish onboarding all sectors that have deal IDs in the `PreCommitSectors` `OnChainSectorInfo`s** before upgrading the lotus miner OR THEY WILL BE WASTED. Please see more details in the next section.
 
 ## The Filecoin network version 23 delivers the following FIPs:
 
