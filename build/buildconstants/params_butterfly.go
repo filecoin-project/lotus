@@ -22,7 +22,6 @@ var NetworkBundle = "butterflynet"
 var ActorDebugging = false
 
 const BootstrappersFile = "butterflynet.pi"
-const BootstrappersOverrideEnvVarKey = "LOTUS_P2P_BOOTSTRAPPERS_BUTTERFLYNET"
 const GenesisFile = "butterflynet.car"
 
 const UpgradeBreezeHeight = -1

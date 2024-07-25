@@ -14,7 +14,6 @@ import (
 )
 
 const BootstrappersFile = ""
-const BootstrappersOverrideEnvVarKey = "LOTUS_P2P_BOOTSTRAPPERS_DEVNET"
 const GenesisFile = ""
 
 var NetworkBundle = "devnet"

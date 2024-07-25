@@ -26,7 +26,6 @@ var NetworkBundle = "calibrationnet"
 var ActorDebugging = false
 
 const BootstrappersFile = "calibnet.pi"
-const BootstrappersOverrideEnvVarKey = "LOTUS_P2P_BOOTSTRAPPERS_CALIBNET"
 const GenesisFile = "calibnet.car"
 
 const UpgradeBreezeHeight = -1

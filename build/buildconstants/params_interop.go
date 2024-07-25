@@ -19,7 +19,6 @@ var NetworkBundle = "caterpillarnet"
 var ActorDebugging = false
 
 const BootstrappersFile = "interopnet.pi"
-const BootstrappersOverrideEnvVarKey = "LOTUS_P2P_BOOTSTRAPPERS_INTEROPNET"
 const GenesisFile = "interopnet.car"
 
 const GenesisNetworkVersion = network.Version22

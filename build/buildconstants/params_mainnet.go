@@ -30,7 +30,6 @@ const ActorDebugging = false
 const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "mainnet.pi"
-const BootstrappersOverrideEnvVarKey = "LOTUS_P2P_BOOTSTRAPPERS_MAINNET"
 const GenesisFile = "mainnet.car"
 
 const UpgradeBreezeHeight abi.ChainEpoch = 41280

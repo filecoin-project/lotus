@@ -16,8 +16,6 @@ var BundleOverrides map[actorstypes.Version]string
 
 var BootstrappersFile = buildconstants.BootstrappersFile // Deprecated: Use buildconstants.BootstrappersFile instead
 
-var BootstrappersOverrideEnvVarKey = buildconstants.BootstrappersOverrideEnvVarKey // Deprecated: Use buildconstants.BootstrappersOverrideEnvVarKey instead
-
 var GenesisFile = buildconstants.GenesisFile // Deprecated: Use buildconstants.GenesisFile instead
 
 var NetworkBundle = buildconstants.NetworkBundle   // Deprecated: Use buildconstants.NetworkBundle instead
