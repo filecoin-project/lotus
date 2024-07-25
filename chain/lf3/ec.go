@@ -172,7 +172,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 
 		pe := gpbft.PowerEntry{
 			ID:    gpbft.ActorID(id),
-			Power: claim.QualityAdjPower.Int,
+			Power: claim.QualityAdjPower,
 		}
 
 		act, err := state.GetActor(minerAddr)
