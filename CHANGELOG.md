@@ -1,13 +1,13 @@
 # Lotus changelog
 
-# v1.28.0 / 2024-07-23
-This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
+# v1.28.1 / 2024-07-24
 
-**This release sets the Mainnet to upgrade at epoch 4154640, corresponding to 2024-08-06T12:00:00Z.** 
+This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇. v1.28.1 is also the minimal version that supports nv23.
+**This release sets the Mainnet to upgrade at epoch 4154640, corresponding to 2024-08-06T12:00:00Z.**
 
 ## ☢️ Upgrade Warnings ☢️
 - If you are running the `v1.26.x` version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
-
+- Note that v1.28.0 misses a critical feature removal and a bug fix and was retracted. Please update your node to v1.28.1 or above before the nv23 upgrade!
 - This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
 
 ## The Filecoin network version 23 delivers the following FIPs:
@@ -15,6 +15,7 @@ This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin net
 - [FIP-0065: Ignore built-in market locked balance in circulating supply calculation](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0065.md)
 - [FIP-0079: Add BLS Aggregate Signatures to FVM](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0079.md)
 - [FIP-0084: Remove Storage Miner Actor Method ProveCommitSectors](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0084.md)
+  -  :warning: Note that ProveCommitSectors is deprecated in favour of ProveCommitSectors3, that was introduced in FIP-0076. ProveCommitSectors3 will reject activation of sectors that were precommitted with deal IDs. Storage provider should need to make sure that their pipeline is updated to adopt ProveCommitSector3 flow ASAP, otherwise they may in risk of losing deal collateral, PCD & sealing work for sectors that were not fully committed onchain before the upgrade yet have deal ID in the precommitted sector onchain info. This release removes the pipeline that uses the deprecated ProveCommit pipeline and the new pipeline was fully supported. If you have any questions, please don't feel hesitant to reach out in #fil-curio-dev.
 - [FIP-0085: Convert f090 Mining Reserve Actor to Keyless Account Actor](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0085.md)
 - [FIP-0091: Add support for legacy Ethereum transactions](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0091.md)
 - [FIP-0092: NI-PoRep](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0092.md)
@@ -59,7 +60,7 @@ All node operators, including storage providers, should be aware that ONE pre-mi
 - The migration is expected to take less than 30 seconds on a node with an NVMe drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less than 1 minute.
 - Max memory usage during benchmarking the migration in "offline mode" (i.e., node not syncing) was 23GiB.
 - Max memory usage when benchmarking the migration in "online mode" (i.e., while the node is syncing) was 30GiB. Numbers here might vary depending on the load your node is under.
-More details on the migration benchmarking can be found in https://github.com/filecoin-project/lotus/issues/12128
+  More details on the migration benchmarking can be found in https://github.com/filecoin-project/lotus/issues/12128
 
 We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
 
@@ -67,7 +68,7 @@ For certain node operators, such as full archival nodes or systems that need to 
 
 ## Fast Finality for Filecoin (f3) soft launch
 
-We are one step closer to reduce Filecoin's finality from 7.5 hours to a minute or so, you can checkout the [FIP](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md) for more details.  Changing the consensus protocol is not trivial, and the f3 implementation team has designed a [passive testing plan to verify the protocol](https://github.com/filecoin-project/go-f3/issues/213) and give time for client implementation teams to integrate and test F3 before it is fully activated in the network consensus. That said, the lotus team has implemented f3 & the manifest for passive testing in this release, and we would like to ask node operators, especially storage providers, to participate in the testing by participating in F3 on the mainnet (which is enabled by default in this release)! We will keep updating [this discussion](https://github.com/filecoin-project/lotus/discussions/12287) to capture "what can you expect" & testing status. If you notice any unexpected behaviour caused by f3, please do not hesitate to reach out to us in #fil-fast-finality. 
+We are one step closer to reduce Filecoin's finality from 7.5 hours to a minute or so, you can checkout the [FIP](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md) for more details.  Changing the consensus protocol is not trivial, and the f3 implementation team has designed a [passive testing plan to verify the protocol](https://github.com/filecoin-project/go-f3/issues/213) and give time for client implementation teams to integrate and test F3 before it is fully activated in the network consensus. That said, the lotus team has implemented f3 & the manifest for passive testing in this release, and we would like to ask node operators, especially storage providers, to participate in the testing by participating in F3 on the mainnet (which is enabled by default in this release)! We will keep updating [this discussion](https://github.com/filecoin-project/lotus/discussions/12287) to capture "what can you expect" & testing status. If you notice any unexpected behaviour caused by f3, please do not hesitate to reach out to us in #fil-fast-finality.
 
 F3 (Fast Finality) is experimental in this release. All the new F3 APIs  are unstable and subject to until nv24 release (assuming f3 will be fully activated in this upgrade).
 
@@ -105,7 +106,13 @@ Exchanges and RPC providers are recommended to opt-out of F3 functionality for n
 - fix: exchange bug #12275
 - chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23 #12276
 - metrics: f3: Set up otel metrics reporting to prometheus #12285
-- Upgrade to go-f3 v0.0.5 #12279
+- dep: f3: Update go-f3 to 0.0.6, enable it on mainnet #12295
+- fix: lotus-miner: remove provecommit1 method #12251
+
+# v1.28.0 / 2024-07-23
+
+Update on 2027-07-24
+This release is retracted, please refer to v1.28.1 for more details
 
 # v1.27.1 / 2024-06-24
 
