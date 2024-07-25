@@ -52,7 +52,13 @@ build/builtin-actors/v*
 build/builtin-actors/*.car
 
 dist/
+darwin_amd64_v1/
+darwin_arm64/
+darwin_all/
+linux_amd64_v1/
 
+xx*
+release_body.md
 
 # The following files are checked into git and result
 # in dirty git state if removed from the docker context
