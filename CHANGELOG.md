@@ -9,6 +9,7 @@ This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin net
 - If you are running the `v1.26.x` version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
 - Note that v1.28.0 misses a critical feature removal and a bug fix and was retracted. Please update your node to v1.28.1 or above before the nv23 upgrade!
 - This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
+- ALL LEGACY PRECOMMITS MUST BE PROVECOMMITTED BEFORE NV23 OR THEY WILL BE WASTED. STOP LEGACY PRECOMMITS ASAP TO AVOID FEES AND WASTED SEALING WORK. Please see more details in the next session.
 
 ## The Filecoin network version 23 delivers the following FIPs:
 
@@ -106,7 +107,7 @@ Exchanges and RPC providers are recommended to opt-out of F3 functionality for n
 - fix: exchange bug #12275
 - chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23 #12276
 - metrics: f3: Set up otel metrics reporting to prometheus #12285
-- dep: f3: Update go-f3 to 0.0.6, enable it on mainnet #12295
+- dep: f3: Update go-f3 to 0.0.7, enable it on mainnet
 - fix: lotus-miner: remove provecommit1 method #12251
 
 # v1.28.0 / 2024-07-23
