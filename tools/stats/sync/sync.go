@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/tools/stats/headbuffer"
@@ -70,14 +71,14 @@ func SyncWait(ctx context.Context, napi SyncWaitApi) error {
 			)
 		}
 
-		if build.Clock.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs)*30 {
+		if build.Clock.Now().Unix()-int64(head.MinTimestamp()) < int64(buildconstants.BlockDelaySecs)*30 {
 			break
 		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-build.Clock.After(time.Duration(int64(build.BlockDelaySecs) * int64(time.Second))):
+		case <-build.Clock.After(time.Duration(int64(buildconstants.BlockDelaySecs) * int64(time.Second))):
 		}
 	}
 

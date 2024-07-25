@@ -1,5 +1,23 @@
 # Lotus changelog
 
+# UNRELEASED
+
+- https://github.com/filecoin-project/lotus/pull/12203: Fix slice modification bug in ETH Tx Events Bloom Filter
+- https://github.com/filecoin-project/lotus/pull/12221: Fix a nil reference panic in the ETH Trace API
+- https://github.com/filecoin-project/lotus/pull/12112: Moved consts from build/ to build/buildconstants/ for ligher curio deps.
+- https://github.com/filecoin-project/lotus/pull/12237: Upgrade to go-f3 `v0.0.4`.
+- https://github.com/filecoin-project/lotus/pull/12251: Dropping support from ProveCommitSector1 method from lotus-miner
+- https://github.com/filecoin-project/lotus/pull/12276: chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23
+- https://github.com/filecoin-project/lotus/pull/12278: chore: Set Mainnet upgrade epoch for NV23.
+- https://github.com/filecoin-project/lotus/pull/12269 Fix `logIndex` ordering in `EthGetTransactionReceipt` by using the EventIndex to fetch logs
+- https://github.com/filecoin-project/lotus/pull/12285 Set up OpenTelemetry metrics reporting to prometheus
+- https://github.com/filecoin-project/lotus/pull/12279 Upgrade to go-f3 v0.0.5
+- https://github.com/filecoin-project/lotus/pull/12295 Upgrade to go-f3 v0.0.6
+
+## New features
+
+- feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
+
 # v1.28.1 / 2024-07-24
 
 This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇. v1.28.1 is also the minimal version that supports nv23.
@@ -115,16 +133,6 @@ Exchanges and RPC providers are recommended to opt-out of F3 functionality for n
 
 Update on 2027-07-24
 This release is retracted, please refer to v1.28.1 for more details
-
-# v1.27.1 / 2024-06-24
-
-This release, v1.27.1, is an OPTIONAL lotus release. It is HIGHLY RECOMMENDED for node operators that are building Filecoin index off lotus!
-
-## ☢️ Upgrade Warnings ☢️
-
-- This Lotus release completely removes the Legacy Lotus/Lotus-Miner Markets sub-system from the codebase, which was announced to reach EOL on January 31, 2023.
-- The **Curio Storage** software, designed to simplify the setup and operation of storage providers, has moved to their own Github-repository: https://github.com/filecoin-project/curio.
-- The events subsystem includes some minor correctness fixes and performance improvements. Nodes operators running Lotus with events turned on (off by default) may experience some delay in initial start-up as a minor database migration takes place and the write-ahead log is compacted. See [filecoin-project/lotus#11952](https://github.com/filecoin-project/lotus/pull/11952) and [filecoin-project/lotus#12090](https://github.com/filecoin-project/lotus/pull/12090) for full details.
 
 # v1.27.2 / 2024-07-17
 

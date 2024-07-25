@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// DealInfo is a tuple of deal identity and its schedule
+// PieceDealInfo is a tuple of deal identity and its schedule
 type PieceDealInfo struct {
 	// "Old" builtin-market deal info
 	PublishCid   *cid.Cid

@@ -104,18 +104,6 @@ your node if metadata log is disabled`,
 
 			Comment: ``,
 		},
-		{
-			Name: "Libp2p",
-			Type: "Libp2p",
-
-			Comment: ``,
-		},
-		{
-			Name: "Pubsub",
-			Type: "Pubsub",
-
-			Comment: ``,
-		},
 	},
 	"DealmakingConfig": {
 		{
@@ -239,6 +227,12 @@ This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, bu
 Set to 0 to keep all mappings`,
 		},
 		{
+			Name: "EthTraceFilterMaxResults",
+			Type: "uint64",
+
+			Comment: `EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter`,
+		},
+		{
 			Name: "Events",
 			Type: "DeprecatedEvents",
 
@@ -246,6 +240,18 @@ Set to 0 to keep all mappings`,
 		},
 	},
 	"FullNode": {
+		{
+			Name: "Libp2p",
+			Type: "Libp2p",
+
+			Comment: ``,
+		},
+		{
+			Name: "Pubsub",
+			Type: "Pubsub",
+
+			Comment: ``,
+		},
 		{
 			Name: "Wallet",
 			Type: "Wallet",

@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -149,7 +149,7 @@ func isFeeCapProblem(checkGroups [][]api.MessageCheckStatus, protoCid cid.Cid) (
 	}
 	if baseFee.IsZero() {
 		// this will only be the case if failing check is: MessageMinBaseFee
-		baseFee = big.NewInt(build.MinimumBaseFee)
+		baseFee = big.NewInt(buildconstants.MinimumBaseFee)
 	}
 
 	return yes, baseFee

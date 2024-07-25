@@ -41,7 +41,7 @@ func (*WindowPoStStage) Name() string {
 	return "window-post"
 }
 
-// packWindowPoSts packs window posts until either the block is full or all healty sectors
+// PackMessages packs window posts until either the block is full or all healty sectors
 // have been proven. It does not recover sectors.
 func (stage *WindowPoStStage) PackMessages(ctx context.Context, bb *blockbuilder.BlockBuilder) (_err error) {
 	// Push any new window posts into the queue.

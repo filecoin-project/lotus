@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -191,7 +191,7 @@ func (c *ChainPointCollector) collectBlockheaderPoints(ctx context.Context, pl *
 		baseFeeIn := tipset.Blocks()[0].ParentBaseFee
 		newBaseFee := store.ComputeNextBaseFee(baseFeeIn, totalUniqGasLimit, len(tipset.Blocks()), tipset.Height())
 
-		baseFeeRat := new(big.Rat).SetFrac(newBaseFee.Int, new(big.Int).SetUint64(build.FilecoinPrecision))
+		baseFeeRat := new(big.Rat).SetFrac(newBaseFee.Int, new(big.Int).SetUint64(buildconstants.FilecoinPrecision))
 		baseFeeFloat, _ := baseFeeRat.Float64()
 		p = influx.NewPoint("chain.basefee", baseFeeFloat)
 		pl.AddPoint(p)
@@ -203,11 +203,11 @@ func (c *ChainPointCollector) collectBlockheaderPoints(ctx context.Context, pl *
 	}
 	{
 		blks := int64(len(cids))
-		p = influx.NewPoint("chain.gas_fill_ratio", float64(totalGasLimit)/float64(blks*build.BlockGasTarget))
+		p = influx.NewPoint("chain.gas_fill_ratio", float64(totalGasLimit)/float64(blks*buildconstants.BlockGasTarget))
 		pl.AddPoint(p)
-		p = influx.NewPoint("chain.gas_capacity_ratio", float64(totalUniqGasLimit)/float64(blks*build.BlockGasTarget))
+		p = influx.NewPoint("chain.gas_capacity_ratio", float64(totalUniqGasLimit)/float64(blks*buildconstants.BlockGasTarget))
 		pl.AddPoint(p)
-		p = influx.NewPoint("chain.gas_waste_ratio", float64(totalGasLimit-totalUniqGasLimit)/float64(blks*build.BlockGasTarget))
+		p = influx.NewPoint("chain.gas_waste_ratio", float64(totalGasLimit-totalUniqGasLimit)/float64(blks*buildconstants.BlockGasTarget))
 		pl.AddPoint(p)
 	}
 
@@ -222,7 +222,7 @@ func (c *ChainPointCollector) collectStaterootPoints(ctx context.Context, pl *in
 		done()
 	}()
 
-	attoFil := types.NewInt(build.FilecoinPrecision).Int
+	attoFil := types.NewInt(buildconstants.FilecoinPrecision).Int
 
 	netBal, err := c.api.WalletBalance(ctx, reward.Address)
 	if err != nil {

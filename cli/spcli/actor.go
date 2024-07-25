@@ -2,7 +2,6 @@ package spcli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"strconv"
 
@@ -21,19 +20,16 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
-	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/cli/spcli/createminer"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/impl"
 )
@@ -47,7 +43,7 @@ func ActorWithdrawCmd(getActor ActorAddressGetter) *cli.Command {
 			&cli.IntFlag{
 				Name:  "confidence",
 				Usage: "number of block confirmations to wait for",
-				Value: int(build.MessageConfidence),
+				Value: int(buildconstants.MessageConfidence),
 			},
 			&cli.BoolFlag{
 				Name:  "beneficiary",
@@ -596,7 +592,7 @@ func ActorSetOwnerCmd(getActor ActorAddressGetter) *cli.Command {
 			fmt.Println("Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -698,7 +694,7 @@ func ActorProposeChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			_, _ = fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -834,7 +830,7 @@ func ActorProposeChangeBeneficiaryCmd(getActor ActorAddressGetter) *cli.Command 
 			fmt.Println("Propose Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return xerrors.Errorf("waiting for message to be included in block: %w", err)
 			}
@@ -935,7 +931,7 @@ func ActorConfirmChangeWorkerCmd(getActor ActorAddressGetter) *cli.Command {
 			fmt.Println("Confirm Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -1058,7 +1054,7 @@ func ActorConfirmChangeBeneficiaryCmd(getActor ActorAddressGetter) *cli.Command 
 			fmt.Println("Confirm Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return xerrors.Errorf("waiting for message to be included in block: %w", err)
 			}
@@ -1215,7 +1211,7 @@ func ActorCompactAllocatedCmd(getActor ActorAddressGetter) *cli.Command {
 			fmt.Println("CompactSectorNumbers Message CID:", smsg.Cid())
 
 			// wait for it to get mined into a block
-			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			wait, err := api.StateWaitMsg(ctx, smsg.Cid(), buildconstants.MessageConfidence)
 			if err != nil {
 				return err
 			}
@@ -1271,7 +1267,7 @@ var ActorNewMinerCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
+			Value: int(buildconstants.MessageConfidence),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1320,119 +1316,10 @@ var ActorNewMinerCmd = &cli.Command{
 		}
 		ssize := abi.SectorSize(sectorSizeInt)
 
-		_, err = CreateStorageMiner(ctx, full, owner, worker, sender, ssize, cctx.Uint64("confidence"))
+		_, err = createminer.CreateStorageMiner(ctx, full, owner, worker, sender, ssize, cctx.Uint64("confidence"))
 		if err != nil {
 			return err
 		}
 		return nil
 	},
-}
-
-func CreateStorageMiner(ctx context.Context, fullNode v1api.FullNode, owner, worker, sender address.Address, ssize abi.SectorSize, confidence uint64) (address.Address, error) {
-	// make sure the sender account exists on chain
-	_, err := fullNode.StateLookupID(ctx, owner, types.EmptyTSK)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("sender must exist on chain: %w", err)
-	}
-
-	// make sure the worker account exists on chain
-	_, err = fullNode.StateLookupID(ctx, worker, types.EmptyTSK)
-	if err != nil {
-		signed, err := fullNode.MpoolPushMessage(ctx, &types.Message{
-			From:  sender,
-			To:    worker,
-			Value: types.NewInt(0),
-		}, nil)
-		if err != nil {
-			return address.Undef, xerrors.Errorf("push worker init: %w", err)
-		}
-
-		fmt.Printf("Initializing worker account %s, message: %s\n", worker, signed.Cid())
-		fmt.Println("Waiting for confirmation")
-
-		mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence, 2000, true)
-		if err != nil {
-			return address.Undef, xerrors.Errorf("waiting for worker init: %w", err)
-		}
-		if mw.Receipt.ExitCode != 0 {
-			return address.Undef, xerrors.Errorf("initializing worker account failed: exit code %d", mw.Receipt.ExitCode)
-		}
-	}
-
-	// make sure the owner account exists on chain
-	_, err = fullNode.StateLookupID(ctx, owner, types.EmptyTSK)
-	if err != nil {
-		signed, err := fullNode.MpoolPushMessage(ctx, &types.Message{
-			From:  sender,
-			To:    owner,
-			Value: types.NewInt(0),
-		}, nil)
-		if err != nil {
-			return address.Undef, xerrors.Errorf("push owner init: %w", err)
-		}
-
-		fmt.Printf("Initializing owner account %s, message: %s\n", worker, signed.Cid())
-		fmt.Println("Waiting for confirmation")
-
-		mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence, 2000, true)
-		if err != nil {
-			return address.Undef, xerrors.Errorf("waiting for owner init: %w", err)
-		}
-		if mw.Receipt.ExitCode != 0 {
-			return address.Undef, xerrors.Errorf("initializing owner account failed: exit code %d", mw.Receipt.ExitCode)
-		}
-	}
-
-	// Note: the correct thing to do would be to call SealProofTypeFromSectorSize if actors version is v3 or later, but this still works
-	nv, err := fullNode.StateNetworkVersion(ctx, types.EmptyTSK)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get network version: %w", err)
-	}
-	spt, err := lminer.WindowPoStProofTypeFromSectorSize(ssize, nv)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("getting post proof type: %w", err)
-	}
-
-	params, err := actors.SerializeParams(&power6.CreateMinerParams{
-		Owner:               owner,
-		Worker:              worker,
-		WindowPoStProofType: spt,
-	})
-	if err != nil {
-		return address.Undef, err
-	}
-
-	createStorageMinerMsg := &types.Message{
-		To:    power.Address,
-		From:  sender,
-		Value: big.Zero(),
-
-		Method: power.Methods.CreateMiner,
-		Params: params,
-	}
-
-	signed, err := fullNode.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("pushing createMiner message: %w", err)
-	}
-
-	fmt.Printf("Pushed CreateMiner message: %s\n", signed.Cid())
-	fmt.Println("Waiting for confirmation")
-
-	mw, err := fullNode.StateWaitMsg(ctx, signed.Cid(), confidence, 2000, true)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("waiting for createMiner message: %w", err)
-	}
-
-	if mw.Receipt.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
-	}
-
-	var retval power2.CreateMinerReturn
-	if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
-		return address.Undef, err
-	}
-
-	fmt.Printf("New miners address is: %s (%s)\n", retval.IDAddress, retval.RobustAddress)
-	return retval.IDAddress, nil
 }

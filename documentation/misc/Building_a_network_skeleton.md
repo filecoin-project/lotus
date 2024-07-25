@@ -160,16 +160,20 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
 8. Add network version to `chain/state/statetree.go`.
     - Add `network.VersionXX+1` to `VersionForNetwork` function.
 
-9. Run `make gen`.
+9. Copy the latest version case block in `cmd/lotus-shed/invariants.go`, paste it below and increment the network version number.
 
-10. Run `make docsgen-cli`.
+10. In the [getMigrationFuncsForNetwork](https://github.com/filecoin-project/lotus/blob/4f63a0860542140e1efd7045ca49cab3463f6761/cmd/lotus-shed/migrations.go#L283-L301) function, add a new case for the latest network version, and create the corresponding `checkNvXXInvariants` function.
+
+11. Run `make gen`.
+
+12. Run `make docsgen-cli`.
 
 And you're done! These are all the steps necessary to create a network upgrade skeleton that you will be able to run in a local devnet, and creates a basis where you can start testing new FIPs. When running a local developer network from this Lotus branch, bringing in all it dependencies, you should be able to:
 
 - Have a local developer network that starts at the current network version.
 - Be able to see the Actor CIDs/Actor version for the mock Actor-bundle through `lotus state actor-cids --network-version XX+1`
 - Have a successful pre-migration.
-- Complete the migration at upgrade epoch, with a succesful upgrade.
+- Complete the migration at upgrade epoch, with a successful upgrade.
 - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
 You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11964), which added the skeleton for network version 23.

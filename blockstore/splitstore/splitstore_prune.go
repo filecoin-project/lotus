@@ -16,7 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 )
@@ -44,7 +44,7 @@ var (
 
 	// PruneThreshold is the number of epochs that need to have elapsed
 	// from the previously pruned epoch to trigger a new prune
-	PruneThreshold = 7 * build.Finality
+	PruneThreshold = 7 * policy.ChainFinality
 )
 
 // GCHotStore runs online GC on the chain state in the hotstore according the to options specified
@@ -79,7 +79,7 @@ func (s *SplitStore) PruneChain(opts api.PruneOpts) error {
 	switch {
 	case retainState > 0:
 		retainStateP = func(depth int64) bool {
-			return depth <= int64(CompactionBoundary)+retainState*int64(build.Finality)
+			return depth <= int64(CompactionBoundary)+retainState*int64(policy.ChainFinality)
 		}
 	case retainState < 0:
 		retainStateP = func(_ int64) bool { return true }

@@ -347,7 +347,7 @@ func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 	}, nil
 }
 
-// Like Lock, except datastores will work in read-only mode
+// LockRO is like Lock, except datastores will work in read-only mode
 func (fsr *FsRepo) LockRO(repoType RepoType) (LockedRepo, error) {
 	lr, err := fsr.Lock(repoType)
 	if err != nil {

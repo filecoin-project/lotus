@@ -38,9 +38,9 @@ func (a *MsigAPI) messageBuilder(ctx context.Context, from address.Address) (mul
 	return multisig.Message(av, from), nil
 }
 
-// TODO: remove gp (gasPrice) from arguments
-// TODO: Add "vesting start" to arguments.
 func (a *MsigAPI) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*api.MessagePrototype, error) {
+	// TODO: remove gp (gasPrice) from arguments
+	// TODO: Add "vesting start" to arguments.
 
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {

@@ -234,7 +234,7 @@ func NoDefaultForSplitstoreTransition() error {
 	return xerrors.Errorf("FullNode config not found and fallback to default disallowed while we transition to splitstore discard default.  Use `lotus config default` to set this repo up with a default config.  Be sure to set `EnableSplitstore` to `false` if you are running a full archive node")
 }
 
-// Match the EnableSplitstore field
+// MatchEnableSplitstoreField matches the EnableSplitstore field
 func MatchEnableSplitstoreField(s string) bool {
 	enableSplitstoreRx := regexp.MustCompile(`(?m)^\s*EnableSplitstore\s*=`)
 	return enableSplitstoreRx.MatchString(s)

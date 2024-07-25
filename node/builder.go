@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -35,7 +36,6 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/common"
-	"github.com/filecoin-project/lotus/node/impl/net"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -162,7 +162,7 @@ func defaults() []Option {
 		Override(new(*alerting.Alerting), alerting.NewAlertingSystem),
 		Override(new(dtypes.NodeStartTime), FromVal(dtypes.NodeStartTime(time.Now()))),
 
-		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
+		Override(CheckFDLimit, modules.CheckFdLimit(buildconstants.DefaultFDLimit)),
 		Override(CheckFvmConcurrency, modules.CheckFvmConcurrency()),
 		Override(CheckUDPBufferSize, modules.CheckUDPBufferSize(2048*1024)),
 
@@ -260,8 +260,8 @@ func Base() Option {
 	)
 }
 
-// Config sets up constructors based on the provided Config
-func ConfigCommon(cfg *config.Common, buildVersion build.BuildVersion, enableLibp2pNode bool) Option {
+// ConfigCommon sets up constructors based on the provided Config
+func ConfigCommon(cfg *config.Common, buildVersion build.BuildVersion) Option {
 	// setup logging early
 	lotuslog.SetLevelsFromConfig(cfg.Logging.SubsystemLevels)
 
@@ -282,33 +282,9 @@ func ConfigCommon(cfg *config.Common, buildVersion build.BuildVersion, enableLib
 			return urls, nil
 		}),
 		ApplyIf(func(s *Settings) bool { return s.Base }), // apply only if Base has already been applied
-		If(!enableLibp2pNode,
-			Override(new(api.Net), new(api.NetStub)),
-			Override(new(api.Common), From(new(common.CommonAPI))),
-		),
-		If(enableLibp2pNode,
-			Override(new(api.Net), From(new(net.NetAPI))),
-			Override(new(api.Common), From(new(common.CommonAPI))),
-			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
-			Override(ConnectionManagerKey, lp2p.ConnectionManager(
-				cfg.Libp2p.ConnMgrLow,
-				cfg.Libp2p.ConnMgrHigh,
-				time.Duration(cfg.Libp2p.ConnMgrGrace),
-				cfg.Libp2p.ProtectedPeers)),
-			Override(new(network.ResourceManager), lp2p.ResourceManager(cfg.Libp2p.ConnMgrHigh)),
-			Override(new(*pubsub.PubSub), lp2p.GossipSub),
-			Override(new(*config.Pubsub), &cfg.Pubsub),
+		Override(new(api.Net), new(api.NetStub)),
+		Override(new(api.Common), From(new(common.CommonAPI))),
 
-			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
-				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
-			),
-
-			Override(AddrsFactoryKey, lp2p.AddrsFactory(
-				cfg.Libp2p.AnnounceAddresses,
-				cfg.Libp2p.NoAnnounceAddresses)),
-
-			If(!cfg.Libp2p.DisableNatPortMap, Override(NatPortMapKey, lp2p.NatPortMap)),
-		),
 		Override(new(dtypes.MetadataDS), modules.Datastore(cfg.Backup.DisableMetadataLog)),
 	)
 }

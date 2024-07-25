@@ -93,8 +93,8 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 	return data, topics, true
 }
 
-func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
-	res := &ethtypes.EthFilterResult{}
+func ethFilterLogsFromEvents(ctx context.Context, evs []*filter.CollectedEvent, sa StateAPI) ([]ethtypes.EthLog, error) {
+	var logs []ethtypes.EthLog
 	for _, ev := range evs {
 		log := ethtypes.EthLog{
 			Removed:          ev.Reverted,
@@ -134,6 +134,20 @@ func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent
 			return nil, err
 		}
 
+		logs = append(logs, log)
+	}
+
+	return logs, nil
+}
+
+func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
+	logs, err := ethFilterLogsFromEvents(ctx, evs, sa)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &ethtypes.EthFilterResult{}
+	for _, log := range logs {
 		res.Results = append(res.Results, log)
 	}
 

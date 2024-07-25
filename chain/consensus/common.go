@@ -23,7 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -76,7 +76,7 @@ func CommonBlkChecks(ctx context.Context, sm *stmgr.StateManager, cs *store.Chai
 	b *types.FullBlock, baseTs *types.TipSet) []async.ErrorFuture {
 	h := b.Header
 	msgsCheck := async.Err(func() error {
-		if b.Cid() == build.WhitelistedBlock {
+		if b.Cid() == buildconstants.WhitelistedBlock {
 			return nil
 		}
 
@@ -225,7 +225,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
 		// So below is overflow safe
 		sumGasLimit += m.GasLimit
-		if sumGasLimit > build.BlockGasLimit {
+		if sumGasLimit > buildconstants.BlockGasLimit {
 			return xerrors.Errorf("block gas limit exceeded")
 		}
 
@@ -472,7 +472,7 @@ func decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
 		return nil, "invalid", xerrors.Errorf("error decoding block: %w", err)
 	}
 
-	if count := len(blk.BlsMessages) + len(blk.SecpkMessages); count > build.BlockMessageLimit {
+	if count := len(blk.BlsMessages) + len(blk.SecpkMessages); count > buildconstants.BlockMessageLimit {
 		return nil, "too_many_messages", fmt.Errorf("block contains too many messages (%d)", count)
 	}
 

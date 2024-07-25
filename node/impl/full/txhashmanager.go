@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -24,8 +24,8 @@ func (m *EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) e
 }
 
 func (m *EthTxHashManager) PopulateExistingMappings(ctx context.Context, minHeight abi.ChainEpoch) error {
-	if minHeight < build.UpgradeHyggeHeight {
-		minHeight = build.UpgradeHyggeHeight
+	if minHeight < buildconstants.UpgradeHyggeHeight {
+		minHeight = buildconstants.UpgradeHyggeHeight
 	}
 
 	ts := m.StateAPI.Chain.GetHeaviestTipSet()

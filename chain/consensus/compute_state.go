@@ -26,7 +26,7 @@ import (
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -129,7 +129,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			Value:      types.NewInt(0),
 			GasFeeCap:  types.NewInt(0),
 			GasPremium: types.NewInt(0),
-			GasLimit:   build.BlockGasLimit * 10000, // Make super sure this is never too little
+			GasLimit:   buildconstants.BlockGasLimit * 10000, // Make super sure this is never too little
 			Method:     cron.Methods.EpochTick,
 			Params:     nil,
 		}
@@ -167,7 +167,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 				}
 			}
 
-			ts := genesis.Timestamp + build.BlockDelaySecs*(uint64(i))
+			ts := genesis.Timestamp + buildconstants.BlockDelaySecs*(uint64(i))
 			vmCron, err := makeVm(pstate, i, ts)
 			if err != nil {
 				return cid.Undef, cid.Undef, xerrors.Errorf("making cron vm: %w", err)

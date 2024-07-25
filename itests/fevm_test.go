@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -667,7 +667,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 
 			gaslimit, err := client.EthEstimateGas(ctx, gasParams)
 			require.NoError(t, err)
-			require.LessOrEqual(t, int64(gaslimit), build.BlockGasLimit)
+			require.LessOrEqual(t, int64(gaslimit), buildconstants.BlockGasLimit)
 
 			t.Logf("EthEstimateGas GasLimit=%d", gaslimit)
 
@@ -678,7 +678,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 			require.NoError(t, err)
 
 			tx := &ethtypes.Eth1559TxArgs{
-				ChainID:              build.Eip155ChainId,
+				ChainID:              buildconstants.Eip155ChainId,
 				To:                   &contractAddr,
 				Value:                big.Zero(),
 				Nonce:                int(nonce),
@@ -834,7 +834,7 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := ethtypes.Eth1559TxArgs{
-		ChainID:              build.Eip155ChainId,
+		ChainID:              buildconstants.Eip155ChainId,
 		Value:                big.NewInt(100),
 		Nonce:                0,
 		To:                   &contractEth,

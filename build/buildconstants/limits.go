@@ -1,4 +1,4 @@
-package build
+package buildconstants
 
 var (
 	DefaultFDLimit uint64 = 16 << 10

@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -146,7 +146,7 @@ func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback eth
 	case "safe":
 		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(ethtypes.SafeEpochDelay)
 	case "finalized":
-		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(build.Finality)
+		num = ethtypes.EthUint64(head.Height()) - lookback - ethtypes.EthUint64(policy.ChainFinality)
 	default:
 		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
 			return fmt.Errorf("cannot parse block number: %v", err)
@@ -632,6 +632,26 @@ func (gw *Node) EthTraceTransaction(ctx context.Context, txHash string) ([]*etht
 	}
 
 	return gw.target.EthTraceTransaction(ctx, txHash)
+}
+
+func (gw *Node) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	if filter.ToBlock != nil {
+		if err := gw.checkBlkParam(ctx, *filter.ToBlock, 0); err != nil {
+			return nil, err
+		}
+	}
+
+	if filter.FromBlock != nil {
+		if err := gw.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
+			return nil, err
+		}
+	}
+
+	return gw.target.EthTraceFilter(ctx, filter)
 }
 
 var EthMaxFiltersPerConn = 16 // todo make this configurable

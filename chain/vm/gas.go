@@ -6,13 +6,12 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
-	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 type GasCharge struct {
@@ -135,7 +134,7 @@ var Prices = map[abi.ChainEpoch]Pricelist{
 		verifyPostDiscount:   true,
 		verifyConsensusFault: 495422,
 	},
-	abi.ChainEpoch(build.UpgradeCalicoHeight): &pricelistV0{
+	buildconstants.UpgradeCalicoHeight: &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1300,
 
@@ -213,7 +212,7 @@ var Prices = map[abi.ChainEpoch]Pricelist{
 
 		verifyReplicaUpdate: 36316136,
 	},
-	build.UpgradeHyggeHeight: &pricelistV0{
+	buildconstants.UpgradeHyggeHeight: &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1300, // only applies to messages/return values.
 
@@ -251,7 +250,7 @@ type pricedSyscalls struct {
 }
 
 // Verifies that a signature is valid for an address and plaintext.
-func (ps pricedSyscalls) VerifySignature(signature crypto.Signature, signer addr.Address, plaintext []byte) error {
+func (ps pricedSyscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	c, err := ps.pl.OnVerifySignature(signature.Type, len(plaintext))
 	if err != nil {
 		return err

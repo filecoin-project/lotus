@@ -5,8 +5,11 @@ import (
 	pseudo "math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -103,10 +106,6 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	require.False(t, b)
 
 	b, err = ei.IsHeightPast(context.Background(), 13000)
-	require.NoError(t, err)
-	require.True(t, b)
-
-	b, err = ei.IsHeightPast(context.Background(), 13001)
 	require.NoError(t, err)
 	require.True(t, b)
 
@@ -959,5 +958,89 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			coll := tc.filter.TakeCollectedEvents(context.Background())
 			require.ElementsMatch(t, coll, tc.want, tc.name)
 		})
+	}
+}
+
+// TestQueryPlan is to ensure that future modifications to the db schema, or future upgrades to
+// sqlite, do not change the query plan of the prepared statements used by the event index such that
+// queries hit undesirable indexes which are likely to slow down the query.
+// Changes that break this test need to be sure that the query plan is still efficient for the
+// expected query patterns.
+func TestQueryPlan(t *testing.T) {
+	ei, err := NewEventIndex(context.Background(), filepath.Join(t.TempDir(), "actorevents.db"), nil)
+	require.NoError(t, err, "create event index")
+
+	verifyQueryPlan := func(stmt string) {
+		rows, err := ei.db.Query("EXPLAIN QUERY PLAN " + strings.Replace(stmt, "?", "1", -1))
+		require.NoError(t, err, "explain query plan for query: "+stmt)
+		defer func() {
+			require.NoError(t, rows.Close())
+		}()
+		// First response to EXPLAIN QUERY PLAN should show us the use of an index that we want to
+		// encounter first to narrow down the search space - either a height or tipset_key_cid index
+		// - sqlite_autoindex_events_seen_1 is for the UNIQUE constraint on events_seen
+		// - events_seen_height and events_seen_tipset_key_cid are explicit indexes on events_seen
+		// - event_height and event_tipset_key_cid are explicit indexes on event
+		rows.Next()
+		var id, parent, notused, detail string
+		require.NoError(t, rows.Scan(&id, &parent, &notused, &detail), "scan explain query plan for query: "+stmt)
+		detail = strings.TrimSpace(detail)
+		var expectedIndexes = []string{
+			"sqlite_autoindex_events_seen_1",
+			"events_seen_height",
+			"events_seen_tipset_key_cid",
+			"event_height",
+			"event_tipset_key_cid",
+		}
+		indexUsed := false
+		for _, index := range expectedIndexes {
+			if strings.Contains(detail, " INDEX "+index) {
+				indexUsed = true
+				break
+			}
+		}
+		require.True(t, indexUsed, "index used for query: "+stmt+" detail: "+detail)
+
+		stmt = regexp.MustCompile(`(?m)^\s+`).ReplaceAllString(stmt, " ") // remove all leading whitespace from the statement
+		stmt = strings.Replace(stmt, "\n", "", -1)                        // remove all newlines from the statement
+		t.Logf("[%s] has plan start: %s", stmt, detail)
+	}
+
+	// Test the hard-coded select and update queries
+	stmtMap := preparedStatementMapping(&preparedStatements{})
+	for _, stmt := range stmtMap {
+		if strings.HasPrefix(strings.TrimSpace(strings.ToLower(stmt)), "insert") {
+			continue
+		}
+		verifyQueryPlan(stmt)
+	}
+
+	// Test the dynamic prefillFilter queries
+	prefillCases := []*eventFilter{
+		{},
+		{minHeight: 14000, maxHeight: 14000},
+		{minHeight: 14000, maxHeight: 15000},
+		{tipsetCid: cid.MustParse("bafkqaaa")},
+		{minHeight: 14000, maxHeight: 14000, addresses: []address.Address{address.TestAddress}},
+		{minHeight: 14000, maxHeight: 15000, addresses: []address.Address{address.TestAddress}},
+		{tipsetCid: cid.MustParse("bafkqaaa"), addresses: []address.Address{address.TestAddress}},
+		{minHeight: 14000, maxHeight: 14000, addresses: []address.Address{address.TestAddress, address.TestAddress}},
+		{minHeight: 14000, maxHeight: 15000, addresses: []address.Address{address.TestAddress, address.TestAddress}},
+		{tipsetCid: cid.MustParse("bafkqaaa"), addresses: []address.Address{address.TestAddress, address.TestAddress}},
+		{minHeight: 14000, maxHeight: 14000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}})},
+		{minHeight: 14000, maxHeight: 15000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}})},
+		{tipsetCid: cid.MustParse("bafkqaaa"), keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}})},
+		{minHeight: 14000, maxHeight: 14000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{minHeight: 14000, maxHeight: 15000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{tipsetCid: cid.MustParse("bafkqaaa"), keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{minHeight: 14000, maxHeight: 14000, addresses: []address.Address{address.TestAddress, address.TestAddress}, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{minHeight: 14000, maxHeight: 15000, addresses: []address.Address{address.TestAddress, address.TestAddress}, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{tipsetCid: cid.MustParse("bafkqaaa"), addresses: []address.Address{address.TestAddress, address.TestAddress}, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+	}
+	for _, filter := range prefillCases {
+		_, query := makePrefillFilterQuery(filter, true)
+		verifyQueryPlan(query)
+		_, query = makePrefillFilterQuery(filter, false)
+		verifyQueryPlan(query)
 	}
 }

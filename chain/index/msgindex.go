@@ -3,10 +3,7 @@ package index
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"io/fs"
 	"os"
-	"path"
 	"sync"
 	"time"
 
@@ -19,34 +16,20 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sqlite"
 )
+
+const DefaultDbFilename = "msgindex.db"
 
 var log = logging.Logger("msgindex")
 
-var dbName = "msgindex.db"
-var dbDefs = []string{
+var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS messages (
      cid VARCHAR(80) PRIMARY KEY ON CONFLICT REPLACE,
      tipset_cid VARCHAR(80) NOT NULL,
      epoch INTEGER NOT NULL
    )`,
-	`CREATE INDEX IF NOT EXISTS tipset_cids ON messages (tipset_cid)
-  `,
-	`CREATE TABLE IF NOT EXISTS _meta (
-    	version UINT64 NOT NULL UNIQUE
-	)`,
-	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
-}
-
-var dbPragmas = []string{
-	"PRAGMA synchronous = normal",
-	"PRAGMA temp_store = memory",
-	"PRAGMA mmap_size = 30000000000",
-	"PRAGMA page_size = 32768",
-	"PRAGMA auto_vacuum = NONE",
-	"PRAGMA automatic_index = OFF",
-	"PRAGMA journal_mode = WAL",
-	"PRAGMA read_uncommitted = ON",
+	`CREATE INDEX IF NOT EXISTS tipset_cids ON messages (tipset_cid)`,
 }
 
 const (
@@ -69,7 +52,7 @@ var (
 	CoalesceMergeInterval = time.Second
 )
 
-// chain store interface; we could use store.ChainStore directly,
+// ChainStore interface; we could use store.ChainStore directly,
 // but this simplifies unit testing.
 type ChainStore interface {
 	SubscribeHeadChanges(f store.ReorgNotifee)
@@ -105,39 +88,15 @@ type headChange struct {
 	app []*types.TipSet
 }
 
-func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex, error) {
-	var (
-		dbPath string
-		exists bool
-		err    error
-	)
-
-	err = os.MkdirAll(basePath, 0755)
+func NewMsgIndex(lctx context.Context, path string, cs ChainStore) (MsgIndex, error) {
+	db, exists, err := sqlite.Open(path)
 	if err != nil {
-		return nil, xerrors.Errorf("error creating msgindex base directory: %w", err)
+		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
 	}
 
-	dbPath = path.Join(basePath, dbName)
-	_, err = os.Stat(dbPath)
-	switch {
-	case err == nil:
-		exists = true
-
-	case errors.Is(err, fs.ErrNotExist):
-
-	case err != nil:
-		return nil, xerrors.Errorf("error stating msgindex database: %w", err)
-	}
-
-	db, err := sql.Open("sqlite3", dbPath)
-	if err != nil {
-		// TODO [nice to have]: automatically delete corrupt databases
-		//      but for now we can just error and let the operator delete.
-		return nil, xerrors.Errorf("error opening msgindex database: %w", err)
-	}
-
-	if err := prepareDB(db); err != nil {
-		return nil, xerrors.Errorf("error creating msgindex database: %w", err)
+	if err = sqlite.InitDb(lctx, "message index", db, ddls, []sqlite.MigrationFunc{}); err != nil {
+		_ = db.Close()
+		return nil, xerrors.Errorf("failed to init message index db: %w", err)
 	}
 
 	// TODO we may consider populating the index when first creating the db
@@ -179,24 +138,17 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 	return msgIndex, nil
 }
 
-func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore) error {
-	err := os.MkdirAll(basePath, 0755)
-	if err != nil {
-		return xerrors.Errorf("error creating msgindex base directory: %w", err)
-	}
-
-	dbPath := path.Join(basePath, dbName)
-
+func PopulateAfterSnapshot(lctx context.Context, path string, cs ChainStore) error {
 	// if a database already exists, we try to delete it and create a new one
-	if _, err := os.Stat(dbPath); err == nil {
-		if err = os.Remove(dbPath); err != nil {
-			return xerrors.Errorf("msgindex already exists at %s and can't be deleted", dbPath)
+	if _, err := os.Stat(path); err == nil {
+		if err = os.Remove(path); err != nil {
+			return xerrors.Errorf("msgindex already exists at %s and can't be deleted", path)
 		}
 	}
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, _, err := sqlite.Open(path)
 	if err != nil {
-		return xerrors.Errorf("error opening msgindex database: %w", err)
+		return xerrors.Errorf("failed to setup message index db: %w", err)
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -204,7 +156,8 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 		}
 	}()
 
-	if err := prepareDB(db); err != nil {
+	if err := sqlite.InitDb(lctx, "message index", db, ddls, []sqlite.MigrationFunc{}); err != nil {
+		_ = db.Close()
 		return xerrors.Errorf("error creating msgindex database: %w", err)
 	}
 
@@ -261,23 +214,6 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 	err = tx.Commit()
 	if err != nil {
 		return xerrors.Errorf("error committing transaction: %w", err)
-	}
-
-	return nil
-}
-
-// init utilities
-func prepareDB(db *sql.DB) error {
-	for _, stmt := range dbDefs {
-		if _, err := db.Exec(stmt); err != nil {
-			return xerrors.Errorf("error executing sql statement '%s': %w", stmt, err)
-		}
-	}
-
-	for _, stmt := range dbPragmas {
-		if _, err := db.Exec(stmt); err != nil {
-			return xerrors.Errorf("error executing sql statement '%s': %w", stmt, err)
-		}
 	}
 
 	return nil

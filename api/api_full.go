@@ -829,6 +829,9 @@ type FullNode interface {
 	// Implmements OpenEthereum-compatible API method trace_transaction
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) //perm:read
 
+	// Implements OpenEthereum-compatible API method trace_filter
+	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) //perm:read
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
@@ -887,7 +890,7 @@ type FullNode interface {
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 }
 
-// reverse interface to the client, called after EthSubscribe
+// EthSubscriber is the reverse interface to the client, called after EthSubscribe
 type EthSubscriber interface {
 	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
 	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error // rpc_method:eth_subscription notify:true
@@ -921,11 +924,9 @@ type MsgGasCost struct {
 	TotalCost          abi.TokenAmount
 }
 
-// BlsMessages[x].cid = Cids[x]
-// SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
-	BlsMessages   []*types.Message
-	SecpkMessages []*types.SignedMessage
+	BlsMessages   []*types.Message       // BlsMessages [x].cid = Cids[x]
+	SecpkMessages []*types.SignedMessage // SecpkMessages [y].cid = Cids[BlsMessages.length + y]
 
 	Cids []cid.Cid
 }

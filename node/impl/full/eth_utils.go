@@ -20,9 +20,10 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -67,7 +68,7 @@ func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkPar
 		return ts, nil
 	case "finalized":
 		latestHeight := head.Height() - 1
-		safeHeight := latestHeight - build.Finality
+		safeHeight := latestHeight - policy.ChainFinality
 		ts, err := chain.GetTipsetByHeight(ctx, safeHeight, head, true)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
@@ -202,7 +203,7 @@ func ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.
 		Value:      big.Int(tx.Value),
 		Method:     method,
 		Params:     params,
-		GasLimit:   build.BlockGasLimit,
+		GasLimit:   buildconstants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}, nil
@@ -558,7 +559,7 @@ func ethTxFromNativeMessage(msg *types.Message, st *state.StateTree) (ethtypes.E
 		From:                 from,
 		Input:                encodeFilecoinParamsAsABI(msg.Method, codec, msg.Params),
 		Nonce:                ethtypes.EthUint64(msg.Nonce),
-		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
+		ChainID:              ethtypes.EthUint64(buildconstants.Eip155ChainId),
 		Value:                ethtypes.EthBigInt(msg.Value),
 		Type:                 ethtypes.EIP1559TxType,
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
@@ -674,7 +675,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, ca ChainAPI, sa StateAPI, ev *EthEventHandler) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -700,7 +701,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		BlockNumber:      blockNumber,
 		Type:             ethtypes.EthUint64(2),
 		Logs:             []ethtypes.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
-		LogsBloom:        ethtypes.EmptyEthBloom[:],
+		LogsBloom:        ethtypes.NewEmptyEthBloom(),
 	}
 
 	if lookup.Receipt.ExitCode.IsSuccess() {
@@ -718,11 +719,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	ts, err := ca.Chain.GetTipSetFromKey(ctx, lookup.TipSet)
 	if err != nil {
 		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
-	}
-
-	st, err := sa.StateManager.StateTree(ts.ParentState())
-	if err != nil {
-		return api.EthTxReceipt{}, xerrors.Errorf("failed to load the state %s when constructing the eth txn receipt: %w", ts.ParentState(), err)
 	}
 
 	// The tx is located in the parent tipset
@@ -762,61 +758,21 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		receipt.ContractAddress = &addr
 	}
 
-	var events []types.Event
 	if rct := lookup.Receipt; rct.EventsRoot != nil {
-		events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
+		logs, err := ev.getEthLogsForBlockAndTransaction(ctx, &blockHash, tx.Hash)
 		if err != nil {
-			// Fore-recompute, we must have enabled the Event APIs after computing this
-			// tipset.
-			if _, _, err := sa.StateManager.RecomputeTipSetState(ctx, ts); err != nil {
-
-				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
-			}
-			// Try again
-			events, err = ca.ChainGetEvents(ctx, *rct.EventsRoot)
-			if err != nil {
-				return api.EthTxReceipt{}, xerrors.Errorf("failed get events: %w", err)
-			}
+			return api.EthTxReceipt{}, xerrors.Errorf("failed to get eth logs for block and transaction: %w", err)
+		}
+		if len(logs) > 0 {
+			receipt.Logs = logs
 		}
 	}
 
-	if len(events) > 0 {
-		receipt.Logs = make([]ethtypes.EthLog, 0, len(events))
-		for i, evt := range events {
-			l := ethtypes.EthLog{
-				Removed:          false,
-				LogIndex:         ethtypes.EthUint64(i),
-				TransactionHash:  tx.Hash,
-				TransactionIndex: transactionIndex,
-				BlockHash:        blockHash,
-				BlockNumber:      blockNumber,
-			}
-
-			data, topics, ok := ethLogFromEvent(evt.Entries)
-			if !ok {
-				// not an eth event.
-				continue
-			}
-			for _, topic := range topics {
-				log.Debug("LogsBloom set for ", topic)
-				ethtypes.EthBloomSet(receipt.LogsBloom, topic[:])
-			}
-			l.Data = data
-			l.Topics = topics
-
-			addr, err := address.NewIDAddress(uint64(evt.Emitter))
-			if err != nil {
-				return api.EthTxReceipt{}, xerrors.Errorf("failed to create ID address: %w", err)
-			}
-
-			l.Address, err = lookupEthAddress(addr, st)
-			if err != nil {
-				return api.EthTxReceipt{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
-			}
-
-			ethtypes.EthBloomSet(receipt.LogsBloom, l.Address[:])
-			receipt.Logs = append(receipt.Logs, l)
+	for _, log := range receipt.Logs {
+		for _, topic := range log.Topics {
+			ethtypes.EthBloomSet(receipt.LogsBloom, topic[:])
 		}
+		ethtypes.EthBloomSet(receipt.LogsBloom, log.Address[:])
 	}
 
 	return receipt, nil

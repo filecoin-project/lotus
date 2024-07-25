@@ -7,7 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -27,7 +27,7 @@ const (
 //	to partition and reassemble the requests if they go above the maximum.
 //	(Also as a consequence of this temporarily removing the `const`
 //	 qualifier to avoid "const initializer [...] is not a constant" error.)
-var MaxRequestLength = uint64(build.ForkLengthThreshold)
+var MaxRequestLength = uint64(policy.ChainFinality)
 
 const (
 	// Extracted constants from the code.
@@ -42,8 +42,7 @@ const (
 	streamOpenTimeout   = 1 * time.Minute
 )
 
-// FIXME: Rename. Make private.
-type Request struct {
+type Request struct { // FIXME: Rename. Make private.
 	// List of ordered CIDs comprising a `TipSetKey` from where to start
 	// fetching backwards.
 	// FIXME: Consider using `TipSetKey` now (introduced after the creation
@@ -90,8 +89,7 @@ func parseOptions(optfield uint64) *parsedOptions {
 	}
 }
 
-// FIXME: Rename. Make private.
-type Response struct {
+type Response struct { // FIXME: Rename. Make private.
 	Status status
 	// String that complements the error status when converting to an
 	// internal error (see `statusToError()`).
@@ -135,15 +133,14 @@ func (res *Response) statusToError() error {
 	}
 }
 
-// FIXME: Rename.
-type BSTipSet struct {
+type BSTipSet struct { // FIXME: Rename.
 	// List of blocks belonging to a single tipset to which the
 	// `CompactedMessages` are linked.
 	Blocks   []*types.BlockHeader
 	Messages *CompactedMessages
 }
 
-// All messages of a single tipset compacted together instead
+// CompactedMessages has all messages of a single tipset compacted together instead
 // of grouped by block to save space, since there are normally
 // many repeated messages per tipset in different blocks.
 //

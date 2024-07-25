@@ -259,9 +259,13 @@ type SectorPiece struct {
 	DealInfo *piece.PieceDealInfo
 }
 
+// PieceDealInfo is deprecated
+//
 // DEPRECATED: Use piece.PieceDealInfo instead
 type PieceDealInfo = piece.PieceDealInfo
 
+// DealSchedule is deprecated
+//
 // DEPRECATED: Use piece.DealSchedule instead
 type DealSchedule = piece.DealSchedule
 

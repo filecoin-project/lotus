@@ -36,7 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -123,7 +123,7 @@ func init() {
 	addExample(time.Minute)
 
 	addExample(network.ReachabilityPublic)
-	addExample(build.TestNetworkVersion)
+	addExample(buildconstants.TestNetworkVersion)
 	allocationId := verifreg.AllocationId(0)
 	addExample(allocationId)
 	addExample(&allocationId)
@@ -371,6 +371,20 @@ func init() {
 		FromBlock: pstring("2301220"),
 		Address:   []ethtypes.EthAddress{ethaddr},
 	})
+
+	after := ethtypes.EthUint64(0)
+	count := ethtypes.EthUint64(100)
+
+	ethTraceFilterCriteria := ethtypes.EthTraceFilterCriteria{
+		FromBlock:   pstring("latest"),
+		ToBlock:     pstring("latest"),
+		FromAddress: ethtypes.EthAddressList{ethaddr},
+		ToAddress:   ethtypes.EthAddressList{ethaddr},
+		After:       &after,
+		Count:       &count,
+	}
+	addExample(&ethTraceFilterCriteria)
+	addExample(ethTraceFilterCriteria)
 
 	percent := types.Percent(123)
 	addExample(percent)

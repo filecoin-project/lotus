@@ -14,12 +14,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	server := build.DrandConfigs[build.DrandTestnet].Servers[0]
-	chainInfo := build.DrandConfigs[build.DrandTestnet].ChainInfoJSON
+	server := buildconstants.DrandConfigs[buildconstants.DrandTestnet].Servers[0]
+	chainInfo := buildconstants.DrandConfigs[buildconstants.DrandTestnet].ChainInfoJSON
 
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(chainInfo)))
 	assert.NoError(t, err)
@@ -37,7 +37,7 @@ func TestPrintGroupInfo(t *testing.T) {
 
 func TestMaxBeaconRoundForEpoch(t *testing.T) {
 	todayTs := uint64(1652222222)
-	db, err := NewDrandBeacon(todayTs, build.BlockDelaySecs, nil, build.DrandConfigs[build.DrandTestnet])
+	db, err := NewDrandBeacon(todayTs, buildconstants.BlockDelaySecs, nil, buildconstants.DrandConfigs[buildconstants.DrandTestnet])
 	assert.NoError(t, err)
 	assert.True(t, db.IsChained())
 	mbr15 := db.MaxBeaconRoundForEpoch(network.Version15, 100)
@@ -47,7 +47,7 @@ func TestMaxBeaconRoundForEpoch(t *testing.T) {
 
 func TestQuicknetIsChained(t *testing.T) {
 	todayTs := uint64(1652222222)
-	db, err := NewDrandBeacon(todayTs, build.BlockDelaySecs, nil, build.DrandConfigs[build.DrandQuicknet])
+	db, err := NewDrandBeacon(todayTs, buildconstants.BlockDelaySecs, nil, buildconstants.DrandConfigs[buildconstants.DrandQuicknet])
 	assert.NoError(t, err)
 	assert.False(t, db.IsChained())
 }

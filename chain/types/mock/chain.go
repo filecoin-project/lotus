@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
@@ -58,7 +58,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 	if parents != nil {
 		pcids = parents.Cids()
 		height = parents.Height() + 1
-		timestamp = parents.MinTimestamp() + build.BlockDelaySecs
+		timestamp = parents.MinTimestamp() + buildconstants.BlockDelaySecs
 		weight = types.BigAdd(parents.Blocks()[0].ParentWeight, weight)
 	}
 
@@ -79,7 +79,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		Timestamp:             timestamp,
 		ParentStateRoot:       pstateRoot,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
-		ParentBaseFee:         types.NewInt(uint64(build.MinimumBaseFee)),
+		ParentBaseFee:         types.NewInt(uint64(buildconstants.MinimumBaseFee)),
 	}
 }
 
@@ -91,7 +91,7 @@ func TipSet(blks ...*types.BlockHeader) *types.TipSet {
 	return ts
 }
 
-// Generates count new addresses using the provided seed, and returns them
+// RandomActorAddresses generates count new addresses using the provided seed, and returns them
 func RandomActorAddresses(seed int64, count int) ([]*address.Address, error) {
 	randAddrs := make([]*address.Address, count)
 	source := rand.New(rand.NewSource(seed))

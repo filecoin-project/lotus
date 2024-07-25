@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -81,7 +81,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover) (*CommitBatcher, error) {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -101,19 +101,19 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		stopped: make(chan struct{}),
 	}
 
-	go b.run()
-
-	return b
-}
-
-func (b *CommitBatcher) run() {
-	var forceRes chan []sealiface.CommitBatchRes
-	var lastMsg []sealiface.CommitBatchRes
-
 	cfg, err := b.getConfig()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+
+	go b.run(cfg)
+
+	return b, nil
+}
+
+func (b *CommitBatcher) run(cfg sealiface.Config) {
+	var forceRes chan []sealiface.CommitBatchRes
+	var lastMsg []sealiface.CommitBatchRes
 
 	timer := time.NewTimer(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack))
 	for {
@@ -227,7 +227,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	blackedOut := func() bool {
 		const nv16BlackoutWindow = abi.ChainEpoch(20) // a magik number
-		if ts.Height() <= build.UpgradeSkyrHeight && build.UpgradeSkyrHeight-ts.Height() < nv16BlackoutWindow {
+		if ts.Height() <= buildconstants.UpgradeSkyrHeight && buildconstants.UpgradeSkyrHeight-ts.Height() < nv16BlackoutWindow {
 			return true
 		}
 		return false
@@ -594,7 +594,7 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 		return time.Now(), nil
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-ts.Height()) * time.Duration(build.BlockDelaySecs) * time.Second), nil
+	return time.Now().Add(time.Duration(cutoffEpoch-ts.Height()) * time.Duration(buildconstants.BlockDelaySecs) * time.Second), nil
 }
 
 func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSetKey) (abi.TokenAmount, error) {

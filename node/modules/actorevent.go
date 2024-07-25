@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -108,7 +108,7 @@ func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.L
 				if err != nil {
 					return nil, xerrors.Errorf("failed to resolve event index database path: %w", err)
 				}
-				dbPath = filepath.Join(sqlitePath, "events.db")
+				dbPath = filepath.Join(sqlitePath, filter.DefaultDbFilename)
 			} else {
 				dbPath = cfg.DatabasePath
 			}
@@ -169,7 +169,7 @@ func ActorEventHandler(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.Lo
 			return full.NewActorEventHandler(
 				cs,
 				nil, // no EventFilterManager disables API calls
-				time.Duration(build.BlockDelaySecs)*time.Second,
+				time.Duration(buildconstants.BlockDelaySecs)*time.Second,
 				abi.ChainEpoch(cfg.MaxFilterHeightRange),
 			), nil
 		}
@@ -177,7 +177,7 @@ func ActorEventHandler(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.Lo
 		return full.NewActorEventHandler(
 			cs,
 			fm,
-			time.Duration(build.BlockDelaySecs)*time.Second,
+			time.Duration(buildconstants.BlockDelaySecs)*time.Second,
 			abi.ChainEpoch(cfg.MaxFilterHeightRange),
 		), nil
 	}
