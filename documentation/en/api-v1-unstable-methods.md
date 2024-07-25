@@ -2259,7 +2259,7 @@ Response:
 [
   {
     "ID": 1000,
-    "Power": 0,
+    "Power": "0",
     "PubKey": "Bw=="
   }
 ]
@@ -2290,7 +2290,7 @@ Response:
 [
   {
     "ID": 1000,
-    "Power": 0,
+    "Power": "0",
     "PubKey": "Bw=="
   }
 ]
