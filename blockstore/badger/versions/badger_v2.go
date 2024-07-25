@@ -73,8 +73,20 @@ func (b *BadgerV2) GetErrKeyNotFound() error {
 	return badger.ErrKeyNotFound
 }
 
+func (b *BadgerV2) GetErrNoRewrite() error {
+	return badger.ErrNoRewrite
+}
+
 func (b *BadgerV2) NewWriteBatch() WriteBatch {
 	return &BadgerV2WriteBatch{b.DB.NewWriteBatch()}
+}
+
+func (b *BadgerV2) Flatten(workers int) error{
+	return b.DB.Flatten(workers)
+}
+
+func (b *BadgerV2) Size() (lsm int64, vlog int64){
+return b.DB.Size()
 }
 
 type BadgerV2WriteBatch struct {

@@ -24,7 +24,11 @@ type BadgerDB interface {
 	BlockCacheMetrics() *ristretto.Metrics
 	IndexCacheMetrics() *ristretto.Metrics
 	GetErrKeyNotFound() error
+	GetErrNoRewrite() error
 	NewWriteBatch() WriteBatch
+	Flatten(workers int) error
+	Size()  (lsm int64, vlog int64)
+
 }
 
 // BadgerStream defines the common interface for streaming data in Badger.

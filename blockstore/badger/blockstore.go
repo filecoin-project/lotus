@@ -17,7 +17,6 @@ import (
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/multiformats/go-base32"
-	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
 	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
@@ -42,19 +41,6 @@ var (
 
 	log = logger.Logger("badgerbs")
 )
-
-// badgerLogger is a local wrapper for go-log to make the interface
-// compatible with badger.Logger (namely, aliasing Warnf to Warningf)
-type badgerLogger struct {
-	*zap.SugaredLogger // skips 1 caller to get useful line info, skipping over badger.Options.
-
-	skip2 *zap.SugaredLogger // skips 2 callers, just like above + this logger.
-}
-
-// Warningf is required by the badger logger APIs.
-func (b *badgerLogger) Warningf(format string, args ...interface{}) {
-	b.skip2.Warnf(format, args...)
-}
 
 // bsState is the current blockstore state
 type bsState int
@@ -111,10 +97,6 @@ var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
 func Open(opts badger.Options) (*Blockstore, error) {
-	opts.Logger = &badgerLogger{
-		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
-	}
 
 	db, err := badger.OpenBadgerDB(opts)
 	if err != nil {
@@ -370,7 +352,7 @@ func symlink(path, linkTo string) error {
 
 // doCopy copies a badger blockstore to another, with an optional filter; if the filter
 // is not nil, then only cids that satisfy the filter will be copied.
-func (b *Blockstore) doCopy(from, to *badger.BadgerDB) error {
+func (b *Blockstore) doCopy(from, to badger.BadgerDB) error {
 	workers := runtime.NumCPU() / 2
 	if workers < 2 {
 		workers = 2
@@ -380,8 +362,8 @@ func (b *Blockstore) doCopy(from, to *badger.BadgerDB) error {
 	}
 
 	stream := from.NewStream()
-	stream.NumGo = workers
-	stream.LogPrefix = "doCopy"
+	stream.SetNumGo(workers)
+	stream.SetLogPrefix("doCopy")
 	stream.Send = func(list *pb.KVList) error {
 		batch := to.NewWriteBatch()
 		defer batch.Cancel()
@@ -454,7 +436,7 @@ func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq 
 		}
 	}
 
-	if err == badger.ErrNoRewrite {
+	if err == b.db.GetErrNoRewrite() {
 		// not really an error in this case, it signals the end of GC
 		return nil
 	}
@@ -527,7 +509,7 @@ func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGC
 
 	// Note no compaction needed before single GC as we will hit at most one vlog anyway
 	err := b.db.RunValueLogGC(threshold)
-	if err == badger.ErrNoRewrite {
+	if err == b.db.GetErrNoRewrite() {
 		// not really an error in this case, it signals the end of GC
 		return nil
 	}
@@ -1084,6 +1066,6 @@ func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
 
 // this method is added for lotus-shed needs
 // WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE
-func (b *Blockstore) DB() *badger.BadgerDB {
+func (b *Blockstore) DB() badger.BadgerDB {
 	return b.db
 }
