@@ -227,6 +227,12 @@ This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, bu
 Set to 0 to keep all mappings`,
 		},
 		{
+			Name: "EthTraceFilterMaxResults",
+			Type: "uint64",
+
+			Comment: `EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter`,
+		},
+		{
 			Name: "Events",
 			Type: "DeprecatedEvents",
 
