@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"embed"
+	"os"
 	"path"
 	"strings"
 
@@ -12,12 +13,20 @@ import (
 	"github.com/filecoin-project/lotus/lib/addrutil"
 )
 
+const (
+	BootstrappersOverrideEnvVarKey = "LOTUS_P2P_BOOTSTRAPPERS"
+)
+
 //go:embed bootstrap
 var bootstrapfs embed.FS
 
 func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 	if DisableBuiltinAssets {
 		return nil, nil
+	}
+	if bootstrappers, found := os.LookupEnv(BootstrappersOverrideEnvVarKey); found {
+		log.Infof("Using bootstrap nodes overridden by environment variable %s", BootstrappersOverrideEnvVarKey)
+		return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(bootstrappers), ","))
 	}
 	if buildconstants.BootstrappersFile != "" {
 		spi, err := bootstrapfs.ReadFile(path.Join("bootstrap", buildconstants.BootstrappersFile))
