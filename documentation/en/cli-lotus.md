@@ -222,7 +222,7 @@ NAME:
    lotus wallet new - Generate a new key of the given type
 
 USAGE:
-   lotus wallet new [command options] [bls|secp256k1 (default secp256k1)]
+   lotus wallet new [command options] [bls|secp256k1|delegated (default secp256k1)]
 
 OPTIONS:
    --help, -h  show help
