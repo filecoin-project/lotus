@@ -21,20 +21,48 @@ import (
 	"github.com/filecoin-project/lotus/node"
 )
 
-type perConnLimiterKeyType string
-
-const perConnLimiterKey perConnLimiterKeyType = "limiter"
-
+type perConnectionAPIRateLimiterKeyType string
 type filterTrackerKeyType string
 
-const statefulCallTrackerKey filterTrackerKeyType = "statefulCallTracker"
+const (
+	perConnectionAPIRateLimiterKey   perConnectionAPIRateLimiterKeyType = "limiter"
+	statefulCallTrackerKey           filterTrackerKeyType               = "statefulCallTracker"
+	connectionLimiterCleanupInterval                                    = 30 * time.Second
+)
 
-// Handler returns a gateway http.Handler, to be mounted as-is on the server.
-func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
+// ShutdownHandler is an http.Handler that can be gracefully shutdown.
+type ShutdownHandler interface {
+	http.Handler
+
+	Shutdown(ctx context.Context) error
+}
+
+var _ ShutdownHandler = &statefulCallHandler{}
+var _ ShutdownHandler = &RateLimitHandler{}
+
+// Handler returns a gateway http.Handler, to be mounted as-is on the server. The handler is
+// returned as a ShutdownHandler which allows for graceful shutdown of the handler via its
+// Shutdown method.
+//
+// The handler will limit the number of API calls per minute within a single WebSocket connection
+// (where API calls are weighted by their relative expense), and the number of connections per
+// minute from a single host.
+//
+// Connection limiting is a hard limit that will reject requests with a 429 status code if the limit
+// is exceeded. API call limiting is a soft limit that will delay requests if the limit is exceeded.
+func Handler(
+	gwapi lapi.Gateway,
+	api lapi.FullNode,
+	perConnectionAPIRateLimit int,
+	perHostConnectionsPerMinute int,
+	opts ...jsonrpc.ServerOption,
+) (ShutdownHandler, error) {
+
 	m := mux.NewRouter()
 
+	opts = append(opts, jsonrpc.WithReverseClient[lapi.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(lapi.RPCErrors))
 	serveRpc := func(path string, hnd interface{}) {
-		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithReverseClient[lapi.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(lapi.RPCErrors))...)
+		rpcServer := jsonrpc.NewServer(opts...)
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
@@ -61,104 +89,152 @@ func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinu
 	m.Handle("/health/readyz", node.NewReadyHandler(api))
 	m.PathPrefix("/").Handler(http.DefaultServeMux)
 
-	/*ah := &auth.Handler{
-		Verify: nodeApi.AuthVerify,
-		Next:   mux.ServeHTTP,
-	}*/
-
-	rlh := NewRateLimiterHandler(m, rateLimit)
-	clh := NewConnectionRateLimiterHandler(rlh, connPerMinute)
-	return clh, nil
-}
-
-func NewRateLimiterHandler(handler http.Handler, rateLimit int64) *RateLimiterHandler {
-	limiter := limiterFromRateLimit(rateLimit)
-
-	return &RateLimiterHandler{
-		handler: handler,
-		limiter: limiter,
+	handler := &statefulCallHandler{m}
+	if perConnectionAPIRateLimit > 0 && perHostConnectionsPerMinute > 0 {
+		return NewRateLimitHandler(
+			handler,
+			perConnectionAPIRateLimit,
+			perHostConnectionsPerMinute,
+			connectionLimiterCleanupInterval,
+		), nil
 	}
+	return handler, nil
 }
 
-// RateLimiterHandler adds a rate limiter to the request context for per-connection rate limiting
-type RateLimiterHandler struct {
-	handler http.Handler
-	limiter *rate.Limiter
+type statefulCallHandler struct {
+	next http.Handler
 }
 
-func (h RateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r = r.WithContext(context.WithValue(r.Context(), perConnLimiterKey, h.limiter))
-
-	// also add a filter tracker to the context
+func (h statefulCallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, newStatefulCallTracker()))
-
-	h.handler.ServeHTTP(w, r)
+	h.next.ServeHTTP(w, r)
 }
 
-// NewConnectionRateLimiterHandler blocks new connections if there have already been too many.
-func NewConnectionRateLimiterHandler(handler http.Handler, connPerMinute int64) *ConnectionRateLimiterHandler {
-	ipmap := make(map[string]int64)
-	return &ConnectionRateLimiterHandler{
-		ipmap:         ipmap,
-		connPerMinute: connPerMinute,
-		handler:       handler,
+func (h statefulCallHandler) Shutdown(ctx context.Context) error {
+	return shutdown(ctx, h.next)
+}
+
+type hostLimiter struct {
+	limiter    *rate.Limiter
+	lastAccess time.Time
+}
+
+type RateLimitHandler struct {
+	cancelFunc                  context.CancelFunc
+	mu                          sync.Mutex
+	limiters                    map[string]*hostLimiter
+	perConnectionAPILimit       rate.Limit
+	perHostConnectionsPerMinute int
+	next                        http.Handler
+	cleanupInterval             time.Duration
+	expiryDuration              time.Duration
+}
+
+// NewRateLimitHandler creates a new RateLimitHandler that wraps the
+// provided handler and limits the number of API calls per minute within a single WebSocket
+// connection (where API calls are weighted by their relative expense), and the number of
+// connections per minute from a single host.
+// The cleanupInterval determines how often the handler will check for unused limiters to clean up.
+func NewRateLimitHandler(
+	next http.Handler,
+	perConnectionAPIRateLimit int,
+	perHostConnectionsPerMinute int,
+	cleanupInterval time.Duration,
+) *RateLimitHandler {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	h := &RateLimitHandler{
+		cancelFunc:                  cancel,
+		limiters:                    make(map[string]*hostLimiter),
+		perConnectionAPILimit:       rate.Inf,
+		perHostConnectionsPerMinute: perHostConnectionsPerMinute,
+		next:                        next,
+		cleanupInterval:             cleanupInterval,
+		expiryDuration:              5 * cleanupInterval,
 	}
-}
-
-type ConnectionRateLimiterHandler struct {
-	mu            sync.Mutex
-	ipmap         map[string]int64
-	connPerMinute int64
-	handler       http.Handler
-}
-
-func (h *ConnectionRateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.connPerMinute == 0 {
-		h.handler.ServeHTTP(w, r)
-		return
+	if perConnectionAPIRateLimit > 0 {
+		h.perConnectionAPILimit = rate.Every(time.Second / time.Duration(perConnectionAPIRateLimit))
 	}
+	go h.cleanupExpiredLimiters(ctx)
+	return h
+}
+
+func (h *RateLimitHandler) getLimits(host string) *hostLimiter {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	entry, exists := h.limiters[host]
+	if !exists {
+		var limiter *rate.Limiter
+		if h.perHostConnectionsPerMinute > 0 {
+			requestLimit := rate.Every(time.Minute / time.Duration(h.perHostConnectionsPerMinute))
+			limiter = rate.NewLimiter(requestLimit, h.perHostConnectionsPerMinute)
+		}
+		entry = &hostLimiter{
+			limiter:    limiter,
+			lastAccess: time.Now(),
+		}
+		h.limiters[host] = entry
+	} else {
+		entry.lastAccess = time.Now()
+	}
+
+	return entry
+}
+
+func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	h.mu.Lock()
-	seen, ok := h.ipmap[host]
-	if !ok {
-		h.ipmap[host] = 1
-		h.mu.Unlock()
-		h.handler.ServeHTTP(w, r)
-		return
-	}
-	// rate limited
-	if seen > h.connPerMinute {
-		h.mu.Unlock()
+	limits := h.getLimits(host)
+	if limits.limiter != nil && !limits.limiter.Allow() {
 		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
-	h.ipmap[host] = seen + 1
-	h.mu.Unlock()
-	go func() {
-		select {
-		case <-time.After(time.Minute):
-			h.mu.Lock()
-			defer h.mu.Unlock()
-			h.ipmap[host] = h.ipmap[host] - 1
-			if h.ipmap[host] <= 0 {
-				delete(h.ipmap, host)
-			}
-		}
-	}()
-	h.handler.ServeHTTP(w, r)
+
+	if h.perConnectionAPILimit != rate.Inf {
+		// new rate limiter for each connection, to throttle a single WebSockets connection;
+		// allow for a burst of MaxRateLimitTokens
+		apiLimiter := rate.NewLimiter(h.perConnectionAPILimit, MaxRateLimitTokens)
+		r = r.WithContext(context.WithValue(r.Context(), perConnectionAPIRateLimiterKey, apiLimiter))
+	}
+
+	h.next.ServeHTTP(w, r)
 }
 
-func limiterFromRateLimit(rateLimit int64) *rate.Limiter {
-	var limit rate.Limit
-	if rateLimit == 0 {
-		limit = rate.Inf
-	} else {
-		limit = rate.Every(time.Second / time.Duration(rateLimit))
+func (h *RateLimitHandler) cleanupExpiredLimiters(ctx context.Context) {
+	if h.cleanupInterval == 0 {
+		return
 	}
-	return rate.NewLimiter(limit, stateRateLimitTokens)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(h.cleanupInterval):
+			h.mu.Lock()
+			now := time.Now()
+			for host, entry := range h.limiters {
+				if now.Sub(entry.lastAccess) > h.expiryDuration {
+					delete(h.limiters, host)
+				}
+			}
+			h.mu.Unlock()
+		}
+	}
+}
+
+func (h *RateLimitHandler) Shutdown(ctx context.Context) error {
+	h.cancelFunc()
+	return shutdown(ctx, h.next)
+}
+
+func shutdown(ctx context.Context, handler http.Handler) error {
+	if sh, ok := handler.(ShutdownHandler); ok {
+		return sh.Shutdown(ctx)
+	}
+	return nil
 }

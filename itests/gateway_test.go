@@ -4,9 +4,12 @@ package itests
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 
@@ -46,9 +49,8 @@ func TestGatewayWalletMsig(t *testing.T) {
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	kit.QuietMiningLogs()
 
-	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodes(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodes(ctx, t)
 
 	lite := nodes.lite
 	full := nodes.full
@@ -185,51 +187,72 @@ func TestGatewayMsigCLI(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	kit.QuietMiningLogs()
 
-	blocktime := 5 * time.Millisecond
 	ctx := context.Background()
-	nodes := startNodesWithFunds(ctx, t, blocktime, maxLookbackCap, maxStateWaitLookbackLimit)
+	nodes := startNodes(ctx, t, withFunds())
 
 	lite := nodes.lite
 	multisig.RunMultisigTests(t, lite)
 }
 
 type testNodes struct {
-	lite  *kit.TestFullNode
-	full  *kit.TestFullNode
-	miner *kit.TestMiner
+	lite        *kit.TestFullNode
+	full        *kit.TestFullNode
+	miner       *kit.TestMiner
+	gatewayAddr string
 }
 
-func startNodesWithFunds(
-	ctx context.Context,
-	t *testing.T,
-	blocktime time.Duration,
-	lookbackCap time.Duration,
-	stateWaitLookbackLimit abi.ChainEpoch,
-) *testNodes {
-	nodes := startNodes(ctx, t, blocktime, lookbackCap, stateWaitLookbackLimit)
-
-	// The full node starts with a wallet
-	fullWalletAddr, err := nodes.full.WalletDefaultAddress(ctx)
-	require.NoError(t, err)
-
-	// Get the lite node default wallet address.
-	liteWalletAddr, err := nodes.lite.WalletDefaultAddress(ctx)
-	require.NoError(t, err)
-
-	// Send some funds from the full node to the lite node
-	err = sendFunds(ctx, nodes.full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
-	require.NoError(t, err)
-
-	return nodes
+type startOptions struct {
+	blocktime                 time.Duration
+	lookbackCap               time.Duration
+	stateWaitLookbackLimit    abi.ChainEpoch
+	fund                      bool
+	perConnectionAPIRateLimit int
+	perHostRequestsPerMinute  int
+	nodeOpts                  []kit.NodeOpt
 }
 
-func startNodes(
-	ctx context.Context,
-	t *testing.T,
-	blocktime time.Duration,
-	lookbackCap time.Duration,
-	stateWaitLookbackLimit abi.ChainEpoch,
-) *testNodes {
+type startOption func(*startOptions)
+
+func applyStartOptions(opts ...startOption) startOptions {
+	o := startOptions{
+		blocktime:              5 * time.Millisecond,
+		lookbackCap:            maxLookbackCap,
+		stateWaitLookbackLimit: maxStateWaitLookbackLimit,
+		fund:                   false,
+	}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	return o
+}
+
+func withFunds() startOption {
+	return func(opts *startOptions) {
+		opts.fund = true
+	}
+}
+
+func withPerConnectionAPIRateLimit(rateLimit int) startOption {
+	return func(opts *startOptions) {
+		opts.perConnectionAPIRateLimit = rateLimit
+	}
+}
+
+func withPerHostRequestsPerMinute(rateLimit int) startOption {
+	return func(opts *startOptions) {
+		opts.perHostRequestsPerMinute = rateLimit
+	}
+}
+
+func withNodeOpts(nodeOpts ...kit.NodeOpt) startOption {
+	return func(opts *startOptions) {
+		opts.nodeOpts = nodeOpts
+	}
+}
+
+func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNodes {
+	options := applyStartOptions(opts...)
+
 	var closer jsonrpc.ClientCloser
 
 	var (
@@ -246,11 +269,13 @@ func startNodes(
 	// create the full node and the miner.
 	var ens *kit.Ensemble
 	full, miner, ens = kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMining(options.blocktime)
+	api.RunningNodeType = api.NodeFull
 
 	// Create a gateway server in front of the full node
-	gwapi := gateway.NewNode(full, nil, lookbackCap, stateWaitLookbackLimit, 0, time.Minute)
-	handler, err := gateway.Handler(gwapi, full, 0, 0)
+	gwapi := gateway.NewNode(full, nil, options.lookbackCap, options.stateWaitLookbackLimit, 0, time.Minute)
+	handler, err := gateway.Handler(gwapi, full, options.perConnectionAPIRateLimit, options.perHostRequestsPerMinute)
+	t.Cleanup(func() { _ = handler.Shutdown(ctx) })
 	require.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -264,15 +289,37 @@ func startNodes(
 	require.NoError(t, err)
 	t.Cleanup(closer)
 
-	ens.FullNode(&lite,
+	nodeOpts := append([]kit.NodeOpt{
 		kit.LiteNode(),
 		kit.ThroughRPC(),
 		kit.ConstructorOpts(
 			node.Override(new(api.Gateway), gapi),
 		),
-	).Start().InterconnectAll()
+	}, options.nodeOpts...)
+	ens.FullNode(&lite, nodeOpts...).Start().InterconnectAll()
 
-	return &testNodes{lite: &lite, full: full, miner: miner}
+	nodes := &testNodes{
+		lite:        &lite,
+		full:        full,
+		miner:       miner,
+		gatewayAddr: srv.Listener.Addr().String(),
+	}
+
+	if options.fund {
+		// The full node starts with a wallet
+		fullWalletAddr, err := nodes.full.WalletDefaultAddress(ctx)
+		require.NoError(t, err)
+
+		// Get the lite node default wallet address.
+		liteWalletAddr, err := nodes.lite.WalletDefaultAddress(ctx)
+		require.NoError(t, err)
+
+		// Send some funds from the full node to the lite node
+		err = sendFunds(ctx, nodes.full, fullWalletAddr, liteWalletAddr, types.NewInt(1e18))
+		require.NoError(t, err)
+	}
+
+	return nodes
 }
 
 func sendFunds(ctx context.Context, fromNode *kit.TestFullNode, fromAddr address.Address, toAddr address.Address, amt types.BigInt) error {
@@ -296,4 +343,69 @@ func sendFunds(ctx context.Context, fromNode *kit.TestFullNode, fromAddr address
 	}
 
 	return nil
+}
+
+func TestGatewayRateLimits(t *testing.T) {
+	req := require.New(t)
+
+	kit.QuietMiningLogs()
+	ctx := context.Background()
+	tokensPerSecond := 10
+	requestsPerMinute := 30 // http requests
+	nodes := startNodes(ctx, t,
+		withNodeOpts(kit.DisableEthRPC()),
+		withPerConnectionAPIRateLimit(tokensPerSecond),
+		withPerHostRequestsPerMinute(requestsPerMinute),
+	)
+
+	time.Sleep(time.Second)
+
+	// ChainHead uses chainRateLimitTokens=2.
+	// But we're also competing with the paymentChannelSettler which listens to the chain uses
+	// ChainGetBlockMessages on each change, which also uses chainRateLimitTokens=2.
+	// So each loop should be 4 tokens.
+	loops := 10
+	tokensPerLoop := 4
+	start := time.Now()
+	for i := 0; i < loops; i++ {
+		_, err := nodes.lite.ChainHead(ctx)
+		req.NoError(err)
+	}
+	tokensUsed := loops * tokensPerLoop
+	expectedEnd := start.Add(time.Duration(float64(tokensUsed) / float64(tokensPerSecond) * float64(time.Second)))
+	allowPad := time.Duration(float64(tokensPerLoop) / float64(tokensPerSecond) * float64(time.Second)) // add padding to account for slow test runs
+	t.Logf("expected end: %s, now: %s, allowPad: %s, actual delta: %s", expectedEnd, time.Now(), allowPad, time.Since(expectedEnd))
+	req.WithinDuration(expectedEnd, time.Now(), allowPad)
+
+	client := &http.Client{}
+	url := fmt.Sprintf("http://%s/rpc/v1", nodes.gatewayAddr)
+	jsonPayload := []byte(`{"method":"Filecoin.ChainHead","params":[],"id":1,"jsonrpc":"2.0"}`)
+	var failed bool
+	for i := 0; i < requestsPerMinute*2 && !failed; i++ {
+		func() {
+			request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+			req.NoError(err)
+			request.Header.Set("Content-Type", "application/json")
+			response, err := client.Do(request)
+			req.NoError(err)
+			defer func() { _ = response.Body.Close() }()
+			req.NoError(err)
+			if http.StatusOK == response.StatusCode {
+				body, err := io.ReadAll(response.Body)
+				req.NoError(err)
+				result := map[string]interface{}{}
+				req.NoError(json.Unmarshal(body, &result))
+				req.NoError(err)
+				req.NotNil(result["result"])
+				height, ok := result["result"].(map[string]interface{})["Height"].(float64)
+				req.True(ok)
+				req.Greater(int(height), 0)
+			} else {
+				req.Equal(http.StatusTooManyRequests, response.StatusCode)
+				req.LessOrEqual(i, requestsPerMinute+1)
+				failed = true
+			}
+		}()
+	}
+	req.True(failed, "expected requests to fail due to rate limiting")
 }
