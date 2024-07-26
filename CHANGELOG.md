@@ -19,6 +19,13 @@
 
 - feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
 
+## Improvements
+
+- fix!: gateway: fix rate limiting, general cleanup ([filecoin-project/lotus#12315](https://github.com/filecoin-project/lotus/pull/12315)).
+  - CLI usage documentation has been improved for `lotus-gateway`
+  - `--per-conn-rate-limit` now works as advertised.
+  - Some APIs have changed which may impact users consuming Lotus Gateway code as a library.
+
 # v1.28.0 / 2024-07-23
 This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
