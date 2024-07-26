@@ -39,6 +39,9 @@ const (
 	walletRateLimitTokens         = 1
 	chainRateLimitTokens          = 2
 	stateRateLimitTokens          = 3
+
+	// MaxRateLimitTokens is the number of tokens consumed for the most expensive types of operations
+	MaxRateLimitTokens = stateRateLimitTokens
 )
 
 // TargetAPI defines the API methods that the Node depends on
@@ -175,11 +178,17 @@ var (
 )
 
 // NewNode creates a new gateway node.
-func NewNode(api TargetAPI, sHnd *EthSubHandler, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch, rateLimit int64, rateLimitTimeout time.Duration) *Node {
-	var limit rate.Limit
-	if rateLimit == 0 {
-		limit = rate.Inf
-	} else {
+func NewNode(
+	api TargetAPI,
+	sHnd *EthSubHandler,
+	lookbackCap time.Duration,
+	stateWaitLookbackLimit abi.ChainEpoch,
+	rateLimit int64,
+	rateLimitTimeout time.Duration,
+) *Node {
+
+	limit := rate.Inf
+	if rateLimit > 0 {
 		limit = rate.Every(time.Second / time.Duration(rateLimit))
 	}
 	return &Node{
@@ -187,7 +196,7 @@ func NewNode(api TargetAPI, sHnd *EthSubHandler, lookbackCap time.Duration, stat
 		subHnd:                 sHnd,
 		lookbackCap:            lookbackCap,
 		stateWaitLookbackLimit: stateWaitLookbackLimit,
-		rateLimiter:            rate.NewLimiter(limit, stateRateLimitTokens),
+		rateLimiter:            rate.NewLimiter(limit, MaxRateLimitTokens), // allow for a burst of MaxRateLimitTokens
 		rateLimitTimeout:       rateLimitTimeout,
 		errLookback:            fmt.Errorf("lookbacks of more than %s are disallowed", lookbackCap),
 	}
@@ -238,7 +247,7 @@ func (gw *Node) checkTimestamp(at time.Time) error {
 func (gw *Node) limit(ctx context.Context, tokens int) error {
 	ctx2, cancel := context.WithTimeout(ctx, gw.rateLimitTimeout)
 	defer cancel()
-	if perConnLimiter, ok := ctx2.Value(perConnLimiterKey).(*rate.Limiter); ok {
+	if perConnLimiter, ok := ctx2.Value(perConnectionAPIRateLimiterKey).(*rate.Limiter); ok {
 		err := perConnLimiter.WaitN(ctx2, tokens)
 		if err != nil {
 			return fmt.Errorf("connection limited. %w", err)
