@@ -30,6 +30,13 @@
 
 - fix: add datacap balance to circ supply internal accounting as unCirc #12348
 
+## Improvements
+
+- fix!: gateway: fix rate limiting, general cleanup ([filecoin-project/lotus#12315](https://github.com/filecoin-project/lotus/pull/12315)).
+  - CLI usage documentation has been improved for `lotus-gateway`
+  - `--per-conn-rate-limit` now works as advertised.
+  - Some APIs have changed which may impact users consuming Lotus Gateway code as a library.
+
 # v1.28.1 / 2024-07-24
 
 This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇. v1.28.1 is also the minimal version that supports nv23.
