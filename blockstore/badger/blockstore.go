@@ -18,10 +18,9 @@ import (
 	"github.com/multiformats/go-base32"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/blockstore/badger/versions"
 	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
-
-	"github.com/filecoin-project/lotus/blockstore"
 )
 
 // aliases to mask badger dependencies.
