@@ -6,34 +6,26 @@
 - https://github.com/filecoin-project/lotus/pull/12221: Fix a nil reference panic in the ETH Trace API
 - https://github.com/filecoin-project/lotus/pull/12112: Moved consts from build/ to build/buildconstants/ for ligher curio deps.
 - https://github.com/filecoin-project/lotus/pull/12237: Upgrade to go-f3 `v0.0.4`.
-
-## ☢️ Upgrade Warnings ☢️
-
-- This Lotus release includes some correctness improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for details.
-
-- Breaking change in public APIs `storage/pipeline.NewPreCommitBatcher`, `sealing.NewCommitBatcher` and `storage/pipeline.New`. They now have an additional error return to deal with errors arising from fetching the sealing config.
+- https://github.com/filecoin-project/lotus/pull/12251: Dropping support from ProveCommitSector1 method from lotus-miner
+- https://github.com/filecoin-project/lotus/pull/12276: chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23
+- https://github.com/filecoin-project/lotus/pull/12278: chore: Set Mainnet upgrade epoch for NV23.
+- https://github.com/filecoin-project/lotus/pull/12269 Fix `logIndex` ordering in `EthGetTransactionReceipt` by using the EventIndex to fetch logs
+- https://github.com/filecoin-project/lotus/pull/12285 Set up OpenTelemetry metrics reporting to prometheus
+- https://github.com/filecoin-project/lotus/pull/12279 Upgrade to go-f3 v0.0.5
+- https://github.com/filecoin-project/lotus/pull/12295 Upgrade to go-f3 v0.0.6
+- https://github.com/filecoin-project/lotus/pull/12292: feat: p2p: allow overriding bootstrap nodes with environmemnt variable
 
 ## New features
 
-- feat: Add trace transaction API supporting RPC method `trace_transaction` ([filecoin-project/lotus#12068](https://github.com/filecoin-project/lotus/pull/12068))
+- feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
 
-## Improvements
+# v1.28.0 / 2024-07-23
+This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
 
-- chore!: markets: remove stray unixfs constants, features and references ([filecoin-project/lotus#12217](https://github.com/filecoin-project/lotus/pull/12217))
-- [Upgrade to OpenTelemetry v1.28.0](https://github.com/filecoin-project/lotus/pull/12223)
-- [Upgrade to go-f3 v0.0.3](https://github.com/filecoin-project/lotus/pull/12216): This upgrade introduces multiple enhancements in Finality Certificate Exchange as well as bug fixes across the rebroadcast protocol.
+**This release sets the Mainnet to upgrade at epoch 4154640, corresponding to 2024-08-06T12:00:00Z.** 
 
-# v1.28.0-rc4 / 2024-07-04
-
-This is the fourth release candidate of the upcoming MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
-
-**This release candidate sets the calibration network to upgrade at epoch 1779094, corresponding to 2024-07-11T12:00:00Z.** This release does NOT set the mainnet upgrade epoch yet, in which will be updated in the final release.
-
-Compared to `Lotus v1.28.0-rc3`, the `Lotus v1.28.0-rc4` release addresses an issue that allows us to publish Docker builds.
-
-☢️ Upgrade Warnings ☢️
-
-If you are running the `v1.26.0` or an earlier version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
+## ☢️ Upgrade Warnings ☢️
+- If you are running the `v1.26.x` version of Lotus, please go through the `Upgrade Warnings` section for the `v1.27.*` releases, before upgrading to this RC.
 
 - This upgrade includes an additional migration to the events database. Node operators running Lotus with events turned on (off by default) may experience some delay in initial start-up of Lotus as a minor database migration takes place. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for full details.
 
@@ -50,49 +42,63 @@ If you are running the `v1.26.0` or an earlier version of Lotus, please go throu
 Note that we are only doing a "soft launch"/"passive testing" for F3 (Fast Finality) i.e. FIP-0086 in NV23. Please see [this doc](https://docs.google.com/document/d/14hMFN95_AsByBh7iMc4r_czUgg8tfjHQ1gTsmmHZ8jI/edit#heading=h.dhzqs3lisv24) for more details.
 
 ## v14 Builtin Actor Bundle
-The actor bundles for the **calibration network** can be checked as follows:
+
+[Builtin actor v14.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v14.0.0) is used for supporting this upgrade. Make sure that your lotus actor bundle matches the v14 actors manifest by running the following cli after upgrading:
 
 ```
 lotus state actor-cids --network-version=23
 Network Version: 23
 Actor Version: 14
-Manifest CID: bafy2bzacebq3hncszqpojglh2dkwekybq4zn6qpc4gceqbx36wndps5qehtau
+Manifest CID: bafy2bzacecbueuzsropvqawsri27owo7isa5gp2qtluhrfsto2qg7wpgxnkba
 
 Actor             CID  
-account           bafk2bzaced5ecfm56dvtw26q56j4d32yoccyd7ggxn3qdki2enxpqqav45ths
-cron              bafk2bzacedpbtttpyvtjncqoyobr63mhqqtlrygbnudhxyp2vha56f626dkfs
-datacap           bafk2bzacecded3lcvo7ndsk66samyecw2trnhrgzi7jxsary3sqgopxlk6rku
-eam               bafk2bzacecsda4uw7dcu76a27gnrrdcm73tgms7wrte6jbou63vloktkqc5ne
-ethaccount        bafk2bzacebu2lcxfmohomjj3umslnylwugf5gssywdq3575tjarta7o227dls
-evm               bafk2bzacea4xnekruhfmdnzvzeo6cbf7jsfgco6x5wje2ckwc2ui2ojzcrlgu
-init              bafk2bzacedfmsdlewihdcrkdepnfata26nj7akbvexzs3chicujhjf2uxsazc
-multisig          bafk2bzacedwx4svscsp6wqqu2vlcunjihvvm4u2jnsqjkwutjhir7dwtl7z6m
-paymentchannel    bafk2bzacedbit7oo6lryhbo64uikvtjtfcth6oxwy3eebxerenu2h7rj44n24
+account           bafk2bzacebr7ik7lng7vysm754mu5x7sakphwm4soqi6zwbox4ukpd6ndwvqy
+cron              bafk2bzacecwn6eiwa7ysimmk6i57i5whj4cqzwijx3xdlxwb5canmweaez6xc
+datacap           bafk2bzacecidw7ajvtjhmygqs2yxhmuybyvtwp25dxpblvdxxo7u4gqfzirjg
+eam               bafk2bzaced2cxnfwngpcubg63h7zk4y5hjwwuhfjxrh43xozax2u6u2woweju
+ethaccount        bafk2bzacechu4u7asol5mpcsr6fo6jeaeltvayj5bllupyiux7tcynsxby7ko
+evm               bafk2bzacedupohbgwrcw5ztbbsvrpqyybnokr4ylegmk7hrbt3ueeykua6zxw
+init              bafk2bzacecbbcshenkb6z2v4irsudv7tyklfgphhizhghix6ke5gpl4r5f2b6
+multisig          bafk2bzaceajcmsngu3f2chk2y7nanlen5xlftzatytzm6hxwiiw5i5nz36bfc
+paymentchannel    bafk2bzaceavslp27u3f4zwjq45rlg6assj6cqod7r5f6wfwkptlpi6j4qkmne
 placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
-reward            bafk2bzaced5rlycj7fzpscfc7p3wwxarngwqylqshj7te3uffey5tevunz4we
-storagemarket     bafk2bzaceatwbyrec2nnwggxc2alpqve7rl52fmbhqflebuxmmnvg3qckjb7c
-storageminer      bafk2bzacecr7ozkdz7l2pq3ig5qxae2ysivbnojhsn4gw3o57ov4mhksma7me
-storagepower      bafk2bzacedgeolvjtnw7fkji5kqmx322abv6uls2v34fuml6nw36dvfcw4mtu
-system            bafk2bzacederl6tlpieldsn6mkndqwd4wj5orfoqgab6p2klswfn3cjagxwla
-verifiedregistry  bafk2bzaceczw2kp6gjjdcjbso7mewp7guik7gr525pal6dotdja2lrct6ok3c
+reward            bafk2bzacedvfnjittwrkhoar6n5xrykowg2e6rpur4poh2m572f7m7evyx4lc
+storagemarket     bafk2bzaceaju5wobednmornvdqcyi6khkvdttkru4dqduqicrdmohlwfddwhg
+storageminer      bafk2bzacea3f43rxzemmakjpktq2ukayngean3oo2de5cdxlg2wsyn53wmepc
+storagepower      bafk2bzacedo6scxizooytn53wjwg2ooiawnj4fsoylcadnp7mhgzluuckjl42
+system            bafk2bzacecak4ow7tmauku42s3u2yydonk4hx6ov6ov542hy7lcbji3nhrrhs
+verifiedregistry  bafk2bzacebvyzjzmvmjvpypphqsumpy6rzxuugnehgum7grc6sv3yqxzrshb4
 ```
 
 ## Migration
 
 All node operators, including storage providers, should be aware that ONE pre-migration is being scheduled 120 epochs before the network upgrade. The migration for the NV23 upgrade is expected to be light with no heavy pre-migrations, here are some expected timings and resource consumption numbers:
 
-- Pre-Migration is expected to take less then 1 minute
-- The migration is expected to take less then 30 seconds on a node with a NVMe-drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less then 1 minute.
+- Pre-migration is expected to take less than 1 minute.
+- The migration is expected to take less than 30 seconds on a node with an NVMe drive and a newer CPU. For nodes running on slower disks/CPU, it is still expected to take less than 1 minute.
+- Max memory usage during benchmarking the migration in "offline mode" (i.e., node not syncing) was 23GiB.
+- Max memory usage when benchmarking the migration in "online mode" (i.e., while the node is syncing) was 30GiB. Numbers here might vary depending on the load your node is under.
+More details on the migration benchmarking can be found in https://github.com/filecoin-project/lotus/issues/12128
 
 We recommend node operators (who haven't enabled splitstore discard mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
 
-For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and run the non-cached migration (i.e., just running the migration at the network upgrade epoch), and schedule for some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
+For certain node operators, such as full archival nodes or systems that need to keep large amounts of state (RPC providers), we recommend skipping the pre-migration and running the non-cached migration (i.e., just running the migration at the network upgrade epoch), and scheduling some additional downtime. Operators of such nodes can read the [How to disable premigration in network upgrade tutorial.](https://lotus.filecoin.io/kb/disable-premigration/)
+
+## Fast Finality for Filecoin (f3) soft launch
+
+We are one step closer to reduce Filecoin's finality from 7.5 hours to a minute or so, you can checkout the [FIP](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0086.md) for more details.  Changing the consensus protocol is not trivial, and the f3 implementation team has designed a [passive testing plan to verify the protocol](https://github.com/filecoin-project/go-f3/issues/213) and give time for client implementation teams to integrate and test F3 before it is fully activated in the network consensus. That said, the lotus team has implemented f3 & the manifest for passive testing in this release, and we would like to ask node operators, especially storage providers, to participate in the testing by participating in F3 on the mainnet (which is enabled by default in this release)! We will keep updating [this discussion](https://github.com/filecoin-project/lotus/discussions/12287) to capture "what can you expect" & testing status. If you notice any unexpected behaviour caused by f3, please do not hesitate to reach out to us in #fil-fast-finality. 
+
+F3 (Fast Finality) is experimental in this release. All the new F3 APIs  are unstable and subject to until nv24 release (assuming f3 will be fully activated in this upgrade).
+
+Exchanges and RPC providers are recommended to opt-out of F3 functionality for now. You can disable F3 by adding the `DISABLE_F3 = 1` environment variable, which will output a log saying that F3 has been disabled.
 
 ## Dependencies
-- github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0-rc5`)
-- github.com/filecoin-project/filecoin-ffi (`v1.27.0-rc2` -> `v1.28.0-rc2`)
+
+- github.com/filecoin-project/go-state-types (`v0.14.0-dev` -> `v0.14.0`)
+- github.com/filecoin-project/filecoin-ffi (`v1.27.0-rc2` -> `v1.28.0`)
+- github.com/filecoin-project/go-libp2p2 (`v0.35.3` -> `v0.35.4`)
 - `ref-fvm4` (as part of `filecoin-ffi`) (`4.2.0` -> `4.3.1`)
-- A new `github.com/filecoin-project/go-f3` dependency for F3 soft launch (`v0.0.2`)
+- A new `github.com/filecoin-project/go-f3` dependency for F3 soft launch (`v0.0.5`)
 
 ## Others
 
@@ -105,6 +111,52 @@ For certain node operators, such as full archival nodes or systems that need to 
 - rename `Actor.Address` to `Actor.DelegatedAddress` and only use it for f4 addresses (https://github.com/filecoin-project/lotus/pull/12155)
 - feat:ec: integrate F3 dynamic manifest #12185
 - fix: f3: Fix F3 build parameters for testground target (#12189) ([filecoin-project/lotus#12189](https://github.com/filecoin-project/lotus/pull/12189))
+- fix: eth_getLogs: https://github.com/filecoin-project/lotus/pull/12212
+- chore: lotus-shed: Add support for nv23 in migrate-state cmd #12172
+- feat: F3: Update go-f3, change the style of participation call #12196
+- chore: f3: Upgrade go mod F3 dependency to v0.0.3 tagged release #12216
+- fix: Eth Trace Block: nil access panic #12221
+- chore!: markets: remove stray unixfs constants, features and references #12217
+- chore: metrics: Upgrade to OpenTelemetry v1.28.0 #12223
+- fix: bug: Reduce log level in F3 message sending to Debug #12224
+- [skip changelog] chore: config: yet more lp2p removal from miner #12252
+- fix(store): correctly break weight ties based on smaller ticket #12253
+- fix: exchange bug #12275
+- chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23 #12276
+- metrics: f3: Set up otel metrics reporting to prometheus #12285
+- Upgrade to go-f3 v0.0.5 #12279
+
+# v1.27.2 / 2024-07-17
+
+This is the stable release of Lotus v1.27.2. This will be an OPTIONAL Lotus release. It contains some improvements that are relevant for node operators that are using or serving `eth_*` RPC methods. It also contains an upgraded libp2p to v0.35.3 which is included in this release for additional testing of some fixes that may solve some connectivity problems experienced by some users (See [libp2p/go-libp2p#2858](https://github.com/libp2p/go-libp2p/issues/2858) for more information).
+
+## ☢️ Upgrade Warnings ☢️
+
+- This Lotus release includes some correctness improvements to the events subsystem, impacting RPC APIs including `GetActorEventsRaw`, `SubscribeActorEventsRaw`, `eth_getLogs` and the `eth` filter APIs. Part of these improvements involve an events database migration that may take some time to complete on nodes with extensive event databases. See [filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080) for details.
+
+## Improvements
+
+- fix: events index: record processed epochs and tipsets for events and eth_get_log blocks till requested tipset has been indexed (#12080) ([filecoin-project/lotus#12080](https://github.com/filecoin-project/lotus/pull/12080))
+- feat: eth: support "safe" and "finalized" for eth_getBlockByNumber (#12110) ([filecoin-project/lotus#12110](https://github.com/filecoin-project/lotus/pull/12110))
+- feat: api: sanity check the "to" address of outgoing messages (#12135) ([filecoin-project/lotus#12135](https://github.com/filecoin-project/lotus/pull/12135))
+- chore: ci: remove non-existent market tests from CI workflow (#12099) ([filecoin-project/lotus#12099](https://github.com/filecoin-project/lotus/pull/12099))
+- fix: bootstrap: remove unmaintained bootstrap node (#12133) ([filecoin-project/lotus#12133](https://github.com/filecoin-project/lotus/pull/12133))
+- Update bootstrap list to support both IPv4 and IPv6 (#12103) ([filecoin-project/lotus#12103](https://github.com/filecoin-project/lotus/pull/12103))
+
+## Dependencies
+
+- chore: deps: upgrade to libp2p@v0.35.3 from v0.34.1 ([filecoin-project/lotus#12249](https://github.com/filecoin-project/lotus/pull/12249))
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aarsh Shah | 2 | +424/-28 | 4 |
+| Steven Allen | 1 | +137/-0 | 3 |
+| Mikers | 1 | +63/-0 | 4 |
+| Phi-rjan | 1 | +10/-10 | 2 |
+| Peter Rabbitson | 1 | +4/-8 | 1 |
+| Hubert | 1 | +0/-1 | 1 |
 
 # v1.27.1 / 2024-06-24
 

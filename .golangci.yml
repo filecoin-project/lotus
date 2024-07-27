@@ -37,7 +37,7 @@ issues:
     - "^blank-imports: a blank import should be only in a main or test package, or have a comment justifying it"
     - "^dot-imports: should not use dot imports"
     - "^exported: (func|type) name will be used as [^\\s]+ by other packages, and that stutters; consider calling this \\w+"
-    - "^exported: comment on exported (const|function|method|type|var) [^\\s]+ should be of the form \"\\w+ ...\""
+    - "^exported: comment on exported (const|var) [^\\s]+ should be of the form \"\\w+ ...\""
     - "^exported: exported (const|function|method|type|var) [^\\s]+ should have comment (\\(or a comment on this block\\) )?or be unexported"
     - "^indent-error-flow: if block ends with a return statement, so drop this else and outdent its block \\(move short variable declaration to its own line if necessary\\)"
     - "^package-comments: package comment should be of the form \"Package \\w+ ...\""

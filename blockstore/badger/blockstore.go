@@ -671,57 +671,7 @@ func (b *Blockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 
 // Put implements Blockstore.Put.
 func (b *Blockstore) Put(ctx context.Context, block blocks.Block) error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	k, pooled := b.PooledStorageKey(block.Cid())
-	if pooled {
-		defer KeyPool.Put(k)
-	}
-
-	put := func(db badger.BadgerDB) error {
-		errKeyNotFound := db.GetErrKeyNotFound()
-
-		// Check if we have it before writing it.
-		switch err := db.View(func(txn badger.Txn) error {
-			_, err := txn.Get(k)
-			return err
-		}); err {
-		case errKeyNotFound:
-		case nil:
-			// Already exists, skip the put.
-			return nil
-		default:
-			return err
-		}
-
-		// Then write it.
-		err := db.Update(func(txn badger.Txn) error {
-			return txn.Set(k, block.RawData())
-		})
-		if err != nil {
-			return fmt.Errorf("failed to put block in badger blockstore: %w", err)
-		}
-
-		return nil
-	}
-
-	if err := put(b.db); err != nil {
-		return err
-	}
-
-	if b.dbNext != nil {
-		if err := put(b.dbNext); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return b.PutMany(ctx, []blocks.Block{block})
 }
 
 // PutMany implements Blockstore.PutMany.
@@ -813,23 +763,8 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 }
 
 // DeleteBlock implements Blockstore.DeleteBlock.
-func (b *Blockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
-	b.lockDB()
-	defer b.unlockDB()
-
-	k, pooled := b.PooledStorageKey(cid)
-	if pooled {
-		defer KeyPool.Put(k)
-	}
-
-	return b.db.Update(func(txn badger.Txn) error {
-		return txn.Delete(k)
-	})
+func (b *Blockstore) DeleteBlock(ctx context.Context, c cid.Cid) error {
+	return b.DeleteMany(ctx, []cid.Cid{c})
 }
 
 func (b *Blockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
@@ -930,7 +865,8 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return ch, nil
 }
 
-// Implementation of BlockstoreIterator interface
+// Implementation of BlockstoreIterator interface ------------------------------
+
 func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 	if err := b.access(); err != nil {
 		return err
@@ -1036,7 +972,7 @@ func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
 	return dst[:reqsize]
 }
 
-// this method is added for lotus-shed needs
+// DB is added for lotus-shed needs
 // WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE
 func (b *Blockstore) DB() badger.BadgerDB {
 	return b.db

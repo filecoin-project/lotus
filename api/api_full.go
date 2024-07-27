@@ -829,6 +829,9 @@ type FullNode interface {
 	// Implmements OpenEthereum-compatible API method trace_transaction
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) //perm:read
 
+	// Implements OpenEthereum-compatible API method trace_filter
+	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) //perm:read
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
@@ -862,6 +865,8 @@ type FullNode interface {
 	// This is an EXPERIMENTAL API and may be subject to change.
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
 
+	//*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
+
 	// F3Participate should be called by a storage provider to participate in signing F3 consensus.
 	// Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
 	// The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
@@ -879,11 +884,13 @@ type FullNode interface {
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
 	// F3GetLatestCertificate returns the latest finality certificate
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
-	// F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
-	F3GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
+	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetF3PowerTable returns a F3 specific power table.
+	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 }
 
-// reverse interface to the client, called after EthSubscribe
+// EthSubscriber is the reverse interface to the client, called after EthSubscribe
 type EthSubscriber interface {
 	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
 	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error // rpc_method:eth_subscription notify:true
@@ -917,11 +924,9 @@ type MsgGasCost struct {
 	TotalCost          abi.TokenAmount
 }
 
-// BlsMessages[x].cid = Cids[x]
-// SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
-	BlsMessages   []*types.Message
-	SecpkMessages []*types.SignedMessage
+	BlsMessages   []*types.Message       // BlsMessages [x].cid = Cids[x]
+	SecpkMessages []*types.SignedMessage // SecpkMessages [y].cid = Cids[BlsMessages.length + y]
 
 	Cids []cid.Cid
 }

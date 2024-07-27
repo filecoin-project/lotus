@@ -20,6 +20,7 @@ type NetworkStoreHandler struct {
 }
 
 // NOTE: This code isn't yet hardened to accept untrusted input. See TODOs here and in net.go
+
 func HandleNetBstoreStream(ctx context.Context, bs Blockstore, mss msgio.ReadWriteCloser) *NetworkStoreHandler {
 	ns := &NetworkStoreHandler{
 		msgStream: mss,

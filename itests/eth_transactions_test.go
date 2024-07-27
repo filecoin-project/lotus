@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -18,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -65,7 +66,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := ethtypes.Eth1559TxArgs{
-		ChainID:              build.Eip155ChainId,
+		ChainID:              buildconstants.Eip155ChainId,
 		Value:                big.NewInt(100),
 		Nonce:                0,
 		To:                   &ethAddr2,
@@ -239,7 +240,7 @@ func TestContractInvocation(t *testing.T) {
 	require.NoError(t, err)
 
 	invokeTx := ethtypes.Eth1559TxArgs{
-		ChainID:              build.Eip155ChainId,
+		ChainID:              buildconstants.Eip155ChainId,
 		To:                   &contractAddr,
 		Value:                big.Zero(),
 		Nonce:                1,
@@ -367,7 +368,7 @@ func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr eth
 
 	// now deploy a contract from the embryo, and validate it went well
 	return &ethtypes.Eth1559TxArgs{
-		ChainID:              build.Eip155ChainId,
+		ChainID:              buildconstants.Eip155ChainId,
 		Value:                big.Zero(),
 		Nonce:                0,
 		MaxFeePerGas:         types.NanoFil,
@@ -643,4 +644,112 @@ func TestTraceTransaction(t *testing.T) {
 	require.NotNil(t, traces)
 	require.EqualValues(t, traces[0].TransactionHash, hash)
 	require.EqualValues(t, traces[0].BlockNumber, receipt.BlockNumber)
+}
+
+func TestTraceFilter(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	// Example of creating and submitting a transaction
+	// Replace with actual test setup as needed
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+
+	tx, err := deployContractTx(ctx, client, ethAddr, contract)
+	require.NoError(t, err)
+
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	// Wait for the transaction to be mined
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	// Get contract address.
+	contractAddr := client.EVM().ComputeContractAddress(ethAddr, 0)
+
+	// get trace and verify values
+	tracesx, err := client.EthTraceTransaction(ctx, hash.String())
+	require.NoError(t, err)
+	require.NotNil(t, tracesx)
+	require.EqualValues(t, tracesx[0].TransactionHash, hash)
+	require.EqualValues(t, tracesx[0].BlockNumber, receipt.BlockNumber)
+
+	// Define filter criteria
+	fromBlock := "0x1"
+	toBlock := fmt.Sprint(receipt.BlockNumber)
+	filter := ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+	}
+
+	// Trace filter should find the transaction
+	traces, err := client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.NotNil(t, traces)
+	require.NotEmpty(t, traces)
+
+	// Assert that iniital transactions returned by the trace are valid
+	require.EqualValues(t, len(traces), 3)
+	require.EqualValues(t, traces[0].TransactionPosition, 1)
+	require.EqualValues(t, traces[0].EthTrace.Type, "call")
+	require.EqualValues(t, traces[1].TransactionPosition, 1)
+	require.EqualValues(t, traces[1].EthTrace.Type, "call")
+
+	//our transaction will be in the third element of traces with the expected hash
+	require.EqualValues(t, traces[2].TransactionPosition, 1)
+	require.EqualValues(t, traces[2].TransactionHash, hash)
+	require.EqualValues(t, traces[2].EthTrace.Type, "create")
+
+	toBlock = "latest"
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock:   &fromBlock,
+		ToBlock:     &toBlock,
+		FromAddress: ethtypes.EthAddressList{ethAddr},
+		ToAddress:   ethtypes.EthAddressList{contractAddr},
+	}
+
+	// Trace filter should find the transaction
+	tracesAddressFilter, err := client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.NotNil(t, tracesAddressFilter)
+	require.NotEmpty(t, tracesAddressFilter)
+
+	//we should only get our contract deploy transaction
+	require.EqualValues(t, len(tracesAddressFilter), 1)
+	require.EqualValues(t, tracesAddressFilter[0].TransactionPosition, 1)
+	require.EqualValues(t, tracesAddressFilter[0].TransactionHash, hash)
+	require.EqualValues(t, tracesAddressFilter[0].EthTrace.Type, "create")
+
+	after := ethtypes.EthUint64(1)
+	count := ethtypes.EthUint64(2)
+	filter = ethtypes.EthTraceFilterCriteria{
+		FromBlock: &fromBlock,
+		ToBlock:   &toBlock,
+		After:     &after,
+		Count:     &count,
+	}
+	// Trace filter should find the transaction
+	tracesAfterCount, err := client.EthTraceFilter(ctx, filter)
+	require.NoError(t, err)
+	require.NotNil(t, traces)
+	require.NotEmpty(t, traces)
+
+	//we should only get the last two results from the first trace query
+	require.EqualValues(t, len(tracesAfterCount), 2)
+	require.EqualValues(t, tracesAfterCount[0].TransactionHash, traces[1].TransactionHash)
+	require.EqualValues(t, tracesAfterCount[1].TransactionHash, traces[2].TransactionHash)
+
 }

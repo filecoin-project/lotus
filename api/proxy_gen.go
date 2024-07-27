@@ -243,6 +243,8 @@ type FullNodeMethods struct {
 
 	EthTraceBlock func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) `perm:"read"`
 
+	EthTraceFilter func(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) `perm:"read"`
+
 	EthTraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) `perm:"read"`
 
 	EthTraceTransaction func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceTransaction, error) `perm:"read"`
@@ -253,9 +255,11 @@ type FullNodeMethods struct {
 
 	F3GetCertificate func(p0 context.Context, p1 uint64) (*certs.FinalityCertificate, error) `perm:"read"`
 
-	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
+	F3GetECPowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
 
-	F3GetPowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
+	F3GetF3PowerTable func(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) `perm:"read"`
+
+	F3GetLatestCertificate func(p0 context.Context) (*certs.FinalityCertificate, error) `perm:"read"`
 
 	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
@@ -682,6 +686,8 @@ type GatewayMethods struct {
 	EthSyncing func(p0 context.Context) (ethtypes.EthSyncingResult, error) ``
 
 	EthTraceBlock func(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) ``
+
+	EthTraceFilter func(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) ``
 
 	EthTraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) ``
 
@@ -2029,6 +2035,17 @@ func (s *FullNodeStub) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes
 	return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	if s.Internal.EthTraceFilter == nil {
+		return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
+	}
+	return s.Internal.EthTraceFilter(p0, p1)
+}
+
+func (s *FullNodeStub) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
 	if s.Internal.EthTraceReplayBlockTransactions == nil {
 		return *new([]*ethtypes.EthTraceReplayBlockTransaction), ErrNotSupported
@@ -2084,6 +2101,28 @@ func (s *FullNodeStub) F3GetCertificate(p0 context.Context, p1 uint64) (*certs.F
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) F3GetECPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	if s.Internal.F3GetECPowerTable == nil {
+		return *new(gpbft.PowerEntries), ErrNotSupported
+	}
+	return s.Internal.F3GetECPowerTable(p0, p1)
+}
+
+func (s *FullNodeStub) F3GetECPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	return *new(gpbft.PowerEntries), ErrNotSupported
+}
+
+func (s *FullNodeStruct) F3GetF3PowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	if s.Internal.F3GetF3PowerTable == nil {
+		return *new(gpbft.PowerEntries), ErrNotSupported
+	}
+	return s.Internal.F3GetF3PowerTable(p0, p1)
+}
+
+func (s *FullNodeStub) F3GetF3PowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	return *new(gpbft.PowerEntries), ErrNotSupported
+}
+
 func (s *FullNodeStruct) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
 	if s.Internal.F3GetLatestCertificate == nil {
 		return nil, ErrNotSupported
@@ -2093,17 +2132,6 @@ func (s *FullNodeStruct) F3GetLatestCertificate(p0 context.Context) (*certs.Fina
 
 func (s *FullNodeStub) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
-	if s.Internal.F3GetPowerTable == nil {
-		return *new(gpbft.PowerEntries), ErrNotSupported
-	}
-	return s.Internal.F3GetPowerTable(p0, p1)
-}
-
-func (s *FullNodeStub) F3GetPowerTable(p0 context.Context, p1 types.TipSetKey) (gpbft.PowerEntries, error) {
-	return *new(gpbft.PowerEntries), ErrNotSupported
 }
 
 func (s *FullNodeStruct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
@@ -4381,6 +4409,17 @@ func (s *GatewayStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtype
 
 func (s *GatewayStub) EthTraceBlock(p0 context.Context, p1 string) ([]*ethtypes.EthTraceBlock, error) {
 	return *new([]*ethtypes.EthTraceBlock), ErrNotSupported
+}
+
+func (s *GatewayStruct) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	if s.Internal.EthTraceFilter == nil {
+		return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
+	}
+	return s.Internal.EthTraceFilter(p0, p1)
+}
+
+func (s *GatewayStub) EthTraceFilter(p0 context.Context, p1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	return *new([]*ethtypes.EthTraceFilterResult), ErrNotSupported
 }
 
 func (s *GatewayStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {

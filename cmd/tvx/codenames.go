@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 )
 
 // ProtocolCodenames is a table that summarises the protocol codenames that
@@ -16,23 +16,23 @@ var ProtocolCodenames = []struct {
 	name       string
 }{
 	{0, "genesis"},
-	{build.UpgradeBreezeHeight + 1, "breeze"},
-	{build.UpgradeSmokeHeight + 1, "smoke"},
-	{build.UpgradeIgnitionHeight + 1, "ignition"},
-	{build.UpgradeRefuelHeight + 1, "refuel"},
-	{build.UpgradeAssemblyHeight + 1, "actorsv2"},
-	{build.UpgradeTapeHeight + 1, "tape"},
-	{build.UpgradeLiftoffHeight + 1, "liftoff"},
-	{build.UpgradeKumquatHeight + 1, "postliftoff"},
-	{build.UpgradeCalicoHeight + 1, "calico"},
-	{build.UpgradePersianHeight + 1, "persian"},
-	{build.UpgradeOrangeHeight + 1, "orange"},
-	{build.UpgradeTrustHeight + 1, "trust"},
-	{build.UpgradeNorwegianHeight + 1, "norwegian"},
-	{build.UpgradeTurboHeight + 1, "turbo"},
-	{build.UpgradeHyperdriveHeight + 1, "hyperdrive"},
-	{build.UpgradeChocolateHeight + 1, "chocolate"},
-	{build.UpgradeOhSnapHeight + 1, "ohsnap"},
+	{buildconstants.UpgradeBreezeHeight + 1, "breeze"},
+	{buildconstants.UpgradeSmokeHeight + 1, "smoke"},
+	{buildconstants.UpgradeIgnitionHeight + 1, "ignition"},
+	{buildconstants.UpgradeRefuelHeight + 1, "refuel"},
+	{buildconstants.UpgradeAssemblyHeight + 1, "actorsv2"},
+	{buildconstants.UpgradeTapeHeight + 1, "tape"},
+	{buildconstants.UpgradeLiftoffHeight + 1, "liftoff"},
+	{buildconstants.UpgradeKumquatHeight + 1, "postliftoff"},
+	{buildconstants.UpgradeCalicoHeight + 1, "calico"},
+	{buildconstants.UpgradePersianHeight + 1, "persian"},
+	{buildconstants.UpgradeOrangeHeight + 1, "orange"},
+	{buildconstants.UpgradeTrustHeight + 1, "trust"},
+	{buildconstants.UpgradeNorwegianHeight + 1, "norwegian"},
+	{buildconstants.UpgradeTurboHeight + 1, "turbo"},
+	{buildconstants.UpgradeHyperdriveHeight + 1, "hyperdrive"},
+	{buildconstants.UpgradeChocolateHeight + 1, "chocolate"},
+	{buildconstants.UpgradeOhSnapHeight + 1, "ohsnap"},
 }
 
 // GetProtocolCodename gets the protocol codename associated with a height.

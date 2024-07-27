@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI) (*full.EthModule, error) {
-	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI) (*full.EthModule, error) {
+func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler) (*full.EthModule, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI, ethEventHandler *full.EthEventHandler) (*full.EthModule, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		sqlitePath, err := r.SqlitePath()
@@ -96,12 +96,14 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			Mpool:        mp,
 			StateManager: sm,
 
-			ChainAPI: chainapi,
-			MpoolAPI: mpoolapi,
-			StateAPI: stateapi,
-			SyncAPI:  syncapi,
+			ChainAPI:        chainapi,
+			MpoolAPI:        mpoolapi,
+			StateAPI:        stateapi,
+			SyncAPI:         syncapi,
+			EthEventHandler: ethEventHandler,
 
-			EthTxHashManager: &ethTxHashManager,
+			EthTxHashManager:         &ethTxHashManager,
+			EthTraceFilterMaxResults: cfg.EthTraceFilterMaxResults,
 		}, nil
 	}
 }

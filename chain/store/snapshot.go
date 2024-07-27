@@ -24,12 +24,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const TipsetkeyBackfillRange = 2 * build.Finality
+const TipsetkeyBackfillRange = 2 * policy.ChainFinality
 
 func (cs *ChainStore) UnionStore() bstore.Blockstore {
 	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
@@ -734,7 +734,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 	}
 
 	log.Infow("export started")
-	exportStart := build.Clock.Now()
+	exportStart := time.Now()
 
 	for len(blocksToWalk) > 0 {
 		next := blocksToWalk[0]
@@ -744,7 +744,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		}
 	}
 
-	log.Infow("export finished", "duration", build.Clock.Now().Sub(exportStart).Seconds())
+	log.Infow("export finished", "duration", time.Since(exportStart).Seconds())
 
 	return nil
 }

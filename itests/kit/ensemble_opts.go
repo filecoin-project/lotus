@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 )
@@ -30,7 +31,7 @@ var DefaultEnsembleOpts = ensembleOpts{
 	pastOffset: 10000000 * time.Second, // time sufficiently in the past to trigger catch-up mining.
 	upgradeSchedule: stmgr.UpgradeSchedule{{
 		Height:  -1,
-		Network: build.TestNetworkVersion,
+		Network: buildconstants.TestNetworkVersion,
 	}},
 }
 

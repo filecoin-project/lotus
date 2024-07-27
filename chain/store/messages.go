@@ -14,7 +14,7 @@ import (
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -117,7 +117,7 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 	useIds := false
 	selectMsg := func(m *types.Message) (bool, error) {
 		var sender address.Address
-		if ts.Height() >= build.UpgradeHyperdriveHeight {
+		if ts.Height() >= buildconstants.UpgradeHyperdriveHeight {
 			if useIds {
 				sender, err = st.LookupIDAddress(m.From)
 				if err != nil {

@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -100,7 +99,7 @@ var gasTraceCmd = &cli.Command{
 			return err
 		}
 
-		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), MAINNET_GENESIS_TIME, nil)
+		shd, err := drand.BeaconScheduleFromDrandSchedule(buildconstants.DrandConfigSchedule(), MAINNET_GENESIS_TIME, nil)
 		if err != nil {
 			return err
 		}
@@ -196,7 +195,7 @@ var replayOfflineCmd = &cli.Command{
 			return err
 		}
 
-		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), MAINNET_GENESIS_TIME, nil)
+		shd, err := drand.BeaconScheduleFromDrandSchedule(buildconstants.DrandConfigSchedule(), MAINNET_GENESIS_TIME, nil)
 		if err != nil {
 			return err
 		}

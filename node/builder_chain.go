@@ -2,7 +2,10 @@ package node
 
 import (
 	"os"
+	"time"
 
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/network"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -34,9 +37,12 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/impl/net"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/paychmgr/settler"
@@ -165,10 +171,33 @@ func ConfigFullNode(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	enableLibp2pNode := true // always enable libp2p for full nodes
-
 	return Options(
-		ConfigCommon(&cfg.Common, build.NodeUserVersion(), enableLibp2pNode),
+		ConfigCommon(&cfg.Common, build.NodeUserVersion()),
+
+		// always enable libp2p for full nodes
+		Override(new(api.Net), new(api.NetStub)),
+		Override(new(api.Common), From(new(common.CommonAPI))),
+		Override(new(api.Net), From(new(net.NetAPI))),
+		Override(new(api.Common), From(new(common.CommonAPI))),
+		Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
+		Override(ConnectionManagerKey, lp2p.ConnectionManager(
+			cfg.Libp2p.ConnMgrLow,
+			cfg.Libp2p.ConnMgrHigh,
+			time.Duration(cfg.Libp2p.ConnMgrGrace),
+			cfg.Libp2p.ProtectedPeers)),
+		Override(new(network.ResourceManager), lp2p.ResourceManager(cfg.Libp2p.ConnMgrHigh)),
+		Override(new(*pubsub.PubSub), lp2p.GossipSub),
+		Override(new(*config.Pubsub), &cfg.Pubsub),
+
+		ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
+			Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
+		),
+
+		Override(AddrsFactoryKey, lp2p.AddrsFactory(
+			cfg.Libp2p.AnnounceAddresses,
+			cfg.Libp2p.NoAnnounceAddresses)),
+
+		If(!cfg.Libp2p.DisableNatPortMap, Override(NatPortMapKey, lp2p.NatPortMap)),
 
 		Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
@@ -226,8 +255,9 @@ func ConfigFullNode(c interface{}) Option {
 		// in lite-mode Eth api is provided by gateway
 		ApplyIf(isFullNode,
 			If(cfg.Fevm.EnableEthRPC,
+				Override(new(*full.EthEventHandler), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
-				Override(new(full.EthEventAPI), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
+				Override(new(full.EthEventAPI), From(new(*full.EthEventHandler))),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),

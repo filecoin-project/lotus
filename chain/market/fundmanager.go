@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -26,7 +26,7 @@ import (
 
 var log = logging.Logger("market_adapter")
 
-// API is the fx dependencies need to run a fund manager
+// FundManagerAPI is the fx dependencies need to run a fund manager
 type FundManagerAPI struct {
 	fx.In
 
@@ -121,7 +121,7 @@ func (fm *FundManager) Reserve(ctx context.Context, wallet, addr address.Address
 	return fm.getFundedAddress(addr).reserve(ctx, wallet, amt)
 }
 
-// Subtract from `reserved`.
+// Release subtracts from `reserved`.
 func (fm *FundManager) Release(addr address.Address, amt abi.TokenAmount) error {
 	return fm.getFundedAddress(addr).release(amt)
 }
@@ -724,6 +724,6 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {
-	_, err := env.api.StateWaitMsg(ctx, c, build.MessageConfidence, api.LookbackNoLimit, true)
+	_, err := env.api.StateWaitMsg(ctx, c, buildconstants.MessageConfidence, api.LookbackNoLimit, true)
 	return err
 }

@@ -58,10 +58,12 @@ var BlockMessageLimit = buildconstants.BlockMessageLimit // Deprecated: Use buil
 var BlockGasLimit = buildconstants.BlockGasLimit   // Deprecated: Use buildconstants.BlockGasLimit instead
 var BlockGasTarget = buildconstants.BlockGasTarget // Deprecated: Use buildconstants.BlockGasTarget instead
 
-var BaseFeeMaxChangeDenom int64 = buildconstants.BaseFeeMaxChangeDenom   // Deprecated: Use buildconstants.BaseFeeMaxChangeDenom instead
-var InitialBaseFee int64 = buildconstants.InitialBaseFee                 // Deprecated: Use buildconstants.InitialBaseFee instead
-var MinimumBaseFee int64 = buildconstants.MinimumBaseFee                 // Deprecated: Use buildconstants.MinimumBaseFee instead
-var PackingEfficiencyNum int64 = buildconstants.PackingEfficiencyNum     // Deprecated: Use buildconstants.PackingEfficiencyNum instead
-var PackingEfficiencyDenom int64 = buildconstants.PackingEfficiencyDenom // Deprecated: Use buildconstants.PackingEfficiencyDenom instead
+var BaseFeeMaxChangeDenom = buildconstants.BaseFeeMaxChangeDenom   // Deprecated: Use buildconstants.BaseFeeMaxChangeDenom instead
+var InitialBaseFee = buildconstants.InitialBaseFee                 // Deprecated: Use buildconstants.InitialBaseFee instead
+var MinimumBaseFee = buildconstants.MinimumBaseFee                 // Deprecated: Use buildconstants.MinimumBaseFee instead
+var PackingEfficiencyNum = buildconstants.PackingEfficiencyNum     // Deprecated: Use buildconstants.PackingEfficiencyNum instead
+var PackingEfficiencyDenom = buildconstants.PackingEfficiencyDenom // Deprecated: Use buildconstants.PackingEfficiencyDenom instead
 
 const TestNetworkVersion = buildconstants.TestNetworkVersion // Deprecated: Use buildconstants.TestNetworkVersion instead
+
+var MinerFDLimit = buildconstants.MinerFDLimit // Deprecated: Use buildconstants.MinerFDLimit instead

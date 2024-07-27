@@ -30,5 +30,4 @@ type StateRoot struct {
 	Info cid.Cid
 }
 
-// TODO: version this.
-type StateInfo0 struct{}
+type StateInfo0 struct{} // TODO: version this.

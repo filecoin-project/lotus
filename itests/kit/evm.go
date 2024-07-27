@@ -44,7 +44,7 @@ func (f *TestFullNode) EVM() *EVM {
 	return &EVM{f}
 }
 
-// SignLegacyHomesteadTransaction signs a legacy Homstead Ethereum transaction in place with the supplied private key.
+// SignLegacyEIP155Transaction signs a legacy Homstead Ethereum transaction in place with the supplied private key.
 func (e *EVM) SignLegacyEIP155Transaction(tx *ethtypes.EthLegacy155TxArgs, privKey []byte, chainID big.Int) {
 	preimage, err := tx.ToRlpUnsignedMsg()
 	require.NoError(e.t, err)
@@ -291,8 +291,8 @@ func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
 }
 
-// return eth block from a wait return
-// this necessarily goes back one parent in the chain because wait is one block ahead of execution
+// GetEthBlockFromWait returns and eth block from a wait return.
+// This necessarily goes back one parent in the chain because wait is one block ahead of execution.
 func (e *EVM) GetEthBlockFromWait(ctx context.Context, wait *api.MsgLookup) ethtypes.EthBlock {
 	c, err := wait.TipSet.Cid()
 	require.NoError(e.t, err)
@@ -351,7 +351,7 @@ func (e *EVM) WaitTransaction(ctx context.Context, hash ethtypes.EthHash) (*api.
 	return nil, xerrors.Errorf("couldn't find message CID for txn hash: %s", hash)
 }
 
-// function signatures are the first 4 bytes of the hash of the function name and types
+// CalcFuncSignature returns the first 4 bytes of the hash of the function name and types
 func CalcFuncSignature(funcName string) []byte {
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write([]byte(funcName))

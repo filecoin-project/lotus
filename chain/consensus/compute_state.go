@@ -26,7 +26,6 @@ import (
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
@@ -168,7 +167,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 				}
 			}
 
-			ts := genesis.Timestamp + build.BlockDelaySecs*(uint64(i))
+			ts := genesis.Timestamp + buildconstants.BlockDelaySecs*(uint64(i))
 			vmCron, err := makeVm(pstate, i, ts)
 			if err != nil {
 				return cid.Undef, cid.Undef, xerrors.Errorf("making cron vm: %w", err)

@@ -76,14 +76,16 @@
   * [EthSubscribe](#EthSubscribe)
   * [EthSyncing](#EthSyncing)
   * [EthTraceBlock](#EthTraceBlock)
+  * [EthTraceFilter](#EthTraceFilter)
   * [EthTraceReplayBlockTransactions](#EthTraceReplayBlockTransactions)
   * [EthTraceTransaction](#EthTraceTransaction)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [F3](#F3)
   * [F3GetCertificate](#F3GetCertificate)
+  * [F3GetECPowerTable](#F3GetECPowerTable)
+  * [F3GetF3PowerTable](#F3GetF3PowerTable)
   * [F3GetLatestCertificate](#F3GetLatestCertificate)
-  * [F3GetPowerTable](#F3GetPowerTable)
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
@@ -2064,6 +2066,50 @@ Response:
 ]
 ```
 
+### EthTraceFilter
+Implements OpenEthereum-compatible API method trace_filter
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "latest",
+    "toBlock": "latest",
+    "fromAddress": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "toAddress": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "after": "0x0",
+    "count": "0x64"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "type": "string value",
+    "error": "string value",
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "action": {},
+    "result": {},
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": 9,
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionPosition": 123
+  }
+]
+```
+
 ### EthTraceReplayBlockTransactions
 Replays all transactions in a block returning the requested traces for each transaction
 
@@ -2233,6 +2279,68 @@ Response:
 }
 ```
 
+### F3GetECPowerTable
+F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
+### F3GetF3PowerTable
+F3GetF3PowerTable returns a F3 specific power table.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
 ### F3GetLatestCertificate
 F3GetLatestCertificate returns the latest finality certificate
 
@@ -2289,37 +2397,6 @@ Response:
   "Signature": null,
   "PowerTableDelta": null
 }
-```
-
-### F3GetPowerTable
-F3GetPowerTable returns a F3 specific power table for use in standalone F3 nodes.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-[
-  {
-    "ID": 1000,
-    "Power": 0,
-    "PubKey": "Bw=="
-  }
-]
 ```
 
 ### F3Participate

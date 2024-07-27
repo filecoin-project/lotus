@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -242,9 +242,9 @@ func deadlineOpenTime(ts *types.TipSet, dlIdx uint64, di *dline.Info) string {
 	gapHeight := uint64(di.WPoStProvingPeriod) / di.WPoStPeriodDeadlines * gapIdx
 
 	openHeight := di.Open + abi.ChainEpoch(gapHeight)
-	genesisBlockTimestamp := ts.MinTimestamp() - uint64(ts.Height())*build.BlockDelaySecs
+	genesisBlockTimestamp := ts.MinTimestamp() - uint64(ts.Height())*buildconstants.BlockDelaySecs
 
-	return time.Unix(int64(genesisBlockTimestamp+build.BlockDelaySecs*uint64(openHeight)), 0).Format(time.TimeOnly)
+	return time.Unix(int64(genesisBlockTimestamp+buildconstants.BlockDelaySecs*uint64(openHeight)), 0).Format(time.TimeOnly)
 }
 
 func ProvingDeadlineInfoCmd(getActorAddress ActorAddressGetter) *cli.Command {

@@ -1094,6 +1094,21 @@ func (mr *MockFullNodeMockRecorder) EthTraceBlock(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceBlock", reflect.TypeOf((*MockFullNode)(nil).EthTraceBlock), arg0, arg1)
 }
 
+// EthTraceFilter mocks base method.
+func (m *MockFullNode) EthTraceFilter(arg0 context.Context, arg1 ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceFilter", arg0, arg1)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceFilterResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceFilter indicates an expected call of EthTraceFilter.
+func (mr *MockFullNodeMockRecorder) EthTraceFilter(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceFilter", reflect.TypeOf((*MockFullNode)(nil).EthTraceFilter), arg0, arg1)
+}
+
 // EthTraceReplayBlockTransactions mocks base method.
 func (m *MockFullNode) EthTraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
 	m.ctrl.T.Helper()
@@ -1169,6 +1184,36 @@ func (mr *MockFullNodeMockRecorder) F3GetCertificate(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetCertificate", reflect.TypeOf((*MockFullNode)(nil).F3GetCertificate), arg0, arg1)
 }
 
+// F3GetECPowerTable mocks base method.
+func (m *MockFullNode) F3GetECPowerTable(arg0 context.Context, arg1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetECPowerTable", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetECPowerTable indicates an expected call of F3GetECPowerTable.
+func (mr *MockFullNodeMockRecorder) F3GetECPowerTable(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetECPowerTable", reflect.TypeOf((*MockFullNode)(nil).F3GetECPowerTable), arg0, arg1)
+}
+
+// F3GetF3PowerTable mocks base method.
+func (m *MockFullNode) F3GetF3PowerTable(arg0 context.Context, arg1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetF3PowerTable", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetF3PowerTable indicates an expected call of F3GetF3PowerTable.
+func (mr *MockFullNodeMockRecorder) F3GetF3PowerTable(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetF3PowerTable", reflect.TypeOf((*MockFullNode)(nil).F3GetF3PowerTable), arg0, arg1)
+}
+
 // F3GetLatestCertificate mocks base method.
 func (m *MockFullNode) F3GetLatestCertificate(arg0 context.Context) (*certs.FinalityCertificate, error) {
 	m.ctrl.T.Helper()
@@ -1182,21 +1227,6 @@ func (m *MockFullNode) F3GetLatestCertificate(arg0 context.Context) (*certs.Fina
 func (mr *MockFullNodeMockRecorder) F3GetLatestCertificate(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetLatestCertificate", reflect.TypeOf((*MockFullNode)(nil).F3GetLatestCertificate), arg0)
-}
-
-// F3GetPowerTable mocks base method.
-func (m *MockFullNode) F3GetPowerTable(arg0 context.Context, arg1 types.TipSetKey) (gpbft.PowerEntries, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "F3GetPowerTable", arg0, arg1)
-	ret0, _ := ret[0].(gpbft.PowerEntries)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// F3GetPowerTable indicates an expected call of F3GetPowerTable.
-func (mr *MockFullNodeMockRecorder) F3GetPowerTable(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetPowerTable", reflect.TypeOf((*MockFullNode)(nil).F3GetPowerTable), arg0, arg1)
 }
 
 // F3Participate mocks base method.
