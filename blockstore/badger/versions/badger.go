@@ -11,14 +11,16 @@ import (
 // Options embeds the badger options themselves, and augments them with
 // blockstore-specific options.
 type Options struct {
-
-	badgerV2.Options
+	V2Options *badgerV2.Options
+	V4Options *badgerV4.Options
 
 	// BadgerVersion sets the release version of badger to use
 	BadgerVersion int
 
-	// Prefix is an optional prefix to prepend to keys. Default: "".
-	Prefix string
+	Prefix     string
+	Dir        string
+	ValueDir   string
+	SyncWrites bool
 
 	BadgerLogger badgerLogger
 }

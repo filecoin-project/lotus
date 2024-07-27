@@ -29,6 +29,7 @@ type BadgerDB interface {
 	Flatten(workers int) error
 	Size() (lsm int64, vlog int64)
 	Copy(to BadgerDB) error
+	DefaultOptions(prefix string, readonly bool) Options
 }
 
 // BadgerStream defines the common interface for streaming data in Badger.

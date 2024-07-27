@@ -3,9 +3,12 @@ package versions
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime"
+	"strconv"
 
 	"github.com/dgraph-io/badger/v4"
+	badgerV4 "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
 )
@@ -118,6 +121,23 @@ func (b *BadgerV4) Copy(to BadgerDB) error {
 	}
 
 	return stream.Orchestrate(context.Background())
+}
+
+func (b *BadgerV4) DefaultOptions(path string, readonly bool) Options {
+	var opts Options
+	bopts := badgerV4.DefaultOptions(path)
+	bopts.ReadOnly = readonly
+
+	// Envvar LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM
+	if badgerNumCompactors, badgerNumCompactorsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM"); badgerNumCompactorsSet {
+		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
+			bopts.NumCompactors = numWorkers
+		}
+	}
+	opts.V4Options = &bopts
+	opts.Prefix = "/blocks/"
+	return opts
+
 }
 
 type BadgerV4WriteBatch struct {
