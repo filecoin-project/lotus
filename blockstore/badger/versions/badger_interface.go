@@ -27,15 +27,15 @@ type BadgerDB interface {
 	GetErrNoRewrite() error
 	NewWriteBatch() WriteBatch
 	Flatten(workers int) error
-	Size()  (lsm int64, vlog int64)
-
+	Size() (lsm int64, vlog int64)
+	Copy(to BadgerDB) error
 }
 
 // BadgerStream defines the common interface for streaming data in Badger.
 type BadgerStream interface {
 	SetNumGo(numGo int)
 	SetLogPrefix(prefix string)
-	Send(buf *Buffer) error
+
 	Orchestrate(ctx context.Context) error
 }
 
@@ -46,6 +46,21 @@ type Txn interface {
 	Delete(key []byte) error
 	Commit() error
 	Discard()
+	NewIterator(opts IteratorOptions) Iterator
+}
+
+type IteratorOptions struct {
+	PrefetchSize int
+	Prefix       []byte
+}
+
+type Iterator interface {
+	Next()
+	Rewind()
+	Seek(key []byte)
+	Close()
+	Item() Item
+	Valid() bool
 }
 
 // Item defines the common interface for items in a transaction.

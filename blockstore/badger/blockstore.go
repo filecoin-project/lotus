@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/pb"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -19,6 +18,7 @@ import (
 	"github.com/multiformats/go-base32"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/blockstore/badger/versions"
 	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -352,35 +352,8 @@ func symlink(path, linkTo string) error {
 
 // doCopy copies a badger blockstore to another, with an optional filter; if the filter
 // is not nil, then only cids that satisfy the filter will be copied.
-func (b *Blockstore) doCopy(from, to badger.BadgerDB) error {
-	workers := runtime.NumCPU() / 2
-	if workers < 2 {
-		workers = 2
-	}
-	if workers > 8 {
-		workers = 8
-	}
-
-	stream := from.NewStream()
-	stream.SetNumGo(workers)
-	stream.SetLogPrefix("doCopy")
-	stream.Send = func(list *pb.KVList) error {
-		batch := to.NewWriteBatch()
-		defer batch.Cancel()
-
-		for _, kv := range list.Kv {
-			if kv.Key == nil || kv.Value == nil {
-				continue
-			}
-			if err := batch.Set(kv.Key, kv.Value); err != nil {
-				return err
-			}
-		}
-
-		return batch.Flush()
-	}
-
-	return stream.Orchestrate(context.Background())
+func (b *Blockstore) doCopy(from versions.BadgerDB, to versions.BadgerDB) error {
+	return from.Copy(to)
 }
 
 func (b *Blockstore) deleteDB(path string) {

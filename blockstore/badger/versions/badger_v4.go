@@ -2,9 +2,12 @@ package versions
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
+	"github.com/dgraph-io/ristretto/z"
 )
 
 // BadgerV4 wraps the Badger v4 database to implement the BadgerDB interface.
@@ -73,7 +76,6 @@ func (b *BadgerV4) GetErrKeyNotFound() error {
 	return badger.ErrKeyNotFound
 }
 
-
 func (b *BadgerV4) GetErrNoRewrite() error {
 	return badger.ErrNoRewrite
 }
@@ -82,21 +84,45 @@ func (b *BadgerV4) NewWriteBatch() WriteBatch {
 	return &BadgerV4WriteBatch{b.DB.NewWriteBatch()}
 }
 
-func (b *BadgerV4) Flatten(workers int) error{
+func (b *BadgerV4) Flatten(workers int) error {
 	return b.DB.Flatten(workers)
 }
 
-func (b *BadgerV4) Size() (lsm int64, vlog int64){
-return b.DB.Size()
+func (b *BadgerV4) Size() (lsm int64, vlog int64) {
+	return b.DB.Size()
 }
 
+func (b *BadgerV4) Copy(to BadgerDB) error {
+	stream := b.DB.NewStream()
+	stream.LogPrefix = "doCopy"
+	stream.NumGo = clamp(runtime.NumCPU()/2, 2, 8)
+	stream.Send = func(buf *z.Buffer) error {
+		list, err := badger.BufferToKVList(buf)
+		if err != nil {
+			return fmt.Errorf("buffer to KV list conversion: %w", err)
+		}
 
+		batch := to.NewWriteBatch()
+		defer batch.Cancel()
+
+		for _, kv := range list.Kv {
+			if kv.Key == nil || kv.Value == nil {
+				continue
+			}
+			if err := batch.Set(kv.Key, kv.Value); err != nil {
+				return err
+			}
+		}
+
+		return batch.Flush()
+	}
+
+	return stream.Orchestrate(context.Background())
+}
 
 type BadgerV4WriteBatch struct {
 	*badger.WriteBatch
 }
-
-
 
 func (wb *BadgerV4WriteBatch) Set(key, val []byte) error {
 	return wb.WriteBatch.Set(key, val)
@@ -124,17 +150,6 @@ func (s *BadgerV4Stream) SetNumGo(numGo int) {
 
 func (s *BadgerV4Stream) SetLogPrefix(prefix string) {
 	s.LogPrefix = prefix
-}
-
-func (s *BadgerV4Stream) Send(buf *Buffer) error {
-	return nil
-	/*
-		list, err := badger.BufferToKVList(&buf.buf)
-		if err != nil {
-			return err
-		}
-		return s.Stream.Send(list)
-	*/
 }
 
 func (s *BadgerV4Stream) Orchestrate(ctx context.Context) error {
@@ -165,6 +180,24 @@ func (txn *BadgerV4Txn) Commit() error {
 func (txn *BadgerV4Txn) Discard() {
 	txn.Txn.Discard()
 }
+
+func (txn *BadgerV4Txn) NewIterator(opts IteratorOptions) Iterator {
+	badgerOpts := badger.DefaultIteratorOptions
+	badgerOpts.PrefetchSize = opts.PrefetchSize
+	badgerOpts.Prefix = opts.Prefix
+	return &BadgerV4Iterator{txn.Txn.NewIterator(badgerOpts)}
+}
+
+type BadgerV4Iterator struct {
+	*badger.Iterator
+}
+
+func (it *BadgerV4Iterator) Next()           { it.Iterator.Next() }
+func (it *BadgerV4Iterator) Rewind()         { it.Iterator.Rewind() }
+func (it *BadgerV4Iterator) Seek(key []byte) { it.Iterator.Seek(key) }
+func (it *BadgerV4Iterator) Close()          { it.Iterator.Close() }
+func (it *BadgerV4Iterator) Item() Item      { return &BadgerV4Item{it.Iterator.Item()} }
+func (it *BadgerV4Iterator) Valid() bool     { return it.Iterator.Valid() }
 
 type BadgerV4Item struct {
 	*badger.Item

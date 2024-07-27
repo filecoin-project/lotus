@@ -2,9 +2,10 @@ package versions
 
 import (
 	"context"
-	"fmt"
+	"runtime"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
 )
 
@@ -81,12 +82,35 @@ func (b *BadgerV2) NewWriteBatch() WriteBatch {
 	return &BadgerV2WriteBatch{b.DB.NewWriteBatch()}
 }
 
-func (b *BadgerV2) Flatten(workers int) error{
+func (b *BadgerV2) Flatten(workers int) error {
 	return b.DB.Flatten(workers)
 }
 
-func (b *BadgerV2) Size() (lsm int64, vlog int64){
-return b.DB.Size()
+func (b *BadgerV2) Size() (lsm int64, vlog int64) {
+	return b.DB.Size()
+}
+
+func (b *BadgerV2) Copy(to BadgerDB) error {
+	stream := b.DB.NewStream()
+	stream.LogPrefix = "doCopy"
+	stream.NumGo = clamp(runtime.NumCPU()/2, 2, 8)
+	stream.Send = func(list *pb.KVList) error {
+		batch := to.NewWriteBatch()
+		defer batch.Cancel()
+
+		for _, kv := range list.Kv {
+			if kv.Key == nil || kv.Value == nil {
+				continue
+			}
+			if err := batch.Set(kv.Key, kv.Value); err != nil {
+				return err
+			}
+		}
+
+		return batch.Flush()
+	}
+
+	return stream.Orchestrate(context.Background())
 }
 
 type BadgerV2WriteBatch struct {
@@ -121,12 +145,6 @@ func (s *BadgerV2Stream) SetLogPrefix(prefix string) {
 	s.LogPrefix = prefix
 }
 
-func (s *BadgerV2Stream) Send(buf *Buffer) error {
-	/* ??? */
-	fmt.Println("MIKE")
-	return nil
-}
-
 func (s *BadgerV2Stream) Orchestrate(ctx context.Context) error {
 	return s.Stream.Orchestrate(ctx)
 }
@@ -155,6 +173,24 @@ func (txn *BadgerV2Txn) Commit() error {
 func (txn *BadgerV2Txn) Discard() {
 	txn.Txn.Discard()
 }
+
+func (txn *BadgerV2Txn) NewIterator(opts IteratorOptions) Iterator {
+	badgerOpts := badger.DefaultIteratorOptions
+	badgerOpts.PrefetchSize = opts.PrefetchSize
+	badgerOpts.Prefix = opts.Prefix
+	return &BadgerV2Iterator{txn.Txn.NewIterator(badgerOpts)}
+}
+
+type BadgerV2Iterator struct {
+	*badger.Iterator
+}
+
+func (it *BadgerV2Iterator) Next()           { it.Iterator.Next() }
+func (it *BadgerV2Iterator) Rewind()         { it.Iterator.Rewind() }
+func (it *BadgerV2Iterator) Seek(key []byte) { it.Iterator.Seek(key) }
+func (it *BadgerV2Iterator) Close()          { it.Iterator.Close() }
+func (it *BadgerV2Iterator) Item() Item      { return &BadgerV2Item{it.Iterator.Item()} }
+func (it *BadgerV2Iterator) Valid() bool     { return it.Iterator.Valid() }
 
 type BadgerV2Item struct {
 	*badger.Item

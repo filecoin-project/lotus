@@ -23,7 +23,6 @@ type Options struct {
 	BadgerLogger badgerLogger
 }
 
-
 // badgerLogger is a local wrapper for go-log to make the interface
 // compatible with badger.Logger (namely, aliasing Warnf to Warningf)
 type badgerLogger struct {
@@ -66,4 +65,14 @@ func OpenBadgerDB(opts Options) (BadgerDB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func clamp(x, min, max int) int {
+	if x < min {
+		return min
+	}
+	if x > max {
+		return max
+	}
+	return x
 }
