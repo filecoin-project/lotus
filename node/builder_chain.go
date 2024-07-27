@@ -248,12 +248,14 @@ func ConfigFullNode(c interface{}) Option {
 			Override(new(wallet.Default), wallet.NilDefault),
 		),
 
-		// Actor event filtering support
-		Override(new(events.EventHelperAPI), From(new(modules.EventHelperAPI))),
-		Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Events)),
-
-		// in lite-mode Eth api is provided by gateway
+		// In lite-mode Eth and events API is provided by gateway
 		ApplyIf(isFullNode,
+			If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI,
+				// Actor event filtering support, only needed for either Eth RPC and ActorEvents API
+				Override(new(events.EventHelperAPI), From(new(modules.EventHelperAPI))),
+				Override(new(*filter.EventFilterManager), modules.EventFilterManager(cfg.Events)),
+			),
+
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(*full.EthEventHandler), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
@@ -263,9 +265,7 @@ func ConfigFullNode(c interface{}) Option {
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
 			),
-		),
 
-		ApplyIf(isFullNode,
 			If(cfg.Events.EnableActorEventsAPI,
 				Override(new(full.ActorEventAPI), modules.ActorEventHandler(cfg.Events)),
 			),
