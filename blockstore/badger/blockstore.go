@@ -78,7 +78,6 @@ type Blockstore struct {
 	moveState bsMoveState
 	rlock     int
 
-	//change this
 	db     badger.BadgerDB
 	dbNext badger.BadgerDB // when moving
 	opts   badger.Options
