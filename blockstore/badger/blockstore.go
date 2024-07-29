@@ -19,6 +19,7 @@ import (
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/multiformats/go-base32"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
@@ -656,18 +657,15 @@ func (b *Blockstore) Flush(context.Context) error {
 	b.lockDB()
 	defer b.unlockDB()
 
-	// fsync the new db first
+	var nextErr error
 	if b.dbNext != nil {
-		if err := b.dbNext.Sync(); err != nil {
-			return err
-		}
+		nextErr = b.dbNext.Sync()
 	}
 
-	if err := b.db.Sync(); err != nil {
-		return err
-	}
-
-	return nil
+	return multierr.Combine(
+		nextErr,
+		b.db.Sync(),
+	)
 }
 
 // Has implements Blockstore.Has.
