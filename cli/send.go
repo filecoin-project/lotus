@@ -141,9 +141,6 @@ var SendCmd = &cli.Command{
 			params.From = defaddr
 		}
 
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Sending message from: %s\n", params.From.String())
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Sending message to: %s\n", params.To.String())
-
 		if cctx.IsSet("params-hex") {
 			decparams, err := hex.DecodeString(cctx.String("params-hex"))
 			if err != nil {
@@ -152,7 +149,7 @@ var SendCmd = &cli.Command{
 			params.Params = decparams
 		}
 
-		if ethtypes.IsEthAddress(params.From) {
+		if ethtypes.IsEthAddress(params.From) || ethtypes.IsEthAddress(params.To) {
 			// Method numbers don't make sense from eth accounts.
 			if cctx.IsSet("method") {
 				return xerrors.Errorf("messages from f410f addresses may not specify a method number")
@@ -190,7 +187,8 @@ var SendCmd = &cli.Command{
 		} else {
 			params.Method = abi.MethodNum(cctx.Uint64("method"))
 		}
-		_, _ = fmt.Fprintf(cctx.App.Writer, "Using Method: %d\n", params.Method)
+
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Sending message from: %s\nSending message to: %s\nUsing Method: %d\n", params.From.String(), params.To.String(), params.Method)
 
 		if cctx.IsSet("gas-premium") {
 			gp, err := types.BigFromString(cctx.String("gas-premium"))
