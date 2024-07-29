@@ -280,7 +280,7 @@ The repo is the directory where all of a node's information is stored. The node 
 makes it easy to port to another location. This one-to-one relationship means we can speak
 of the node as the repo it is associated with, instead of the daemon process that runs from that repo.
 
-Only one daemon can run be running with an associated repo at a time.
+Only one daemon can run with an associated repo at a time.
 A process signals that it is running a node associated with a particular repo, by creating and acquiring
 a `repo.lock`.
 
