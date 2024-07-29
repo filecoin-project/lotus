@@ -12,6 +12,7 @@ import (
 func DefaultOptions(path string, readonly bool) Options {
 	var opts Options
 	opts.Prefix = "/blocks/"
+	opts.BadgerVersion = 2
 
 	//v2
 	bopts := badger.DefaultOptions(path)
