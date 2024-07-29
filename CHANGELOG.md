@@ -18,6 +18,7 @@
 ## New features
 
 - feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
+- feat: Add support for Badger version 4. The default remains Badger version 2 to ensure backward compatibility. ([filecoin-project/lotus#12316](https://github.com/filecoin-project/lotus/pull/12316)). Configuring `LOTUS_CHAINSTORE_BADGERVERSION` can configure lotus to use badger version 2 and 4.
 
 # v1.28.0 / 2024-07-23
 This is the MANDATORY Lotus v1.28.0 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇.
