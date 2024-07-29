@@ -1766,7 +1766,7 @@ func (e *EthEventHandler) EthNewFilter(ctx context.Context, filterSpec *ethtypes
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {
 		// Could not record in store, attempt to delete filter to clean up
-		err2 := e.TipSetFilterManager.Remove(ctx, f.ID())
+		err2 := e.EventFilterManager.Remove(ctx, f.ID())
 		if err2 != nil {
 			return ethtypes.EthFilterID{}, xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
 		}
