@@ -52,6 +52,7 @@ func OpenBadgerDB(opts Options) (BadgerDB, error) {
 		if err == nil {
 			db = BadgerDB(&BadgerV4{dbV4})
 		}
+	case 0:
 	case 2:
 		opts := badgerV2.DefaultOptions(prefix)
 		var dbV2 *badgerV2.DB
