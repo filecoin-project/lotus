@@ -2,6 +2,7 @@ package versions
 
 import (
 	"context"
+	"io"
 
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
@@ -30,6 +31,8 @@ type BadgerDB interface {
 	Size() (lsm int64, vlog int64)
 	Copy(to BadgerDB) error
 	DefaultOptions(prefix string, readonly bool) Options
+	Backup(w io.Writer, since uint64) (uint64, error)
+	Load(r io.Reader, maxPendingWrites int) error
 }
 
 // BadgerStream defines the common interface for streaming data in Badger.

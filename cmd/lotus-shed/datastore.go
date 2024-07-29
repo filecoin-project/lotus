@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/docker/go-units"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
@@ -321,8 +321,8 @@ var datastoreRewriteCmd = &cli.Command{
 		}
 
 		var (
-			from *badger.DB
-			to   *badger.DB
+			from badger.BadgerDB
+			to   badger.BadgerDB
 		)
 
 		// open the destination (to) store.
@@ -331,7 +331,8 @@ var datastoreRewriteCmd = &cli.Command{
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}
 		opts.SyncWrites = false
-		if to, err = badger.Open(opts.Options); err != nil {
+		if to, err = badger.OpenBadgerDB(opts); err != nil {
+
 			return xerrors.Errorf("opening 'to' badger store: %w", err)
 		}
 
@@ -340,7 +341,7 @@ var datastoreRewriteCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}
-		if from, err = badger.Open(opts.Options); err != nil {
+		if from, err = badger.OpenBadgerDB(opts); err != nil {
 			return xerrors.Errorf("opening 'from' datastore: %w", err)
 		}
 

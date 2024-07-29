@@ -2,6 +2,7 @@ package versions
 
 import (
 	"context"
+	"io"
 	"os"
 	"runtime"
 	"strconv"
@@ -138,6 +139,14 @@ func (b *BadgerV2) DefaultOptions(path string, readonly bool) Options {
 	}
 	opts.V2Options = &bopts
 	return opts
+}
+
+func (b *BadgerV2) Backup(w io.Writer, since uint64) (uint64, error) {
+	return b.DB.Backup(w, since)
+}
+
+func (b *BadgerV2) Load(r io.Reader, maxPendingWrites int) error {
+	return b.DB.Load(r, maxPendingWrites)
 }
 
 type BadgerV2WriteBatch struct {

@@ -22,20 +22,20 @@ type Options struct {
 	ValueDir   string
 	SyncWrites bool
 
-	BadgerLogger badgerLogger
+	Logger BadgerLogger
 }
 
-// badgerLogger is a local wrapper for go-log to make the interface
+// BadgerLogger is a local wrapper for go-log to make the interface
 // compatible with badger.Logger (namely, aliasing Warnf to Warningf)
-type badgerLogger struct {
+type BadgerLogger struct {
 	*zap.SugaredLogger // skips 1 caller to get useful line info, skipping over badger.Options.
 
-	skip2 *zap.SugaredLogger // skips 2 callers, just like above + this logger.
+	Skip2 *zap.SugaredLogger // skips 2 callers, just like above + this logger.
 }
 
 // Warningf is required by the badger logger APIs.
-func (b *badgerLogger) Warningf(format string, args ...interface{}) {
-	b.skip2.Warnf(format, args...)
+func (b *BadgerLogger) Warningf(format string, args ...interface{}) {
+	b.Skip2.Warnf(format, args...)
 }
 func OpenBadgerDB(opts Options) (BadgerDB, error) {
 	var db BadgerDB

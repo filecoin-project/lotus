@@ -12,9 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dustin/go-humanize"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/boxo/blockservice"
 	offline "github.com/ipfs/boxo/exchange/offline"
 	"github.com/ipfs/boxo/ipld/merkledag"
@@ -240,14 +240,14 @@ var exportRawCmd = &cli.Command{
 					return err
 				}
 
-				opts.Logger = &badgerLog{
+				opts.Logger = badger.BadgerLogger{
 					SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-					skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+					Skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 				}
 
 				log.Infow("open db")
 
-				db, err := badger.Open(opts.Options)
+				db, err := badger.OpenBadgerDB(opts)
 				if err != nil {
 					return fmt.Errorf("failed to open badger blockstore: %w", err)
 				}
@@ -258,8 +258,8 @@ var exportRawCmd = &cli.Command{
 				var wlk sync.Mutex
 
 				str := db.NewStream()
-				str.NumGo = 16
-				str.LogPrefix = "bstream"
+				str.SetNumGo(16)
+				str.SetLogPrefix("bstream")
 				str.Send = func(list *pb.KVList) (err error) {
 					defer func() {
 						if err != nil {
@@ -482,9 +482,9 @@ var _ blockstore.Blockstore = &rawCarb{}
 
 type badgerLog struct {
 	*zap.SugaredLogger
-	skip2 *zap.SugaredLogger
+	Skip2 *zap.SugaredLogger
 }
 
 func (b *badgerLog) Warningf(format string, args ...interface{}) {
-	b.skip2.Warnf(format, args...)
+	b.Skip2.Warnf(format, args...)
 }

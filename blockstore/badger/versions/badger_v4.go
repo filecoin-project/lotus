@@ -3,6 +3,7 @@ package versions
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strconv"
@@ -138,6 +139,14 @@ func (b *BadgerV4) DefaultOptions(path string, readonly bool) Options {
 	opts.Prefix = "/blocks/"
 	return opts
 
+}
+
+func (b *BadgerV4) Backup(w io.Writer, since uint64) (uint64, error) {
+	return b.DB.Backup(w, since)
+}
+
+func (b *BadgerV4) Load(r io.Reader, maxPendingWrites int) error {
+	return b.DB.Load(r, maxPendingWrites)
 }
 
 type BadgerV4WriteBatch struct {

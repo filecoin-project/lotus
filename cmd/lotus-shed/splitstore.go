@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/dgraph-io/badger/v2"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/urfave/cli/v2"
@@ -195,9 +195,9 @@ func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 	coldPath := filepath.Join(dataPath, "chain")
 	hotPath := filepath.Join(dataPath, "splitstore", "hot.badger")
 
-	blog := &badgerLogger{
+	blog := badger.BadgerLogger{
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+		Skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 	}
 
 	coldOpts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false)
@@ -213,13 +213,13 @@ func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 	}
 	hotOpts.Logger = blog
 
-	cold, err := badger.Open(coldOpts.Options)
+	cold, err := badger.OpenBadgerDB(coldOpts)
 	if err != nil {
 		return xerrors.Errorf("error opening coldstore: %w", err)
 	}
 	defer cold.Close() //nolint
 
-	hot, err := badger.Open(hotOpts.Options)
+	hot, err := badger.OpenBadgerDB(hotOpts)
 	if err != nil {
 		return xerrors.Errorf("error opening hotstore: %w", err)
 	}
@@ -278,7 +278,7 @@ func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 			err = cold.RunValueLogGC(0.0625)
 		}
 
-		if err != badger.ErrNoRewrite {
+		if err != cold.GetErrNoRewrite() {
 			return xerrors.Errorf("error garbage collecting coldstore: %w", err)
 		}
 	}
@@ -352,16 +352,6 @@ func deleteSplitstoreKeys(lr repo.LockedRepo) error {
 
 	return nil
 }
-
-// badger logging through go-log
-type badgerLogger struct {
-	*zap.SugaredLogger
-	skip2 *zap.SugaredLogger
-}
-
-func (b *badgerLogger) Warningf(format string, args ...interface{}) {}
-func (b *badgerLogger) Infof(format string, args ...interface{})    {}
-func (b *badgerLogger) Debugf(format string, args ...interface{})   {}
 
 var splitstoreCheckCmd = &cli.Command{
 	Name:        "check",
