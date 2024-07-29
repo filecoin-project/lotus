@@ -6,7 +6,7 @@ retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
 retract v1.20.2 // Wrongfully cherry picked PR, use v1.20.2+ instead.
 
-retract v1.28.0 // miss some bug fixes and featires, use v1.28.1+ instead
+retract v1.28.0 // misses some bug fixes and features, use v1.28.1+ instead
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors // provided via a git submodule
 
