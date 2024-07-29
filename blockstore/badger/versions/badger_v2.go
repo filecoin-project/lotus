@@ -11,6 +11,7 @@ import (
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
+	"golang.org/x/xerrors"
 )
 
 // BadgerV2 wraps the Badger v2 database to implement the BadgerDB interface.
@@ -60,10 +61,6 @@ func (b *BadgerV2) MaxBatchCount() int64 {
 
 func (b *BadgerV2) MaxBatchSize() int64 {
 	return b.DB.MaxBatchSize()
-}
-
-func (b *BadgerV2) Subscribe(ctx context.Context, cb func(kv *KVList) error, prefixes ...[]byte) error {
-	return b.DB.Subscribe(ctx, cb, prefixes...)
 }
 
 func (b *BadgerV2) BlockCacheMetrics() *ristretto.Metrics {
@@ -183,6 +180,26 @@ func (s *BadgerV2Stream) SetLogPrefix(prefix string) {
 
 func (s *BadgerV2Stream) Orchestrate(ctx context.Context) error {
 	return s.Stream.Orchestrate(ctx)
+}
+
+func (s *BadgerV2Stream) ForEach(ctx context.Context, fn func(key string, value string) error) error {
+	s.Send = func(list *pb.KVList) error {
+		for _, kv := range list.Kv {
+			if kv.Key == nil || kv.Value == nil {
+				continue
+			}
+			err := fn(string(kv.Key), string(kv.Value))
+			if err != nil {
+				return xerrors.Errorf("foreach function: %w", err)
+			}
+
+		}
+		return nil
+	}
+	if err := s.Orchestrate(ctx); err != nil {
+		return xerrors.Errorf("orchestrate stream: %w", err)
+	}
+	return nil
 }
 
 type BadgerV2Txn struct {

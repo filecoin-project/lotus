@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dustin/go-humanize"
 	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/boxo/blockservice"
@@ -260,48 +259,38 @@ var exportRawCmd = &cli.Command{
 				str := db.NewStream()
 				str.SetNumGo(16)
 				str.SetLogPrefix("bstream")
-				str.Send = func(list *pb.KVList) (err error) {
-					defer func() {
-						if err != nil {
-							log.Errorw("send error", "err", err)
-						}
-					}()
+				err = str.ForEach(ctx, func(key string, value string) error {
+					if !strings.HasPrefix(key, "/blocks/") {
+						log.Infow("no blocks prefix", "key", key)
+						return nil
+					}
 
-					for _, kv := range list.Kv {
-						if kv.Key == nil || kv.Value == nil {
-							continue
-						}
-						if !strings.HasPrefix(string(kv.Key), "/blocks/") {
-							log.Infow("no blocks prefix", "key", string(kv.Key))
-							continue
-						}
+					h, err := base32.RawStdEncoding.DecodeString(string(key[len("/blocks/"):]))
+					if err != nil {
+						return xerrors.Errorf("decode b32 ds key %x: %w", key, err)
+					}
 
-						h, err := base32.RawStdEncoding.DecodeString(string(kv.Key[len("/blocks/"):]))
-						if err != nil {
-							return xerrors.Errorf("decode b32 ds key %x: %w", kv.Key, err)
-						}
+					c := cid.NewCidV1(cid.Raw, h)
 
-						c := cid.NewCidV1(cid.Raw, h)
+					b, err := block.NewBlockWithCid([]byte(value), c)
+					if err != nil {
+						return xerrors.Errorf("readblk: %w", err)
+					}
 
-						b, err := block.NewBlockWithCid(kv.Value, c)
-						if err != nil {
-							return xerrors.Errorf("readblk: %w", err)
-						}
-
-						wlk.Lock()
-						err = consume(c, b)
-						wlk.Unlock()
-						if err != nil {
-							return xerrors.Errorf("consume stream block: %w", err)
-						}
+					wlk.Lock()
+					err = consume(c, b)
+					wlk.Unlock()
+					if err != nil {
+						return xerrors.Errorf("consume stream block: %w", err)
 					}
 
 					return nil
-				}
-
-				if err := str.Orchestrate(ctx); err != nil {
+				})
+				if err != nil {
+					log.Errorw("send error", "err", err)
 					return xerrors.Errorf("orchestrate stream: %w", err)
 				}
+
 			}
 		}
 

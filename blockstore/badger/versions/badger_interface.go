@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
 )
@@ -21,7 +20,6 @@ type BadgerDB interface {
 	Sync() error
 	MaxBatchCount() int64
 	MaxBatchSize() int64
-	Subscribe(ctx context.Context, cb func(kv *KVList) error, prefixes ...[]byte) error
 	BlockCacheMetrics() *ristretto.Metrics
 	IndexCacheMetrics() *ristretto.Metrics
 	GetErrKeyNotFound() error
@@ -41,6 +39,7 @@ type BadgerStream interface {
 	SetLogPrefix(prefix string)
 
 	Orchestrate(ctx context.Context) error
+	ForEach(ctx context.Context, fn func(key string, value string) error) error
 }
 
 // Txn defines the common interface for transactions in Badger.
@@ -76,9 +75,6 @@ type Item interface {
 	ValueSize() int64
 }
 
-// KVList is an alias for the KVList type from the Badger package.
-type KVList = pb.KVList
-
 type Buffer struct {
 	kvList KVList
 	buf    z.Buffer
@@ -89,4 +85,13 @@ type WriteBatch interface {
 	Delete(key []byte) error
 	Flush() error
 	Cancel()
+}
+
+type KVList interface {
+	GetKV() []*KV
+}
+
+type KV struct {
+	Key   []byte
+	Value []byte
 }

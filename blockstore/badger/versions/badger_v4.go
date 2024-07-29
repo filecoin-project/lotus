@@ -12,6 +12,7 @@ import (
 	badgerV4 "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
+	"golang.org/x/xerrors"
 )
 
 // BadgerV4 wraps the Badger v4 database to implement the BadgerDB interface.
@@ -61,11 +62,6 @@ func (b *BadgerV4) MaxBatchCount() int64 {
 
 func (b *BadgerV4) MaxBatchSize() int64 {
 	return b.DB.MaxBatchSize()
-}
-
-func (b *BadgerV4) Subscribe(ctx context.Context, cb func(kv *KVList) error, prefixes ...[]byte) error {
-	//todo
-	return nil
 }
 
 func (b *BadgerV4) BlockCacheMetrics() *ristretto.Metrics {
@@ -179,6 +175,29 @@ func (s *BadgerV4Stream) SetNumGo(numGo int) {
 
 func (s *BadgerV4Stream) SetLogPrefix(prefix string) {
 	s.LogPrefix = prefix
+}
+func (s *BadgerV4Stream) ForEach(ctx context.Context, fn func(key string, value string) error) error {
+	s.Send = func(buf *z.Buffer) error {
+		list, err := badger.BufferToKVList(buf)
+		if err != nil {
+			return fmt.Errorf("buffer to KV list conversion: %w", err)
+		}
+		for _, kv := range list.Kv {
+			if kv.Key == nil || kv.Value == nil {
+				continue
+			}
+			err := fn(string(kv.Key), string(kv.Value))
+			if err != nil {
+				return xerrors.Errorf("foreach function: %w", err)
+			}
+
+		}
+		return nil
+	}
+	if err := s.Orchestrate(ctx); err != nil {
+		return xerrors.Errorf("orchestrate stream: %w", err)
+	}
+	return nil
 }
 
 func (s *BadgerV4Stream) Orchestrate(ctx context.Context) error {
