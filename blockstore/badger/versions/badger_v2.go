@@ -116,7 +116,6 @@ func (b *BadgerV2) Copy(to BadgerDB) error {
 
 func (b *BadgerV2) DefaultOptions(path string, readonly bool) Options {
 	var opts Options
-	opts.Prefix = "/blocks/"
 
 	bopts := badger.DefaultOptions(path)
 	bopts.DetectConflicts = false
@@ -134,7 +133,7 @@ func (b *BadgerV2) DefaultOptions(path string, readonly bool) Options {
 			bopts.NumCompactors = numWorkers
 		}
 	}
-	opts.V2Options = &bopts
+	opts.V2Options = bopts
 	return opts
 }
 

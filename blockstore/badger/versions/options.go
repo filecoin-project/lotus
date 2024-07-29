@@ -31,7 +31,7 @@ func DefaultOptions(path string, readonly bool) Options {
 			bopts.NumCompactors = numWorkers
 		}
 	}
-	opts.V2Options = &bopts
+	opts.V2Options = bopts
 
 	//v4
 
@@ -44,7 +44,7 @@ func DefaultOptions(path string, readonly bool) Options {
 			boptsv4.NumCompactors = numWorkers
 		}
 	}
-	opts.V4Options = &boptsv4
+	opts.V4Options = boptsv4
 
 	return opts
 }

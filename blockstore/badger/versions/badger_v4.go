@@ -131,8 +131,7 @@ func (b *BadgerV4) DefaultOptions(path string, readonly bool) Options {
 			bopts.NumCompactors = numWorkers
 		}
 	}
-	opts.V4Options = &bopts
-	opts.Prefix = "/blocks/"
+	opts.V4Options = bopts
 	return opts
 
 }
