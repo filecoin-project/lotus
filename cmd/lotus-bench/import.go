@@ -16,10 +16,13 @@ import (
 	"time"
 
 	ocprom "contrib.go.opencensus.io/exporter/prometheus"
-	bdg "github.com/dgraph-io/badger/v2"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger2"
+
+	badgerIpfs "github.com/ipfs/go-ds-badger2"
+
 	measure "github.com/ipfs/go-ds-measure"
 	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
@@ -32,7 +35,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -174,7 +176,7 @@ var importBenchCmd = &cli.Command{
 		switch {
 		case cctx.Bool("use-native-badger"):
 			log.Info("using native badger")
-			var opts badgerbs.Options
+			var opts badger.Options
 			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false); err != nil {
 				return err
 			}
@@ -183,14 +185,12 @@ var importBenchCmd = &cli.Command{
 
 		default: // legacy badger via datastore.
 			log.Info("using legacy badger")
-			bdgOpt := badger.DefaultOptions
-			bdgOpt.GcInterval = 0
-			bdgOpt.Options = bdg.DefaultOptions("")
-			bdgOpt.Options.SyncWrites = false
-			bdgOpt.Options.Truncate = true
-			bdgOpt.Options.DetectConflicts = false
+			var opts badger.Options
+			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false); err != nil {
+				return err
+			}
 
-			ds, err = badger.NewDatastore(tdir, &bdgOpt)
+			bs, err = badgerbs.Open(opts)
 		}
 
 		if err != nil {
@@ -209,7 +209,7 @@ var importBenchCmd = &cli.Command{
 
 		var verifier storiface.Verifier = ffiwrapper.ProofVerifier
 		if cctx.IsSet("syscall-cache") {
-			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &badger.DefaultOptions)
+			scds, err := badgerIpfs.NewDatastore(cctx.String("syscall-cache"), &badgerIpfs.DefaultOptions)
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
 			}

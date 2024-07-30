@@ -12,6 +12,7 @@ import (
 	badgerV4 "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
@@ -62,10 +63,6 @@ func (b *BadgerV4) MaxBatchCount() int64 {
 
 func (b *BadgerV4) MaxBatchSize() int64 {
 	return b.DB.MaxBatchSize()
-}
-
-func (b *BadgerV4) BlockCacheMetrics() *ristretto.Metrics {
-	return b.DB.BlockCacheMetrics()
 }
 
 func (b *BadgerV4) IndexCacheMetrics() *ristretto.Metrics {
@@ -136,12 +133,16 @@ func (b *BadgerV4) DefaultOptions(path string, readonly bool) Options {
 
 }
 
-func (b *BadgerV4) Backup(w io.Writer, since uint64) (uint64, error) {
-	return b.DB.Backup(w, since)
-}
-
 func (b *BadgerV4) Load(r io.Reader, maxPendingWrites int) error {
 	return b.DB.Load(r, maxPendingWrites)
+}
+
+func (b *BadgerV4) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	return nil, fmt.Errorf("AllKeysChan is not implemented")
+}
+
+func (b *BadgerV4) DeleteBlock(context.Context, cid.Cid) error {
+	return fmt.Errorf("DeleteBlock is not implemented")
 }
 
 type BadgerV4WriteBatch struct {

@@ -2,6 +2,7 @@ package versions
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -11,6 +12,7 @@ import (
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
@@ -58,13 +60,8 @@ func (b *BadgerV2) Sync() error {
 func (b *BadgerV2) MaxBatchCount() int64 {
 	return b.DB.MaxBatchCount()
 }
-
 func (b *BadgerV2) MaxBatchSize() int64 {
 	return b.DB.MaxBatchSize()
-}
-
-func (b *BadgerV2) BlockCacheMetrics() *ristretto.Metrics {
-	return b.DB.BlockCacheMetrics()
 }
 
 func (b *BadgerV2) IndexCacheMetrics() *ristretto.Metrics {
@@ -137,12 +134,16 @@ func (b *BadgerV2) DefaultOptions(path string, readonly bool) Options {
 	return opts
 }
 
-func (b *BadgerV2) Backup(w io.Writer, since uint64) (uint64, error) {
-	return b.DB.Backup(w, since)
-}
-
 func (b *BadgerV2) Load(r io.Reader, maxPendingWrites int) error {
 	return b.DB.Load(r, maxPendingWrites)
+}
+
+func (b *BadgerV2) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	return nil, fmt.Errorf("AllKeysChan is not implemented")
+}
+
+func (b *BadgerV2) DeleteBlock(context.Context, cid.Cid) error {
+	return fmt.Errorf("DeleteBlock is not implemented")
 }
 
 type BadgerV2WriteBatch struct {

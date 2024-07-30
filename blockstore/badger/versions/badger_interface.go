@@ -6,6 +6,7 @@ import (
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
+	"github.com/ipfs/go-cid"
 )
 
 // BadgerDB defines the common interface for both v2 and v4 versions of Badger.
@@ -20,7 +21,6 @@ type BadgerDB interface {
 	Sync() error
 	MaxBatchCount() int64
 	MaxBatchSize() int64
-	BlockCacheMetrics() *ristretto.Metrics
 	IndexCacheMetrics() *ristretto.Metrics
 	GetErrKeyNotFound() error
 	GetErrNoRewrite() error
@@ -29,8 +29,9 @@ type BadgerDB interface {
 	Size() (lsm int64, vlog int64)
 	Copy(to BadgerDB) error
 	DefaultOptions(prefix string, readonly bool) Options
-	Backup(w io.Writer, since uint64) (uint64, error)
 	Load(r io.Reader, maxPendingWrites int) error
+	AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
+	DeleteBlock(context.Context, cid.Cid) error
 }
 
 // BadgerStream defines the common interface for streaming data in Badger.
