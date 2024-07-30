@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/dgraph-io/ristretto"
-	"github.com/dgraph-io/ristretto/z"
 	"github.com/ipfs/go-cid"
 )
 
@@ -75,11 +74,6 @@ type Item interface {
 	Version() uint64
 	ValueCopy(dst []byte) ([]byte, error)
 	ValueSize() int64
-}
-
-type Buffer struct {
-	kvList KVList
-	buf    z.Buffer
 }
 
 type WriteBatch interface {

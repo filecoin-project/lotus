@@ -468,12 +468,3 @@ func (rc *rawCarb) writeCar(ctx context.Context, path string, root cid.Cid) erro
 }
 
 var _ blockstore.Blockstore = &rawCarb{}
-
-type badgerLog struct {
-	*zap.SugaredLogger
-	Skip2 *zap.SugaredLogger
-}
-
-func (b *badgerLog) Warningf(format string, args ...interface{}) {
-	b.Skip2.Warnf(format, args...)
-}
