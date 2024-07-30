@@ -1,4 +1,4 @@
-package proofsffi_test
+package proofs_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
+	"github.com/filecoin-project/lotus/chain/proofs"
 )
 
 func TestGenerateUnsealedCID(t *testing.T) {
@@ -47,10 +47,10 @@ func TestGenerateUnsealedCID(t *testing.T) {
 				},
 			}
 
-			expectCid, err := proofsffi.GenerateUnsealedCID(pt, sectorPi)
+			expectCid, err := proofs.GenerateUnsealedCID(pt, sectorPi)
 			require.NoError(t, err)
 
-			actualCid, err := proofsffi.GenerateUnsealedCID(pt, upi)
+			actualCid, err := proofs.GenerateUnsealedCID(pt, upi)
 			require.NoError(t, err)
 
 			require.Equal(t, expectCid, actualCid)

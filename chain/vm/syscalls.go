@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/proofs"
-	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -70,7 +69,7 @@ type syscallShim struct {
 }
 
 func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	commd, err := proofsffi.GenerateUnsealedCID(st, pieces)
+	commd, err := proofs.GenerateUnsealedCID(st, pieces)
 	if err != nil {
 		log.Errorf("generate data commitment failed: %s", err)
 		return cid.Undef, err

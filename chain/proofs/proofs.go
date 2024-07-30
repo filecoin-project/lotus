@@ -1,11 +1,11 @@
-package proofsffi
+package proofs
 
 import (
 	"math/bits"
 
 	"github.com/ipfs/go-cid"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-commp-utils/nonffi"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -38,21 +38,21 @@ func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceIn
 		}
 
 		for _, p := range pieces {
-			ps, _ := GetRequiredPadding(sum, p.Size)
+			ps, _ := getRequiredPadding(sum, p.Size)
 			padTo(ps)
 
 			allPieces = append(allPieces, p)
 			sum += p.Size
 		}
 
-		ps, _ := GetRequiredPadding(sum, pssize)
+		ps, _ := getRequiredPadding(sum, pssize)
 		padTo(ps)
 	}
 
-	return ffi.GenerateUnsealedCID(proofType, allPieces)
+	return nonffi.GenerateUnsealedCID(proofType, allPieces)
 }
 
-func GetRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {
+func getRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {
 	padPieces := make([]abi.PaddedPieceSize, 0)
 	toFill := uint64(-oldLength % newPieceLength)
 
