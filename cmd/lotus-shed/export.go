@@ -265,7 +265,7 @@ var exportRawCmd = &cli.Command{
 						return nil
 					}
 
-					h, err := base32.RawStdEncoding.DecodeString(string(key[len("/blocks/"):]))
+					h, err := base32.RawStdEncoding.DecodeString(key[len("/blocks/"):])
 					if err != nil {
 						return xerrors.Errorf("decode b32 ds key %x: %w", key, err)
 					}
