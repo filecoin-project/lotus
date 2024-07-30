@@ -54,6 +54,8 @@ func TestStorageKey(t *testing.T) {
 
 	// nil slice; let StorageKey allocate for us.
 	k1 := bbs.StorageKey(nil, cid1)
+	fmt.Println(cid1)
+	fmt.Println(k1)
 	require.Len(t, k1, 55)
 	require.True(t, cap(k1) == len(k1))
 
