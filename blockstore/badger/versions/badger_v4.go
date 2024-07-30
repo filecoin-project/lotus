@@ -145,6 +145,10 @@ func (b *BadgerV4) DeleteBlock(context.Context, cid.Cid) error {
 	return fmt.Errorf("DeleteBlock is not implemented")
 }
 
+func (b *BadgerV4) Backup(w io.Writer, since uint64) (uint64, error) {
+	return b.DB.Backup(w, since)
+}
+
 type BadgerV4WriteBatch struct {
 	*badger.WriteBatch
 }

@@ -32,6 +32,7 @@ type BadgerDB interface {
 	Load(r io.Reader, maxPendingWrites int) error
 	AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
 	DeleteBlock(context.Context, cid.Cid) error
+	Backup(w io.Writer, since uint64) (uint64, error)
 }
 
 // BadgerStream defines the common interface for streaming data in Badger.
