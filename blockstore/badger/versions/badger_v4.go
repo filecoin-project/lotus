@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/dgraph-io/badger/v4"
+	badger "github.com/dgraph-io/badger/v4"
 	badgerV4 "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
@@ -170,14 +170,14 @@ type BadgerV4Stream struct {
 }
 
 func (s *BadgerV4Stream) SetNumGo(numGo int) {
-	s.NumGo = numGo
+	s.Stream.NumGo = numGo
 }
 
 func (s *BadgerV4Stream) SetLogPrefix(prefix string) {
-	s.LogPrefix = prefix
+	s.Stream.LogPrefix = prefix
 }
 func (s *BadgerV4Stream) ForEach(ctx context.Context, fn func(key string, value string) error) error {
-	s.Send = func(buf *z.Buffer) error {
+	s.Stream.Send = func(buf *z.Buffer) error {
 		list, err := badger.BufferToKVList(buf)
 		if err != nil {
 			return fmt.Errorf("buffer to KV list conversion: %w", err)

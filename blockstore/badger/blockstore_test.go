@@ -16,18 +16,19 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	versions "github.com/filecoin-project/lotus/blockstore/badger/versions"
 )
 
 func TestBadgerBlockstore(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
 	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
 	(&Suite{
-		NewBlockstore:  newBlockstore(DefaultOptions),
-		OpenBlockstore: openBlockstore(DefaultOptions),
+		NewBlockstore:  newBlockstore(versions.DefaultOptions),
+		OpenBlockstore: openBlockstore(versions.DefaultOptions),
 	}).RunTests(t, "non_prefixed")
 
-	prefixed := func(path string) Options {
-		opts := DefaultOptions(path)
+	prefixed := func(path string) versions.Options {
+		opts := versions.DefaultOptions(path)
 		opts.Prefix = "/prefixed/"
 		return opts
 	}
@@ -41,7 +42,7 @@ func TestBadgerBlockstore(t *testing.T) {
 func TestStorageKey(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
 	//stm: @SPLITSTORE_BADGER_STORAGE_KEY_001
-	bs, _ := newBlockstore(DefaultOptions)(t)
+	bs, _ := newBlockstore(versions.DefaultOptions)(t)
 	bbs := bs.(*Blockstore)
 	defer bbs.Close() //nolint:errcheck
 
@@ -72,7 +73,7 @@ func TestStorageKey(t *testing.T) {
 	require.Equal(t, k3, k2)
 }
 
-func newBlockstore(optsSupplier func(path string) Options) func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
+func newBlockstore(optsSupplier func(path string) versions.Options) func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
 	return func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
 		tb.Helper()
 
@@ -87,14 +88,14 @@ func newBlockstore(optsSupplier func(path string) Options) func(tb testing.TB) (
 	}
 }
 
-func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
+func openBlockstore(optsSupplier func(path string) versions.Options) func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
 	return func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
 		tb.Helper()
 		return Open(optsSupplier(path))
 	}
 }
 
-func testMove(t *testing.T, optsF func(string) Options) {
+func testMove(t *testing.T, optsF func(string) versions.Options) {
 	ctx := context.Background()
 	basePath := t.TempDir()
 
@@ -257,15 +258,15 @@ func TestMoveNoPrefix(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
 	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
 	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
-	testMove(t, DefaultOptions)
+	testMove(t, versions.DefaultOptions)
 }
 
 func TestMoveWithPrefix(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
 	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
 	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
-	testMove(t, func(path string) Options {
-		opts := DefaultOptions(path)
+	testMove(t, func(path string) versions.Options {
+		opts := versions.DefaultOptions(path)
 		opts.Prefix = "/prefixed/"
 		return opts
 	})

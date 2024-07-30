@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/dgraph-io/badger/v2"
+	badger "github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
@@ -171,11 +171,11 @@ type BadgerV2Stream struct {
 }
 
 func (s *BadgerV2Stream) SetNumGo(numGo int) {
-	s.NumGo = numGo
+	s.Stream.NumGo = numGo
 }
 
 func (s *BadgerV2Stream) SetLogPrefix(prefix string) {
-	s.LogPrefix = prefix
+	s.Stream.LogPrefix = prefix
 }
 
 func (s *BadgerV2Stream) Orchestrate(ctx context.Context) error {
@@ -183,7 +183,7 @@ func (s *BadgerV2Stream) Orchestrate(ctx context.Context) error {
 }
 
 func (s *BadgerV2Stream) ForEach(ctx context.Context, fn func(key string, value string) error) error {
-	s.Send = func(list *pb.KVList) error {
+	s.Stream.Send = func(list *pb.KVList) error {
 		for _, kv := range list.Kv {
 			if kv.Key == nil || kv.Value == nil {
 				continue

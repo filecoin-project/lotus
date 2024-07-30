@@ -4,7 +4,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/dgraph-io/badger/v2"
+	badgerV2 "github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	badgerV4 "github.com/dgraph-io/badger/v4"
 )
@@ -15,7 +15,7 @@ func DefaultOptions(path string, readonly bool) Options {
 	opts.BadgerVersion = 2
 
 	//v2
-	bopts := badger.DefaultOptions(path)
+	bopts := badgerV2.DefaultOptions(path)
 	bopts.DetectConflicts = false
 	bopts.CompactL0OnClose = true
 	bopts.Truncate = true
