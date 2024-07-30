@@ -726,9 +726,39 @@ type FullNode interface {
 	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) //perm:read
 	// EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) //perm:read
+
 	// FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress
-	FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error)                    //perm:read
-	FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddress address.Address, blkParam string) (ethtypes.EthAddress, error) //perm:read
+	//
+	// Deprecated: This method is deprecated in favor of `FilecoinAddressToEthAddressV1`.
+	// `FilecoinAddressToEthAddressV1` provides more comprehensive support for all Filecoin address types ("f0", "f1", "f2","f3" and "f4" addresses).
+	FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) //perm:read
+
+	// `FilecoinAddressToEthAddressV1` is the recommended API for converting any Filecoin address to an EthAddress.
+	//
+	// This method supports all Filecoin address types:
+	// - "f0" and "f4" addresses: Converted directly, similar to the existing `FilecoinAddressToEthAddress` API.
+	// - "f1", "f2", and "f3" addresses: First converted to their corresponding "f0" ID address, then to an EthAddress.
+	//
+	// Requirements:
+	// - For "f1", "f2", and "f3" addresses, they must be instantiated on-chain, as "f0" ID addresses are only assigned to actors when they are created on-chain.
+	//
+	// Note on chain reorganizations:
+	// "f0" ID addresses are not permanent and can be affected by chain reorganizations. To account for this,
+	// the API includes a `blkNum` parameter, which specifies the block number that is used to determine the tipset state to use for converting an
+	// "f1"/"f2"/"f3" address to an "f0" address. This parameter functions similarly to the `blkNum` parameter in the existing `EthGetBlockByNumber` API.
+	// See https://docs.alchemy.com/reference/eth-getblockbynumber for more details.
+	//
+	// Parameters:
+	// - ctx: The context for the API call.
+	// - filecoinAddress: The Filecoin address to convert.
+	// - blkNum: The block number or state for the conversion. Defaults to "finalized" for maximum safety.
+	//   Possible values: "pending", "latest", "finalized", "safe", or a specific block number.
+	//
+	// Returns:
+	// - The corresponding EthAddress.
+	// - An error if the conversion fails.
+	FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddress address.Address, blkNum string) (ethtypes.EthAddress, error) //perm:read
+
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet

@@ -6923,7 +6923,7 @@
         {
             "name": "Filecoin.FilecoinAddressToEthAddress",
             "description": "```go\nfunc (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddress == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddress(p0, p1)\n}\n```",
-            "summary": "FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress\n",
+            "summary": "FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress\n\nDeprecated: This method is deprecated in favor of `FilecoinAddressToEthAddressV1`.\n`FilecoinAddressToEthAddressV1` provides more comprehensive support for all Filecoin address types (\"f0\", \"f1\", \"f2\",\"f3\" and \"f4\" addresses).\n",
             "paramStructure": "by-position",
             "params": [
                 {
@@ -6978,7 +6978,7 @@
         {
             "name": "Filecoin.FilecoinAddressToEthAddressV1",
             "description": "```go\nfunc (s *FullNodeStruct) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddressV1 == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddressV1(p0, p1, p2)\n}\n```",
-            "summary": "",
+            "summary": "`FilecoinAddressToEthAddressV1` is the recommended API for converting any Filecoin address to an EthAddress.\n\nThis method supports all Filecoin address types:\n- \"f0\" and \"f4\" addresses: Converted directly, similar to the existing `FilecoinAddressToEthAddress` API.\n- \"f1\", \"f2\", and \"f3\" addresses: First converted to their corresponding \"f0\" ID address, then to an EthAddress.\n\nRequirements:\n- For \"f1\", \"f2\", and \"f3\" addresses, they must be instantiated on-chain, as \"f0\" ID addresses are only assigned to actors when they are created on-chain.\n\nNote on chain reorganizations:\n\"f0\" ID addresses are not permanent and can be affected by chain reorganizations. To account for this,\nthe API includes a `blkNum` parameter, which specifies the block number that is used to determine the tipset state to use for converting an\n\"f1\"/\"f2\"/\"f3\" address to an \"f0\" address. This parameter functions similarly to the `blkNum` parameter in the existing `EthGetBlockByNumber` API.\nSee https://docs.alchemy.com/reference/eth-getblockbynumber for more details.\n\nParameters:\n- ctx: The context for the API call.\n- filecoinAddress: The Filecoin address to convert.\n- blkNum: The block number or state for the conversion. Defaults to \"finalized\" for maximum safety.\n  Possible values: \"pending\", \"latest\", \"finalized\", \"safe\", or a specific block number.\n\nReturns:\n- The corresponding EthAddress.\n- An error if the conversion fails.\n",
             "paramStructure": "by-position",
             "params": [
                 {
