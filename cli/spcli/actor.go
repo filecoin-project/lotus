@@ -124,12 +124,7 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				return err
 			}
 
-			// if all the deals were successful
-			if settlementReturn.Results.SuccessCount == uint64(len(dealIDs)) {
-				fmt.Printf("Successfully settled %d deals\n", settlementReturn.Results.SuccessCount)
-			} else {
-				fmt.Printf("Settled %d out of %d deals\n", len(dealIDs)-len(settlementReturn.Results.FailCount), len(dealIDs))
-			}
+			fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.SuccessCount, len(dealIDs))
 
 			var (
 				totalPayment        = big.Zero()
