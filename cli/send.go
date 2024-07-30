@@ -131,9 +131,7 @@ var SendCmd = &cli.Command{
 			}
 			fmt.Println("f4 addr: ", faddr)
 			params.From = faddr
-		}
-
-		if params.From == address.Undef {
+		} else {
 			defaddr, err := srv.FullNodeAPI().WalletDefaultAddress(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get default address: %w", err)
