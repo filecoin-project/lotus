@@ -52,7 +52,7 @@ Use `MpoolPushMessage` instead.
 ### MpoolSub
 
 Returns a channel to receive notifications about updates to the message pool.
-Note that the context *must* be canceled when the caller is done with the subscription.
+Note that the context *must* be cancelled when the caller is done with the subscription.
 
 ### MpoolGetConfig
 
