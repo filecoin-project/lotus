@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/dustin/go-humanize"
-	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/boxo/blockservice"
 	offline "github.com/ipfs/boxo/exchange/offline"
 	"github.com/ipfs/boxo/ipld/merkledag"
@@ -30,6 +29,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/filecoin-project/lotus/chain/store"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"

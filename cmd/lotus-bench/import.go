@@ -16,13 +16,9 @@ import (
 	"time"
 
 	ocprom "contrib.go.opencensus.io/exporter/prometheus"
-	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
-	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-
 	badgerIpfs "github.com/ipfs/go-ds-badger2"
-
 	measure "github.com/ipfs/go-ds-measure"
 	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
@@ -35,6 +31,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"

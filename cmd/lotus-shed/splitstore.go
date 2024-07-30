@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/urfave/cli/v2"
@@ -18,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"

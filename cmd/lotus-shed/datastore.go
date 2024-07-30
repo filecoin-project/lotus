@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/docker/go-units"
-	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
@@ -20,6 +19,7 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/repo"
