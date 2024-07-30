@@ -36,6 +36,10 @@ func (gw *Node) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress
 	return gw.target.FilecoinAddressToEthAddress(ctx, filecoinAddress)
 }
 
+func (gw *Node) FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddress address.Address, blkParam string) (ethtypes.EthAddress, error) {
+	return gw.target.FilecoinAddressToEthAddressV1(ctx, filecoinAddress, blkParam)
+}
+
 func (gw *Node) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return 0, err

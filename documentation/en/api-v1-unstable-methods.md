@@ -89,6 +89,7 @@
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
+  * [FilecoinAddressToEthAddressV1](#FilecoinAddressToEthAddressV1)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2440,6 +2441,21 @@ Inputs:
 ```json
 [
   "f01234"
+]
+```
+
+Response: `"0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"`
+
+### FilecoinAddressToEthAddressV1
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  "string value"
 ]
 ```
 

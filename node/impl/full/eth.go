@@ -162,7 +162,8 @@ var _ EthEventAPI = (*EthEventHandler)(nil)
 type EthAPI struct {
 	fx.In
 
-	Chain *store.ChainStore
+	Chain        *store.ChainStore
+	StateManager *stmgr.StateManager
 
 	EthModuleAPI
 	EthEventAPI
@@ -205,6 +206,48 @@ func (a *EthAPI) EthAddressToFilecoinAddress(ctx context.Context, ethAddress eth
 
 func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) {
 	return ethtypes.EthAddressFromFilecoinAddress(filecoinAddress)
+}
+
+func (a *EthAPI) FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddress address.Address, blkParam string) (ethtypes.EthAddress, error) {
+	// If the address is an "f0" or "f4" address, `EthAddressFromFilecoinAddress` will return the corresponding Ethereum address right away.
+	if eaddr, err := ethtypes.EthAddressFromFilecoinAddress(filecoinAddress); err == nil {
+		return eaddr, nil
+	} else if err != ethtypes.ErrInvalidAddress {
+		return ethtypes.EthAddress{}, xerrors.Errorf("error converting filecoin address to eth address: %w", err)
+	}
+
+	// We should only be dealing with "f1"/"f2"/"f3" addresses from here-on.
+	switch filecoinAddress.Protocol() {
+	case address.SECP256K1, address.Actor, address.BLS:
+		// Valid protocols
+	default:
+		return ethtypes.EthAddress{}, xerrors.Errorf("invalid filecoin address protocol: %s", filecoinAddress.String())
+	}
+
+	// Set default block parameter to "finalized" if not provided
+	if blkParam == "" || len(blkParam) == 0 {
+		blkParam = "finalized"
+	}
+
+	// Get the tipset for the specified block
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
+	if err != nil {
+		return ethtypes.EthAddress{}, xerrors.Errorf("failed to get tipset: %w", err)
+	}
+
+	// Lookup the ID address
+	idAddr, err := a.StateManager.LookupIDAddress(ctx, filecoinAddress, ts)
+	if err != nil {
+		return ethtypes.EthAddress{}, xerrors.Errorf("failed to lookup ID address: %w", err)
+	}
+
+	// Convert the ID address to Ethereum format
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(idAddr)
+	if err != nil {
+		return ethtypes.EthAddress{}, xerrors.Errorf("failed to convert filecoin ID address to eth address: %w", err)
+	}
+
+	return ethAddr, nil
 }
 
 func (a *EthModule) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, error) {

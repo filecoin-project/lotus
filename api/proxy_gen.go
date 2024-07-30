@@ -265,6 +265,8 @@ type FullNodeMethods struct {
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
+	FilecoinAddressToEthAddressV1 func(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) `perm:"read"`
+
 	GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 	GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) `perm:"read"`
@@ -698,6 +700,8 @@ type GatewayMethods struct {
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) ``
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) ``
+
+	FilecoinAddressToEthAddressV1 func(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) ``
 
 	GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
 
@@ -2153,6 +2157,17 @@ func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 addr
 }
 
 func (s *FullNodeStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	return *new(ethtypes.EthAddress), ErrNotSupported
+}
+
+func (s *FullNodeStruct) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
+	if s.Internal.FilecoinAddressToEthAddressV1 == nil {
+		return *new(ethtypes.EthAddress), ErrNotSupported
+	}
+	return s.Internal.FilecoinAddressToEthAddressV1(p0, p1, p2)
+}
+
+func (s *FullNodeStub) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
 	return *new(ethtypes.EthAddress), ErrNotSupported
 }
 
@@ -4474,6 +4489,17 @@ func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 addre
 }
 
 func (s *GatewayStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	return *new(ethtypes.EthAddress), ErrNotSupported
+}
+
+func (s *GatewayStruct) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
+	if s.Internal.FilecoinAddressToEthAddressV1 == nil {
+		return *new(ethtypes.EthAddress), ErrNotSupported
+	}
+	return s.Internal.FilecoinAddressToEthAddressV1(p0, p1, p2)
+}
+
+func (s *GatewayStub) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
 	return *new(ethtypes.EthAddress), ErrNotSupported
 }
 
