@@ -263,7 +263,7 @@ type FullNodeMethods struct {
 
 	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
-	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
+	FilecoinAddressToEthAddress func(p0 context.Context, p1 ethtypes.StateAddressSpec) (ethtypes.EthAddress, error) `perm:"read"`
 
 	GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -2145,14 +2145,14 @@ func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address, p2 
 	return false, ErrNotSupported
 }
 
-func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 ethtypes.StateAddressSpec) (ethtypes.EthAddress, error) {
 	if s.Internal.FilecoinAddressToEthAddress == nil {
 		return *new(ethtypes.EthAddress), ErrNotSupported
 	}
 	return s.Internal.FilecoinAddressToEthAddress(p0, p1)
 }
 
-func (s *FullNodeStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+func (s *FullNodeStub) FilecoinAddressToEthAddress(p0 context.Context, p1 ethtypes.StateAddressSpec) (ethtypes.EthAddress, error) {
 	return *new(ethtypes.EthAddress), ErrNotSupported
 }
 

@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -385,6 +386,10 @@ func init() {
 	}
 	addExample(&ethTraceFilterCriteria)
 	addExample(ethTraceFilterCriteria)
+
+	addExample(&ethtypes.StateAddressSpec{Address: must.One(address.NewIDAddress(1010))})
+	addExample(&ethtypes.StateAddressSpec{Address: must.One(address.NewFromString("f1xc3hws5n6y5m3m44gzb3gyjzhups6wzmhe663ji")), Block: pstring("finalized")})
+	addExample(&ethtypes.StateAddressSpec{Address: must.One(address.NewFromString("f3tcgq5scpfhdwh4dbalwktzf6mbv3ng2nw7tyzni5cyrsgvineid6jybnweecpa6misa6lk4tvwtxj2gkwpzq")), Block: pstring("0x3f15dd")})
 
 	percent := types.Percent(123)
 	addExample(percent)

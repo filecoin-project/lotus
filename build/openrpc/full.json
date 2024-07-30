@@ -6922,19 +6922,28 @@
         },
         {
             "name": "Filecoin.FilecoinAddressToEthAddress",
-            "description": "```go\nfunc (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddress == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddress(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 ethtypes.StateAddressSpec) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddress == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddress(p0, p1)\n}\n```",
             "summary": "FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress\n",
             "paramStructure": "by-position",
             "params": [
                 {
                     "name": "p1",
-                    "description": "address.Address",
+                    "description": "ethtypes.StateAddressSpec",
                     "summary": "",
                     "schema": {
                         "examples": [
                             "f01234"
                         ],
                         "additionalProperties": false,
+                        "properties": {
+                            "address": {
+                                "additionalProperties": false,
+                                "type": "object"
+                            },
+                            "block": {
+                                "type": "string"
+                            }
+                        },
                         "type": [
                             "object"
                         ]

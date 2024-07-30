@@ -320,6 +320,49 @@ func (n *EthNonce) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type StateAddressSpec struct {
+	Address address.Address `json:"address"`
+	Block   *string         `json:"block,omitempty"`
+}
+
+func (sas *StateAddressSpec) UnmarshalJSON(b []byte) error {
+	// try to unmarshal as an address.Address
+	fmt.Println("Unmarshal", string(b))
+	var addr address.Address
+	if err := json.Unmarshal(b, &addr); err == nil {
+		fmt.Println("unmarshalling as address.Address")
+		sas.Address = addr
+		return nil
+	} else {
+		fmt.Println("unmarshalling as StateAddressSpec", err)
+	}
+	// otherwise try to unmarshal as a StateAddressSpec
+	type StateAddressSpecRaw StateAddressSpec
+	var params StateAddressSpecRaw
+	if err := json.Unmarshal(b, &params); err != nil {
+		return err
+	}
+	if params.Address == address.Undef {
+		return errors.New("address cannot be undefined")
+	}
+	sas.Address = params.Address
+	sas.Block = params.Block
+	return nil
+}
+
+func (sas StateAddressSpec) MarshalJSON() ([]byte, error) {
+	if sas.Block == nil || *sas.Block == "" || sas.Address.Protocol() == address.ID { // TODO: must we restrict to address.ID?
+		return json.Marshal(sas.Address)
+	}
+	return json.Marshal(&struct {
+		Address address.Address `json:"address"`
+		Block   *string         `json:"block,omitempty"`
+	}{
+		Address: sas.Address,
+		Block:   sas.Block,
+	})
+}
+
 type EthAddress [EthAddressLength]byte
 
 // EthAddressFromPubKey returns the Ethereum address corresponding to an

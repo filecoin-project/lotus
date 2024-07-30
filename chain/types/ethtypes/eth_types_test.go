@@ -2,6 +2,7 @@ package ethtypes
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 type TestCase struct {
@@ -472,5 +475,78 @@ func TestEthHashListUnmarshalJSON(t *testing.T) {
 		err := json.Unmarshal([]byte(tc.input), &got)
 		require.NoError(t, err)
 		require.Equal(t, tc.want, got)
+	}
+}
+
+func TestStateAddressSpecSerialisation(t *testing.T) {
+	ss := func(s string) *string { return &s }
+
+	testCases := []struct {
+		name string
+		inp  string
+		exp  StateAddressSpec
+		err  bool
+	}{
+		{
+			name: "empty",
+			inp:  `{}`,
+			err:  true,
+		},
+		{
+			name: "f0",
+			inp:  `"f0101010"`,
+			exp: StateAddressSpec{
+				Address: must.One(address.NewIDAddress(101010)),
+			},
+		},
+		{
+			name: "f0",
+			inp:  `"f0101010"`,
+			exp: StateAddressSpec{
+				Address: must.One(address.NewIDAddress(101010)),
+			},
+		},
+		{
+			name: "f1, no block",
+			inp:  `{"address":"f1xc3hws5n6y5m3m44gzb3gyjzhups6wzmhe663ji"}`,
+			exp: StateAddressSpec{
+				Address: must.One(address.NewFromString("f1xc3hws5n6y5m3m44gzb3gyjzhups6wzmhe663ji")),
+			},
+		},
+		{
+			name: "f1, latest",
+			inp:  `{"address":"f1xc3hws5n6y5m3m44gzb3gyjzhups6wzmhe663ji","block":"latest"}`,
+			exp: StateAddressSpec{
+				Address: must.One(address.NewFromString("f1xc3hws5n6y5m3m44gzb3gyjzhups6wzmhe663ji")),
+				Block:   ss("latest"),
+			},
+		},
+		{
+			name: "f1, 1234",
+			inp:  `{"address":"f1xc3hws5n6y5m3m44gzb3gyjzhups6wzmhe663ji","block":"0x4d2"}`,
+			exp: StateAddressSpec{
+				Address: must.One(address.NewFromString("f1xc3hws5n6y5m3m44gzb3gyjzhups6wzmhe663ji")),
+				Block:   ss("0x4d2"),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			fmt.Println("Unmarshalling ", tc.inp)
+			var got StateAddressSpec
+			err := json.Unmarshal([]byte(tc.inp), &got)
+			if tc.err {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.exp, got)
+			// Check round trip
+			b, err := json.Marshal(got)
+			require.NoError(t, err)
+			require.Equal(t, tc.inp, string(b))
+		})
 	}
 }
