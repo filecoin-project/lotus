@@ -16,6 +16,7 @@ import (
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/multiformats/go-base32"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -201,7 +202,7 @@ func (b *Blockstore) unlockMove(state bsMoveState) {
 // are persisted to the new blockstore; if a failure occurs aboring the move,
 // then they must be peristed to the old blockstore.
 // In short, the blockstore must not lose data from new writes during the move.
-func (b *Blockstore) movingGC() error {
+func (b *Blockstore) movingGC(ctx context.Context) error {
 	// this inlines moveLock/moveUnlock for the initial state check to prevent a second move
 	// while one is in progress without clobbering state
 	b.moveMx.Lock()
@@ -432,7 +433,7 @@ func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.Bloc
 	}
 
 	if options.FullGC {
-		return b.movingGC()
+		return b.movingGC(ctx)
 	}
 	threshold := options.Threshold
 	if threshold == 0 {
@@ -562,7 +563,15 @@ func (b *Blockstore) Flush(context.Context) error {
 	b.lockDB()
 	defer b.unlockDB()
 
-	return b.db.Sync()
+	var nextErr error
+	if b.dbNext != nil {
+		nextErr = b.dbNext.Sync()
+	}
+
+	return multierr.Combine(
+		nextErr,
+		b.db.Sync(),
+	)
 }
 
 // Has implements Blockstore.Has.

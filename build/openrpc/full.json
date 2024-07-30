@@ -2,7 +2,7 @@
     "openrpc": "1.2.6",
     "info": {
         "title": "Lotus RPC API",
-        "version": "1.28.1-dev"
+        "version": "1.28.2-dev"
     },
     "methods": [
         {
@@ -6546,7 +6546,7 @@
                         [
                             {
                                 "ID": 1000,
-                                "Power": 0,
+                                "Power": "0",
                                 "PubKey": "Bw=="
                             }
                         ]
@@ -6629,7 +6629,7 @@
                         [
                             {
                                 "ID": 1000,
-                                "Power": 0,
+                                "Power": "0",
                                 "PubKey": "Bw=="
                             }
                         ]
