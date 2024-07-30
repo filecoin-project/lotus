@@ -119,24 +119,32 @@ func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
 				return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
 			}
 
-			nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
-			if err != nil {
+			var settlementReturn markettypes14.SettleDealPaymentsReturn
+			if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 				return err
 			}
 
-			if nv >= network.Version14 {
-				var settlementReturn markettypes14.SettleDealPaymentsReturn
-				if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
-					return err
-				}
+			// if all the deals were successful
+			if settlementReturn.Results.SuccessCount == uint64(len(dealIDs)) {
+				fmt.Printf("Successfully settled %d deals\n", settlementReturn.Results.SuccessCount)
+			} else {
+				fmt.Printf("Settled %d out of %d deals\n", len(dealIDs)-len(settlementReturn.Results.FailCount), len(dealIDs))
+			}
 
-				// if all the deals were successful
-				if settlementReturn.Results.SuccessCount == uint64(len(dealIDs)) {
-					fmt.Printf("Successfully settled %d deals\n", settlementReturn.Results.SuccessCount)
-				} else {
-					fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.FailCount, len(dealIDs))
+			var (
+				totalPayment        = big.Zero()
+				totalCompletedDeals = 0
+			)
+
+			for _, s := range settlementReturn.Settlements {
+				totalPayment = big.Add(totalPayment, s.Payment)
+				if s.Completed {
+					totalCompletedDeals++
 				}
 			}
+
+			fmt.Printf("Total payment: %s\n", types.FIL(totalPayment))
+			fmt.Printf("Total number of deals finished their lifetime: %d\n", totalCompletedDeals)
 			return nil
 		},
 	}
