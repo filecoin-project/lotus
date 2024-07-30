@@ -221,6 +221,7 @@ func (a *EthAPI) FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddr
 	case address.SECP256K1, address.Actor, address.BLS:
 		// Valid protocols
 	default:
+		// Ideally, this should never happen but is here for sanity checking.
 		return ethtypes.EthAddress{}, xerrors.Errorf("invalid filecoin address protocol: %s", filecoinAddress.String())
 	}
 
@@ -232,19 +233,26 @@ func (a *EthAPI) FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddr
 	// Get the tipset for the specified block
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
-		return ethtypes.EthAddress{}, xerrors.Errorf("failed to get tipset: %w", err)
+		return ethtypes.EthAddress{}, xerrors.Errorf("failed to get tipset for block %s: %w", blkParam, err)
 	}
 
 	// Lookup the ID address
 	idAddr, err := a.StateManager.LookupIDAddress(ctx, filecoinAddress, ts)
 	if err != nil {
-		return ethtypes.EthAddress{}, xerrors.Errorf("failed to lookup ID address: %w", err)
+		return ethtypes.EthAddress{}, xerrors.Errorf(
+			"failed to lookup ID(f0) address for given Filecoin address %s: "+
+				"ensure that the address has been instantiated on-chain and sufficient epochs have passed since instantiation to confirm to the given 'blkParam' %s. "+
+				"Error: %w",
+			filecoinAddress,
+			blkParam,
+			err,
+		)
 	}
 
-	// Convert the ID address to Ethereum format
+	// Convert the ID address an ETH address
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(idAddr)
 	if err != nil {
-		return ethtypes.EthAddress{}, xerrors.Errorf("failed to convert filecoin ID address to eth address: %w", err)
+		return ethtypes.EthAddress{}, xerrors.Errorf("failed to convert filecoin ID(f0) address %s to eth address: %w", idAddr, err)
 	}
 
 	return ethAddr, nil
