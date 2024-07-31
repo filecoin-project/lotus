@@ -10,6 +10,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
+// GenerateUnsealedCID generates the UnsealedCID for a sector of size determined by the proofType
+// containing pieces of the specified sizes. Where there is not one piece the size of the sector, or
+// zero pieces (in which case one piece can be used), it fills in the remaining space with pieces of
+// the minimum size required to pad the sector.
 func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	ssize, err := proofType.SectorSize()
 	if err != nil {
@@ -49,6 +53,9 @@ func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceIn
 		padTo(ps)
 	}
 
+	// Next we need to generate the unsealed CID by merkleizing the pieces; even though this function
+	// has the same name, it does a different job and won't give us the desired results if we hadn't
+	// done the piece-padding first.
 	return nonffi.GenerateUnsealedCID(proofType, allPieces)
 }
 
