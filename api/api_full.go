@@ -727,7 +727,7 @@ type FullNode interface {
 	// EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) //perm:read
 
-	// `FilecoinAddressToEthAddress` is the recommended API for converting any Filecoin address to an EthAddress.
+	// `FilecoinAddressToEthAddress` converts any Filecoin address to an EthAddress.
 	//
 	// This method supports all Filecoin address types:
 	// - "f0" and "f4" addresses: Converted directly.
@@ -746,7 +746,7 @@ type FullNode interface {
 	// - ctx: The context for the API call.
 	// - filecoinAddress: The Filecoin address to convert.
 	// - blkNum: The block number or state for the conversion. Defaults to "finalized" for maximum safety.
-	//   Possible values: "pending", "latest", "finalized", "safe", or a specific block number.
+	//   Possible values: "pending", "latest", "finalized", "safe", or a specific block number represented as hex.
 	//
 	// Returns:
 	// - The corresponding EthAddress.

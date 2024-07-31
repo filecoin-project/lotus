@@ -245,9 +245,8 @@ func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawP
 	idAddr, err := a.StateManager.LookupIDAddress(ctx, filecoinAddress, ts)
 	if err != nil {
 		return ethtypes.EthAddress{}, xerrors.Errorf(
-			"failed to lookup ID address for given Filecoin address %s: "+
-				"ensure that the address has been instantiated on-chain and sufficient epochs have passed since instantiation to confirm to the given 'blkParam' %s. "+
-				"Error: %w",
+			"failed to lookup ID address for given Filecoin address %s ("+
+				"ensure that the address has been instantiated on-chain and sufficient epochs have passed since instantiation to confirm to the given 'blkParam': \"%s\"): %w",
 			filecoinAddress,
 			blkParam,
 			err,
