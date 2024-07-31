@@ -39,8 +39,8 @@ func (o *Options) SetValueDir(valueDir string) {
 	o.V4Options.ValueDir = valueDir
 }
 
-func BlockStoreOptions(path string, readonly bool) Options {
-	opts := DefaultOptions(path, readonly)
+func BlockStoreOptions(path string, readonly bool, badgerVersion int) Options {
+	opts := DefaultOptions(path, readonly, badgerVersion)
 	opts.Prefix = "/blocks/"
 
 	opts.V2Options.DetectConflicts = false
@@ -68,11 +68,10 @@ func BlockStoreOptions(path string, readonly bool) Options {
 	return opts
 }
 
-func DefaultOptions(path string, readonly bool) Options {
+func DefaultOptions(path string, readonly bool, badgerVersion int) Options {
 	var opts Options
 
-	//TODO remove hard code version # and connect config
-	opts.BadgerVersion = 4
+	opts.BadgerVersion = badgerVersion
 
 	opts.SetDir(path)
 	opts.SetValueDir(path)

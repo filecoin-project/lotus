@@ -56,7 +56,16 @@ func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlocksto
 		return nil, err
 	}
 
-	opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, r.Readonly())
+	c, err := r.Config()
+	if err != nil {
+		return nil, err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return nil, xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+	badgerVersion := cfg.Chainstore.BadgerVersion
+	opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, r.Readonly(), badgerVersion)
 	if err != nil {
 		return nil, err
 	}

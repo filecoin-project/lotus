@@ -437,7 +437,19 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 			return
 		}
 
-		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+		c, err := fsr.Config()
+		if err != nil {
+			fsr.bsErr = err
+			return
+		}
+		cfg, ok := c.(*config.FullNode)
+		if !ok {
+			fsr.bsErr = xerrors.Errorf("invalid config for repo, got: %T", c)
+			return
+		}
+		badgerVersion := cfg.Chainstore.BadgerVersion
+
+		opts, err := BadgerBlockstoreOptions(domain, path, readonly, badgerVersion)
 		if err != nil {
 			fsr.bsErr = err
 			return
