@@ -1809,6 +1809,22 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	return stateVMCirculatingSupplyInternal(ctx, tsk, a.Chain, a.StateManager)
 }
+
+// StateRecomputeTipset recomputes the state of the given tipset and returns the root CID of the state tree.
+func (a *StateAPI) StateRecomputeTipset(ctx context.Context, tsk types.TipSetKey) (cid.Cid, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	stateRoot, _, err := a.StateManager.RecomputeTipSetState(ctx, ts)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("recomputing tipset state: %w", err)
+	}
+
+	return stateRoot, nil
+}
+
 func stateVMCirculatingSupplyInternal(
 	ctx context.Context,
 	tsk types.TipSetKey,

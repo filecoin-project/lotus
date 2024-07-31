@@ -249,6 +249,7 @@
   * [StateNetworkName](#StateNetworkName)
   * [StateNetworkVersion](#StateNetworkVersion)
   * [StateReadState](#StateReadState)
+  * [StateRecomputeTipset](#StateRecomputeTipset)
   * [StateReplay](#StateReplay)
   * [StateSearchMsg](#StateSearchMsg)
   * [StateSectorExpiration](#StateSectorExpiration)
@@ -7461,6 +7462,34 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "State": {}
+}
+```
+
+### StateRecomputeTipset
+StateRecomputeTipset recomputes the state of the given tipset, without trying to lookup a pre-computed result
+in the chainstore.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 

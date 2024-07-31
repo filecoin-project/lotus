@@ -3481,6 +3481,21 @@ func (mr *MockFullNodeMockRecorder) StateReadState(arg0, arg1, arg2 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateReadState", reflect.TypeOf((*MockFullNode)(nil).StateReadState), arg0, arg1, arg2)
 }
 
+// StateRecomputeTipset mocks base method.
+func (m *MockFullNode) StateRecomputeTipset(arg0 context.Context, arg1 types.TipSetKey) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateRecomputeTipset", arg0, arg1)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateRecomputeTipset indicates an expected call of StateRecomputeTipset.
+func (mr *MockFullNodeMockRecorder) StateRecomputeTipset(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateRecomputeTipset", reflect.TypeOf((*MockFullNode)(nil).StateRecomputeTipset), arg0, arg1)
+}
+
 // StateReplay mocks base method.
 func (m *MockFullNode) StateReplay(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid) (*api.InvocResult, error) {
 	m.ctrl.T.Helper()

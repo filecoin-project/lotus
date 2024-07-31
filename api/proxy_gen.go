@@ -503,6 +503,8 @@ type FullNodeMethods struct {
 
 	StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) `perm:"read"`
 
+	StateRecomputeTipset func(p0 context.Context, p1 types.TipSetKey) (cid.Cid, error) `perm:"read"`
+
 	StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) `perm:"read"`
 
 	StateSearchMsg func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) `perm:"read"`
@@ -3463,6 +3465,17 @@ func (s *FullNodeStruct) StateReadState(p0 context.Context, p1 address.Address, 
 
 func (s *FullNodeStub) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateRecomputeTipset(p0 context.Context, p1 types.TipSetKey) (cid.Cid, error) {
+	if s.Internal.StateRecomputeTipset == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.StateRecomputeTipset(p0, p1)
+}
+
+func (s *FullNodeStub) StateRecomputeTipset(p0 context.Context, p1 types.TipSetKey) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) {

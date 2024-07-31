@@ -543,6 +543,11 @@ type FullNode interface {
 	// Messages in the `apply` parameter must have the correct nonces, and gas
 	// values set.
 	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*ComputeStateOutput, error) //perm:read
+
+	// StateRecomputeTipset recomputes the state of the given tipset, without trying to lookup a pre-computed result
+	// in the chainstore.
+	StateRecomputeTipset(ctx context.Context, tsk types.TipSetKey) (cid.Cid, error) //perm:read
+
 	// StateVerifierStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
@@ -865,7 +870,7 @@ type FullNode interface {
 	// This is an EXPERIMENTAL API and may be subject to change.
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
 
-	//*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
+	// *********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
 	// F3Participate should be called by a storage provider to participate in signing F3 consensus.
 	// Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
