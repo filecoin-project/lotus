@@ -22,6 +22,7 @@ import (
 	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/backupds"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -325,8 +326,29 @@ var datastoreRewriteCmd = &cli.Command{
 			to   badger.BadgerDB
 		)
 
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		c, err := lkrepo.Config()
+		if err != nil {
+			return err
+		}
+		lotusCfg, ok := c.(*config.FullNode)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+		badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
 		// open the destination (to) store.
-		opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, toPath, false)
+		opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, toPath, false, badgerVersion)
 		if err != nil {
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}
@@ -337,7 +359,7 @@ var datastoreRewriteCmd = &cli.Command{
 		}
 
 		// open the source (from) store.
-		opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, fromPath, true)
+		opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, fromPath, true, badgerVersion)
 		if err != nil {
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}

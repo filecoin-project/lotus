@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -233,8 +234,19 @@ var exportRawCmd = &cli.Command{
 			}
 
 			{
+
+				c, err := lr.Config()
+				if err != nil {
+					return err
+				}
+				lotusCfg, ok := c.(*config.FullNode)
+				if !ok {
+					return xerrors.Errorf("invalid config for repo, got: %T", c)
+				}
+				badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
 				path := filepath.Join(lr.Path(), "datastore", "chain")
-				opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, path, false)
+				opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, path, false, badgerVersion)
 				if err != nil {
 					return err
 				}

@@ -143,15 +143,15 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		c, err := r.Config()
+		c, err := lkrepo.Config()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		cfg, ok := c.(*config.FullNode)
+		lotusCfg, ok := c.(*config.FullNode)
 		if !ok {
-			return nil, xerrors.Errorf("invalid config for repo, got: %T", c)
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
 		}
-		badgerVersion := cfg.Chainstore.BadgerVersion
+		badgerVersion := lotusCfg.Chainstore.BadgerVersion
 		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly(), badgerVersion)
 		if err != nil {
 			return err
