@@ -88,6 +88,7 @@ var SendCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 		var params SendParams
 
+		is0xRecipient := false
 		params.To, err = address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
 			// could be an ETH address
@@ -95,6 +96,7 @@ var SendCmd = &cli.Command{
 			if err != nil {
 				return ShowHelp(cctx, fmt.Errorf("failed to parse target address; address must be a valid FIL address or an ETH address: %w", err))
 			}
+			is0xRecipient = true
 			// this will be either "f410f..." or "f0..."
 			params.To, err = ea.ToFilecoinAddress()
 			if err != nil {
@@ -147,7 +149,7 @@ var SendCmd = &cli.Command{
 			params.Params = decparams
 		}
 
-		if ethtypes.IsEthAddress(params.From) || ethtypes.IsEthAddress(params.To) {
+		if ethtypes.IsEthAddress(params.From) || is0xRecipient {
 			// Method numbers don't make sense from eth accounts.
 			if cctx.IsSet("method") {
 				return xerrors.Errorf("messages from f410f addresses may not specify a method number")
