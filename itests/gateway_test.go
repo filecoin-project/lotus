@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/multisig"
@@ -389,7 +390,6 @@ func TestGatewayRateLimits(t *testing.T) {
 			response, err := client.Do(request)
 			req.NoError(err)
 			defer func() { _ = response.Body.Close() }()
-			req.NoError(err)
 			if http.StatusOK == response.StatusCode {
 				body, err := io.ReadAll(response.Body)
 				req.NoError(err)
@@ -408,4 +408,41 @@ func TestGatewayRateLimits(t *testing.T) {
 		}()
 	}
 	req.True(failed, "expected requests to fail due to rate limiting")
+}
+
+func TestStatefulCallHandling(t *testing.T) {
+	req := require.New(t)
+
+	kit.QuietMiningLogs()
+	ctx := context.Background()
+	nodes := startNodes(ctx, t)
+
+	// not available over plain http
+	client := &http.Client{}
+	url := fmt.Sprintf("http://%s/rpc/v1", nodes.gatewayAddr)
+	jsonPayload := []byte(`{"method":"Filecoin.EthNewBlockFilter","params":[],"id":1,"jsonrpc":"2.0"}`)
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	req.NoError(err)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(request)
+	req.NoError(err)
+	body, err := io.ReadAll(response.Body)
+	req.NoError(err)
+	defer func() { _ = response.Body.Close() }()
+	req.Equal(http.StatusOK, response.StatusCode)
+	req.Contains(
+		string(body),
+		`{"error":{"code":1,"message":"EthNewBlockFilter not supported: stateful tracking is only available for websockets connections"},"id":1,"jsonrpc":"2.0"}`,
+	)
+
+	// available over websocket
+	for i := 0; i < gateway.EthMaxFiltersPerConn; i++ {
+		_, err := nodes.lite.EthNewBlockFilter(ctx)
+		req.NoError(err)
+	}
+	// but only up to max
+	_, err = nodes.lite.EthNewBlockFilter(ctx)
+	require.ErrorContains(t, err, "too many filters")
+	_, err = nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
+	require.ErrorContains(t, err, "too many filters")
 }
