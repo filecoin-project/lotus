@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/lib/result"
 )
 
 func TestEthAddressToFilecoinAddress(t *testing.T) {
@@ -60,6 +61,7 @@ func TestEthAddressToFilecoinAddress(t *testing.T) {
 }
 
 func TestFilecoinAddressToEthAddress(t *testing.T) {
+	require := require.New(t)
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
@@ -67,107 +69,97 @@ func TestFilecoinAddressToEthAddress(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	mkParams := func(addr address.Address, blkNum string) jsonrpc.RawParams {
-		fp := new(ethtypes.FilecoinAddressToEthAddressParams)
-		fp.FilecoinAddress = addr
-
-		if blkNum != "" {
-			fp.BlkParam = &blkNum
-		}
-
-		params, err := json.Marshal(fp)
-		require.NoError(t, err)
-
-		return jsonrpc.RawParams(params)
-	}
-
 	// Test for f4 address
 	filecoinDelegatedAddr, err := client.WalletNew(ctx, types.KTDelegated)
-	require.NoError(t, err)
+	require.NoError(err)
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(filecoinDelegatedAddr)
-	require.NoError(t, err)
-	apiEthAddr, err := client.FilecoinAddressToEthAddress(ctx, mkParams(filecoinDelegatedAddr, ""))
-	require.NoError(t, err)
-	require.Equal(t, ethAddr, apiEthAddr)
+	require.NoError(err)
+
+	apiEthAddr, err := client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{filecoinDelegatedAddr}),
+	).Assert(require.NoError))
+
+	require.NoError(err)
+	require.Equal(ethAddr, apiEthAddr)
 	fAddr, err := client.EthAddressToFilecoinAddress(ctx, ethAddr)
-	require.NoError(t, err)
-	require.Equal(t, filecoinDelegatedAddr, fAddr)
+	require.NoError(err)
+	require.Equal(filecoinDelegatedAddr, fAddr)
 
 	// test for f0 address
 	filecoinIdArr := builtin.StorageMarketActorAddr
 	ethAddr, err = ethtypes.EthAddressFromFilecoinAddress(filecoinIdArr)
-	require.NoError(t, err)
-	apiEthAddr, err = client.FilecoinAddressToEthAddress(ctx, mkParams(filecoinIdArr, ""))
-	require.NoError(t, err)
-	require.Equal(t, ethAddr, apiEthAddr)
+	require.NoError(err)
+
+	apiEthAddr, err = client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{filecoinIdArr}),
+	).Assert(require.NoError))
+	require.NoError(err)
+
+	require.Equal(ethAddr, apiEthAddr)
 	fAddr, err = client.EthAddressToFilecoinAddress(ctx, ethAddr)
-	require.NoError(t, err)
-	require.Equal(t, filecoinIdArr, fAddr)
+	require.NoError(err)
+	require.Equal(filecoinIdArr, fAddr)
 
 	// test for f1 address that does not yet exist on chain -> fails
 	filecoinSecpAddr, err := client.WalletNew(ctx, types.KTSecp256k1)
-	require.NoError(t, err)
-	_, err = client.FilecoinAddressToEthAddress(ctx, mkParams(filecoinSecpAddr, "latest"))
-	require.ErrorContains(t, err, "actor not found")
+	require.NoError(err)
+
+	_, err = client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{filecoinSecpAddr, "latest"}),
+	).Assert(require.NoError))
+	require.Error(err)
+	require.ErrorContains(err, "actor not found")
 
 	// test for f1 address that exists on chain by sending funds to the above f1 Actor -> works
 	kit.SendFunds(ctx, t, client, filecoinSecpAddr, abi.NewTokenAmount(1))
-	apiEthAddr, err = client.FilecoinAddressToEthAddress(ctx, mkParams(filecoinSecpAddr, "latest"))
-	require.NoError(t, err)
+	apiEthAddr, err = client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{filecoinSecpAddr, "latest"}),
+	).Assert(require.NoError))
+	require.NoError(err)
+
 	idAddr, err := client.StateLookupID(ctx, filecoinSecpAddr, types.EmptyTSK)
-	require.NoError(t, err)
+	require.NoError(err)
 	ethAddr, err = ethtypes.EthAddressFromFilecoinAddress(idAddr)
-	require.NoError(t, err)
-	require.Equal(t, ethAddr, apiEthAddr)
+	require.NoError(err)
+	require.Equal(ethAddr, apiEthAddr)
 	fAddr, err = client.EthAddressToFilecoinAddress(ctx, ethAddr)
-	require.NoError(t, err)
-	require.Equal(t, idAddr, fAddr)
+	require.NoError(err)
+	require.Equal(idAddr, fAddr)
 
 	// test for f2 address that exists on chain -> works
 	signer := client.DefaultKey.Address
 
 	// Create the multisig
 	cp, err := client.MsigCreate(ctx, 1, []address.Address{signer}, 0, types.NewInt(1), signer, big.Zero())
-	require.NoError(t, err, "failed to create multisig (MsigCreate)")
+	require.NoError(err, "failed to create multisig (MsigCreate)")
 
 	cm, err := client.MpoolPushMessage(ctx, &cp.Message, nil)
-	require.NoError(t, err, "failed to create multisig (MpooPushMessage)")
+	require.NoError(err, "failed to create multisig (MpooPushMessage)")
 
 	ml, err := client.StateWaitMsg(ctx, cm.Cid(), 5, 100, false)
-	require.NoError(t, err, "failed to create multisig (StateWaitMsg)")
-	require.Equal(t, ml.Receipt.ExitCode, exitcode.Ok)
+	require.NoError(err, "failed to create multisig (StateWaitMsg)")
+	require.Equal(ml.Receipt.ExitCode, exitcode.Ok)
 
 	var execreturn inittypes.ExecReturn
 	err = execreturn.UnmarshalCBOR(bytes.NewReader(ml.Receipt.Return))
-	require.NoError(t, err, "failed to decode multisig create return")
+	require.NoError(err, "failed to decode multisig create return")
 
 	multisigAddress := execreturn.RobustAddress
-	apiEthAddr, err = client.FilecoinAddressToEthAddress(ctx, mkParams(multisigAddress, "latest"))
-	require.NoError(t, err)
+	apiEthAddr, err = client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{multisigAddress, "latest"}),
+	).Assert(require.NoError))
+	require.NoError(err)
 
 	idAddr, err = client.StateLookupID(ctx, multisigAddress, types.EmptyTSK)
-	require.NoError(t, err)
+	require.NoError(err)
 
 	ethAddr, err = ethtypes.EthAddressFromFilecoinAddress(idAddr)
-	require.NoError(t, err)
-	require.Equal(t, ethAddr, apiEthAddr)
+	require.NoError(err)
+	require.Equal(ethAddr, apiEthAddr)
 }
 
 func TestFilecoinAddressToEthAddressFinalised(t *testing.T) {
-	mkParams := func(addr address.Address, blkNum string) jsonrpc.RawParams {
-		fp := new(ethtypes.FilecoinAddressToEthAddressParams)
-		fp.FilecoinAddress = addr
-
-		if blkNum != "" {
-			fp.BlkParam = &blkNum
-		}
-
-		params, err := json.Marshal(fp)
-		require.NoError(t, err)
-
-		return jsonrpc.RawParams(params)
-	}
-
+	require := require.New(t)
 	blockTime := 5 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
@@ -179,28 +171,36 @@ func TestFilecoinAddressToEthAddressFinalised(t *testing.T) {
 	_ = client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality))
 
 	filecoinSecpAddr, err := client.WalletNew(ctx, types.KTSecp256k1)
-	require.NoError(t, err)
+	require.NoError(err)
 	kit.SendFunds(ctx, t, client, filecoinSecpAddr, abi.NewTokenAmount(1))
 	// works for latest
-	_, err = client.FilecoinAddressToEthAddress(ctx, mkParams(filecoinSecpAddr, "latest"))
-	require.NoError(t, err)
+	_, err = client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{filecoinSecpAddr, "latest"}),
+	).Assert(require.NoError))
+	require.NoError(err)
+
 	// but fails for finalised
-	_, err = client.FilecoinAddressToEthAddress(ctx, mkParams(filecoinSecpAddr, "finalized"))
-	require.Contains(t, err.Error(), "sufficient epochs have passed")
+	_, err = client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{filecoinSecpAddr, "finalized"}),
+	).Assert(require.NoError))
+	require.Error(err)
+	require.Contains(err.Error(), "sufficient epochs have passed")
 
 	// wait for enough epochs to pass for finalised to work
 	ts, err := client.ChainHead(ctx)
-	require.NoError(t, err)
+	require.NoError(err)
 	_ = client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+ts.Height()+5))
 	// finalized should now work
-	apiEthAddr, err := client.FilecoinAddressToEthAddress(ctx, mkParams(filecoinSecpAddr, "finalized"))
-	require.NoError(t, err)
+	apiEthAddr, err := client.FilecoinAddressToEthAddress(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{filecoinSecpAddr, "finalized"}),
+	).Assert(require.NoError))
+	require.NoError(err)
 
 	idAddr, err := client.StateLookupID(ctx, filecoinSecpAddr, types.EmptyTSK)
-	require.NoError(t, err)
+	require.NoError(err)
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(idAddr)
-	require.NoError(t, err)
-	require.Equal(t, ethAddr, apiEthAddr)
+	require.NoError(err)
+	require.Equal(ethAddr, apiEthAddr)
 }
 
 func TestEthGetGenesis(t *testing.T) {

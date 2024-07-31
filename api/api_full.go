@@ -735,6 +735,7 @@ type FullNode interface {
 	//
 	// Requirements:
 	// - For "f1", "f2", and "f3" addresses, they must be instantiated on-chain, as "f0" ID addresses are only assigned to actors when they are created on-chain.
+	// The simplest way to instantiate an address on chain is to send a transaction to the address.
 	//
 	// Note on chain reorganizations:
 	// "f0" ID addresses are not permanent and can be affected by chain reorganizations. To account for this,
