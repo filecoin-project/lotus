@@ -77,5 +77,4 @@ jobs:
             GITHUB_EVENT_NAME=$INPUT_EVENT_NAME \
             GITHUB_REF=$INPUT_REF \
             GITHUB_HEAD_REF=$ \
-            ./run.sh
-        working-directory: buildpulse-action
+            ./buildpulse-action/run.sh
