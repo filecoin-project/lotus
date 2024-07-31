@@ -46,7 +46,7 @@ jobs:
         with:
           repository: buildpulse/buildpulse-action
           path: buildpulse-action
-          ref: 3c984069654290afe0bf076779f51c4518f085c2 # v0.28.0
+          ref: d0d30f53585cf16b2e01811a5a753fd47968654a # v0.11.0
       - name: Create a temporary directory to store the JUnit XML reports
         id: reports
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
