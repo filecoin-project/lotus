@@ -7,6 +7,6 @@ import (
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
 // domain.
 func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool) (versions.Options, error) {
-	opts := versions.DefaultOptions(path, readonly)
+	opts := versions.BlockStoreOptions(path, readonly)
 	return opts, nil
 }

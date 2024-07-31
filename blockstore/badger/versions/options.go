@@ -5,7 +5,8 @@ import (
 	"strconv"
 
 	badgerV2 "github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
+	optionsV2 "github.com/dgraph-io/badger/v2/options"
+
 	badgerV4 "github.com/dgraph-io/badger/v4"
 )
 
@@ -38,50 +39,50 @@ func (o *Options) SetValueDir(valueDir string) {
 	o.V4Options.ValueDir = valueDir
 }
 
+func BlockStoreOptions(path string, readonly bool) Options {
+	opts := DefaultOptions(path, readonly)
+	opts.Prefix = "/blocks/"
+
+	opts.V2Options.DetectConflicts = false
+	opts.V2Options.CompactL0OnClose = true
+	opts.V2Options.Truncate = true
+	opts.V2Options.ValueLogLoadingMode = optionsV2.MemoryMap
+	opts.V2Options.TableLoadingMode = optionsV2.MemoryMap
+	opts.V2Options.ValueThreshold = 128
+	opts.V2Options.MaxTableSize = 64 << 20
+	opts.V2Options.ReadOnly = readonly
+
+	opts.V4Options.DetectConflicts = false
+	opts.V4Options.CompactL0OnClose = true
+	opts.V4Options.ValueThreshold = 148
+	opts.V4Options.ReadOnly = readonly
+
+	// Envvar LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM
+	if badgerNumCompactors, badgerNumCompactorsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM"); badgerNumCompactorsSet {
+		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
+			opts.V2Options.NumCompactors = numWorkers
+			opts.V4Options.NumCompactors = numWorkers
+		}
+	}
+
+	return opts
+}
+
 func DefaultOptions(path string, readonly bool) Options {
 	var opts Options
 
-	/*
-		TODO determine where this code came from and if it needs to be added back somewhere
-		//opts.Prefix = "/blocks/"
-	*/
-
 	//TODO remove hard code version # and connect config
-	opts.BadgerVersion = 2
+	opts.BadgerVersion = 4
 
 	opts.SetDir(path)
 	opts.SetValueDir(path)
 
 	//v2
 	bopts := badgerV2.DefaultOptions(path)
-	bopts.DetectConflicts = false
-	bopts.CompactL0OnClose = true
-	bopts.Truncate = true
-	bopts.ValueLogLoadingMode = options.MemoryMap
-	bopts.TableLoadingMode = options.MemoryMap
-	bopts.ValueThreshold = 128
-	bopts.MaxTableSize = 64 << 20
-	bopts.ReadOnly = readonly
-
-	// Envvar LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM
-	if badgerNumCompactors, badgerNumCompactorsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM"); badgerNumCompactorsSet {
-		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
-			bopts.NumCompactors = numWorkers
-		}
-	}
 	opts.V2Options = bopts
 
 	//v4
-
 	boptsv4 := badgerV4.DefaultOptions(path)
-	boptsv4.ReadOnly = readonly
-
-	// Envvar LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM
-	if badgerNumCompactors, badgerNumCompactorsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM"); badgerNumCompactorsSet {
-		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
-			boptsv4.NumCompactors = numWorkers
-		}
-	}
 	opts.V4Options = boptsv4
 
 	return opts
