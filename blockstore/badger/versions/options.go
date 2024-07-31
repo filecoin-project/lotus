@@ -6,7 +6,6 @@ import (
 
 	badgerV2 "github.com/dgraph-io/badger/v2"
 	optionsV2 "github.com/dgraph-io/badger/v2/options"
-
 	badgerV4 "github.com/dgraph-io/badger/v4"
 )
 
