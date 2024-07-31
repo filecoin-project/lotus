@@ -37,7 +37,7 @@ type ShutdownHandler interface {
 	Shutdown(ctx context.Context) error
 }
 
-var _ ShutdownHandler = &passThroughShutdownHandler{}
+var _ ShutdownHandler = &statefulCallHandler{}
 var _ ShutdownHandler = &RateLimitHandler{}
 
 // Handler returns a gateway http.Handler, to be mounted as-is on the server. The handler is
@@ -89,27 +89,29 @@ func Handler(
 	m.Handle("/health/readyz", node.NewReadyHandler(api))
 	m.PathPrefix("/").Handler(http.DefaultServeMux)
 
-	if perConnectionAPIRateLimit == 0 && perHostConnectionsPerMinute == 0 {
-		return &passThroughShutdownHandler{m}, nil
+	handler := &statefulCallHandler{m}
+	if perConnectionAPIRateLimit > 0 && perHostConnectionsPerMinute > 0 {
+		return NewRateLimitHandler(
+			handler,
+			perConnectionAPIRateLimit,
+			perHostConnectionsPerMinute,
+			connectionLimiterCleanupInterval,
+		), nil
 	}
-	return NewRateLimitHandler(
-		m,
-		perConnectionAPIRateLimit,
-		perHostConnectionsPerMinute,
-		connectionLimiterCleanupInterval,
-	), nil
+	return handler, nil
 }
 
-type passThroughShutdownHandler struct {
-	handler http.Handler
+type statefulCallHandler struct {
+	next http.Handler
 }
 
-func (h passThroughShutdownHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.handler.ServeHTTP(w, r)
+func (h statefulCallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, newStatefulCallTracker()))
+	h.next.ServeHTTP(w, r)
 }
 
-func (h passThroughShutdownHandler) Shutdown(ctx context.Context) error {
-	return shutdown(ctx, h.handler)
+func (h statefulCallHandler) Shutdown(ctx context.Context) error {
+	return shutdown(ctx, h.next)
 }
 
 type hostLimiter struct {
@@ -123,7 +125,7 @@ type RateLimitHandler struct {
 	limiters                    map[string]*hostLimiter
 	perConnectionAPILimit       rate.Limit
 	perHostConnectionsPerMinute int
-	handler                     http.Handler
+	next                        http.Handler
 	cleanupInterval             time.Duration
 	expiryDuration              time.Duration
 }
@@ -134,7 +136,7 @@ type RateLimitHandler struct {
 // connections per minute from a single host.
 // The cleanupInterval determines how often the handler will check for unused limiters to clean up.
 func NewRateLimitHandler(
-	handler http.Handler,
+	next http.Handler,
 	perConnectionAPIRateLimit int,
 	perHostConnectionsPerMinute int,
 	cleanupInterval time.Duration,
@@ -146,7 +148,7 @@ func NewRateLimitHandler(
 		limiters:                    make(map[string]*hostLimiter),
 		perConnectionAPILimit:       rate.Inf,
 		perHostConnectionsPerMinute: perHostConnectionsPerMinute,
-		handler:                     handler,
+		next:                        next,
 		cleanupInterval:             cleanupInterval,
 		expiryDuration:              5 * cleanupInterval,
 	}
@@ -199,9 +201,8 @@ func (h *RateLimitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		apiLimiter := rate.NewLimiter(h.perConnectionAPILimit, MaxRateLimitTokens)
 		r = r.WithContext(context.WithValue(r.Context(), perConnectionAPIRateLimiterKey, apiLimiter))
 	}
-	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, newStatefulCallTracker()))
 
-	h.handler.ServeHTTP(w, r)
+	h.next.ServeHTTP(w, r)
 }
 
 func (h *RateLimitHandler) cleanupExpiredLimiters(ctx context.Context) {
@@ -228,7 +229,7 @@ func (h *RateLimitHandler) cleanupExpiredLimiters(ctx context.Context) {
 
 func (h *RateLimitHandler) Shutdown(ctx context.Context) error {
 	h.cancelFunc()
-	return shutdown(ctx, h.handler)
+	return shutdown(ctx, h.next)
 }
 
 func shutdown(ctx context.Context, handler http.Handler) error {
