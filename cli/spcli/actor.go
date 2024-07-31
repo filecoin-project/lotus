@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	markettypes14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -33,6 +35,115 @@ import (
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/node/impl"
 )
+
+func ActorDealSettlementCmd(getActor ActorAddressGetter) *cli.Command {
+	return &cli.Command{
+		Name:      "settle-deal",
+		Usage:     "Settle deals manually, if dealIds are not provided all deals will be settled",
+		ArgsUsage: "[...dealIds]",
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:  "confidence",
+				Usage: "number of block confirmations to wait for",
+				Value: int(buildconstants.MessageConfidence),
+			},
+		},
+
+		Action: func(cctx *cli.Context) error {
+			api, acloser, err := lcli.GetFullNodeAPIV1(cctx)
+			if err != nil {
+				return err
+			}
+			defer acloser()
+
+			ctx := lcli.ReqContext(cctx)
+			maddr, err := getActor(cctx)
+			if err != nil {
+				return err
+			}
+
+			var (
+				dealIDs []uint64
+				dealId  uint64
+			)
+
+			// if no deal ids are provided, get all the deals for the miner
+			if dealsIdArgs := cctx.Args().Slice(); len(dealsIdArgs) != 0 {
+				for _, d := range dealsIdArgs {
+					dealId, err = strconv.ParseUint(d, 10, 64)
+					if err != nil {
+						return xerrors.Errorf("Error parsing deal id: %w", err)
+					}
+
+					dealIDs = append(dealIDs, dealId)
+				}
+			} else {
+				if dealIDs, err = GetMinerAllDeals(ctx, api, maddr, types.EmptyTSK); err != nil {
+					return xerrors.Errorf("Error getting all deals for miner: %w", err)
+				}
+			}
+
+			mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("Error getting miner info: %w", err)
+			}
+
+			dealParams := bitfield.NewFromSet(dealIDs)
+			params, err := actors.SerializeParams(&dealParams)
+			if err != nil {
+				return err
+			}
+
+			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+				To:     maddr,
+				From:   mi.Owner,
+				Value:  types.NewInt(0),
+				Method: marketactor.Methods.SettleDealPaymentsExported,
+				Params: params,
+			}, nil)
+			if err != nil {
+				return err
+			}
+
+			res := smsg.Cid()
+
+			fmt.Printf("Requested deal settlement in message %s\nwaiting for it to be included in a block..\n", res)
+
+			// wait for it to get mined into a block
+			wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")), lapi.LookbackNoLimit, true)
+			if err != nil {
+				return xerrors.Errorf("Timeout waiting for deal settlement message %s", res)
+			}
+
+			if wait.Receipt.ExitCode.IsError() {
+				return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+			}
+
+			var settlementReturn markettypes14.SettleDealPaymentsReturn
+			if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+				return err
+			}
+
+			fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.SuccessCount, len(dealIDs))
+
+			var (
+				totalPayment        = big.Zero()
+				totalCompletedDeals = 0
+			)
+
+			for _, s := range settlementReturn.Settlements {
+				totalPayment = big.Add(totalPayment, s.Payment)
+				if s.Completed {
+					totalCompletedDeals++
+				}
+			}
+
+			fmt.Printf("Total payment: %s\n", types.FIL(totalPayment))
+			fmt.Printf("Total number of deals finished their lifetime: %d\n", totalCompletedDeals)
+			return nil
+		},
+	}
+}
 
 func ActorWithdrawCmd(getActor ActorAddressGetter) *cli.Command {
 	return &cli.Command{
