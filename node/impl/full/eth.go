@@ -204,11 +204,14 @@ func (a *EthAPI) EthAddressToFilecoinAddress(ctx context.Context, ethAddress eth
 	return ethAddress.ToFilecoinAddress()
 }
 
-func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) {
-	return ethtypes.EthAddressFromFilecoinAddress(filecoinAddress)
-}
+func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.FilecoinAddressToEthAddressParams](p)
+	if err != nil {
+		return ethtypes.EthAddress{}, xerrors.Errorf("decoding params: %w", err)
+	}
 
-func (a *EthAPI) FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddress address.Address, blkParam string) (ethtypes.EthAddress, error) {
+	filecoinAddress := params.FilecoinAddress
+
 	// If the address is an "f0" or "f4" address, `EthAddressFromFilecoinAddress` will return the corresponding Ethereum address right away.
 	if eaddr, err := ethtypes.EthAddressFromFilecoinAddress(filecoinAddress); err == nil {
 		return eaddr, nil
@@ -225,9 +228,11 @@ func (a *EthAPI) FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddr
 		return ethtypes.EthAddress{}, xerrors.Errorf("invalid filecoin address protocol: %s", filecoinAddress.String())
 	}
 
-	// Set default block parameter to "finalized" if not provided
-	if blkParam == "" || len(blkParam) == 0 {
+	var blkParam string
+	if params.BlkParam == nil {
 		blkParam = "finalized"
+	} else {
+		blkParam = *params.BlkParam
 	}
 
 	// Get the tipset for the specified block

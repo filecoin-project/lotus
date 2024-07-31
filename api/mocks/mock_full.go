@@ -1245,7 +1245,7 @@ func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1, arg2, arg3 interfa
 }
 
 // FilecoinAddressToEthAddress mocks base method.
-func (m *MockFullNode) FilecoinAddressToEthAddress(arg0 context.Context, arg1 address.Address) (ethtypes.EthAddress, error) {
+func (m *MockFullNode) FilecoinAddressToEthAddress(arg0 context.Context, arg1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FilecoinAddressToEthAddress", arg0, arg1)
 	ret0, _ := ret[0].(ethtypes.EthAddress)
@@ -1257,21 +1257,6 @@ func (m *MockFullNode) FilecoinAddressToEthAddress(arg0 context.Context, arg1 ad
 func (mr *MockFullNodeMockRecorder) FilecoinAddressToEthAddress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilecoinAddressToEthAddress", reflect.TypeOf((*MockFullNode)(nil).FilecoinAddressToEthAddress), arg0, arg1)
-}
-
-// FilecoinAddressToEthAddressV1 mocks base method.
-func (m *MockFullNode) FilecoinAddressToEthAddressV1(arg0 context.Context, arg1 address.Address, arg2 string) (ethtypes.EthAddress, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FilecoinAddressToEthAddressV1", arg0, arg1, arg2)
-	ret0, _ := ret[0].(ethtypes.EthAddress)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FilecoinAddressToEthAddressV1 indicates an expected call of FilecoinAddressToEthAddressV1.
-func (mr *MockFullNodeMockRecorder) FilecoinAddressToEthAddressV1(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilecoinAddressToEthAddressV1", reflect.TypeOf((*MockFullNode)(nil).FilecoinAddressToEthAddressV1), arg0, arg1, arg2)
 }
 
 // GasEstimateFeeCap mocks base method.

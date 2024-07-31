@@ -263,9 +263,7 @@ type FullNodeMethods struct {
 
 	F3Participate func(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) `perm:"sign"`
 
-	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
-
-	FilecoinAddressToEthAddressV1 func(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) `perm:"read"`
+	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) `perm:"read"`
 
 	GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -699,9 +697,7 @@ type GatewayMethods struct {
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) ``
 
-	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) ``
-
-	FilecoinAddressToEthAddressV1 func(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) ``
+	FilecoinAddressToEthAddress func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) ``
 
 	GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
 
@@ -2149,25 +2145,14 @@ func (s *FullNodeStub) F3Participate(p0 context.Context, p1 address.Address, p2 
 	return false, ErrNotSupported
 }
 
-func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {
 	if s.Internal.FilecoinAddressToEthAddress == nil {
 		return *new(ethtypes.EthAddress), ErrNotSupported
 	}
 	return s.Internal.FilecoinAddressToEthAddress(p0, p1)
 }
 
-func (s *FullNodeStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
-	return *new(ethtypes.EthAddress), ErrNotSupported
-}
-
-func (s *FullNodeStruct) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
-	if s.Internal.FilecoinAddressToEthAddressV1 == nil {
-		return *new(ethtypes.EthAddress), ErrNotSupported
-	}
-	return s.Internal.FilecoinAddressToEthAddressV1(p0, p1, p2)
-}
-
-func (s *FullNodeStub) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
+func (s *FullNodeStub) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {
 	return *new(ethtypes.EthAddress), ErrNotSupported
 }
 
@@ -4481,25 +4466,14 @@ func (s *GatewayStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscrip
 	return false, ErrNotSupported
 }
 
-func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+func (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {
 	if s.Internal.FilecoinAddressToEthAddress == nil {
 		return *new(ethtypes.EthAddress), ErrNotSupported
 	}
 	return s.Internal.FilecoinAddressToEthAddress(p0, p1)
 }
 
-func (s *GatewayStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
-	return *new(ethtypes.EthAddress), ErrNotSupported
-}
-
-func (s *GatewayStruct) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
-	if s.Internal.FilecoinAddressToEthAddressV1 == nil {
-		return *new(ethtypes.EthAddress), ErrNotSupported
-	}
-	return s.Internal.FilecoinAddressToEthAddressV1(p0, p1, p2)
-}
-
-func (s *GatewayStub) FilecoinAddressToEthAddressV1(p0 context.Context, p1 address.Address, p2 string) (ethtypes.EthAddress, error) {
+func (s *GatewayStub) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {
 	return *new(ethtypes.EthAddress), ErrNotSupported
 }
 

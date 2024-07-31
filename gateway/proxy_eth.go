@@ -32,12 +32,18 @@ func (gw *Node) EthAddressToFilecoinAddress(ctx context.Context, ethAddress etht
 	return gw.target.EthAddressToFilecoinAddress(ctx, ethAddress)
 }
 
-func (gw *Node) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) {
-	return gw.target.FilecoinAddressToEthAddress(ctx, filecoinAddress)
-}
+func (gw *Node) FilecoinAddressToEthAddress(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthAddress, error) {
+	// validate params
+	_, err := jsonrpc.DecodeParams[ethtypes.FilecoinAddressToEthAddressParams](params)
+	if err != nil {
+		return ethtypes.EthAddress{}, xerrors.Errorf("decoding params: %w", err)
+	}
 
-func (gw *Node) FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddress address.Address, blkParam string) (ethtypes.EthAddress, error) {
-	return gw.target.FilecoinAddressToEthAddressV1(ctx, filecoinAddress, blkParam)
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return ethtypes.EthAddress{}, err
+	}
+
+	return gw.target.FilecoinAddressToEthAddress(ctx, params)
 }
 
 func (gw *Node) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {

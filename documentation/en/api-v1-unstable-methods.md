@@ -89,7 +89,6 @@
   * [F3Participate](#F3Participate)
 * [Filecoin](#Filecoin)
   * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
-  * [FilecoinAddressToEthAddressV1](#FilecoinAddressToEthAddressV1)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2432,28 +2431,10 @@ Response: `true`
 
 
 ### FilecoinAddressToEthAddress
-FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress
-
-Deprecated: This method is deprecated in favor of `FilecoinAddressToEthAddressV1`.
-`FilecoinAddressToEthAddressV1` provides more comprehensive support for all Filecoin address types ("f0", "f1", "f2","f3" and "f4" addresses).
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "f01234"
-]
-```
-
-Response: `"0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"`
-
-### FilecoinAddressToEthAddressV1
-`FilecoinAddressToEthAddressV1` is the recommended API for converting any Filecoin address to an EthAddress.
+`FilecoinAddressToEthAddress` is the recommended API for converting any Filecoin address to an EthAddress.
 
 This method supports all Filecoin address types:
-- "f0" and "f4" addresses: Converted directly, similar to the existing `FilecoinAddressToEthAddress` API.
+- "f0" and "f4" addresses: Converted directly.
 - "f1", "f2", and "f3" addresses: First converted to their corresponding "f0" ID address, then to an EthAddress.
 
 Requirements:
@@ -2481,8 +2462,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234",
-  "string value"
+  "Bw=="
 ]
 ```
 

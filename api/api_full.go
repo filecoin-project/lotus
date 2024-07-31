@@ -727,16 +727,10 @@ type FullNode interface {
 	// EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) //perm:read
 
-	// FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress
-	//
-	// Deprecated: This method is deprecated in favor of `FilecoinAddressToEthAddressV1`.
-	// `FilecoinAddressToEthAddressV1` provides more comprehensive support for all Filecoin address types ("f0", "f1", "f2","f3" and "f4" addresses).
-	FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) //perm:read
-
-	// `FilecoinAddressToEthAddressV1` is the recommended API for converting any Filecoin address to an EthAddress.
+	// `FilecoinAddressToEthAddress` is the recommended API for converting any Filecoin address to an EthAddress.
 	//
 	// This method supports all Filecoin address types:
-	// - "f0" and "f4" addresses: Converted directly, similar to the existing `FilecoinAddressToEthAddress` API.
+	// - "f0" and "f4" addresses: Converted directly.
 	// - "f1", "f2", and "f3" addresses: First converted to their corresponding "f0" ID address, then to an EthAddress.
 	//
 	// Requirements:
@@ -757,7 +751,7 @@ type FullNode interface {
 	// Returns:
 	// - The corresponding EthAddress.
 	// - An error if the conversion fails.
-	FilecoinAddressToEthAddressV1(ctx context.Context, filecoinAddress address.Address, blkNum string) (ethtypes.EthAddress, error) //perm:read
+	FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error) //perm:read
 
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) //perm:read
