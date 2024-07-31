@@ -69,6 +69,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/must"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
@@ -142,7 +143,16 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly())
+		c, err := r.Config()
+		if err != nil {
+			return nil, err
+		}
+		cfg, ok := c.(*config.FullNode)
+		if !ok {
+			return nil, xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+		badgerVersion := cfg.Chainstore.BadgerVersion
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly(), badgerVersion)
 		if err != nil {
 			return err
 		}

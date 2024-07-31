@@ -200,14 +200,23 @@ func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 		Skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 	}
 
-	coldOpts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false)
+	c, err := r.Config()
+	if err != nil {
+		return nil, err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return nil, xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+	badgerVersion := cfg.Chainstore.BadgerVersion
+	coldOpts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false, badgerVersion)
 	if err != nil {
 		return xerrors.Errorf("error getting coldstore badger options: %w", err)
 	}
 	coldOpts.SyncWrites = false
 	coldOpts.Logger = blog
 
-	hotOpts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, true)
+	hotOpts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, true, badgerVersion)
 	if err != nil {
 		return xerrors.Errorf("error getting hotstore badger options: %w", err)
 	}
