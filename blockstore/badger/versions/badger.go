@@ -8,23 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Options embeds the badger options themselves, and augments them with
-// blockstore-specific options.
-type Options struct {
-	V2Options badgerV2.Options
-	V4Options badgerV4.Options
-
-	// BadgerVersion sets the release version of badger to use
-	BadgerVersion int
-
-	Prefix     string
-	Dir        string
-	ValueDir   string
-	SyncWrites bool
-
-	Logger BadgerLogger
-}
-
 // BadgerLogger is a local wrapper for go-log to make the interface
 // compatible with badger.Logger (namely, aliasing Warnf to Warningf)
 type BadgerLogger struct {

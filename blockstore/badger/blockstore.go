@@ -274,8 +274,8 @@ func (b *Blockstore) movingGC(ctx context.Context) error {
 	log.Infof("moving blockstore from %s to %s", b.opts.Dir, newPath)
 
 	opts := b.opts
-	opts.Dir = newPath
-	opts.ValueDir = newPath
+	opts.SetDir(newPath)
+	opts.SetValueDir(newPath)
 
 	dbNew, err := badger.OpenBadgerDB(opts)
 	if err != nil {
