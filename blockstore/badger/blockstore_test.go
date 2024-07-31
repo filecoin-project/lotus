@@ -19,6 +19,8 @@ import (
 	versions "github.com/filecoin-project/lotus/blockstore/badger/versions"
 )
 
+const BADGER_DEFAULT_VERSION = 2
+
 func TestBadgerBlockstore(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
 	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
@@ -27,8 +29,8 @@ func TestBadgerBlockstore(t *testing.T) {
 		OpenBlockstore: openBlockstore(versions.DefaultOptions),
 	}).RunTests(t, "non_prefixed")
 
-	prefixed := func(path string, _ bool) versions.Options {
-		opts := versions.DefaultOptions(path, false)
+	prefixed := func(path string, _ bool, _ int) versions.Options {
+		opts := versions.DefaultOptions(path, false, BADGER_DEFAULT_VERSION)
 		opts.Prefix = "/prefixed/"
 		return opts
 	}
@@ -75,13 +77,13 @@ func TestStorageKey(t *testing.T) {
 	require.Equal(t, k3, k2)
 }
 
-func newBlockstore(optsSupplier func(path string, readonly bool) versions.Options) func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
+func newBlockstore(optsSupplier func(path string, readonly bool, badgerVersion int) versions.Options) func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
 	return func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
 		tb.Helper()
 
 		path = tb.TempDir()
 
-		db, err := Open(optsSupplier(path, false))
+		db, err := Open(optsSupplier(path, false, BADGER_DEFAULT_VERSION))
 		if err != nil {
 			tb.Fatal(err)
 		}
@@ -90,20 +92,20 @@ func newBlockstore(optsSupplier func(path string, readonly bool) versions.Option
 	}
 }
 
-func openBlockstore(optsSupplier func(path string, readonly bool) versions.Options) func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
+func openBlockstore(optsSupplier func(path string, readonly bool, badgerVersion int) versions.Options) func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
 	return func(tb testing.TB, path string) (bs blockstore.BasicBlockstore, err error) {
 		tb.Helper()
-		return Open(optsSupplier(path, false))
+		return Open(optsSupplier(path, false, BADGER_DEFAULT_VERSION))
 	}
 }
 
-func testMove(t *testing.T, optsF func(string, bool) versions.Options) {
+func testMove(t *testing.T, optsF func(string, bool, int) versions.Options) {
 	ctx := context.Background()
 	basePath := t.TempDir()
 
 	dbPath := filepath.Join(basePath, "db")
 
-	db, err := Open(optsF(dbPath, false))
+	db, err := Open(optsF(dbPath, false, BADGER_DEFAULT_VERSION))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +248,7 @@ func testMove(t *testing.T, optsF func(string, bool) versions.Options) {
 		t.Fatal(err)
 	}
 
-	db, err = Open(optsF(dbPath, false))
+	db, err = Open(optsF(dbPath, false, BADGER_DEFAULT_VERSION))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,8 +269,8 @@ func TestMoveWithPrefix(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
 	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
 	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
-	testMove(t, func(path string, readonly bool) versions.Options {
-		opts := versions.DefaultOptions(path, false)
+	testMove(t, func(path string, readonly bool, badgerVersion int) versions.Options {
+		opts := versions.DefaultOptions(path, false, badgerVersion)
 		opts.Prefix = "/prefixed/"
 		return opts
 	})
