@@ -44,6 +44,7 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -171,11 +172,33 @@ var importBenchCmd = &cli.Command{
 			err error
 		)
 
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		c, err := lkrepo.Config()
+		if err != nil {
+			return err
+		}
+		lotusCfg, ok := c.(*config.FullNode)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+		badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
 		switch {
 		case cctx.Bool("use-native-badger"):
 			log.Info("using native badger")
+
 			var opts badger.Options
-			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false); err != nil {
+			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false, badgerVersion); err != nil {
 				return err
 			}
 			opts.SyncWrites = false
@@ -184,7 +207,7 @@ var importBenchCmd = &cli.Command{
 		default: // legacy badger via datastore.
 			log.Info("using legacy badger")
 			var opts badger.Options
-			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false); err != nil {
+			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false, badgerVersion); err != nil {
 				return err
 			}
 
