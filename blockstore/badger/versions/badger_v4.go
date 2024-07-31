@@ -87,8 +87,7 @@ func (b *BadgerV4) Flatten(workers int) error {
 
 func (b *BadgerV4) Size() (lsm int64, vlog int64) {
 	return b.DB.Size()
-} 
-
+}
 
 func (b *BadgerV4) Copy(ctx context.Context, to BadgerDB) (defErr error) {
 
@@ -118,7 +117,7 @@ func (b *BadgerV4) Copy(ctx context.Context, to BadgerDB) (defErr error) {
 	})
 }
 
-func iterateBadgerV4(ctx context.Context, stream * badger.Stream, iter func([]*pb.KV) error) error {
+func iterateBadgerV4(ctx context.Context, stream *badger.Stream, iter func([]*pb.KV) error) error {
 	workers := IterateLSMWorkers
 	if workers == 0 {
 		workers = between(2, 8, runtime.NumCPU()/2)
@@ -145,7 +144,6 @@ func iterateBadgerV4(ctx context.Context, stream * badger.Stream, iter func([]*p
 	}
 	return stream.Orchestrate(ctx)
 }
-
 
 func (b *BadgerV4) DefaultOptions(path string, readonly bool) Options {
 	var opts Options
