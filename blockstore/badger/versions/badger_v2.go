@@ -87,28 +87,68 @@ func (b *BadgerV2) Flatten(workers int) error {
 func (b *BadgerV2) Size() (lsm int64, vlog int64) {
 	return b.DB.Size()
 }
+ 
+func (b *BadgerV2) Copy(ctx context.Context, to BadgerDB) (defErr error) {
 
-func (b *BadgerV2) Copy(to BadgerDB) error {
+	batch := to.NewWriteBatch()
+	defer func() {
+		if defErr == nil {
+			defErr = batch.Flush()
+		}
+		if defErr != nil {
+			batch.Cancel()
+		}
+	}()
+
 	stream := b.DB.NewStream()
-	stream.LogPrefix = "doCopy"
-	stream.NumGo = clamp(runtime.NumCPU()/2, 2, 8)
-	stream.Send = func(list *pb.KVList) error {
-		batch := to.NewWriteBatch()
-		defer batch.Cancel()
 
-		for _, kv := range list.Kv {
-			if kv.Key == nil || kv.Value == nil {
-				continue
-			}
+	return iterateBadger(ctx, stream, func(kvs []*pb.KV) error {
+		// check whether context is closed on every kv group
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		for _, kv := range kvs {
 			if err := batch.Set(kv.Key, kv.Value); err != nil {
 				return err
 			}
 		}
+		return nil
+	})
+}
 
-		return batch.Flush()
+var IterateLSMWorkers int // defaults to between( 2, 8, runtime.NumCPU/2 )
+
+func iterateBadger(ctx context.Context, stream * badger.Stream, iter func([]*pb.KV) error) error {
+	workers := IterateLSMWorkers
+	if workers == 0 {
+		workers = between(2, 8, runtime.NumCPU()/2)
 	}
 
-	return stream.Orchestrate(context.Background())
+	stream.NumGo = workers
+	stream.LogPrefix = "iterateBadgerKVs"
+	stream.Send = func(kvl *pb.KVList) error {
+		kvs := make([]*pb.KV, 0, len(kvl.Kv))
+		for _, kv := range kvl.Kv {
+			if kv.Key != nil && kv.Value != nil {
+				kvs = append(kvs, kv)
+			}
+		}
+		if len(kvs) == 0 {
+			return nil
+		}
+		return iter(kvs)
+	}
+	return stream.Orchestrate(ctx)
+}
+
+func between(min, max, val int) int {
+	if val > max {
+		val = max
+	}
+	if val < min {
+		val = min
+	}
+	return val
 }
 
 func (b *BadgerV2) DefaultOptions(path string, readonly bool) Options {

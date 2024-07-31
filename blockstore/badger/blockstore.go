@@ -287,7 +287,7 @@ func (b *Blockstore) movingGC(ctx context.Context) error {
 	b.unlockMove(moveStateMoving)
 
 	log.Info("copying blockstore")
-	err = b.doCopy(b.db, b.dbNext)
+	err = b.doCopy(ctx, b.db, b.dbNext)
 	if err != nil {
 		return fmt.Errorf("error moving badger blockstore to %s: %w", newPath, err)
 	}
@@ -349,10 +349,9 @@ func symlink(path, linkTo string) error {
 	return os.Symlink(path, linkTo)
 }
 
-// doCopy copies a badger blockstore to another, with an optional filter; if the filter
-// is not nil, then only cids that satisfy the filter will be copied.
-func (b *Blockstore) doCopy(from versions.BadgerDB, to versions.BadgerDB) error {
-	return from.Copy(to)
+// doCopy copies a badger blockstore to another
+func (b *Blockstore) doCopy(ctx context.Context, from versions.BadgerDB, to versions.BadgerDB) error {
+	return from.Copy(ctx, to)
 }
 
 func (b *Blockstore) deleteDB(path string) {

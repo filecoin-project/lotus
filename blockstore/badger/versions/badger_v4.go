@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	badger "github.com/dgraph-io/badger/v4"
-	badgerV4 "github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v4/pb"
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
 	"github.com/ipfs/go-cid"
@@ -87,39 +87,69 @@ func (b *BadgerV4) Flatten(workers int) error {
 
 func (b *BadgerV4) Size() (lsm int64, vlog int64) {
 	return b.DB.Size()
-}
+} 
 
-func (b *BadgerV4) Copy(to BadgerDB) error {
-	stream := b.DB.NewStream()
-	stream.LogPrefix = "doCopy"
-	stream.NumGo = clamp(runtime.NumCPU()/2, 2, 8)
-	stream.Send = func(buf *z.Buffer) error {
-		list, err := badger.BufferToKVList(buf)
-		if err != nil {
-			return fmt.Errorf("buffer to KV list conversion: %w", err)
+
+func (b *BadgerV4) Copy(ctx context.Context, to BadgerDB) (defErr error) {
+
+	batch := to.NewWriteBatch()
+	defer func() {
+		if defErr == nil {
+			defErr = batch.Flush()
 		}
+		if defErr != nil {
+			batch.Cancel()
+		}
+	}()
 
-		batch := to.NewWriteBatch()
-		defer batch.Cancel()
+	stream := b.DB.NewStream()
 
-		for _, kv := range list.Kv {
-			if kv.Key == nil || kv.Value == nil {
-				continue
-			}
+	return iterateBadgerV4(ctx, stream, func(kvs []*pb.KV) error {
+		// check whether context is closed on every kv group
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		for _, kv := range kvs {
 			if err := batch.Set(kv.Key, kv.Value); err != nil {
 				return err
 			}
 		}
+		return nil
+	})
+}
 
-		return batch.Flush()
+func iterateBadgerV4(ctx context.Context, stream * badger.Stream, iter func([]*pb.KV) error) error {
+	workers := IterateLSMWorkers
+	if workers == 0 {
+		workers = between(2, 8, runtime.NumCPU()/2)
 	}
 
-	return stream.Orchestrate(context.Background())
+	stream.NumGo = workers
+	stream.LogPrefix = "iterateBadgerKVs"
+	stream.Send = func(buf *z.Buffer) error {
+		kvl, err := badger.BufferToKVList(buf)
+		if err != nil {
+			return fmt.Errorf("buffer to KV list conversion: %w", err)
+		}
+
+		kvs := make([]*pb.KV, 0, len(kvl.Kv))
+		for _, kv := range kvl.Kv {
+			if kv.Key != nil && kv.Value != nil {
+				kvs = append(kvs, kv)
+			}
+		}
+		if len(kvs) == 0 {
+			return nil
+		}
+		return iter(kvs)
+	}
+	return stream.Orchestrate(ctx)
 }
+
 
 func (b *BadgerV4) DefaultOptions(path string, readonly bool) Options {
 	var opts Options
-	bopts := badgerV4.DefaultOptions(path)
+	bopts := badger.DefaultOptions(path)
 	bopts.ReadOnly = readonly
 
 	// Envvar LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM
