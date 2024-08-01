@@ -16,6 +16,7 @@
 - https://github.com/filecoin-project/lotus/pull/12295 Upgrade to go-f3 v0.0.6
 - https://github.com/filecoin-project/lotus/pull/12292: feat: p2p: allow overriding bootstrap nodes with environmemnt variable
 - https://github.com/filecoin-project/lotus/pull/12319: feat: `lotus send CLI`: allow sending to ETH addresses
+- https://github.com/filecoin-project/lotus/pull/12332: fix: ETH RPC: receipts: use correct txtype in receipts
 
 ## New features
 
