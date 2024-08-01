@@ -98,6 +98,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	require.EqualValues(t, ethAddr, receipt.From)
 	require.EqualValues(t, ethAddr2, *receipt.To)
 	require.EqualValues(t, hash, receipt.TransactionHash)
+	require.EqualValues(t, ethtypes.EIP1559TxType, receipt.Type)
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
