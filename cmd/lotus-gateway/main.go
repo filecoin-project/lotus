@@ -157,6 +157,11 @@ var runCmd = &cli.Command{
 			Usage: "A hard limit on the number of incomming connections (requests) to accept per remote host per minute. Use 0 to disable",
 			Value: 0,
 		},
+		&cli.IntFlag{
+			Name:  "eth-max-filters-per-conn",
+			Usage: "The maximum number of filters plus subscriptions that a single websocket connection can maintain",
+			Value: gateway.DefaultEthMaxFiltersPerConn,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -184,6 +189,7 @@ var runCmd = &cli.Command{
 			perConnectionRateLimit      = cctx.Int("per-conn-rate-limit")
 			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
 			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
+			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -203,7 +209,15 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to convert endpoint address to multiaddr: %w", err)
 		}
 
-		gwapi := gateway.NewNode(api, subHnd, lookbackCap, waitLookback, int64(globalRateLimit), rateLimitTimeout)
+		gwapi := gateway.NewNode(
+			api,
+			gateway.WithEthSubHandler(subHnd),
+			gateway.WithLookbackCap(lookbackCap),
+			gateway.WithStateWaitLookbackLimit(waitLookback),
+			gateway.WithRateLimit(globalRateLimit),
+			gateway.WithRateLimitTimeout(rateLimitTimeout),
+			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),
+		)
 		handler, err := gateway.Handler(gwapi, api, perConnectionRateLimit, perHostConnectionsPerMinute, serverOptions...)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")

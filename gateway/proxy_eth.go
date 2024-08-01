@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -21,6 +22,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+var ErrTooManyFilters = errors.New("too many subscriptions and filters for this connection")
 
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
@@ -555,8 +558,8 @@ func (gw *Node) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
-	if len(ft.userSubscriptions) >= EthMaxFiltersPerConn {
-		return ethtypes.EthSubscriptionID{}, xerrors.New("too many subscriptions")
+	if len(ft.userSubscriptions)+len(ft.userFilters) >= gw.ethMaxFiltersPerConn {
+		return ethtypes.EthSubscriptionID{}, ErrTooManyFilters
 	}
 
 	sub, err := gw.target.EthSubscribe(ctx, p)
@@ -677,8 +680,6 @@ func (gw *Node) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilt
 	return gw.target.EthTraceFilter(ctx, filter)
 }
 
-var EthMaxFiltersPerConn = 16 // todo make this configurable
-
 func (gw *Node) addUserFilterLimited(
 	ctx context.Context,
 	callName string,
@@ -692,8 +693,8 @@ func (gw *Node) addUserFilterLimited(
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
-	if len(ft.userFilters) >= EthMaxFiltersPerConn {
-		return ethtypes.EthFilterID{}, xerrors.New("too many filters")
+	if len(ft.userSubscriptions)+len(ft.userFilters) >= gw.ethMaxFiltersPerConn {
+		return ethtypes.EthFilterID{}, ErrTooManyFilters
 	}
 
 	id, err := install()
@@ -712,7 +713,7 @@ func (gw *Node) addUserFilterLimited(
 
 func getStatefulTracker(ctx context.Context) (*statefulCallTracker, error) {
 	if jsonrpc.GetConnectionType(ctx) != jsonrpc.ConnectionTypeWS {
-		return nil, xerrors.New("stateful methods are only available on websockets connections")
+		return nil, xerrors.New("stateful methods are only available on websocket connections")
 	}
 
 	if ct, ok := ctx.Value(statefulCallTrackerKey).(*statefulCallTracker); !ok {
