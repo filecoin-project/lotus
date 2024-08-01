@@ -10,6 +10,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/multisig"
+	res "github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/node"
 )
 
@@ -200,6 +202,7 @@ type testNodes struct {
 	full        *kit.TestFullNode
 	miner       *kit.TestMiner
 	gatewayAddr string
+	rpcCloser   jsonrpc.ClientCloser
 }
 
 type startOptions struct {
@@ -254,8 +257,6 @@ func withNodeOpts(nodeOpts ...kit.NodeOpt) startOption {
 func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNodes {
 	options := applyStartOptions(opts...)
 
-	var closer jsonrpc.ClientCloser
-
 	var (
 		full  *kit.TestFullNode
 		miner *kit.TestMiner
@@ -274,7 +275,8 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 	api.RunningNodeType = api.NodeFull
 
 	// Create a gateway server in front of the full node
-	gwapi := gateway.NewNode(full, nil, options.lookbackCap, options.stateWaitLookbackLimit, 0, time.Minute)
+	ethSubHandler := gateway.NewEthSubHandler()
+	gwapi := gateway.NewNode(full, ethSubHandler, options.lookbackCap, options.stateWaitLookbackLimit, 0, time.Minute)
 	handler, err := gateway.Handler(gwapi, full, options.perConnectionAPIRateLimit, options.perHostRequestsPerMinute)
 	t.Cleanup(func() { _ = handler.Shutdown(ctx) })
 	require.NoError(t, err)
@@ -286,8 +288,14 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 
 	// Create a gateway client API that connects to the gateway server
 	var gapi api.Gateway
-	gapi, closer, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
+	var _closer jsonrpc.ClientCloser
+	gapi, _closer, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil,
+		jsonrpc.WithClientHandler("Filecoin", ethSubHandler),
+		jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"),
+	)
 	require.NoError(t, err)
+	var closeOnce sync.Once
+	closer := func() { closeOnce.Do(_closer) }
 	t.Cleanup(closer)
 
 	nodeOpts := append([]kit.NodeOpt{
@@ -304,6 +312,7 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 		full:        full,
 		miner:       miner,
 		gatewayAddr: srv.Listener.Addr().String(),
+		rpcCloser:   closer,
 	}
 
 	if options.fund {
@@ -417,32 +426,134 @@ func TestStatefulCallHandling(t *testing.T) {
 	ctx := context.Background()
 	nodes := startNodes(ctx, t)
 
-	// not available over plain http
-	client := &http.Client{}
-	url := fmt.Sprintf("http://%s/rpc/v1", nodes.gatewayAddr)
-	jsonPayload := []byte(`{"method":"Filecoin.EthNewBlockFilter","params":[],"id":1,"jsonrpc":"2.0"}`)
-	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
-	req.NoError(err)
-	request.Header.Set("Content-Type", "application/json")
-	response, err := client.Do(request)
-	req.NoError(err)
-	body, err := io.ReadAll(response.Body)
-	req.NoError(err)
-	defer func() { _ = response.Body.Close() }()
-	req.Equal(http.StatusOK, response.StatusCode)
-	req.Contains(
-		string(body),
-		`{"error":{"code":1,"message":"EthNewBlockFilter not supported: stateful tracking is only available for websockets connections"},"id":1,"jsonrpc":"2.0"}`,
-	)
-
-	// available over websocket
-	for i := 0; i < gateway.EthMaxFiltersPerConn; i++ {
-		_, err := nodes.lite.EthNewBlockFilter(ctx)
+	httpReq := func(payload string) (int, string) {
+		// not available over plain http
+		client := &http.Client{}
+		url := fmt.Sprintf("http://%s/rpc/v1", nodes.gatewayAddr)
+		request, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
 		req.NoError(err)
+		request.Header.Set("Content-Type", "application/json")
+		response, err := client.Do(request)
+		req.NoError(err)
+		defer func() { _ = response.Body.Close() }()
+		body, err := io.ReadAll(response.Body)
+		req.NoError(err)
+		return response.StatusCode, string(body)
 	}
-	// but only up to max
-	_, err = nodes.lite.EthNewBlockFilter(ctx)
+
+	t.Logf("Testing stateful call handling rejection via plain http")
+	for _, typ := range []string{
+		"EthNewBlockFilter",
+		"EthNewPendingTransactionFilter",
+		"EthNewFilter",
+		"EthGetFilterChanges",
+		"EthGetFilterLogs",
+		"EthUninstallFilter",
+		"EthSubscribe",
+		"EthUnsubscribe",
+	} {
+		params := ""
+		expErr := typ + " not supported: stateful methods are only available on websockets connections"
+
+		switch typ {
+		case "EthNewFilter":
+			params = "{}"
+		case "EthGetFilterChanges", "EthGetFilterLogs", "EthUninstallFilter", "EthUnsubscribe":
+			params = `"0x0000000000000000000000000000000000000000000000000000000000000000"`
+		case "EthSubscribe":
+			params = `"newHeads"`
+			expErr = "EthSubscribe not supported: connection doesn't support callbacks"
+		}
+
+		status, body := httpReq(`{"method":"Filecoin.` + typ + `","params":[` + params + `],"id":1,"jsonrpc":"2.0"}`)
+
+		req.Equal(http.StatusOK, status, "not ok for "+typ)
+		req.Contains(body, `{"error":{"code":1,"message":"`+expErr+`"},"id":1,"jsonrpc":"2.0"}`, "unexpected response for "+typ)
+	}
+
+	t.Logf("Installing a stateful filters via ws")
+	// install the variety of stateful filters we have, but only up to the max total
+	var (
+		blockFilterIds   = make([]ethtypes.EthFilterID, gateway.EthMaxFiltersPerConn/3)
+		pendingFilterIds = make([]ethtypes.EthFilterID, gateway.EthMaxFiltersPerConn/3)
+		matchFilterIds   = make([]ethtypes.EthFilterID, gateway.EthMaxFiltersPerConn-len(blockFilterIds)-len(pendingFilterIds))
+	)
+	for i := 0; i < len(blockFilterIds); i++ {
+		fid, err := nodes.lite.EthNewBlockFilter(ctx)
+		req.NoError(err)
+		blockFilterIds[i] = fid
+	}
+	for i := 0; i < len(pendingFilterIds); i++ {
+		fid, err := nodes.lite.EthNewPendingTransactionFilter(ctx)
+		req.NoError(err)
+		pendingFilterIds[i] = fid
+	}
+	for i := 0; i < len(matchFilterIds); i++ {
+		fid, err := nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
+		req.NoError(err)
+		matchFilterIds[i] = fid
+	}
+
+	// sanity check we're actually doing something
+	req.Greater(len(blockFilterIds), 0)
+	req.Greater(len(pendingFilterIds), 0)
+	req.Greater(len(matchFilterIds), 0)
+
+	t.Logf("Testing 'too many filters' rejection")
+	_, err := nodes.lite.EthNewBlockFilter(ctx)
+	require.ErrorContains(t, err, "too many filters")
+	_, err = nodes.lite.EthNewPendingTransactionFilter(ctx)
 	require.ErrorContains(t, err, "too many filters")
 	_, err = nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
 	require.ErrorContains(t, err, "too many filters")
+
+	t.Logf("Testing subscriptions")
+	// subscribe twice, so we can unsub one over ws to check unsub works, then unsub after ws close to
+	// check that auto-cleanup happned
+	subId1, err := nodes.lite.EthSubscribe(ctx, res.Wrap[jsonrpc.RawParams](json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})).Assert(req.NoError))
+	req.NoError(err)
+	err = nodes.lite.EthSubRouter.AddSub(ctx, subId1, func(ctx context.Context, resp *ethtypes.EthSubscriptionResponse) error {
+		t.Logf("Received subscription response (sub1): %v", resp)
+		return nil
+	})
+	req.NoError(err)
+	subId2, err := nodes.lite.EthSubscribe(ctx, res.Wrap[jsonrpc.RawParams](json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})).Assert(req.NoError))
+	req.NoError(err)
+	err = nodes.lite.EthSubRouter.AddSub(ctx, subId2, func(ctx context.Context, resp *ethtypes.EthSubscriptionResponse) error {
+		t.Logf("Received subscription response (sub2): %v", resp)
+		return nil
+	})
+	req.NoError(err)
+
+	ok, err := nodes.lite.EthUnsubscribe(ctx, subId1) // unsub on lite node, should work
+	req.NoError(err)
+	req.True(ok)
+	ok, err = nodes.full.EthUnsubscribe(ctx, subId1) // unsub on full node, already done
+	req.NoError(err)
+	req.False(ok)
+
+	t.Logf("Shutting down the lite node")
+	req.NoError(nodes.lite.Stop(ctx))
+	nodes.rpcCloser() // once the websocket connection is closed, the server should clean up the filters for us
+
+	time.Sleep(time.Second) // unfortunately we have no other way to check for completeness of shutdown and cleanup
+
+	t.Logf("Checking that all filters and subs were cleared up by directly talking to full node")
+
+	ok, err = nodes.full.EthUnsubscribe(ctx, subId2) // unsub on full node, already done
+	req.NoError(err)
+	req.False(ok) // already unsubbed because of auto-cleanup
+
+	for _, fid := range blockFilterIds {
+		_, err = nodes.full.EthGetFilterChanges(ctx, fid)
+		req.ErrorContains(err, "filter not found")
+	}
+	for _, fid := range pendingFilterIds {
+		_, err = nodes.full.EthGetFilterChanges(ctx, fid)
+		req.ErrorContains(err, "filter not found")
+	}
+	for _, fid := range matchFilterIds {
+		_, err = nodes.full.EthGetFilterChanges(ctx, fid)
+		req.ErrorContains(err, "filter not found")
+	}
 }

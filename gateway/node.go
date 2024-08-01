@@ -7,6 +7,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	logger "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"golang.org/x/time/rate"
 
@@ -30,6 +31,8 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+var log = logger.Logger("gateway")
 
 const (
 	DefaultLookbackCap            = time.Hour * 24
