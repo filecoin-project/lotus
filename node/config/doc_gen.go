@@ -143,13 +143,17 @@ disabled by setting their respective Disable* options.`,
 			Type: "Duration",
 
 			Comment: `FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
-this time become eligible for automatic deletion.`,
+this time become eligible for automatic deletion. Filters consume resources, so if they are unused they
+should not be retained.`,
 		},
 		{
 			Name: "MaxFilters",
 			Type: "int",
 
-			Comment: `MaxFilters specifies the maximum number of filters that may exist at any one time.`,
+			Comment: `MaxFilters specifies the maximum number of filters that may exist at any one time.
+Multi-tenant environments may want to increase this value to serve a larger number of clients. If using
+lotus-gateway, this global limit can be coupled with --eth-max-filters-per-conn which limits the number
+of filters per connection.`,
 		},
 		{
 			Name: "MaxFilterResults",
