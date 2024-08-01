@@ -61,6 +61,7 @@ func Handler(
 	m := mux.NewRouter()
 
 	opts = append(opts, jsonrpc.WithReverseClient[lapi.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(lapi.RPCErrors))
+
 	serveRpc := func(path string, hnd interface{}) {
 		rpcServer := jsonrpc.NewServer(opts...)
 		rpcServer.Register("Filecoin", hnd)
@@ -106,7 +107,11 @@ type statefulCallHandler struct {
 }
 
 func (h statefulCallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, newStatefulCallTracker()))
+	tracker := newStatefulCallTracker()
+	defer func() {
+		go tracker.cleanup()
+	}()
+	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, tracker))
 	h.next.ServeHTTP(w, r)
 }
 
