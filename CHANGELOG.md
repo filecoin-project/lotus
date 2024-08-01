@@ -17,6 +17,9 @@ For storage providers, this patch release fixes pledge issues users have been en
 - https://github.com/filecoin-project/lotus/pull/12390: Update go-f3 to 0.2.0
 - https://github.com/filecoin-project/lotus/pull/12341: fix: miner: Fix DDO pledge math
 
+- feat: `FilecoinAddressToEthAddress` RPC can now return ETH addresses for all Filecoin address types ("f0"/"f1"/"f2"/"f3") based on client's re-org tolerance. This is a breaking change if you are using the API via the go-jsonrpc library or by using Lotus as a library, but is a non-breaking change when using the API via any other RPC method as it adds an optional second argument.
+([filecoin-project/lotus#12324](https://github.com/filecoin-project/lotus/pull/12324)).
+
 # v1.28.1 / 2024-07-24
 
 This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇. v1.28.1 is also the minimal version that supports nv23.
