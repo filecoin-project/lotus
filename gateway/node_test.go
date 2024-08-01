@@ -89,7 +89,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, 0, time.Minute)
+			a := NewNode(mock)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -245,7 +245,7 @@ func TestGatewayVersion(t *testing.T) {
 	//stm: @GATEWAY_NODE_GET_VERSION_001
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
-	a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, 0, time.Minute)
+	a := NewNode(mock)
 
 	v, err := a.Version(ctx)
 	require.NoError(t, err)
@@ -256,7 +256,7 @@ func TestGatewayLimitTokensAvailable(t *testing.T) {
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
 	tokens := 3
-	a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, int64(tokens), time.Minute)
+	a := NewNode(mock, WithRateLimit(tokens))
 	require.NoError(t, a.limit(ctx, tokens), "requests should not be limited when there are enough tokens available")
 }
 
@@ -264,9 +264,9 @@ func TestGatewayLimitTokensRate(t *testing.T) {
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
 	tokens := 3
-	var rateLimit int64 = 200
+	var rateLimit = 200
 	rateLimitTimeout := time.Second / time.Duration(rateLimit/3) // large enough to not be hit
-	a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, rateLimit, rateLimitTimeout)
+	a := NewNode(mock, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
 
 	start := time.Now()
 	calls := 10
@@ -285,7 +285,7 @@ func TestGatewayLimitTokensRate(t *testing.T) {
 	// In this case our timeout is too short to allow for the rate limit, so we should hit the
 	// hard rate limit.
 	rateLimitTimeout = time.Second / time.Duration(rateLimit)
-	a = NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, rateLimit, rateLimitTimeout)
+	a = NewNode(mock, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
 	require.NoError(t, a.limit(ctx, tokens))
 	require.ErrorContains(t, a.limit(ctx, tokens), "server busy", "API calls should be hard rate limited when they hit limits")
 }

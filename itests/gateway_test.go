@@ -276,7 +276,12 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 
 	// Create a gateway server in front of the full node
 	ethSubHandler := gateway.NewEthSubHandler()
-	gwapi := gateway.NewNode(full, ethSubHandler, options.lookbackCap, options.stateWaitLookbackLimit, 0, time.Minute)
+	gwapi := gateway.NewNode(
+		full,
+		gateway.WithEthSubHandler(ethSubHandler),
+		gateway.WithLookbackCap(options.lookbackCap),
+		gateway.WithStateWaitLookbackLimit(options.stateWaitLookbackLimit),
+	)
 	handler, err := gateway.Handler(gwapi, full, options.perConnectionAPIRateLimit, options.perHostRequestsPerMinute)
 	t.Cleanup(func() { _ = handler.Shutdown(ctx) })
 	require.NoError(t, err)
@@ -453,7 +458,7 @@ func TestStatefulCallHandling(t *testing.T) {
 		"EthUnsubscribe",
 	} {
 		params := ""
-		expErr := typ + " not supported: stateful methods are only available on websockets connections"
+		expErr := typ + " not supported: stateful methods are only available on websocket connections"
 
 		switch typ {
 		case "EthNewFilter":
@@ -470,42 +475,6 @@ func TestStatefulCallHandling(t *testing.T) {
 		req.Equal(http.StatusOK, status, "not ok for "+typ)
 		req.Contains(body, `{"error":{"code":1,"message":"`+expErr+`"},"id":1,"jsonrpc":"2.0"}`, "unexpected response for "+typ)
 	}
-
-	t.Logf("Installing a stateful filters via ws")
-	// install the variety of stateful filters we have, but only up to the max total
-	var (
-		blockFilterIds   = make([]ethtypes.EthFilterID, gateway.EthMaxFiltersPerConn/3)
-		pendingFilterIds = make([]ethtypes.EthFilterID, gateway.EthMaxFiltersPerConn/3)
-		matchFilterIds   = make([]ethtypes.EthFilterID, gateway.EthMaxFiltersPerConn-len(blockFilterIds)-len(pendingFilterIds))
-	)
-	for i := 0; i < len(blockFilterIds); i++ {
-		fid, err := nodes.lite.EthNewBlockFilter(ctx)
-		req.NoError(err)
-		blockFilterIds[i] = fid
-	}
-	for i := 0; i < len(pendingFilterIds); i++ {
-		fid, err := nodes.lite.EthNewPendingTransactionFilter(ctx)
-		req.NoError(err)
-		pendingFilterIds[i] = fid
-	}
-	for i := 0; i < len(matchFilterIds); i++ {
-		fid, err := nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
-		req.NoError(err)
-		matchFilterIds[i] = fid
-	}
-
-	// sanity check we're actually doing something
-	req.Greater(len(blockFilterIds), 0)
-	req.Greater(len(pendingFilterIds), 0)
-	req.Greater(len(matchFilterIds), 0)
-
-	t.Logf("Testing 'too many filters' rejection")
-	_, err := nodes.lite.EthNewBlockFilter(ctx)
-	require.ErrorContains(t, err, "too many filters")
-	_, err = nodes.lite.EthNewPendingTransactionFilter(ctx)
-	require.ErrorContains(t, err, "too many filters")
-	_, err = nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
-	require.ErrorContains(t, err, "too many filters")
 
 	t.Logf("Testing subscriptions")
 	// subscribe twice, so we can unsub one over ws to check unsub works, then unsub after ws close to
@@ -532,9 +501,48 @@ func TestStatefulCallHandling(t *testing.T) {
 	req.NoError(err)
 	req.False(ok)
 
+	t.Logf("Installing a stateful filters via ws")
+	// install the variety of stateful filters we have, but only up to the max total
+	var (
+		blockFilterIds   = make([]ethtypes.EthFilterID, gateway.DefaultEthMaxFiltersPerConn/3)
+		pendingFilterIds = make([]ethtypes.EthFilterID, gateway.DefaultEthMaxFiltersPerConn/3)
+		// matchFilterIds takes up the remainder, minus 1 because we still have 1 live subscription that counts
+		matchFilterIds = make([]ethtypes.EthFilterID, gateway.DefaultEthMaxFiltersPerConn-len(blockFilterIds)-len(pendingFilterIds)-1)
+	)
+	for i := 0; i < len(blockFilterIds); i++ {
+		fid, err := nodes.lite.EthNewBlockFilter(ctx)
+		req.NoError(err)
+		blockFilterIds[i] = fid
+	}
+	for i := 0; i < len(pendingFilterIds); i++ {
+		fid, err := nodes.lite.EthNewPendingTransactionFilter(ctx)
+		req.NoError(err)
+		pendingFilterIds[i] = fid
+	}
+	for i := 0; i < len(matchFilterIds); i++ {
+		fid, err := nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
+		req.NoError(err)
+		matchFilterIds[i] = fid
+	}
+
+	// sanity check we're actually doing something
+	req.Greater(len(blockFilterIds), 0)
+	req.Greater(len(pendingFilterIds), 0)
+	req.Greater(len(matchFilterIds), 0)
+
+	t.Logf("Testing 'too many filters' rejection")
+	_, err = nodes.lite.EthNewBlockFilter(ctx)
+	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+	_, err = nodes.lite.EthNewPendingTransactionFilter(ctx)
+	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+	_, err = nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
+	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+	_, err = nodes.lite.EthSubscribe(ctx, res.Wrap[jsonrpc.RawParams](json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})).Assert(req.NoError))
+	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+
 	t.Logf("Shutting down the lite node")
 	req.NoError(nodes.lite.Stop(ctx))
-	nodes.rpcCloser() // once the websocket connection is closed, the server should clean up the filters for us
+	nodes.rpcCloser() // once the websocke connection is closed, the server should clean up the filters for us
 
 	time.Sleep(time.Second) // unfortunately we have no other way to check for completeness of shutdown and cleanup
 

@@ -38,6 +38,7 @@ const (
 	DefaultLookbackCap            = time.Hour * 24
 	DefaultStateWaitLookbackLimit = abi.ChainEpoch(20)
 	DefaultRateLimitTimeout       = time.Second * 5
+	DefaultEthMaxFiltersPerConn   = 16
 	basicRateLimitTokens          = 1
 	walletRateLimitTokens         = 1
 	chainRateLimitTokens          = 2
@@ -169,6 +170,7 @@ type Node struct {
 	stateWaitLookbackLimit abi.ChainEpoch
 	rateLimiter            *rate.Limiter
 	rateLimitTimeout       time.Duration
+	ethMaxFiltersPerConn   int
 	errLookback            error
 }
 
@@ -180,28 +182,88 @@ var (
 	_ full.StateModuleAPI = (*Node)(nil)
 )
 
+type Options struct {
+	subHandler             *EthSubHandler
+	lookbackCap            time.Duration
+	stateWaitLookbackLimit abi.ChainEpoch
+	rateLimit              int
+	rateLimitTimeout       time.Duration
+	ethMaxFiltersPerConn   int
+}
+
+type Option func(*Options)
+
+// WithEthSubHandler sets the Ethereum subscription handler for the gateway node. This is used for
+// the RPC reverse handler for EthSubscribe calls.
+func WithEthSubHandler(subHandler *EthSubHandler) Option {
+	return func(opts *Options) {
+		opts.subHandler = subHandler
+	}
+}
+
+// WithLookbackCap sets the maximum lookback duration (time) for state queries.
+func WithLookbackCap(lookbackCap time.Duration) Option {
+	return func(opts *Options) {
+		opts.lookbackCap = lookbackCap
+	}
+}
+
+// WithStateWaitLookbackLimit sets the maximum lookback (epochs) for state queries.
+func WithStateWaitLookbackLimit(stateWaitLookbackLimit abi.ChainEpoch) Option {
+	return func(opts *Options) {
+		opts.stateWaitLookbackLimit = stateWaitLookbackLimit
+	}
+}
+
+// WithRateLimit sets the maximum number of requests per second globally that will be allowed
+// before the gateway starts to rate limit requests.
+func WithRateLimit(rateLimit int) Option {
+	return func(opts *Options) {
+		opts.rateLimit = rateLimit
+	}
+}
+
+// WithRateLimitTimeout sets the timeout for rate limiting requests such that when rate limiting is
+// being applied, if the timeout is reached the request will be allowed.
+func WithRateLimitTimeout(rateLimitTimeout time.Duration) Option {
+	return func(opts *Options) {
+		opts.rateLimitTimeout = rateLimitTimeout
+	}
+}
+
+// WithEthMaxFiltersPerConn sets the maximum number of Ethereum filters and subscriptions that can
+// be maintained per websocket connection.
+func WithEthMaxFiltersPerConn(ethMaxFiltersPerConn int) Option {
+	return func(opts *Options) {
+		opts.ethMaxFiltersPerConn = ethMaxFiltersPerConn
+	}
+}
+
 // NewNode creates a new gateway node.
-func NewNode(
-	api TargetAPI,
-	sHnd *EthSubHandler,
-	lookbackCap time.Duration,
-	stateWaitLookbackLimit abi.ChainEpoch,
-	rateLimit int64,
-	rateLimitTimeout time.Duration,
-) *Node {
+func NewNode(api TargetAPI, opts ...Option) *Node {
+	options := &Options{
+		lookbackCap:            DefaultLookbackCap,
+		stateWaitLookbackLimit: DefaultStateWaitLookbackLimit,
+		rateLimitTimeout:       DefaultRateLimitTimeout,
+		ethMaxFiltersPerConn:   DefaultEthMaxFiltersPerConn,
+	}
+	for _, opt := range opts {
+		opt(options)
+	}
 
 	limit := rate.Inf
-	if rateLimit > 0 {
-		limit = rate.Every(time.Second / time.Duration(rateLimit))
+	if options.rateLimit > 0 {
+		limit = rate.Every(time.Second / time.Duration(options.rateLimit))
 	}
 	return &Node{
 		target:                 api,
-		subHnd:                 sHnd,
-		lookbackCap:            lookbackCap,
-		stateWaitLookbackLimit: stateWaitLookbackLimit,
+		subHnd:                 options.subHandler,
+		lookbackCap:            options.lookbackCap,
+		stateWaitLookbackLimit: options.stateWaitLookbackLimit,
 		rateLimiter:            rate.NewLimiter(limit, MaxRateLimitTokens), // allow for a burst of MaxRateLimitTokens
-		rateLimitTimeout:       rateLimitTimeout,
-		errLookback:            fmt.Errorf("lookbacks of more than %s are disallowed", lookbackCap),
+		rateLimitTimeout:       options.rateLimitTimeout,
+		errLookback:            fmt.Errorf("lookbacks of more than %s are disallowed", options.lookbackCap),
+		ethMaxFiltersPerConn:   options.ethMaxFiltersPerConn,
 	}
 }
 
