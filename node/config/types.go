@@ -592,10 +592,14 @@ type EventsConfig struct {
 	EnableActorEventsAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
-	// this time become eligible for automatic deletion.
+	// this time become eligible for automatic deletion. Filters consume resources, so if they are unused they
+	// should not be retained.
 	FilterTTL Duration
 
 	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	// Multi-tenant environments may want to increase this value to serve a larger number of clients. If using
+	// lotus-gateway, this global limit can be coupled with --eth-max-filters-per-conn which limits the number
+	// of filters per connection.
 	MaxFilters int
 
 	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
