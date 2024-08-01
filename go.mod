@@ -43,7 +43,7 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837
 	github.com/filecoin-project/go-crypto v0.0.1
-	github.com/filecoin-project/go-f3 v0.0.8-0.20240730151201-d82606d009e4
+	github.com/filecoin-project/go-f3 v0.0.8-0.20240731150434-62b700dcc746
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.3.2
