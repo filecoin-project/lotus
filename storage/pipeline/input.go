@@ -362,7 +362,7 @@ func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 
 	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
-		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
+		return api.SectorOffset{}, xerrors.Errorf("couldn't get chain head: %w", err)
 	}
 
 	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)

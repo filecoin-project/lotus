@@ -575,7 +575,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 	return withdrawFundsCid, nil
 }
 
-// asynchonously wait for results of message
+// asynchronously wait for results of message
 func (a *fundedAddress) startWaitForResults(msgCid cid.Cid) {
 	go func() {
 		err := a.env.WaitMsg(a.ctx, msgCid)
