@@ -11,6 +11,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -82,26 +83,6 @@ var backfillEventsCmd = &cli.Command{
 
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
-
-		// currTs will be the tipset where we start backfilling from
-		currTs, err := api.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-		if cctx.IsSet("from") {
-			// we need to fetch the tipset after the epoch being specified since we will need to advance currTs
-			currTs, err = api.ChainGetTipSetAfterHeight(ctx, abi.ChainEpoch(cctx.Int("from")+1), currTs.Key())
-			if err != nil {
-				return err
-			}
-		}
-
-		// advance currTs by one epoch and maintain prevTs as the previous tipset (this allows us to easily use the ChainGetParentMessages/Receipt API)
-		prevTs := currTs
-		currTs, err = api.ChainGetTipSet(ctx, currTs.Parents())
-		if err != nil {
-			return fmt.Errorf("failed to load tipset %s: %w", prevTs.Parents(), err)
-		}
 
 		epochs := cctx.Int("epochs")
 
@@ -176,7 +157,7 @@ var backfillEventsCmd = &cli.Command{
 			return err
 		}
 
-		processHeight := func(ctx context.Context, cnt int, msgs []lapi.Message, receipts []*types.MessageReceipt) error {
+		processHeight := func(ctx context.Context, cnt int, msgs []lapi.Message, receipts []*types.MessageReceipt, currTs *types.TipSet) error {
 			var tx *sql.Tx
 			for {
 				var err error
@@ -208,9 +189,20 @@ var backfillEventsCmd = &cli.Command{
 					continue
 				}
 
+				tsKey := currTs.Key()
 				events, err := api.ChainGetEvents(ctx, *receipt.EventsRoot)
 				if err != nil {
-					return fmt.Errorf("failed to load events for tipset %s: %w", currTs, err)
+					if err != nil {
+						// after re-computing the tipset state, we should be able to get the events
+						if _, err = api.StateRecomputeTipset(ctx, tsKey); err != nil {
+							return xerrors.Errorf("failed get events: %w", err)
+						}
+
+						events, err = api.ChainGetEvents(ctx, *receipt.EventsRoot)
+						if err != nil {
+							return xerrors.Errorf("failed get events: %w", err)
+						}
+					}
 				}
 
 				for eventIdx, event := range events {
@@ -225,7 +217,7 @@ var backfillEventsCmd = &cli.Command{
 						addressLookups[event.Emitter] = addr
 					}
 
-					tsKeyCid, err := currTs.Key().Cid()
+					tsKeyCid, err := tsKey.Cid()
 					if err != nil {
 						return fmt.Errorf("failed to get tipset key cid: %w", err)
 					}
@@ -312,42 +304,64 @@ var backfillEventsCmd = &cli.Command{
 			return nil
 		}
 
-		for i := 0; i < epochs; i++ {
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-			}
-
-			blockCid := prevTs.Blocks()[0].Cid()
-
-			// get messages for the parent of the previous tipset (which will be currTs)
-			msgs, err := api.ChainGetParentMessages(ctx, blockCid)
-			if err != nil {
-				return fmt.Errorf("failed to get parent messages for block %s: %w", blockCid, err)
-			}
-
-			// get receipts for the parent of the previous tipset (which will be currTs)
-			receipts, err := api.ChainGetParentReceipts(ctx, blockCid)
-			if err != nil {
-				return fmt.Errorf("failed to get parent receipts for block %s: %w", blockCid, err)
-			}
-
-			if len(msgs) != len(receipts) {
-				return fmt.Errorf("mismatched in message and receipt count: %d != %d", len(msgs), len(receipts))
-			}
-
-			err = processHeight(ctx, i, msgs, receipts)
+		// currTs will be the tipset where we start backfilling from
+		currTs, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+		if cctx.IsSet("from") {
+			// we need to fetch the tipset after the epoch being specified since we will need to advance currTs
+			currTs, err = api.ChainGetTipSetAfterHeight(ctx, abi.ChainEpoch(cctx.Int("from")+1), currTs.Key())
 			if err != nil {
 				return err
 			}
+		}
 
-			// advance prevTs and currTs up the chain
-			prevTs = currTs
+		var g = new(errgroup.Group)
+
+		for i := 0; i < epochs; i++ {
+			// capture the current tipset before advancing it up the chain
+			// ts will be the tipset we are processing
+			ts := currTs
+			g.Go(func() error {
+
+				select {
+				case <-ctx.Done():
+					return nil
+				default:
+				}
+
+				blockCid := ts.Blocks()[0].Cid()
+
+				// get messages for the parent of the previous tipset (which will be currTs)
+				msgs, err := api.ChainGetParentMessages(ctx, blockCid)
+				if err != nil {
+					return fmt.Errorf("failed to get parent messages for block %s: %w", blockCid, err)
+				}
+
+				// get receipts for the parent of the previous tipset (which will be currTs)
+				receipts, err := api.ChainGetParentReceipts(ctx, blockCid)
+				if err != nil {
+					return fmt.Errorf("failed to get parent receipts for block %s: %w", blockCid, err)
+				}
+
+				if len(msgs) != len(receipts) {
+					return fmt.Errorf("mismatched in message and receipt count: %d != %d", len(msgs), len(receipts))
+				}
+
+				return processHeight(ctx, i, msgs, receipts, ts)
+			})
+
+			// advance currTs up the chain
 			currTs, err = api.ChainGetTipSet(ctx, currTs.Parents())
 			if err != nil {
 				return fmt.Errorf("failed to load tipset %s: %w", currTs, err)
 			}
+		}
+
+		err = g.Wait()
+		if err != nil {
+			return err
 		}
 
 		log.Infof("backfilling events complete, totalEventsAffected:%d, totalEntriesAffected:%d", totalEventsAffected, totalEntriesAffected)
