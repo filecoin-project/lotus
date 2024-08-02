@@ -45,7 +45,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-f3 v0.0.7
 	github.com/filecoin-project/go-fil-commcid v0.1.0
-	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0
+	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.3.2
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
