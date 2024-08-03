@@ -305,8 +305,7 @@ var backfillEventsCmd = &cli.Command{
 				}
 			}
 
-			// this statement will mark the tipset as processed and will insert a new row if it doesn't exist
-			// or update the reverted field to false if it does
+			// mark the tipset as processed
 			_, err = tx.Stmt(stmtUpsertEventSeen).Exec(
 				currTs.Height(),
 				tsKeyCid.Bytes(),
