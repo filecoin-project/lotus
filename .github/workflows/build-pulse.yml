@@ -75,6 +75,6 @@ jobs:
           GITHUB_RUN_ID=$INPUT_RUN_ID \
             GITHUB_RUN_ATTEMPT=$INPUT_RUN_ATTEMPT \
             GITHUB_EVENT_NAME=$INPUT_EVENT_NAME \
-            GITHUB_REF=$INPUT_REF \
+            GITHUB_REF=refs/heads/$INPUT_REF \
             GITHUB_HEAD_REF=$INPUT_HEAD_REF \
             ./buildpulse-action/run.sh
