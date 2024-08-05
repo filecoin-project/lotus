@@ -23,7 +23,7 @@ import (
 func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	ctx := context.Background()
 
-	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultLookbackCap.Seconds())
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
 	type args struct {
 		h         abi.ChainEpoch
 		tskh      abi.ChainEpoch
@@ -264,7 +264,7 @@ func TestGatewayLimitTokensRate(t *testing.T) {
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
 	tokens := 3
-	var rateLimit = 200
+	rateLimit := 200
 	rateLimitTimeout := time.Second / time.Duration(rateLimit/3) // large enough to not be hit
 	a := NewNode(mock, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
 

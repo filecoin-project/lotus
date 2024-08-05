@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-var ErrTooManyFilters = errors.New("too many subscriptions and filters for this connection")
+var ErrTooManyFilters = errors.New("too many subscriptions and filters per connection")
 
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
@@ -209,10 +209,10 @@ func (gw *Node) EthGetTransactionByHashLimited(ctx context.Context, txHash *etht
 		return nil, err
 	}
 	if limit == api.LookbackNoLimit {
-		limit = gw.stateWaitLookbackLimit
+		limit = gw.maxMessageLookbackEpochs
 	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
-		limit = gw.stateWaitLookbackLimit
+	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
+		limit = gw.maxMessageLookbackEpochs
 	}
 
 	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, limit)
@@ -255,10 +255,10 @@ func (gw *Node) EthGetTransactionReceiptLimited(ctx context.Context, txHash etht
 		return nil, err
 	}
 	if limit == api.LookbackNoLimit {
-		limit = gw.stateWaitLookbackLimit
+		limit = gw.maxMessageLookbackEpochs
 	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
-		limit = gw.stateWaitLookbackLimit
+	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
+		limit = gw.maxMessageLookbackEpochs
 	}
 
 	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, limit)
@@ -524,6 +524,7 @@ func (gw *Node) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID)
 	ok, err := gw.target.EthUninstallFilter(ctx, id)
 	if err != nil {
 		// don't delete the filter, it's "stuck" so should still count towards the limit
+		log.Warnf("error uninstalling filter: %v", err)
 		return false, err
 	}
 
@@ -608,6 +609,7 @@ func (gw *Node) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionI
 	ok, err := gw.target.EthUnsubscribe(ctx, id)
 	if err != nil {
 		// don't delete the subscription, it's "stuck" so should still count towards the limit
+		log.Warnf("error unsubscribing: %v", err)
 		return false, err
 	}
 
