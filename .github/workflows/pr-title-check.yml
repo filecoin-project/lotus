@@ -1,0 +1,70 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-pr-title:
+    name: Check PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title
+        id: check_title
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const title = context.payload.pull_request.title;
+            const pattern = /^(feat|fix|docs|style|refactor|test|chore):\s\w+:\s.+/;
+            
+            if (!pattern.test(title)) {
+              core.setFailed('PR title does not match the required format: <type>: <scope>: <subject>');
+              return 'invalid';
+            }
+            return 'valid';
+
+      - name: Request changes
+        if: steps.check_title.outputs.result == 'invalid'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              body: 'Please update the PR title to match the required format: `<type>: <scope>: <subject>`\n\nTypes: feat, fix, docs, style, refactor, test, chore\nScope: required\nSubject: start with lowercase',
+              event: 'REQUEST_CHANGES'
+            })
+
+      - name: Dismiss previous review if title is now valid
+        if: steps.check_title.outputs.result == 'valid'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            const botReview = reviews.data.find(review => 
+              review.user.type === 'Bot' && 
+              review.state === 'CHANGES_REQUESTED'
+            );
+            
+            if (botReview) {
+              await github.rest.pulls.dismissReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                review_id: botReview.id,
+                message: 'PR title now matches the required format.'
+              });
+            }
