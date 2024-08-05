@@ -2,11 +2,14 @@ package mock
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"sync"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-commp-utils/zerocomm"
+	"github.com/filecoin-project/go-commp-utils/v2/zerocomm"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -78,4 +81,51 @@ func PreSeal(spt abi.RegisteredSealProof, maddr address.Address, sectors int) (*
 	}
 
 	return genm, &k.KeyInfo, nil
+}
+
+// ToReadableFile generates an os readable file from an io.Reader (converts via pipe & copy)
+// This method is FOR TEST PURPOSES ONLY and has been copied verbatim from the legacy
+// https://pkg.go.dev/github.com/filecoin-project/go-commp-utils@v0.1.4/ffiwrapper
+func ToReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
+	f, ok := r.(*os.File)
+	if ok {
+		return f, func() error { return nil }, nil
+	}
+
+	var w *os.File
+
+	f, w, err := os.Pipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var wait sync.Mutex
+	var werr error
+
+	wait.Lock()
+	go func() {
+		defer wait.Unlock()
+
+		var copied int64
+		copied, werr = io.CopyN(w, r, n)
+		if werr != nil {
+			log.Warnf("toReadableFile: copy error: %+v", werr)
+		}
+
+		err := w.Close()
+		if werr == nil && err != nil {
+			werr = err
+			log.Warnf("toReadableFile: close error: %+v", err)
+			return
+		}
+		if copied != n {
+			log.Warnf("copied different amount than expected: %d != %d", copied, n)
+			werr = xerrors.Errorf("copied different amount than expected: %d != %d", copied, n)
+		}
+	}()
+
+	return f, func() error {
+		wait.Lock()
+		return werr
+	}, nil
 }

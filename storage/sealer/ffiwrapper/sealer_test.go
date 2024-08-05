@@ -23,16 +23,18 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/filecoin-ffi/cgo"
-	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	"github.com/filecoin-project/go-commp-utils/v2"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/proofs"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/commitment"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/storage/sealer/mock"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -598,7 +600,7 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		rf, w, _ := commpffi.ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
+		rf, w, _ := mock.ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
 		tf, _ := os.CreateTemp("/tmp/", "scrb-")
 		b.StartTimer()
 
@@ -668,10 +670,10 @@ func TestGenerateUnsealedCID(t *testing.T) {
 	ups := int(abi.PaddedPieceSize(2048).Unpadded())
 
 	commP := func(b []byte) cid.Cid {
-		pf, werr, err := commpffi.ToReadableFile(bytes.NewReader(b), int64(len(b)))
+		pf, werr, err := mock.ToReadableFile(bytes.NewReader(b), int64(len(b)))
 		require.NoError(t, err)
 
-		c, err := ffi.GeneratePieceCIDFromFile(pt, pf, abi.UnpaddedPieceSize(len(b)))
+		c, err := commp.GeneratePieceCIDFromFile(pt, pf, abi.UnpaddedPieceSize(len(b)))
 		require.NoError(t, err)
 
 		require.NoError(t, werr())
@@ -696,10 +698,10 @@ func TestGenerateUnsealedCID(t *testing.T) {
 				},
 			}
 
-			expectCid, err := GenerateUnsealedCID(pt, sectorPi)
+			expectCid, err := proofs.GenerateUnsealedCID(pt, sectorPi)
 			require.NoError(t, err)
 
-			actualCid, err := GenerateUnsealedCID(pt, upi)
+			actualCid, err := proofs.GenerateUnsealedCID(pt, upi)
 			require.NoError(t, err)
 
 			require.Equal(t, expectCid, actualCid)

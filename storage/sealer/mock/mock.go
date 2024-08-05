@@ -13,12 +13,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	"github.com/filecoin-project/go-commp-utils/v2"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -87,7 +86,7 @@ func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storiface.SectorRef
 	var b bytes.Buffer
 	tr := io.TeeReader(r, &b)
 
-	c, err := commpffi.GeneratePieceCIDFromFile(sectorID.ProofType, tr, size)
+	c, err := commp.GeneratePieceCIDFromFile(sectorID.ProofType, tr, size)
 	if err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
 	}
@@ -732,7 +731,8 @@ func (m mockVerifProver) VerifyWindowPoSt(ctx context.Context, info prooftypes.W
 }
 
 func (m mockVerifProver) GenerateDataCommitment(pt abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	return ffiwrapper.GenerateUnsealedCID(pt, pieces)
+	pcid, _, err := commp.PieceAggregateCommP(pt, pieces)
+	return pcid, err
 }
 
 func (m mockVerifProver) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
