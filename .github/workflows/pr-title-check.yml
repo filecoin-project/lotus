@@ -18,13 +18,13 @@ jobs:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const title = context.payload.pull_request.title;
-            const pattern = /^(feat|fix|docs|style|refactor|test|chore):\s\w+:\s.+/;
+            const pattern = /^(feat|fix|build|chore|ci|docs|perf|refactor|revert|style|test):\s\w+:\s.+/;
             
             if (!pattern.test(title)) {
               await github.rest.pulls.createReview({
                 ...context.repo,
                 pull_number: context.payload.pull_request.number,
-                body: 'Please update the PR title to match the required format: `<type>: <scope>: <subject>`\n\nTypes: feat, fix, docs, style, refactor, test, chore\nScope: required\nSubject: start with lowercase',
+                body: 'Please update the PR title to match the required format: `<type>: <area>: <subject>`\n\nTypes: fix, feat, build, chore, ci, docs, perf, refactor, revert, style, test, chore\nArea: e.g. api, chain, state, mempool, multisig, networking, paych, proving, sealing, wallet, deps\nSubject: start with lowercase',
                 event: 'REQUEST_CHANGES'
               });
               core.setFailed('PR title does not match the required format');
