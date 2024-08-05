@@ -42,6 +42,10 @@ jobs:
               event: 'REQUEST_CHANGES'
             })
 
+      - name: Fail if title is invalid
+        if: steps.check_title.outputs.result == 'invalid'
+        run: exit 1
+
       - name: Dismiss previous review if title is now valid
         if: steps.check_title.outputs.result == 'valid'
         uses: actions/github-script@v6
