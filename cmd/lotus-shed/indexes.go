@@ -26,9 +26,10 @@ import (
 
 const (
 	// same as in chain/events/index.go
-	eventExists = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	insertEvent = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	insertEntry = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
+	eventExists      = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	insertEvent      = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	insertEntry      = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
+	upsertEventsSeen = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
 )
 
 func withCategory(cat string, cmd *cli.Command) *cli.Command {
@@ -176,6 +177,11 @@ var backfillEventsCmd = &cli.Command{
 			return err
 		}
 
+		stmtUpsertEventSeen, err := db.Prepare(upsertEventsSeen)
+		if err != nil {
+			return err
+		}
+
 		processHeight := func(ctx context.Context, cnt int, msgs []lapi.Message, receipts []*types.MessageReceipt) error {
 			var tx *sql.Tx
 			for {
@@ -195,6 +201,11 @@ var backfillEventsCmd = &cli.Command{
 
 			var eventsAffected int64
 			var entriesAffected int64
+
+			tsKeyCid, err := currTs.Key().Cid()
+			if err != nil {
+				return fmt.Errorf("failed to get tipset key cid: %w", err)
+			}
 
 			// loop over each message receipt and backfill the events
 			for idx, receipt := range receipts {
@@ -223,11 +234,6 @@ var backfillEventsCmd = &cli.Command{
 							continue
 						}
 						addressLookups[event.Emitter] = addr
-					}
-
-					tsKeyCid, err := currTs.Key().Cid()
-					if err != nil {
-						return fmt.Errorf("failed to get tipset key cid: %w", err)
 					}
 
 					// select the highest event id that exists in database, or null if none exists
@@ -297,6 +303,15 @@ var backfillEventsCmd = &cli.Command{
 						entriesAffected += rowsAffected
 					}
 				}
+			}
+
+			// mark the tipset as processed
+			_, err = tx.Stmt(stmtUpsertEventSeen).Exec(
+				currTs.Height(),
+				tsKeyCid.Bytes(),
+			)
+			if err != nil {
+				return xerrors.Errorf("exec upsert events seen: %w", err)
 			}
 
 			err = tx.Commit()
