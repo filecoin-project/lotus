@@ -21,6 +21,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
@@ -453,7 +454,7 @@ func (tm *TestUnmanagedMiner) mkAndSavePiecesToOnboard(sector sectorInfo) (secto
 	}
 
 	// Generate the piece CID from the file
-	pieceCIDA, err := ffi.GeneratePieceCIDFromFile(sector.proofType, pieceFileA, unpaddedPieceSize)
+	pieceCIDA, err := commp.GeneratePieceCIDFromFile(sector.proofType, pieceFileA, unpaddedPieceSize)
 	if err != nil {
 		return sectorInfo{}, err
 	}
@@ -558,7 +559,7 @@ func (tm *TestUnmanagedMiner) mkStagedFileWithPieces(pt abi.RegisteredSealProof)
 	}
 
 	// Generate the piece CID from the file
-	pieceCIDA, err := ffi.GeneratePieceCIDFromFile(pt, pieceFileA, unpaddedPieceSize)
+	pieceCIDA, err := commp.GeneratePieceCIDFromFile(pt, pieceFileA, unpaddedPieceSize)
 	if err != nil {
 		return nil, "", err
 	}

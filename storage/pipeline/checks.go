@@ -8,14 +8,14 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-commp-utils/zerocomm"
+	"github.com/filecoin-project/go-commp-utils/v2/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/proofs"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -298,5 +298,5 @@ func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInf
 
 func computeUnsealedCIDFromPieces(si SectorInfo) (cid.Cid, error) {
 	pcs := si.pieceInfos()
-	return ffiwrapper.GenerateUnsealedCID(si.SectorType, pcs)
+	return proofs.GenerateUnsealedCID(si.SectorType, pcs)
 }

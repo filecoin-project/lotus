@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-commp-utils/zerocomm"
+	"github.com/filecoin-project/go-commp-utils/v2/zerocomm"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -17,13 +17,13 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/proofs"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -253,7 +253,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			continue
 		}
 
-		pads, padLength := ffiwrapper.GetRequiredPadding(offset.Padded(), deal.size.Padded())
+		pads, padLength := proofs.GetRequiredPadding(offset.Padded(), deal.size.Padded())
 
 		if offset.Padded()+padLength+deal.size.Padded() > abi.PaddedPieceSize(ssize) {
 			// todo: this is rather unlikely to happen, but in case it does, return the deal to waiting queue instead of failing it

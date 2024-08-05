@@ -22,9 +22,9 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-hamt-ipld/v3"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -1225,7 +1225,7 @@ func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 *state.StateTree, store
 			return xerrors.Errorf("nil unsealed CID for sector with deals")
 		}
 
-		pieceCID, err := ffi.GenerateUnsealedCID(abi.RegisteredSealProof_StackedDrg64GiBV1_1, pieceCids)
+		pieceCID, _, err := commp.PieceAggregateCommP(abi.RegisteredSealProof_StackedDrg64GiBV1_1, pieceCids)
 		if err != nil {
 			return err
 		}
