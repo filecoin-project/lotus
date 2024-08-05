@@ -4,10 +4,6 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
-defaults:
-  run:
-    shell: bash
-
 permissions:
   contents: read
   pull-requests: write
@@ -17,10 +13,8 @@ jobs:
     name: Check PR Title
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
       - name: Check PR Title
+        id: check_title
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
@@ -30,17 +24,12 @@ jobs:
             
             if (!pattern.test(title)) {
               core.setFailed('PR title does not match the required format: <type>: <scope>: <subject>');
-              
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: 'Your PR title does not match the required format. Please update it to follow this convention: `<type>: <scope>: <subject>`\n\nTypes: feat, fix, docs, style, refactor, test, chore\nScope: required\nSubject: start with lowercase'
-              });
+              return 'invalid';
             }
+            return 'valid';
 
       - name: Request changes
-        if: failure()
+        if: steps.check_title.outputs.result == 'invalid'
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
@@ -49,6 +38,33 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
-              body: 'Please update the PR title to match the required format.',
+              body: 'Please update the PR title to match the required format: `<type>: <scope>: <subject>`\n\nTypes: feat, fix, docs, style, refactor, test, chore\nScope: required\nSubject: start with lowercase',
               event: 'REQUEST_CHANGES'
             })
+
+      - name: Dismiss previous review if title is now valid
+        if: steps.check_title.outputs.result == 'valid'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            const botReview = reviews.data.find(review => 
+              review.user.type === 'Bot' && 
+              review.state === 'CHANGES_REQUESTED'
+            );
+            
+            if (botReview) {
+              await github.rest.pulls.dismissReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                review_id: botReview.id,
+                message: 'PR title now matches the required format.'
+              });
+            }
