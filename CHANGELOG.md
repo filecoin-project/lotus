@@ -17,6 +17,7 @@
 - https://github.com/filecoin-project/lotus/pull/12292: feat: p2p: allow overriding bootstrap nodes with environmemnt variable
 - https://github.com/filecoin-project/lotus/pull/12319: feat: `lotus send CLI`: allow sending to ETH addresses
 - https://github.com/filecoin-project/lotus/pull/12332: fix: ETH RPC: receipts: use correct txtype in receipts
+- https://github.com/filecoin-project/lotus/pull/12335: fix: lotus-shed: store processed tipset after backfilling events
 
 ## New features
 
