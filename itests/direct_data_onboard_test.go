@@ -18,7 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-commp-utils/nonffi"
+	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	market2 "github.com/filecoin-project/go-state-types/builtin/v9/market"
@@ -243,7 +243,7 @@ func TestOnboardMixedMarketDDO(t *testing.T) {
 
 	miner.WaitSectorsProving(ctx, toCheck)
 
-	expectCommD, err := nonffi.GenerateUnsealedCID(abi.RegisteredSealProof_StackedDrg2KiBV1_1, pieces)
+	expectCommD, _, err := commp.PieceAggregateCommP(abi.RegisteredSealProof_StackedDrg2KiBV1_1, pieces)
 	require.NoError(t, err)
 
 	si, err := miner.SectorsStatus(ctx, 2, false)
