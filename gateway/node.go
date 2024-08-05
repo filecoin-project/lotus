@@ -35,17 +35,17 @@ import (
 var log = logger.Logger("gateway")
 
 const (
-	DefaultLookbackCap            = time.Hour * 24
-	DefaultStateWaitLookbackLimit = abi.ChainEpoch(20)
-	DefaultRateLimitTimeout       = time.Second * 5
-	DefaultEthMaxFiltersPerConn   = 16
-	basicRateLimitTokens          = 1
-	walletRateLimitTokens         = 1
-	chainRateLimitTokens          = 2
-	stateRateLimitTokens          = 3
+	DefaultMaxLookbackDuration      = time.Hour * 24     // Default duration that a gateway request can look back in chain history
+	DefaultMaxMessageLookbackEpochs = abi.ChainEpoch(20) // Default number of epochs that a gateway message lookup can look back in chain history
+	DefaultRateLimitTimeout         = time.Second * 5    // Default timeout for rate limiting requests; where a request would take longer to wait than this value, it will be retjected
+	DefaultEthMaxFiltersPerConn     = 16                 // Default maximum number of ETH filters and subscriptions per websocket connection
 
-	// MaxRateLimitTokens is the number of tokens consumed for the most expensive types of operations
-	MaxRateLimitTokens = stateRateLimitTokens
+	basicRateLimitTokens  = 1
+	walletRateLimitTokens = 1
+	chainRateLimitTokens  = 2
+	stateRateLimitTokens  = 3
+
+	MaxRateLimitTokens = stateRateLimitTokens // Number of tokens consumed for the most expensive types of operations
 )
 
 // TargetAPI defines the API methods that the Node depends on
@@ -164,14 +164,14 @@ type TargetAPI interface {
 var _ TargetAPI = *new(api.FullNode) // gateway depends on latest
 
 type Node struct {
-	target                 TargetAPI
-	subHnd                 *EthSubHandler
-	lookbackCap            time.Duration
-	stateWaitLookbackLimit abi.ChainEpoch
-	rateLimiter            *rate.Limiter
-	rateLimitTimeout       time.Duration
-	ethMaxFiltersPerConn   int
-	errLookback            error
+	target                   TargetAPI
+	subHnd                   *EthSubHandler
+	maxLookbackDuration      time.Duration
+	maxMessageLookbackEpochs abi.ChainEpoch
+	rateLimiter              *rate.Limiter
+	rateLimitTimeout         time.Duration
+	ethMaxFiltersPerConn     int
+	errLookback              error
 }
 
 var (
@@ -182,43 +182,43 @@ var (
 	_ full.StateModuleAPI = (*Node)(nil)
 )
 
-type Options struct {
-	subHandler             *EthSubHandler
-	lookbackCap            time.Duration
-	stateWaitLookbackLimit abi.ChainEpoch
-	rateLimit              int
-	rateLimitTimeout       time.Duration
-	ethMaxFiltersPerConn   int
+type options struct {
+	subHandler               *EthSubHandler
+	maxLookbackDuration      time.Duration
+	maxMessageLookbackEpochs abi.ChainEpoch
+	rateLimit                int
+	rateLimitTimeout         time.Duration
+	ethMaxFiltersPerConn     int
 }
 
-type Option func(*Options)
+type Option func(*options)
 
 // WithEthSubHandler sets the Ethereum subscription handler for the gateway node. This is used for
 // the RPC reverse handler for EthSubscribe calls.
 func WithEthSubHandler(subHandler *EthSubHandler) Option {
-	return func(opts *Options) {
+	return func(opts *options) {
 		opts.subHandler = subHandler
 	}
 }
 
-// WithLookbackCap sets the maximum lookback duration (time) for state queries.
-func WithLookbackCap(lookbackCap time.Duration) Option {
-	return func(opts *Options) {
-		opts.lookbackCap = lookbackCap
+// WithMaxLookbackDuration sets the maximum lookback duration (time) for state queries.
+func WithMaxLookbackDuration(maxLookbackDuration time.Duration) Option {
+	return func(opts *options) {
+		opts.maxLookbackDuration = maxLookbackDuration
 	}
 }
 
-// WithStateWaitLookbackLimit sets the maximum lookback (epochs) for state queries.
-func WithStateWaitLookbackLimit(stateWaitLookbackLimit abi.ChainEpoch) Option {
-	return func(opts *Options) {
-		opts.stateWaitLookbackLimit = stateWaitLookbackLimit
+// WithMaxMessageLookbackEpochs sets the maximum lookback (epochs) for state queries.
+func WithMaxMessageLookbackEpochs(maxMessageLookbackEpochs abi.ChainEpoch) Option {
+	return func(opts *options) {
+		opts.maxMessageLookbackEpochs = maxMessageLookbackEpochs
 	}
 }
 
 // WithRateLimit sets the maximum number of requests per second globally that will be allowed
 // before the gateway starts to rate limit requests.
 func WithRateLimit(rateLimit int) Option {
-	return func(opts *Options) {
+	return func(opts *options) {
 		opts.rateLimit = rateLimit
 	}
 }
@@ -226,7 +226,7 @@ func WithRateLimit(rateLimit int) Option {
 // WithRateLimitTimeout sets the timeout for rate limiting requests such that when rate limiting is
 // being applied, if the timeout is reached the request will be allowed.
 func WithRateLimitTimeout(rateLimitTimeout time.Duration) Option {
-	return func(opts *Options) {
+	return func(opts *options) {
 		opts.rateLimitTimeout = rateLimitTimeout
 	}
 }
@@ -234,18 +234,18 @@ func WithRateLimitTimeout(rateLimitTimeout time.Duration) Option {
 // WithEthMaxFiltersPerConn sets the maximum number of Ethereum filters and subscriptions that can
 // be maintained per websocket connection.
 func WithEthMaxFiltersPerConn(ethMaxFiltersPerConn int) Option {
-	return func(opts *Options) {
+	return func(opts *options) {
 		opts.ethMaxFiltersPerConn = ethMaxFiltersPerConn
 	}
 }
 
 // NewNode creates a new gateway node.
 func NewNode(api TargetAPI, opts ...Option) *Node {
-	options := &Options{
-		lookbackCap:            DefaultLookbackCap,
-		stateWaitLookbackLimit: DefaultStateWaitLookbackLimit,
-		rateLimitTimeout:       DefaultRateLimitTimeout,
-		ethMaxFiltersPerConn:   DefaultEthMaxFiltersPerConn,
+	options := &options{
+		maxLookbackDuration:      DefaultMaxLookbackDuration,
+		maxMessageLookbackEpochs: DefaultMaxMessageLookbackEpochs,
+		rateLimitTimeout:         DefaultRateLimitTimeout,
+		ethMaxFiltersPerConn:     DefaultEthMaxFiltersPerConn,
 	}
 	for _, opt := range opts {
 		opt(options)
@@ -256,14 +256,14 @@ func NewNode(api TargetAPI, opts ...Option) *Node {
 		limit = rate.Every(time.Second / time.Duration(options.rateLimit))
 	}
 	return &Node{
-		target:                 api,
-		subHnd:                 options.subHandler,
-		lookbackCap:            options.lookbackCap,
-		stateWaitLookbackLimit: options.stateWaitLookbackLimit,
-		rateLimiter:            rate.NewLimiter(limit, MaxRateLimitTokens), // allow for a burst of MaxRateLimitTokens
-		rateLimitTimeout:       options.rateLimitTimeout,
-		errLookback:            fmt.Errorf("lookbacks of more than %s are disallowed", options.lookbackCap),
-		ethMaxFiltersPerConn:   options.ethMaxFiltersPerConn,
+		target:                   api,
+		subHnd:                   options.subHandler,
+		maxLookbackDuration:      options.maxLookbackDuration,
+		maxMessageLookbackEpochs: options.maxMessageLookbackEpochs,
+		rateLimiter:              rate.NewLimiter(limit, MaxRateLimitTokens), // allow for a burst of MaxRateLimitTokens
+		rateLimitTimeout:         options.rateLimitTimeout,
+		errLookback:              fmt.Errorf("lookbacks of more than %s are disallowed", options.maxLookbackDuration),
+		ethMaxFiltersPerConn:     options.ethMaxFiltersPerConn,
 	}
 }
 
@@ -303,7 +303,7 @@ func (gw *Node) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
 }
 
 func (gw *Node) checkTimestamp(at time.Time) error {
-	if time.Since(at) > gw.lookbackCap {
+	if time.Since(at) > gw.maxLookbackDuration {
 		return gw.errLookback
 	}
 	return nil
@@ -312,7 +312,8 @@ func (gw *Node) checkTimestamp(at time.Time) error {
 func (gw *Node) limit(ctx context.Context, tokens int) error {
 	ctx2, cancel := context.WithTimeout(ctx, gw.rateLimitTimeout)
 	defer cancel()
-	if perConnLimiter, ok := ctx2.Value(perConnectionAPIRateLimiterKey).(*rate.Limiter); ok {
+
+	if perConnLimiter, ok := getPerConnectionAPIRateLimiter(ctx); ok {
 		err := perConnLimiter.WaitN(ctx2, tokens)
 		if err != nil {
 			return fmt.Errorf("connection limited. %w", err)

@@ -124,12 +124,12 @@ var runCmd = &cli.Command{
 		&cli.DurationFlag{
 			Name:  "api-max-lookback",
 			Usage: "maximum duration allowable for tipset lookbacks",
-			Value: gateway.DefaultLookbackCap,
+			Value: gateway.DefaultMaxLookbackDuration,
 		},
 		&cli.Int64Flag{
 			Name:  "api-wait-lookback-limit",
 			Usage: "maximum number of blocks to search back through for message inclusion",
-			Value: int64(gateway.DefaultStateWaitLookbackLimit),
+			Value: int64(gateway.DefaultMaxMessageLookbackEpochs),
 		},
 		&cli.Int64Flag{
 			Name: "rate-limit",
@@ -154,7 +154,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "conn-per-minute",
-			Usage: "A hard limit on the number of incomming connections (requests) to accept per remote host per minute. Use 0 to disable",
+			Usage: "A hard limit on the number of incoming connections (requests) to accept per remote host per minute. Use 0 to disable",
 			Value: 0,
 		},
 		&cli.IntFlag{
@@ -212,13 +212,19 @@ var runCmd = &cli.Command{
 		gwapi := gateway.NewNode(
 			api,
 			gateway.WithEthSubHandler(subHnd),
-			gateway.WithLookbackCap(lookbackCap),
-			gateway.WithStateWaitLookbackLimit(waitLookback),
+			gateway.WithMaxLookbackDuration(lookbackCap),
+			gateway.WithMaxMessageLookbackEpochs(waitLookback),
 			gateway.WithRateLimit(globalRateLimit),
 			gateway.WithRateLimitTimeout(rateLimitTimeout),
 			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),
 		)
-		handler, err := gateway.Handler(gwapi, api, perConnectionRateLimit, perHostConnectionsPerMinute, serverOptions...)
+		handler, err := gateway.Handler(
+			gwapi,
+			api,
+			gateway.WithPerConnectionAPIRateLimit(perConnectionRateLimit),
+			gateway.WithPerHostConnectionsPerMinute(perHostConnectionsPerMinute),
+			gateway.WithJsonrpcServerOptions(serverOptions...),
+		)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")
 		}

@@ -37,8 +37,8 @@ import (
 )
 
 const (
-	maxLookbackCap            = time.Duration(math.MaxInt64)
-	maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
+	maxLookbackCap           = time.Duration(math.MaxInt64)
+	maxMessageLookbackEpochs = stmgr.LookbackNoLimit
 )
 
 // TestGatewayWalletMsig tests that API calls to wallet and msig can be made on a lite
@@ -206,23 +206,23 @@ type testNodes struct {
 }
 
 type startOptions struct {
-	blocktime                 time.Duration
-	lookbackCap               time.Duration
-	stateWaitLookbackLimit    abi.ChainEpoch
-	fund                      bool
-	perConnectionAPIRateLimit int
-	perHostRequestsPerMinute  int
-	nodeOpts                  []kit.NodeOpt
+	blockTime                   time.Duration
+	lookbackCap                 time.Duration
+	maxMessageLookbackEpochs    abi.ChainEpoch
+	fund                        bool
+	perConnectionAPIRateLimit   int
+	perHostConnectionsPerMinute int
+	nodeOpts                    []kit.NodeOpt
 }
 
 type startOption func(*startOptions)
 
-func applyStartOptions(opts ...startOption) startOptions {
+func newStartOptions(opts ...startOption) startOptions {
 	o := startOptions{
-		blocktime:              5 * time.Millisecond,
-		lookbackCap:            maxLookbackCap,
-		stateWaitLookbackLimit: maxStateWaitLookbackLimit,
-		fund:                   false,
+		blockTime:                5 * time.Millisecond,
+		lookbackCap:              maxLookbackCap,
+		maxMessageLookbackEpochs: maxMessageLookbackEpochs,
+		fund:                     false,
 	}
 	for _, opt := range opts {
 		opt(&o)
@@ -244,7 +244,7 @@ func withPerConnectionAPIRateLimit(rateLimit int) startOption {
 
 func withPerHostRequestsPerMinute(rateLimit int) startOption {
 	return func(opts *startOptions) {
-		opts.perHostRequestsPerMinute = rateLimit
+		opts.perHostConnectionsPerMinute = rateLimit
 	}
 }
 
@@ -255,7 +255,7 @@ func withNodeOpts(nodeOpts ...kit.NodeOpt) startOption {
 }
 
 func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNodes {
-	options := applyStartOptions(opts...)
+	options := newStartOptions(opts...)
 
 	var (
 		full  *kit.TestFullNode
@@ -271,7 +271,7 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 	// create the full node and the miner.
 	var ens *kit.Ensemble
 	full, miner, ens = kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(options.blocktime)
+	ens.InterconnectAll().BeginMining(options.blockTime)
 	api.RunningNodeType = api.NodeFull
 
 	// Create a gateway server in front of the full node
@@ -279,10 +279,15 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 	gwapi := gateway.NewNode(
 		full,
 		gateway.WithEthSubHandler(ethSubHandler),
-		gateway.WithLookbackCap(options.lookbackCap),
-		gateway.WithStateWaitLookbackLimit(options.stateWaitLookbackLimit),
+		gateway.WithMaxLookbackDuration(options.lookbackCap),
+		gateway.WithMaxMessageLookbackEpochs(options.maxMessageLookbackEpochs),
 	)
-	handler, err := gateway.Handler(gwapi, full, options.perConnectionAPIRateLimit, options.perHostRequestsPerMinute)
+	handler, err := gateway.Handler(
+		gwapi,
+		full,
+		gateway.WithPerConnectionAPIRateLimit(options.perConnectionAPIRateLimit),
+		gateway.WithPerHostConnectionsPerMinute(options.perHostConnectionsPerMinute),
+	)
 	t.Cleanup(func() { _ = handler.Shutdown(ctx) })
 	require.NoError(t, err)
 
@@ -293,14 +298,14 @@ func startNodes(ctx context.Context, t *testing.T, opts ...startOption) *testNod
 
 	// Create a gateway client API that connects to the gateway server
 	var gapi api.Gateway
-	var _closer jsonrpc.ClientCloser
-	gapi, _closer, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil,
+	var rpcCloser jsonrpc.ClientCloser
+	gapi, rpcCloser, err = client.NewGatewayRPCV1(ctx, "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil,
 		jsonrpc.WithClientHandler("Filecoin", ethSubHandler),
 		jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"),
 	)
 	require.NoError(t, err)
 	var closeOnce sync.Once
-	closer := func() { closeOnce.Do(_closer) }
+	closer := func() { closeOnce.Do(rpcCloser) }
 	t.Cleanup(closer)
 
 	nodeOpts := append([]kit.NodeOpt{
@@ -373,13 +378,14 @@ func TestGatewayRateLimits(t *testing.T) {
 		withPerHostRequestsPerMinute(requestsPerMinute),
 	)
 
-	time.Sleep(time.Second)
+	nodes.full.WaitTillChain(ctx, kit.HeightAtLeast(10)) // let's get going first
 
 	// ChainHead uses chainRateLimitTokens=2.
 	// But we're also competing with the paymentChannelSettler which listens to the chain uses
-	// ChainGetBlockMessages on each change, which also uses chainRateLimitTokens=2.
-	// So each loop should be 4 tokens.
-	loops := 10
+	// ChainGetBlockMessages on each change, which also uses chainRateLimitTokens=2. But because we're
+	// rate limiting, it only gets a ChainGetBlockMessages in between our ChainHead calls, not on each
+	// 5ms block (which it wants). So each loop should be 4 tokens.
+	loops := 25
 	tokensPerLoop := 4
 	start := time.Now()
 	for i := 0; i < loops; i++ {
@@ -388,40 +394,43 @@ func TestGatewayRateLimits(t *testing.T) {
 	}
 	tokensUsed := loops * tokensPerLoop
 	expectedEnd := start.Add(time.Duration(float64(tokensUsed) / float64(tokensPerSecond) * float64(time.Second)))
-	allowPad := time.Duration(float64(tokensPerLoop) / float64(tokensPerSecond) * float64(time.Second)) // add padding to account for slow test runs
+	allowPad := time.Duration(float64(tokensPerLoop*2) / float64(tokensPerSecond) * float64(time.Second)) // add padding to account for slow test runs
 	t.Logf("expected end: %s, now: %s, allowPad: %s, actual delta: %s", expectedEnd, time.Now(), allowPad, time.Since(expectedEnd))
 	req.WithinDuration(expectedEnd, time.Now(), allowPad)
 
 	client := &http.Client{}
-	url := fmt.Sprintf("http://%s/rpc/v1", nodes.gatewayAddr)
 	jsonPayload := []byte(`{"method":"Filecoin.ChainHead","params":[],"id":1,"jsonrpc":"2.0"}`)
 	var failed bool
 	for i := 0; i < requestsPerMinute*2 && !failed; i++ {
-		func() {
-			request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
-			req.NoError(err)
-			request.Header.Set("Content-Type", "application/json")
-			response, err := client.Do(request)
-			req.NoError(err)
-			defer func() { _ = response.Body.Close() }()
-			if http.StatusOK == response.StatusCode {
-				body, err := io.ReadAll(response.Body)
-				req.NoError(err)
-				result := map[string]interface{}{}
-				req.NoError(json.Unmarshal(body, &result))
-				req.NoError(err)
-				req.NotNil(result["result"])
-				height, ok := result["result"].(map[string]interface{})["Height"].(float64)
-				req.True(ok)
-				req.Greater(int(height), 0)
-			} else {
-				req.Equal(http.StatusTooManyRequests, response.StatusCode)
-				req.LessOrEqual(i, requestsPerMinute+1)
-				failed = true
-			}
-		}()
+		status, body := makeManualRpcCall(t, client, nodes.gatewayAddr, string(jsonPayload))
+		if http.StatusOK == status {
+			result := map[string]interface{}{}
+			req.NoError(json.Unmarshal([]byte(body), &result))
+			req.NotNil(result["result"])
+			height, ok := result["result"].(map[string]interface{})["Height"].(float64)
+			req.True(ok)
+			req.Greater(int(height), 0)
+		} else {
+			req.Equal(http.StatusTooManyRequests, status)
+			req.LessOrEqual(i, requestsPerMinute+1)
+			failed = true
+		}
 	}
 	req.True(failed, "expected requests to fail due to rate limiting")
+}
+
+func makeManualRpcCall(t *testing.T, client *http.Client, gatewayAddr, payload string) (int, string) {
+	// not available over plain http
+	url := fmt.Sprintf("http://%s/rpc/v1", gatewayAddr)
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(request)
+	require.NoError(t, err)
+	defer func() { _ = response.Body.Close() }()
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	return response.StatusCode, string(body)
 }
 
 func TestStatefulCallHandling(t *testing.T) {
@@ -430,21 +439,6 @@ func TestStatefulCallHandling(t *testing.T) {
 	kit.QuietMiningLogs()
 	ctx := context.Background()
 	nodes := startNodes(ctx, t)
-
-	httpReq := func(payload string) (int, string) {
-		// not available over plain http
-		client := &http.Client{}
-		url := fmt.Sprintf("http://%s/rpc/v1", nodes.gatewayAddr)
-		request, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
-		req.NoError(err)
-		request.Header.Set("Content-Type", "application/json")
-		response, err := client.Do(request)
-		req.NoError(err)
-		defer func() { _ = response.Body.Close() }()
-		body, err := io.ReadAll(response.Body)
-		req.NoError(err)
-		return response.StatusCode, string(body)
-	}
 
 	t.Logf("Testing stateful call handling rejection via plain http")
 	for _, typ := range []string{
@@ -470,7 +464,12 @@ func TestStatefulCallHandling(t *testing.T) {
 			expErr = "EthSubscribe not supported: connection doesn't support callbacks"
 		}
 
-		status, body := httpReq(`{"method":"Filecoin.` + typ + `","params":[` + params + `],"id":1,"jsonrpc":"2.0"}`)
+		status, body := makeManualRpcCall(
+			t,
+			&http.Client{},
+			nodes.gatewayAddr,
+			`{"method":"Filecoin.`+typ+`","params":[`+params+`],"id":1,"jsonrpc":"2.0"}`,
+		)
 
 		req.Equal(http.StatusOK, status, "not ok for "+typ)
 		req.Contains(body, `{"error":{"code":1,"message":"`+expErr+`"},"id":1,"jsonrpc":"2.0"}`, "unexpected response for "+typ)
@@ -532,25 +531,33 @@ func TestStatefulCallHandling(t *testing.T) {
 
 	t.Logf("Testing 'too many filters' rejection")
 	_, err = nodes.lite.EthNewBlockFilter(ctx)
-	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+	require.ErrorContains(t, err, "too many subscriptions and filters per connection")
 	_, err = nodes.lite.EthNewPendingTransactionFilter(ctx)
-	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+	require.ErrorContains(t, err, "too many subscriptions and filters per connection")
 	_, err = nodes.lite.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
-	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+	require.ErrorContains(t, err, "too many subscriptions and filters per connection")
 	_, err = nodes.lite.EthSubscribe(ctx, res.Wrap[jsonrpc.RawParams](json.Marshal(ethtypes.EthSubscribeParams{EventType: "newHeads"})).Assert(req.NoError))
-	require.ErrorContains(t, err, "too many subscriptions and filters for this connection")
+	require.ErrorContains(t, err, "too many subscriptions and filters per connection")
 
 	t.Logf("Shutting down the lite node")
 	req.NoError(nodes.lite.Stop(ctx))
-	nodes.rpcCloser() // once the websocke connection is closed, the server should clean up the filters for us
 
-	time.Sleep(time.Second) // unfortunately we have no other way to check for completeness of shutdown and cleanup
+	nodes.rpcCloser()
+	// Once the websocket connection is closed, the server should clean up the filters for us.
+	// Unfortunately we have no other way to check for completeness of shutdown and cleanup.
+	// * Asynchronously the rpcCloser() call will end the client websockets connection to the gateway.
+	// * When the gateway recognises the end of the HTTP connection, it will asynchronously make calls
+	//   to the fullnode to clean up the filters.
+	// * The fullnode will then uninstall the filters and we can finally move on to check it directly
+	//   that this has happened.
+	// This should happen quickly, but we have no way to synchronously check for it. So we just wait a bit.
+	time.Sleep(time.Second)
 
 	t.Logf("Checking that all filters and subs were cleared up by directly talking to full node")
 
 	ok, err = nodes.full.EthUnsubscribe(ctx, subId2) // unsub on full node, already done
 	req.NoError(err)
-	req.False(ok) // already unsubbed because of auto-cleanup
+	req.False(ok) // already unsubscribed because of auto-cleanup
 
 	for _, fid := range blockFilterIds {
 		_, err = nodes.full.EthGetFilterChanges(ctx, fid)

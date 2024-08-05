@@ -13,7 +13,7 @@ import (
 func TestRequestRateLimiterHandler(t *testing.T) {
 	var callCount int
 	h := gateway.NewRateLimitHandler(
-		http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			callCount++
 		}),
 		0, // api rate
