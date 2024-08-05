@@ -26,16 +26,16 @@ jobs:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const title = context.payload.pull_request.title;
-            const pattern = /^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?:/;
+            const pattern = /^(feat|fix|docs|style|refactor|test|chore):\s\w+:\s.+/;
             
             if (!pattern.test(title)) {
-              core.setFailed('PR title does not match the required format: <type>(<scope>): <subject>');
+              core.setFailed('PR title does not match the required format: <type>: <scope>: <subject>');
               
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: 'Your PR title does not match the required format. Please update it to follow this convention: `<type>(<scope>): <subject>`\n\nTypes: feat, fix, docs, style, refactor, test, chore\nScope: optional, in parentheses\nSubject: start with lowercase'
+                body: 'Your PR title does not match the required format. Please update it to follow this convention: `<type>: <scope>: <subject>`\n\nTypes: feat, fix, docs, style, refactor, test, chore\nScope: required\nSubject: start with lowercase'
               });
             }
 
