@@ -24,12 +24,12 @@ jobs:
             
             if (!pattern.test(title)) {
               core.setOutput('result', 'invalid');
-              return;
+              throw new Error('PR title does not match the required format');
             }
             core.setOutput('result', 'valid');
 
       - name: Request changes
-        if: steps.check_title.outputs.result == 'invalid'
+        if: failure()
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
@@ -42,12 +42,8 @@ jobs:
               event: 'REQUEST_CHANGES'
             })
 
-      - name: Fail if title is invalid
-        if: steps.check_title.outputs.result == 'invalid'
-        run: exit 1
-
       - name: Dismiss previous review if title is now valid
-        if: steps.check_title.outputs.result == 'valid'
+        if: success()
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
