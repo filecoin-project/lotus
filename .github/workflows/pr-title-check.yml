@@ -39,15 +39,16 @@ jobs:
               });
             }
 
-      - name: Block PR
+      - name: Request changes
         if: failure()
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            await github.rest.pulls.update({
+            github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
-              state: 'closed'
-            });
+              body: 'Please update the PR title to match the required format.',
+              event: 'REQUEST_CHANGES'
+            })
