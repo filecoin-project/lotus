@@ -780,6 +780,16 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return err
 	}
 
+	pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
+	if err != nil {
+		return xerrors.Errorf("getting precommit info: %w", err)
+	}
+
+	weight, err := m.sectorWeight(ctx.Context(), sector, pci.Info.Expiration)
+	if err != nil {
+		return xerrors.Errorf("getting sector weight: %w", err)
+	}
+
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
 		Info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
@@ -788,8 +798,9 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			SealedCID:             *sector.CommR,
 			UnsealedCID:           *sector.CommD,
 		},
-		Proof: sector.Proof,
-		Spt:   sector.SectorType,
+		Proof:  sector.Proof,
+		Spt:    sector.SectorType,
+		Weight: weight,
 
 		ActivationManifest: miner2.SectorActivationManifest{
 			SectorNumber: sector.SectorNumber,

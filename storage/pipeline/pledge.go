@@ -99,6 +99,9 @@ func (m *Sealing) sectorWeight(ctx context.Context, sector SectorInfo, expiratio
 
 		alloc, err := piece.GetAllocation(ctx, m.Api, ts.Key())
 		if err != nil || alloc == nil {
+			if err == nil {
+				log.Errorw("failed to get allocation", "error", err)
+			}
 			w = big.Add(w, abi.NewStoragePower(int64(piece.Piece().Size)))
 			continue
 		}
@@ -106,7 +109,6 @@ func (m *Sealing) sectorWeight(ctx context.Context, sector SectorInfo, expiratio
 		vw = big.Add(vw, abi.NewStoragePower(int64(piece.Piece().Size)))
 	}
 
-	// load market actor
 	duration := expiration - ts.Height()
 	sectorWeight := builtin.QAPowerForWeight(ssize, duration, w, vw)
 
