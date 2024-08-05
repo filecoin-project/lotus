@@ -23,10 +23,10 @@ jobs:
             const pattern = /^(feat|fix|docs|style|refactor|test|chore):\s\w+:\s.+/;
             
             if (!pattern.test(title)) {
-              core.setFailed('PR title does not match the required format: <type>: <scope>: <subject>');
-              return 'invalid';
+              core.setOutput('result', 'invalid');
+              return;
             }
-            return 'valid';
+            core.setOutput('result', 'valid');
 
       - name: Request changes
         if: steps.check_title.outputs.result == 'invalid'
