@@ -417,7 +417,8 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			a == builtin.BurntFundsActorAddr ||
 			a == builtin.SaftAddress ||
 			a == builtin.ReserveAddress ||
-			a == builtin.EthereumAddressManagerActorAddr:
+			a == builtin.EthereumAddressManagerActorAddr ||
+			a == builtin.DatacapActorAddr:
 
 			unCirc = big.Add(unCirc, actor.Balance)
 
