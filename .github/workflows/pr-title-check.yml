@@ -18,7 +18,7 @@ jobs:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const title = context.payload.pull_request.title;
-            const pattern = /^(feat|fix|build|chore|ci|docs|perf|refactor|revert|style|test):\s\w+:\s.+/;
+            const pattern = /^(feat|fix|build|chore|ci|docs|perf|refactor|revert|style|test):\s\w+:\s[a-z].+/;
             
             if (!pattern.test(title)) {
               await github.rest.pulls.createReview({
