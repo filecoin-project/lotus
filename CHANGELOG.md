@@ -26,6 +26,10 @@
 ([filecoin-project/lotus#12324](https://github.com/filecoin-project/lotus/pull/12324)).
 - feat: Added `lotus-shed indexes inspect-events` health-check command ([filecoin-project/lotus#12346](https://github.com/filecoin-project/lotus/pull/12346)).
 
+## Enhancements
+
+- fix: add datacap balance to circ supply internal accounting as unCirc #12348
+
 # v1.28.1 / 2024-07-24
 
 This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇. v1.28.1 is also the minimal version that supports nv23.
