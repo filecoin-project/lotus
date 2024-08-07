@@ -33,6 +33,7 @@ const (
 	getCidFromHash  = `SELECT cid FROM eth_tx_hashes WHERE hash = ?`
 	getHashFromCid  = `SELECT hash FROM eth_tx_hashes WHERE cid = ?`
 	deleteOlderThan = `DELETE FROM eth_tx_hashes WHERE insertion_time < datetime('now', ?);`
+	getLastTxHash   = `SELECT hash, cid FROM eth_tx_hashes ORDER BY insertion_time DESC LIMIT 1`
 )
 
 type EthTxHashLookup struct {
@@ -42,6 +43,7 @@ type EthTxHashLookup struct {
 	stmtGetCidFromHash  *sql.Stmt
 	stmtGetHashFromCid  *sql.Stmt
 	stmtDeleteOlderThan *sql.Stmt
+	stmtGetLastTxHash   *sql.Stmt
 }
 
 func NewTransactionHashLookup(ctx context.Context, path string) (*EthTxHashLookup, error) {
@@ -81,6 +83,10 @@ func (ei *EthTxHashLookup) initStatements() (err error) {
 	ei.stmtDeleteOlderThan, err = ei.db.Prepare(deleteOlderThan)
 	if err != nil {
 		return xerrors.Errorf("prepare stmtDeleteOlderThan: %w", err)
+	}
+	ei.stmtGetLastTxHash, err = ei.db.Prepare(getLastTxHash)
+	if err != nil {
+		return xerrors.Errorf("prepare stmtGetMostRecentTxHash: %w", err)
 	}
 	return nil
 }
@@ -126,6 +132,22 @@ func (ei *EthTxHashLookup) GetHashFromCid(c cid.Cid) (ethtypes.EthHash, error) {
 		return ethtypes.EmptyEthHash, err
 	}
 	return ethtypes.ParseEthHash(hashString)
+}
+
+// GetLastTransaction returns the most recent transaction hash and cid from the database based on insertion_time
+func (ei *EthTxHashLookup) GetLastTransaction() (string, cid.Cid, error) {
+	if ei.db == nil {
+		return "", cid.Undef, xerrors.New("db closed")
+	}
+
+	var hashStr, cidStr string
+	err := ei.stmtGetLastTxHash.QueryRow().Scan(&hashStr, &cidStr)
+	if err != nil {
+		return "", cid.Undef, err
+	}
+
+	c, err := cid.Decode(cidStr)
+	return hashStr, c, err
 }
 
 func (ei *EthTxHashLookup) DeleteEntriesOlderThan(days int) (int64, error) {

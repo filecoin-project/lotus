@@ -261,7 +261,7 @@ func ConfigFullNode(c interface{}) Option {
 
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(*full.EthEventHandler), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
-				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
+				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm, cfg.Index.EnableAutomaticBackFill)),
 				Override(new(full.EthEventAPI), From(new(*full.EthEventHandler))),
 			),
 			If(!cfg.Fevm.EnableEthRPC,

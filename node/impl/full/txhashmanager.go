@@ -23,6 +23,49 @@ func (m *EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) e
 	return nil
 }
 
+// FillIndexGap back-fills the gap between the current head and the last populated transaction index
+func (m *EthTxHashManager) FillIndexGap(ctx context.Context) error {
+	lastTxHash, lastTxCid, err := m.TransactionHashLookup.GetLastTransaction()
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Start filling transaction index gap from: %s", lastTxHash)
+
+	totalProcessedBlock := 0
+	ts := m.StateAPI.Chain.GetHeaviestTipSet()
+	for _, block := range ts.Blocks() {
+		msgs, err := m.StateAPI.Chain.SecpkMessagesForBlock(ctx, block)
+		if err != nil {
+			// If we can't find the messages, we've either imported from snapshot or pruned the store
+			log.Debug("exiting message mapping population at epoch ", ts.Height())
+			return nil
+		}
+
+		for _, msg := range msgs {
+			if msg.Cid() == lastTxCid {
+				// We've reached the last indexed transaction
+				return nil
+			}
+
+			// process the message
+			m.ProcessSignedMessage(ctx, msg)
+		}
+
+		totalProcessedBlock++
+	}
+
+	ts, err = m.StateAPI.Chain.GetTipSetFromKey(ctx, ts.Parents())
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Finished filling transaction index gap. Total processed block: %d", totalProcessedBlock)
+
+	return nil
+}
+
+// PopulateExistingMappings walk back from the current head to the minimum height and populate the eth transaction hash lookup database
 func (m *EthTxHashManager) PopulateExistingMappings(ctx context.Context, minHeight abi.ChainEpoch) error {
 	if minHeight < buildconstants.UpgradeHyggeHeight {
 		minHeight = buildconstants.UpgradeHyggeHeight
