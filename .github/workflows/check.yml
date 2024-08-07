@@ -59,6 +59,8 @@ jobs:
     needs: check-gen
     if: failure() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
