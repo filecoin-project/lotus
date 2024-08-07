@@ -69,13 +69,14 @@ jobs:
       - name: Create suggestion
         run: |
           if [ -s codegen_changes.patch ]; then
-            SUGGESTION=$(cat <<'EOF'
+            PATCH_CONTENT=$(cat codegen_changes.patch)
+            SUGGESTION=$(cat <<EOF
           \`\`\`suggestion
-          $(cat codegen_changes.patch)
+          $PATCH_CONTENT
           \`\`\`
           EOF
             )
-            gh pr comment ${{ github.event.pull_request.number }} --body "Codegen fixup suggestion:
+            gh pr comment ${{ github.event.pull_request.number }} --body "`gen-check` failed, suggested fix:
 
           $SUGGESTION
 
