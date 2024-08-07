@@ -55,7 +55,6 @@ jobs:
         with:
           name: codegen-diff
           path: codegen_changes.patch
-
   suggest-codegen-changes:
     needs: check-gen
     if: failure() && github.event_name == 'pull_request'
@@ -67,17 +66,17 @@ jobs:
       - name: Create suggestion
         run: |
           if [ -s codegen_changes.patch ]; then
-            SUGGESTION=$(cat <<EOF
-            \`\`\`suggestion
-            $(cat codegen_changes.patch)
-            \`\`\`
-            EOF
+            SUGGESTION=$(cat <<'EOF'
+          \`\`\`suggestion
+          $(cat codegen_changes.patch)
+          \`\`\`
+          EOF
             )
             gh pr comment ${{ github.event.pull_request.number }} --body "Codegen fixup suggestion:
 
-            $SUGGESTION
+          $SUGGESTION
 
-            To apply these changes, please review and manually apply the suggestion above."
+          To apply these changes, please review and manually apply the suggestion above."
           else
             gh pr comment ${{ github.event.pull_request.number }} --body "Attempted to fix codegen, but no changes were necessary."
           fi
