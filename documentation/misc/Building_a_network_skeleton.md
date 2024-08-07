@@ -101,8 +101,8 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
 
 ## Lotus Checklist
 
-1. In your Lotus repository, add `replace github.com/filecoin-project/go-state-types => ../go-state-types` to the very end of your Lotus `go.mod` file.
-    - This ensures that your local clone copy of `go-state-types` is used. Any changes you make there will be reflected in your Lotus project.
+1. To integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, filecoin-ffi, and go-state-types are bubbled up to Lotus.
+    - Refer to the [Update Dependencies Lotus tutorial](Update_Dependencies_Lotus.md) for detailed instructions on updating these dependencies in Lotus.
 
 1. Import new actors:
 
