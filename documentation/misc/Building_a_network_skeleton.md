@@ -101,7 +101,7 @@ You can take a look at this [Filecoin-FFI PR as a reference](https://github.com/
 
 ## Lotus Checklist
 
-1. To integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, filecoin-ffi, and Go-State-Types are bubbled up to Lotus.
+1. To integrate the network skeleton into Lotus, ensure that the relevant releases for ref-fvm, filecoin-ffi, and go-state-types are bubbled up to Lotus.
     - Refer to the [Update Dependencies Lotus tutorial](Update_Dependencies_Lotus.md) for detailed instructions on updating these dependencies in Lotus.
 
 1. Import new actors:
