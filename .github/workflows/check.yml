@@ -45,9 +45,44 @@ jobs:
       - run: make deps lotus
       - run: go install golang.org/x/tools/cmd/goimports
       - run: make gen
+      - run: git diff > codegen_changes.patch
       - run: git diff --exit-code
       - run: make docsgen-cli
+      - run: git diff >> codegen_changes.patch
       - run: git diff --exit-code
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: codegen-diff
+          path: codegen_changes.patch
+
+  suggest-codegen-changes:
+    needs: check-gen
+    if: failure() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: codegen-diff
+      - name: Create suggestion
+        run: |
+          if [ -s codegen_changes.patch ]; then
+            SUGGESTION=$(cat <<EOF
+            \`\`\`suggestion
+            $(cat codegen_changes.patch)
+            \`\`\`
+            EOF
+            )
+            gh pr comment ${{ github.event.pull_request.number }} --body "Codegen fixup suggestion:
+
+            $SUGGESTION
+
+            To apply these changes, please review and manually apply the suggestion above."
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body "Attempted to fix codegen, but no changes were necessary."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   check-lint:
     name: Check (lint-all)
     runs-on: ubuntu-latest
