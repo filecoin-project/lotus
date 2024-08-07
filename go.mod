@@ -337,3 +337,5 @@ require (
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
+
+replace github.com/whyrusleeping/cbor-gen => github.com/rvagg/cbor-gen v0.0.0-20240807070044-d0902e2dd8b1

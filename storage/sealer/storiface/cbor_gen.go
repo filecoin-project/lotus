@@ -34,7 +34,6 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	if len("ID") > 8192 {
 		return xerrors.Errorf("Value in field \"ID\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ID"))); err != nil {
 		return err
 	}
@@ -58,7 +57,6 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	if len("Sector") > 8192 {
 		return xerrors.Errorf("Value in field \"Sector\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sector"))); err != nil {
 		return err
 	}
@@ -69,6 +67,7 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	if err := t.Sector.MarshalCBOR(cw); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -136,11 +135,9 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) (err error) {
 		case "Sector":
 
 			{
-
 				if err := t.Sector.UnmarshalCBOR(cr); err != nil {
 					return xerrors.Errorf("unmarshaling t.Sector: %w", err)
 				}
-
 			}
 
 		default:
@@ -167,7 +164,6 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if len("Key") > 8192 {
 		return xerrors.Errorf("Value in field \"Key\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Key"))); err != nil {
 		return err
 	}
@@ -178,7 +174,6 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if len(t.Key) > 8192 {
 		return xerrors.Errorf("Value in field t.Key was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Key))); err != nil {
 		return err
 	}
@@ -190,7 +185,6 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if len("Value") > 8192 {
 		return xerrors.Errorf("Value in field \"Value\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Value"))); err != nil {
 		return err
 	}
@@ -201,13 +195,13 @@ func (t *SecDataHttpHeader) MarshalCBOR(w io.Writer) error {
 	if len(t.Value) > 8192 {
 		return xerrors.Errorf("Value in field t.Value was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Value))); err != nil {
 		return err
 	}
 	if _, err := cw.WriteString(string(t.Value)); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -296,7 +290,6 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if len("URL") > 8192 {
 		return xerrors.Errorf("Value in field \"URL\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("URL"))); err != nil {
 		return err
 	}
@@ -307,7 +300,6 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if len(t.URL) > 8192 {
 		return xerrors.Errorf("Value in field t.URL was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.URL))); err != nil {
 		return err
 	}
@@ -319,7 +311,6 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if len("Local") > 8192 {
 		return xerrors.Errorf("Value in field \"Local\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Local"))); err != nil {
 		return err
 	}
@@ -335,7 +326,6 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if len("Headers") > 8192 {
 		return xerrors.Errorf("Value in field \"Headers\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Headers"))); err != nil {
 		return err
 	}
@@ -354,8 +344,8 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
+
 	return nil
 }
 
@@ -456,13 +446,10 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 					_ = err
 
 					{
-
 						if err := t.Headers[i].UnmarshalCBOR(cr); err != nil {
 							return xerrors.Errorf("unmarshaling t.Headers[i]: %w", err)
 						}
-
 					}
-
 				}
 			}
 
