@@ -12,15 +12,8 @@
 Before you mark the PR ready for review, please make sure that:
 
 - [ ] Commits have a clear commit message.
-- [ ] PR title is in the form of of `<type> (<scope>): <subject>`
-  - example: ` fix: mempool: Introduce a cache for valid signatures`
-  - `type`: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test
-  - `scope`: api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet
-- [ ] Update CHANGELOG.md or signal that this change does not need it.
-  - If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
-  - If the change does not require a CHANGELOG.md entry, do one of the following:
-    - Add `[skip changelog]` to the PR title
-    - Add the label `skip/changelog` to the PR
+- [ ] PR title conforms with [contribution conventions](https://github.com/filecoin-project/lotus/blob/master/README.md#pr-title-conventions)
+- [ ] Update CHANGELOG.md or signal that this change does not need it per [contribution conventions](https://github.com/filecoin-project/lotus/blob/master/README.md#changelog-management)
 - [ ] New features have usage guidelines and / or documentation updates in
   - [ ] [Lotus Documentation](https://lotus.filecoin.io)
   - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)

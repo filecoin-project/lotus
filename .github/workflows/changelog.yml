@@ -30,10 +30,7 @@ jobs:
       - if: steps.changelog.outputs.modified == '0'
         env:
           MESSAGE: |
-            docs/changelogs/ was not modified in this PR. Please do one of the following:
-            - add a changelog entry
-            - add `[skip changelog]` to the PR title
-            - label the PR with `skip/changelog`
+            docs/changelogs/ was not modified in this PR. Please do one of the options in [changelog management conventions](https://github.com/filecoin-project/lotus/blob/master/README.md#changelog-management)
         run: |
           echo "::error::${MESSAGE//$'\n'/%0A}"
           exit 1
