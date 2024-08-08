@@ -123,19 +123,3 @@ See the final release notes!
 ## ⁉️ Do you have questions?
 
 Leave a comment in this ticket!
-
-<div style="display: flex;">
-
-<div style="flex: 1; padding: 10px; border-right: 1px solid #ccc;">
-  Text
-
-  Text
-</div>
-
-<div style="flex: 1; padding: 10px;">
-  <p>First cell, second column</p>
-  <p>Second cell, second paragraph</p>
-  <p>Second cell, third paragraph</p>
-</div>
-
-</div>
