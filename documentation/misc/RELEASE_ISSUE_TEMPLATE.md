@@ -56,7 +56,7 @@
 
 ### RCs
 
-[//]: # (Copy/paste this "RCX" section for each RC, and increment "X")
+[//]: # (Copy/paste this "RCX" section for each additional RC, and increment "X")
 #### RCX
 > [!IMPORTANT]
 > These PRs should be done in and target the `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch.
