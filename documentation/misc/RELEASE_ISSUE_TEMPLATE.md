@@ -1,49 +1,120 @@
 > Release Issue Template
 
-# Lotus X.Y.Z Release
+# Lotus Node|Miner X.Y.Z Release
 
-[//]: # (Open this issue as [WIP] Lotus vX.Y.Z)
-[//]: # (Apply the `tpm` label to it, and pin the issue on GitHub)
+[//]: # (Below are non-visible steps intended for the issue creator)
+[//]: # (Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z" and adjust the title for whether it's a Node or Miner release.)
+[//]: # (Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
+[//]: # (Find/Replace "X.Y.Z" with the actual values.)
+[//]: # (Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
+[//]: # (Find/Replace "RCX" with "RC1".)
+[//]: # (If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
+[//]: # (Adjust the "Meta" section values.)
+[//]: # (Apply the `tpm` label to the issue)
+[//]: # (Create the issue)
+[//]: # (Pin the issue on GitHub)
+
+## 😶‍🌫 Meta
+* Scope: Node|Miner
+* Is this linked with a netwok upgrade, and thus mandatory? Yes|No
+* Related network upgrade version: n/a|nvXX
 
 ## 🚢 Estimated shipping date
 
-<Date this release will ship on if everything goes to plan (week beginning...)>
+[//]: # (If/when we know an exact date, remove the "week of".)
+[//]: # (If a date week is an estimate, annotate with "estimate".)
+
+| Candidate | Date | Release URL |
+|-----------|------|-------------|
+| RC1 | Week of YYYY-MM-DD | |
+| Stable (non-RC) | Week of YYYY-MM-DD (estimate) | |
+
+## 🪢 Dependencies for releases
+> [!NOTE]
+> 1. This is the set of changes that need to make it in for a given RC.  This is effectively the set of changes to cherry-pick from master.  
+> 2. They can be checked as done once they land in `master`.  
+> 3. They are presented here for quick reference, but backporting is tracked in each `Release Checklist`.
+
+[//]: # (Copy/paste this for each RC, and increment "X")
+### RCX
+- [ ] To Be Added
+
+### Stable (non-RC)
+- [ ] To Be Added
 
 ## ✅ Release Checklist
 
-**Note for whoever is owning the release:** please capture notes as comments in this issue for anything you noticed that could be improved for future releases.  There is a *Post Release* step below for incorporating changes back into the [RELEASE_ISSUE_TEMPLATE](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md), and this is easier done by collecting notes from along the way rather than just thinking about it at the end.
+### Before RC1
+- [ ] (network upgrade) Make sure all [Lotus dependecies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
+   - Link to PR:
+- [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(vX.Y.Z): release template improvements` for improving future releases.
+   - Link to PR:  
+   - This will get merged in a `Post Release` step, but improvements are better done by collecting notes along the way rather than just thinking about it at the end.
+- [ ] Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
+- [ ] In the `master` branch, bump the version in `build/version.go`  to `vX.Y.(Z+1)-dev`. Run `make gen && make docsgen-cli` before committing changes.
+   - Link to PR: 
 
-- [ ] Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release related changes to this branch. If any "non-trivial" changes get added to the release, uncheck all the checkboxes and return to this stage.
-- [ ] Bump the version in `build/version.go` in the `master` branch to `vX.Y.(Z+1)-dev` (bump from feature release) or `vX.(Y+1).0-dev` (bump from mandatory release). Run make gen and make docsgen-cli before committing changes
-- [ ] *Optional:* If preparing a release for a network upgrade, make sure all [Lotus dependecies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
+### RCs
 
-**Prepping an RC**:
+[//]: # (Copy/paste this "RCX" section for each RC, and increment "X")
+#### RCX
+> [!IMPORTANT]
+> These PRs should be done in and target the `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch.
 
-Perform the following changes to the `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch through a PR:
-- [ ] Update the version string in `build/version.go` to one ending with '-rcX'. Ensure you update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`) or both.
-- [ ] run `make gen && make docsgen-cli` to generate documentation
-- [ ] create a **PR** targetting `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch
-  - Opening a PR will trigger a CI run that will build the release and publish it to GitHub as a draft
-  - Merging the PR will trigger a CI run that will publish the GitHub release (it will also create a git tag)
+**Backport PR**
+- [ ] All explicitly tracked items from `Dependencies for releases` have landed
+- [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+) 
+- [ ] Removed the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
+- [ ] Create a PR with title `build(vX.Y.Z): backport changes for vX.Y.Z-rcX`
+   - Link to PR: 
+- [ ] Merge PR 
 
-**Testing**
+**Release PR**
+- [ ] Update the version string in `build/version.go` to one ending with '-rcX'. 
+    - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
+- [ ] Run `make gen && make docsgen-cli` to generate documentation
+- [ ] Changelog prep
+   - [ ] Generate changelog using the script at `scripts/mkreleaselog`
+   - [ ] Add contents of generated text to `CHANGELOG.md`
+   - [ ] Editorializing (breaking changes, new feature callouts, FIPs, actor bundles, new feature callouts)
+   - [ ] (network upgrade) Specify whether the Calibration or Mainnet upgrade epoch has been specified or not yet.
+      - Example where these weren't specified yet: [PR #12169](https://github.com/filecoin-project/lotus/pull/12169)
+- [ ] Create a PR with title `build(vX.Y.Z): release vX.Y.Z-rcX`
+   - Link to PR: 
+   - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
+- [ ] Merge the PR
+   - Opening the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, public the GitHub release, and create the corresponding git tag.
+ - [ ] Update `🚢 Estimated shipping date` table
+ - [ ] Comment on this issue announcing the RC
+    - Link to issue comment:   
 
-Test the release candidate thoroughly, including automated and manual tests to ensure stability and functionality across various environments and scenarios.
+### Testing
+> [!NOTE]
+> Link to any special steps for testing releases beyond ensuring CI is green.  Steps can be inlined here or tracked elsewhere.
 
-**Stable Release**
+### Stable (non-RC) Release
 
-Perform the following changes to the `release/vX.Y.Z` branch through a PR:
-- [ ] update the version string in `build/version.go` to one **NOT** ending with '-rcX'
-- [ ] run `make gen && make docsgen-cli` to generate documentation
-- [ ] create a **PR** targetting `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch
-  - Opening a PR will trigger a CI run that will build the release and publish it to GitHub as a draft
-  - Merging the PR will trigger a CI run that will publish the GitHub release (it will also create a git tag)
+[//]: # (This "note" with the "diff" to apply to the RC is here to avoid the duplication in the template itself.)
+[//]: # (This is done as a visible NOTE rather than a comment to make sure it's clear what needs to be added to this section.)
+[//]: # (These comment ^^^ can be removed once the NOTE steps are completed.)
+> [!NOTE]
+> Copy/paste in the `RCX` section above and then make these changes:
+> 1. Change the version string text:
+> 
+> Update the version string in `build/version.go` to one **NOT** ending with '-rcX'
+>
+> 2. Under "Changelog prep", add
+> 
+> (network upgrade) Ensure the Mainnet upgrade epoch is specified.
+> 
+> 3. Remove this `[!Note]` and the related invisible comments.
 
-**Post-Release**
+### Post-Release
 
-- [ ] Open a pull request against the `master` branch with a merge of the `releases` branch. Conflict resolution should ignore the changes to `version.go` (keep the `-dev` version from master). Do NOT delete the `releases` branch when doing so!
-- [ ] Update [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with any improvements determined from this latest release iteration.
-- [ ] Create an issue using [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) for the _next_ release.
+- [ ] Open a pull request against `master` with a merge of the `release/vX.Y.Z` branch. 
+   - [ ] Conflict resolution should ignore the changes to `version.go` (keep the `-dev` version from master). 
+   - Link to PR: 
+- [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Before RC1` with any improvements determined from this latest release iteration.
 
 ## ❤️ Contributors
 
@@ -52,3 +123,19 @@ See the final release notes!
 ## ⁉️ Do you have questions?
 
 Leave a comment in this ticket!
+
+<div style="display: flex;">
+
+<div style="flex: 1; padding: 10px; border-right: 1px solid #ccc;">
+  Text
+
+  Text
+</div>
+
+<div style="flex: 1; padding: 10px;">
+  <p>First cell, second column</p>
+  <p>Second cell, second paragraph</p>
+  <p>Second cell, third paragraph</p>
+</div>
+
+</div>
