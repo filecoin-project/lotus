@@ -45,7 +45,7 @@
 ## ✅ Release Checklist
 
 ### Before RC1
-- [ ] (network upgrade) Make sure all [Lotus dependecies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
+- [ ] (network upgrade) Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
    - Link to PR:
 - [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(vX.Y.Z): release template improvements` for improving future releases.
    - Link to PR:  
