@@ -94,7 +94,7 @@
 
 ### Stable (non-RC) Release
 
-[//]: # (This "note" with the "diff" to apply to the RC is here to avoid the duplication in the template itself.)
+[//]: # (This "NOTE" below with the "diff" to apply to the "RC copy/pasted content" is here to avoid the duplication in the template itself.)
 [//]: # (This is done as a visible NOTE rather than a comment to make sure it's clear what needs to be added to this section.)
 [//]: # (These comment ^^^ can be removed once the NOTE steps are completed.)
 > [!NOTE]
