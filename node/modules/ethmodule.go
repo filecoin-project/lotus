@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hashicorp/golang-lru/arc/v2"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -15,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -91,6 +95,20 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			},
 		})
 
+		var blkCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
+		var blkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
+		if cfg.EthBlkCacheSize > 0 {
+			blkCache, err = arc.NewARC[cid.Cid, *ethtypes.EthBlock](cfg.EthBlkCacheSize)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to create block cache: %w", err)
+			}
+
+			blkTxCache, err = arc.NewARC[cid.Cid, *ethtypes.EthBlock](cfg.EthBlkCacheSize)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to create block transaction cache: %w", err)
+			}
+		}
+
 		return &full.EthModule{
 			Chain:        cs,
 			Mpool:        mp,
@@ -104,6 +122,9 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 
 			EthTxHashManager:         &ethTxHashManager,
 			EthTraceFilterMaxResults: cfg.EthTraceFilterMaxResults,
+
+			EthBlkCache:   blkCache,
+			EthBlkTxCache: blkTxCache,
 		}, nil
 	}
 }

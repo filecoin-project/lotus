@@ -306,6 +306,13 @@ func WithEthRPC() NodeOpt {
 	})
 }
 
+func DisableETHBlockCache() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Fevm.EthBlkCacheSize = 0
+		return nil
+	})
+}
+
 func DisableEthRPC() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
 		cfg.Fevm.EnableEthRPC = false
