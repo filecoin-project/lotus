@@ -2,7 +2,7 @@
 
 ### PR Title Conventions
 PR titles should follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard.
-This means the PR title should be in the form of of `<type>(<scope>): <description>`
+This means the PR title should be in the form of `<type>(<scope>): <description>`
   - example: `fix(mempool): introduce a cache for valid signatures`
   - `type`: MUST be one of _build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test_
   - `scope`: OPTIONAL arbitrary string that is usually one of _api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet_
