@@ -67,6 +67,11 @@
 > These PRs should be done in and target the `release/vX.Y.Z` or `release/miner/vX.Y.Z` branch.
 
 **Backport PR**
+
+[//]: # (For RC1 there likely isn't any backporting to do and thus no PR which reduces the steps.)
+[//]: # (We do need all these steps for RC2 onwards though.)
+[//]: # (If steps are removed for the RC1 checklist, they need to be preserved for future RCs/stable.)
+[//]: # (For RC1 we still need to make sure the tracked items land though.)
 - [ ] All explicitly tracked items from `Dependencies for releases` have landed
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+) 
 - [ ] Removed the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
@@ -75,6 +80,7 @@
 - [ ] Merge PR 
 
 **Release PR**
+
 - [ ] Update the version string(s) in `build/version.go` to one ending with '-rcX'. 
     - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
