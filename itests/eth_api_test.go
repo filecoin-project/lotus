@@ -3,7 +3,9 @@ package itests
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -27,6 +29,160 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/result"
 )
+
+func TestETHGetBlockByHashWithCache(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	_, ethAddr2, _ := client.EVM().NewAccount()
+
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
+
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{
+		Tx: ethtypes.EthCall{
+			From: &ethAddr,
+			Data: contract,
+		},
+		BlkParam: &blkParam,
+	})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.Eth1559TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &ethAddr2,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	// Submit transaction with valid signature
+	client.EVM().SignTransaction(&tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+
+	blkHash := receipt.BlockHash
+
+	// call EthGetBlockByHash without tx info
+	blk1, err := client.EthGetBlockByHash(ctx, blkHash, false)
+	require.NoError(t, err)
+	require.EqualValues(t, blkHash, blk1.Hash)
+
+	// call again to exercise the cache
+	blk2, err := client.EthGetBlockByHash(ctx, blkHash, false)
+	require.NoError(t, err)
+	require.EqualValues(t, blkHash, blk2.Hash)
+
+	// call EthGetBlockByHash with tx info
+	blk3, err := client.EthGetBlockByHash(ctx, blkHash, true)
+	require.NoError(t, err)
+	require.EqualValues(t, blkHash, blk3.Hash)
+
+	// call again to exercise the cache
+	blk4, err := client.EthGetBlockByHash(ctx, blkHash, true)
+	require.NoError(t, err)
+	require.EqualValues(t, blkHash, blk4.Hash)
+}
+
+func TestETHGetBlockByHashWithoutCache(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableETHBlockCache())
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	_, ethAddr2, _ := client.EVM().NewAccount()
+
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
+
+	blkParam := ethtypes.NewEthBlockNumberOrHashFromPredefined("latest")
+	gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{
+		Tx: ethtypes.EthCall{
+			From: &ethAddr,
+			Data: contract,
+		},
+		BlkParam: &blkParam,
+	})
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.Eth1559TxArgs{
+		ChainID:              buildconstants.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &ethAddr2,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	// Submit transaction with valid signature
+	client.EVM().SignTransaction(&tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
+
+	receipt, err := client.EVM().WaitTransaction(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+
+	blkHash := receipt.BlockHash
+
+	// call EthGetBlockByHash without tx info
+	blk1, err := client.EthGetBlockByHash(ctx, blkHash, false)
+	require.NoError(t, err)
+	require.EqualValues(t, blkHash, blk1.Hash)
+
+	// call again
+	blk2, err := client.EthGetBlockByHash(ctx, blkHash, false)
+	require.NoError(t, err)
+	require.EqualValues(t, blkHash, blk2.Hash)
+}
 
 func TestEthAddressToFilecoinAddress(t *testing.T) {
 	// Disable EthRPC to confirm that this method does NOT need the EthEnableRPC config set to true

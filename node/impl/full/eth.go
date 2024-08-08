@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -138,6 +139,10 @@ type EthModule struct {
 	EthTxHashManager         *EthTxHashManager
 	EthTraceFilterMaxResults uint64
 	EthEventHandler          *EthEventHandler
+
+	EthBlkCache   *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
+	EthBlkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
+
 	ChainAPI
 	MpoolAPI
 	StateAPI
@@ -296,11 +301,41 @@ func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHa
 }
 
 func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
-	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("error loading tipset %s: %w", ts, err)
+	cache := a.EthBlkCache
+	if fullTxInfo {
+		cache = a.EthBlkTxCache
 	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
+
+	// Attempt to retrieve the Ethereum block from cache
+	cid := blkHash.ToCid()
+	if cache != nil {
+		if ethBlock, found := cache.Get(cid); found {
+			if ethBlock != nil {
+				return *ethBlock, nil
+			}
+			// Log and remove the nil entry from cache
+			log.Errorw("nil value in eth block cache", "hash", blkHash.String())
+			cache.Remove(cid)
+		}
+	}
+
+	// Fetch the tipset using the block hash
+	ts, err := a.Chain.GetTipSetByCid(ctx, cid)
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load tipset by CID %s: %w", blkHash.String(), err)
+	}
+
+	// Generate an Ethereum block from the Filecoin tipset
+	blk, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to create Ethereum block from Filecoin tipset: %w", err)
+	}
+
+	// Add the newly created block to the cache and return
+	if cache != nil {
+		cache.Add(cid, &blk)
+	}
+	return blk, nil
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
