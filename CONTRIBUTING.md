@@ -17,4 +17,4 @@ If the PR affects users (e.g., new feature, bug fix, system requirements change)
 If the change does not require a CHANGELOG.md entry, do one of the following:
 - Add `[skip changelog]` to the PR title
 - Add the label `skip/changelog` to the PR
-Note that this enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
+Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
