@@ -46,13 +46,18 @@
 
 ### Before RC1
 - [ ] (network upgrade) Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
-   - Link to PR:
+   - Link to Lotus PR:
 - [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(vX.Y.Z): release template improvements` for improving future releases.
    - Link to PR:  
    - This will get merged in a `Post Release` step, but improvements are better done by collecting notes along the way rather than just thinking about it at the end.
 - [ ] Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
-- [ ] In the `master` branch, bump the version in `build/version.go`  to `vX.Y.(Z+1)-dev`. Run `make gen && make docsgen-cli` before committing changes.
-   - Link to PR: 
+- `master` branch Version string updates
+   - [ ] bump the version(s) in `build/version.go` to `vX.Y.(Z+1)-dev`. 
+      - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
+   - [ ] Run `make gen && make docsgen-cli` before committing changes.
+   - [ ] Create a PR with title `build(vX.Y.Z+1): set initial version string`
+     - Link to PR: 
+   - [ ] Merge PR
 
 ### RCs
 
@@ -70,7 +75,7 @@
 - [ ] Merge PR 
 
 **Release PR**
-- [ ] Update the version string in `build/version.go` to one ending with '-rcX'. 
+- [ ] Update the version string(s) in `build/version.go` to one ending with '-rcX'. 
     - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
 - [ ] Changelog prep
