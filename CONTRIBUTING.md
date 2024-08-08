@@ -8,7 +8,7 @@ This means the PR title should be in the form of of `<type>(<scope>): <descripti
   - `scope`: OPTIONAL arbitrary string that is usually one of _api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet_
   - Breaking changes must add a `!`
   - Optionally the PR title can be prefixed with `[skip changelog]` if no changelog edits should be made for this change.
-Note that this enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml
+Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/pr-title-check.yml
 
 ### CHANGELOG Management
 To expedite the release process, the CHANGELOG is built-up incrementally.  
