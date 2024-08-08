@@ -12,10 +12,10 @@
 Before you mark the PR ready for review, please make sure that:
 
 - [ ] Commits have a clear commit message.
-- [ ] PR title is in the form of of `<PR type>: <area>: <change being made>`
+- [ ] PR title is in the form of of `<type> (<scope>): <subject>`
   - example: ` fix: mempool: Introduce a cache for valid signatures`
-  - `PR type`: fix, feat, build, chore, ci, docs, perf, refactor, revert, style, test
-  - `area`, e.g. api, chain, state, mempool, multisig, networking, paych, proving, sealing, wallet, deps
+  - `type`: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test
+  - `scope`: api, chain, deps, mempool, multisig, networking, paych, proving, sealing, state, wallet
 - [ ] Update CHANGELOG.md or signal that this change does not need it.
   - If the PR affects users (e.g., new feature, bug fix, system requirements change), update the CHANGELOG.md and add details to the UNRELEASED section.
   - If the change does not require a CHANGELOG.md entry, do one of the following:
