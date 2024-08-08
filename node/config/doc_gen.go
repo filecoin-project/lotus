@@ -238,6 +238,16 @@ Set to 0 to keep all mappings`,
 
 			Comment: ``,
 		},
+		{
+			Name: "EthBlkCacheSize",
+			Type: "int",
+
+			Comment: `EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
+This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
+recently requested blocks that are already cached.
+The default size of the cache is 500 blocks.
+Note: Setting this value to 0 disables the cache.`,
+		},
 	},
 	"FullNode": {
 		{

@@ -241,6 +241,16 @@
   # env var: LOTUS_FEVM_ETHTRACEFILTERMAXRESULTS
   #EthTraceFilterMaxResults = 500
 
+  # EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
+  # This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
+  # recently requested blocks that are already cached.
+  # The default size of the cache is 500 blocks.
+  # Note: Setting this value to 0 disables the cache.
+  #
+  # type: int
+  # env var: LOTUS_FEVM_ETHBLKCACHESIZE
+  #EthBlkCacheSize = 500
+
 
 [Events]
   # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
