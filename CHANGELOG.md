@@ -33,6 +33,7 @@
 ## Enhancements
 
 - fix: add datacap balance to circ supply internal accounting as unCirc #12348
+- feat: Use a block cache to speed up the `EthGetBlockByHash` API: https://github.com/filecoin-project/lotus/pull/12359
 
 ## Improvements
 
