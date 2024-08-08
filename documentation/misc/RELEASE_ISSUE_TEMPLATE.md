@@ -16,7 +16,7 @@
 
 ## 😶‍🌫 Meta
 * Scope: Node|Miner
-* Is this linked with a netwok upgrade, and thus mandatory? Yes|No
+* Is this linked with a network upgrade, and thus mandatory? Yes|No
 * Related network upgrade version: n/a|nvXX
 
 ## 🚢 Estimated shipping date
