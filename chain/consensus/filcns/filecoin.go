@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/proofs"
-	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -369,8 +368,7 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 		}
 	}
 
-	// TODO(rvagg): why is this using proofsffi.ProofVerifier.VerifyWinningPoSt directly and not filec.verifier.VerifyWinningPoSt?
-	ok, err := proofsffi.ProofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
+	ok, err := filec.verifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
 		Randomness:        rand,
 		Proofs:            h.WinPoStProof,
 		ChallengedSectors: sectors,
