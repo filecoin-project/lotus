@@ -140,8 +140,8 @@ type EthModule struct {
 	EthTraceFilterMaxResults uint64
 	EthEventHandler          *EthEventHandler
 
-	EthBlkCache   *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
-	EthBlkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
+	EthBlkCache   *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
+	EthBlkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks along with full transaction payload by their CID
 
 	ChainAPI
 	MpoolAPI
@@ -322,7 +322,7 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	// Fetch the tipset using the block hash
 	ts, err := a.Chain.GetTipSetByCid(ctx, cid)
 	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load tipset by CID %s: %w", blkHash.String(), err)
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to load tipset by CID %s: %w", cid, err)
 	}
 
 	// Generate an Ethereum block from the Filecoin tipset
