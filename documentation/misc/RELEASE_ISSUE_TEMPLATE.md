@@ -94,7 +94,7 @@
    - Link to PR: 
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Merge the PR
-   - Opening the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, public the GitHub release, and create the corresponding git tag.
+   - Opening the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
  - [ ] Update `🚢 Estimated shipping date` table
  - [ ] Comment on this issue announcing the RC
     - Link to issue comment:   
