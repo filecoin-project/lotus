@@ -18,13 +18,13 @@ jobs:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const title = context.payload.pull_request.title;
-            const pattern = /^(feat|fix|build|chore|ci|docs|perf|refactor|revert|style|test):\s\w+:\s[a-z].+/;
+            const pattern = /^(\[skip changelog\]\s)?(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(\w+\))?:?\s(\w+:)?\s[a-z].+$/;
             
             if (!pattern.test(title)) {
               await github.rest.pulls.createReview({
                 ...context.repo,
                 pull_number: context.payload.pull_request.number,
-                body: 'Please update the PR title to match the required format: `<type>: <area>: <subject>`\n\nTypes: fix, feat, build, chore, ci, docs, perf, refactor, revert, style, test, chore\nArea: e.g. api, chain, state, mempool, multisig, networking, paych, proving, sealing, wallet, deps\nSubject: start with lowercase',
+                body: 'Please update the PR title to match one of the required formats:\n\n1. `<type>: <scope>: <subject>`\n2. `<type>(<scope>): <subject>`\n\nTypes: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test\nArea/Scope: api, chain, state, mempool, multisig, networking, paych, proving, sealing, wallet, deps\nSubject: start with lowercase\n\nOptionally, you can add "[skip changelog]" at the start of the title if the change does not require a CHANGELOG.md entry.',
                 event: 'REQUEST_CHANGES'
               });
               core.setFailed('PR title does not match the required format');
