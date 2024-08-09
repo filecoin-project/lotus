@@ -97,7 +97,7 @@ Unless a security issue is actively being exploited or a significant number of u
 
 ## Branch and Tag Strategy
 
-> **Note on color coding:**
+> [!NOTE]
 > - <span style="color:blue">Blue text</span> indicates node-related information.
 > - <span style="color:orange">Orange text</span> indicates miner-related information.
 > - Black text applies to both node and miner releases.
