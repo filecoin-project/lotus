@@ -96,10 +96,23 @@ By policy, the team will usually wait until about 3 weeks after the final releas
 Unless a security issue is actively being exploited or a significant number of users are unable to update to the latest version, security fixes will not be backported to previous releases.
 
 ## Branch and Tag Strategy
-* Releases branches have the name `release/vX.Y.Z`
-* By the end of the release process, a `release/vX.Y.Z` branch will have an associated `vX.Y.Z` tag and likely also `vX.Y.Z-rcN` tags.
-* `master` branch is almost always where `release/vX.Y.Z` branches are created from.  The exception is we need to do an emergency rushed patch release and can't risk pulling in other changes that have already landed in `master`.  In that case, `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`.
 
+> **Note on color coding:**
+> - <span style="color:blue">Blue text</span> indicates node-related information.
+> - <span style="color:orange">Orange text</span> indicates miner-related information.
+> - Black text applies to both node and miner releases.
+
+* <span style="color:blue">Node release branches are named `release/vX.Y.Z`</span>
+* <span style="color:orange">Miner release branches are named `release/miner/vX.Y.Z`</span>
+* By the end of the release process:
+  * <span style="color:blue">A `release/vX.Y.Z` branch (node) will have an associated `vX.Y.Z` tag</span>
+  * <span style="color:orange">A `release/miner/vX.Y.Z` branch (miner) will have an associated `miner/vX.Y.Z` tag</span>
+* Both node and miner releases may have additional `vX.Y.Z-rcN` or `miner/vX.Y.Z-rcN` tags for release candidates
+* The `master` branch is typically the source for creating release branches
+* For emergency patch releases where we can't risk including recent `master` changes:
+  * <span style="color:blue">Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`</span>
+  * <span style="color:orange">Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`</span>
+  
 ## FAQ
 
 ### Why aren't Go major versions used more?
