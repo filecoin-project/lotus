@@ -1,6 +1,15 @@
+<!-- omit from toc -->
 # Contributing to Lotus
 
 Lotus is a universally open project and welcomes contributions of all kinds: code, docs, and more. We appreciate your interest in contributing!
+
+- [Before Contributing](#before-contributing)
+- [Implementing Changes](#implementing-changes)
+- [PR Title Conventions](#pr-title-conventions)
+- [CHANGELOG Management](#changelog-management)
+- [Markdown Conventions](#markdown-conventions)
+  - [Table Of Contents](#table-of-contents)
+- [Getting Help](#getting-help)
 
 ## Before Contributing
 
@@ -42,6 +51,15 @@ If the change does not require a CHANGELOG.md entry, do one of the following:
 - Add the label `skip/changelog` to the PR
 
 Note that this is enforced with https://github.com/filecoin-project/lotus/blob/master/.github/workflows/changelog.yml
+
+## Markdown Conventions
+We optimize our markdown files for viewing on GitHub.  That isn't to say other syntaxes can't be used, but that is the flavor we we focus on and at the minimum don't want to break.
+
+### Table Of Contents
+For longer documents, we tend to inline a table of contents (TOC).  This is slightly annoying with Markdown on GitHub because the actual table of contents needs to be checked-in rather than just giving a directive to the renderer like []`[[_TOC_]]` on GitLab](https://docs.gitlab.com/ee/user/markdown.html#table-of-contents).  (Yes GitHub UI does enable someone to see an auto-generated outline if they click the "outline" button on the top right-hand corner when viewing a Markdown file, but that isn't necessarily obvious to users, requires an extra click, and doesn't enable any customization.)
+
+[There is tooling](https://stackoverflow.com/questions/11948245/markdown-to-create-pages-and-table-of-contents) that can help with auto-generating and updating a TOC and allow customization.  Maintainers aren't wedded to a particular format/standard/tool but have gone with [VS Code Markdown All in One](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one) because it has what we needed and is the most popular VS Code plugin for this functionality (at least as of 202408).
+
 
 ## Getting Help
 
