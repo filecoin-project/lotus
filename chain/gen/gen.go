@@ -36,6 +36,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/proofs"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -46,8 +48,6 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const msgsPerBlock = 20
@@ -350,7 +350,7 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 }
 
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round abi.ChainEpoch) ([]types.BeaconEntry, *types.ElectionProof, *types.Ticket, error) {
-	mc := &mca{w: cg.w, sm: cg.sm, pv: ffiwrapper.ProofVerifier, bcn: cg.beacon}
+	mc := &mca{w: cg.w, sm: cg.sm, pv: proofsffi.ProofVerifier, bcn: cg.beacon}
 
 	mbi, err := mc.MinerGetBaseInfo(ctx, m, round, pts.Key())
 	if err != nil {
@@ -603,7 +603,7 @@ type MiningCheckAPI interface {
 type mca struct {
 	w   *wallet.LocalWallet
 	sm  *stmgr.StateManager
-	pv  storiface.Verifier
+	pv  proofs.Verifier
 	bcn beacon.Schedule
 }
 
@@ -685,7 +685,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigI
 
 type genFakeVerifier struct{}
 
-var _ storiface.Verifier = (*genFakeVerifier)(nil)
+var _ proofs.Verifier = (*genFakeVerifier)(nil)
 
 func (m genFakeVerifier) VerifySeal(svi proof7.SealVerifyInfo) (bool, error) {
 	return true, nil

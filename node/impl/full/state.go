@@ -42,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/chain/proofs"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -49,7 +50,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type StateModuleAPI interface {
@@ -97,7 +97,7 @@ type StateAPI struct {
 
 	StateModuleAPI
 
-	ProofVerifier storiface.Verifier
+	ProofVerifier proofs.Verifier
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
 	Beacon        beacon.Schedule
