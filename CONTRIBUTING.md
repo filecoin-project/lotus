@@ -45,6 +45,6 @@ Note that this is enforced with https://github.com/filecoin-project/lotus/blob/m
 
 ## Getting Help
 
-If you need help with your contribution, please don't hesitate to ask questions in our [discussions](https://github.com/filecoin-project/lotus/discussions) or reach out to the maintainers.
+If you need help with your contribution, please don't hesitate to ask questions in our [discussions](https://github.com/filecoin-project/lotus/discussions) or reach out to [the maintainers](https://github.com/orgs/filecoin-project/teams/lotus-maintainers).
 
 Thank you for contributing to Lotus!
