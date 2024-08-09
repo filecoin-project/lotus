@@ -5,6 +5,7 @@
 [//]: # (Below are non-visible steps intended for the issue creator)
 [//]: # (Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # (Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
+[//]: # (Find/Replace "X.Y.Z+1" with the actual values.  This is intentinoally done before tbe find/replace X.Y.Z step because that will also match.)
 [//]: # (Find/Replace "X.Y.Z" with the actual values.)
 [//]: # (If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
 [//]: # (Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
@@ -52,7 +53,7 @@
    - This will get merged in a `Post Release` step, but improvements are better done by collecting notes along the way rather than just thinking about it at the end.
 - [ ] Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
 - `master` branch Version string updates
-   - [ ] bump the version(s) in `build/version.go` to `vX.Y.(Z+1)-dev`. 
+   - [ ] bump the version(s) in `build/version.go` to `vX.Y.Z+1-dev`. 
       - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
    - [ ] Create a PR with title `build(vX.Y.Z+1): set initial version string`
@@ -112,15 +113,19 @@
 [//]: # (These comments ^^^ can be removed once the NOTE steps below are completed.)
 > [!NOTE]
 > Copy/paste in the `RCX` section above and then make these changes:
-> 1. Change the version string text:
+> 1. Under "Release PR > Update the version string...", edit:
 > 
 > Update the version string in `build/version.go` to one **NOT** ending with '-rcX'
 >
-> 2. Under "Changelog prep", add
+> 2. Under "Release PR > Changelog prep...", add:
 > 
 > (network upgrade) Ensure the Mainnet upgrade epoch is specified.
-> 
-> 3. Remove this `[!Note]` and the related invisible comments.
+>
+> 3. Under "Release PR > Update the version string...", edit:
+>
+> Create a PR with title `build(vX.Y.Z): release vX.Y.Z`
+>
+> 4. Remove this `[!Note]` and the related invisible comments.
 
 ### Post-Release
 
