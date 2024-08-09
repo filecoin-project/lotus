@@ -24,15 +24,15 @@
 
 ## Purpose
 
-This document aims to describe how the Lotus maintainers plan to ship releases of Lotus. Interested parties can expect new releases to come out as described in this document.
+This document aims to describe how the Lotus maintainers ship releases of Lotus. Interested parties can expect new releases to be delivered as described in this document.
 
 ## High-level Summary
 
 - Lotus uses semantic versioning (`MAJOR`.`MINOR`.`PATCH`).
-- **`MAJOR` releases** (e.g., 2.0.0) are reserved for significant architectural changes to Lotus.
-- **`MINOR` releases** (e.g., 1.29.0) are shipped for network upgrades, API breaking changes, or non-backwards-compatible feature enhancements.
-- **`PATCH` releases** (e.g., 1.28.1) contain backwards-compatible bug fixes or feature enhancements.
-- Releases are branched from the master branch, regardless of whether they include a network upgrade.
+- **`MAJOR` releases** are reserved for significant architectural changes to Lotus. 
+- **`MINOR` releases** are shipped for network upgrades, API breaking changes, or non-backwards-compatible feature enhancements.
+- **`PATCH` releases** contain backwards-compatible bug fixes or feature enhancements.
+- Releases are almost always branched from the `master` branch, even if they include a network upgrade.  The main exception is if there is a critical security patch we need to rush out.  In that case, we would patch an existing release to increase release speed and reduce barrier to adoption.
 - We aim to ship a new release of the Lotus software approximately every 4 weeks, except during network upgrade periods which may have longer release cycles.
 
 ## Motivation and Requirements
@@ -51,21 +51,22 @@ In order to achieve this, we need the following from our release process and con
 
 ### Major Releases
 
-Bumps to the Lotus major version number (1.0.0, 2.0.0, etc.) are reserved for significant architectural changes to Lotus. These releases are expected to take considerable time to develop and will be rare.
+Bumps to the Lotus major version number (e.g., 2.0.0, 3.0.0) are reserved for significant architectural changes to Lotus. These releases are expected to take considerable time to develop and will be rare.  At least of 202408, there is nothing on the horizon that we're aware of that warrants this.   See also [What aren't go major versions used more?](#why-arent-go-major-versions-used-more)
 
 ### Minor Releases
 
-Bumps to the Lotus minor version number (1.28.0, 1.29.0, etc.) are used for:
+Bumps to the Lotus minor version number (e.g., 1.28.0, 1.29.0) are used for:
 
 - Shipping Filecoin network upgrades
 - API breaking changes
 - Non-backwards-compatible feature enhancements
 
-Users **must** upgrade to these releases that include network upgrades before a certain time to keep in sync with the Filecoin network, and we recommend everyone to subscribe to status.filecoin.io for updates when these are happening, as well checking the release notes of a minor version if 
+Users MUST upgrade to minor releases that include a network upgrade before a certain time to keep in sync with the Filecoin network.  We recommend everyone to subscribe to status.filecoin.io for updates when these are happening, as well checking the release notes of a minor version. 
+Users can decide whether to upgrade to minor version releases that don't include a network upgrade.  They are still encouraged to upgrade so they get the latest functionality and improvements and deploy a smaller delta of new code when there is a subsequent minor release they must adopt as part of a network upgrade later.  
 
 ### Patch Releases
 
-Bumps to the Lotus patch version number (1.28.1, 1.28.2, etc.) are used for:
+Bumps to the Lotus patch version number (e.g., 1.28.1, 1.28.2) are used for:
 
 - Backwards-compatible bug fixes
 - Backwards-compatible feature enhancements
@@ -74,22 +75,23 @@ These releases are not mandatory but are highly recommended, as they may contain
 
 ## Release Cycle
 
-We aim to ship a new release of the Lotus software approximately every 4 weeks. However, releases that include network upgrades may have longer development and testing periods.
+We aim to ship a new release of the Lotus software approximately every 4 weeks. However, releases that include network upgrades usually have longer development and testing periods.
 
 ## Release Process
 
 1. Releases are branched from the master branch, regardless of whether they include a network upgrade or not.
 2. All PRs should target the master branch, and if they need to be backported to a release candidate, they should be marked with a `backport` label.
-3. The `releases` branch are no longer used.
+3. As of 202408, the `releases` branch is no longer used, and no longer tracks the latest release.  One can still programmatically get the latest release with `git tag -l 'v*' | sort -V -r | head -n 1` 
 
 ## Release Candidates (RCs)
 
-- For regular releases, the RC period is typically around 1 week.
+- For regular (i.e., no critical security patch) releases with no accompanying network upgrade, the RC period is typically around 1 week.
 - For releases accompanying network upgrades, the release candiadte period is a lot longer to allow for more extensive testing, usually around 5 to 6 weeks.
+- Releases rushing out a critical security patch will likely have an RC period on the order of hours or days, or may even forgo the RC phase.  To compensate for the release speed, these releases will include the minimum delta necessary, meaning they'll be a patch on top of an existing release rather than taking the latest changes in the `master` branch.
 
 ## Security Fix Policy
 
-Any release may contain security fixes. Unless the fix addresses a bug being exploited in the wild, the fix will not be called out in the release notes. Please make sure to update ASAP.
+Any release may contain security fixes. Unless the fix addresses a bug being exploited in the wild, the fix will not be called out in the release notes to avoid shining a spotlight on the problem and increasing the chances of it being exploited.  As a result, this is one of the reasons we encourage users to upgrade in all cases, even when the release isn't associated with a network upgrade.
 
 By policy, the team will usually wait until about 3 weeks after the final release to announce any fixed security issues. However, depending on the impact and ease of discovery of the issue, the team may wait more or less time.
 
