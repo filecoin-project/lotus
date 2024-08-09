@@ -85,11 +85,13 @@
     - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
 - [ ] Changelog prep
-   - [ ] Generate changelog using the script at `scripts/mkreleaselog`
-   - [ ] Add contents of generated text to `CHANGELOG.md`
-   - [ ] Editorializing (breaking changes, new feature callouts, FIPs, actor bundles, new feature callouts)
+   - [ ] Editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
    - [ ] (network upgrade) Specify whether the Calibration or Mainnet upgrade epoch has been specified or not yet.
       - Example where these weren't specified yet: [PR #12169](https://github.com/filecoin-project/lotus/pull/12169)
+   - [ ] Ensure no missing content when spot checking git history
+      - Example command looking at git commits: `git log --oneline --graph vA.B.C..`, where A.B.C correspond to the previous release. 
+      - Example GitHub UI search looking at merged PRs into master: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
+      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, mergedAt, .author.login, .title] | @tsv' | sort -k4
 - [ ] Create a PR with title `build(vX.Y.Z): release vX.Y.Z-rcX`
    - Link to PR: 
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
