@@ -247,7 +247,7 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 	}()
 }
 
-// declareRecoveries identifies sectors that were previously marked as faulty
+// declareManualRecoveries identifies sectors that were previously marked as faulty
 // for our miner, but are now recovered (i.e. are now provable again) and
 // still not reported as such.
 //
