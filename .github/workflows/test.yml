@@ -2,11 +2,20 @@ name: Test
 
 on:
   pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
   push:
     branches:
       - master
       - release/*
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Runs nightly at 0AM UTC
 
 defaults:
   run:
@@ -18,6 +27,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   discover:
@@ -25,10 +35,28 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       groups: ${{ steps.test.outputs.groups }}
+      run_very_expensive_tests: ${{ steps.envs.outputs.run_very_expensive_tests }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+      - id: envs
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          HAS_RUN_VERY_EXPENSIVE_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'need/very-expensive-tests') }}
+        # set the run_very_expensive_tests flag based on a few criteras:
+        # - if we're in a PR with the label 'need/very-expensive-tests'
+        # - if we're in the nightly cron job (schedule)
+        # this flag is used later to setup the env variable LOTUS_RUN_VERY_EXPENSIVE_TESTS
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" = "pull_request" && "${HAS_RUN_VERY_EXPENSIVE_LABEL}" = "true" ]]; then
+            echo "run_very_expensive_tests=1" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_EVENT_NAME}" = "schedule" ]]; then
+            echo "run_very_expensive_tests=1" >> $GITHUB_OUTPUT
+          else
+            echo "run_very_expensive_tests=0" >> $GITHUB_OUTPUT
+          fi
+
       - id: test
         env:
           # Unit test groups other than unit-rest
@@ -242,6 +270,9 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.discover.outputs.groups) }}
+    env:
+      LOTUS_RUN_EXPENSIVE_TESTS: 1
+      LOTUS_RUN_VERY_EXPENSIVE_TESTS: ${{ needs.discover.outputs.run_very_expensive_tests }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -278,13 +309,18 @@ jobs:
           TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || '0' }}
           FORMAT: ${{ matrix.format || 'standard-verbose' }}
           PACKAGES: ${{ join(matrix.packages, ' ') }}
+          GO_TEST_FLAGS: ${{ matrix.go_test_flags || '' }}
         run: |
+          if [ "$LOTUS_RUN_VERY_EXPENSIVE_TESTS" == "1" ] && [[ ! "$GO_TEST_FLAGS" =~ "-timeout" ]]; then
+            GO_TEST_FLAGS="$GO_TEST_FLAGS -timeout 60m"
+          fi
+
           gotestsum \
             --format "$FORMAT" \
             --junitfile "$REPORTS_PATH/$NAME.xml" \
             --jsonfile "$REPORTS_PATH/$NAME.json" \
             --packages="$PACKAGES" \
-            -- ${{ matrix.go_test_flags || '' }}
+            -- ${GO_TEST_FLAGS}
       - if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
@@ -293,3 +329,12 @@ jobs:
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
         continue-on-error: true
+
+      - name: Create issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: ipdxco/create-or-update-issue@1c3635e06dd2f09272e49c6f1ad4619ba949120b # v1.0.1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          title: "Fix Expensive Tests"
+          label: "area/expensive-test-failure"
+          body: "During a scheduled run, the test ${{ matrix.name }} failed."
