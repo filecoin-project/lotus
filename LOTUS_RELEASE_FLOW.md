@@ -135,5 +135,8 @@ Releases for a network upgrade will have "last production release + minimum comm
 
 ## Related Items
 
-1. Release Issue template
-2. Lotus Release Flow Discussion: Leave a comment if you have any questions or feedback regarding the lotus release flow.
+1. [Release Issue template](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
+2. [Network Upgrade process and tracking documents for nv23 onwards](https://drive.google.com/drive/folders/1LEfIQKsp0un3RxHdSbkBG7ON3H7HRuA7)
+3. [Lotus release issues](https://github.com/filecoin-project/lotus/issues?q=is%3Aissue+release+in%3Atitle)
+4. [202405 discussion](https://github.com/filecoin-project/lotus/discussions/12020) that triggered updating this document.
+5. [Original 202108 Lotus release flow discussion](https://github.com/filecoin-project/lotus/discussions/7053).
