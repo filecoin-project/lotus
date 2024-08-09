@@ -100,7 +100,7 @@ Unless a security issue is actively being exploited or a significant number of u
 > [!NOTE]
 > - <span style="color:blue">Blue text</span> indicates node-related information.
 > - <span style="color:orange">Orange text</span> indicates miner-related information.
-> - Black text applies to both node and miner releases.
+> - System default colored text applies to both node and miner releases.
 
 * <span style="color:blue">Node release branches are named `release/vX.Y.Z`</span>
 * <span style="color:orange">Miner release branches are named `release/miner/vX.Y.Z`</span>
