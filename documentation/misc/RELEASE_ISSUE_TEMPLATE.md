@@ -6,9 +6,9 @@
 [//]: # (Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # (Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
 [//]: # (Find/Replace "X.Y.Z" with the actual values.)
-[//]: # (Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
-[//]: # (Find/Replace "RCX" with "RC1".)
 [//]: # (If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
+[//]: # (Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
+[//]: # (Find/Replace case sensitive "RCX" with "RC1".)
 [//]: # (Adjust the "Meta" section values.)
 [//]: # (Apply the `tpm` label to the issue)
 [//]: # (Create the issue)
@@ -17,7 +17,7 @@
 ## 😶‍🌫 Meta
 * Scope: Node|Miner
 * Is this linked with a network upgrade, and thus mandatory? Yes|No
-* Related network upgrade version: n/a|nvXX
+* Related network upgrade version: nvXX|n/a
 
 ## 🚢 Estimated shipping date
 
