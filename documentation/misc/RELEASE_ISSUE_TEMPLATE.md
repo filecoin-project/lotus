@@ -3,7 +3,7 @@
 # Lotus Node|Miner X.Y.Z Release
 
 [//]: # (Below are non-visible steps intended for the issue creator)
-[//]: # (Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z" and adjust the title for whether it's a Node or Miner release.)
+[//]: # (Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # (Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
 [//]: # (Find/Replace "X.Y.Z" with the actual values.)
 [//]: # (Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
