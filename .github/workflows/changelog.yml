@@ -30,7 +30,7 @@ jobs:
       - if: steps.changelog.outputs.modified == '0'
         env:
           MESSAGE: |
-            docs/changelogs/ was not modified in this PR. Please do one of the options in [changelog management conventions](https://github.com/filecoin-project/lotus/blob/master/README.md#changelog-management)
+            docs/changelogs/ was not modified in this PR. Please do one of the options in [changelog management conventions](https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#changelog-management)
         run: |
           echo "::error::${MESSAGE//$'\n'/%0A}"
           exit 1
