@@ -97,8 +97,8 @@ Unless a security issue is actively being exploited or a significant number of u
 
 ## Branch and Tag Strategy
 * Releases branches have the name `release/vX.Y.Z`
-* By the end of the release process, a `release/vX.Y.Z` will have an associated `vX.Y.Z` tag, and likely also `vX.Y.Z-rcN` tags.
-* `master` is almost always where `release/vX.Y.Z` branches are created from.  The exception is we need to do an emergency rushed patch release and can't risk pulling in other changes that have already landed in `master`.  In that case, `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`.
+* By the end of the release process, a `release/vX.Y.Z` branch will have an associated `vX.Y.Z` tag and likely also `vX.Y.Z-rcN` tags.
+* `master` branch is almost always where `release/vX.Y.Z` branches are created from.  The exception is we need to do an emergency rushed patch release and can't risk pulling in other changes that have already landed in `master`.  In that case, `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`.
 
 ## FAQ
 
@@ -106,17 +106,17 @@ Unless a security issue is actively being exploited or a significant number of u
 
 Golang tightly couples source code with versioning (major versions beyond v1 leak into import paths). This poses logistical difficulties to using major versions here. Using major versions for every network upgrade would disrupt every downstream library/application that consumes the native Lotus API, even if it brought zero expectation of breakage for the Golang APIs they depend on.
 
-### Do more frequent Lotus releases mean that there will be a change when it comes to network upgrade schedules?
+### Do more frequent Lotus releases mean a change to network upgrade schedules?
 
-No.  The starting-in-2024Q3 goal of more frequent (every 4 weeks) Lotus releases does not mean that there will be changes in the network upgrade schedule.  At least as of 202408, the current cadence of Filecoin network upgrades is 3 per year.  We expect to usually uphold a 2 weeks upgrade time between a Lotus release candidate and a network upgrade on the Calibration network, and a 3 week upgrade time for a network upgrade on the Mainnet.
+No.  The starting-in-2024Q3 goal of more frequent (every 4 weeks) Lotus releases does not mean that there will be changes in the network upgrade schedule.  At least as of 202408, the current cadence of Filecoin network upgrades is ~3 per year.  We expect to usually uphold a 2 weeks upgrade time between a Lotus release candidate and a network upgrade on the Calibration network, and a 3 week upgrade time for a network upgrade on the Mainnet.
 
 ### How often exchanges and key stakeholders need to upgrade?
 
-It´s hard to say how often they have to upgrade! If they do not encounter any issues with the current release they are on, and there are no new releases with vulnerability patches or an associated network upgrade, then upgrading is unnecessary. The goal for faster releases (and also having client and miner releases seperated) is to be able to bring bug-fixes and features faster out to end-users that need them.  Per discussion above though, users are still encouraged to consider upgrading more frequently than the ~3 network upgrades per year to reap the benefits of improved software and to have a smaller batch of changes to vet before a network upgrade.
+It´s hard to say how often they have to upgrade! If they do not encounter any issues with the current release they are on, and there are no new releases with vulnerability patches or an associated network upgrade, then upgrading is unnecessary. The goal for faster releases (and also having client and miner releases seperated) is to be able to bring bug-fixes and features faster to end-users that need them.  Per discussion above, users are still encouraged to consider upgrading more frequently than the ~3 network upgrades per year to reap the benefits of improved software and to have a smaller batch of changes to vet before a network upgrade.
 
 ### How much new code will a release with an associated network upgrade include?
 
-Releases for a network upgrade will have "last production release + minimum commits necessary for network upgrade + any other commits that have made it into master since the last production release".  This means a release accompanying a network upgrade may have commits that aren't essential and haven't been deployed to production previously. This is a simplifier and we think the risk is acceptable because we'll be doing releases more frequently (thus the amount of commits that haven't made it to a production release will be smaller) and our testing quality has improved since years past.
+Releases for a network upgrade will have "last production release + minimum commits necessary for network upgrade + any other commits that have made it into master since the last production release".  This means a release accompanying a network upgrade may have commits that aren't essential and haven't been deployed to production previously. This is a simplifier for Lotus maintainer, and we think the risk is acceptable because we'll be doing releases more frequently (thus the amount of commits that haven't made it to a production release will be smaller) and our testing quality has improved since years past.
 
 ## Related Items
 
