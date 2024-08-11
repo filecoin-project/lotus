@@ -112,7 +112,7 @@ func (ei *EthTxHashLookup) UpsertUniqueHash(txHash ethtypes.EthHash, c cid.Cid) 
 		return xerrors.New("db closed")
 	}
 
-	result, err := ei.stmtInsertTxHash.Exec(txHash.String(), c.String())
+	result, err := ei.stmtInsertUniqueTxHash.Exec(txHash.String(), c.String())
 	if err != nil {
 		return err
 	}

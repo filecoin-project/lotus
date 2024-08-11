@@ -350,3 +350,18 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(ctx context.Context, cids []cid
 
 	return msgs, nil
 }
+
+// GetSecpkMessagesForTipset returns all the secpk messages for a tipset
+func (cs *ChainStore) GetSecpkMessagesForTipset(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
+	msgs := make([]*types.SignedMessage, 0)
+	for _, b := range ts.Blocks() {
+		secpkmsgs, err := cs.SecpkMessagesForBlock(ctx, b)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get secpk messages for block: %w", err)
+		}
+
+		msgs = append(msgs, secpkmsgs...)
+	}
+
+	return msgs, nil
+}

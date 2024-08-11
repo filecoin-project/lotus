@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/index"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -650,6 +651,19 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		log.Info("populating message index done")
 	}
 
+	if cfg.Index.EnableAutomaticBackFillTxIndex {
+		log.Info("back-filling tx index...")
+		basePath, err := lr.SqlitePath()
+		if err != nil {
+			return err
+		}
+
+		if err = ethhashlookup.PopulateAfterSnapshot(ctx, filepath.Join(basePath, ethhashlookup.DefaultDbFilename), cst); err != nil {
+			return err
+		}
+
+		log.Info("populating tx index done")
+	}
 	return nil
 }
 
