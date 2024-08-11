@@ -633,8 +633,11 @@ type IndexConfig struct {
 	// EnableMsgIndex enables indexing of messages on chain.
 	EnableMsgIndex bool
 
-	// EnableAutomaticBackFill enables automatic index back-filling
-	EnableAutomaticBackFill bool
+	// EnableAutomaticBackFillTxIndex enables automatic index back-filling
+	EnableAutomaticBackFillTxIndex bool
+
+	// Maximum number of blocks to process during a single back-fill operation
+	MaxAutomaticBackFillTxIndexHeight uint64
 }
 
 type HarmonyDB struct {

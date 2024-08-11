@@ -16,7 +16,10 @@ import (
 
 const DefaultDbFilename = "txhash.db"
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound       = errors.New("not found")
+	ErrAlreadyIndexed = errors.New("already indexed")
+)
 
 var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS eth_tx_hashes (
@@ -29,21 +32,23 @@ var ddls = []string{
 }
 
 const (
-	insertTxHash    = `INSERT INTO eth_tx_hashes (hash, cid) VALUES(?, ?) ON CONFLICT (hash) DO UPDATE SET insertion_time = CURRENT_TIMESTAMP`
-	getCidFromHash  = `SELECT cid FROM eth_tx_hashes WHERE hash = ?`
-	getHashFromCid  = `SELECT hash FROM eth_tx_hashes WHERE cid = ?`
-	deleteOlderThan = `DELETE FROM eth_tx_hashes WHERE insertion_time < datetime('now', ?);`
-	getLastTxHash   = `SELECT hash, cid FROM eth_tx_hashes ORDER BY insertion_time DESC LIMIT 1`
+	insertTxHash       = `INSERT INTO eth_tx_hashes (hash, cid) VALUES(?, ?) ON CONFLICT (hash) DO UPDATE SET insertion_time = CURRENT_TIMESTAMP`
+	insertUniqueTxHash = `INSERT INTO eth_tx_hashes (hash, cid) VALUES(?, ?) ON CONFLICT (hash) DO NOTHING`
+	getCidFromHash     = `SELECT cid FROM eth_tx_hashes WHERE hash = ?`
+	getHashFromCid     = `SELECT hash FROM eth_tx_hashes WHERE cid = ?`
+	deleteOlderThan    = `DELETE FROM eth_tx_hashes WHERE insertion_time < datetime('now', ?);`
+	getLastTxHash      = `SELECT hash, cid FROM eth_tx_hashes ORDER BY insertion_time DESC LIMIT 1`
 )
 
 type EthTxHashLookup struct {
 	db *sql.DB
 
-	stmtInsertTxHash    *sql.Stmt
-	stmtGetCidFromHash  *sql.Stmt
-	stmtGetHashFromCid  *sql.Stmt
-	stmtDeleteOlderThan *sql.Stmt
-	stmtGetLastTxHash   *sql.Stmt
+	stmtInsertTxHash       *sql.Stmt
+	stmtInsertUniqueTxHash *sql.Stmt
+	stmtGetCidFromHash     *sql.Stmt
+	stmtGetHashFromCid     *sql.Stmt
+	stmtDeleteOlderThan    *sql.Stmt
+	stmtGetLastTxHash      *sql.Stmt
 }
 
 func NewTransactionHashLookup(ctx context.Context, path string) (*EthTxHashLookup, error) {
@@ -70,27 +75,63 @@ func NewTransactionHashLookup(ctx context.Context, path string) (*EthTxHashLooku
 func (ei *EthTxHashLookup) initStatements() (err error) {
 	ei.stmtInsertTxHash, err = ei.db.Prepare(insertTxHash)
 	if err != nil {
-		return xerrors.Errorf("prepare stmtInsertTxHash: %w", err)
+		return xerrors.Errorf("failed to prepare stmtInsertTxHash: %w", err)
 	}
+
+	ei.stmtInsertUniqueTxHash, err = ei.db.Prepare(insertUniqueTxHash)
+	if err != nil {
+		return xerrors.Errorf("failed to prepare stmtInsertUniqueTxHash: %w", err)
+	}
+
 	ei.stmtGetCidFromHash, err = ei.db.Prepare(getCidFromHash)
 	if err != nil {
-		return xerrors.Errorf("prepare stmtGetCidFromHash: %w", err)
+		return xerrors.Errorf("failed to prepare stmtGetCidFromHash: %w", err)
 	}
+
 	ei.stmtGetHashFromCid, err = ei.db.Prepare(getHashFromCid)
 	if err != nil {
-		return xerrors.Errorf("prepare stmtGetHashFromCid: %w", err)
+		return xerrors.Errorf("failed to prepare stmtGetHashFromCid: %w", err)
 	}
+
 	ei.stmtDeleteOlderThan, err = ei.db.Prepare(deleteOlderThan)
 	if err != nil {
-		return xerrors.Errorf("prepare stmtDeleteOlderThan: %w", err)
+		return xerrors.Errorf("failed to prepare stmtDeleteOlderThan: %w", err)
 	}
+
 	ei.stmtGetLastTxHash, err = ei.db.Prepare(getLastTxHash)
 	if err != nil {
-		return xerrors.Errorf("prepare stmtGetMostRecentTxHash: %w", err)
+		return xerrors.Errorf("failed to prepare stmtGetMostRecentTxHash: %w", err)
 	}
+
 	return nil
 }
 
+// UpsertUniqueHash inserts a new transaction hash and cid into the database, but only if the transaction hash does not already exist.
+func (ei *EthTxHashLookup) UpsertUniqueHash(txHash ethtypes.EthHash, c cid.Cid) error {
+	if ei.db == nil {
+		return xerrors.New("db closed")
+	}
+
+	result, err := ei.stmtInsertTxHash.Exec(txHash.String(), c.String())
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		// The row already existed, so no insertion occurred
+		return ErrAlreadyIndexed
+	}
+
+	return err
+}
+
+// UpsertHash inserts a new transaction hash and cid into the database,
+// and updates the insertion time if the transaction hash already exists.
 func (ei *EthTxHashLookup) UpsertHash(txHash ethtypes.EthHash, c cid.Cid) error {
 	if ei.db == nil {
 		return xerrors.New("db closed")
