@@ -40,7 +40,6 @@ func (t *State) MarshalCBOR(w io.Writer) error {
 	if len(t.Value) > 8192 {
 		return xerrors.Errorf("Value in field t.Value was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Value))); err != nil {
 		return err
 	}
@@ -60,8 +59,8 @@ func (t *State) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
+
 	return nil
 }
 
@@ -89,7 +88,6 @@ func (t *State) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Value (string) (string)
-
 	{
 		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
@@ -98,8 +96,8 @@ func (t *State) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Value = string(sval)
 	}
-	// t.Unmarshallable ([]*chaos.UnmarshallableCBOR) (slice)
 
+	// t.Unmarshallable ([]*chaos.UnmarshallableCBOR) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -127,7 +125,6 @@ func (t *State) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -141,11 +138,10 @@ func (t *State) UnmarshalCBOR(r io.Reader) (err error) {
 						return xerrors.Errorf("unmarshaling t.Unmarshallable[i] pointer: %w", err)
 					}
 				}
-
 			}
-
 		}
 	}
+
 	return nil
 }
 
@@ -186,7 +182,6 @@ func (t *CallerValidationArgs) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
 
 	// t.Types ([]cid.Cid) (slice)
@@ -198,12 +193,11 @@ func (t *CallerValidationArgs) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Types {
-
 		if err := cbg.WriteCid(cw, v); err != nil {
 			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
-
 	}
+
 	return nil
 }
 
@@ -255,8 +249,8 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Branch = CallerValidationBranch(extraI)
 	}
-	// t.Addrs ([]address.Address) (slice)
 
+	// t.Addrs ([]address.Address) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -284,17 +278,14 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				if err := t.Addrs[i].UnmarshalCBOR(cr); err != nil {
 					return xerrors.Errorf("unmarshaling t.Addrs[i]: %w", err)
 				}
-
 			}
-
 		}
 	}
-	// t.Types ([]cid.Cid) (slice)
 
+	// t.Types ([]cid.Cid) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -322,18 +313,16 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				c, err := cbg.ReadCid(cr)
 				if err != nil {
 					return xerrors.Errorf("failed to read cid field t.Types[i]: %w", err)
 				}
 
 				t.Types[i] = c
-
 			}
-
 		}
 	}
+
 	return nil
 }
 
@@ -357,11 +346,9 @@ func (t *CreateActorArgs) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ActorCID (cid.Cid) (struct)
-
 	if err := cbg.WriteCid(cw, t.ActorCID); err != nil {
 		return xerrors.Errorf("failed to write cid field t.ActorCID: %w", err)
 	}
-
 	// t.UndefAddress (bool) (bool)
 	if err := cbg.WriteBool(w, t.UndefAddress); err != nil {
 		return err
@@ -371,6 +358,7 @@ func (t *CreateActorArgs) MarshalCBOR(w io.Writer) error {
 	if err := t.Address.MarshalCBOR(cw); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -398,7 +386,6 @@ func (t *CreateActorArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.UndefActorCID (bool) (bool)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -414,20 +401,18 @@ func (t *CreateActorArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
+
 	// t.ActorCID (cid.Cid) (struct)
-
 	{
-
 		c, err := cbg.ReadCid(cr)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.ActorCID: %w", err)
 		}
 
 		t.ActorCID = c
-
 	}
-	// t.UndefAddress (bool) (bool)
 
+	// t.UndefAddress (bool) (bool)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -443,15 +428,14 @@ func (t *CreateActorArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
+
 	// t.Address (address.Address) (struct)
-
 	{
-
 		if err := t.Address.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Address: %w", err)
 		}
-
 	}
+
 	return nil
 }
 
@@ -478,6 +462,7 @@ func (t *ResolveAddressResponse) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteBool(w, t.Success); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -505,16 +490,13 @@ func (t *ResolveAddressResponse) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Address (address.Address) (struct)
-
 	{
-
 		if err := t.Address.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Address: %w", err)
 		}
-
 	}
-	// t.Success (bool) (bool)
 
+	// t.Success (bool) (bool)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -530,6 +512,7 @@ func (t *ResolveAddressResponse) UnmarshalCBOR(r io.Reader) (err error) {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
+
 	return nil
 }
 
@@ -558,7 +541,6 @@ func (t *SendArgs) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Method (abi.MethodNum) (uint64)
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Method)); err != nil {
 		return err
 	}
@@ -603,27 +585,21 @@ func (t *SendArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.To (address.Address) (struct)
-
 	{
-
 		if err := t.To.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.To: %w", err)
 		}
-
 	}
+
 	// t.Value (big.Int) (struct)
-
 	{
-
 		if err := t.Value.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Value: %w", err)
 		}
-
 	}
+
 	// t.Method (abi.MethodNum) (uint64)
-
 	{
-
 		maj, extra, err = cr.ReadHeader()
 		if err != nil {
 			return err
@@ -632,10 +608,9 @@ func (t *SendArgs) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
 		t.Method = abi.MethodNum(extra)
-
 	}
-	// t.Params ([]uint8) (slice)
 
+	// t.Params ([]uint8) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -724,7 +699,6 @@ func (t *SendReturn) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Return (builtin.CBORBytes) (slice)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -770,6 +744,7 @@ func (t *SendReturn) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Code = exitcode.ExitCode(extraI)
 	}
+
 	return nil
 }
 
@@ -791,7 +766,6 @@ func (t *MutateStateArgs) MarshalCBOR(w io.Writer) error {
 	if len(t.Value) > 8192 {
 		return xerrors.Errorf("Value in field t.Value was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Value))); err != nil {
 		return err
 	}
@@ -837,7 +811,6 @@ func (t *MutateStateArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Value (string) (string)
-
 	{
 		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
@@ -846,6 +819,7 @@ func (t *MutateStateArgs) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Value = string(sval)
 	}
+
 	// t.Branch (chaos.MutateStateBranch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
@@ -871,6 +845,7 @@ func (t *MutateStateArgs) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Branch = MutateStateBranch(extraI)
 	}
+
 	return nil
 }
 
@@ -903,7 +878,6 @@ func (t *AbortWithArgs) MarshalCBOR(w io.Writer) error {
 	if len(t.Message) > 8192 {
 		return xerrors.Errorf("Value in field t.Message was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
@@ -915,6 +889,7 @@ func (t *AbortWithArgs) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteBool(w, t.Uncontrolled); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -966,8 +941,8 @@ func (t *AbortWithArgs) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Code = exitcode.ExitCode(extraI)
 	}
-	// t.Message (string) (string)
 
+	// t.Message (string) (string)
 	{
 		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
@@ -976,8 +951,8 @@ func (t *AbortWithArgs) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Message = string(sval)
 	}
-	// t.Uncontrolled (bool) (bool)
 
+	// t.Uncontrolled (bool) (bool)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -993,6 +968,7 @@ func (t *AbortWithArgs) UnmarshalCBOR(r io.Reader) (err error) {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
+
 	return nil
 }
 
@@ -1045,6 +1021,7 @@ func (t *InspectRuntimeReturn) MarshalCBOR(w io.Writer) error {
 	if err := t.State.MarshalCBOR(cw); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1072,32 +1049,26 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Caller (address.Address) (struct)
-
 	{
-
 		if err := t.Caller.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Caller: %w", err)
 		}
-
 	}
+
 	// t.Receiver (address.Address) (struct)
-
 	{
-
 		if err := t.Receiver.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Receiver: %w", err)
 		}
-
 	}
+
 	// t.ValueReceived (big.Int) (struct)
-
 	{
-
 		if err := t.ValueReceived.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.ValueReceived: %w", err)
 		}
-
 	}
+
 	// t.CurrEpoch (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
@@ -1123,23 +1094,20 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.CurrEpoch = abi.ChainEpoch(extraI)
 	}
+
 	// t.CurrentBalance (big.Int) (struct)
-
 	{
-
 		if err := t.CurrentBalance.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.CurrentBalance: %w", err)
 		}
-
 	}
+
 	// t.State (chaos.State) (struct)
-
 	{
-
 		if err := t.State.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.State: %w", err)
 		}
-
 	}
+
 	return nil
 }

@@ -43,7 +43,6 @@ func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.MsgCid (cid.Cid) (struct)
-
 	if t.MsgCid == nil {
 		if _, err := cw.Write(cbg.CborNull); err != nil {
 			return err
@@ -81,27 +80,21 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Addr (address.Address) (struct)
-
 	{
-
 		if err := t.Addr.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Addr: %w", err)
 		}
-
 	}
+
 	// t.AmtReserved (big.Int) (struct)
-
 	{
-
 		if err := t.AmtReserved.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.AmtReserved: %w", err)
 		}
-
 	}
+
 	// t.MsgCid (cid.Cid) (struct)
-
 	{
-
 		b, err := cr.ReadByte()
 		if err != nil {
 			return err
@@ -118,7 +111,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 
 			t.MsgCid = &c
 		}
-
 	}
+
 	return nil
 }

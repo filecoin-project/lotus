@@ -43,11 +43,9 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.HeaviestTipSet {
-
 		if err := cbg.WriteCid(cw, v); err != nil {
 			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
-
 	}
 
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
@@ -67,11 +65,9 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.GenesisHash (cid.Cid) (struct)
-
 	if err := cbg.WriteCid(cw, t.GenesisHash); err != nil {
 		return xerrors.Errorf("failed to write cid field t.GenesisHash: %w", err)
 	}
-
 	return nil
 }
 
@@ -99,7 +95,6 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.HeaviestTipSet ([]cid.Cid) (slice)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -127,18 +122,16 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				c, err := cbg.ReadCid(cr)
 				if err != nil {
 					return xerrors.Errorf("failed to read cid field t.HeaviestTipSet[i]: %w", err)
 				}
 
 				t.HeaviestTipSet[i] = c
-
 			}
-
 		}
 	}
+
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
@@ -164,27 +157,24 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.HeaviestTipSetHeight = abi.ChainEpoch(extraI)
 	}
+
 	// t.HeaviestTipSetWeight (big.Int) (struct)
-
 	{
-
 		if err := t.HeaviestTipSetWeight.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.HeaviestTipSetWeight: %w", err)
 		}
-
 	}
+
 	// t.GenesisHash (cid.Cid) (struct)
-
 	{
-
 		c, err := cbg.ReadCid(cr)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.GenesisHash: %w", err)
 		}
 
 		t.GenesisHash = c
-
 	}
+
 	return nil
 }
 
@@ -275,6 +265,7 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.TArrival = int64(extraI)
 	}
+
 	// t.TSent (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
@@ -300,5 +291,6 @@ func (t *LatencyMessage) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.TSent = int64(extraI)
 	}
+
 	return nil
 }

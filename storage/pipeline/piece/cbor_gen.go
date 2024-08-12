@@ -38,7 +38,6 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if len("DealID") > 8192 {
 		return xerrors.Errorf("Value in field \"DealID\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealID"))); err != nil {
 		return err
 	}
@@ -54,7 +53,6 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if len("PublishCid") > 8192 {
 		return xerrors.Errorf("Value in field \"PublishCid\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PublishCid"))); err != nil {
 		return err
 	}
@@ -76,7 +74,6 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if len("DealProposal") > 8192 {
 		return xerrors.Errorf("Value in field \"DealProposal\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealProposal"))); err != nil {
 		return err
 	}
@@ -92,7 +89,6 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if len("DealSchedule") > 8192 {
 		return xerrors.Errorf("Value in field \"DealSchedule\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealSchedule"))); err != nil {
 		return err
 	}
@@ -108,7 +104,6 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if len("KeepUnsealed") > 8192 {
 		return xerrors.Errorf("Value in field \"KeepUnsealed\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("KeepUnsealed"))); err != nil {
 		return err
 	}
@@ -124,7 +119,6 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if len("PieceActivationManifest") > 8192 {
 		return xerrors.Errorf("Value in field \"PieceActivationManifest\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PieceActivationManifest"))); err != nil {
 		return err
 	}
@@ -135,6 +129,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	if err := t.PieceActivationManifest.MarshalCBOR(cw); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -180,7 +175,6 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		case "DealID":
 
 			{
-
 				maj, extra, err = cr.ReadHeader()
 				if err != nil {
 					return err
@@ -189,13 +183,11 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 					return fmt.Errorf("wrong type for uint64 field")
 				}
 				t.DealID = abi.DealID(extra)
-
 			}
 			// t.PublishCid (cid.Cid) (struct)
 		case "PublishCid":
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -212,13 +204,11 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 					t.PublishCid = &c
 				}
-
 			}
 			// t.DealProposal (market.DealProposal) (struct)
 		case "DealProposal":
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -232,17 +222,14 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						return xerrors.Errorf("unmarshaling t.DealProposal pointer: %w", err)
 					}
 				}
-
 			}
 			// t.DealSchedule (piece.DealSchedule) (struct)
 		case "DealSchedule":
 
 			{
-
 				if err := t.DealSchedule.UnmarshalCBOR(cr); err != nil {
 					return xerrors.Errorf("unmarshaling t.DealSchedule: %w", err)
 				}
-
 			}
 			// t.KeepUnsealed (bool) (bool)
 		case "KeepUnsealed":
@@ -266,7 +253,6 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		case "PieceActivationManifest":
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -280,7 +266,6 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 						return xerrors.Errorf("unmarshaling t.PieceActivationManifest pointer: %w", err)
 					}
 				}
-
 			}
 
 		default:
@@ -307,7 +292,6 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	if len("EndEpoch") > 8192 {
 		return xerrors.Errorf("Value in field \"EndEpoch\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("EndEpoch"))); err != nil {
 		return err
 	}
@@ -329,7 +313,6 @@ func (t *DealSchedule) MarshalCBOR(w io.Writer) error {
 	if len("StartEpoch") > 8192 {
 		return xerrors.Errorf("Value in field \"StartEpoch\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("StartEpoch"))); err != nil {
 		return err
 	}
@@ -390,6 +373,7 @@ func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
 		switch name {
 		// t.EndEpoch (abi.ChainEpoch) (int64)
 		case "EndEpoch":
+
 			{
 				maj, extra, err := cr.ReadHeader()
 				if err != nil {
@@ -416,6 +400,7 @@ func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			// t.StartEpoch (abi.ChainEpoch) (int64)
 		case "StartEpoch":
+
 			{
 				maj, extra, err := cr.ReadHeader()
 				if err != nil {

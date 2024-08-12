@@ -34,7 +34,6 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 	if len("Sub") > 8192 {
 		return xerrors.Errorf("Value in field \"Sub\" was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sub"))); err != nil {
 		return err
 	}
@@ -50,12 +49,11 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Sub {
-
 		if err := cbg.WriteCid(cw, v); err != nil {
 			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
-
 	}
+
 	return nil
 }
 
@@ -127,16 +125,13 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) (err error) {
 					_ = err
 
 					{
-
 						c, err := cbg.ReadCid(cr)
 						if err != nil {
 							return xerrors.Errorf("failed to read cid field t.Sub[i]: %w", err)
 						}
 
 						t.Sub[i] = c
-
 					}
-
 				}
 			}
 

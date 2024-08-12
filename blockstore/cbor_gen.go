@@ -38,7 +38,6 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ID (uint64) (uint64)
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ID)); err != nil {
 		return err
 	}
@@ -52,11 +51,9 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Cid {
-
 		if err := cbg.WriteCid(cw, v); err != nil {
 			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
-
 	}
 
 	// t.Data ([][]uint8) (slice)
@@ -79,8 +76,8 @@ func (t *NetRpcReq) MarshalCBOR(w io.Writer) error {
 		if _, err := cw.Write(v); err != nil {
 			return err
 		}
-
 	}
+
 	return nil
 }
 
@@ -108,7 +105,6 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Type (blockstore.NetRPCReqType) (uint8)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -120,10 +116,9 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("integer in input was too large for uint8 field")
 	}
 	t.Type = NetRPCReqType(extra)
+
 	// t.ID (uint64) (uint64)
-
 	{
-
 		maj, extra, err = cr.ReadHeader()
 		if err != nil {
 			return err
@@ -132,10 +127,9 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
 		t.ID = uint64(extra)
-
 	}
-	// t.Cid ([]cid.Cid) (slice)
 
+	// t.Cid ([]cid.Cid) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -163,20 +157,17 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				c, err := cbg.ReadCid(cr)
 				if err != nil {
 					return xerrors.Errorf("failed to read cid field t.Cid[i]: %w", err)
 				}
 
 				t.Cid[i] = c
-
 			}
-
 		}
 	}
-	// t.Data ([][]uint8) (slice)
 
+	// t.Data ([][]uint8) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -222,9 +213,9 @@ func (t *NetRpcReq) UnmarshalCBOR(r io.Reader) (err error) {
 			if _, err := io.ReadFull(cr, t.Data[i]); err != nil {
 				return err
 			}
-
 		}
 	}
+
 	return nil
 }
 
@@ -248,7 +239,6 @@ func (t *NetRpcResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ID (uint64) (uint64)
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ID)); err != nil {
 		return err
 	}
@@ -293,7 +283,6 @@ func (t *NetRpcResp) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Type (blockstore.NetRPCRespType) (uint8)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -305,10 +294,9 @@ func (t *NetRpcResp) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("integer in input was too large for uint8 field")
 	}
 	t.Type = NetRPCRespType(extra)
+
 	// t.ID (uint64) (uint64)
-
 	{
-
 		maj, extra, err = cr.ReadHeader()
 		if err != nil {
 			return err
@@ -317,10 +305,9 @@ func (t *NetRpcResp) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
 		t.ID = uint64(extra)
-
 	}
-	// t.Data ([]uint8) (slice)
 
+	// t.Data ([]uint8) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -367,7 +354,6 @@ func (t *NetRpcErr) MarshalCBOR(w io.Writer) error {
 	if len(t.Msg) > 8192 {
 		return xerrors.Errorf("Value in field t.Msg was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Msg))); err != nil {
 		return err
 	}
@@ -376,7 +362,6 @@ func (t *NetRpcErr) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (cid.Cid) (struct)
-
 	if t.Cid == nil {
 		if _, err := cw.Write(cbg.CborNull); err != nil {
 			return err
@@ -414,7 +399,6 @@ func (t *NetRpcErr) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Type (blockstore.NetRPCErrType) (uint8)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -426,8 +410,8 @@ func (t *NetRpcErr) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("integer in input was too large for uint8 field")
 	}
 	t.Type = NetRPCErrType(extra)
-	// t.Msg (string) (string)
 
+	// t.Msg (string) (string)
 	{
 		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
@@ -436,10 +420,9 @@ func (t *NetRpcErr) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Msg = string(sval)
 	}
+
 	// t.Cid (cid.Cid) (struct)
-
 	{
-
 		b, err := cr.ReadByte()
 		if err != nil {
 			return err
@@ -456,7 +439,7 @@ func (t *NetRpcErr) UnmarshalCBOR(r io.Reader) (err error) {
 
 			t.Cid = &c
 		}
-
 	}
+
 	return nil
 }

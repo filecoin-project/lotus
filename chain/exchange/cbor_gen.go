@@ -43,21 +43,17 @@ func (t *Request) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Head {
-
 		if err := cbg.WriteCid(cw, v); err != nil {
 			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
-
 	}
 
 	// t.Length (uint64) (uint64)
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Length)); err != nil {
 		return err
 	}
 
 	// t.Options (uint64) (uint64)
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Options)); err != nil {
 		return err
 	}
@@ -89,7 +85,6 @@ func (t *Request) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Head ([]cid.Cid) (slice)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -117,22 +112,18 @@ func (t *Request) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				c, err := cbg.ReadCid(cr)
 				if err != nil {
 					return xerrors.Errorf("failed to read cid field t.Head[i]: %w", err)
 				}
 
 				t.Head[i] = c
-
 			}
-
 		}
 	}
+
 	// t.Length (uint64) (uint64)
-
 	{
-
 		maj, extra, err = cr.ReadHeader()
 		if err != nil {
 			return err
@@ -141,12 +132,10 @@ func (t *Request) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
 		t.Length = uint64(extra)
-
 	}
+
 	// t.Options (uint64) (uint64)
-
 	{
-
 		maj, extra, err = cr.ReadHeader()
 		if err != nil {
 			return err
@@ -155,8 +144,8 @@ func (t *Request) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
 		t.Options = uint64(extra)
-
 	}
+
 	return nil
 }
 
@@ -175,7 +164,6 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Status (exchange.status) (uint64)
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Status)); err != nil {
 		return err
 	}
@@ -184,7 +172,6 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 	if len(t.ErrorMessage) > 8192 {
 		return xerrors.Errorf("Value in field t.ErrorMessage was too long")
 	}
-
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.ErrorMessage))); err != nil {
 		return err
 	}
@@ -204,8 +191,8 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
+
 	return nil
 }
 
@@ -233,9 +220,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Status (exchange.status) (uint64)
-
 	{
-
 		maj, extra, err = cr.ReadHeader()
 		if err != nil {
 			return err
@@ -244,10 +229,9 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
 		t.Status = status(extra)
-
 	}
-	// t.ErrorMessage (string) (string)
 
+	// t.ErrorMessage (string) (string)
 	{
 		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
@@ -256,8 +240,8 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.ErrorMessage = string(sval)
 	}
-	// t.Chain ([]*exchange.BSTipSet) (slice)
 
+	// t.Chain ([]*exchange.BSTipSet) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -285,7 +269,6 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -299,11 +282,10 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 						return xerrors.Errorf("unmarshaling t.Chain[i] pointer: %w", err)
 					}
 				}
-
 			}
-
 		}
 	}
+
 	return nil
 }
 
@@ -333,7 +315,6 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
 
 	// t.BlsIncludes ([]exchange.messageIndices) (slice)
@@ -348,7 +329,6 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
 
 	// t.Secpk ([]*types.SignedMessage) (slice)
@@ -363,7 +343,6 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
 
 	// t.SecpkIncludes ([]exchange.messageIndices) (slice)
@@ -378,8 +357,8 @@ func (t *CompactedMessagesCBOR) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
+
 	return nil
 }
 
@@ -407,7 +386,6 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Bls ([]*types.Message) (slice)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -435,7 +413,6 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -449,13 +426,11 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 						return xerrors.Errorf("unmarshaling t.Bls[i] pointer: %w", err)
 					}
 				}
-
 			}
-
 		}
 	}
-	// t.BlsIncludes ([]exchange.messageIndices) (slice)
 
+	// t.BlsIncludes ([]exchange.messageIndices) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -483,17 +458,14 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				if err := t.BlsIncludes[i].UnmarshalCBOR(cr); err != nil {
 					return xerrors.Errorf("unmarshaling t.BlsIncludes[i]: %w", err)
 				}
-
 			}
-
 		}
 	}
-	// t.Secpk ([]*types.SignedMessage) (slice)
 
+	// t.Secpk ([]*types.SignedMessage) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -521,7 +493,6 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -535,13 +506,11 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 						return xerrors.Errorf("unmarshaling t.Secpk[i] pointer: %w", err)
 					}
 				}
-
 			}
-
 		}
 	}
-	// t.SecpkIncludes ([]exchange.messageIndices) (slice)
 
+	// t.SecpkIncludes ([]exchange.messageIndices) (slice)
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -569,15 +538,13 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				if err := t.SecpkIncludes[i].UnmarshalCBOR(cr); err != nil {
 					return xerrors.Errorf("unmarshaling t.SecpkIncludes[i]: %w", err)
 				}
-
 			}
-
 		}
 	}
+
 	return nil
 }
 
@@ -607,13 +574,13 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
-
 	}
 
 	// t.Messages (exchange.CompactedMessages) (struct)
 	if err := t.Messages.MarshalCBOR(cw); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -641,7 +608,6 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	// t.Blocks ([]*types.BlockHeader) (slice)
-
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
@@ -669,7 +635,6 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 			_ = err
 
 			{
-
 				b, err := cr.ReadByte()
 				if err != nil {
 					return err
@@ -683,15 +648,12 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 						return xerrors.Errorf("unmarshaling t.Blocks[i] pointer: %w", err)
 					}
 				}
-
 			}
-
 		}
 	}
+
 	// t.Messages (exchange.CompactedMessages) (struct)
-
 	{
-
 		b, err := cr.ReadByte()
 		if err != nil {
 			return err
@@ -705,7 +667,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 				return xerrors.Errorf("unmarshaling t.Messages pointer: %w", err)
 			}
 		}
-
 	}
+
 	return nil
 }
