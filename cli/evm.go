@@ -325,7 +325,7 @@ var EvmInvokeCmd = &cli.Command{
 			Usage: "optionally specify the account to use for sending the exec message",
 		}, &cli.IntFlag{
 			Name:  "value",
-			Usage: "optionally specify the value to be sent with the invokation message",
+			Usage: "optionally specify the value to be sent with the invocation message",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

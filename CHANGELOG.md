@@ -10,16 +10,43 @@
 - https://github.com/filecoin-project/lotus/pull/12276: chore: deps: Update GST, Filecoin-FFI and Actors to final versions NV23
 - https://github.com/filecoin-project/lotus/pull/12278: chore: Set Mainnet upgrade epoch for NV23.
 - https://github.com/filecoin-project/lotus/pull/12269 Fix `logIndex` ordering in `EthGetTransactionReceipt` by using the EventIndex to fetch logs
+- https://github.com/filecoin-project/lotus/pull/12270: Feat expose `settle-deal` command for lotus miner to settle deals manually
 - https://github.com/filecoin-project/lotus/pull/12285 Set up OpenTelemetry metrics reporting to prometheus
 - https://github.com/filecoin-project/lotus/pull/12279 Upgrade to go-f3 v0.0.5
 - https://github.com/filecoin-project/lotus/pull/12295 Upgrade to go-f3 v0.0.6
 - https://github.com/filecoin-project/lotus/pull/12292: feat: p2p: allow overriding bootstrap nodes with environmemnt variable
 - https://github.com/filecoin-project/lotus/pull/12319: feat: `lotus send CLI`: allow sending to ETH addresses
+- https://github.com/filecoin-project/lotus/pull/12332: fix: ETH RPC: receipts: use correct txtype in receipts
+- https://github.com/filecoin-project/lotus/pull/12335: fix: lotus-shed: store processed tipset after backfilling events
+
+## ☢️ Upgrade Warnings ☢️
+
+- lotus-gateway behaviour, CLI arguments and APIs have received minor changes. See the improvements section below.
 
 ## New features
 
 - feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
 - feat: Add support for Badger version 4. The default remains Badger version 2 to ensure backward compatibility. ([filecoin-project/lotus#12316](https://github.com/filecoin-project/lotus/pull/12316)). Configuring `LOTUS_CHAINSTORE_BADGERVERSION` can configure lotus to use badger version 2 and 4.
+- feat: `FilecoinAddressToEthAddress` RPC can now return ETH addresses for all Filecoin address types ("f0"/"f1"/"f2"/"f3") based on client's re-org tolerance. This is a breaking change if you are using the API via the go-jsonrpc library or by using Lotus as a library, but is a non-breaking change when using the API via any other RPC method as it adds an optional second argument.
+([filecoin-project/lotus#12324](https://github.com/filecoin-project/lotus/pull/12324)).
+- feat: Added `lotus-shed indexes inspect-events` health-check command ([filecoin-project/lotus#12346](https://github.com/filecoin-project/lotus/pull/12346)).
+
+## Enhancements
+
+- fix: add datacap balance to circ supply internal accounting as unCirc #12348
+- feat: Use a block cache to speed up the `EthGetBlockByHash` API: https://github.com/filecoin-project/lotus/pull/12359
+
+## Improvements
+
+- feat!: gateway: fix rate limiting, better stateful handling ([filecoin-project/lotus#12315](https://github.com/filecoin-project/lotus/pull/12315)).
+  - CLI usage documentation has been improved for `lotus-gateway`
+  - `--per-conn-rate-limit` now works as advertised.
+  - `--eth-max-filters-per-conn` is new and allows you to set the maximum number of filters and subscription per connection, it defaults to 16.
+    - Previously, this limit was set to `16` and applied separately to filters and subscriptions. This limit is now unified and applies to both filters and subscriptions.
+  - Stateful Ethereum APIs (those involving filters and subscriptions) are now disabled for plain HTTP connections. A client must be using websockets to access these APIs.
+    - These APIs are also now automatically removed from the node by the gateway when a client disconnects.
+  - Some APIs have changed which may impact users consuming Lotus Gateway code as a library.
+  - The default value for the `Events.FilterTTL` config option has been reduced from 24h to 1h. This means that filters will expire on a Lotus node after 1 hour of not being accessed by the client.
 
 # v1.28.1 / 2024-07-24
 

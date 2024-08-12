@@ -62,6 +62,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
+	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -71,7 +72,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var migrationsCmd = &cli.Command{
@@ -187,7 +187,7 @@ var migrationsCmd = &cli.Command{
 		defer cs.Close() //nolint:errcheck
 
 		// Note: we use a map datastore for the metadata to avoid writing / using cached migration results in the metadata store
-		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, datastore.NewMapDatastore(), index.DummyMsgIndex)
+		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, datastore.NewMapDatastore(), index.DummyMsgIndex)
 		if err != nil {
 			return err
 		}
@@ -1059,7 +1059,7 @@ func compareProposalToAllocation(prop market8.DealProposal, alloc verifreg9.Allo
 
 	proposalClientID, err := address.IDFromAddress(prop.Client)
 	if err != nil {
-		return xerrors.Errorf("couldnt get ID from address")
+		return xerrors.Errorf("couldn't get ID from address")
 	}
 	if proposalClientID != uint64(alloc.Client) {
 		return xerrors.Errorf("client id mismatch between proposal and allocation: %v, %v", proposalClientID, alloc.Client)
@@ -1067,7 +1067,7 @@ func compareProposalToAllocation(prop market8.DealProposal, alloc verifreg9.Allo
 
 	proposalProviderID, err := address.IDFromAddress(prop.Provider)
 	if err != nil {
-		return xerrors.Errorf("couldnt get ID from address")
+		return xerrors.Errorf("couldn't get ID from address")
 	}
 	if proposalProviderID != uint64(alloc.Provider) {
 		return xerrors.Errorf("provider id mismatch between proposal and allocation: %v, %v", proposalProviderID, alloc.Provider)

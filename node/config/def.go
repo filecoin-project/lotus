@@ -87,12 +87,13 @@ func DefaultFullNode() *FullNode {
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
 			EthTraceFilterMaxResults:     500,
+			EthBlkCacheSize:              500,
 		},
 		Events: EventsConfig{
 			DisableRealTimeFilterAPI: false,
 			DisableHistoricFilterAPI: false,
 			EnableActorEventsAPI:     false,
-			FilterTTL:                Duration(time.Hour * 24),
+			FilterTTL:                Duration(time.Hour * 1),
 			MaxFilters:               100,
 			MaxFilterResults:         10000,
 			MaxFilterHeightRange:     2880, // conservative limit of one day

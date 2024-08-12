@@ -425,7 +425,7 @@ func TestCreationTimeCleared(t *testing.T) {
 	m.planSingle(SectorPieceAdded{})
 	require.Equal(m.t, m.state.State, SnapDealsWaitDeals)
 
-	// abort shoult clean up CreationTime
+	// abort should clean up CreationTime
 	m.planSingle(SectorAbortUpgrade{})
 	require.Equal(m.t, m.state.State, AbortUpgrade)
 

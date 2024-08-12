@@ -189,7 +189,13 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	// verify that we correctly reported the to address.
 	toId, err := client.StateLookupID(ctx, addr, types.EmptyTSK)
 	require.NoError(t, err)
-	toEth, err := client.FilecoinAddressToEthAddress(ctx, toId)
+
+	fp := new(ethtypes.FilecoinAddressToEthAddressParams)
+	fp.FilecoinAddress = toId
+	params, err := json.Marshal(fp)
+	require.NoError(t, err)
+
+	toEth, err := client.FilecoinAddressToEthAddress(ctx, params)
 	require.NoError(t, err)
 	require.Equal(t, &toEth, chainTx.To)
 
@@ -280,7 +286,13 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	// verify that we correctly reported the to address.
 	toId, err := client.StateLookupID(ctx, client.DefaultKey.Address, types.EmptyTSK)
 	require.NoError(t, err)
-	toEth, err := client.FilecoinAddressToEthAddress(ctx, toId)
+
+	fp := new(ethtypes.FilecoinAddressToEthAddressParams)
+	fp.FilecoinAddress = toId
+	params, err := json.Marshal(fp)
+	require.NoError(t, err)
+
+	toEth, err := client.FilecoinAddressToEthAddress(ctx, params)
 	require.NoError(t, err)
 	require.Equal(t, &toEth, chainTx.To)
 

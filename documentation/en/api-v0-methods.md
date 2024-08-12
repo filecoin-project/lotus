@@ -5166,7 +5166,7 @@ Response:
 ```
 
 ### StateMinerPreCommitDepositForPower
-StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
+StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector
 
 
 Perms: read

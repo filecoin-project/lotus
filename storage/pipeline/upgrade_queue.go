@@ -27,7 +27,7 @@ func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
 
 	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
-		return xerrors.Errorf("couldnt get chain head: %w", err)
+		return xerrors.Errorf("couldn't get chain head: %w", err)
 	}
 	onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, id, ts.Key())
 	if err != nil {

@@ -23,7 +23,7 @@ import (
 func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 	ctx := context.Background()
 
-	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultLookbackCap.Seconds())
+	lookbackTimestamp := uint64(time.Now().Unix()) - uint64(DefaultMaxLookbackDuration.Seconds())
 	type args struct {
 		h         abi.ChainEpoch
 		tskh      abi.ChainEpoch
@@ -89,7 +89,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, 0, time.Minute)
+			a := NewNode(mock)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -245,7 +245,7 @@ func TestGatewayVersion(t *testing.T) {
 	//stm: @GATEWAY_NODE_GET_VERSION_001
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
-	a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, 0, time.Minute)
+	a := NewNode(mock)
 
 	v, err := a.Version(ctx)
 	require.NoError(t, err)
@@ -256,22 +256,36 @@ func TestGatewayLimitTokensAvailable(t *testing.T) {
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
 	tokens := 3
-	a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, int64(tokens), time.Minute)
+	a := NewNode(mock, WithRateLimit(tokens))
 	require.NoError(t, a.limit(ctx, tokens), "requests should not be limited when there are enough tokens available")
 }
 
-func TestGatewayLimitTokensNotAvailable(t *testing.T) {
+func TestGatewayLimitTokensRate(t *testing.T) {
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
 	tokens := 3
-	a := NewNode(mock, nil, DefaultLookbackCap, DefaultStateWaitLookbackLimit, int64(1), time.Millisecond)
-	var err error
-	// try to be rate limited
-	for i := 0; i <= 1000; i++ {
-		err = a.limit(ctx, tokens)
-		if err != nil {
-			break
-		}
+	rateLimit := 200
+	rateLimitTimeout := time.Second / time.Duration(rateLimit/3) // large enough to not be hit
+	a := NewNode(mock, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
+
+	start := time.Now()
+	calls := 10
+	for i := 0; i < calls; i++ {
+		require.NoError(t, a.limit(ctx, tokens))
 	}
-	require.Error(t, err, "requiests should be rate limited when they hit limits")
+	// We should be slowed down by the rate limit, but not hard limited because the timeout is
+	// large; the duration should be roughly the rate limit (per second) times the number of calls,
+	// with one extra free call because the first one can use up the burst tokens. We'll also add a
+	// couple more to account for slow test runs.
+	delayPerToken := time.Second / time.Duration(rateLimit)
+	expectedDuration := delayPerToken * time.Duration((calls-1)*tokens)
+	expectedEnd := start.Add(expectedDuration)
+	require.WithinDuration(t, expectedEnd, time.Now(), delayPerToken*time.Duration(2*tokens), "API calls should be rate limited when they hit limits")
+
+	// In this case our timeout is too short to allow for the rate limit, so we should hit the
+	// hard rate limit.
+	rateLimitTimeout = time.Second / time.Duration(rateLimit)
+	a = NewNode(mock, WithRateLimit(rateLimit), WithRateLimitTimeout(rateLimitTimeout))
+	require.NoError(t, a.limit(ctx, tokens))
+	require.ErrorContains(t, a.limit(ctx, tokens), "server busy", "API calls should be hard rate limited when they hit limits")
 }

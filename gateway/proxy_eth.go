@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -23,6 +23,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
+var ErrTooManyFilters = errors.New("too many subscriptions and filters per connection")
+
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
 	return []ethtypes.EthAddress{}, nil
@@ -32,8 +34,18 @@ func (gw *Node) EthAddressToFilecoinAddress(ctx context.Context, ethAddress etht
 	return gw.target.EthAddressToFilecoinAddress(ctx, ethAddress)
 }
 
-func (gw *Node) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) {
-	return gw.target.FilecoinAddressToEthAddress(ctx, filecoinAddress)
+func (gw *Node) FilecoinAddressToEthAddress(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthAddress, error) {
+	// validate params
+	_, err := jsonrpc.DecodeParams[ethtypes.FilecoinAddressToEthAddressParams](params)
+	if err != nil {
+		return ethtypes.EthAddress{}, xerrors.Errorf("decoding params: %w", err)
+	}
+
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return ethtypes.EthAddress{}, err
+	}
+
+	return gw.target.FilecoinAddressToEthAddress(ctx, params)
 }
 
 func (gw *Node) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
@@ -94,7 +106,7 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 		var num ethtypes.EthUint64
 		if blkParam.PredefinedBlock != nil {
 			if *blkParam.PredefinedBlock == "earliest" {
-				return fmt.Errorf("block param \"earliest\" is not supported")
+				return xerrors.New("block param \"earliest\" is not supported")
 			} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
 				// Head is always ok.
 				if lookback == 0 {
@@ -117,13 +129,13 @@ func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlo
 		return gw.checkBlkHash(ctx, *blkParam.BlockHash)
 	}
 
-	return fmt.Errorf("invalid block param")
+	return xerrors.New("invalid block param")
 }
 
 func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
 	if blkParam == "earliest" {
 		// also not supported in node impl
-		return fmt.Errorf("block param \"earliest\" is not supported")
+		return xerrors.New("block param \"earliest\" is not supported")
 	}
 
 	head, err := gw.target.ChainHead(ctx)
@@ -197,10 +209,10 @@ func (gw *Node) EthGetTransactionByHashLimited(ctx context.Context, txHash *etht
 		return nil, err
 	}
 	if limit == api.LookbackNoLimit {
-		limit = gw.stateWaitLookbackLimit
+		limit = gw.maxMessageLookbackEpochs
 	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
-		limit = gw.stateWaitLookbackLimit
+	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
+		limit = gw.maxMessageLookbackEpochs
 	}
 
 	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, limit)
@@ -243,10 +255,10 @@ func (gw *Node) EthGetTransactionReceiptLimited(ctx context.Context, txHash etht
 		return nil, err
 	}
 	if limit == api.LookbackNoLimit {
-		limit = gw.stateWaitLookbackLimit
+		limit = gw.maxMessageLookbackEpochs
 	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
-		limit = gw.stateWaitLookbackLimit
+	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
+		limit = gw.maxMessageLookbackEpochs
 	}
 
 	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, limit)
@@ -353,7 +365,7 @@ func (gw *Node) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtype
 	}
 
 	if params.BlkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
-		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count too high")
+		return ethtypes.EthFeeHistory{}, xerrors.New("block count too high")
 	}
 
 	return gw.target.EthFeeHistory(ctx, p)
@@ -427,19 +439,17 @@ func (gw *Node) EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) 
 	return gw.target.EthGetLogs(ctx, filter)
 }
 
-/* FILTERS: Those are stateful.. figure out how to properly either bind them to users, or time out? */
-
 func (gw *Node) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
-	ft := statefulCallFromContext(ctx)
-	ft.lk.Lock()
-	_, ok := ft.userFilters[id]
-	ft.lk.Unlock()
+	ft, err := getStatefulTracker(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("EthGetFilterChanges not supported: %w", err)
+	}
 
-	if !ok {
+	if !ft.hasFilter(id) {
 		return nil, filter.ErrFilterNotFound
 	}
 
@@ -451,12 +461,12 @@ func (gw *Node) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (
 		return nil, err
 	}
 
-	ft := statefulCallFromContext(ctx)
-	ft.lk.Lock()
-	_, ok := ft.userFilters[id]
-	ft.lk.Unlock()
+	ft, err := getStatefulTracker(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("EthGetFilterLogs not supported: %w", err)
+	}
 
-	if !ok {
+	if !ft.hasFilter(id) {
 		return nil, nil
 	}
 
@@ -468,7 +478,7 @@ func (gw *Node) EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec
 		return ethtypes.EthFilterID{}, err
 	}
 
-	return addUserFilterLimited(ctx, func() (ethtypes.EthFilterID, error) {
+	return gw.addUserFilterLimited(ctx, "EthNewFilter", func() (ethtypes.EthFilterID, error) {
 		return gw.target.EthNewFilter(ctx, filter)
 	})
 }
@@ -478,7 +488,7 @@ func (gw *Node) EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, er
 		return ethtypes.EthFilterID{}, err
 	}
 
-	return addUserFilterLimited(ctx, func() (ethtypes.EthFilterID, error) {
+	return gw.addUserFilterLimited(ctx, "EthNewBlockFilter", func() (ethtypes.EthFilterID, error) {
 		return gw.target.EthNewBlockFilter(ctx)
 	})
 }
@@ -488,7 +498,7 @@ func (gw *Node) EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.Et
 		return ethtypes.EthFilterID{}, err
 	}
 
-	return addUserFilterLimited(ctx, func() (ethtypes.EthFilterID, error) {
+	return gw.addUserFilterLimited(ctx, "EthNewPendingTransactionFilter", func() (ethtypes.EthFilterID, error) {
 		return gw.target.EthNewPendingTransactionFilter(ctx)
 	})
 }
@@ -499,7 +509,11 @@ func (gw *Node) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID)
 	}
 
 	// check if the filter belongs to this connection
-	ft := statefulCallFromContext(ctx)
+	ft, err := getStatefulTracker(ctx)
+	if err != nil {
+		return false, xerrors.Errorf("EthUninstallFilter not supported: %w", err)
+	}
+
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
@@ -509,6 +523,8 @@ func (gw *Node) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID)
 
 	ok, err := gw.target.EthUninstallFilter(ctx, id)
 	if err != nil {
+		// don't delete the filter, it's "stuck" so should still count towards the limit
+		log.Warnf("error uninstalling filter: %v", err)
 		return false, err
 	}
 
@@ -528,20 +544,23 @@ func (gw *Node) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes
 	}
 
 	if gw.subHnd == nil {
-		return ethtypes.EthSubscriptionID{}, xerrors.New("subscription support not enabled")
+		return ethtypes.EthSubscriptionID{}, xerrors.New("EthSubscribe not supported: subscription support not enabled")
 	}
 
 	ethCb, ok := jsonrpc.ExtractReverseClient[api.EthSubscriberMethods](ctx)
 	if !ok {
-		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("connection doesn't support callbacks")
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("EthSubscribe not supported: connection doesn't support callbacks")
 	}
 
-	ft := statefulCallFromContext(ctx)
+	ft, err := getStatefulTracker(ctx)
+	if err != nil {
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("EthSubscribe not supported: %w", err)
+	}
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
-	if len(ft.userSubscriptions) >= EthMaxFiltersPerConn {
-		return ethtypes.EthSubscriptionID{}, fmt.Errorf("too many subscriptions")
+	if len(ft.userSubscriptions)+len(ft.userFilters) >= gw.ethMaxFiltersPerConn {
+		return ethtypes.EthSubscriptionID{}, ErrTooManyFilters
 	}
 
 	sub, err := gw.target.EthSubscribe(ctx, p)
@@ -561,7 +580,11 @@ func (gw *Node) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes
 		return ethtypes.EthSubscriptionID{}, err
 	}
 
-	ft.userSubscriptions[sub] = time.Now()
+	ft.userSubscriptions[sub] = func() {
+		if _, err := gw.target.EthUnsubscribe(ctx, sub); err != nil {
+			log.Warnf("error unsubscribing after connection end: %v", err)
+		}
+	}
 
 	return sub, err
 }
@@ -572,7 +595,10 @@ func (gw *Node) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionI
 	}
 
 	// check if the filter belongs to this connection
-	ft := statefulCallFromContext(ctx)
+	ft, err := getStatefulTracker(ctx)
+	if err != nil {
+		return false, xerrors.Errorf("EthUnsubscribe not supported: %w", err)
+	}
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
@@ -582,6 +608,8 @@ func (gw *Node) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionI
 
 	ok, err := gw.target.EthUnsubscribe(ctx, id)
 	if err != nil {
+		// don't delete the subscription, it's "stuck" so should still count towards the limit
+		log.Warnf("error unsubscribing: %v", err)
 		return false, err
 	}
 
@@ -654,42 +682,82 @@ func (gw *Node) EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilt
 	return gw.target.EthTraceFilter(ctx, filter)
 }
 
-var EthMaxFiltersPerConn = 16 // todo make this configurable
+func (gw *Node) addUserFilterLimited(
+	ctx context.Context,
+	callName string,
+	install func() (ethtypes.EthFilterID, error),
+) (ethtypes.EthFilterID, error) {
+	ft, err := getStatefulTracker(ctx)
+	if err != nil {
+		return ethtypes.EthFilterID{}, xerrors.Errorf("%s not supported: %w", callName, err)
+	}
 
-func addUserFilterLimited(ctx context.Context, cb func() (ethtypes.EthFilterID, error)) (ethtypes.EthFilterID, error) {
-	ft := statefulCallFromContext(ctx)
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
-	if len(ft.userFilters) >= EthMaxFiltersPerConn {
-		return ethtypes.EthFilterID{}, fmt.Errorf("too many filters")
+	if len(ft.userSubscriptions)+len(ft.userFilters) >= gw.ethMaxFiltersPerConn {
+		return ethtypes.EthFilterID{}, ErrTooManyFilters
 	}
 
-	id, err := cb()
+	id, err := install()
 	if err != nil {
 		return id, err
 	}
 
-	ft.userFilters[id] = time.Now()
+	ft.userFilters[id] = func() {
+		if _, err := gw.target.EthUninstallFilter(ctx, id); err != nil {
+			log.Warnf("error uninstalling filter after connection end: %v", err)
+		}
+	}
 
 	return id, nil
 }
 
-func statefulCallFromContext(ctx context.Context) *statefulCallTracker {
-	return ctx.Value(statefulCallTrackerKey).(*statefulCallTracker)
+func getStatefulTracker(ctx context.Context) (*statefulCallTracker, error) {
+	if jsonrpc.GetConnectionType(ctx) != jsonrpc.ConnectionTypeWS {
+		return nil, xerrors.New("stateful methods are only available on websocket connections")
+	}
+
+	if ct, ok := ctx.Value(statefulCallTrackerKey).(*statefulCallTracker); !ok {
+		return nil, xerrors.New("stateful tracking is not available for this call")
+	} else {
+		return ct, nil
+	}
 }
+
+type cleanup func()
 
 type statefulCallTracker struct {
 	lk sync.Mutex
 
-	userFilters       map[ethtypes.EthFilterID]time.Time
-	userSubscriptions map[ethtypes.EthSubscriptionID]time.Time
+	userFilters       map[ethtypes.EthFilterID]cleanup
+	userSubscriptions map[ethtypes.EthSubscriptionID]cleanup
+}
+
+func (ft *statefulCallTracker) cleanup() {
+	ft.lk.Lock()
+	defer ft.lk.Unlock()
+
+	for _, cleanup := range ft.userFilters {
+		cleanup()
+	}
+	for _, cleanup := range ft.userSubscriptions {
+		cleanup()
+	}
+}
+
+func (ft *statefulCallTracker) hasFilter(id ethtypes.EthFilterID) bool {
+	ft.lk.Lock()
+	defer ft.lk.Unlock()
+
+	_, ok := ft.userFilters[id]
+	return ok
 }
 
 // called per request (ws connection)
 func newStatefulCallTracker() *statefulCallTracker {
 	return &statefulCallTracker{
-		userFilters:       make(map[ethtypes.EthFilterID]time.Time),
-		userSubscriptions: make(map[ethtypes.EthSubscriptionID]time.Time),
+		userFilters:       make(map[ethtypes.EthFilterID]cleanup),
+		userSubscriptions: make(map[ethtypes.EthSubscriptionID]cleanup),
 	}
 }
