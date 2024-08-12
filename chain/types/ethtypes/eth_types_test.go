@@ -474,3 +474,54 @@ func TestEthHashListUnmarshalJSON(t *testing.T) {
 		require.Equal(t, tc.want, got)
 	}
 }
+
+func TestFilecoinAddressToEthAddressParams(t *testing.T) {
+	testAddr, err := address.NewIDAddress(1000)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name                string
+		input               string
+		expectedErrContains string
+		expected            FilecoinAddressToEthAddressParams
+	}{
+		{
+			name:                "One param",
+			input:               `["t01000"]`,
+			expectedErrContains: "",
+			expected:            FilecoinAddressToEthAddressParams{FilecoinAddress: testAddr},
+		},
+		{
+			name:                "Two params",
+			input:               `["t01000", "latest"]`,
+			expectedErrContains: "",
+			expected:            FilecoinAddressToEthAddressParams{FilecoinAddress: testAddr, BlkParam: stringPtr("latest")},
+		},
+		{
+			name:                "Three params (should fail)",
+			input:               `["t01000", "latest", "extra"]`,
+			expectedErrContains: "expected 1 or 2 params",
+			expected:            FilecoinAddressToEthAddressParams{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var params FilecoinAddressToEthAddressParams
+			err := json.Unmarshal([]byte(tc.input), &params)
+
+			if tc.expectedErrContains != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tc.expectedErrContains)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, params)
+		})
+	}
+}
+
+func stringPtr(s string) *string {
+	return &s
+}

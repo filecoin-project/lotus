@@ -1,0 +1,52 @@
+name: PR Title Check
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check-pr-title:
+    name: Check PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title and Manage Review
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const title = context.payload.pull_request.title;
+            // This should match https://github.com/filecoin-project/lotus/blob/master/README.md#pr-title-conventions
+            // 202408: Beyond Conventional Commit conventions, we also optionally suport the "scope" outside of paranenthesis for a transitionary period from legacy conventions per https://github.com/filecoin-project/lotus/pull/12340 
+            const pattern = /^(\[skip changelog\]\s)?(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(\w+\))?!?:?\s(\w+:)?\s?[a-z].+$/;
+            
+            if (!pattern.test(title)) {
+              await github.rest.pulls.createReview({
+                ...context.repo,
+                pull_number: context.payload.pull_request.number,
+                body: 'Please update the PR title to match https://github.com/filecoin-project/lotus/blob/master/CONTRIBUTING.md#pr-title-conventions',
+                event: 'REQUEST_CHANGES'
+              });
+              core.setFailed('PR title does not match the required format');
+            } else {
+              const reviews = await github.rest.pulls.listReviews({
+                ...context.repo,
+                pull_number: context.payload.pull_request.number
+              });
+              
+              const botReview = reviews.data.find(review => 
+                review.user.type === 'Bot' && 
+                review.state === 'CHANGES_REQUESTED'
+              );
+              
+              if (botReview) {
+                await github.rest.pulls.dismissReview({
+                  ...context.repo,
+                  pull_number: context.payload.pull_request.number,
+                  review_id: botReview.id,
+                  message: 'PR title now matches the required format.'
+                });
+              }
+            }

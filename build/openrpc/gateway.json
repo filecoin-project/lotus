@@ -5258,21 +5258,29 @@
         },
         {
             "name": "Filecoin.FilecoinAddressToEthAddress",
-            "description": "```go\nfunc (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddress == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddress(p0, p1)\n}\n```",
+            "description": "```go\nfunc (s *GatewayStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthAddress, error) {\n\tif s.Internal.FilecoinAddressToEthAddress == nil {\n\t\treturn *new(ethtypes.EthAddress), ErrNotSupported\n\t}\n\treturn s.Internal.FilecoinAddressToEthAddress(p0, p1)\n}\n```",
             "summary": "There are not yet any comments for this method.",
             "paramStructure": "by-position",
             "params": [
                 {
                     "name": "p1",
-                    "description": "address.Address",
+                    "description": "jsonrpc.RawParams",
                     "summary": "",
                     "schema": {
                         "examples": [
-                            "f01234"
+                            "Bw=="
                         ],
-                        "additionalProperties": false,
+                        "items": [
+                            {
+                                "title": "number",
+                                "description": "Number is a number",
+                                "type": [
+                                    "number"
+                                ]
+                            }
+                        ],
                         "type": [
-                            "object"
+                            "array"
                         ]
                     },
                     "required": true,

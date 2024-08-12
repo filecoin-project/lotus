@@ -699,7 +699,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		TransactionIndex: transactionIndex,
 		BlockHash:        blockHash,
 		BlockNumber:      blockNumber,
-		Type:             ethtypes.EthUint64(2),
+		Type:             tx.Type,
 		Logs:             []ethtypes.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
 		LogsBloom:        ethtypes.NewEmptyEthBloom(),
 	}

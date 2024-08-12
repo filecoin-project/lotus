@@ -27,6 +27,7 @@ var InitActorAddr = builtin.InitActorAddr
 var SystemActorAddr = builtin.SystemActorAddr
 var BurntFundsActorAddr = builtin.BurntFundsActorAddr
 var CronActorAddr = builtin.CronActorAddr
+var DatacapActorAddr = builtin.DatacapActorAddr
 var EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")

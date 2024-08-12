@@ -1,142 +1,167 @@
 
-<!-- TOC -->
+# `lotus` Release Flow <!-- omit in toc -->
 
-- [`lotus` Release Flow](#lotus-release-flow)
-  - [Purpose](#purpose)
-  - [High-level Summary](#high-level-summary)
-  - [Motivation and Requirements](#motivation-and-requirements)
-  - [Adopted Conventions](#adopted-conventions)
-    - [Major Releases](#major-releases)
-    - [Mandatory Releases](#mandatory-releases)
-    - [Feature Releases](#feature-releases)
-    - [Examples Scenarios](#examples-scenarios)
-  - [Release Cycle](#release-cycle)
-    - [Patch Releases](#patch-releases)
-    - [Performing a Release](#performing-a-release)
-    - [Security Fix Policy](#security-fix-policy)
-  - [FAQ](#faq)
-    - [Why aren't Go major versions used more?](#why-arent-go-major-versions-used-more)
-  - [Related Items](#related-items)
-
-<!-- /TOC -->
-
-# `lotus` Release Flow
+- [Purpose](#purpose)
+- [Terminology](#terminology)
+- [High-level Summary](#high-level-summary)
+- [Motivation and Requirements](#motivation-and-requirements)
+- [Adopted Conventions](#adopted-conventions)
+  - [Major Releases](#major-releases)
+  - [Minor Releases](#minor-releases)
+  - [Patch Releases](#patch-releases)
+- [Release Cadence](#release-cadence)
+- [Release Process](#release-process)
+- [Release Candidates (RCs)](#release-candidates-rcs)
+- [Security Fix Policy](#security-fix-policy)
+- [Branch and Tag Strategy](#branch-and-tag-strategy)
+- [FAQ](#faq)
+  - [Why aren't Go major versions used more?](#why-arent-go-major-versions-used-more)
+  - [Do more frequent Lotus releases mean a change to network upgrade schedules?](#do-more-frequent-lotus-releases-mean-a-change-to-network-upgrade-schedules)
+  - [How often do exchanges and key stakeholders need to upgrade?](#how-often-do-exchanges-and-key-stakeholders-need-to-upgrade)
+  - [How much new code will a release with an associated network upgrade include?](#how-much-new-code-will-a-release-with-an-associated-network-upgrade-include)
+  - [Why do we call it "Lotus Node"?](#why-do-we-call-it-lotus-node)
+  - [Why isn't Lotus Miner released more frequently?](#why-isnt-lotus-miner-released-more-frequently)
+  - [Why is the `releases` branch deprecated and what are alternatives?](#why-is-the-releases-branch-deprecated-and-what-are-alternatives)
+- [Related Items](#related-items)
 
 ## Purpose
 
-This document aims to describe how the Lotus team plans to ship releases of the Lotus implementation of Filecoin network. Interested parties can expect new releases to come out as described in this document.
+This document aims to describe how the Lotus maintainers ship releases of Lotus. Interested parties can expect new releases to be delivered as described in this document.
+
+## Terminology
+* Lotus Node - This is all the functionality that lives in the `lotus` binary. Branches, tags, etc. that don't have a prefix correspond with Lotus Node. (See [Why do we call it "Lotus Node"?](#why-do-we-call-it-lotus-node))
+* Lotus Miner - This is all the functionality that lives in the `lotus-miner` binary. Corresponding branches, tags, etc. are prefixed with `miner/`.
+* Lotus software - This refers to the full collection of Lotus software that lives in [filecoin-project/lotus](https://github.com/filecoin-project/curio), both Lotus Node and Lotus Miner.
+* Lotus (no suffix) - This usually means "Lotus Node" (which is why `lotus` maps to "Lotus Node"). That said, we strive to avoid this unqualified term because of the potential ambiguity. 
 
 ## High-level Summary
 
-- **Major releases** (1.0.0, 2.0.0, etc.) are reserved for significant changes to the Filecoin protocol that transform the network and its usecases. Such changes could include the addition of new Virtual Machines to the protocol, major upgrades to the Proofs of Replication used by Filecoin, etc.
-- Even minor releases (1.2.0, 1.4.0, etc.) of the Lotus software correspond to **mandatory releases** as they ship Filecoin network upgrades. Users **must** upgrade to these releases before a certain time in order to keep in sync with the Filecoin network. We aim to ensure there is at least one week before the upgrade deadline.
-- Patch versions of even minor releases (1.2.1, 1.4.2, etc.) correspond to **hotfix releases**. Such releases will only be shipped when a critical fix is needed to be applied on top of a mandatory release.
-- Odd minor releases (1.3.0, 1.5.0, etc.), as well as patch releases in these series (1.3.1, 1.5.2, etc.) correspond to **feature releases** with new development and bugfixes. These releases are not mandatory, but still highly recommended, **as they may contain critical security fixes**.
-- We aim to ship a new feature release of the Lotus software every 3 weeks, so users can expect a regular cadence of Lotus feature releases. Note that mandatory releases for network upgrades may disrupt this schedule.
+- Lotus software use semantic versioning (`MAJOR`.`MINOR`.`PATCH`).
+- **`MAJOR` releases** are reserved for significant architectural changes to Lotus. 
+- **`MINOR` releases** are shipped for network upgrades, API breaking changes, or non-backwards-compatible feature enhancements.
+- **`PATCH` releases** contain backwards-compatible bug fixes or feature enhancements.
+- Releases are almost always branched from the `master` branch, even if they include a network upgrade. The main exception is if there is a critical security patch we need to rush out. In that case, we would patch an existing release to increase release speed and reduce barrier to adoption.
+- We aim to ship a new release of the Lotus Node software approximately every 4 weeks, except during network upgrade periods which may have longer release cycles.
+- Lotus Miner releases ship on an as-needed basis with no specified cadence. (See [Why isn't Lotus Miner released more frequently?](#why-isnt-lotus-miner-released-more-frequently))
+
 
 ## Motivation and Requirements
 
-Our primary motivation is for users of the Lotus software (storage providers, storage clients, developers, etc.) to have a clear idea about when they can expect Lotus releases, and what they can expect in a release.
+Our primary motivation is for users of the Lotus software (node operators, RPC providers, storage providers, developers, etc.) to have a clear idea about when they can expect Lotus releases, and what they can expect in a release.
 
 In order to achieve this, we need the following from our release process and conventions:
 
-- Lotus version conventions make it immediately obvious whether a new Lotus release is mandatory or not. A release is mandatory if it ships a network upgrade to the Filecoin protocol.
-- The ability to ship critical fixes on top of mandatory releases, so as to avoid forcing users to consume larger unrelated changes.
-- A regular cadence of feature releases, so that users can know when a new Lotus release will be available for consumption.
-- The ability to ship any number of feature releases between two mandatory releases.
+- Lotus version conventions make it clear what kind of changes are included in a release.
+- The ability to ship critical fixes quickly when needed.
+- A regular cadence of releases, so that users can know when a new Lotus Node release will be available.
 - A clear description of the various stages of testing that a Lotus Release Candidate (RC) goes through.
-- Lotus Release issues will present a single source of truth for what may be contained in Lotus releases, including security fixes, and how they will be disclosed.
+- Lotus Release issues will present a single source of truth for what may be contained in Lotus software releases, including security fixes, and how they will be disclosed.
 
 ## Adopted Conventions
 
-This section describes the conventions we have adopted. Users of Lotus are encouraged to review this in detail so as to be informed when new Lotus releases are shipped.
-
 ### Major Releases
 
-Bumps to the Lotus major version number (1.0.0, 2.0.0, etc.) are reserved for significant changes to the Filecoin protocol that dramatically transform the network itself. Such changes could include the addition of new Virtual Machines to the protocol, major upgrades to the Proofs of Replication used by Filecoin, etc. These releases are expected to take lots of time to develop and will be rare.  See also "Why aren't Go major versions used more?" below.
+Bumps to the Lotus software major version number (e.g., 2.0.0, 3.0.0) are reserved for significant architectural changes to Lotus. These releases are expected to take considerable time to develop and will be rare. At least of 202408, there is nothing on the horizon that we're aware of that warrants this. See also [What aren't go major versions used more?](#why-arent-go-major-versions-used-more)
 
-### Mandatory Releases
+### Minor Releases
 
-Even bumps to the Lotus minor version number (1.2.0, 1.4.0, etc.) are reserved for **mandatory releases** that ship Filecoin network upgrades. Users **must** upgrade to these releases before a certain time in order to keep in sync with the Filecoin network.
+Bumps to the Lotus software minor version number (e.g., 1.28.0, 1.29.0) are used for:
 
-Depending on the scope of the upgrade, these releases may take up to several weeks to fully develop and test. We aim to ensure there are at least 2 weeks between the publication of the final Lotus release and the Filecoin network upgrade deadline.
+- Shipping Filecoin network upgrades
+- API breaking changes
+- Non-backwards-compatible feature enhancements
 
-These releases do not follow a regular cadence, as they are developed in lockstep with the other implementations of the Filecoin protocol. As of August 2021, the developers aim to ship 3-4 Filecoin network upgrades a year, though smaller security-critical upgrades may occur unpredictably.
-
-Mandatory releases are somewhat sensitive since all Lotus users are forced to upgrade to them at the same time. As a result, they will be shipped on top of the most recent stable release of Lotus, which will generally be the latest Lotus release that has been in production for more than 2 weeks. (Note: given this rule, the basis of a mandatory release could be a mandatory release or a feature release depending on timing).  Mandatory releases will not include any new feature development or bugfixes that haven't already baked in production for 2+ weeks, except for the changes needed for the network upgrade itself. Further, any critical fixes that are needed after the network upgrade will be shipped as patch version bumps to the mandatory release (1.2.1, 1.2.2, etc.) This prevents users from being forced to quickly digest unnecessary changes.
-
-Users should generally aim to always upgrade to a new even minor version release since they either introduce a mandatory network upgrade or a critical fix.
-
-### Feature Releases
-
-All releases under an odd minor version number indicate **feature releases**. These could include releases such as 1.3.0, 1.3.1, 1.5.2, etc. 
-
-Feature releases include new development and bug fixes. They are not mandatory, but still highly recommended, **as they may contain critical security fixes**. Note that some of these releases may be very small patch releases that include critical hotfixes.  There is no way to distinguish between a bug fix release and a feature release on the "feature" version. Both cases will use the "patch" version number.
-
-We aim to ship a new feature release of the Lotus software from our development (master) branch every 3 weeks, so users can expect a regular cadence of Lotus feature releases. Note that mandatory releases for network upgrades may disrupt this schedule. For more, see the [Release Cycle section](#release-cycle).
-
-### Examples Scenarios
-
-- **Scenario 1**: **Lotus 1.12.0 shipped a network upgrade, and no network upgrades are needed for a long while.**
-
-    In this case, the next feature release will be Lotus 1.13.0. In three-week intervals, we will ship Lotus 1.13.1, 1.13.2, and 1.13.3, all containing new features and bug fixes.
-
-    Let us assume that after the release of 1.13.3, a critical issue is discovered and a hotfix quickly developed. This hotfix will then be shipped in **both** 1.12.1 and 1.13.4. Users who have already upgrade to the 1.13 series can simply upgrade to 1.13.4. Users who have chosen to still be on 1.12.0, however, can use 1.12.1 to patch the critical issue without being forced to consume all the changes in the 1.13 series.
-
-- **Scenario 2**: **Lotus 1.12.0 shipped a network upgrade, but the need for an unexpected network upgrade soon arises**
-
-    In this case, the Lotus 1.13 series will be dropped entirely, including any RCs that may have been undergoing testing. Instead, the network upgrade will be shipped as Lotus 1.14.0, built on top of Lotus 1.12.0. It will thus include no unnecessary changes, only the work needed to support the new network upgrade.
-
-    Any changes that were being worked on in the 1.13.0 series will then get applied on top of Lotus 1.14.0 and get shipped as Lotus 1.15.0.
-
-## Release Cycle
-
-A mandatory release process should take about 3-6 weeks, depending on the amount and the overall complexity of new features being introduced to the network protocol. It may also be shorter if there is a network incident that requires an emergency upgrade.  A feature release process should take about 2-3 weeks. 
-
-The start time of the mandatory release process is subject to the network upgrade timeline. We will start a new feature release process every 3 weeks on Tuesdays, regardless of when the previous release landed unless it's still ongoing.
+Users MUST upgrade to minor releases that include a network upgrade before a certain time to keep in sync with the Filecoin network. We recommend everyone to subscribe to status.filecoin.io for updates when these are happening, as well checking the release notes of a minor version. 
+Users can decide whether to upgrade to minor version releases that don't include a network upgrade. They are still encouraged to upgrade so they get the latest functionality and improvements and deploy a smaller delta of new code when there is a subsequent minor release they must adopt as part of a network upgrade later. 
 
 ### Patch Releases
 
-**Mandatory Release**
+Bumps to the Lotus software patch version number (e.g., 1.28.1, 1.28.2) are used for:
 
-If we encounter a serious bug in a mandatory release post a network upgrade, we will create a patch release based on this release. Strictly only the fix to the bug will be included in the patch, and the bug fix will be backported to the master (dev) branch, and any ongoing feature release branch if applicable.
+- Backwards-compatible bug fixes
+- Backwards-compatible feature enhancements
 
-Patch release process for the mandatory releases will follow a compressed release cycle from hours to days depending on the severity and the impact to the network of the bug. In a patch release:
+These releases are not mandatory but are highly recommended, as they may contain critical security fixes.
 
-1. Automated and internal testing (stage 0 and 1) will be compressed into a few hours.
-2. Stage 2-3 will be skipped or shortened case by case.
+## Release Cadence
 
-Some patch releases, especially ones fixing one or more complex bugs that doesn't require a follow-up mandatory upgrade, may undergo the full release process.
+* Lotus Node: we aim to ship a new release every 4 weeks. However, releases that include network upgrades usually have longer development and testing periods.
+* Lotus Miner: releases ship on an as-needed basis with no specified cadence. (See [Why isn't Lotus Miner released more frequently?](#why-isnt-lotus-miner-released-more-frequently))
 
-**Feature Release**
+## Release Process
+The specific steps executed for Lotus software releases are captured in the [Release Issue template](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md).
 
-Patch releases in odd minor releases (1.3.0, 1.5.0, etc.) like 1.3.1, 1.5.2 and etc are corresponding to another **feature releases** with new development and bugfixes. These releases are not mandatory, but still **highly** recommended, **as they may contain critical security fixes**.
+## Release Candidates (RCs)
 
----
+- For regular (i.e., no critical security patch) releases with no accompanying network upgrade, the RC period is typically around 1 week.
+- For releases accompanying network upgrades, the release candiadte period is a lot longer to allow for more extensive testing, usually around 5 to 6 weeks.
+- Releases rushing out a critical security patch will likely have an RC period on the order of hours or days, or may even forgo the RC phase. To compensate for the release speed, these releases will include the minimum delta necessary, meaning they'll be a patch on top of an existing release rather than taking the latest changes in the `master` branch.
 
-### Performing a Release
+## Security Fix Policy
 
-At the beginning of each release cycle, we will generate our "Release tracking issue", which is populated with the content at [https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) 
-
-This template will be used to track major goals we have, a planned shipping date, and a complete release checklist tied to a specific release.
-
-### Security Fix Policy
-
-Any release may contain security fixes. Unless the fix addresses a bug being exploited in the wild, the fix will *not* be called out in the release notes. Please make sure to update ASAP.
+Any release may contain security fixes. Unless the fix addresses a bug being exploited in the wild, the fix will not be called out in the release notes to avoid shining a spotlight on the problem and increasing the chances of it being exploited. As a result, this is one of the reasons we encourage users to upgrade in all cases, even when the release isn't associated with a network upgrade.
 
 By policy, the team will usually wait until about 3 weeks after the final release to announce any fixed security issues. However, depending on the impact and ease of discovery of the issue, the team may wait more or less time.
 
- It is important to always update to the latest version ASAP and file issues if you're unable to update for some reason.
+Unless a security issue is actively being exploited or a significant number of users are unable to update to the latest version, security fixes will not be backported to previous releases.
 
-Finally, unless a security issue is actively being exploited or a significant number of users are unable to update to the latest version (e.g., due to a difficult migration, breaking changes, etc.), security fixes will *not* be backported to previous releases.
+## Branch and Tag Strategy
+
+> [!NOTE]
+> - <span style="color:blue">Blue text</span> indicates node-related information.
+> - <span style="color:orange">Orange text</span> indicates miner-related information.
+> - System default colored text applies to both node and miner releases.
+
+* Releases are branched from the `master` branch, regardless of whether they include a network upgrade or not.
+* PRs usually target the `master` branch, even if they need to be backported to a release branch. 
+* PRs that need to be backported should be marked with a `backport` label.
+* <span style="color:blue">Node release branches are named `release/vX.Y.Z`</span>
+* <span style="color:orange">Miner release branches are named `release/miner/vX.Y.Z`</span>
+* By the end of the release process:
+  * <span style="color:blue">A `release/vX.Y.Z` branch (node) will have an associated `vX.Y.Z` tag</span>
+  * <span style="color:orange">A `release/miner/vX.Y.Z` branch (miner) will have an associated `miner/vX.Y.Z` tag</span>
+* Both node and miner releases may have additional `vX.Y.Z-rcN` or `miner/vX.Y.Z-rcN` tags for release candidates
+* The `master` branch is typically the source for creating release branches
+* For emergency patch releases where we can't risk including recent `master` changes:
+  * <span style="color:blue">Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`</span>
+  * <span style="color:orange">Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`</span>
+* As of 202408, the `releases` branch is no longer used and no longer tracks the latest release.  See [Why is the `releases` branch deprecated and what are alternatives?](#why-is-the-releases-branch-deprecated-and-what-are-alternatives).
 
 ## FAQ
 
 ### Why aren't Go major versions used more?
 
-Golang tightly couples source code with versioning (major versions beyond v1 leak into import paths).  This poses logistical difficulties to using major versions here.  Concretely, if we were to pick a policy that bumped the major version on every network upgrade, we would disrupt every single downstream library/application that consumed the native Lotus API (e.g., libraries depending on the JSON-RPC client, testground tests). They would need to update their code every single time that we released a network breaking change, even if it brought on zero expectation of breakage for the Golang APIs that they depend on. In this scenario, we are signaling breakage on the wrong API surface! We're signaling breakage on the Go level, when what breaks is the network protocol.
+Golang tightly couples source code with versioning (major versions beyond v1 leak into import paths). This poses logistical difficulties to using major versions here. Using major versions for every network upgrade would disrupt every downstream library/application that consumes the native Lotus API, even if it brought zero expectation of breakage for the Golang APIs they depend on.
+
+### Do more frequent Lotus releases mean a change to network upgrade schedules?
+
+No. The starting-in-2024Q3 goal of more frequent (every 4 weeks) Lotus releases does not mean that there will be changes in the network upgrade schedule. At least as of 202408, the current cadence of Filecoin network upgrades is ~3 per year. We expect to usually uphold a 2 weeks upgrade time between a Lotus release candidate and a network upgrade on the Calibration network, and a 3 week upgrade time for a network upgrade on the Mainnet.
+
+### How often do exchanges and key stakeholders need to upgrade?
+
+It´s hard to say how often they have to upgrade! If they do not encounter any issues with the current release they are on, and there are no new releases with vulnerability patches or an associated network upgrade, then upgrading is unnecessary. The goal for faster releases (and also having client and miner releases separated) is to be able to bring bug-fixes and features faster to end-users that need them. Per discussion above, users are still encouraged to consider upgrading more frequently than the ~3 network upgrades per year to reap the benefits of improved software and to have a smaller batch of changes to vet before a network upgrade.
+
+### How much new code will a release with an associated network upgrade include?
+
+Releases for a network upgrade will have "last production release + minimum commits necessary for network upgrade + any other commits that have made it into master since the last production release". This means a release accompanying a network upgrade may have commits that aren't essential and haven't been deployed to production previously. This is a simplifier for Lotus maintainer, and we think the risk is acceptable because we'll be doing releases more frequently (thus the amount of commits that haven't made it to a production release will be smaller) and our testing quality has improved since years past.
+
+### Why do we call it "Lotus Node"?
+There are other names that could have used instead of "Lotus Node", and some of those have existed historically (e.g., "Lotus Client", "Lotus Daemon"). We couldn't find a perfect name. "Lotus Node" is more than just a "client", even though it doesn't participate in consensus. "Lotus Daemon" is confusing as `lotus-miner` is also a daemon. Even "Node" isn't ideal, because it tends to imply full participation in the network, including consensus. We figured the most important thing was to pick a name and then consistently apply it.
+
+### Why isn't Lotus Miner released more frequently?
+Given Lotus Miner is being actively replaced by [Curio](https://github.com/filecoin-project/curio), Lotus Miner is not under active development. As a result, new releases happen reactively either to support new consensus-critical network functionality or patch critical security or performance issues.
+
+### Why is the `releases` branch deprecated and what are alternatives?
+`releases` goal was to point to the latest stable tagged release of Lotus software for convenience and script.  This worked when Lotus Node and Miner were released together, but with the [2024Q3 split of releasing Lotus Node and Miner separately](https://github.com/filecoin-project/lotus/issues/12010), there isn't necessarily a single commit to track for the latest released software of both. Rather than having ambiguity by tracking Lotus Node or Lotus Miner releases, we [decided it was clearer to deprecate the branch](https://github.com/filecoin-project/lotus/issues/12374). 
+
+That said, one can still programmatically get the latest release based on the [Branch and Tag Strategy](#branch-and-tag-strategy) with:
+* Lotus Node: `git tag -l 'v*' | sort -V -r | head -n 1` 
+* Lotus Miner: `git tag -l 'miner/v*' | sort -V -r | head -n 1` 
 
 ## Related Items
 
 1. [Release Issue template](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
-2. [Lotus Release Flow Discussion](https://github.com/filecoin-project/lotus/discussions/7053): Leave a comment if you have any questions or feedbacks with regard to the lotus release flow.
+2. [Network Upgrade process and tracking documents for nv23 onwards](https://drive.google.com/drive/folders/1LEfIQKsp0un3RxHdSbkBG7ON3H7HRuA7)
+3. [Lotus release issues](https://github.com/filecoin-project/lotus/issues?q=is%3Aissue+release+in%3Atitle)
+4. [202405 discussion](https://github.com/filecoin-project/lotus/discussions/12020) that triggered updating this document.
+5. [Original 202108 Lotus release flow discussion](https://github.com/filecoin-project/lotus/discussions/7053).

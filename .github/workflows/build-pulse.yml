@@ -10,8 +10,17 @@ on:
       run_id:
         description: The ID of the Test workflow run
         required: true
+      run_attempt:
+        description: The attempt number of the Test workflow run
+        required: true
+      event_name:
+        description: The name of the event that triggered the Test workflow run
+        required: true
+      head_branch:
+        description: The name of the head branch that triggered the Test workflow 
+        required: true
       head_commit_id:
-        description: The commit ID of the head commit of the Test workflow run
+        description: The commit ID of the head commit that triggered the Test workflow run
         required: true
 
 defaults:
@@ -30,7 +39,14 @@ jobs:
       - name: Check out lotus
         uses: actions/checkout@v4
         with:
+          path: lotus
           ref: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+      - name: Check out buildpulse-action
+        uses: actions/checkout@v4
+        with:
+          repository: buildpulse/buildpulse-action
+          path: buildpulse-action
+          ref: d0d30f53585cf16b2e01811a5a753fd47968654a # v0.11.0
       - name: Create a temporary directory to store the JUnit XML reports
         id: reports
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
@@ -41,12 +57,24 @@ jobs:
           github-token: ${{ github.token }}
           path: ${{ steps.reports.outputs.path }}
       - name: Upload test results to BuildPulse for flaky test detection
-        uses: buildpulse/buildpulse-action@d4d8e00c645a2e3db0419a43664bbcf868080234
-        with:
-          account: ${{ vars.BUIDPULSE_ACCOUNT_ID }}
-          repository: ${{ vars.BUILDPULSE_REPOSITORY_ID }}
-          path: |
+        env:
+          INPUT_ACCOUNT: ${{ vars.BUIDPULSE_ACCOUNT_ID }}
+          INPUT_REPOSITORY: ${{ vars.BUILDPULSE_REPOSITORY_ID }}
+          INPUT_PATH: |
             ${{ steps.reports.outputs.path }}/**/*.xml
-          key: ${{ vars.BUILDPULSE_ACCESS_KEY_ID }}
-          secret: ${{ secrets.BUILDPULSE_SECRET_ACCESS_KEY }}
-          commit: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+          INPUT_KEY: ${{ vars.BUILDPULSE_ACCESS_KEY_ID }}
+          INPUT_SECRET: ${{ secrets.BUILDPULSE_SECRET_ACCESS_KEY }}
+          INPUT_COMMIT: ${{ github.event.inputs.head_commit_id || github.event.workflow_run.head_commit.id }}
+          INPUT_REPOSITORY_PATH: lotus
+          INPUT_RUN_ID: ${{ github.event.inputs.run_id || github.event.workflow_run.id }}
+          INPUT_RUN_ATTEMPT: ${{ github.event.inputs.run_attempt || github.event.workflow_run.run_attempt }}
+          INPUT_EVENT_NAME: ${{ github.event.inputs.event_name || github.event.workflow_run.event }}
+          INPUT_REF: ${{ github.event.inputs.head_branch || github.event.workflow_run.head_branch }}
+          INPUT_HEAD_REF: ${{ github.event.inputs.head_branch || github.event.workflow_run.head_branch }}
+        run: |
+          GITHUB_RUN_ID=$INPUT_RUN_ID \
+            GITHUB_RUN_ATTEMPT=$INPUT_RUN_ATTEMPT \
+            GITHUB_EVENT_NAME=$INPUT_EVENT_NAME \
+            GITHUB_REF=refs/heads/$INPUT_REF \
+            GITHUB_HEAD_REF=$INPUT_HEAD_REF \
+            ./buildpulse-action/run.sh

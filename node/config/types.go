@@ -551,6 +551,13 @@ type FevmConfig struct {
 	EthTraceFilterMaxResults uint64
 
 	Events DeprecatedEvents `toml:"Events,omitempty"`
+
+	// EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
+	// This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
+	// recently requested blocks that are already cached.
+	// The default size of the cache is 500 blocks.
+	// Note: Setting this value to 0 disables the cache.
+	EthBlkCacheSize int
 }
 
 type DeprecatedEvents struct {
@@ -593,10 +600,14 @@ type EventsConfig struct {
 	EnableActorEventsAPI bool
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
-	// this time become eligible for automatic deletion.
+	// this time become eligible for automatic deletion. Filters consume resources, so if they are unused they
+	// should not be retained.
 	FilterTTL Duration
 
 	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	// Multi-tenant environments may want to increase this value to serve a larger number of clients. If using
+	// lotus-gateway, this global limit can be coupled with --eth-max-filters-per-conn which limits the number
+	// of filters per connection.
 	MaxFilters int
 
 	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.

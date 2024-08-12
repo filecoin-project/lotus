@@ -124,32 +124,43 @@ var runCmd = &cli.Command{
 		&cli.DurationFlag{
 			Name:  "api-max-lookback",
 			Usage: "maximum duration allowable for tipset lookbacks",
-			Value: gateway.DefaultLookbackCap,
+			Value: gateway.DefaultMaxLookbackDuration,
 		},
 		&cli.Int64Flag{
 			Name:  "api-wait-lookback-limit",
 			Usage: "maximum number of blocks to search back through for message inclusion",
-			Value: int64(gateway.DefaultStateWaitLookbackLimit),
+			Value: int64(gateway.DefaultMaxMessageLookbackEpochs),
 		},
 		&cli.Int64Flag{
-			Name:  "rate-limit",
-			Usage: "rate-limit API calls. Use 0 to disable",
+			Name: "rate-limit",
+			Usage: fmt.Sprintf(
+				"Global API call throttling rate limit (per second), weighted by relative expense of the call, with the most expensive calls counting for %d. Use 0 to disable",
+				gateway.MaxRateLimitTokens,
+			),
 			Value: 0,
 		},
 		&cli.Int64Flag{
-			Name:  "per-conn-rate-limit",
-			Usage: "rate-limit API calls per each connection. Use 0 to disable",
+			Name: "per-conn-rate-limit",
+			Usage: fmt.Sprintf(
+				"API call throttling rate limit (per second) per WebSocket connection, weighted by relative expense of the call, with the most expensive calls counting for %d. Use 0 to disable",
+				gateway.MaxRateLimitTokens,
+			),
 			Value: 0,
 		},
 		&cli.DurationFlag{
 			Name:  "rate-limit-timeout",
-			Usage: "the maximum time to wait for the rate limiter before returning an error to clients",
+			Usage: "The maximum time to wait for the API call throttling rate limiter before returning an error to clients",
 			Value: gateway.DefaultRateLimitTimeout,
 		},
 		&cli.Int64Flag{
 			Name:  "conn-per-minute",
-			Usage: "The number of incomming connections to accept from a single IP per minute.  Use 0 to disable",
+			Usage: "A hard limit on the number of incoming connections (requests) to accept per remote host per minute. Use 0 to disable",
 			Value: 0,
+		},
+		&cli.IntFlag{
+			Name:  "eth-max-filters-per-conn",
+			Usage: "The maximum number of filters plus subscriptions that a single websocket connection can maintain",
+			Value: gateway.DefaultEthMaxFiltersPerConn,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -171,13 +182,14 @@ var runCmd = &cli.Command{
 		defer closer()
 
 		var (
-			lookbackCap      = cctx.Duration("api-max-lookback")
-			address          = cctx.String("listen")
-			waitLookback     = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
-			rateLimit        = cctx.Int64("rate-limit")
-			perConnRateLimit = cctx.Int64("per-conn-rate-limit")
-			rateLimitTimeout = cctx.Duration("rate-limit-timeout")
-			connPerMinute    = cctx.Int64("conn-per-minute")
+			lookbackCap                 = cctx.Duration("api-max-lookback")
+			address                     = cctx.String("listen")
+			waitLookback                = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+			globalRateLimit             = cctx.Int("rate-limit")
+			perConnectionRateLimit      = cctx.Int("per-conn-rate-limit")
+			rateLimitTimeout            = cctx.Duration("rate-limit-timeout")
+			perHostConnectionsPerMinute = cctx.Int("conn-per-minute")
+			maxFiltersPerConn           = cctx.Int("eth-max-filters-per-conn")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -197,21 +209,36 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to convert endpoint address to multiaddr: %w", err)
 		}
 
-		gwapi := gateway.NewNode(api, subHnd, lookbackCap, waitLookback, rateLimit, rateLimitTimeout)
-		h, err := gateway.Handler(gwapi, api, perConnRateLimit, connPerMinute, serverOptions...)
+		gwapi := gateway.NewNode(
+			api,
+			gateway.WithEthSubHandler(subHnd),
+			gateway.WithMaxLookbackDuration(lookbackCap),
+			gateway.WithMaxMessageLookbackEpochs(waitLookback),
+			gateway.WithRateLimit(globalRateLimit),
+			gateway.WithRateLimitTimeout(rateLimitTimeout),
+			gateway.WithEthMaxFiltersPerConn(maxFiltersPerConn),
+		)
+		handler, err := gateway.Handler(
+			gwapi,
+			api,
+			gateway.WithPerConnectionAPIRateLimit(perConnectionRateLimit),
+			gateway.WithPerHostConnectionsPerMinute(perHostConnectionsPerMinute),
+			gateway.WithJsonrpcServerOptions(serverOptions...),
+		)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")
 		}
 
-		stopFunc, err := node.ServeRPC(h, "lotus-gateway", maddr)
+		stopFunc, err := node.ServeRPC(handler, "lotus-gateway", maddr)
 		if err != nil {
 			return xerrors.Errorf("failed to serve rpc endpoint: %w", err)
 		}
 
-		<-node.MonitorShutdown(nil, node.ShutdownHandler{
-			Component: "rpc",
-			StopFunc:  stopFunc,
-		})
+		<-node.MonitorShutdown(
+			nil,
+			node.ShutdownHandler{Component: "rpc", StopFunc: stopFunc},
+			node.ShutdownHandler{Component: "rpc-handler", StopFunc: handler.Shutdown},
+		)
 		return nil
 	},
 }
