@@ -28,7 +28,6 @@ type BadgerDB interface {
 	Size() (lsm int64, vlog int64)
 	Copy(ctx context.Context, to BadgerDB) error
 	Load(r io.Reader, maxPendingWrites int) error
-	AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
 	DeleteBlock(context.Context, cid.Cid) error
 	Backup(w io.Writer, since uint64) (uint64, error)
 }

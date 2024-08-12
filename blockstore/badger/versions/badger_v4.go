@@ -147,10 +147,6 @@ func (b *BadgerV4) Load(r io.Reader, maxPendingWrites int) error {
 	return b.DB.Load(r, maxPendingWrites)
 }
 
-func (b *BadgerV4) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return nil, fmt.Errorf("AllKeysChan is not implemented")
-}
-
 func (b *BadgerV4) DeleteBlock(context.Context, cid.Cid) error {
 	return fmt.Errorf("DeleteBlock is not implemented")
 }
