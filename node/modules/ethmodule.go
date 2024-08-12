@@ -86,7 +86,7 @@ func EthModuleAPI(cfg config.FevmConfig, enableAutomaticBackFill bool, maxAutoma
 
 				if enableAutomaticBackFill { // If the db exists and back-fill is enabled, we'll back-fill missing entries
 					go func() { // since there is only one DB connection, so we can do this in a goroutine without worrying about concurrent write issues
-						err = ethTxHashManager.FillIndexGap(head, mctx, abi.ChainEpoch(maxAutomaticBackFillBlocks))
+						err = ethTxHashManager.FillIndexGap(mctx, head, abi.ChainEpoch(maxAutomaticBackFillBlocks))
 						if err != nil {
 							log.Warnf("error when back-filling transaction index gap: %w", err)
 						}

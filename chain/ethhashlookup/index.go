@@ -66,7 +66,9 @@ func PopulateAfterSnapshot(ctx context.Context, path string, cs ChainStore) erro
 		return xerrors.Errorf("error preparing insertStmt: %w", err)
 	}
 
-	defer insertStmt.Close()
+	defer func() {
+		_ = insertStmt.Close()
+	}()
 
 	var (
 		curTs       = cs.GetHeaviestTipSet()

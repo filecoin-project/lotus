@@ -26,7 +26,7 @@ func (m *EthTxHashManager) Revert(_ context.Context, _, _ *types.TipSet) error {
 
 // FillIndexGap populates the Ethereum transaction hash lookup database with missing entries
 // by processing blocks until we reach the maximum number of automatic back-fill epochs or the message is already indexed.
-func (m *EthTxHashManager) FillIndexGap(currHead *types.TipSet, ctx context.Context, maxAutomaticBackFillBlocks abi.ChainEpoch) error {
+func (m *EthTxHashManager) FillIndexGap(ctx context.Context, currHead *types.TipSet, maxAutomaticBackFillBlocks abi.ChainEpoch) error {
 	log.Info("Start back-filling transaction index from current head: %d", currHead.Height())
 
 	var (
