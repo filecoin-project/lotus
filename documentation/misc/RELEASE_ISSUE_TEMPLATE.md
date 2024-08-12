@@ -48,7 +48,7 @@
 ### Before RC1
 - [ ] (network upgrade) Make sure all [Lotus dependencies are updated to the correct versions for the network upgrade](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/Update_Dependencies_Lotus.md)
    - Link to Lotus PR:
-- [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(vX.Y.Z): release template improvements` for improving future releases.
+- [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(release): vX.Y.Z release template improvements` for improving future releases.
    - Link to PR:  
    - This will get merged in a `Post Release` step, but improvements are better done by collecting notes along the way rather than just thinking about it at the end.
 - [ ] Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
@@ -56,7 +56,7 @@
    - [ ] bump the version(s) in `build/version.go` to `vX.Y.Z+1-dev`. 
       - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
-   - [ ] Create a PR with title `build(vX.Y.Z+1): set initial version string`
+   - [ ] Create a PR with title `build: vX.Y.Z+1 set initial version string`
      - Link to PR: 
    - [ ] Merge PR
 
@@ -76,7 +76,7 @@
 - [ ] All explicitly tracked items from `Dependencies for releases` have landed
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+) 
 - [ ] Removed the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
-- [ ] Create a PR with title `build(vX.Y.Z): backport changes for vX.Y.Z-rcX`
+- [ ] Create a PR with title `build: backport changes for vX.Y.Z-rcX`
    - Link to PR: 
 - [ ] Merge PR 
 
@@ -93,7 +93,7 @@
       - Example command looking at git commits: `git log --oneline --graph vA.B.C..`, where A.B.C correspond to the previous release. 
       - Example GitHub UI search looking at merged PRs into master: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
       - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, mergedAt, .author.login, .title] | @tsv' | sort -k4
-- [ ] Create a PR with title `build(vX.Y.Z): release vX.Y.Z-rcX`
+- [ ] Create a PR with title `build: release vX.Y.Z-rcX`
    - Link to PR: 
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Merge the PR
@@ -123,7 +123,7 @@
 >
 > 3. Under "Release PR > Update the version string...", edit:
 >
-> Create a PR with title `build(vX.Y.Z): release vX.Y.Z`
+> Create a PR with title `build: release vX.Y.Z`
 >
 > 4. Remove this `[!Note]` and the related invisible comments.
 
