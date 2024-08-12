@@ -31,6 +31,9 @@ jobs:
               });
               core.setFailed('PR title does not match the required format');
             } else {
+              // Add a delay to allow GitHub to register the review
+              await new Promise(resolve => setTimeout(resolve, 5000));  // 5 second delay
+
               const reviews = await github.rest.pulls.listReviews({
                 ...context.repo,
                 pull_number: context.payload.pull_request.number
