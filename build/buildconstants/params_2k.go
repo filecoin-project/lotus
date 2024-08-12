@@ -6,6 +6,7 @@ package buildconstants
 import (
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 
@@ -106,6 +107,15 @@ func init() {
 
 	GenesisNetworkVersion = getGenesisNetworkVersion("LOTUS_GENESIS_NETWORK_VERSION", GenesisNetworkVersion)
 
+	getBoolean := func(ev string, def bool) bool {
+		hs, found := os.LookupEnv(ev)
+		if found {
+			return hs == "1" || strings.ToLower(hs) == "true"
+		}
+
+		return def
+	}
+
 	getUpgradeHeight := func(ev string, def abi.ChainEpoch) abi.ChainEpoch {
 		hs, found := os.LookupEnv(ev)
 		if found {
@@ -152,6 +162,9 @@ func init() {
 		0: DrandQuicknet,
 	}
 
+	F3Enabled = getBoolean("LOTUS_F3_ENABLED", F3Enabled)
+	F3BootstrapEpoch = getUpgradeHeight("LOTUS_F3_BOOTSTRAP_EPOCH", F3BootstrapEpoch)
+
 	BuildType |= Build2k
 
 }
@@ -179,6 +192,8 @@ const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef
 
-const F3Enabled = true
+var F3Enabled = true
+
 const ManifestServerID = "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG"
-const F3BootstrapEpoch abi.ChainEpoch = 1000
+
+var F3BootstrapEpoch abi.ChainEpoch = 1000
