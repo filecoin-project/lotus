@@ -30,8 +30,8 @@ jobs:
                 event: 'REQUEST_CHANGES'
               });
               core.setFailed('PR title does not match the required format');
-            } else {
-              // Add a delay to allow GitHub to register the review
+            } else if (context.payload.action === 'edited' && context.payload.changes.title) {
+              // Only proceed with dismissal if the title was just edited
               await new Promise(resolve => setTimeout(resolve, 5000));  // 5 second delay
 
               const reviews = await github.rest.pulls.listReviews({
