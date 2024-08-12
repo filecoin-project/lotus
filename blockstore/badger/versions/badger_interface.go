@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/dgraph-io/ristretto"
-	"github.com/ipfs/go-cid"
 )
 
 // BadgerDB defines the common interface for both v2 and v4 versions of Badger.
@@ -28,7 +27,6 @@ type BadgerDB interface {
 	Size() (lsm int64, vlog int64)
 	Copy(ctx context.Context, to BadgerDB) error
 	Load(r io.Reader, maxPendingWrites int) error
-	DeleteBlock(context.Context, cid.Cid) error
 	Backup(w io.Writer, since uint64) (uint64, error)
 }
 

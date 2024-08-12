@@ -2,14 +2,12 @@ package versions
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"runtime"
 
 	badger "github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
@@ -150,10 +148,6 @@ func between(min, max, val int) int {
 
 func (b *BadgerV2) Load(r io.Reader, maxPendingWrites int) error {
 	return b.DB.Load(r, maxPendingWrites)
-}
-
-func (b *BadgerV2) DeleteBlock(context.Context, cid.Cid) error {
-	return fmt.Errorf("DeleteBlock is not implemented")
 }
 
 func (b *BadgerV2) Backup(w io.Writer, since uint64) (uint64, error) {

@@ -10,7 +10,6 @@ import (
 	"github.com/dgraph-io/badger/v4/pb"
 	"github.com/dgraph-io/ristretto"
 	"github.com/dgraph-io/ristretto/z"
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
@@ -145,10 +144,6 @@ func iterateBadgerV4(ctx context.Context, stream *badger.Stream, iter func([]*pb
 
 func (b *BadgerV4) Load(r io.Reader, maxPendingWrites int) error {
 	return b.DB.Load(r, maxPendingWrites)
-}
-
-func (b *BadgerV4) DeleteBlock(context.Context, cid.Cid) error {
-	return fmt.Errorf("DeleteBlock is not implemented")
 }
 
 func (b *BadgerV4) Backup(w io.Writer, since uint64) (uint64, error) {
