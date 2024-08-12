@@ -114,13 +114,13 @@ func openBlockstore(optsSupplier func(path string, readonly bool, badgerVersion 
 	}
 }
 
-func testMove(t *testing.T, optsF func(string, bool, int) versions.Options) {
+func testMove(t *testing.T, badgerVersion int, optsF func(string, bool, int) versions.Options) {
 	ctx := context.Background()
 	basePath := t.TempDir()
 
 	dbPath := filepath.Join(basePath, "db")
 
-	db, err := Open(optsF(dbPath, false, BADGER_VERSION_2))
+	db, err := Open(optsF(dbPath, false, badgerVersion))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func testMove(t *testing.T, optsF func(string, bool, int) versions.Options) {
 		t.Fatal(err)
 	}
 
-	db, err = Open(optsF(dbPath, false, BADGER_VERSION_2))
+	db, err = Open(optsF(dbPath, false, badgerVersion))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestMoveNoPrefix(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
 	for _, version := range SUPPORTED_BADGER_VERSIONS {
 		t.Run(fmt.Sprintf("v%d", version), func(t *testing.T) {
-			testMove(t, func(path string, readonly bool, badgerVersion int) versions.Options {
+			testMove(t, version, func(path string, readonly bool, badgerVersion int) versions.Options {
 				return versions.DefaultOptions(path, false, version)
 			})
 		})
@@ -292,7 +292,7 @@ func TestMoveWithPrefix(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
 	for _, version := range SUPPORTED_BADGER_VERSIONS {
 		t.Run(fmt.Sprintf("v%d", version), func(t *testing.T) {
-			testMove(t, func(path string, readonly bool, badgerVersion int) versions.Options {
+			testMove(t, version, func(path string, readonly bool, badgerVersion int) versions.Options {
 				opts := versions.DefaultOptions(path, false, version)
 				opts.Prefix = "/prefixed/"
 				return opts
