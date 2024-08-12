@@ -16,6 +16,7 @@ Lotus is a universally open project and welcomes contributions of all kinds: cod
 1. If the proposal entails a protocol change, please first submit a [Filecoin Improvement Proposal](https://github.com/filecoin-project/FIPs).
 2. If the change is complex and requires prior discussion, [open an issue](github.com/filecoin-project/lotus/issues) or a [discussion](https://github.com/filecoin-project/lotus/discussions) to request feedback before you start working on a pull request. This is to avoid disappointment and sunk costs, in case the change is not actually needed or accepted.
 3. Please refrain from submitting PRs to adapt existing code to subjective preferences. The changeset should contain functional or technical improvements/enhancements, bug fixes, new features, or some other clear material contribution. Simple stylistic changes are likely to be rejected in order to reduce code churn.
+4. Familiarize yourself with our [release flow](LOTUS_RELEASE_FLOW.md) to understand how changes are incorporated into releases.
 
 ## Implementing Changes
 
