@@ -27,7 +27,6 @@ type BadgerDB interface {
 	Flatten(workers int) error
 	Size() (lsm int64, vlog int64)
 	Copy(ctx context.Context, to BadgerDB) error
-	DefaultOptions(prefix string, readonly bool) Options
 	Load(r io.Reader, maxPendingWrites int) error
 	AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
 	DeleteBlock(context.Context, cid.Cid) error

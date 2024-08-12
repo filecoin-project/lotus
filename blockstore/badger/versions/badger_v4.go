@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
-	"strconv"
 
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/badger/v4/pb"
@@ -143,22 +141,6 @@ func iterateBadgerV4(ctx context.Context, stream *badger.Stream, iter func([]*pb
 		return iter(kvs)
 	}
 	return stream.Orchestrate(ctx)
-}
-
-func (b *BadgerV4) DefaultOptions(path string, readonly bool) Options {
-	var opts Options
-	bopts := badger.DefaultOptions(path)
-	bopts.ReadOnly = readonly
-
-	// Envvar LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM
-	if badgerNumCompactors, badgerNumCompactorsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM"); badgerNumCompactorsSet {
-		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
-			bopts.NumCompactors = numWorkers
-		}
-	}
-	opts.V4Options = bopts
-	return opts
-
 }
 
 func (b *BadgerV4) Load(r io.Reader, maxPendingWrites int) error {

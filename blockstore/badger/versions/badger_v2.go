@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
-	"strconv"
 
 	badger "github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dgraph-io/ristretto"
 	"github.com/ipfs/go-cid"
@@ -149,29 +146,6 @@ func between(min, max, val int) int {
 		val = min
 	}
 	return val
-}
-
-func (b *BadgerV2) DefaultOptions(path string, readonly bool) Options {
-	var opts Options
-
-	bopts := badger.DefaultOptions(path)
-	bopts.DetectConflicts = false
-	bopts.CompactL0OnClose = true
-	bopts.Truncate = true
-	bopts.ValueLogLoadingMode = options.MemoryMap
-	bopts.TableLoadingMode = options.MemoryMap
-	bopts.ValueThreshold = 128
-	bopts.MaxTableSize = 64 << 20
-	bopts.ReadOnly = readonly
-
-	// Envvar LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM
-	if badgerNumCompactors, badgerNumCompactorsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_COMPACTIONWORKERNUM"); badgerNumCompactorsSet {
-		if numWorkers, err := strconv.Atoi(badgerNumCompactors); err == nil && numWorkers >= 0 {
-			bopts.NumCompactors = numWorkers
-		}
-	}
-	opts.V2Options = bopts
-	return opts
 }
 
 func (b *BadgerV2) Load(r io.Reader, maxPendingWrites int) error {
