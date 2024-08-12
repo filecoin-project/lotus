@@ -207,7 +207,7 @@ func ConfigFullNode(c interface{}) Option {
 			If(cfg.Chainstore.Splitstore.ColdStoreType == "discard",
 				Override(new(dtypes.ColdBlockstore), modules.DiscardColdBlockstore)),
 			If(cfg.Chainstore.Splitstore.HotStoreType == "badger",
-				Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
+				Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore(&cfg.Chainstore))),
 			Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(&cfg.Chainstore)),
 			Override(new(dtypes.BasicChainBlockstore), modules.ChainSplitBlockstore),
 			Override(new(dtypes.BasicStateBlockstore), modules.StateSplitBlockstore),
