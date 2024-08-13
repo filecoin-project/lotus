@@ -1,7 +1,6 @@
 # Lotus changelog
 
 # 1.28.2 / 2024-08-15
-
 This is a Lotus patch release v1.28.2 for Node operators and Storage Providers.
 
 For node operators, this patch release fixes an issue where excessive bandwidth usage was caused by a routing loop in pubsub, where small "manifest" messages were cycling repeatedly around the network due to an ineffective routing loop prevention mechanism.

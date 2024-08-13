@@ -91,6 +91,11 @@ func (m *Sealing) sectorWeight(ctx context.Context, sector SectorInfo, expiratio
 	// get verified deal infos
 	var w, vw = big.Zero(), big.Zero()
 
+	now, err := m.Api.ChainHead(ctx)
+	if err != nil {
+		return abi.NewStoragePower(0), err
+	}
+	sectorDuration := big.NewInt(int64(expiration - now.Height()))
 	for _, piece := range sector.Pieces {
 		if !piece.HasDealInfo() {
 			// todo StateMinerInitialPledgeCollateral doesn't add cc/padding to non-verified weight, is that correct?
@@ -99,14 +104,16 @@ func (m *Sealing) sectorWeight(ctx context.Context, sector SectorInfo, expiratio
 
 		alloc, err := piece.GetAllocation(ctx, m.Api, ts.Key())
 		if err != nil || alloc == nil {
-			w = big.Add(w, abi.NewStoragePower(int64(piece.Piece().Size)))
+			if err == nil {
+				log.Errorw("failed to get allocation", "error", err)
+			}
+			w = big.Add(w, big.Mul(sectorDuration, abi.NewStoragePower(int64(piece.Piece().Size))))
 			continue
 		}
 
-		vw = big.Add(vw, abi.NewStoragePower(int64(piece.Piece().Size)))
+		vw = big.Add(vw, big.Mul(sectorDuration, abi.NewStoragePower(int64(piece.Piece().Size))))
 	}
 
-	// load market actor
 	duration := expiration - ts.Height()
 	sectorWeight := builtin.QAPowerForWeight(ssize, duration, w, vw)
 
