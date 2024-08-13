@@ -264,10 +264,6 @@ func (item *BadgerV4Item) Key() []byte {
 	return item.Item.Key()
 }
 
-func (item *BadgerV4Item) Version() uint64 {
-	return item.Item.Version()
-}
-
 func (item *BadgerV4Item) ValueCopy(dst []byte) ([]byte, error) {
 	return item.Item.ValueCopy(dst)
 }

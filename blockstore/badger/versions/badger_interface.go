@@ -67,7 +67,6 @@ type Iterator interface {
 type Item interface {
 	Value(fn func([]byte) error) error
 	Key() []byte
-	Version() uint64
 	ValueCopy(dst []byte) ([]byte, error)
 	ValueSize() int64
 }
