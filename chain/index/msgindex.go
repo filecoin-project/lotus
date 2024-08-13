@@ -23,15 +23,6 @@ const DefaultDbFilename = "msgindex.db"
 
 var log = logging.Logger("msgindex")
 
-var ddls = []string{
-	`CREATE TABLE IF NOT EXISTS messages (
-     cid VARCHAR(80) PRIMARY KEY ON CONFLICT REPLACE,
-     tipset_cid VARCHAR(80) NOT NULL,
-     epoch INTEGER NOT NULL
-   )`,
-	`CREATE INDEX IF NOT EXISTS tipset_cids ON messages (tipset_cid)`,
-}
-
 const (
 	// prepared stmts
 	dbqGetMessageInfo       = "SELECT tipset_cid, epoch FROM messages WHERE cid = ?"
