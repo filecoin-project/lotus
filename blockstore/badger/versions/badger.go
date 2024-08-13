@@ -40,7 +40,7 @@ func OpenBadgerDB(opts Options) (BadgerDB, error) {
 			db = BadgerDB(&BadgerV2{dbV2})
 		}
 	default:
-		return nil, errors.New("unsupported badger version")
+		err = fmt.Errorf("unsupported badger version: %v", opts.BadgerVersion)
 	}
 
 	if err != nil {
