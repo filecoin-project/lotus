@@ -47,6 +47,7 @@
     - These APIs are also now automatically removed from the node by the gateway when a client disconnects.
   - Some APIs have changed which may impact users consuming Lotus Gateway code as a library.
   - The default value for the `Events.FilterTTL` config option has been reduced from 24h to 1h. This means that filters will expire on a Lotus node after 1 hour of not being accessed by the client.
+- feat(f3): F3 has been updated with many performance improvements and additional metrics.
 
 # v1.28.1 / 2024-07-24
 
