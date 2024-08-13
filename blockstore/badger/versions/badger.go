@@ -25,9 +25,7 @@ func OpenBadgerDB(opts Options) (BadgerDB, error) {
 	var db BadgerDB
 	var err error
 
-	version := opts.BadgerVersion
-
-	switch version {
+	switch opts.BadgerVersion {
 	case 4:
 		var dbV4 *badgerV4.DB
 		dbV4, err = badgerV4.Open(opts.V4Options)
