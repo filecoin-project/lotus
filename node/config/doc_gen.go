@@ -73,6 +73,19 @@ your node if metadata log is disabled`,
 	},
 	"Chainstore": {
 		{
+			Name: "BadgerVersion",
+			Type: "int",
+
+			Comment: `EXPERIMENTAL FEATURE. USE WITH CAUTION
+BadgerVersion switches the version of the Badger database engine. The default is 2 which has
+been well-tested and widely deployed. Switching this to version 4 will enable the new version
+of Badger, but the blockstore will be incompatible with Lotus running with version 2. Switching
+versions can only be done when the blockstore is empty and will be repopulated from a snapshot
+or chain sync. It cannot be upgraded or downgraded with existing data and there is currently
+no automatic migration tooling.
+This is an experimental feature and should not be used in production.`,
+		},
+		{
 			Name: "EnableSplitstore",
 			Type: "bool",
 
@@ -81,12 +94,6 @@ your node if metadata log is disabled`,
 		{
 			Name: "Splitstore",
 			Type: "Splitstore",
-
-			Comment: ``,
-		},
-		{
-			Name: "BadgerVersion",
-			Type: "int",
 
 			Comment: ``,
 		},
