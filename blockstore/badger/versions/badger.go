@@ -20,6 +20,7 @@ type BadgerLogger struct {
 func (b *BadgerLogger) Warningf(format string, args ...interface{}) {
 	b.Skip2.Warnf(format, args...)
 }
+
 func OpenBadgerDB(opts Options) (BadgerDB, error) {
 	var db BadgerDB
 	var err error
