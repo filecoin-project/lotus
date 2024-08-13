@@ -143,6 +143,13 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
+	log.Infow("submitting replica update",
+		"sector", sector.SectorNumber,
+		"weight", types.FIL(weightUpdate),
+		"totalPledge", types.FIL(collateral),
+		"initialPledge", types.FIL(onChainInfo.InitialPledge),
+		"toPledge", types.FIL(big.Sub(collateral, onChainInfo.InitialPledge)))
+
 	collateral = big.Sub(collateral, onChainInfo.InitialPledge)
 	if collateral.LessThan(big.Zero()) {
 		collateral = big.Zero()
