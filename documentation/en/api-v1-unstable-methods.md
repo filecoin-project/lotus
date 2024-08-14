@@ -241,6 +241,7 @@
   * [StateMinerFaults](#StateMinerFaults)
   * [StateMinerInfo](#StateMinerInfo)
   * [StateMinerInitialPledgeCollateral](#StateMinerInitialPledgeCollateral)
+  * [StateMinerInitialPledgeForSector](#StateMinerInitialPledgeForSector)
   * [StateMinerPartitions](#StateMinerPartitions)
   * [StateMinerPower](#StateMinerPower)
   * [StateMinerPreCommitDepositForPower](#StateMinerPreCommitDepositForPower)
@@ -7165,6 +7166,8 @@ Response:
 ### StateMinerInitialPledgeCollateral
 StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
 
+Deprecated: Use StateMinerInitialPledgeForSector instead
+
 
 Perms: read
 
@@ -7187,6 +7190,48 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateMinerInitialPledgeForSector
+StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector size, duration and included pieces (if any)
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  34359738368,
+  10101,
+  [
+    {
+      "CID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Size": 1032,
+      "VerifiedAllocationKey": {
+        "Client": 1000,
+        "ID": 0
+      },
+      "Notify": [
+        {
+          "Address": "f01234",
+          "Payload": "Ynl0ZSBhcnJheQ=="
+        }
+      ]
+    }
+  ],
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

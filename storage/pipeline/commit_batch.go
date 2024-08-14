@@ -40,6 +40,7 @@ type CommitBatcherApi interface {
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
+	StateMinerInitialPledgeForSector(ctx context.Context, sectorSize abi.SectorSize, sectorDuration abi.ChainEpoch, pieces []miner.PieceActivationManifest, tsk types.TipSetKey) (big.Int, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
@@ -325,8 +326,9 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		}
 
 		res.Sectors = append(res.Sectors, sector)
+		manifest := b.todo[sector].ActivationManifest
 
-		sc, err := b.getSectorCollateral(sector, ts.Key())
+		sc, err := b.getSectorCollateral(sector, manifest.Pieces, ts)
 		if err != nil {
 			res.FailedSectors[sector] = err.Error()
 			continue
@@ -334,7 +336,6 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 		collateral = big.Add(collateral, sc)
 
-		manifest := b.todo[sector].ActivationManifest
 		if len(manifest.Pieces) > 0 {
 			precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
 			if err != nil {
@@ -602,8 +603,8 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	return time.Now().Add(time.Duration(cutoffEpoch-ts.Height()) * time.Duration(buildconstants.BlockDelaySecs) * time.Second), nil
 }
 
-func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSetKey) (abi.TokenAmount, error) {
-	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tsk)
+func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, pieces []miner.PieceActivationManifest, ts *types.TipSet) (abi.TokenAmount, error) {
+	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting precommit info: %w", err)
 	}
@@ -611,7 +612,13 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSe
 		return big.Zero(), xerrors.Errorf("precommit info not found on chain")
 	}
 
-	collateral, err := b.pledgeApi.pledgeForPower(b.mctx, b.todo[sn].Weight) // b.maddr, pci.Info, tsk
+	ssize, err := pci.Info.SealProof.SectorSize()
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
+	}
+	duration := pci.Info.Expiration - ts.Height()
+
+	collateral, err := b.api.StateMinerInitialPledgeForSector(b.mctx, ssize, duration, pieces, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}

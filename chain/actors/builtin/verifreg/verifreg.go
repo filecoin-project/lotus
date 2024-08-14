@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin15 "github.com/filecoin-project/go-state-types/builtin"
+	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v14/verifreg"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -24,9 +25,52 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+const (
+	NoAllocationID                      = verifregtypes.NoAllocationID
+	MaximumVerifiedAllocationExpiration = verifregtypes.MaximumVerifiedAllocationExpiration
+	MinimumVerifiedAllocationTerm       = verifregtypes.MinimumVerifiedAllocationTerm
+	MaximumVerifiedAllocationTerm       = verifregtypes.MaximumVerifiedAllocationTerm
+	MinimumVerifiedAllocationSize       = verifregtypes13.MinimumVerifiedAllocationSize
+)
+
 var (
 	Address = builtin15.VerifiedRegistryActorAddr
 	Methods = builtin15.MethodsVerifiedRegistry
+)
+
+type (
+	RemoveDataCapProposal          = verifregtypes.RemoveDataCapProposal
+	RemoveDataCapRequest           = verifregtypes.RemoveDataCapRequest
+	AddVerifierParams              = verifregtypes.AddVerifierParams
+	AddVerifiedClientParams        = verifregtypes.AddVerifiedClientParams
+	UseBytesParams                 = verifregtypes.UseBytesParams
+	RestoreBytesParams             = verifregtypes.RestoreBytesParams
+	RemoveDataCapParams            = verifregtypes.RemoveDataCapParams
+	RemoveDataCapReturn            = verifregtypes.RemoveDataCapReturn
+	RemoveExpiredAllocationsParams = verifregtypes.RemoveExpiredAllocationsParams
+	RemoveExpiredAllocationsReturn = verifregtypes.RemoveExpiredAllocationsReturn
+	BatchReturn                    = verifregtypes.BatchReturn
+	AllocationId                   = verifregtypes.AllocationId
+	ClaimId                        = verifregtypes.ClaimId
+	ClaimAllocationsParams         = verifregtypes.ClaimAllocationsParams
+	SectorAllocationClaims         = verifregtypes13.SectorAllocationClaims
+	AllocationClaim                = verifregtypes13.AllocationClaim
+	ClaimAllocationsReturn         = verifregtypes.ClaimAllocationsReturn
+	GetClaimsParams                = verifregtypes.GetClaimsParams
+	GetClaimsReturn                = verifregtypes.GetClaimsReturn
+	Claim                          = verifregtypes.Claim
+	Allocation                     = verifregtypes.Allocation
+	UniversalReceiverParams        = verifregtypes.UniversalReceiverParams
+	ReceiverType                   = verifregtypes.ReceiverType
+	AllocationsResponse            = verifregtypes.AllocationsResponse
+	ExtendClaimTermsParams         = verifregtypes.ExtendClaimTermsParams
+	ClaimTerm                      = verifregtypes.ClaimTerm
+	ExtendClaimTermsReturn         = verifregtypes.ExtendClaimTermsReturn
+	RemoveExpiredClaimsParams      = verifregtypes.RemoveExpiredClaimsParams
+	RemoveExpiredClaimsReturn      = verifregtypes.RemoveExpiredClaimsReturn
+	AllocationRequest              = verifregtypes.AllocationRequest
+	ClaimExtensionRequest          = verifregtypes.ClaimExtensionRequest
+	AllocationRequests             = verifregtypes.AllocationRequests
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -186,10 +230,3 @@ func AllCodes() []cid.Cid {
 		(&state15{}).Code(),
 	}
 }
-
-type Allocation = verifregtypes.Allocation
-type AllocationId = verifregtypes.AllocationId
-type Claim = verifregtypes.Claim
-type ClaimId = verifregtypes.ClaimId
-
-const NoAllocationID = verifregtypes.NoAllocationID
