@@ -38,7 +38,7 @@ func (ci *ChainIndexer) cleanupRevertedTipsets(ctx context.Context) {
 
 	// remove all entries from the `tipsets` table where `reverted=true` and height is < finalEpoch
 	// cacade delete based on foreign key constraints takes care of cleaning up the other tables
-	res, err := ci.stmts.removeRevertedTipsetsBeforeHeight.ExecContext(ctx, finalEpoch)
+	res, err := ci.stmts.stmtRemoveRevertedTipsetsBeforeHeight.ExecContext(ctx, finalEpoch)
 	if err != nil {
 		log.Errorw("failed to remove reverted tipsets before height", "height", finalEpoch, "error", err)
 		return

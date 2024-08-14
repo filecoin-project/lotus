@@ -5,40 +5,24 @@ import "database/sql"
 // TODO PRAGMA foreign_keys = ON;
 // TODO: Allow for msg_cid <> eth_tx_hash for unconfirmed mpool messages
 var ddls = []string{
-	// Question: Is tipset_key_cid guaranteed to be unique? What if it's reverted at height h but added back at height h+x?
-	// Ideally, even in that case, tipset_key_cid will be different as parent blocks will be different but confirm this.
-	`CREATE TABLE IF NOT EXISTS tipsets (
-        tipset_key_cid BLOB PRIMARY KEY,
-        height INTEGER NOT NULL,
-		reverted INTEGER NOT NULL
-    )`,
-
-	// Question: Is it better to merge tipset_messages and tipset table into one table?
-	// Pros of merging the tables:
-	// 	1. No need to join to lookup non-reverted messages for message<>tipset lookups
-	// 	2. Redices a join for looking up events (as removes the tipset -> messages indirection)
-	// Cons of merging the tables:
-	// 	1. Duplication of "height" and "reverted" for EACH message
-	// 	2. Insertion and deletion is slightly more complex (and so is marking tipsets as reverted)
-	// 	3. Current schema maps nicely to the (tipset has messages -> messages have events -> events have event entries)
-	//     relationship
-	// Maybe decide after profiling queries and building indexes
-	`CREATE TABLE IF NOT EXISTS tipset_messages (
+	`CREATE TABLE IF NOT EXISTS tipset_message (
 		message_id INTEGER PRIMARY KEY,
-        tipset_key_cid BLOB NOT NULL,
-        message_cid BLOB NOT NULL,
-        message_index INTEGER NOT NULL,
-        eth_tx_hash TEXT,
-		FOREIGN KEY (tipset_key_cid) REFERENCES tipsets(tipset_key_cid) ON DELETE CASCADE,
+		tipset_key_cid BLOB NOT NULL,
+		height INTEGER NOT NULL,
+		reverted INTEGER NOT NULL,
+		message_cid BLOB NOT NULL,
+		message_index INTEGER NOT NULL,
 		UNIQUE (tipset_key_cid, message_cid)
 	)`,
 
-	`CREATE TABLE IF NOT EXISTS events (
+	`CREATE TABLE IF NOT EXISTS event (
 		event_id INTEGER PRIMARY KEY,
 		message_id INTEGER NOT NULL,
         event_index INTEGER NOT NULL,
         emitter_addr BLOB NOT NULL,
-		FOREIGN KEY (message_id) REFERENCES tipset_messages(message_id) ON DELETE CASCADE
+		reverted INTEGER NOT NULL,
+		FOREIGN KEY (message_id) REFERENCES tipset_message(message_id) ON DELETE CASCADE,
+		UNIQUE (message_id, event_index)
     )`,
 
 	`CREATE TABLE IF NOT EXISTS event_entry (
@@ -48,56 +32,65 @@ var ddls = []string{
 		key TEXT NOT NULL,
 		codec INTEGER,
 		value BLOB NOT NULL,
-		FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
+		FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE
+	)`,
+
+	`CREATE TABLE eth_tx_hash (
+		eth_tx_hash TEXT PRIMARY KEY,
+		message_cid BLOB NOT NULL,
+		inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	)`,
 
 	// TODO: Build Indexes based on query patterns and `explain query` profiling
 }
 
 type preparedStatements struct {
-	insertTipset                      *sql.Stmt
-	removeRevertedTipsetsBeforeHeight *sql.Stmt
+	stmtSelectMsg            *sql.Stmt
+	stmtGetMsgCidFromEthHash *sql.Stmt
+	stmtRevertTipset         *sql.Stmt
+	stmtRevertEvents         *sql.Stmt
+	stmtTipsetExists         *sql.Stmt
+	stmtTipsetUnRevert       *sql.Stmt
+	stmtInsertTipsetMessage  *sql.Stmt
 
-	insertTipsetMsg *sql.Stmt
+	stmtEventsUnRevert *sql.Stmt
 
-	insertEvent      *sql.Stmt
-	insertEventEntry *sql.Stmt
+	selectMsgIdForMsgCidAndTipset *sql.Stmt
 
-	tipsetExists *sql.Stmt
+	stmtInsertEvent      *sql.Stmt
+	stmtInsertEventEntry *sql.Stmt
 
-	revertTipset *sql.Stmt
+	stmtInsertEthTxHash *sql.Stmt
 
-	restoreTipset *sql.Stmt
-
-	selectNonRevertedMessage *sql.Stmt
-	selectEthTxHash          *sql.Stmt
+	stmtRemoveRevertedTipsetsBeforeHeight *sql.Stmt
 }
 
 func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 	return map[**sql.Stmt]string{
-		// Tipsets
-		&ps.insertTipset: `INSERT INTO tipsets (tipset_key_cid, height, reverted) VALUES (?, ?, ?) ON CONFLICT(tipset_key_cid) DO UPDATE SET reverted=false`,
+		&ps.stmtSelectMsg:            "SELECT tipset_key_cid, height FROM tipset_message WHERE message_cid = ? AND reverted = 0",
+		&ps.stmtGetMsgCidFromEthHash: "SELECT message_cid FROM eth_tx_hash WHERE eth_tx_hash = ?",
+		&ps.stmtRevertTipset:         "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?",
 
-		&ps.removeRevertedTipsetsBeforeHeight: `DELETE FROM tipsets WHERE reverted=true AND height < ?`,
+		&ps.stmtRevertEvents: `UPDATE event SET reverted = 1 WHERE message_id IN (
+			SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
+		)`,
 
-		&ps.tipsetExists: `SELECT EXISTS(SELECT 1 FROM tipsets WHERE tipset_key_cid = ?)`,
+		&ps.stmtTipsetExists:   "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)",
+		&ps.stmtTipsetUnRevert: "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?",
 
-		&ps.restoreTipset: `UPDATE tipsets SET reverted=false WHERE tipset_key_cid = ?`,
+		&ps.stmtInsertTipsetMessage: "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) SET reverted = 0",
 
-		&ps.revertTipset: `UPDATE tipsets SET reverted=true WHERE tipset_key_cid = ?`,
+		&ps.stmtEventsUnRevert: `UPDATE event SET reverted = 0 WHERE message_id IN (
+			SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
+		)`,
 
-		// Tipset Messages
-		&ps.insertTipsetMsg: `INSERT INTO tipset_messages (tipset_key_cid, message_cid, message_index, eth_tx_hash) VALUES (?, ?, ?, ?)`,
+		&ps.selectMsgIdForMsgCidAndTipset: "SELECT message_id FROM tipset_message WHERE message_cid = ? AND tipset_key_cid = ?",
 
-		&ps.selectNonRevertedMessage: `SELECT tm.tipset_key_cid, t.height
-			FROM tipset_messages tm
-			JOIN tipsets t ON tm.tipset_key_cid = t.tipset_key_cid
-			WHERE tm.message_cid = ? AND t.reverted = 0`,
+		&ps.stmtInsertEvent:      "INSERT INTO event (message_id, event_index, emitter_addr, reverted) VALUES (?, ?, ?, ?)",
+		&ps.stmtInsertEventEntry: "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)",
 
-		&ps.selectEthTxHash: `SELECT eth_tx_hash FROM tipset_messages WHERE message_cid = ?`,
+		&ps.stmtInsertEthTxHash: "INSERT INTO eth_tx_hash (eth_tx_hash, message_cid) VALUES (?, ?)",
 
-		// Events
-		&ps.insertEvent:      `INSERT INTO events (message_id, event_index, emitter_addr) VALUES (?, ?, ?)`,
-		&ps.insertEventEntry: `INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)`,
+		&ps.stmtRemoveRevertedTipsetsBeforeHeight: "DELETE FROM tipset_message WHERE reverted = 1 AND height < ?",
 	}
 }

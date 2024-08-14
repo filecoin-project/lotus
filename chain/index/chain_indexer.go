@@ -37,6 +37,250 @@ type ChainIndexer struct {
 	resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 }
 
+func (ci *ChainIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
+	// We're moving the chain ahead from the `from` tipset to the `to` tipset
+	// Height(to) > Height(from)
+	tx, err := ci.db.BeginTx(ctx, nil)
+	if err != nil {
+		return xerrors.Errorf("beginning transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// index the `to` tipset first as we only need to index the tipsets and messages for it
+	if err := ci.indexTipset(ctx, tx, to); err != nil {
+		return xerrors.Errorf("error indexing tipset: %w", err)
+	}
+
+	// insert events for `from` tipset as it's messages have now been executed in `to` tipset
+	if err := ci.indexEvents(ctx, tx, from, to); err != nil {
+		return xerrors.Errorf("error indexing events: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("error committing transaction: %w", err)
+	}
+	return nil
+}
+
+func (ci *ChainIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *types.TipSet, executionTs *types.TipSet) error {
+	// check if we have an event indexed for any message in the `msgTs` tipset -> if so, there's nothig to do here
+	msgTsKeyCidBytes, err := toTipsetKeyCidBytes(msgTs)
+	if err != nil {
+		return xerrors.Errorf("error getting tipset key cid: %w", err)
+	}
+
+	// if we've already indexed events for this tipset, mark them as unreverted and return
+	res, err := tx.Stmt(ci.stmts.stmtEventsUnRevert).ExecContext(ctx, msgTsKeyCidBytes)
+	if err != nil {
+		return xerrors.Errorf("error unreverting events for tipset: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return xerrors.Errorf("error unreverting events for tipset: %w", err)
+	}
+	if rows > 0 {
+		return nil
+	}
+
+	ems, err := ci.loadExecutedMessages(ctx, msgTs, executionTs)
+	if err != nil {
+		return xerrors.Errorf("error loading executed messages: %w", err)
+	}
+	eventCount := 0
+	addressLookups := make(map[abi.ActorID]address.Address)
+
+	for _, em := range ems {
+		msgCidBytes := em.msg.Cid().Bytes()
+
+		// read message id for this message cid and tipset key cid
+		var messageID int64
+		if err := tx.Stmt(ci.stmts.selectMsgIdForMsgCidAndTipset).QueryRow(msgCidBytes, msgTsKeyCidBytes).Scan(&messageID); err != nil {
+			return xerrors.Errorf("error getting message id for message cid and tipset key cid: %w", err)
+		}
+
+		// Insert events for this message
+		for _, event := range em.evs {
+			event := event
+
+			addr, found := addressLookups[event.Emitter]
+			if !found {
+				var ok bool
+				addr, ok = ci.resolver(ctx, event.Emitter, executionTs)
+				if !ok {
+					// not an address we will be able to match against
+					continue
+				}
+				addressLookups[event.Emitter] = addr
+			}
+
+			// Insert event into events table
+			eventResult, err := tx.Stmt(ci.stmts.stmtInsertEvent).Exec(messageID, eventCount, addr.Bytes(), 0)
+			if err != nil {
+				return xerrors.Errorf("error inserting event: %w", err)
+			}
+
+			// Get the event_id of the inserted event
+			eventID, err := eventResult.LastInsertId()
+			if err != nil {
+				return xerrors.Errorf("error getting last insert id for event: %w", err)
+			}
+
+			// Insert event entries
+			for _, entry := range event.Entries {
+				_, err := tx.Stmt(ci.stmts.stmtInsertEventEntry).Exec(
+					eventID,
+					isIndexedValue(entry.Flags),
+					[]byte{entry.Flags},
+					entry.Key,
+					entry.Codec,
+					entry.Value,
+				)
+				if err != nil {
+					return xerrors.Errorf("error inserting event entry: %w", err)
+				}
+			}
+			eventCount++
+		}
+	}
+
+	return nil
+}
+
+func (ci *ChainIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.TipSet) error {
+	tsKeyCidBytes, err := toTipsetKeyCidBytes(ts)
+	if err != nil {
+		return xerrors.Errorf("error computing tipset cid: %w", err)
+	}
+
+	restored, err := ci.restoreTipsetIfExists(ctx, tx, tsKeyCidBytes)
+	if err != nil {
+		return xerrors.Errorf("error restoring tipset: %w", err)
+	}
+	if restored {
+		return nil
+	}
+
+	height := ts.Height()
+	insertTipsetMsgStmt := tx.Stmt(ci.stmts.stmtInsertTipsetMessage)
+
+	msgs, err := ci.cs.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return xerrors.Errorf("error getting messages for tipset: %w", err)
+	}
+
+	for i, msg := range msgs {
+		msg := msg
+		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
+			return xerrors.Errorf("error inserting tipset message: %w", err)
+		}
+
+		if err := ci.indexEthTxHash(ctx, tx, msg); err != nil {
+			return xerrors.Errorf("error indexing eth tx hash: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (ci *ChainIndexer) indexEthTxHash(ctx context.Context, tx *sql.Tx, msg types.ChainMsg) error {
+	smsg, ok := msg.(*types.SignedMessage)
+	if !ok || smsg.Signature.Type != crypto.SigTypeDelegated {
+		return nil
+	}
+	hash, err := ethTxHashFromSignedMessage(smsg)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Stmt(ci.stmts.stmtInsertEthTxHash).Exec(hash.String(), msg.Cid().Bytes()); err != nil {
+		return xerrors.Errorf("error inserting eth tx hash: %w", err)
+	}
+	return nil
+}
+
+func (ci *ChainIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, tsKeyCid []byte) (bool, error) {
+	// Check if the tipset already exists
+	var exists bool
+	if err := tx.Stmt(ci.stmts.stmtTipsetExists).QueryRowContext(ctx, tsKeyCid).Scan(&exists); err != nil {
+		return false, xerrors.Errorf("error checking if tipset exists: %w", err)
+	}
+	if exists {
+		if _, err := tx.Stmt(ci.stmts.stmtTipsetUnRevert).ExecContext(ctx, tsKeyCid); err != nil {
+			return false, xerrors.Errorf("error restoring tipset: %w", err)
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func (ci *ChainIndexer) Revert(ctx context.Context, from *types.TipSet, to *types.TipSet) error {
+	// We're reverting the chain from the tipset at `from` to the tipset at `to`.
+	// Height(to) < Height(from)
+
+	tx, err := ci.db.BeginTx(ctx, nil)
+	if err != nil {
+		return xerrors.Errorf("error beginning transaction: %w", err)
+	}
+	// rollback the transaction (a no-op if the transaction was already committed)
+	defer func() { _ = tx.Rollback() }()
+
+	revertTsKeyCid, err := toTipsetKeyCidBytes(from)
+	if err != nil {
+		return xerrors.Errorf("error getting tipset key cid: %w", err)
+	}
+
+	if _, err := tx.Stmt(ci.stmts.stmtRevertTipset).Exec(revertTsKeyCid); err != nil {
+		return xerrors.Errorf("error marking tipset as reverted: %w", err)
+	}
+
+	// events in `to` have also been reverted as the corresponding execution tipset `from` has been reverted
+	eventTsKeyCid, err := toTipsetKeyCidBytes(to)
+	if err != nil {
+		return xerrors.Errorf("error getting tipset key cid: %w", err)
+	}
+
+	if _, err := tx.Stmt(ci.stmts.stmtRevertEvents).Exec(eventTsKeyCid); err != nil {
+		return xerrors.Errorf("error marking events as reverted: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
+}
+
+func toTipsetKeyCidBytes(ts *types.TipSet) ([]byte, error) {
+	tsKeyCid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("error getting tipset key cid: %w", err)
+	}
+	return tsKeyCid.Bytes(), nil
+}
+
+func isIndexedValue(b uint8) bool {
+	// currently we mark the full entry as indexed if either the key
+	// or the value are indexed; in the future we will need finer-grained
+	// management of indices
+	return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
+}
+
+func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, error) {
+	if smsg.Signature.Type == crypto.SigTypeDelegated {
+		tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
+		if err != nil {
+			return ethtypes.EthHash{}, xerrors.Errorf("failed to convert from signed message: %w", err)
+		}
+
+		return tx.TxHash()
+	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
+		return ethtypes.EthHashFromCid(smsg.Cid())
+	}
+	// else BLS message
+	return ethtypes.EthHashFromCid(smsg.Message.Cid())
+}
+
 type executedMessage struct {
 	msg types.ChainMsg
 	rct *types.MessageReceipt
@@ -110,39 +354,40 @@ func (ci *ChainIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs *
 }
 
 func (ci *ChainIndexer) GetMsgInfo(ctx context.Context, msg_cid cid.Cid) (MsgInfo, error) {
-	var tipsetKeyCid []byte
-	var height int64
-	// query the tipset_messages table for the given message_cid using the `selectNonRevertedMessage` statement
-	if err := ci.stmts.selectNonRevertedMessage.QueryRow(msg_cid.Bytes()).Scan(&tipsetKeyCid, &height); err != nil {
-		return MsgInfo{}, xerrors.Errorf("error querying tipset_messages table: %w", err)
-	}
-
-	ts, err := cid.Cast(tipsetKeyCid)
-	if err != nil {
-		return MsgInfo{}, xerrors.Errorf("error casting tipsetKeyCid to cid: %w", err)
-	}
-
-	m := MsgInfo{
-		Message: msg_cid,
-		TipSet:  ts,
-		Epoch:   abi.ChainEpoch(height),
-	}
-
-	return m, nil
-}
-
-// TODO: Also need to index eth tx hash <> msg cid from Mpool
-func (ci *ChainIndexer) GetEthTxHashFromMsgCid(c cid.Cid) (ethtypes.EthHash, error) {
-	row := ci.stmts.selectEthTxHash.QueryRow(c.Bytes())
-	var hashString string
-	err := row.Scan(&hashString)
+	row := ci.stmts.stmtSelectMsg.QueryRowContext(ctx, msg_cid.Bytes())
+	var tipsetKeyCidBytes []byte
+	var height uint64
+	err := row.Scan(&tipsetKeyCidBytes, &height)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return ethtypes.EmptyEthHash, ErrNotFound
+			return MsgInfo{}, ErrNotFound
 		}
-		return ethtypes.EmptyEthHash, err
+		return MsgInfo{}, err
 	}
-	return ethtypes.ParseEthHash(hashString)
+
+	tsKeyCid, err := cid.Cast(tipsetKeyCidBytes)
+	if err != nil {
+		return MsgInfo{}, xerrors.Errorf("error casting tipset key cid: %w", err)
+	}
+
+	return MsgInfo{
+		Message: msg_cid,
+		Epoch:   abi.ChainEpoch(height),
+		TipSet:  tsKeyCid,
+	}, nil
+}
+
+func (ci *ChainIndexer) GetMsgCidFromEthTxHash(txHash ethtypes.EthHash) (cid.Cid, error) {
+	row := ci.stmts.stmtGetMsgCidFromEthHash.QueryRow(txHash.String())
+	var c []byte
+	err := row.Scan(&c)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return cid.Undef, ErrNotFound
+		}
+		return cid.Undef, err
+	}
+	return cid.Cast(c)
 }
 
 type eventFilter struct {
@@ -218,7 +463,7 @@ func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string
 				e.emitter_addr,
 				e.event_index,
 				tm.message_cid,
-				e.reverted,
+				t.reverted,
 				ee.flags,
 				ee.key,
 				ee.codec,
@@ -226,7 +471,9 @@ func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string
 			FROM tipsets t
 			JOIN tipset_messages tm ON t.tipset_key_cid=tm.tipset_key_cid
 			JOIN events e ON tm.message_id=e.message_id
-			JOIN event_entry ee ON e.event_id=ee.event_id`
+			JOIN event_entry ee ON e.event_id=ee.event_id
+			LEFT JOIN tipsets et ON tm.execution_tipset_key_cid=et.tipset_key_cid
+			WHERE (et.tipset_key_cid IS NULL OR et.reverted = 0)`
 
 	if len(joins) > 0 {
 		s = s + ", " + strings.Join(joins, ", ")
@@ -239,31 +486,4 @@ func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string
 	// retain insertion order of event_entry rows with the implicit _rowid_ column
 	s += " ORDER BY t.height DESC, ee._rowid_ ASC"
 	return values, s
-}
-
-func toEthTxHashParam(msg types.ChainMsg) (interface{}, error) {
-	smsg, ok := msg.(*types.SignedMessage)
-	if !ok || smsg.Signature.Type != crypto.SigTypeDelegated {
-		return nil, nil
-	}
-	hash, err := ethTxHashFromSignedMessage(smsg)
-	if err != nil {
-		return nil, err
-	}
-	return hash.String(), nil
-}
-
-func ethTxHashFromSignedMessage(smsg *types.SignedMessage) (ethtypes.EthHash, error) {
-	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		tx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(smsg)
-		if err != nil {
-			return ethtypes.EthHash{}, xerrors.Errorf("failed to convert from signed message: %w", err)
-		}
-
-		return tx.TxHash()
-	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
-		return ethtypes.EthHashFromCid(smsg.Cid())
-	}
-	// else BLS message
-	return ethtypes.EthHashFromCid(smsg.Message.Cid())
 }
