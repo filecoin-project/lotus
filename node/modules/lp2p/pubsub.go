@@ -120,6 +120,44 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 
 	isBootstrapNode := in.Cfg.Bootstrapper
 
+	allowTopics := []string{
+		build.BlocksTopic(in.Nn),
+		build.MessagesTopic(in.Nn),
+		build.IndexerIngestTopic(in.Nn),
+	}
+
+	if build.IsF3Enabled() {
+		f3TopicName := manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(in.Nn))
+		allowTopics = append(allowTopics, f3TopicName)
+
+		// allow dynamic manifest topic and the new topic names after a reconfiguration.
+		// Note: This is pretty ugly, but I tried to use a regex subscription filter
+		// as the commented code below, but unfortunately it overwrites previous filters. A simple fix would
+		// be to allow combining several topic filters, but for now this works.
+		//
+		// 	pattern := fmt.Sprintf(`^\/f3\/%s\/0\.0\.1\/?[0-9]*$`, in.Nn)
+		// 	rx, err := regexp.Compile(pattern)
+		// 	if err != nil {
+		// 		return nil, xerrors.Errorf("failed to compile manifest topic regex: %w", err)
+		// 	}
+		// 	options = append(options,
+		// 		pubsub.WithSubscriptionFilter(
+		// 			pubsub.WrapLimitSubscriptionFilter(
+		// 				pubsub.NewRegexpSubscriptionFilter(rx),
+		// 				100)))
+		allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
+		for i := 0; i < MaxDynamicManifestChangesAllowed; i++ {
+			allowTopics = append(allowTopics, f3TopicName+"/"+fmt.Sprintf("%d", i))
+		}
+	}
+
+	allowTopics = append(allowTopics, drandTopics...)
+	options = append(options,
+		pubsub.WithSubscriptionFilter(
+			pubsub.WrapLimitSubscriptionFilter(
+				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
+				100)))
+
 	drandTopicParams := &pubsub.TopicScoreParams{
 		// expected 2 beaconsn/min
 		TopicWeight: 0.5, // 5x block topic; max cap is 62.5
@@ -272,6 +310,45 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		ipcoloWhitelist = append(ipcoloWhitelist, ipnet)
 	}
 
+	for _, topic := range allowTopics {
+		if _, configured := topicParams[topic]; configured {
+			continue
+		}
+		topicParams[topic] = &pubsub.TopicScoreParams{
+			TopicWeight: 0.1,
+
+			TimeInMeshWeight:  0.0002778, // ~1/3600
+			TimeInMeshQuantum: time.Second,
+			TimeInMeshCap:     1,
+
+			// NOTE: Gives weight to the peer that tends to deliver first.
+			// deliveries decay after 10min, cap at 100 tx
+			FirstMessageDeliveriesWeight: 0.5, // max value is 50
+			FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(10 * time.Minute),
+			FirstMessageDeliveriesCap:    100, // 100 messages in 10 minutes
+
+			// Mesh Delivery Failure is currently turned off for messages
+			// This is on purpose as the network is still too small, which results in
+			// asymmetries and potential unmeshing from negative scores.
+			// // tracks deliveries in the last minute
+			// // penalty activates at 1 min and expects 2.5 txs
+			// MeshMessageDeliveriesWeight:     -16, // max penalty is -100
+			// MeshMessageDeliveriesDecay:      pubsub.ScoreParameterDecay(time.Minute),
+			// MeshMessageDeliveriesCap:        100, // 100 txs in a minute
+			// MeshMessageDeliveriesThreshold:  2.5, // 60/12/2 txs/minute
+			// MeshMessageDeliveriesWindow:     10 * time.Millisecond,
+			// MeshMessageDeliveriesActivation: time.Minute,
+
+			// // decays after 5min
+			// MeshFailurePenaltyWeight: -16,
+			// MeshFailurePenaltyDecay:  pubsub.ScoreParameterDecay(5 * time.Minute),
+
+			// invalid messages decay after 1 hour
+			InvalidMessageDeliveriesWeight: -1000,
+			InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+		}
+	}
+
 	options := []pubsub.Option{
 		// Gossipsubv1.1 configuration
 		pubsub.WithFloodPublish(true),
@@ -382,44 +459,6 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	}
 
 	options = append(options, pubsub.WithPeerGater(pgParams))
-
-	allowTopics := []string{
-		build.BlocksTopic(in.Nn),
-		build.MessagesTopic(in.Nn),
-		build.IndexerIngestTopic(in.Nn),
-	}
-
-	if build.IsF3Enabled() {
-		f3TopicName := manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(in.Nn))
-		allowTopics = append(allowTopics, f3TopicName)
-
-		// allow dynamic manifest topic and the new topic names after a reconfiguration.
-		// Note: This is pretty ugly, but I tried to use a regex subscription filter
-		// as the commented code below, but unfortunately it overwrites previous filters. A simple fix would
-		// be to allow combining several topic filters, but for now this works.
-		//
-		// 	pattern := fmt.Sprintf(`^\/f3\/%s\/0\.0\.1\/?[0-9]*$`, in.Nn)
-		// 	rx, err := regexp.Compile(pattern)
-		// 	if err != nil {
-		// 		return nil, xerrors.Errorf("failed to compile manifest topic regex: %w", err)
-		// 	}
-		// 	options = append(options,
-		// 		pubsub.WithSubscriptionFilter(
-		// 			pubsub.WrapLimitSubscriptionFilter(
-		// 				pubsub.NewRegexpSubscriptionFilter(rx),
-		// 				100)))
-		allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-		for i := 0; i < MaxDynamicManifestChangesAllowed; i++ {
-			allowTopics = append(allowTopics, f3TopicName+"/"+fmt.Sprintf("%d", i))
-		}
-	}
-
-	allowTopics = append(allowTopics, drandTopics...)
-	options = append(options,
-		pubsub.WithSubscriptionFilter(
-			pubsub.WrapLimitSubscriptionFilter(
-				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
-				100)))
 
 	var transports []tracer.TracerTransport
 	if in.Cfg.JsonTracer != "" {
