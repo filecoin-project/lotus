@@ -268,8 +268,8 @@ github.com/filecoin-project/go-commp-utils/v2 v2.1.0/go.mod h1:NbxJYlhxtWaNhlVCj
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03/go.mod h1:+viYnvGtUTgJRdy6oaeF4MTFKAfatX071MPDPBL11EQ=
 github.com/filecoin-project/go-crypto v0.0.1 h1:AcvpSGGCgjaY8y1az6AMfKQWreF/pWO2JJGLl6gCq6o=
 github.com/filecoin-project/go-crypto v0.0.1/go.mod h1:+viYnvGtUTgJRdy6oaeF4MTFKAfatX071MPDPBL11EQ=
-github.com/filecoin-project/go-f3 v0.1.0 h1:W/AcaF3FBg00Eiyuz/HIs5hCcPtVMK7JncWXpg4MP98=
-github.com/filecoin-project/go-f3 v0.1.0/go.mod h1:43fBLX0iX0+Nnw4Z91wSrdfDYAd6YEDexy7GcLnIJtk=
+github.com/filecoin-project/go-f3 v0.1.1-0.20240814192242-f14cefe2170c h1:AwmHQKf03ChPEDUktO35gnEYacU4Bvj3Ag3nqmQlzEQ=
+github.com/filecoin-project/go-f3 v0.1.1-0.20240814192242-f14cefe2170c/go.mod h1:43fBLX0iX0+Nnw4Z91wSrdfDYAd6YEDexy7GcLnIJtk=
 github.com/filecoin-project/go-fil-commcid v0.1.0 h1:3R4ds1A9r6cr8mvZBfMYxTS88OqLYEo6roi+GiIeOh8=
 github.com/filecoin-project/go-fil-commcid v0.1.0/go.mod h1:Eaox7Hvus1JgPrL5+M3+h7aSPHc0cVqpSxA+TxIEpZQ=
 github.com/filecoin-project/go-fil-commp-hashhash v0.2.0 h1:HYIUugzjq78YvV3vC6rL95+SfC/aSTVSnZSZiDV5pCk=
