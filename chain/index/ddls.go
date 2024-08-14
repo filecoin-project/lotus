@@ -12,6 +12,7 @@ var ddls = []string{
 		reverted INTEGER NOT NULL,
 		message_cid BLOB NOT NULL,
 		message_index INTEGER NOT NULL,
+		events_processed INTEGER NOT NULL,
 		UNIQUE (tipset_key_cid, message_cid)
 	)`,
 
@@ -45,15 +46,15 @@ var ddls = []string{
 }
 
 type preparedStatements struct {
-	stmtSelectMsg            *sql.Stmt
-	stmtGetMsgCidFromEthHash *sql.Stmt
-	stmtRevertTipset         *sql.Stmt
-	stmtRevertEvents         *sql.Stmt
-	stmtTipsetExists         *sql.Stmt
-	stmtTipsetUnRevert       *sql.Stmt
-	stmtInsertTipsetMessage  *sql.Stmt
-
-	stmtEventsUnRevert *sql.Stmt
+	stmtSelectMsg                 *sql.Stmt
+	stmtGetMsgCidFromEthHash      *sql.Stmt
+	stmtRevertTipset              *sql.Stmt
+	stmtRevertEvents              *sql.Stmt
+	stmtTipsetExists              *sql.Stmt
+	stmtTipsetUnRevert            *sql.Stmt
+	stmtInsertTipsetMessage       *sql.Stmt
+	stmtMarkTipsetEventsProcessed *sql.Stmt
+	stmtEventsUnRevert            *sql.Stmt
 
 	selectMsgIdForMsgCidAndTipset *sql.Stmt
 
@@ -78,7 +79,7 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.stmtTipsetExists:   "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)",
 		&ps.stmtTipsetUnRevert: "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?",
 
-		&ps.stmtInsertTipsetMessage: "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) SET reverted = 0",
+		&ps.stmtInsertTipsetMessage: "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index, events_processed) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) DO UPDATE SET reverted = 0",
 
 		&ps.stmtEventsUnRevert: `UPDATE event SET reverted = 0 WHERE message_id IN (
 			SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
@@ -92,5 +93,6 @@ func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
 		&ps.stmtInsertEthTxHash: "INSERT INTO eth_tx_hash (eth_tx_hash, message_cid) VALUES (?, ?)",
 
 		&ps.stmtRemoveRevertedTipsetsBeforeHeight: "DELETE FROM tipset_message WHERE reverted = 1 AND height < ?",
+		&ps.stmtMarkTipsetEventsProcessed:         "UPDATE tipset_message SET events_processed = 1 WHERE tipset_key_cid = ?",
 	}
 }

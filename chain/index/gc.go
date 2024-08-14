@@ -8,8 +8,9 @@ import (
 )
 
 // TODO: GC based on policy
-// TODO Fix go-routine management in ChainIndexer
-func (ci *ChainIndexer) cleanupReorgsLoop(ctx context.Context) error {
+func (ci *ChainIndexer) cleanupReorgsLoop(ctx context.Context) {
+	defer ci.wg.Done()
+
 	// Initial cleanup before entering the loop
 	ci.cleanupRevertedTipsets(ctx)
 
@@ -20,7 +21,7 @@ func (ci *ChainIndexer) cleanupReorgsLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		case <-cleanupTicker.C:
 			ci.cleanupRevertedTipsets(ctx)
 			continue

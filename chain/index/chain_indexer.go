@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
+	"time"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/lib/sqlite"
 
 	// TODO: Solve this import cycle
 	"github.com/ipfs/go-cid"
@@ -29,12 +32,132 @@ import (
 var logger = logging.Logger("chain/index")
 
 type ChainIndexer struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+
 	db *sql.DB
 	cs *store.ChainStore
 
 	stmts *preparedStatements
 
 	resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
+
+	mu           sync.Mutex
+	updateSubs   map[uint64]*updateSub
+	subIdCounter uint64
+}
+
+type updateSub struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	ch     chan ChainIndexUpdated
+}
+
+type ChainIndexUpdated struct{}
+
+func (ci *ChainIndexer) SubscribeUpdates(ctx context.Context) (chan ChainIndexUpdated, func()) {
+	subCtx, subCancel := context.WithCancel(ctx)
+	ch := make(chan ChainIndexUpdated)
+
+	ci.mu.Lock()
+	subId := ci.subIdCounter
+	ci.subIdCounter++
+	ci.updateSubs[subId] = &updateSub{
+		ctx:    subCtx,
+		cancel: subCancel,
+		ch:     ch,
+	}
+	ci.mu.Unlock()
+
+	unSubscribeF := func() {
+		ci.mu.Lock()
+		if sub, ok := ci.updateSubs[subId]; ok {
+			sub.cancel()
+			delete(ci.updateSubs, subId)
+		}
+		ci.mu.Unlock()
+	}
+
+	return ch, unSubscribeF
+}
+
+func NewChainIndexer(ctx context.Context, path string, chainStore *store.ChainStore, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) (*ChainIndexer, error) {
+	cctx, cancel := context.WithCancel(ctx)
+
+	db, _, err := sqlite.Open(path)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to setup event index db: %w", err)
+	}
+
+	err = sqlite.InitDb(ctx, "chain index", db, ddls, nil)
+	if err != nil {
+		_ = db.Close()
+		return nil, xerrors.Errorf("failed to setup event index db: %w", err)
+	}
+
+	chainIndexer := ChainIndexer{
+		ctx:          cctx,
+		cancel:       cancel,
+		db:           db,
+		cs:           chainStore,
+		resolver:     resolver,
+		stmts:        &preparedStatements{},
+		updateSubs:   make(map[uint64]*updateSub),
+		subIdCounter: 0,
+	}
+
+	if err = chainIndexer.initStatements(); err != nil {
+		_ = db.Close()
+		return nil, xerrors.Errorf("error preparing eventIndex database statements: %w", err)
+	}
+
+	chainIndexer.wg.Add(1)
+	go chainIndexer.cleanupReorgsLoop(cctx)
+
+	return &chainIndexer, nil
+}
+
+func (ci *ChainIndexer) initStatements() error {
+	stmtMapping := preparedStatementMapping(ci.stmts)
+	for stmtPointer, query := range stmtMapping {
+		var err error
+		*stmtPointer, err = ci.db.Prepare(query)
+		if err != nil {
+			return xerrors.Errorf("prepare statement [%s]: %w", query, err)
+		}
+	}
+
+	return nil
+}
+
+func (ci *ChainIndexer) Close() error {
+	if ci.db == nil {
+		return nil
+	}
+	ci.cancel()
+	ci.wg.Wait()
+	return ci.db.Close()
+}
+
+func (ci *ChainIndexer) notifyUpdateSubs() {
+	ci.mu.Lock()
+	tSubs := make([]*updateSub, 0, len(ci.updateSubs))
+	for _, tSub := range ci.updateSubs {
+		tSubs = append(tSubs, tSub)
+	}
+	ci.mu.Unlock()
+
+	for _, tSub := range tSubs {
+		tSub := tSub
+		select {
+		case tSub.ch <- ChainIndexUpdated{}:
+		case <-tSub.ctx.Done():
+			// subscription was cancelled, ignore
+		case <-ci.ctx.Done():
+			return
+		}
+	}
 }
 
 func (ci *ChainIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
@@ -53,14 +176,30 @@ func (ci *ChainIndexer) Apply(ctx context.Context, from, to *types.TipSet) error
 		return xerrors.Errorf("error indexing tipset: %w", err)
 	}
 
+	// index the `from` tipset in case we've not seen it before
+	if err := ci.indexTipset(ctx, tx, from); err != nil {
+		return xerrors.Errorf("error indexing tipset messages: %w", err)
+	}
+
 	// insert events for `from` tipset as it's messages have now been executed in `to` tipset
 	if err := ci.indexEvents(ctx, tx, from, to); err != nil {
 		return xerrors.Errorf("error indexing events: %w", err)
 	}
 
+	fromTsKeyCidBytes, err := toTipsetKeyCidBytes(from)
+	if err != nil {
+		return xerrors.Errorf("error getting tipset key cid: %w", err)
+	}
+
+	// events processed for `from` tipset
+	if _, err := tx.Stmt(ci.stmts.stmtMarkTipsetEventsProcessed).ExecContext(ctx, fromTsKeyCidBytes); err != nil {
+		return xerrors.Errorf("error marking tipset events processed: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return xerrors.Errorf("error committing transaction: %w", err)
 	}
+	ci.notifyUpdateSubs()
 	return nil
 }
 
@@ -172,7 +311,7 @@ func (ci *ChainIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.T
 
 	for i, msg := range msgs {
 		msg := msg
-		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
+		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i, 0); err != nil {
 			return xerrors.Errorf("error inserting tipset message: %w", err)
 		}
 
@@ -247,7 +386,7 @@ func (ci *ChainIndexer) Revert(ctx context.Context, from *types.TipSet, to *type
 	if err := tx.Commit(); err != nil {
 		return xerrors.Errorf("error committing transaction: %w", err)
 	}
-
+	ci.notifyUpdateSubs()
 	return nil
 }
 
@@ -354,14 +493,32 @@ func (ci *ChainIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs *
 }
 
 func (ci *ChainIndexer) GetMsgInfo(ctx context.Context, msg_cid cid.Cid) (MsgInfo, error) {
-	row := ci.stmts.stmtSelectMsg.QueryRowContext(ctx, msg_cid.Bytes())
-	var tipsetKeyCidBytes []byte
-	var height uint64
-	err := row.Scan(&tipsetKeyCidBytes, &height)
-	if err != nil {
+	msgInfo, err := ci.lookupMsg(ctx, msg_cid)
+	if err == nil {
+		return msgInfo, nil
+	}
+
+	if err == sql.ErrNoRows {
+		// wait till head is processed and retry
+		if err := ci.waitTillHeadIndexed(ctx); err != nil {
+			return MsgInfo{}, err
+		}
+		msgInfo, err := ci.lookupMsg(ctx, msg_cid)
 		if err == sql.ErrNoRows {
 			return MsgInfo{}, ErrNotFound
 		}
+		return msgInfo, err
+	}
+	return MsgInfo{}, err
+}
+
+func (ci *ChainIndexer) lookupMsg(ctx context.Context, msg_cid cid.Cid) (MsgInfo, error) {
+	var tipsetKeyCidBytes []byte
+	var height uint64
+
+	row := ci.stmts.stmtSelectMsg.QueryRowContext(ctx, msg_cid.Bytes())
+	err := row.Scan(&tipsetKeyCidBytes, &height)
+	if err != nil {
 		return MsgInfo{}, err
 	}
 
@@ -377,19 +534,96 @@ func (ci *ChainIndexer) GetMsgInfo(ctx context.Context, msg_cid cid.Cid) (MsgInf
 	}, nil
 }
 
-func (ci *ChainIndexer) GetMsgCidFromEthTxHash(txHash ethtypes.EthHash) (cid.Cid, error) {
-	row := ci.stmts.stmtGetMsgCidFromEthHash.QueryRow(txHash.String())
-	var c []byte
-	err := row.Scan(&c)
+func (ci *ChainIndexer) waitTillHeadIndexed(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	head := ci.cs.GetHeaviestTipSet()
+	headTsKeyCidBytes, err := toTipsetKeyCidBytes(head)
 	if err != nil {
+		return xerrors.Errorf("error getting tipset key cid: %w", err)
+	}
+
+	// is it already indexed?
+	if exists, err := ci.isTipsetIndexed(ctx, headTsKeyCidBytes); err != nil {
+		return xerrors.Errorf("error checking if tipset exists: %w", err)
+	} else if exists {
+		return nil
+	}
+
+	// wait till it is indexed
+	subCh, unsubFn := ci.SubscribeUpdates(ctx)
+	defer unsubFn()
+
+	// is it already indexed?
+	if exists, err := ci.isTipsetIndexed(ctx, headTsKeyCidBytes); err != nil {
+		return xerrors.Errorf("error checking if tipset exists: %w", err)
+	} else if exists {
+		return nil
+	}
+
+	for {
+		select {
+		case <-subCh:
+			// is it already indexed?
+			if exists, err := ci.isTipsetIndexed(ctx, headTsKeyCidBytes); err != nil {
+				return xerrors.Errorf("error checking if tipset exists: %w", err)
+			} else if exists {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func (ci *ChainIndexer) isTipsetIndexed(ctx context.Context, tsKeyCid []byte) (bool, error) {
+	var exists bool
+	err := ci.stmts.stmtTipsetExists.QueryRowContext(ctx, tsKeyCid).Scan(&exists)
+	if err != nil {
+		return false, xerrors.Errorf("error checking if tipset exists: %w", err)
+	}
+	return exists, nil
+}
+
+func (ci *ChainIndexer) GetMsgCidFromEthTxHash(ctx context.Context, txHash ethtypes.EthHash) (cid.Cid, error) {
+	c, err := ci.lookupEthTxHash(ctx, txHash)
+	if err == nil {
+		return c, nil
+	}
+	if err == sql.ErrNoRows {
+		// wait till head is processed and retry
+		if err := ci.waitTillHeadIndexed(ctx); err != nil {
+			return cid.Undef, err
+		}
+		c, err = ci.lookupEthTxHash(ctx, txHash)
 		if err == sql.ErrNoRows {
 			return cid.Undef, ErrNotFound
 		}
+		return c, nil
+	}
+	return cid.Undef, err
+}
+
+func (ci *ChainIndexer) lookupEthTxHash(ctx context.Context, txHash ethtypes.EthHash) (cid.Cid, error) {
+	row := ci.stmts.stmtGetMsgCidFromEthHash.QueryRowContext(ctx, txHash.String())
+	var c []byte
+	err := row.Scan(&c)
+	if err != nil {
 		return cid.Undef, err
 	}
 	return cid.Cast(c)
 }
 
+// TODO: Finish this
+func (ci *ChainIndexer) GetEvents(ctx context.Context, f *eventFilter) ([]*types.Event, error) {
+	// always wait for head to be indexed here
+	if err := ci.waitTillHeadIndexed(ctx); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// TODO: Fix and this this
 type eventFilter struct {
 	minHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	maxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
@@ -409,24 +643,26 @@ func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string
 		values = append(values, f.tipsetCid.Bytes())
 	} else {
 		if f.minHeight >= 0 && f.minHeight == f.maxHeight {
-			clauses = append(clauses, "t.height=?")
+			clauses = append(clauses, "tm.height=?")
 			values = append(values, f.minHeight)
 		} else {
 			if f.maxHeight >= 0 && f.minHeight >= 0 {
-				clauses = append(clauses, "t.height BETWEEN ? AND ?")
+				clauses = append(clauses, "tm.height BETWEEN ? AND ?")
 				values = append(values, f.minHeight, f.maxHeight)
 			} else if f.minHeight >= 0 {
-				clauses = append(clauses, "t.height >= ?")
+				clauses = append(clauses, "tm.height >= ?")
 				values = append(values, f.minHeight)
 			} else if f.maxHeight >= 0 {
-				clauses = append(clauses, "t.height <= ?")
+				clauses = append(clauses, "tm.height <= ?")
 				values = append(values, f.maxHeight)
 			}
 		}
 	}
 
 	if excludeReverted {
-		clauses = append(clauses, "t.reverted=?")
+		clauses = append(clauses, "tm.reverted=?")
+		values = append(values, false)
+		clauses = append(clauses, "et.reverted=?")
 		values = append(values, false)
 	}
 
@@ -458,22 +694,20 @@ func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string
 
 	s := `SELECT
 				e.event_id,
-				t.height,
+				tm.height,
 				tm.tipset_key_cid,
 				e.emitter_addr,
 				e.event_index,
 				tm.message_cid,
-				t.reverted,
+				e.reverted,
 				ee.flags,
 				ee.key,
 				ee.codec,
 				ee.value
-			FROM tipsets t
-			JOIN tipset_messages tm ON t.tipset_key_cid=tm.tipset_key_cid
+			FROM tipset_messages tm
 			JOIN events e ON tm.message_id=e.message_id
 			JOIN event_entry ee ON e.event_id=ee.event_id
-			LEFT JOIN tipsets et ON tm.execution_tipset_key_cid=et.tipset_key_cid
-			WHERE (et.tipset_key_cid IS NULL OR et.reverted = 0)`
+			`
 
 	if len(joins) > 0 {
 		s = s + ", " + strings.Join(joins, ", ")
@@ -484,6 +718,6 @@ func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string
 	}
 
 	// retain insertion order of event_entry rows with the implicit _rowid_ column
-	s += " ORDER BY t.height DESC, ee._rowid_ ASC"
+	s += " ORDER BY tm.height DESC, ee._rowid_ ASC"
 	return values, s
 }
