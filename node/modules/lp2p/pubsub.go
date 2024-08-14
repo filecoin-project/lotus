@@ -9,6 +9,7 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
+	"github.com/libp2p/go-libp2p-pubsub/timecache"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/minio/blake2b-simd"
@@ -485,6 +486,10 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		options = append(options, pubsub.WithEventTracer(trw))
 		options = append(options, pubsub.WithPeerScoreInspect(pst.UpdatePeerScore, 10*time.Second))
 	}
+
+	// This way, we stop propegating a message until it drops off the network. Otherwise, we'll
+	// ignore the message for 2m then start broadcasting it again.
+	options = append(options, pubsub.WithSeenMessagesStrategy(timecache.Strategy_LastSeen))
 
 	return pubsub.NewGossipSub(helpers.LifecycleCtx(in.Mctx, in.Lc), in.Host, options...)
 }
