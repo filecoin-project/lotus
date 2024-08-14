@@ -163,7 +163,8 @@ var ChainNode = Options(
 	),
 
 	If(build.IsF3Enabled(),
-		Override(new(manifest.ManifestProvider), lf3.NewManifestProvider),
+		Override(new(*manifest.Manifest), lf3.NewManifest),
+		Override(F3ManifestProviderKey, lf3.NewManifestProvider(buildconstants.F3ManifestServerID)),
 		Override(new(*lf3.F3), lf3.New),
 	),
 )

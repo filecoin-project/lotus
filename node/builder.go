@@ -56,19 +56,20 @@ type special struct{ id int }
 
 //nolint:golint
 var (
-	DefaultTransportsKey = special{0}  // Libp2p option
-	DiscoveryHandlerKey  = special{2}  // Private type
-	AddrsFactoryKey      = special{3}  // Libp2p option
-	SmuxTransportKey     = special{4}  // Libp2p option
-	RelayKey             = special{5}  // Libp2p option
-	SecurityKey          = special{6}  // Libp2p option
-	BaseRoutingKey       = special{7}  // fx groups + multiret
-	NatPortMapKey        = special{8}  // Libp2p option
-	ConnectionManagerKey = special{9}  // Libp2p option
-	AutoNATSvcKey        = special{10} // Libp2p option
-	BandwidthReporterKey = special{11} // Libp2p option
-	ConnGaterKey         = special{12} // Libp2p option
-	ResourceManagerKey   = special{14} // Libp2p option
+	DefaultTransportsKey  = special{0}  // Libp2p option
+	DiscoveryHandlerKey   = special{2}  // Private type
+	AddrsFactoryKey       = special{3}  // Libp2p option
+	SmuxTransportKey      = special{4}  // Libp2p option
+	RelayKey              = special{5}  // Libp2p option
+	SecurityKey           = special{6}  // Libp2p option
+	BaseRoutingKey        = special{7}  // fx groups + multiret
+	NatPortMapKey         = special{8}  // Libp2p option
+	ConnectionManagerKey  = special{9}  // Libp2p option
+	AutoNATSvcKey         = special{10} // Libp2p option
+	BandwidthReporterKey  = special{11} // Libp2p option
+	ConnGaterKey          = special{12} // Libp2p option
+	ResourceManagerKey    = special{14} // Libp2p option
+	F3ManifestProviderKey = special{15} // F3 Manifest Provider + pubsub topics
 )
 
 type invoke int

@@ -3,6 +3,8 @@ package build
 import (
 	"os"
 
+	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
@@ -23,6 +25,9 @@ func IndexerIngestTopic(netName dtypes.NetworkName) string {
 	}
 
 	return "/indexer/ingest/" + nn
+}
+func F3TopicName(netName dtypes.NetworkName) string {
+	return manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(netName))
 }
 func DhtProtocolName(netName dtypes.NetworkName) protocol.ID {
 	return protocol.ID("/fil/kad/" + string(netName))
