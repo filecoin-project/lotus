@@ -9,6 +9,8 @@
 [//]: # ([ ] Find/Replace "X.Y.Z+1" with the actual values. This is intentinoally done before tbe find/replace X.Y.Z step because that will also match.)
 [//]: # ([ ] Find/Replace "X.Y.Z" with the actual values.)
 [//]: # ([ ] If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
+[//]: # ([ ] If this is a patch release, remove all items with "\(minor release\)")
+[//]: # ([ ] If this is a minor release, remove all items with "\(patch release\)")
 [//]: # ([ ] Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
 [//]: # ([ ] Find/Replace "RCX" with "RC1".)
 [//]: # ([ ] Adjust the "Meta" section values.)
@@ -17,7 +19,7 @@
 [//]: # ([ ] Pin the issue on GitHub)
 
 ## 😶‍🌫 Meta
-* Scope: Node|Miner
+* Scope: Node|Miner MINOR|PATCH
 * Is this linked with a network upgrade, and thus mandatory? Yes|No
 * Related network upgrade version: nvXX|n/a
 
@@ -52,9 +54,10 @@
 - [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(release): vX.Y.Z release template improvements` for improving future releases.
    - Link to PR:  
    - This will get merged in a `Post Release` step, but improvements are better done by collecting notes along the way rather than just thinking about it at the end.
-- [ ] Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
-- `master` branch Version string updates
-   - [ ] bump the version(s) in `build/version.go` to `vX.Y.Z+1-dev`. 
+- [ ] (patch release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from the last stable `release/vX.Y.Z` or `release/miner/vX.Y.Z` and make any further release-related changes to this branch.
+- [ ] (minor release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
+- (minor release) `master` branch Version string updates
+   - [ ] bump the version(s) in `build/version.go` to `vX.Y.(Z+1)-dev`. 
       - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
    - [ ] Create a PR with title `build: vX.Y.Z+1 set initial version string`
