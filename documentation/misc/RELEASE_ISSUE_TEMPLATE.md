@@ -3,17 +3,18 @@
 # Lotus Node|Miner X.Y.Z Release
 
 [//]: # (Below are non-visible steps intended for the issue creator)
-[//]: # (Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z Release" and adjust the title for whether it's a Node or Miner release.)
-[//]: # (Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
-[//]: # (Find/Replace "X.Y.Z+1" with the actual values.  This is intentinoally done before tbe find/replace X.Y.Z step because that will also match.)
-[//]: # (Find/Replace "X.Y.Z" with the actual values.)
-[//]: # (If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
-[//]: # (Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
-[//]: # (Find/Replace case sensitive "RCX" with "RC1".)
-[//]: # (Adjust the "Meta" section values.)
-[//]: # (Apply the `tpm` label to the issue)
-[//]: # (Create the issue)
-[//]: # (Pin the issue on GitHub)
+[//]: # (❗️ Complete the steps below as part of creating a release issue and mark them complete with an X or ✅ when done.)
+[//]: # ([ ] Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z Release" and adjust the title for whether it's a Node or Miner release.)
+[//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
+[//]: # ([ ] Find/Replace "X.Y.Z+1" with the actual values. This is intentinoally done before tbe find/replace X.Y.Z step because that will also match.)
+[//]: # ([ ] Find/Replace "X.Y.Z" with the actual values.)
+[//]: # ([ ] If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
+[//]: # ([ ] Copy/paste the "Release Checklist > RCX" section to "Release Checklist > Stable \(non-RC\) Release" and apply the "diff" called out there.)
+[//]: # ([ ] Find/Replace "RCX" with "RC1".)
+[//]: # ([ ] Adjust the "Meta" section values.)
+[//]: # ([ ] Apply the `tpm` label to the issue)
+[//]: # ([ ] Create the issue)
+[//]: # ([ ] Pin the issue on GitHub)
 
 ## 😶‍🌫 Meta
 * Scope: Node|Miner
