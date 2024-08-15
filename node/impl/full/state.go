@@ -1571,7 +1571,17 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (a *StateAPI) StateMinerInitialPledgeForSector(ctx context.Context, sectorSize abi.SectorSize, sectorDuration abi.ChainEpoch, pieces []miner.PieceActivationManifest, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) {
+	if sectorDuration <= 0 {
+		return types.EmptyInt, xerrors.Errorf("sector duration must greater than 0")
+	}
+	if sectorSize == 0 {
+		return types.EmptyInt, xerrors.Errorf("sector size must be non-zero")
+	}
+	if verifiedSize > uint64(sectorSize) {
+		return types.EmptyInt, xerrors.Errorf("verified size must be less than or equal to sector size")
+	}
+
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1602,27 +1612,8 @@ func (a *StateAPI) StateMinerInitialPledgeForSector(ctx context.Context, sectorS
 		return big.Zero(), err
 	}
 
-	var dealWeight, verifiedDealWeight int64
-	for _, pieceManifest := range pieces {
-		if pieceManifest.VerifiedAllocationKey != nil {
-			verifiedDealWeight += int64(pieceManifest.Size)
-		} else {
-			dealWeight += int64(pieceManifest.Size)
-		}
-	}
-
-	/*
-		// could pass in a PreCommitInfo, or just the size & duration
-			ssize, err := pci.SealProof.SectorSize()
-			if err != nil {
-				return big.Zero(), xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
-			}
-			/*
-			// a likely overestimate, but we don't have the exact sector weight here
-			duration := pci.Expiration - ts.Height()
-	*/
-
-	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, big.NewInt(dealWeight), big.NewInt(dealWeight))
+	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
+	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, big.Zero(), verifiedWeight)
 
 	initialPledge, err := rewardState.InitialPledgeForPower(
 		sectorWeight,

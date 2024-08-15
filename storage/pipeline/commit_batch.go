@@ -40,7 +40,7 @@ type CommitBatcherApi interface {
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
-	StateMinerInitialPledgeForSector(ctx context.Context, sectorSize abi.SectorSize, sectorDuration abi.ChainEpoch, pieces []miner.PieceActivationManifest, tsk types.TipSetKey) (big.Int, error)
+	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
@@ -618,7 +618,14 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, pieces []miner.
 	}
 	duration := pci.Info.Expiration - ts.Height()
 
-	collateral, err := b.api.StateMinerInitialPledgeForSector(b.mctx, ssize, duration, pieces, ts.Key())
+	var verifiedSize uint64
+	for _, piece := range pieces {
+		if piece.VerifiedAllocationKey != nil {
+			verifiedSize += uint64(piece.Size)
+		}
+	}
+
+	collateral, err := b.api.StateMinerInitialPledgeForSector(b.mctx, duration, ssize, verifiedSize, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}

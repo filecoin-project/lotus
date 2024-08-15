@@ -13,8 +13,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
-	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	network "github.com/filecoin-project/go-state-types/network"
 
@@ -166,7 +165,7 @@ func (mr *MockCommitBatcherApiMockRecorder) StateMinerInfo(arg0, arg1, arg2 inte
 }
 
 // StateMinerInitialPledgeForSector mocks base method.
-func (m *MockCommitBatcherApi) StateMinerInitialPledgeForSector(arg0 context.Context, arg1 abi.SectorSize, arg2 abi.ChainEpoch, arg3 []miner.PieceActivationManifest, arg4 types.TipSetKey) (big.Int, error) {
+func (m *MockCommitBatcherApi) StateMinerInitialPledgeForSector(arg0 context.Context, arg1 abi.ChainEpoch, arg2 abi.SectorSize, arg3 uint64, arg4 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInitialPledgeForSector", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(big.Int)
@@ -196,10 +195,10 @@ func (mr *MockCommitBatcherApiMockRecorder) StateNetworkVersion(arg0, arg1 inter
 }
 
 // StateSectorPreCommitInfo mocks base method.
-func (m *MockCommitBatcherApi) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner0.SectorPreCommitOnChainInfo, error) {
+func (m *MockCommitBatcherApi) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPreCommitInfo", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*miner0.SectorPreCommitOnChainInfo)
+	ret0, _ := ret[0].(*miner.SectorPreCommitOnChainInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -413,8 +413,8 @@ type FullNode interface {
 	//
 	// Deprecated: Use StateMinerInitialPledgeForSector instead
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector size, duration and included pieces (if any)
-	StateMinerInitialPledgeForSector(context.Context, abi.SectorSize, abi.ChainEpoch, []miner.PieceActivationManifest, types.TipSetKey) (types.BigInt, error) //perm:read
+	// StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector duration, size and combined size of any verified pieces within the sector
+	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerSectorAllocated checks if a sector number is marked as allocated.

@@ -21224,29 +21224,12 @@
         },
         {
             "name": "Filecoin.StateMinerInitialPledgeForSector",
-            "description": "```go\nfunc (s *FullNodeStruct) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.SectorSize, p2 abi.ChainEpoch, p3 []miner.PieceActivationManifest, p4 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerInitialPledgeForSector == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerInitialPledgeForSector(p0, p1, p2, p3, p4)\n}\n```",
-            "summary": "StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector size, duration and included pieces (if any)\n",
+            "description": "```go\nfunc (s *FullNodeStruct) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) {\n\tif s.Internal.StateMinerInitialPledgeForSector == nil {\n\t\treturn *new(types.BigInt), ErrNotSupported\n\t}\n\treturn s.Internal.StateMinerInitialPledgeForSector(p0, p1, p2, p3, p4)\n}\n```",
+            "summary": "StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector duration, size and combined size of any verified pieces within the sector\n",
             "paramStructure": "by-position",
             "params": [
                 {
                     "name": "p1",
-                    "description": "abi.SectorSize",
-                    "summary": "",
-                    "schema": {
-                        "title": "number",
-                        "description": "Number is a number",
-                        "examples": [
-                            34359738368
-                        ],
-                        "type": [
-                            "number"
-                        ]
-                    },
-                    "required": true,
-                    "deprecated": false
-                },
-                {
-                    "name": "p2",
                     "description": "abi.ChainEpoch",
                     "summary": "",
                     "schema": {
@@ -21263,83 +21246,34 @@
                     "deprecated": false
                 },
                 {
-                    "name": "p3",
-                    "description": "[]miner.PieceActivationManifest",
+                    "name": "p2",
+                    "description": "abi.SectorSize",
                     "summary": "",
                     "schema": {
+                        "title": "number",
+                        "description": "Number is a number",
                         "examples": [
-                            [
-                                {
-                                    "CID": {
-                                        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-                                    },
-                                    "Size": 1032,
-                                    "VerifiedAllocationKey": {
-                                        "Client": 1000,
-                                        "ID": 0
-                                    },
-                                    "Notify": [
-                                        {
-                                            "Address": "f01234",
-                                            "Payload": "Ynl0ZSBhcnJheQ=="
-                                        }
-                                    ]
-                                }
-                            ]
-                        ],
-                        "items": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "CID": {
-                                        "title": "Content Identifier",
-                                        "type": "string"
-                                    },
-                                    "Notify": {
-                                        "items": {
-                                            "additionalProperties": false,
-                                            "properties": {
-                                                "Address": {
-                                                    "additionalProperties": false,
-                                                    "type": "object"
-                                                },
-                                                "Payload": {
-                                                    "media": {
-                                                        "binaryEncoding": "base64"
-                                                    },
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "type": "object"
-                                        },
-                                        "type": "array"
-                                    },
-                                    "Size": {
-                                        "title": "number",
-                                        "type": "number"
-                                    },
-                                    "VerifiedAllocationKey": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "Client": {
-                                                "title": "number",
-                                                "type": "number"
-                                            },
-                                            "ID": {
-                                                "title": "number",
-                                                "type": "number"
-                                            }
-                                        },
-                                        "type": "object"
-                                    }
-                                },
-                                "type": [
-                                    "object"
-                                ]
-                            }
+                            34359738368
                         ],
                         "type": [
-                            "array"
+                            "number"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                },
+                {
+                    "name": "p3",
+                    "description": "uint64",
+                    "summary": "",
+                    "schema": {
+                        "title": "number",
+                        "description": "Number is a number",
+                        "examples": [
+                            42
+                        ],
+                        "type": [
+                            "number"
                         ]
                     },
                     "required": true,

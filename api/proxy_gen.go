@@ -488,7 +488,7 @@ type FullNodeMethods struct {
 
 	StateMinerInitialPledgeCollateral func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
-	StateMinerInitialPledgeForSector func(p0 context.Context, p1 abi.SectorSize, p2 abi.ChainEpoch, p3 []miner.PieceActivationManifest, p4 types.TipSetKey) (types.BigInt, error) `perm:"read"`
+	StateMinerInitialPledgeForSector func(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 	StateMinerPartitions func(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) `perm:"read"`
 
@@ -3386,14 +3386,14 @@ func (s *FullNodeStub) StateMinerInitialPledgeCollateral(p0 context.Context, p1 
 	return *new(types.BigInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.SectorSize, p2 abi.ChainEpoch, p3 []miner.PieceActivationManifest, p4 types.TipSetKey) (types.BigInt, error) {
+func (s *FullNodeStruct) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) {
 	if s.Internal.StateMinerInitialPledgeForSector == nil {
 		return *new(types.BigInt), ErrNotSupported
 	}
 	return s.Internal.StateMinerInitialPledgeForSector(p0, p1, p2, p3, p4)
 }
 
-func (s *FullNodeStub) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.SectorSize, p2 abi.ChainEpoch, p3 []miner.PieceActivationManifest, p4 types.TipSetKey) (types.BigInt, error) {
+func (s *FullNodeStub) StateMinerInitialPledgeForSector(p0 context.Context, p1 abi.ChainEpoch, p2 abi.SectorSize, p3 uint64, p4 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
 }
 

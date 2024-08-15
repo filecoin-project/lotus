@@ -7204,7 +7204,7 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerInitialPledgeForSector
-StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector size, duration and included pieces (if any)
+StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector duration, size and combined size of any verified pieces within the sector
 
 
 Perms: read
@@ -7212,26 +7212,9 @@ Perms: read
 Inputs:
 ```json
 [
-  34359738368,
   10101,
-  [
-    {
-      "CID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "Size": 1032,
-      "VerifiedAllocationKey": {
-        "Client": 1000,
-        "ID": 0
-      },
-      "Notify": [
-        {
-          "Address": "f01234",
-          "Payload": "Ynl0ZSBhcnJheQ=="
-        }
-      ]
-    }
-  ],
+  34359738368,
+  42,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
