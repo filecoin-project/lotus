@@ -61,7 +61,7 @@
    - [ ] bump the version(s) in `build/version.go` to `vX.Y.(Z+1)-dev`. 
       - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
-   - [ ] Create a PR with title `build: vX.Y.Z+1 set initial version string`
+   - [ ] Create a PR with title `build: node|miner vX.Y.Z+1 set initial version string`
      - Link to PR: 
    - [ ] Merge PR
 
@@ -81,7 +81,7 @@
 - [ ] All explicitly tracked items from `Dependencies for releases` have landed
 - [ ] Backported [everything with the "backport" label](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+) 
 - [ ] Removed the "backport" label from all backported PRs (no ["backport" issues](https://github.com/filecoin-project/lotus/issues?q=label%3Arelease%2Fbackport+))
-- [ ] Create a PR with title `build: backport changes for vX.Y.Z-rcX`
+- [ ] Create a PR with title `build: backport changes for node|miner vX.Y.Z-rcX`
    - Link to PR: 
 - [ ] Merge PR 
 
@@ -97,8 +97,8 @@
    - [ ] Ensure no missing content when spot checking git history
       - Example command looking at git commits: `git log --oneline --graph vA.B.C..`, where A.B.C correspond to the previous release. 
       - Example GitHub UI search looking at merged PRs into master: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
-      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, mergedAt, .author.login, .title] | @tsv' | sort -k4
-- [ ] Create a PR with title `build: release vX.Y.Z-rcX`
+      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, mergedAt, .author.login, .title] | @tsv' | sort -k4`
+- [ ] Create a PR with title `build: release node|miner vX.Y.Z-rcX`
    - Link to PR: 
    - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Merge the PR
