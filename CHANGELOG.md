@@ -8,6 +8,8 @@ For node operators, this patch release fixes an issue where excessive bandwidth 
 
 For storage providers this patch release fixes pledge issues, users have been encountering. This update addresses existing issues, including the too-small pledge in snap and the lack of DDO-awareness in PoRep Commit.
 
+- https://github.com/filecoin-project/lotus/pull/12390: Update go-f3 to 0.2.0
+
 ## ☢️ Upgrade Warnings ☢️
 - The `releases` branch has been deprecated with the 202408 split of 'Lotus Node' and 'Lotus Miner'. See https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives for more info and alternatives for getting the latest release for both the 'Lotus Node' and 'Lotus Miner' based on the [Branch and Tag Strategy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy).
    - To get the latest Lotus Node tag: `git tag -l 'v*' | sort -V -r | head -n 1`  
