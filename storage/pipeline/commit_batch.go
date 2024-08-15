@@ -52,16 +52,10 @@ type CommitBatcherApi interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
-type PledgeApi interface {
-	sectorWeight(ctx context.Context, sector SectorInfo, expiration abi.ChainEpoch) (abi.StoragePower, error)
-	pledgeForPower(ctx context.Context, addedPower abi.StoragePower) (abi.TokenAmount, error)
-}
-
 type AggregateInput struct {
-	Spt    abi.RegisteredSealProof
-	Info   proof.AggregateSealVerifyInfo
-	Proof  []byte
-	Weight abi.StoragePower
+	Spt   abi.RegisteredSealProof
+	Info  proof.AggregateSealVerifyInfo
+	Proof []byte
 
 	ActivationManifest miner.SectorActivationManifest
 	DealIDPrecommit    bool
@@ -69,7 +63,6 @@ type AggregateInput struct {
 
 type CommitBatcher struct {
 	api       CommitBatcherApi
-	pledgeApi PledgeApi
 	maddr     address.Address
 	mctx      context.Context
 	addrSel   AddressSelector
@@ -86,7 +79,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover, pa PledgeApi) (*CommitBatcher, error) {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover) (*CommitBatcher, error) {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -95,7 +88,6 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		feeCfg:    feeCfg,
 		getConfig: getConfig,
 		prover:    prov,
-		pledgeApi: pa,
 
 		cutoffs: map[abi.SectorNumber]time.Time{},
 		todo:    map[abi.SectorNumber]AggregateInput{},
@@ -612,11 +604,12 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, pieces []miner.
 		return big.Zero(), xerrors.Errorf("precommit info not found on chain")
 	}
 
+	duration := pci.Info.Expiration - ts.Height()
+
 	ssize, err := pci.Info.SealProof.SectorSize()
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to resolve sector size for seal proof: %w", err)
 	}
-	duration := pci.Info.Expiration - ts.Height()
 
 	var verifiedSize uint64
 	for _, piece := range pieces {
@@ -635,7 +628,7 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, pieces []miner.
 		collateral = big.Zero()
 	}
 
-	log.Infow("getSectorCollateral", "collateral", types.FIL(collateral), "sn", sn, "precommit", types.FIL(pci.PreCommitDeposit), "pledge", types.FIL(collateral), "weight", b.todo[sn].Weight)
+	log.Infow("getSectorCollateral", "collateral", types.FIL(collateral), "sn", sn, "precommit", types.FIL(pci.PreCommitDeposit), "pledge", types.FIL(collateral), "verifiedSize", verifiedSize)
 
 	return collateral, nil
 }
