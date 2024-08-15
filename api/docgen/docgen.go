@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	verifregtypes13 "github.com/filecoin-project/go-state-types/builtin/v13/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -131,8 +130,6 @@ func init() {
 	allocationId := verifreg.AllocationId(0)
 	addExample(allocationId)
 	addExample(&allocationId)
-	allocationId13 := verifregtypes13.AllocationId(0)
-	addExample(allocationId13)
 	addExample(miner.SectorOnChainInfoFlags(0))
 	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
 	claimId := verifreg.ClaimId(0)
@@ -395,8 +392,6 @@ func init() {
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
-
-	addExample(&miner.SectorActivationManifest{SectorNumber: 123, Pieces: []miner.PieceActivationManifest{}})
 
 	addExample(&miner.PieceActivationManifest{
 		CID:                   c,
