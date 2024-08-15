@@ -12,6 +12,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -20,6 +21,9 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/ethhashlookup"
+	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -27,13 +31,33 @@ import (
 
 const (
 	// same as in chain/events/index.go
-	eventExists      = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	eventCount       = `SELECT COUNT(*) FROM event WHERE tipset_key_cid=?`
-	entryCount       = `SELECT COUNT(*) FROM event_entry JOIN event ON event_entry.event_id=event.id WHERE event.tipset_key_cid=?`
-	insertEvent      = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	insertEntry      = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
-	upsertEventsSeen = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
-	tipsetSeen       = `SELECT height,reverted FROM events_seen WHERE tipset_key_cid=?`
+	eventExists                = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	eventCount                 = `SELECT COUNT(*) FROM event WHERE tipset_key_cid=?`
+	entryCount                 = `SELECT COUNT(*) FROM event_entry JOIN event ON event_entry.event_id=event.id WHERE event.tipset_key_cid=?`
+	insertEvent                = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	insertEntry                = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
+	upsertEventsSeen           = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
+	tipsetSeen                 = `SELECT height,reverted FROM events_seen WHERE tipset_key_cid=?`
+	selectEventIdsFromHeight   = `SELECT id, height FROM event WHERE height < ?`
+	selectEventIdsBetweenRange = `SELECT id, height FROM event WHERE height < ? AND height >= ?`
+)
+
+// delete queries
+const (
+	deleteMsgIndexFromStartHeight = `DELETE FROM messages WHERE epoch < ?`
+	deleteMsgIndexBetweenRange    = `DELETE FROM messages WHERE epoch < ? AND epoch >= ?`
+
+	deleteTxHashIndexByCID = `DELETE FROM eth_tx_hashes WHERE cid = ?`
+
+	deleteEventsByIDs        = `DELETE FROM event WHERE id IN (%s)`
+	deleteEventEntriesByIDs  = `DELETE FROM event_entry WHERE event_id IN (%s)`
+	deleteEventSeenByHeights = `DELETE FROM events_seen WHERE height IN (%s)`
+)
+
+// database related constants
+const (
+	databaseType   = "sqlite"
+	databaseDriver = "sqlite3"
 )
 
 func withCategory(cat string, cmd *cli.Command) *cli.Command {
@@ -51,6 +75,7 @@ var indexesCmd = &cli.Command{
 		withCategory("txhash", backfillTxHashCmd),
 		withCategory("events", backfillEventsCmd),
 		withCategory("events", inspectEventsCmd),
+		withCategory("indexes", pruneAllIndexesCmd),
 	},
 }
 
@@ -878,4 +903,363 @@ var backfillTxHashCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+// pruneAllIndexesCmd is a command that prunes all the indexes
+var pruneAllIndexesCmd = &cli.Command{
+	Name:  "prune-all-indexes",
+	Usage: "Prune all the index for a number of epochs starting from a specified height",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "from",
+			Value: 0,
+			Usage: "the tipset height to start backfilling from (0 is head of chain)",
+		},
+		&cli.IntFlag{
+			Name:  "epochs",
+			Value: 0,
+			Usage: "the number of epochs to prune (working backwards, 0 means prune all from the specified height)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		srv, err := lcli.GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := lcli.ReqContext(cctx)
+
+		basePath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		startHeight := cctx.Int64("from")
+		if startHeight == 0 {
+			currTs, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			startHeight += int64(currTs.Height())
+
+			if startHeight < 0 || startHeight == 0 {
+				return xerrors.Errorf("bogus start height %d", startHeight)
+			}
+		}
+
+		epochs := cctx.Int64("epochs")
+
+		var g = new(errgroup.Group)
+
+		g.Go(func() error {
+			if err := pruneMsgIndex(ctx, basePath, startHeight, epochs); err != nil {
+				return xerrors.Errorf("error pruning msgindex: %w", err)
+			}
+
+			return nil
+		})
+
+		g.Go(func() error {
+			if err := pruneTxIndex(ctx, api, basePath, startHeight, epochs); err != nil {
+				return xerrors.Errorf("error pruning txindex: %w", err)
+			}
+
+			return nil
+		})
+
+		g.Go(func() error {
+			if err := pruneEventsIndex(ctx, basePath, startHeight, epochs); err != nil {
+				return xerrors.Errorf("error pruning events index: %w", err)
+			}
+
+			return nil
+		})
+
+		return g.Wait()
+	},
+}
+
+// pruneEventsIndex is a helper function that prunes the events index.db for a number of epochs starting from a specified height
+func pruneEventsIndex(_ context.Context, basePath string, startHeight, epochs int64) error {
+	dbPath := path.Join(basePath, databaseType, filter.DefaultDbFilename)
+	db, err := sql.Open(databaseDriver, dbPath+"?_txlock=immediate")
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Printf("ERROR: closing db: %s", err)
+		}
+	}()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	var rows *sql.Rows
+	var res sql.Result
+	if epochs == 0 {
+		rows, err = tx.Query(selectEventIdsFromHeight, startHeight)
+	} else {
+		lowerBound := startHeight - epochs
+		if lowerBound < 0 {
+			lowerBound = 0
+		}
+
+		rows, err = tx.Query(selectEventIdsBetweenRange, startHeight, lowerBound)
+	}
+
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			fmt.Printf("ERROR: rollback: %s", err)
+		}
+		return err
+	}
+
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	deleteEventQuery, deleteEventEntriesQuery, deleteEventSeenQuery, err := getEventsDBDeleteQueries(rows)
+	if err != nil {
+		return xerrors.Errorf("error getting delete query: %w", err)
+	}
+
+	res, err = tx.Exec(deleteEventQuery)
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			fmt.Printf("ERROR: rollback event: %s", err)
+		}
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return xerrors.Errorf("error getting event table rows affected: %s", err)
+	}
+
+	log.Infof("pruned %s table, rows affected: %d", "event", rowsAffected)
+
+	res, err = tx.Exec(deleteEventEntriesQuery)
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			fmt.Printf("ERROR: rollback event_entries: %s", err)
+		}
+		return err
+	}
+
+	rowsAffected, err = res.RowsAffected()
+	if err != nil {
+		return xerrors.Errorf("error getting event entries table rows affected: %s", err)
+	}
+
+	log.Infof("pruned %s table, rows affected: %d", "event_entries", rowsAffected)
+
+	res, err = tx.Exec(deleteEventSeenQuery)
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			fmt.Printf("ERROR: rollback event_seen: %s", err)
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	rowsAffected, err = res.RowsAffected()
+	if err != nil {
+		return xerrors.Errorf("error getting event seen table rows affected: %s", err)
+	}
+
+	log.Infof("pruned %s table, rows affected: %d", "event_seen", rowsAffected)
+
+	return nil
+}
+
+func getEventsDBDeleteQueries(rows *sql.Rows) (string, string, string, error) {
+	var (
+		eventIds []int64
+		heights  []int64
+	)
+	for rows.Next() {
+		var (
+			id     int64
+			height int64
+		)
+		if err := rows.Scan(&id, &height); err != nil {
+			return "", "", "", xerrors.Errorf("error scanning event id: %w", err)
+		}
+		eventIds = append(eventIds, id)
+		heights = append(heights, height)
+	}
+
+	if err := rows.Err(); err != nil {
+		return "", "", "", xerrors.Errorf("error iterating event ids: %w", err)
+	}
+
+	if len(eventIds) == 0 {
+		log.Info("No events to delete")
+		return "", "", "", nil
+	}
+
+	// Delete event entries
+	idPlaceholders := strings.Repeat("?,", len(eventIds))
+	idPlaceholders = idPlaceholders[:len(idPlaceholders)-1] // Remove trailing comma
+
+	deleteEventTableQuery := fmt.Sprintf(deleteEventsByIDs, idPlaceholders)
+	deleteEventEntriesTableQuery := fmt.Sprintf(deleteEventEntriesByIDs, idPlaceholders)
+
+	heightPlaceholders := strings.Repeat("?,", len(heights))
+	heightPlaceholders = heightPlaceholders[:len(heightPlaceholders)-1] // Remove trailing comma
+
+	deleteEventSeenTableQuery := fmt.Sprintf(deleteEventSeenByHeights, heightPlaceholders)
+
+	return deleteEventTableQuery, deleteEventEntriesTableQuery, deleteEventSeenTableQuery, nil
+}
+
+// pruneTxIndex is a helper function that prunes the txindex.db for a number of epochs starting from a specified height
+func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, startHeight, epochs int64) error {
+	dbPath := path.Join(basePath, databaseType, ethhashlookup.DefaultDbFilename)
+	db, err := sql.Open(databaseDriver, dbPath)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Printf("ERROR: closing db: %s", err)
+		}
+	}()
+
+	// we want to delete the txhash for the previous epoch
+	startHeight = startHeight - 1
+
+	deleteStmt, err := db.Prepare(deleteTxHashIndexByCID)
+	if err != nil {
+		return xerrors.Errorf("failed to prepare tx hash index delete statement: %w", err)
+	}
+
+	currTs, err := api.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	var totalRowsAffected int64 = 0
+	for i := 0; i < int(epochs); i++ {
+		epoch := abi.ChainEpoch(startHeight - int64(i))
+
+		select {
+		case <-ctx.Done():
+			fmt.Println("request cancelled")
+			return nil
+		default:
+		}
+
+		currTsk := currTs.Parents()
+		execTs, err := api.ChainGetTipSet(ctx, currTsk)
+		if err != nil {
+			return fmt.Errorf("failed to call ChainGetTipSet for %s: %w", currTsk, err)
+		}
+
+		for _, blockheader := range execTs.Blocks() {
+			blkMsgs, err := api.ChainGetBlockMessages(ctx, blockheader.Cid())
+			if err != nil {
+				log.Infof("failed to get block messages at epoch: %d", epoch)
+				continue // should we break here?
+			}
+
+			for _, smsg := range blkMsgs.SecpkMessages {
+				// we are only storing delegated messages.
+				// This will reduce unnecessary calls to db.
+				if smsg.Signature.Type != crypto.SigTypeDelegated {
+					continue
+				}
+
+				cid := smsg.Cid().String()
+				res, err := deleteStmt.Exec(cid)
+				if err != nil {
+					return fmt.Errorf("failed to delete tx hash index at cid: %s: %w", cid, err)
+				}
+
+				rowsAffected, err := res.RowsAffected()
+				if err != nil {
+					return fmt.Errorf("failed to get rows affected: %w", err)
+				}
+
+				if rowsAffected == 0 {
+					log.Infof("No tx hash index found at cid: %s", cid)
+				}
+
+				totalRowsAffected += rowsAffected
+			}
+
+		}
+
+		currTs = execTs
+	}
+
+	log.Infof("Done pruning %s, rows affected: %d", ethhashlookup.DefaultDbFilename, totalRowsAffected)
+
+	return nil
+}
+
+// pruneMsgIndex is a helper function that prunes the msgindex.db for a number of epochs starting from a specified height
+func pruneMsgIndex(_ context.Context, basePath string, startHeight int64, epochs int64) error {
+	dbPath := path.Join(basePath, databaseType, index.DefaultDbFilename)
+	db, err := sql.Open(databaseDriver, dbPath)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Printf("ERROR: closing db: %s", err)
+		}
+	}()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	var res sql.Result
+	if epochs == 0 { // if epochs is 0, delete all messages before the start height
+		res, err = tx.Exec(deleteMsgIndexFromStartHeight, startHeight)
+	} else { // if epochs is not 0, delete messages between the start height and the start height - epochs
+		lowerBound := startHeight - epochs
+		if lowerBound < 0 { // if lowerBound is negative, set it to 0 (delete all messages from the start height)
+			lowerBound = 0
+		}
+
+		res, err = tx.Exec(deleteMsgIndexBetweenRange, startHeight, lowerBound)
+	}
+
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			fmt.Printf("ERROR: rollback: %s", err)
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return xerrors.Errorf("error getting rows affected: %s", err)
+	}
+
+	log.Infof("Done pruning %s, rows affected: %d", index.DefaultDbFilename, rowsAffected)
+
+	return nil
 }
