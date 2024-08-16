@@ -56,7 +56,7 @@ func (mbr *metricBandwithReporter) LogSentMessageStream(bytes int64, proto proto
 	if len(proto) == 0 {
 		proto = "unknown"
 	}
-	stats.RecordWithTags(context.TODO(), []tag.Mutator{
+	_ = stats.RecordWithTags(context.TODO(), []tag.Mutator{
 		tag.Upsert(lmetrics.Direction, "outbound"),
 		tag.Upsert(lmetrics.ProtocolID, string(proto))},
 		lmetrics.Libp2pTrafficBytes.M(bytes))
@@ -67,7 +67,7 @@ func (mbr *metricBandwithReporter) LogRecvMessageStream(bytes int64, proto proto
 	if len(proto) == 0 {
 		proto = "unknown"
 	}
-	stats.RecordWithTags(context.TODO(), []tag.Mutator{
+	_ = stats.RecordWithTags(context.TODO(), []tag.Mutator{
 		tag.Upsert(lmetrics.Direction, "inbound"),
 		tag.Upsert(lmetrics.ProtocolID, string(proto))},
 		lmetrics.Libp2pTrafficBytes.M(bytes))
