@@ -816,7 +816,7 @@ var backfillTxHashCmd = &cli.Command{
 			return err
 		}
 
-		var totalRowsAffected int64 = 0
+		var totalRowsAffected int64
 		for i := 0; i < epochs; i++ {
 			epoch := abi.ChainEpoch(startHeight - int64(i))
 
@@ -1083,7 +1083,7 @@ func pruneEventsIndex(_ context.Context, basePath string, startHeight int64) err
 		return xerrors.Errorf("error deleting event: %w", err)
 	}
 
-	var totalRowsAffected int64 = 0
+	var totalRowsAffected int64
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		return xerrors.Errorf("error getting rows affected: %w", err)
@@ -1157,7 +1157,7 @@ func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, start
 		return err
 	}
 
-	var totalRowsAffected int64 = 0
+	var totalRowsAffected int64
 	for currTs != nil {
 		select {
 		case <-ctx.Done():
