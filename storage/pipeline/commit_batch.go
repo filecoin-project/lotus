@@ -59,13 +59,13 @@ type PledgeApi interface {
 }
 
 type AggregateInput struct {
-	Spt    abi.RegisteredSealProof
-	Info   proof.AggregateSealVerifyInfo
-	Proof  []byte
-	Weight abi.StoragePower
+	Spt           abi.RegisteredSealProof
+	Info          proof.AggregateSealVerifyInfo
+	SealRandEpoch abi.ChainEpoch
+	Proof         []byte
+	Weight        abi.StoragePower
 
 	ActivationManifest miner.SectorActivationManifest
-	DealIDPrecommit    bool
 }
 
 type CommitBatcher struct {
@@ -77,6 +77,7 @@ type CommitBatcher struct {
 	feeCfg    config.MinerFeeConfig
 	getConfig dtypes.GetSealingConfigFunc
 	prover    storiface.Prover
+	pcp       PreCommitPolicy
 
 	cutoffs map[abi.SectorNumber]time.Time
 	todo    map[abi.SectorNumber]AggregateInput
@@ -87,7 +88,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover, pa PledgeApi) (*CommitBatcher, error) {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover, pa PledgeApi, pcp PreCommitPolicy) (*CommitBatcher, error) {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -97,6 +98,7 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		getConfig: getConfig,
 		prover:    prov,
 		pledgeApi: pa,
+		pcp:       pcp,
 
 		cutoffs: map[abi.SectorNumber]time.Time{},
 		todo:    map[abi.SectorNumber]AggregateInput{},
@@ -248,14 +250,18 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 		}
 	}
 
-	// After nv21, we have a new ProveCommitSectors2 method, which supports
+	// After nv21, we have a new ProveCommitSectors3 method, which supports
 	// batching without aggregation, but it doesn't support onboarding
 	// sectors which were precommitted with DealIDs in the precommit message.
 	// We prefer it for all other sectors, so first we use the new processBatchV2
 
 	var sectors []abi.SectorNumber
-	for sn := range b.todo {
-		sectors = append(sectors, sn)
+	for sn, sector := range b.todo {
+		// group sectors by proof type, don't submit different proofs at the same time
+		// TODO: could this be more intelligent? if you have niporep mixed with standard, should there be a separate funnel for them?
+		if len(sectors) == 0 || sector.Spt == b.todo[sectors[0]].Spt {
+			sectors = append(sectors, sn)
+		}
 	}
 	res, err = b.processBatchV2(cfg, sectors, nv, !individual)
 	if err != nil {
@@ -307,25 +313,48 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	res := sealiface.CommitBatchRes{
 		FailedSectors: map[abi.SectorNumber]string{},
 	}
-
-	params := miner.ProveCommitSectors3Params{
+	pcs3Params := miner.ProveCommitSectors3Params{
 		RequireActivationSuccess:   cfg.RequireActivationSuccess,
 		RequireNotificationSuccess: cfg.RequireNotificationSuccess,
 	}
-
-	infos := make([]proof.AggregateSealVerifyInfo, 0, total)
-	collateral := big.Zero()
+	pcsniParams := miner.ProveCommitSectorsNIParams{
+		AggregateProofType:       abi.RegisteredAggregationProof_SnarkPackV2,
+		RequireActivationSuccess: cfg.RequireActivationSuccess,
+	}
+	var niExpiration abi.ChainEpoch
 
 	mid, err := address.IDFromAddress(b.maddr)
 	if err != nil {
 		return nil, err
 	}
+	minerId := abi.ActorID(mid)
 
-	for _, sector := range sectors {
-		if b.todo[sector].DealIDPrecommit {
-			continue
+	nonInteractive := b.todo[sectors[0]].Spt.IsNonInteractive()
+	method := builtin.MethodsMiner.ProveCommitSectors3
+
+	if nonInteractive {
+		aggregate = true
+		method = builtin.MethodsMiner.ProveCommitSectorsNI
+
+		pcsniParams.Sectors = make([]miner.SectorNIActivationInfo, 0)
+		pcsniParams.AggregateProof = nil
+		pcsniParams.SealProofType = b.todo[sectors[0]].Spt
+		pcsniParams.ProvingDeadline = 0 // TODO: make this configurable, but also we need to avoid submitting during this deadline and the one after ("mutable deadline")
+
+		niExpiration, err = b.pcp.Expiration(b.mctx)
+		if err != nil {
+			return nil, xerrors.Errorf("getting expiration: %w", err)
 		}
+	}
 
+	infos := make([]proof.AggregateSealVerifyInfo, 0, total)
+	collateral := big.Zero()
+
+	for i, sector := range sectors {
+		si := b.todo[sector]
+		if i > 0 && si.Spt != b.todo[sectors[0]].Spt {
+			return nil, xerrors.Errorf("mismatch in proof type, can't submit different proof types in the same batch: %d != %d", si.Spt, b.todo[sectors[0]].Spt)
+		}
 		res.Sectors = append(res.Sectors, sector)
 
 		sc, err := b.getSectorCollateral(sector, ts.Key())
@@ -336,22 +365,33 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 		collateral = big.Add(collateral, sc)
 
-		manifest := b.todo[sector].ActivationManifest
+		manifest := si.ActivationManifest
 		if len(manifest.Pieces) > 0 {
 			precomitInfo, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sector, ts.Key())
 			if err != nil {
 				res.FailedSectors[sector] = err.Error()
 				continue
 			}
-			err = b.allocationCheck(manifest.Pieces, precomitInfo, abi.ActorID(mid), ts)
+			err = b.allocationCheck(manifest.Pieces, precomitInfo, minerId, ts)
 			if err != nil {
 				res.FailedSectors[sector] = err.Error()
 				continue
 			}
 		}
 
-		params.SectorActivations = append(params.SectorActivations, b.todo[sector].ActivationManifest)
-		params.SectorProofs = append(params.SectorProofs, b.todo[sector].Proof)
+		if nonInteractive {
+			pcsniParams.Sectors = append(pcsniParams.Sectors, miner.SectorNIActivationInfo{
+				SealingNumber: sector,
+				SealerID:      minerId,
+				SealedCID:     si.Info.SealedCID,
+				SectorNumber:  sector,
+				SealRandEpoch: si.SealRandEpoch,
+				Expiration:    niExpiration,
+			})
+		} else {
+			pcs3Params.SectorActivations = append(pcs3Params.SectorActivations, si.ActivationManifest)
+			pcs3Params.SectorProofs = append(pcs3Params.SectorProofs, si.Proof)
+		}
 
 		infos = append(infos, b.todo[sector].Info)
 	}
@@ -368,22 +408,15 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	needFunds := collateral
 
 	if aggregate {
-		params.SectorProofs = nil // can't be set when aggregating
+		pcs3Params.SectorProofs = nil // can't be set when aggregating
 		arp, err := b.aggregateProofType(nv)
 		if err != nil {
 			res.Error = err.Error()
 			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate proof type: %w", err)
 		}
-		params.AggregateProofType = &arp
 
-		mid, err := address.IDFromAddress(b.maddr)
-		if err != nil {
-			res.Error = err.Error()
-			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting miner id: %w", err)
-		}
-
-		params.AggregateProof, err = b.prover.AggregateSealProofs(proof.AggregateSealVerifyProofAndInfos{
-			Miner:          abi.ActorID(mid),
+		ap, err := b.prover.AggregateSealProofs(proof.AggregateSealVerifyProofAndInfos{
+			Miner:          minerId,
 			SealProof:      b.todo[infos[0].Number].Spt,
 			AggregateProof: arp,
 			Infos:          infos,
@@ -391,6 +424,14 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		if err != nil {
 			res.Error = err.Error()
 			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("aggregating proofs: %w", err)
+		}
+
+		if nonInteractive {
+			pcsniParams.AggregateProof = ap
+			pcsniParams.AggregateProofType = arp
+		} else {
+			pcs3Params.AggregateProof = ap
+			pcs3Params.AggregateProofType = &arp
 		}
 
 		aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), ts.MinTicketBlock().ParentBaseFee)
@@ -427,12 +468,19 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	}
 
 	enc := new(bytes.Buffer)
-	if err := params.MarshalCBOR(enc); err != nil {
-		res.Error = err.Error()
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectors3Params: %w", err)
+	if nonInteractive {
+		if err := pcsniParams.MarshalCBOR(enc); err != nil {
+			res.Error = err.Error()
+			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectorsNIParams: %w", err)
+		}
+	} else {
+		if err := pcs3Params.MarshalCBOR(enc); err != nil {
+			res.Error = err.Error()
+			return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitSectors3Params: %w", err)
+		}
 	}
 
-	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
+	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, method, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
 		log.Errorf("simulating CommitBatch %s", err)
@@ -452,14 +500,18 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		return append(ret0, ret1...), nil
 	}
 
-	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors3, needFunds, maxFee, enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, method, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed (params size: %d, sectors: %d, agg: %t): %w", len(enc.Bytes()), len(sectors), aggregate, err)
 	}
 
 	res.Msg = &mcid
 
-	log.Infow("Sent ProveCommitSectors3 message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
+	if nonInteractive {
+		log.Infow("Sent ProveCommitSectorsNI message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
+	} else {
+		log.Infow("Sent ProveCommitSectors3 message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
+	}
 
 	return []sealiface.CommitBatchRes{res}, nil
 }
@@ -550,6 +602,10 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 
 // TODO: If this returned epochs, it would make testing much easier
 func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
+	if si.SectorType.IsNonInteractive() {
+		return time.Now(), nil
+	}
+
 	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return time.Now(), xerrors.Errorf("getting chain head: %s", err)
@@ -605,25 +661,29 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 }
 
 func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSetKey) (abi.TokenAmount, error) {
-	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tsk)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("getting precommit info: %w", err)
-	}
-	if pci == nil {
-		return big.Zero(), xerrors.Errorf("precommit info not found on chain")
-	}
-
 	collateral, err := b.pledgeApi.pledgeForPower(b.mctx, b.todo[sn].Weight) // b.maddr, pci.Info, tsk
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
-	collateral = big.Sub(collateral, pci.PreCommitDeposit)
+	pcd := big.Zero()
+	if !b.todo[sn].Spt.IsNonInteractive() {
+		pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tsk)
+		if err != nil {
+			return big.Zero(), xerrors.Errorf("getting precommit info: %w", err)
+		}
+		if pci == nil {
+			return big.Zero(), xerrors.Errorf("precommit info not found on chain")
+		}
+		pcd = pci.PreCommitDeposit
+		collateral = big.Sub(collateral, pcd)
+	}
+
 	if collateral.LessThan(big.Zero()) {
 		collateral = big.Zero()
 	}
 
-	log.Infow("getSectorCollateral", "collateral", types.FIL(collateral), "sn", sn, "precommit", types.FIL(pci.PreCommitDeposit), "pledge", types.FIL(collateral), "weight", b.todo[sn].Weight)
+	log.Infow("getSectorCollateral", "collateral", types.FIL(collateral), "sn", sn, "precommit", types.FIL(pcd), "pledge", types.FIL(collateral), "weight", b.todo[sn].Weight)
 
 	return collateral, nil
 }

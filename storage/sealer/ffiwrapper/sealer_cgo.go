@@ -1023,6 +1023,10 @@ func (sb *Sealer) SealCommit2(ctx context.Context, sector storiface.SectorRef, p
 	return ffi.SealCommitPhase2(phase1Out, sector.ID.Number, sector.ID.Miner)
 }
 
+func (sb *Sealer) SealCommit2CircuitProofs(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.Proof, error) {
+	return ffi.SealCommitPhase2CircuitProofs(phase1Out, sector.ID.Number)
+}
+
 func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, pieces []abi.PieceInfo) (storiface.ReplicaUpdateOut, error) {
 	empty := storiface.ReplicaUpdateOut{}
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed|storiface.FTSealed|storiface.FTCache, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)

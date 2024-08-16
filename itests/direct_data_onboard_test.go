@@ -338,7 +338,7 @@ func TestOnboardRawPieceSnap(t *testing.T) {
 	}))
 	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")

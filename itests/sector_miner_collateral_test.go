@@ -75,7 +75,7 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		ens.InterconnectAll().BeginMining(blockTime)
 		full.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
-		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
+		toCheck := miner.StartPledge(ctx, -1, nSectors, 0, nil)
 
 		for len(toCheck) > 0 {
 			states := map[api.SectorState]int{}

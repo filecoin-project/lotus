@@ -10,6 +10,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	minertypes13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	minertypes14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -325,10 +326,12 @@ type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
 
 type PieceActivationManifest = minertypes13.PieceActivationManifest
 type ProveCommitSectors3Params = minertypes13.ProveCommitSectors3Params
+type ProveCommitSectorsNIParams = minertypes14.ProveCommitSectorsNIParams
 type SectorActivationManifest = minertypes13.SectorActivationManifest
 type ProveReplicaUpdates3Params = minertypes13.ProveReplicaUpdates3Params
 type SectorUpdateManifest = minertypes13.SectorUpdateManifest
 type SectorOnChainInfoFlags = minertypes13.SectorOnChainInfoFlags
+type SectorNIActivationInfo = minertypes14.SectorNIActivationInfo
 
 var QAPowerMax = minertypes.QAPowerMax
 

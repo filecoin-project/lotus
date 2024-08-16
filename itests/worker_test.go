@@ -44,7 +44,7 @@ func TestWorkerPledge(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, e)
 
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 }
 
 func TestWorkerPledgeSpread(t *testing.T) {
@@ -60,7 +60,7 @@ func TestWorkerPledgeSpread(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, e)
 
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 }
 
 func TestWorkerPledgeLocalFin(t *testing.T) {
@@ -76,7 +76,7 @@ func TestWorkerPledgeLocalFin(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, e)
 
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 }
 
 func TestWorkerDataCid(t *testing.T) {
@@ -455,7 +455,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, e)
 
-	tocheck := miner.StartPledge(ctx, 1, 0, nil)
+	tocheck := miner.StartPledge(ctx, -1, 1, 0, nil)
 	var sn abi.SectorNumber
 	for n := range tocheck {
 		sn = n

@@ -39,7 +39,7 @@ func TestWindowPostNoPreChecks(t *testing.T) {
 
 	nSectors := 10
 
-	miner.PledgeSectors(ctx, nSectors, 0, nil)
+	miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestWindowPostNoPreChecks(t *testing.T) {
 
 	// pledge a sector after recovery
 
-	miner.PledgeSectors(ctx, 1, nSectors, nil)
+	miner.PledgeSectors(ctx, -1, 1, nSectors, nil)
 
 	{
 		// Wait until proven.
@@ -204,7 +204,7 @@ func TestWindowPostMaxSectorsRecoveryConfig(t *testing.T) {
 
 	nSectors := 10
 
-	miner.PledgeSectors(ctx, nSectors, 0, nil)
+	miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -318,7 +318,7 @@ func TestWindowPostManualSectorsRecovery(t *testing.T) {
 
 	nSectors := 10
 
-	miner.PledgeSectors(ctx, nSectors, 0, nil)
+	miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

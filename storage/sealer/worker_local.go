@@ -192,23 +192,24 @@ func FFIExec(opts ...ffiwrapper.FFIWrapperOpt) func(l *LocalWorker) (storiface.S
 type ReturnType string
 
 const (
-	DataCid               ReturnType = "DataCid"
-	AddPiece              ReturnType = "AddPiece"
-	SealPreCommit1        ReturnType = "SealPreCommit1"
-	SealPreCommit2        ReturnType = "SealPreCommit2"
-	SealCommit1           ReturnType = "SealCommit1"
-	SealCommit2           ReturnType = "SealCommit2"
-	FinalizeSector        ReturnType = "FinalizeSector"
-	FinalizeReplicaUpdate ReturnType = "FinalizeReplicaUpdate"
-	ReplicaUpdate         ReturnType = "ReplicaUpdate"
-	ProveReplicaUpdate1   ReturnType = "ProveReplicaUpdate1"
-	ProveReplicaUpdate2   ReturnType = "ProveReplicaUpdate2"
-	GenerateSectorKey     ReturnType = "GenerateSectorKey"
-	ReleaseUnsealed       ReturnType = "ReleaseUnsealed"
-	MoveStorage           ReturnType = "MoveStorage"
-	UnsealPiece           ReturnType = "UnsealPiece"
-	DownloadSector        ReturnType = "DownloadSector"
-	Fetch                 ReturnType = "Fetch"
+	DataCid                  ReturnType = "DataCid"
+	AddPiece                 ReturnType = "AddPiece"
+	SealPreCommit1           ReturnType = "SealPreCommit1"
+	SealPreCommit2           ReturnType = "SealPreCommit2"
+	SealCommit1              ReturnType = "SealCommit1"
+	SealCommit2              ReturnType = "SealCommit2"
+	SealCommit2CircuitProofs ReturnType = "SealCommit2CircuitProofs"
+	FinalizeSector           ReturnType = "FinalizeSector"
+	FinalizeReplicaUpdate    ReturnType = "FinalizeReplicaUpdate"
+	ReplicaUpdate            ReturnType = "ReplicaUpdate"
+	ProveReplicaUpdate1      ReturnType = "ProveReplicaUpdate1"
+	ProveReplicaUpdate2      ReturnType = "ProveReplicaUpdate2"
+	GenerateSectorKey        ReturnType = "GenerateSectorKey"
+	ReleaseUnsealed          ReturnType = "ReleaseUnsealed"
+	MoveStorage              ReturnType = "MoveStorage"
+	UnsealPiece              ReturnType = "UnsealPiece"
+	DownloadSector           ReturnType = "DownloadSector"
+	Fetch                    ReturnType = "Fetch"
 )
 
 // in: func(WorkerReturn, context.Context, CallID, err string)
@@ -246,23 +247,24 @@ func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.Wor
 }
 
 var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, *storiface.CallError) error{
-	DataCid:               rfunc(storiface.WorkerReturn.ReturnDataCid),
-	AddPiece:              rfunc(storiface.WorkerReturn.ReturnAddPiece),
-	SealPreCommit1:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
-	SealPreCommit2:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
-	SealCommit1:           rfunc(storiface.WorkerReturn.ReturnSealCommit1),
-	SealCommit2:           rfunc(storiface.WorkerReturn.ReturnSealCommit2),
-	FinalizeSector:        rfunc(storiface.WorkerReturn.ReturnFinalizeSector),
-	ReleaseUnsealed:       rfunc(storiface.WorkerReturn.ReturnReleaseUnsealed),
-	ReplicaUpdate:         rfunc(storiface.WorkerReturn.ReturnReplicaUpdate),
-	ProveReplicaUpdate1:   rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate1),
-	ProveReplicaUpdate2:   rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate2),
-	GenerateSectorKey:     rfunc(storiface.WorkerReturn.ReturnGenerateSectorKeyFromData),
-	FinalizeReplicaUpdate: rfunc(storiface.WorkerReturn.ReturnFinalizeReplicaUpdate),
-	MoveStorage:           rfunc(storiface.WorkerReturn.ReturnMoveStorage),
-	UnsealPiece:           rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
-	DownloadSector:        rfunc(storiface.WorkerReturn.ReturnDownloadSector),
-	Fetch:                 rfunc(storiface.WorkerReturn.ReturnFetch),
+	DataCid:                  rfunc(storiface.WorkerReturn.ReturnDataCid),
+	AddPiece:                 rfunc(storiface.WorkerReturn.ReturnAddPiece),
+	SealPreCommit1:           rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
+	SealPreCommit2:           rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
+	SealCommit1:              rfunc(storiface.WorkerReturn.ReturnSealCommit1),
+	SealCommit2:              rfunc(storiface.WorkerReturn.ReturnSealCommit2),
+	SealCommit2CircuitProofs: rfunc(storiface.WorkerReturn.ReturnSealCommit2CircuitProofs),
+	FinalizeSector:           rfunc(storiface.WorkerReturn.ReturnFinalizeSector),
+	ReleaseUnsealed:          rfunc(storiface.WorkerReturn.ReturnReleaseUnsealed),
+	ReplicaUpdate:            rfunc(storiface.WorkerReturn.ReturnReplicaUpdate),
+	ProveReplicaUpdate1:      rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate1),
+	ProveReplicaUpdate2:      rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate2),
+	GenerateSectorKey:        rfunc(storiface.WorkerReturn.ReturnGenerateSectorKeyFromData),
+	FinalizeReplicaUpdate:    rfunc(storiface.WorkerReturn.ReturnFinalizeReplicaUpdate),
+	MoveStorage:              rfunc(storiface.WorkerReturn.ReturnMoveStorage),
+	UnsealPiece:              rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
+	DownloadSector:           rfunc(storiface.WorkerReturn.ReturnDownloadSector),
+	Fetch:                    rfunc(storiface.WorkerReturn.ReturnFetch),
 }
 
 func (l *LocalWorker) asyncCall(ctx context.Context, sector storiface.SectorRef, rt ReturnType, work func(ctx context.Context, ci storiface.CallID) (interface{}, error)) (storiface.CallID, error) {
@@ -438,6 +440,17 @@ func (l *LocalWorker) SealCommit2(ctx context.Context, sector storiface.SectorRe
 
 	return l.asyncCall(ctx, sector, SealCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.SealCommit2(ctx, sector, phase1Out)
+	})
+}
+
+func (l *LocalWorker) SealCommit2CircuitProofs(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.CallID, error) {
+	sb, err := l.executor(l)
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, sector, SealCommit2CircuitProofs, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		return sb.SealCommit2CircuitProofs(ctx, sector, phase1Out)
 	})
 }
 

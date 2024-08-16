@@ -39,7 +39,7 @@ func TestWindowPostNoMinerStorage(t *testing.T) {
 
 	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
-	miner.PledgeSectors(ctx, sealSectors, 0, nil)
+	miner.PledgeSectors(ctx, -1, sealSectors, 0, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

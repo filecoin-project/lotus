@@ -34,7 +34,7 @@ func TestAssignBasic(t *testing.T) {
 		require.Equal(t, abi.SectorNumber(miner.PresealSectors+1), nam.Next)
 	}
 
-	miner.PledgeSectors(ctx, nSectors, 0, nil)
+	miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
 
 	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestAssignReservation(t *testing.T) {
 		require.Equal(t, abi.SectorNumber(11), nam.Next)
 	}
 
-	miner.PledgeSectors(ctx, nSectors, 0, nil)
+	miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
 
 	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestAssignReservation(t *testing.T) {
 		require.Equal(t, abi.SectorNumber(3), nam.Next)
 	}
 
-	miner.PledgeSectors(ctx, 1, nSectors, nil)
+	miner.PledgeSectors(ctx, -1, 1, nSectors, nil)
 
 	sl, err = miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)

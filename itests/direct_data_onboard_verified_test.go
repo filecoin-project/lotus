@@ -97,7 +97,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	minerId, err := address.IDFromAddress(miner.ActorAddr)
 	require.NoError(t, err)
 
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")

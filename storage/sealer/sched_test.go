@@ -92,6 +92,10 @@ func (s *schedTestWorker) SealCommit2(ctx context.Context, sector storiface.Sect
 	panic("implement me")
 }
 
+func (s *schedTestWorker) SealCommit2CircuitProofs(ctx context.Context, sector storiface.SectorRef, c1o storiface.Commit1Out) (storiface.CallID, error) {
+	panic("implement me")
+}
+
 func (s *schedTestWorker) FinalizeSector(ctx context.Context, sector storiface.SectorRef) (storiface.CallID, error) {
 	panic("implement me")
 }

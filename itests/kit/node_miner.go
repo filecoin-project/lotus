@@ -90,8 +90,8 @@ type TestMiner struct {
 	options nodeOpts
 }
 
-func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNotif <-chan struct{}) {
-	toCheck := tm.StartPledge(ctx, n, existing, blockNotif)
+func (tm *TestMiner) PledgeSectors(ctx context.Context, spt abi.RegisteredSealProof, n, existing int, blockNotif <-chan struct{}) {
+	toCheck := tm.StartPledge(ctx, spt, n, existing, blockNotif)
 	tm.WaitSectorsProving(ctx, toCheck)
 }
 
@@ -123,14 +123,14 @@ func (tm *TestMiner) WaitSectorsProvingAllowFails(ctx context.Context, toCheck m
 	}
 }
 
-func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} {
+func (tm *TestMiner) StartPledge(ctx context.Context, spt abi.RegisteredSealProof, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} {
 	for i := 0; i < n; i++ {
 		if i%3 == 0 && blockNotif != nil {
 			<-blockNotif
 			tm.t.Log("WAIT")
 		}
 		tm.t.Logf("PLEDGING %d", i)
-		_, err := tm.StorageMiner.PledgeSector(ctx)
+		_, err := tm.StorageMiner.PledgeSector(ctx, spt)
 		require.NoError(tm.t, err)
 	}
 

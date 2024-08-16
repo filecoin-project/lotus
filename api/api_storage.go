@@ -61,8 +61,8 @@ type StorageMiner interface {
 
 	ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) //perm:admin
 
-	// Temp api for testing
-	PledgeSector(context.Context) (abi.SectorID, error) //perm:write
+	// Temp api for testing, use -1 as seal proof to use the default
+	PledgeSector(context.Context, abi.RegisteredSealProof) (abi.SectorID, error) //perm:write
 
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error) //perm:read
@@ -156,6 +156,7 @@ type StorageMiner interface {
 	ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storiface.SectorCids, err *storiface.CallError) error                       //perm:admin retry:true
 	ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storiface.Commit1Out, err *storiface.CallError) error                             //perm:admin retry:true
 	ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error                                //perm:admin retry:true
+	ReturnSealCommit2CircuitProofs(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error                   //perm:admin retry:true
 	ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                    //perm:admin retry:true
 	ReturnReplicaUpdate(ctx context.Context, callID storiface.CallID, out storiface.ReplicaUpdateOut, err *storiface.CallError) error                     //perm:admin retry:true
 	ReturnProveReplicaUpdate1(ctx context.Context, callID storiface.CallID, vanillaProofs storiface.ReplicaVanillaProofs, err *storiface.CallError) error //perm:admin retry:true

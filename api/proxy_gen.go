@@ -892,7 +892,7 @@ type StorageMinerMethods struct {
 
 	MiningBase func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
-	PledgeSector func(p0 context.Context) (abi.SectorID, error) `perm:"write"`
+	PledgeSector func(p0 context.Context, p1 abi.RegisteredSealProof) (abi.SectorID, error) `perm:"write"`
 
 	RecoverFault func(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) `perm:"admin"`
 
@@ -925,6 +925,8 @@ type StorageMinerMethods struct {
 	ReturnSealCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storiface.Commit1Out, p3 *storiface.CallError) error `perm:"admin"`
 
 	ReturnSealCommit2 func(p0 context.Context, p1 storiface.CallID, p2 storiface.Proof, p3 *storiface.CallError) error `perm:"admin"`
+
+	ReturnSealCommit2CircuitProofs func(p0 context.Context, p1 storiface.CallID, p2 storiface.Proof, p3 *storiface.CallError) error `perm:"admin"`
 
 	ReturnSealPreCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storiface.PreCommit1Out, p3 *storiface.CallError) error `perm:"admin"`
 
@@ -1118,6 +1120,8 @@ type WorkerMethods struct {
 	SealCommit1 func(p0 context.Context, p1 storiface.SectorRef, p2 abi.SealRandomness, p3 abi.InteractiveSealRandomness, p4 []abi.PieceInfo, p5 storiface.SectorCids) (storiface.CallID, error) `perm:"admin"`
 
 	SealCommit2 func(p0 context.Context, p1 storiface.SectorRef, p2 storiface.Commit1Out) (storiface.CallID, error) `perm:"admin"`
+
+	SealCommit2CircuitProofs func(p0 context.Context, p1 storiface.SectorRef, p2 storiface.Commit1Out) (storiface.CallID, error) `perm:"admin"`
 
 	SealPreCommit1 func(p0 context.Context, p1 storiface.SectorRef, p2 abi.SealRandomness, p3 []abi.PieceInfo) (storiface.CallID, error) `perm:"admin"`
 
@@ -5379,14 +5383,14 @@ func (s *StorageMinerStub) MiningBase(p0 context.Context) (*types.TipSet, error)
 	return nil, ErrNotSupported
 }
 
-func (s *StorageMinerStruct) PledgeSector(p0 context.Context) (abi.SectorID, error) {
+func (s *StorageMinerStruct) PledgeSector(p0 context.Context, p1 abi.RegisteredSealProof) (abi.SectorID, error) {
 	if s.Internal.PledgeSector == nil {
 		return *new(abi.SectorID), ErrNotSupported
 	}
-	return s.Internal.PledgeSector(p0)
+	return s.Internal.PledgeSector(p0, p1)
 }
 
-func (s *StorageMinerStub) PledgeSector(p0 context.Context) (abi.SectorID, error) {
+func (s *StorageMinerStub) PledgeSector(p0 context.Context, p1 abi.RegisteredSealProof) (abi.SectorID, error) {
 	return *new(abi.SectorID), ErrNotSupported
 }
 
@@ -5563,6 +5567,17 @@ func (s *StorageMinerStruct) ReturnSealCommit2(p0 context.Context, p1 storiface.
 }
 
 func (s *StorageMinerStub) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storiface.Proof, p3 *storiface.CallError) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) ReturnSealCommit2CircuitProofs(p0 context.Context, p1 storiface.CallID, p2 storiface.Proof, p3 *storiface.CallError) error {
+	if s.Internal.ReturnSealCommit2CircuitProofs == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ReturnSealCommit2CircuitProofs(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) ReturnSealCommit2CircuitProofs(p0 context.Context, p1 storiface.CallID, p2 storiface.Proof, p3 *storiface.CallError) error {
 	return ErrNotSupported
 }
 
@@ -6520,6 +6535,17 @@ func (s *WorkerStruct) SealCommit2(p0 context.Context, p1 storiface.SectorRef, p
 }
 
 func (s *WorkerStub) SealCommit2(p0 context.Context, p1 storiface.SectorRef, p2 storiface.Commit1Out) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) SealCommit2CircuitProofs(p0 context.Context, p1 storiface.SectorRef, p2 storiface.Commit1Out) (storiface.CallID, error) {
+	if s.Internal.SealCommit2CircuitProofs == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.SealCommit2CircuitProofs(p0, p1, p2)
+}
+
+func (s *WorkerStub) SealCommit2CircuitProofs(p0 context.Context, p1 storiface.SectorRef, p2 storiface.Commit1Out) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

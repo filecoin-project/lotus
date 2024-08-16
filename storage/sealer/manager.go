@@ -646,6 +646,50 @@ func (m *Manager) SealCommit2(ctx context.Context, sector storiface.SectorRef, p
 	return out, waitErr
 }
 
+func (m *Manager) SealCommit2CircuitProofs(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (out storiface.Proof, err error) {
+	// TODO: does this need a new sealtasks type? probably
+	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTCommit2, sector, phase1Out)
+	if err != nil {
+		return storiface.Proof{}, xerrors.Errorf("getWork: %w", err)
+	}
+	defer cancel()
+
+	var waitErr error
+	waitRes := func() {
+		p, werr := m.waitWork(ctx, wk)
+		if werr != nil {
+			waitErr = werr
+			return
+		}
+		if p != nil {
+			out = p.(storiface.Proof)
+		}
+	}
+
+	if wait { // already in progress
+		waitRes()
+		return out, waitErr
+	}
+
+	selector := newTaskSelector()
+
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit2, selector, schedNop, func(ctx context.Context, w Worker) error {
+		err := m.startWork(ctx, w, wk)(w.SealCommit2CircuitProofs(ctx, sector, phase1Out))
+		if err != nil {
+			return err
+		}
+
+		waitRes()
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out, waitErr
+}
+
 // sectorStorageType tries to figure out storage type for a given sector; expects only a single copy of the file in the
 // storage system
 func (m *Manager) sectorStorageType(ctx context.Context, sector storiface.SectorRef, ft storiface.SectorFileType) (sectorFound bool, ptype storiface.PathType, err error) {
@@ -1193,6 +1237,10 @@ func (m *Manager) ReturnSealCommit1(ctx context.Context, callID storiface.CallID
 }
 
 func (m *Manager) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error {
+	return m.returnResult(ctx, callID, proof, err)
+}
+
+func (m *Manager) ReturnSealCommit2CircuitProofs(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, proof, err)
 }
 

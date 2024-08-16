@@ -65,7 +65,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		kit.LatestActorsAt(upgradeHeight))
 	ens.InterconnectAll().BeginMining(blocktime)
 
-	miner.PledgeSectors(ctx, nSectors, 0, nil)
+	miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -199,7 +199,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 
 	// pledge a sector after recovery
 
-	miner.PledgeSectors(ctx, 1, nSectors, nil)
+	miner.PledgeSectors(ctx, -1, 1, nSectors, nil)
 
 	{
 		// Wait until proven.
@@ -250,7 +250,7 @@ func TestWindowPostBaseFeeBurn(t *testing.T) {
 	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	miner.PledgeSectors(ctx, 10, 0, nil)
+	miner.PledgeSectors(ctx, -1, 10, 0, nil)
 	//stm: @CHAIN_STATE_GET_ACTOR_001
 	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 	require.NoError(t, err)

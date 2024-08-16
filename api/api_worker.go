@@ -39,6 +39,7 @@ type Worker interface {
 	SealPreCommit2(ctx context.Context, sector storiface.SectorRef, pc1o storiface.PreCommit1Out) (storiface.CallID, error)                                                                                  //perm:admin
 	SealCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storiface.SectorCids) (storiface.CallID, error) //perm:admin
 	SealCommit2(ctx context.Context, sector storiface.SectorRef, c1o storiface.Commit1Out) (storiface.CallID, error)                                                                                         //perm:admin
+	SealCommit2CircuitProofs(ctx context.Context, sector storiface.SectorRef, c1o storiface.Commit1Out) (storiface.CallID, error)                                                                            //perm:admin
 	FinalizeSector(ctx context.Context, sector storiface.SectorRef) (storiface.CallID, error)                                                                                                                //perm:admin
 	FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef) (storiface.CallID, error)                                                                                                         //perm:admin
 	ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, pieces []abi.PieceInfo) (storiface.CallID, error)                                                                                         //perm:admin

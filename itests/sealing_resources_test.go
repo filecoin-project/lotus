@@ -60,5 +60,5 @@ func TestPledgeMaxConcurrentGet(t *testing.T) {
 
 	*/
 
-	miner.PledgeSectors(ctx, 3, 0, nil)
+	miner.PledgeSectors(ctx, -1, 3, 0, nil)
 }

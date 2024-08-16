@@ -40,6 +40,8 @@ import (
 
 const MinDDONetworkVersion = network.Version22
 
+var niPorepInteractiveRandomness = abi.InteractiveSealRandomness([]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
+
 var DealSectorPriority = 1024
 var MaxTicketAge = policy.MaxPreCommitRandomnessLookback
 
@@ -452,6 +454,16 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
+	if sector.SectorType.IsNonInteractive() {
+		ts, err := m.Api.ChainHead(ctx.Context())
+		if err != nil {
+			log.Errorf("handleSubmitPreCommitBatch: api error, not proceeding: %+v", err)
+			return nil
+		}
+		return ctx.Send(SectorPreCommitLanded{TipSet: ts.Key()})
+		// return ctx.Send(SectorPreCommitBatchSent{cid.MustParse("bafkqaaa")}) // TODO: dummy cid, can we do better? can't be a pointer and can't be undef, can we avoid this?
+	}
+
 	params, deposit, _, err := m.preCommitInfo(ctx, sector)
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitInfo: %w", err)})
@@ -477,6 +489,15 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 }
 
 func (m *Sealing) handlePreCommitWait(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.SectorType.IsNonInteractive() {
+		ts, err := m.Api.ChainHead(ctx.Context())
+		if err != nil {
+			log.Errorf("handlePreCommitWait: api error, not proceeding: %+v", err)
+			return nil
+		}
+		return ctx.Send(SectorSeedReady{SeedValue: niPorepInteractiveRandomness, SeedEpoch: ts.Height()})
+	}
+
 	if sector.PreCommitMessage == nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("precommit message was nil")})
 	}
@@ -514,6 +535,10 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		return nil
 	}
 
+	if sector.SectorType.IsNonInteractive() {
+		return ctx.Send(SectorSeedReady{SeedValue: niPorepInteractiveRandomness, SeedEpoch: ts.Height()})
+	}
+
 	pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
@@ -529,7 +554,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		// get from the events API
 		ts, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
-			log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+			log.Errorf("handleWaitSeed: api error, not proceeding: %+v", err)
 			return nil
 		}
 
@@ -638,13 +663,23 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	if sector.RemoteCommit2Endpoint == "" {
 		// Local Commit2
 
-		porepProof, err = m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
-		if err != nil {
-			log.Errorw("Commit2 error", "error", err)
-			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
+		if sector.SectorType.IsNonInteractive() {
+			porepProof, err = m.sealer.SealCommit2CircuitProofs(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
+			if err != nil {
+				log.Errorw("Commit2 error", "error", err)
+				return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
+			}
+		} else {
+			porepProof, err = m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
+			if err != nil {
+				log.Errorw("Commit2 error", "error", err)
+				return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
+			}
 		}
 	} else {
 		// Remote Commit2
+
+		// TODO: remote circuitproofs for NI-PoRep
 
 		reqData := api.RemoteCommit2Params{
 			ProofType: sector.SectorType,
@@ -688,6 +723,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		}
 
 		if err := m.checkCommit(ctx.Context(), sector, porepProof, ts.Key()); err != nil {
+			log.Errorf("handleCommitting: checkCommit error: %+v", err)
 			return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 		}
 	}
@@ -780,14 +816,18 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		return err
 	}
 
-	pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
-	if err != nil {
-		return xerrors.Errorf("getting precommit info: %w", err)
-	}
+	weight := big.Zero()
 
-	weight, err := m.sectorWeight(ctx.Context(), sector, pci.Info.Expiration)
-	if err != nil {
-		return xerrors.Errorf("getting sector weight: %w", err)
+	if !sector.SectorType.IsNonInteractive() {
+		pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting precommit info: %w", err)
+		}
+
+		weight, err = m.sectorWeight(ctx.Context(), sector, pci.Info.Expiration)
+		if err != nil {
+			return xerrors.Errorf("getting sector weight: %w", err)
+		}
 	}
 
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
@@ -798,9 +838,10 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			SealedCID:             *sector.CommR,
 			UnsealedCID:           *sector.CommD,
 		},
-		Proof:  sector.Proof,
-		Spt:    sector.SectorType,
-		Weight: weight,
+		SealRandEpoch: sector.TicketEpoch,
+		Proof:         sector.Proof,
+		Spt:           sector.SectorType,
+		Weight:        weight,
 
 		ActivationManifest: miner2.SectorActivationManifest{
 			SectorNumber: sector.SectorNumber,

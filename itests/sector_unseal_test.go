@@ -115,7 +115,7 @@ func TestUnsealPiece(t *testing.T) {
 	checkSectors(storiface.FTNone, storiface.FTNone)
 
 	// get a sector for upgrading
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
