@@ -184,6 +184,9 @@ var (
 
 	// gateway rate limit
 	RateLimitCount = stats.Int64("ratelimit/limited", "rate limited connections", stats.UnitDimensionless)
+
+	// BandwidthMetrics
+	Libp2pTrafficBytes = stats.Int64("libp2p/traffic_bytes_total", "Number of bytes transferred over libp2p streams", stats.UnitBytes)
 )
 
 var (
@@ -637,6 +640,12 @@ var (
 		Measure:     RateLimitCount,
 		Aggregation: view.Count(),
 	}
+
+	Libp2pTrafficBytesView = &view.View{
+		Measure:     Libp2pTrafficBytes,
+		Aggregation: view.Sum(),
+		TagKeys:     []tag.Key{Direction, ProtocolID},
+	}
 )
 
 var views = []*view.View{
@@ -721,6 +730,7 @@ var ChainNodeViews = append([]*view.View{
 	VMAppliedView,
 	VMExecutionWaitingView,
 	VMExecutionRunningView,
+	Libp2pTrafficBytesView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{
