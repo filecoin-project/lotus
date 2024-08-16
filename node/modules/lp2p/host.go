@@ -62,12 +62,6 @@ func Host(mctx helpers.MetricsCtx, buildVersion build.BuildVersion, lc fx.Lifecy
 		return nil, err
 	}
 
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return h.Close()
-		},
-	})
-
 	return h, nil
 }
 
