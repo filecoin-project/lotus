@@ -19,6 +19,7 @@
 - https://github.com/filecoin-project/lotus/pull/12332: fix: ETH RPC: receipts: use correct txtype in receipts
 - https://github.com/filecoin-project/lotus/pull/12335: fix: lotus-shed: store processed tipset after backfilling events
 - https://github.com/filecoin-project/lotus/pull/12341: fix: miner: Fix DDO pledge math
+- https://github.com/filecoin-project/lotus/pull/12393: feat(index): add lotus shed commands to prune all indexes
 
 ## ☢️ Upgrade Warnings ☢️
 
