@@ -31,33 +31,36 @@ import (
 
 const (
 	// same as in chain/events/index.go
-	eventExists                = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	eventCount                 = `SELECT COUNT(*) FROM event WHERE tipset_key_cid=?`
-	entryCount                 = `SELECT COUNT(*) FROM event_entry JOIN event ON event_entry.event_id=event.id WHERE event.tipset_key_cid=?`
-	insertEvent                = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	insertEntry                = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
-	upsertEventsSeen           = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
-	tipsetSeen                 = `SELECT height,reverted FROM events_seen WHERE tipset_key_cid=?`
-	selectEventIdsFromHeight   = `SELECT id, height FROM event WHERE height < ?`
-	selectEventIdsBetweenRange = `SELECT id, height FROM event WHERE height < ? AND height >= ?`
+	eventExists      = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	eventCount       = `SELECT COUNT(*) FROM event WHERE tipset_key_cid=?`
+	entryCount       = `SELECT COUNT(*) FROM event_entry JOIN event ON event_entry.event_id=event.id WHERE event.tipset_key_cid=?`
+	insertEvent      = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+	insertEntry      = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
+	upsertEventsSeen = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
+	tipsetSeen       = `SELECT height,reverted FROM events_seen WHERE tipset_key_cid=?`
 )
 
 // delete queries
 const (
 	deleteMsgIndexFromStartHeight = `DELETE FROM messages WHERE epoch < ?`
-	deleteMsgIndexBetweenRange    = `DELETE FROM messages WHERE epoch < ? AND epoch >= ?`
 
 	deleteTxHashIndexByCID = `DELETE FROM eth_tx_hashes WHERE cid = ?`
 
-	deleteEventsByIDs        = `DELETE FROM event WHERE id IN (%s)`
-	deleteEventEntriesByIDs  = `DELETE FROM event_entry WHERE event_id IN (%s)`
-	deleteEventSeenByHeights = `DELETE FROM events_seen WHERE height IN (%s)`
+	deleteEventFromStartHeight   = `DELETE FROM event WHERE height < ?;`
+	deleteEventEntriesByEventIDs = `DELETE FROM event_entry WHERE event_id IN (SELECT id FROM event WHERE height < ?);`
+	deleteEventsSeenByHeight     = `DELETE FROM events_seen WHERE height < ?;`
 )
 
 // database related constants
 const (
 	databaseType   = "sqlite"
 	databaseDriver = "sqlite3"
+
+	eventTable       = "event"
+	eventEntryTable  = "event_entry"
+	eventsSeenTable  = "events_seen"
+	msgIndexTable    = "messages"
+	txHashIndexTable = "eth_tx_hashes"
 )
 
 func withCategory(cat string, cmd *cli.Command) *cli.Command {
@@ -73,8 +76,10 @@ var indexesCmd = &cli.Command{
 		withCategory("msgindex", backfillMsgIndexCmd),
 		withCategory("msgindex", pruneMsgIndexCmd),
 		withCategory("txhash", backfillTxHashCmd),
+		withCategory("txhash", pruneTxHashCmd),
 		withCategory("events", backfillEventsCmd),
 		withCategory("events", inspectEventsCmd),
+		withCategory("events", pruneEventsCmd),
 		withCategory("indexes", pruneAllIndexesCmd),
 	},
 }
@@ -707,11 +712,12 @@ var backfillMsgIndexCmd = &cli.Command{
 
 var pruneMsgIndexCmd = &cli.Command{
 	Name:  "prune-msgindex",
-	Usage: "Prune the msgindex.db for messages included before a given epoch",
+	Usage: "Prune the msgindex.db for messages older than a given height",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
-			Name:  "from",
-			Usage: "height to start the prune; if negative it indicates epochs from current head",
+			Name:  "older-than",
+			Value: 0,
+			Usage: "height to start pruning events older than this epoch, 0 means start from head",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -723,7 +729,7 @@ var pruneMsgIndexCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		startHeight := int64(cctx.Int("from"))
+		startHeight := int64(cctx.Int("older-than"))
 		if startHeight < 0 {
 			curTs, err := api.ChainHead(ctx)
 			if err != nil {
@@ -742,33 +748,9 @@ var pruneMsgIndexCmd = &cli.Command{
 			return err
 		}
 
-		dbPath := path.Join(basePath, "sqlite", "msgindex.db")
-		db, err := sql.Open("sqlite3", dbPath)
+		err = pruneMsgIndex(ctx, basePath, startHeight)
 		if err != nil {
-			return err
-		}
-
-		defer func() {
-			err := db.Close()
-			if err != nil {
-				fmt.Printf("ERROR: closing db: %s", err)
-			}
-		}()
-
-		tx, err := db.Begin()
-		if err != nil {
-			return err
-		}
-
-		if _, err := tx.Exec("DELETE FROM messages WHERE epoch < ?", startHeight); err != nil {
-			if err := tx.Rollback(); err != nil {
-				fmt.Printf("ERROR: rollback: %s", err)
-			}
-			return err
-		}
-
-		if err := tx.Commit(); err != nil {
-			return err
+			return xerrors.Errorf("error pruning msgindex: %w", err)
 		}
 
 		return nil
@@ -905,20 +887,14 @@ var backfillTxHashCmd = &cli.Command{
 	},
 }
 
-// pruneAllIndexesCmd is a command that prunes all the indexes
-var pruneAllIndexesCmd = &cli.Command{
-	Name:  "prune-all-indexes",
-	Usage: "Prune all the index for a number of epochs starting from a specified height",
+var pruneTxHashCmd = &cli.Command{
+	Name:  "prune-txhash",
+	Usage: "Prune the txhash.db for txs older than a given height",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
-			Name:  "from",
+			Name:  "older-than",
 			Value: 0,
-			Usage: "the tipset height to start backfilling from (0 is head of chain)",
-		},
-		&cli.IntFlag{
-			Name:  "epochs",
-			Value: 0,
-			Usage: "the number of epochs to prune (working backwards, 0 means prune all from the specified height)",
+			Usage: "height to start pruning txhashes older than this epoch, 0 means start from head",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -936,7 +912,54 @@ var pruneAllIndexesCmd = &cli.Command{
 			return err
 		}
 
-		startHeight := cctx.Int64("from")
+		startHeight := cctx.Int64("older-than")
+		if startHeight == 0 {
+			currTs, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			startHeight += int64(currTs.Height())
+
+			if startHeight == 0 {
+				return xerrors.Errorf("bogus start height %d", startHeight)
+			}
+		}
+
+		if err := pruneTxIndex(ctx, api, basePath, startHeight); err != nil {
+			return xerrors.Errorf("error pruning txindex: %w", err)
+		}
+
+		return nil
+	},
+}
+
+var pruneEventsCmd = &cli.Command{
+	Name:  "prune-events",
+	Usage: "Prune the events.db for events older than a given height",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "older-than",
+			Value: 0,
+			Usage: "height to start pruning events older than this epoch, 0 means start from head",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		srv, err := lcli.GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := lcli.ReqContext(cctx)
+
+		basePath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		startHeight := cctx.Int64("older-than")
 		if startHeight == 0 {
 			currTs, err := api.ChainHead(ctx)
 			if err != nil {
@@ -950,12 +973,58 @@ var pruneAllIndexesCmd = &cli.Command{
 			}
 		}
 
-		epochs := cctx.Int64("epochs")
+		if err := pruneEventsIndex(ctx, basePath, startHeight); err != nil {
+			return xerrors.Errorf("error pruning events index: %w", err)
+		}
+
+		return nil
+	},
+}
+
+// pruneAllIndexesCmd is a command that prunes all the indexes
+var pruneAllIndexesCmd = &cli.Command{
+	Name:  "prune-all-indexes",
+	Usage: "Prune all the indexes DBs (msgindex, txhash, events) older than a given height",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "older-than",
+			Value: 0,
+			Usage: "height to start pruning events older than this epoch, 0 means start from head",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		srv, err := lcli.GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := lcli.ReqContext(cctx)
+
+		basePath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		startHeight := cctx.Int64("older-than")
+		if startHeight == 0 {
+			currTs, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			startHeight += int64(currTs.Height())
+
+			if startHeight < 0 || startHeight == 0 {
+				return xerrors.Errorf("bogus start height %d", startHeight)
+			}
+		}
 
 		var g = new(errgroup.Group)
 
 		g.Go(func() error {
-			if err := pruneMsgIndex(ctx, basePath, startHeight, epochs); err != nil {
+			if err := pruneMsgIndex(ctx, basePath, startHeight); err != nil {
 				return xerrors.Errorf("error pruning msgindex: %w", err)
 			}
 
@@ -963,7 +1032,7 @@ var pruneAllIndexesCmd = &cli.Command{
 		})
 
 		g.Go(func() error {
-			if err := pruneTxIndex(ctx, api, basePath, startHeight, epochs); err != nil {
+			if err := pruneTxIndex(ctx, api, basePath, startHeight); err != nil {
 				return xerrors.Errorf("error pruning txindex: %w", err)
 			}
 
@@ -971,7 +1040,7 @@ var pruneAllIndexesCmd = &cli.Command{
 		})
 
 		g.Go(func() error {
-			if err := pruneEventsIndex(ctx, basePath, startHeight, epochs); err != nil {
+			if err := pruneEventsIndex(ctx, basePath, startHeight); err != nil {
 				return xerrors.Errorf("error pruning events index: %w", err)
 			}
 
@@ -983,7 +1052,7 @@ var pruneAllIndexesCmd = &cli.Command{
 }
 
 // pruneEventsIndex is a helper function that prunes the events index.db for a number of epochs starting from a specified height
-func pruneEventsIndex(_ context.Context, basePath string, startHeight, epochs int64) error {
+func pruneEventsIndex(_ context.Context, basePath string, startHeight int64) error {
 	dbPath := path.Join(basePath, databaseType, filter.DefaultDbFilename)
 	db, err := sql.Open(databaseDriver, dbPath+"?_txlock=immediate")
 	if err != nil {
@@ -1002,130 +1071,66 @@ func pruneEventsIndex(_ context.Context, basePath string, startHeight, epochs in
 		return err
 	}
 
-	var rows *sql.Rows
-	var res sql.Result
-	if epochs == 0 {
-		rows, err = tx.Query(selectEventIdsFromHeight, startHeight)
-	} else {
-		lowerBound := startHeight - epochs
-		if lowerBound < 0 {
-			lowerBound = 0
-		}
-
-		rows, err = tx.Query(selectEventIdsBetweenRange, startHeight, lowerBound)
-	}
-
-	if err != nil {
+	rollback := func(tableName string) {
 		if err := tx.Rollback(); err != nil {
-			fmt.Printf("ERROR: rollback: %s", err)
+			fmt.Printf("ERROR: rollback %s tx :%s", tableName, err)
 		}
-		return err
 	}
 
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	deleteEventQuery, deleteEventEntriesQuery, deleteEventSeenQuery, err := getEventsDBDeleteQueries(rows)
+	res, err := tx.Exec(deleteEventFromStartHeight, startHeight)
 	if err != nil {
-		return xerrors.Errorf("error getting delete query: %w", err)
+		rollback(eventTable)
+		return xerrors.Errorf("error deleting event: %w", err)
 	}
 
-	res, err = tx.Exec(deleteEventQuery)
-	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			fmt.Printf("ERROR: rollback event: %s", err)
-		}
-		return err
-	}
-
+	var totalRowsAffected int64 = 0
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return xerrors.Errorf("error getting event table rows affected: %s", err)
+		return xerrors.Errorf("error getting rows affected: %w", err)
 	}
 
-	log.Infof("pruned %s table, rows affected: %d", "event", rowsAffected)
+	totalRowsAffected += rowsAffected
+	log.Infof("pruned %s table, rows affected: %d", eventTable, rowsAffected)
 
-	res, err = tx.Exec(deleteEventEntriesQuery)
+	res, err = tx.Exec(deleteEventEntriesByEventIDs, startHeight)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			fmt.Printf("ERROR: rollback event_entries: %s", err)
-		}
-		return err
+		rollback(eventEntryTable)
+		return xerrors.Errorf("error deleting event entries: %w", err)
 	}
 
 	rowsAffected, err = res.RowsAffected()
 	if err != nil {
-		return xerrors.Errorf("error getting event entries table rows affected: %s", err)
+		return xerrors.Errorf("error getting rows affected: %w", err)
 	}
 
-	log.Infof("pruned %s table, rows affected: %d", "event_entries", rowsAffected)
+	totalRowsAffected += rowsAffected
+	log.Infof("pruned %s table, rows affected: %d", eventEntryTable, rowsAffected)
 
-	res, err = tx.Exec(deleteEventSeenQuery)
+	res, err = tx.Exec(deleteEventsSeenByHeight, startHeight)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			fmt.Printf("ERROR: rollback event_seen: %s", err)
-		}
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
+		rollback(eventsSeenTable)
+		return xerrors.Errorf("error deleting events seen: %w", err)
 	}
 
 	rowsAffected, err = res.RowsAffected()
 	if err != nil {
-		return xerrors.Errorf("error getting event seen table rows affected: %s", err)
+		return xerrors.Errorf("error getting rows affected: %w", err)
 	}
 
-	log.Infof("pruned %s table, rows affected: %d", "event_seen", rowsAffected)
+	err = tx.Commit()
+	if err != nil {
+		return xerrors.Errorf("error committing tx: %w", err)
+	}
 
+	totalRowsAffected += rowsAffected
+	log.Infof("pruned %s table, rows affected: %d", eventsSeenTable, rowsAffected)
+
+	log.Infof("Done pruning all events indexes, total rows affected: %d", totalRowsAffected)
 	return nil
 }
 
-func getEventsDBDeleteQueries(rows *sql.Rows) (string, string, string, error) {
-	var (
-		eventIds []int64
-		heights  []int64
-	)
-	for rows.Next() {
-		var (
-			id     int64
-			height int64
-		)
-		if err := rows.Scan(&id, &height); err != nil {
-			return "", "", "", xerrors.Errorf("error scanning event id: %w", err)
-		}
-		eventIds = append(eventIds, id)
-		heights = append(heights, height)
-	}
-
-	if err := rows.Err(); err != nil {
-		return "", "", "", xerrors.Errorf("error iterating event ids: %w", err)
-	}
-
-	if len(eventIds) == 0 {
-		log.Info("No events to delete")
-		return "", "", "", nil
-	}
-
-	// Delete event entries
-	idPlaceholders := strings.Repeat("?,", len(eventIds))
-	idPlaceholders = idPlaceholders[:len(idPlaceholders)-1] // Remove trailing comma
-
-	deleteEventTableQuery := fmt.Sprintf(deleteEventsByIDs, idPlaceholders)
-	deleteEventEntriesTableQuery := fmt.Sprintf(deleteEventEntriesByIDs, idPlaceholders)
-
-	heightPlaceholders := strings.Repeat("?,", len(heights))
-	heightPlaceholders = heightPlaceholders[:len(heightPlaceholders)-1] // Remove trailing comma
-
-	deleteEventSeenTableQuery := fmt.Sprintf(deleteEventSeenByHeights, heightPlaceholders)
-
-	return deleteEventTableQuery, deleteEventEntriesTableQuery, deleteEventSeenTableQuery, nil
-}
-
 // pruneTxIndex is a helper function that prunes the txindex.db for a number of epochs starting from a specified height
-func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, startHeight, epochs int64) error {
+func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, startHeight int64) error {
 	dbPath := path.Join(basePath, databaseType, ethhashlookup.DefaultDbFilename)
 	db, err := sql.Open(databaseDriver, dbPath)
 	if err != nil {
@@ -1139,23 +1144,21 @@ func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, start
 		}
 	}()
 
-	// we want to delete the txhash for the previous epoch
-	startHeight = startHeight - 1
-
 	deleteStmt, err := db.Prepare(deleteTxHashIndexByCID)
 	if err != nil {
 		return xerrors.Errorf("failed to prepare tx hash index delete statement: %w", err)
 	}
 
-	currTs, err := api.ChainHead(ctx)
+	// we want to start pruning older than the specified height
+	startHeight = startHeight - 1
+
+	currTs, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(startHeight), types.EmptyTSK)
 	if err != nil {
 		return err
 	}
 
 	var totalRowsAffected int64 = 0
-	for i := 0; i < int(epochs); i++ {
-		epoch := abi.ChainEpoch(startHeight - int64(i))
-
+	for currTs != nil {
 		select {
 		case <-ctx.Done():
 			fmt.Println("request cancelled")
@@ -1163,16 +1166,10 @@ func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, start
 		default:
 		}
 
-		currTsk := currTs.Parents()
-		execTs, err := api.ChainGetTipSet(ctx, currTsk)
-		if err != nil {
-			return fmt.Errorf("failed to call ChainGetTipSet for %s: %w", currTsk, err)
-		}
-
-		for _, blockheader := range execTs.Blocks() {
+		for _, blockheader := range currTs.Blocks() {
 			blkMsgs, err := api.ChainGetBlockMessages(ctx, blockheader.Cid())
 			if err != nil {
-				log.Infof("failed to get block messages at epoch: %d", epoch)
+				log.Infof("failed to get block messages at height: %d", currTs.Height())
 				continue // should we break here?
 			}
 
@@ -1203,16 +1200,25 @@ func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, start
 
 		}
 
-		currTs = execTs
+		// move to the previous epoch
+		currTs, err = api.ChainGetTipSet(ctx, currTs.Parents())
+		if err != nil {
+			return xerrors.Errorf("error walking chain: %w", err)
+		}
 	}
 
-	log.Infof("Done pruning %s, rows affected: %d", ethhashlookup.DefaultDbFilename, totalRowsAffected)
+	err = deleteStmt.Close()
+	if err != nil {
+		return xerrors.Errorf("error closing delete statement: %w", err)
+	}
+
+	log.Infof("Done pruning db %s table %s, rows affected: %d", ethhashlookup.DefaultDbFilename, txHashIndexTable, totalRowsAffected)
 
 	return nil
 }
 
-// pruneMsgIndex is a helper function that prunes the msgindex.db for a number of epochs starting from a specified height
-func pruneMsgIndex(_ context.Context, basePath string, startHeight int64, epochs int64) error {
+// pruneMsgIndex is a helper function that prunes the msgindex.db for messages older than a given height
+func pruneMsgIndex(_ context.Context, basePath string, startHeight int64) error {
 	dbPath := path.Join(basePath, databaseType, index.DefaultDbFilename)
 	db, err := sql.Open(databaseDriver, dbPath)
 	if err != nil {
@@ -1231,21 +1237,10 @@ func pruneMsgIndex(_ context.Context, basePath string, startHeight int64, epochs
 		return err
 	}
 
-	var res sql.Result
-	if epochs == 0 { // if epochs is 0, delete all messages before the start height
-		res, err = tx.Exec(deleteMsgIndexFromStartHeight, startHeight)
-	} else { // if epochs is not 0, delete messages between the start height and the start height - epochs
-		lowerBound := startHeight - epochs
-		if lowerBound < 0 { // if lowerBound is negative, set it to 0 (delete all messages from the start height)
-			lowerBound = 0
-		}
-
-		res, err = tx.Exec(deleteMsgIndexBetweenRange, startHeight, lowerBound)
-	}
-
+	res, err := tx.Exec(deleteMsgIndexFromStartHeight, startHeight)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
-			fmt.Printf("ERROR: rollback: %s", err)
+			fmt.Printf("ERROR: rollback %s tx :%s", msgIndexTable, err)
 		}
 		return err
 	}
@@ -1256,10 +1251,10 @@ func pruneMsgIndex(_ context.Context, basePath string, startHeight int64, epochs
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return xerrors.Errorf("error getting rows affected: %s", err)
+		return xerrors.Errorf("error getting rows affected: %w", err)
 	}
 
-	log.Infof("Done pruning %s, rows affected: %d", index.DefaultDbFilename, rowsAffected)
+	log.Infof("Done pruning db %s table %s, rows affected: %d", index.DefaultDbFilename, msgIndexTable, rowsAffected)
 
 	return nil
 }
