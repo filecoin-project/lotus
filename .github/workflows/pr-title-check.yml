@@ -2,13 +2,18 @@ name: PR Title Check
 
 on:
   pull_request_target:
-    types: [opened, edited, synchronize, reopened]
+    types:
+      - opened
+      - edited
+      - reopened
+      - ready_for_review
 
 permissions:
   pull-requests: write
 
 jobs:
   check-pr-title:
+    if: github.event.pull_request.draft == false
     name: Check PR Title
     runs-on: ubuntu-latest
     steps:
