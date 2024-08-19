@@ -50,6 +50,23 @@
   - The default value for the `Events.FilterTTL` config option has been reduced from 24h to 1h. This means that filters will expire on a Lotus node after 1 hour of not being accessed by the client.
 - feat(f3): F3 has been updated with many performance improvements and additional metrics.
 
+# 1.28.2 / 2024-08-15
+
+This is a Lotus patch release v1.28.2 for Node operators and Storage Providers.
+
+For node operators, this patch release is HIGHLY RECOMMENDED as it fixes an issue where excessive bandwidth usage (issue #12381) was caused by a routing loop in pubsub, where small "manifest" messages were cycling repeatedly around the network due to an ineffective routing loop prevention mechanism. The new f3 release also has a couple performance improvements around CPU usage. (If you are curious about the progress of F3 testing, follow the updates [here](https://github.com/filecoin-project/lotus/discussions/12287#discussioncomment-10343447)).
+
+For storage providers, this patch release fixes pledge issues users have been encountering. This update addresses existing issues, including the too-small pledge in snap and the lack of DDO-awareness in PoRep Commit.
+
+## ☢️ Upgrade Warnings ☢️
+- The `releases` branch has been deprecated with the 202408 split of 'Lotus Node' and 'Lotus Miner'. See https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#why-is-the-releases-branch-deprecated-and-what-are-alternatives for more info and alternatives for getting the latest release for both the 'Lotus Node' and 'Lotus Miner' based on the [Branch and Tag Strategy](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy).
+   - To get the latest Lotus Node tag: `git tag -l 'v*' | sort -V -r | head -n 1`  
+   - To get the latest Lotus Miner tag: `git tag -l 'miner/v*' | sort -V -r | head -n 1`
+- Breaking change in Miner public APIs `storage/pipeline.NewPreCommitBatcher` and `storage/pipeline.New`. They now have an additional error return to deal with errors arising from fetching the sealing config.
+
+- https://github.com/filecoin-project/lotus/pull/12390: Update go-f3 to 0.2.0
+- https://github.com/filecoin-project/lotus/pull/12341: fix: miner: Fix DDO pledge math
+
 # v1.28.1 / 2024-07-24
 
 This is the MANDATORY Lotus v1.28.1 release, which will deliver the Filecoin network version 23, codenamed Waffle 🧇. v1.28.1 is also the minimal version that supports nv23.
