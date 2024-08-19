@@ -48,6 +48,9 @@ func BandwidthCounter(lc fx.Lifecycle, id peer.ID) (opts Libp2pOpts, reporter me
 	identityAttr := attrIdentity.String(id.String())
 	registration, err := otelmeter.RegisterCallback(func(ctx context.Context, obs metric.Observer) error {
 		for p, bw := range reporter.GetBandwidthByProtocol() {
+			if p == "" {
+				p = "<unknown>"
+			}
 			protoAttr := attrProtocolID.String(string(p))
 			obs.ObserveInt64(otelmetrics.bandwidth, bw.TotalOut,
 				metric.WithAttributes(identityAttr, protoAttr, attrDirectionOutbound))
