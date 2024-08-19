@@ -14,10 +14,10 @@ var attrDirectionInbound = attribute.String("direction", "inbound")
 var attrDirectionOutbound = attribute.String("direction", "outbound")
 
 var otelmetrics = struct {
-	bandwidth metric.Int64ObservableGauge
+	bandwidth metric.Int64ObservableCounter
 }{
-	bandwidth: must(otelmeter.Int64ObservableGauge("lotus_libp2p_bandwidth",
-		metric.WithDescription("Libp2p stream traffic (total)."),
+	bandwidth: must(otelmeter.Int64ObservableCounter("lotus_libp2p_bandwidth",
+		metric.WithDescription("Libp2p stream bandwidth."),
 		metric.WithUnit("By"),
 	)),
 }
