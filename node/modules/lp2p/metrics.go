@@ -8,7 +8,7 @@ import (
 
 var otelmeter = otel.Meter("libp2p")
 
-var attrPeerID = attribute.Key("peer")
+var attrIdentity = attribute.Key("identity")
 var attrProtocolID = attribute.Key("protocol")
 var attrDirectionInbound = attribute.String("direction", "inbound")
 var attrDirectionOutbound = attribute.String("direction", "outbound")
@@ -16,7 +16,7 @@ var attrDirectionOutbound = attribute.String("direction", "outbound")
 var otelmetrics = struct {
 	bandwidth metric.Int64ObservableGauge
 }{
-	bandwidth: must(otelmeter.Int64ObservableGauge("lotus_libp2p_bandwidth_total",
+	bandwidth: must(otelmeter.Int64ObservableGauge("lotus_libp2p_bandwidth_bytes_total",
 		metric.WithDescription("Libp2p stream traffic."),
 		metric.WithUnit("By"),
 	)),

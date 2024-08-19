@@ -43,14 +43,16 @@ func BandwidthCounter(lc fx.Lifecycle, id peer.ID) (opts Libp2pOpts, reporter me
 	// Register it with open telemetry. We report by-callback instead of implementing a custom
 	// bandwidth counter to avoid allocating every time we read/write to a stream (and to stay
 	// out of the hot path).
-	peerIdAttr := attrPeerID.String(id.String())
+	//
+	// Identity is required to ensure this observer observes with unique attributes.
+	identityAttr := attrIdentity.String(id.String())
 	registration, err := otelmeter.RegisterCallback(func(ctx context.Context, obs metric.Observer) error {
 		for p, bw := range reporter.GetBandwidthByProtocol() {
 			protoAttr := attrProtocolID.String(string(p))
 			obs.ObserveInt64(otelmetrics.bandwidth, bw.TotalOut,
-				metric.WithAttributes(peerIdAttr, protoAttr, attrDirectionOutbound))
+				metric.WithAttributes(identityAttr, protoAttr, attrDirectionOutbound))
 			obs.ObserveInt64(otelmetrics.bandwidth, bw.TotalIn,
-				metric.WithAttributes(peerIdAttr, protoAttr, attrDirectionInbound))
+				metric.WithAttributes(identityAttr, protoAttr, attrDirectionInbound))
 		}
 		return nil
 	}, otelmetrics.bandwidth)
