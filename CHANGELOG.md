@@ -47,6 +47,7 @@
   - Some APIs have changed which may impact users consuming Lotus Gateway code as a library.
   - The default value for the `Events.FilterTTL` config option has been reduced from 24h to 1h. This means that filters will expire on a Lotus node after 1 hour of not being accessed by the client.
 - feat(f3): F3 has been updated with many performance improvements and additional metrics.
+- feat(libp2p): expose libp2p bandwidth metrics via Prometheus.
 
 # 1.28.2 / 2024-08-15
 
