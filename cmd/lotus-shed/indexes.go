@@ -68,6 +68,30 @@ func withCategory(cat string, cmd *cli.Command) *cli.Command {
 	return cmd
 }
 
+// parsePruneArgs parses, a utility function to parse the arguments for the prune commands
+func parsePruneArgs(ctx context.Context, cctx *cli.Context, api lapi.FullNode) (basePath string, startHeight int64, err error) {
+	basePath, err = homedir.Expand(cctx.String("repo"))
+	if err != nil {
+		return "", 0, xerrors.Errorf("failed to get base path: %w", err)
+	}
+
+	startHeight = cctx.Int64("older-than")
+	if startHeight == 0 {
+		currTs, err := api.ChainHead(ctx)
+		if err != nil {
+			return "", 0, xerrors.Errorf("failed to get chain head: %w", err)
+		}
+
+		startHeight += int64(currTs.Height())
+
+		if startHeight <= 0 {
+			return "", 0, xerrors.Errorf("invalid start height %d", startHeight)
+		}
+	}
+
+	return basePath, startHeight, nil
+}
+
 var indexesCmd = &cli.Command{
 	Name:            "indexes",
 	Usage:           "Commands related to managing sqlite indexes",
@@ -721,31 +745,20 @@ var pruneMsgIndexCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		srvc, err := lcli.GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
+
+		api := srvc.FullNodeAPI()
+		closer := srvc.Close
 
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		startHeight := int64(cctx.Int("older-than"))
-		if startHeight < 0 {
-			curTs, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-
-			startHeight += int64(curTs.Height())
-
-			if startHeight < 0 {
-				return xerrors.Errorf("bogus start height %d", startHeight)
-			}
-		}
-
-		basePath, err := homedir.Expand(cctx.String("repo"))
+		basePath, startHeight, err := parsePruneArgs(ctx, cctx, api)
 		if err != nil {
-			return err
+			return xerrors.Errorf("error parsing prune args: %w", err)
 		}
 
 		err = pruneMsgIndex(ctx, basePath, startHeight)
@@ -907,23 +920,9 @@ var pruneTxHashCmd = &cli.Command{
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
-		basePath, err := homedir.Expand(cctx.String("repo"))
+		basePath, startHeight, err := parsePruneArgs(ctx, cctx, api)
 		if err != nil {
-			return err
-		}
-
-		startHeight := cctx.Int64("older-than")
-		if startHeight == 0 {
-			currTs, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-
-			startHeight += int64(currTs.Height())
-
-			if startHeight == 0 {
-				return xerrors.Errorf("bogus start height %d", startHeight)
-			}
+			return xerrors.Errorf("error parsing prune args: %w", err)
 		}
 
 		if err := pruneTxIndex(ctx, api, basePath, startHeight); err != nil {
@@ -954,23 +953,9 @@ var pruneEventsCmd = &cli.Command{
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
-		basePath, err := homedir.Expand(cctx.String("repo"))
+		basePath, startHeight, err := parsePruneArgs(ctx, cctx, api)
 		if err != nil {
-			return err
-		}
-
-		startHeight := cctx.Int64("older-than")
-		if startHeight == 0 {
-			currTs, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-
-			startHeight += int64(currTs.Height())
-
-			if startHeight < 0 || startHeight == 0 {
-				return xerrors.Errorf("bogus start height %d", startHeight)
-			}
+			return xerrors.Errorf("error parsing prune args: %w", err)
 		}
 
 		if err := pruneEventsIndex(ctx, basePath, startHeight); err != nil {
@@ -1002,23 +987,9 @@ var pruneAllIndexesCmd = &cli.Command{
 		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
-		basePath, err := homedir.Expand(cctx.String("repo"))
+		basePath, startHeight, err := parsePruneArgs(ctx, cctx, api)
 		if err != nil {
-			return err
-		}
-
-		startHeight := cctx.Int64("older-than")
-		if startHeight == 0 {
-			currTs, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-
-			startHeight += int64(currTs.Height())
-
-			if startHeight < 0 || startHeight == 0 {
-				return xerrors.Errorf("bogus start height %d", startHeight)
-			}
+			return xerrors.Errorf("error parsing prune args: %w", err)
 		}
 
 		var g = new(errgroup.Group)
@@ -1053,6 +1024,8 @@ var pruneAllIndexesCmd = &cli.Command{
 
 // pruneEventsIndex is a helper function that prunes the events index.db for a number of epochs starting from a specified height
 func pruneEventsIndex(_ context.Context, basePath string, startHeight int64) error {
+	log.Infof("pruning events index")
+
 	dbPath := path.Join(basePath, databaseType, filter.DefaultDbFilename)
 	db, err := sql.Open(databaseDriver, dbPath+"?_txlock=immediate")
 	if err != nil {
@@ -1131,6 +1104,8 @@ func pruneEventsIndex(_ context.Context, basePath string, startHeight int64) err
 
 // pruneTxIndex is a helper function that prunes the txindex.db for a number of epochs starting from a specified height
 func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, startHeight int64) error {
+	log.Infof("pruning txindex")
+
 	dbPath := path.Join(basePath, databaseType, ethhashlookup.DefaultDbFilename)
 	db, err := sql.Open(databaseDriver, dbPath)
 	if err != nil {
@@ -1219,6 +1194,8 @@ func pruneTxIndex(ctx context.Context, api lapi.FullNode, basePath string, start
 
 // pruneMsgIndex is a helper function that prunes the msgindex.db for messages older than a given height
 func pruneMsgIndex(_ context.Context, basePath string, startHeight int64) error {
+	log.Infof("pruning msgindex")
+
 	dbPath := path.Join(basePath, databaseType, index.DefaultDbFilename)
 	db, err := sql.Open(databaseDriver, dbPath)
 	if err != nil {
