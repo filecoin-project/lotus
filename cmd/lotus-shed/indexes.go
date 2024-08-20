@@ -653,7 +653,7 @@ var backfillMsgIndexCmd = &cli.Command{
 			return err
 		}
 
-		defer closer()
+		defer closer() //nolint:errcheck
 		ctx := lcli.ReqContext(cctx)
 
 		curTs, err := api.ChainHead(ctx)
@@ -753,7 +753,7 @@ var pruneMsgIndexCmd = &cli.Command{
 		api := srvc.FullNodeAPI()
 		closer := srvc.Close
 
-		defer closer()
+		defer closer() //nolint:errcheck
 		ctx := lcli.ReqContext(cctx)
 
 		basePath, startHeight, err := parsePruneArgs(ctx, cctx, api)
@@ -790,7 +790,8 @@ var backfillTxHashCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer closer()
+
+		defer closer() //nolint:errcheck
 
 		ctx := lcli.ReqContext(cctx)
 
