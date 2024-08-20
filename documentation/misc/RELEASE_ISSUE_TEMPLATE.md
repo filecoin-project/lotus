@@ -6,7 +6,7 @@
 [//]: # (❗️ Complete the steps below as part of creating a release issue and mark them complete with an X or ✅ when done.)
 [//]: # ([ ] Start an issue with title "[WIP] Lotus Node|Miner vX.Y.Z Release" and adjust the title for whether it's a Node or Miner release.)
 [//]: # ([ ] Copy in the content of https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
-[//]: # ([ ] Find/Replace "X.Y.Z+1" with the actual values. This is intentinoally done before tbe find/replace X.Y.Z step because that will also match.)
+[//]: # ([ ] Find/Replace "X.Y.Z+1" with the actual values. This is intentionally done before the find/replace X.Y.Z step because that will also match.)
 [//]: # ([ ] Find/Replace "X.Y.Z" with the actual values.)
 [//]: # ([ ] If this isn't a release tied to a network upgrade, remove all items with "\(network upgrade\)")
 [//]: # ([ ] If this is a patch release, remove all items with "\(minor release\)")
@@ -53,7 +53,7 @@
    - Link to Lotus PR:
 - [ ] Open PR against [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) with title `docs(release): vX.Y.Z release template improvements` for improving future releases.
    - Link to PR:
-   - There likely aren't any changes at this point, but this can be opened with a small whitepsace change so the PR is open and we can more easily hold the standard of making improvements incrementally since improvements are usually better done by collecting changes/notes along the way rather than just thinking about it at the end.
+   - There likely aren't any changes at this point, but this can be opened with a small whitespace change so the PR is open and we can more easily hold the standard of making improvements incrementally since improvements are usually better done by collecting changes/notes along the way rather than just thinking about it at the end.
    - This will get merged in a `Post Release` step.
 - [ ] (patch release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from the last stable `release/vX.Y.Z` or `release/miner/vX.Y.Z` and make any further release-related changes to this branch.
 - [ ] (minor release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
