@@ -104,7 +104,7 @@ func (m *Sealing) sectorWeight(ctx context.Context, sector SectorInfo, expiratio
 
 		alloc, err := piece.GetAllocation(ctx, m.Api, ts.Key())
 		if err != nil || alloc == nil {
-			if err == nil {
+			if err != nil {
 				log.Errorw("failed to get allocation", "error", err)
 			}
 			w = big.Add(w, big.Mul(sectorDuration, abi.NewStoragePower(int64(piece.Piece().Size))))
