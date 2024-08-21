@@ -108,9 +108,6 @@ jobs:
               "multicore-sdr": ["self-hosted", "linux", "x64", "xlarge"],
               "unit-node": ["self-hosted", "linux", "x64", "xlarge"]
             }
-          # A list of test groups that require YugabyteDB to be running
-          yugabytedb: |
-            ["itest-harmonydb"]
           # A list of test groups that require Proof Parameters to be fetched
           parameters: |
             [
@@ -160,9 +157,6 @@ jobs:
 
           # Apply custom runner labels to the groups
           groups="$(jq -n --argjson g "$groups" --argjson r "$runners" '$g | map(. + {"runner": (.name as $n | $r | .[$n]) })')"
-
-          # Apply the needs_yugabytedb flag to the groups
-          groups="$(jq -n --argjson g "$groups" --argjson y "$yugabytedb" '$g | map(. + {"needs_yugabytedb": ([.name] | inside($y)) })')"
 
           # Apply the needs_parameters flag to the groups
           groups="$(jq -n --argjson g "$groups" --argjson p "$parameters" '$g | map(. + {"needs_parameters": ([.name] | inside($p)) })')"
@@ -262,9 +256,6 @@ jobs:
           key: ${{ needs.cache.outputs.fetch_params_key }}
           path: ${{ needs.cache.outputs.fetch_params_path }}
           fail-on-cache-miss: true
-      - if: ${{ matrix.needs_yugabytedb }}
-        uses: ./.github/actions/start-yugabytedb
-        timeout-minutes: 3
       # TODO: Install statediff (used to be used for conformance)
       - id: reports
         run: mktemp -d | xargs -0 -I{} echo "path={}" | tee -a $GITHUB_OUTPUT
@@ -272,7 +263,6 @@ jobs:
       - env:
           NAME: ${{ matrix.name }}
           LOTUS_SRC_DIR: ${{ github.workspace }}
-          LOTUS_HARMONYDB_HOSTS: 127.0.0.1
           REPORTS_PATH: ${{ steps.reports.outputs.path }}
           SKIP_CONFORMANCE: ${{ matrix.skip_conformance || '1' }}
           TEST_RUSTPROOFS_LOGS: ${{ matrix.test_rustproofs_logs || '0' }}
