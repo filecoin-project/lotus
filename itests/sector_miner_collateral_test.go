@@ -167,8 +167,12 @@ func TestMinerBalanceCollateral(t *testing.T) {
 
 // TestPledgeCalculations tests the pledge calculations for sectors with different piece combinations
 // and verified deals.
-// We first verify that the deprecated pledge calculation that uses PreCommit with Deal information
-// matches the new one that just uses sector size, duration and a simple verified size.
+// We first verify that the deprecated pledge calculation (StateMinerInitialPledgeCollateral) that
+// uses PreCommit with Deal information matches the new one (StateMinerInitialPledgeForSector) that
+// just uses sector size, duration and a simple verified size. Post-DDO, we no longer use or need
+// the DealIDs field in SectorPreCommitInfo, so the deprecated calculation method can't rely on it
+// to determine verified size. In this test, we intentionally build DealIDs so the deprecated method
+// still works as expected.
 // Then we compare the pledge calculations for sectors with different piece combinations and
 // verified deals according to expected rules about verified pieces requiring 10x pledge.
 // Most of the complication in this test is for setting up verified deals and allocations so we can

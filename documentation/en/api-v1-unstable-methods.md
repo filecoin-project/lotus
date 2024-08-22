@@ -7164,9 +7164,14 @@ Response:
 ```
 
 ### StateMinerInitialPledgeCollateral
-StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
+StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.
+This method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified
+deal space in the sector in order to perform a QAP calculation. Since network version 22 and
+the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
+deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
+and pass in the verified deal space directly.
 
-Deprecated: Use StateMinerInitialPledgeForSector instead
+Deprecated: Use StateMinerInitialPledgeForSector instead.
 
 
 Perms: read
@@ -7204,7 +7209,9 @@ Inputs:
 Response: `"0"`
 
 ### StateMinerInitialPledgeForSector
-StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector duration, size and combined size of any verified pieces within the sector
+StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+duration, size, and combined size of any verified pieces within the sector. This calculation
+depends on current network conditions at the given tipset.
 
 
 Perms: read

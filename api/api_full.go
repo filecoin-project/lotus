@@ -409,11 +409,18 @@ type FullNode interface {
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error) //perm:read
 	// StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
+	// StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.
+	// This method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified
+	// deal space in the sector in order to perform a QAP calculation. Since network version 22 and
+	// the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
+	// deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
+	// and pass in the verified deal space directly.
 	//
-	// Deprecated: Use StateMinerInitialPledgeForSector instead
+	// Deprecated: Use StateMinerInitialPledgeForSector instead.
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector duration, size and combined size of any verified pieces within the sector
+	// StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+	// duration, size, and combined size of any verified pieces within the sector. This calculation
+	// depends on current network conditions at the given tipset.
 	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
