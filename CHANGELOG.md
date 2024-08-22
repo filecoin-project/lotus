@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# v1.29.0-rc1 / 2024-08-22
+# Node v1.29.0-rc1 / 2024-08-22
 
   This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
 
