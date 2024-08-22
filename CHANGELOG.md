@@ -57,7 +57,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 - feat: api: clean API for Miners (#12112) ([filecoin-project/lotus#12112](https://github.com/filecoin-project/lotus/pull/12112))
 
 ### Dependencies
-
+From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0#diff-33ef32bf6c23acb95f5902d7097b7a1d5128ca061167ec0716715b0b9eeaa5f6
 - github.com/filecoin-project/go-commp-utils (v0.1.3 -> v0.1.4):
 - github.com/filecoin-project/go-commp-utils/nonffi (v0.0.0-20220905160352-62059082a837 -> v0.0.0-20240802040721-2a04ffc8ffe8):
 - github.com/filecoin-project/go-hamt-ipld/v3 (v3.1.0 -> v3.4.0):
