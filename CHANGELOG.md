@@ -87,6 +87,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 - chore: logging: switch stdout print to use the logger (#12311) ([filecoin-project/lotus#12311](https://github.com/filecoin-project/lotus/pull/12311))
 - fix(test): flaky eth_legacy_tx_test: wait for async msg indexing (#12200) ([filecoin-project/lotus#12200](https://github.com/filecoin-project/lotus/pull/12200))
 - chore: cli: use `embed` pkg to split long template content to file (#12193) ([filecoin-project/lotus#12193](https://github.com/filecoin-project/lotus/pull/12193))
+</details>
 
 ## 👨‍👩‍👧‍👦 Contributors
 
