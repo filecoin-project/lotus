@@ -56,7 +56,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 - fix(cli): only change method for 0x recipients (#12328) ([filecoin-project/lotus#12328](https://github.com/filecoin-project/lotus/pull/12328))
 - feat: api: clean API for Miners (#12112) ([filecoin-project/lotus#12112](https://github.com/filecoin-project/lotus/pull/12112))
 
-## Dependencies
+### Dependencies
 
 - github.com/filecoin-project/go-commp-utils (v0.1.3 -> v0.1.4):
 - github.com/filecoin-project/go-commp-utils/nonffi (v0.0.0-20220905160352-62059082a837 -> v0.0.0-20240802040721-2a04ffc8ffe8):
