@@ -65,7 +65,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 - github.com/filecoin-project/jackc/pgx (v5.4.1 -> v5.6.0)
 - feat: f3: update go-f3 to 0.2.0 (#12390) ([filecoin-project/lotus#12390](https://github.com/filecoin-project/lotus/pull/12390))
 
-## Chores
+### Chores
 
 - chore: ffi: copy verifier iface, mock & ffi out of storage (#11581) ([filecoin-project/lotus#11581](https://github.com/filecoin-project/lotus/pull/11581))
 - docs: update LOTUS_RELEASE_FLOW.MD document (#12322) ([filecoin-project/lotus#12322](https://github.com/filecoin-project/lotus/pull/12322))
