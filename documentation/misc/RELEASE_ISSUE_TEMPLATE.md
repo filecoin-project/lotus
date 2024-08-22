@@ -61,7 +61,8 @@
    - [ ] bump the version(s) in `build/version.go` to `vX.Y.(Z+1)-dev`. 
       - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
-   - [ ] Create a PR with title `build: node|miner vX.Y.Z+1 set initial version string`
+   - [ ] Remove the contents in the `Unreleased Changelog` section.
+   - [ ] Create a PR with title `build: update Lotus Node|Miner version to vX.Y.Z+1-dev in master`
      - Link to PR: 
    - [ ] Merge PR
 
@@ -90,7 +91,11 @@
 - [ ] Update the version string(s) in `build/version.go` to one ending with '-rcX'. 
     - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
 - [ ] Run `make gen && make docsgen-cli` to generate documentation
+- [ ] Create a PR with title `build: release Lotus node|miner vX.Y.Z-rcX`
+   - Link to PR: 
+   - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Changelog prep
+   - [ ] Go to the [releases page](https://github.com/filecoin-project/lotus/releases) and copy the auto generated changelog into your release PR and adjust the changelog accordingly.
    - [ ] Editorial review (e.g., callout breaking changes, new features, FIPs, actor bundles)
    - [ ] (network upgrade) Specify whether the Calibration or Mainnet upgrade epoch has been specified or not yet.
       - Example where these weren't specified yet: [PR #12169](https://github.com/filecoin-project/lotus/pull/12169)
@@ -98,9 +103,6 @@
       - Example command looking at git commits: `git log --oneline --graph vA.B.C..`, where A.B.C correspond to the previous release. 
       - Example GitHub UI search looking at merged PRs into master: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
       - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, mergedAt, .author.login, .title] | @tsv' | sort -k4`
-- [ ] Create a PR with title `build: release node|miner vX.Y.Z-rcX`
-   - Link to PR: 
-   - Opening a PR will trigger a CI run that will build assets, create a draft GitHub release, and attach the assets.
 - [ ] Merge the PR
    - Opening the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
  - [ ] Update `🚢 Estimated shipping date` table
