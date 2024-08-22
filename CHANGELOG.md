@@ -23,32 +23,9 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- lotus-gateway behaviour, CLI arguments and APIs have received minor changes. See the improvements section below.
-
 ## New features
 
-- feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
-- feat: `FilecoinAddressToEthAddress` RPC can now return ETH addresses for all Filecoin address types ("f0"/"f1"/"f2"/"f3") based on client's re-org tolerance. This is a breaking change if you are using the API via the go-jsonrpc library or by using Lotus as a library, but is a non-breaking change when using the API via any other RPC method as it adds an optional second argument.
-([filecoin-project/lotus#12324](https://github.com/filecoin-project/lotus/pull/12324)).
-- feat: Added `lotus-shed indexes inspect-events` health-check command ([filecoin-project/lotus#12346](https://github.com/filecoin-project/lotus/pull/12346)).
-
-## Enhancements
-
-- fix: add datacap balance to circ supply internal accounting as unCirc #12348
-- feat: Use a block cache to speed up the `EthGetBlockByHash` API: https://github.com/filecoin-project/lotus/pull/12359
-
 ## Improvements
-
-- feat!: gateway: fix rate limiting, better stateful handling ([filecoin-project/lotus#12315](https://github.com/filecoin-project/lotus/pull/12315)).
-  - CLI usage documentation has been improved for `lotus-gateway`
-  - `--per-conn-rate-limit` now works as advertised.
-  - `--eth-max-filters-per-conn` is new and allows you to set the maximum number of filters and subscription per connection, it defaults to 16.
-    - Previously, this limit was set to `16` and applied separately to filters and subscriptions. This limit is now unified and applies to both filters and subscriptions.
-  - Stateful Ethereum APIs (those involving filters and subscriptions) are now disabled for plain HTTP connections. A client must be using websockets to access these APIs.
-    - These APIs are also now automatically removed from the node by the gateway when a client disconnects.
-  - Some APIs have changed which may impact users consuming Lotus Gateway code as a library.
-  - The default value for the `Events.FilterTTL` config option has been reduced from 24h to 1h. This means that filters will expire on a Lotus node after 1 hour of not being accessed by the client.
-- feat(f3): F3 has been updated with many performance improvements and additional metrics.
 
 # 1.28.2 / 2024-08-15
 
