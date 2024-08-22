@@ -5,7 +5,7 @@
   This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
 
 - **New Features:**
-  - **Trace Filter API:** Added support for the `trace_filter` RPC method, allowing users to configure `EthTraceFilterMaxResults` to limit the number of results returned in any individual `trace_filter` RPC API call. ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123))
+  - **Trace Filter API:** Added support for the [`trace_filter`](https://openethereum.github.io/JSONRPC-trace-module#trace_filter) RPC method, allowing users to configure `EthTraceFilterMaxResults` to limit the number of results returned in any individual `trace_filter` RPC API call. ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123))
   - **Filecoin to ETH Address Conversion:** The `FilecoinAddressToEthAddress` RPC can now return ETH addresses for all Filecoin address types ("f0"/"f1"/"f2"/"f3") based on the client's re-org tolerance. Note that this is a breaking change if you are using the API via the go-jsonrpc library or by using Lotus as a library, but it is non-breaking when using the API via any other RPC method as it adds an optional second argument. ([filecoin-project/lotus#12324](https://github.com/filecoin-project/lotus/pull/12324))
   - **Lotus Send CLI:** The `lotus send` command now supports sending to ETH address recipients. ([filecoin-project/lotus#12319](https://github.com/filecoin-project/lotus/pull/12319))
 
