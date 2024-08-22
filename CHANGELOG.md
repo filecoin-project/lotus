@@ -33,7 +33,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 - feat(libp2p): expose libp2p bandwidth metrics (#12402) ([filecoin-project/lotus#12402](https://github.com/filecoin-project/lotus/pull/12402))
 - feat: Lotus Send CLI: Lotus send should work with ETH address receipients (#12319)
 
-## Improvements
+### Improvements
 
 - feat!: gateway: fix rate limiting, better stateful handling ([filecoin-project/lotus#12315](https://github.com/filecoin-project/lotus/pull/12315)).
   - CLI usage documentation has been improved for `lotus-gateway`
