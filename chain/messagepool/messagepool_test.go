@@ -954,7 +954,7 @@ func TestMessageSignatureInvalid(t *testing.T) {
 		}
 		err = mp.Add(context.TODO(), sm)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid signature length")
+		assert.Contains(t, err.Error(), "invalid signature for message bafy2bz")
 	}
 }
 
