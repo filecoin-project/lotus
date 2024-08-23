@@ -59,22 +59,23 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --api value               (default: "1234")
-   --genesis value           genesis file to use for first node run
-   --bootstrap               (default: true)
-   --import-chain value      on first run, load chain from given file or url and validate
-   --import-snapshot value   import chain state from a given chain export file or url
-   --remove-existing-chain   remove existing chain and splitstore data on a snapshot-import (default: false)
-   --halt-after-import       halt the process after importing chain from file (default: false)
-   --lite                    start lotus in lite mode (default: false)
-   --pprof value             specify name of file for writing cpu profile to
-   --profile value           specify type of node
-   --manage-fdlimit          manage open file limit (default: true)
-   --config value            specify path of config file to use
-   --api-max-req-size value  maximum API request size accepted by the JSON RPC server (default: 0)
-   --restore value           restore from backup file
-   --restore-config value    config file to use when restoring from backup
-   --help, -h                show help
+   --api value                      (default: "1234")
+   --genesis value                  genesis file to use for first node run
+   --bootstrap                      (default: true)
+   --import-chain value             on first run, load chain from given file or url and validate
+   --import-snapshot value          import chain state from a given chain export file or url
+   --remove-existing-chain          remove existing chain and splitstore data on a snapshot-import (default: false)
+   --halt-after-import              halt the process after importing chain from file (default: false)
+   --lite                           start lotus in lite mode (default: false)
+   --pprof value                    specify name of file for writing cpu profile to
+   --periodic-profile-output value  specify the path and prefix of files to write periodic goroutine and heap profiles to, the current time will be appended to the prefix
+   --profile value                  specify type of node
+   --manage-fdlimit                 manage open file limit (default: true)
+   --config value                   specify path of config file to use
+   --api-max-req-size value         maximum API request size accepted by the JSON RPC server (default: 0)
+   --restore value                  restore from backup file
+   --restore-config value           config file to use when restoring from backup
+   --help, -h                       show help
 ```
 
 ### lotus daemon stop

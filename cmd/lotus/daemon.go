@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/DataDog/zstd"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
@@ -138,6 +139,10 @@ var DaemonCmd = &cli.Command{
 			Usage: "specify name of file for writing cpu profile to",
 		},
 		&cli.StringFlag{
+			Name:  "periodic-profile-output",
+			Usage: "specify the path and prefix of files to write periodic goroutine and heap profiles to, the current time will be appended to the prefix",
+		},
+		&cli.StringFlag{
 			Name:  "profile",
 			Usage: "specify type of node",
 		},
@@ -196,6 +201,10 @@ var DaemonCmd = &cli.Command{
 				return err
 			}
 			defer pprof.StopCPUProfile()
+		}
+
+		if periodicProfileOutput := cctx.String("periodic-profile-output"); periodicProfileOutput != "" {
+			go periodicProfileDumpLoop(periodicProfileOutput)
 		}
 
 		var isBootstrapper dtypes.Bootstrapper
@@ -695,4 +704,34 @@ func deleteSplitstoreDir(lr repo.LockedRepo) error {
 	}
 
 	return os.RemoveAll(path)
+}
+
+// periodicProfileDumpLoop writes goroutine and heap profiles to files every 5 minutes
+func periodicProfileDumpLoop(filename string) {
+	t := time.NewTicker(5 * time.Minute)
+	for range t.C {
+		// Goroutine dump
+		goroutineFile, err := os.Create(filename + "-goroutine-" + time.Now().Format("2006-01-02-15-04-05"))
+		if err != nil {
+			log.Errorf("failed to create goroutine dump file: %s", err)
+		} else {
+			if err := pprof.Lookup("goroutine").WriteTo(goroutineFile, 2); err != nil {
+				log.Errorf("failed to write goroutine dump: %s", err)
+			}
+			_ = goroutineFile.Close()
+			log.Infof("wrote goroutine dump to %s", goroutineFile.Name())
+		}
+
+		// Heap dump
+		heapFile, err := os.Create(filename + "-heap-" + time.Now().Format("2006-01-02-15-04-05"))
+		if err != nil {
+			log.Errorf("failed to create heap dump file: %s", err)
+		} else {
+			if err := pprof.Lookup("heap").WriteTo(heapFile, 2); err != nil {
+				log.Errorf("failed to write heap dump: %s", err)
+			}
+			_ = heapFile.Close()
+			log.Infof("wrote heap dump to %s", heapFile.Name())
+		}
+	}
 }
