@@ -757,7 +757,7 @@ var pruneMsgIndexCmd = &cli.Command{
 			return xerrors.Errorf("error parsing prune args: %w", err)
 		}
 
-		err = pruneMsgIndex(ctx, basePath, startHeight)
+		err = pruneMsgIndex(basePath, startHeight)
 		if err != nil {
 			return xerrors.Errorf("error pruning msgindex: %w", err)
 		}
@@ -992,7 +992,7 @@ var pruneAllIndexesCmd = &cli.Command{
 		var g = new(errgroup.Group)
 
 		g.Go(func() error {
-			if err := pruneMsgIndex(ctx, basePath, startHeight); err != nil {
+			if err := pruneMsgIndex(basePath, startHeight); err != nil {
 				return xerrors.Errorf("error pruning msgindex: %w", err)
 			}
 
@@ -1127,7 +1127,7 @@ func pruneTxIndex(basePath string, startHeight int64) error {
 }
 
 // pruneMsgIndex is a helper function that prunes the msgindex.db for messages older than a given height
-func pruneMsgIndex(_ context.Context, basePath string, startHeight int64) error {
+func pruneMsgIndex(basePath string, startHeight int64) error {
 	log.Infof("pruning msgindex")
 
 	dbPath := path.Join(basePath, indexesDBDir, index.DefaultDbFilename)
