@@ -6,6 +6,9 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
@@ -38,10 +41,9 @@ const (
 type EthTxHashLookup struct {
 	db *sql.DB
 
-	stmtInsertTxHash    *sql.Stmt
-	stmtGetCidFromHash  *sql.Stmt
-	stmtGetHashFromCid  *sql.Stmt
-	stmtDeleteOlderThan *sql.Stmt
+	stmtInsertTxHash   *sql.Stmt
+	stmtGetCidFromHash *sql.Stmt
+	stmtGetHashFromCid *sql.Stmt
 }
 
 func NewTransactionHashLookup(ctx context.Context, path string) (*EthTxHashLookup, error) {
@@ -77,10 +79,6 @@ func (ei *EthTxHashLookup) initStatements() (err error) {
 	ei.stmtGetHashFromCid, err = ei.db.Prepare(getHashFromCid)
 	if err != nil {
 		return xerrors.Errorf("prepare stmtGetHashFromCid: %w", err)
-	}
-	ei.stmtDeleteOlderThan, err = ei.db.Prepare(deleteOlderThan)
-	if err != nil {
-		return xerrors.Errorf("prepare stmtDeleteOlderThan: %w", err)
 	}
 	return nil
 }
@@ -133,10 +131,18 @@ func (ei *EthTxHashLookup) DeleteEntriesOlderThan(days int) (int64, error) {
 		return 0, xerrors.New("db closed")
 	}
 
-	res, err := ei.stmtDeleteOlderThan.Exec("-" + strconv.Itoa(days) + " day")
+	epochs := abi.ChainEpoch(buildconstants.BlockDelaySecs * builtin.SecondsInDay * uint64(days))
+	return DeleteEntriesOlderThan(ei.db, epochs)
+}
+
+// DeleteEntriesOlderThan deletes entries older than the given number of epochs from now.
+func DeleteEntriesOlderThan(db *sql.DB, epochs abi.ChainEpoch) (int64, error) {
+	secondsAgo := int64(epochs) * int64(buildconstants.BlockDelaySecs)
+	res, err := db.Exec(deleteOlderThan, "-"+strconv.FormatInt(secondsAgo, 10)+" seconds")
 	if err != nil {
 		return 0, err
 	}
+
 	return res.RowsAffected()
 }
 
