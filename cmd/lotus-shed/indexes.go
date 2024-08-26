@@ -44,8 +44,6 @@ const (
 const (
 	deleteMsgIndexFromStartHeight = `DELETE FROM messages WHERE epoch < ?`
 
-	deleteTxHashIndexByCID = `DELETE FROM eth_tx_hashes WHERE cid = ?`
-
 	deleteEventFromStartHeight   = `DELETE FROM event WHERE height < ?;`
 	deleteEventEntriesByEventIDs = `DELETE FROM event_entry WHERE event_id IN (SELECT id FROM event WHERE height < ?);`
 	deleteEventsSeenByHeight     = `DELETE FROM events_seen WHERE height < ?;`
