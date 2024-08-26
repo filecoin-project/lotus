@@ -107,24 +107,24 @@ Unless a security issue is actively being exploited or a significant number of u
 
 ## Branch and Tag Strategy
 
-> [!NOTE]
-> - <span style="color:blue">Blue text</span> indicates node-related information.
-> - <span style="color:orange">Orange text</span> indicates miner-related information.
-> - System default colored text applies to both node and miner releases.
+[//]: # (This info is a markdown comment rather than a `> [!NOTE]` because text colors don't render in the GitHub UI, which is where we expect this to be primarily read.)
+[//]: # (<span style="color:blue">Blue text</span> indicates node-related information.)
+[//]: # (<span style="color:orange">Orange text</span> indicates miner-related information.)
+[//]: # (System-default-colored text applies to both node and miner releases.)
 
-* Releases are branched from the `master` branch, regardless of whether they include a network upgrade or not.
+* Releases are usually branched from the `master` branch, regardless of whether they include a network upgrade or not.
+  * For emergency patch releases where we can't risk including recent `master` changes:
+    * <span style="color:blue">Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`</span>
+    * <span style="color:orange">Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`</span>
 * PRs usually target the `master` branch, even if they need to be backported to a release branch. 
+  * The primary exception is CHANGELOG editorializing and callouts.  As part of the [release process](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md), those changes happen directly in a release branch and are merged back to `master` at the end of a release. 
 * PRs that need to be backported should be marked with a `backport` label.
 * <span style="color:blue">Node release branches are named `release/vX.Y.Z`</span>
 * <span style="color:orange">Miner release branches are named `release/miner/vX.Y.Z`</span>
 * By the end of the release process:
   * <span style="color:blue">A `release/vX.Y.Z` branch (node) will have an associated `vX.Y.Z` tag</span>
   * <span style="color:orange">A `release/miner/vX.Y.Z` branch (miner) will have an associated `miner/vX.Y.Z` tag</span>
-* Both node and miner releases may have additional `vX.Y.Z-rcN` or `miner/vX.Y.Z-rcN` tags for release candidates
-* The `master` branch is typically the source for creating release branches
-* For emergency patch releases where we can't risk including recent `master` changes:
-  * <span style="color:blue">Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`</span>
-  * <span style="color:orange">Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`</span>
+* Both node and miner releases may have additional `vX.Y.Z-rcN` or `miner/vX.Y.Z-rcN` tags for release candidates.
 * As of 202408, the `releases` branch is no longer used and no longer tracks the latest release.  See [Why is the `releases` branch deprecated and what are alternatives?](#why-is-the-releases-branch-deprecated-and-what-are-alternatives).
 
 ## FAQ
