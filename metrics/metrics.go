@@ -166,6 +166,9 @@ var (
 	SplitstoreCompactionCold        = stats.Int64("splitstore/cold", "Number of cold blocks in last compaction", stats.UnitDimensionless)
 	SplitstoreCompactionDead        = stats.Int64("splitstore/dead", "Number of dead blocks in last compaction", stats.UnitDimensionless)
 
+	// Datastore
+	DatastoreSize = stats.Int64("datastore/size_bytes", "Size of the datastore in bytes", stats.UnitBytes)
+
 	// rcmgr
 	RcmgrAllowConn      = stats.Int64("rcmgr/allow_conn", "Number of allowed connections", stats.UnitDimensionless)
 	RcmgrBlockConn      = stats.Int64("rcmgr/block_conn", "Number of blocked connections", stats.UnitDimensionless)
@@ -563,6 +566,10 @@ var (
 		Measure:     SplitstoreCompactionDead,
 		Aggregation: view.Sum(),
 	}
+	DatastoreSizeView = &view.View{
+		Measure:     DatastoreSize,
+		Aggregation: view.LastValue(),
+	}
 
 	// rcmgr
 	RcmgrAllowConnView = &view.View{
@@ -712,6 +719,7 @@ var ChainNodeViews = append([]*view.View{
 	SplitstoreCompactionHotView,
 	SplitstoreCompactionColdView,
 	SplitstoreCompactionDeadView,
+	DatastoreSizeView,
 	VMApplyBlocksTotalView,
 	VMApplyMessagesView,
 	VMApplyEarlyView,
