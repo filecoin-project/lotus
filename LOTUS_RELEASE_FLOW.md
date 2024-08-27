@@ -113,7 +113,7 @@ Unless a security issue is actively being exploited or a significant number of u
 [//]: # (System-default-colored text applies to both node and miner releases.)
 
 * Releases are usually branched from the `master` branch, regardless of whether they include a network upgrade or not.
-  * For emergency patch releases where we can't risk including recent `master` changes:
+  * For certain patch releases where we can't risk including recent `master` changes (such as for security or emergency bug-fix releases):
     * <span style="color:blue">Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`</span>
     * <span style="color:orange">Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`</span>
 * PRs usually target the `master` branch, even if they need to be backported to a release branch. 
