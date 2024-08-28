@@ -2,15 +2,14 @@ package cron
 
 import (
 	"fmt"
-
 	"github.com/ipfs/go-cid"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	cron11 "github.com/filecoin-project/go-state-types/builtin/v11/cron"
 	"github.com/filecoin-project/go-state-types/manifest"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	cron11 "github.com/filecoin-project/go-state-types/builtin/v11/cron"
 )
 
 var _ State = (*state11)(nil)
