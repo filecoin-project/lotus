@@ -5,14 +5,16 @@ import (
 	"golang.org/x/xerrors"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin15 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	builtin15 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var Methods = builtin15.MethodsEVM
