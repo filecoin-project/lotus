@@ -4,9 +4,9 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	evm12 "github.com/filecoin-project/go-state-types/builtin/v12/evm"
-
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	evm12 "github.com/filecoin-project/go-state-types/builtin/v12/evm"
 )
 
 var _ State = (*state12)(nil)

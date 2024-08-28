@@ -2,15 +2,15 @@ package system
 
 import (
 	"fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/ipfs/go-cid"
 
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	system11 "github.com/filecoin-project/go-state-types/builtin/v11/system"
-	"github.com/filecoin-project/go-state-types/manifest"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	system11 "github.com/filecoin-project/go-state-types/builtin/v11/system"
 )
 
 var _ State = (*state11)(nil)
