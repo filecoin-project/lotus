@@ -112,7 +112,7 @@ Unless a security issue is actively being exploited or a significant number of u
     * Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`
     * Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`
 * PRs usually target the `master` branch, even if they need to be backported to a release branch. 
-  * The primary exception is CHANGELOG editorializing and callouts.  As part of the [release process](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md), those changes happen directly in a release branch and are merged back to `master` at the end of a release. 
+  * The primary exception is CHANGELOG editorializing and callouts.  As part of the [release process](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md), those changes happen directly in a release branch and are cherry-picked back to `master` at the end of a release. 
 * PRs that need to be backported should be marked with a `backport` label.
 * Node release branches are named `release/vX.Y.Z`
 * <span style="color:orange">Miner release branches are named `release/miner/vX.Y.Z`
