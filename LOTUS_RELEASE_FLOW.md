@@ -115,10 +115,10 @@ Unless a security issue is actively being exploited or a significant number of u
   * The primary exception is CHANGELOG editorializing and callouts.  As part of the [release process](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md), those changes happen directly in a release branch and are cherry-picked back to `master` at the end of a release. 
 * PRs that need to be backported should be marked with a `backport` label.
 * Node release branches are named `release/vX.Y.Z`
-* <span style="color:orange">Miner release branches are named `release/miner/vX.Y.Z`
+* Miner release branches are named `release/miner/vX.Y.Z`
 * By the end of the release process:
   * A `release/vX.Y.Z` branch (node) will have an associated `vX.Y.Z` tag
-  * <span style="color:orange">A `release/miner/vX.Y.Z` branch (miner) will have an associated `miner/vX.Y.Z` tag
+  * A `release/miner/vX.Y.Z` branch (miner) will have an associated `miner/vX.Y.Z` tag
 * Both node and miner releases may have additional `vX.Y.Z-rcN` or `miner/vX.Y.Z-rcN` tags for release candidates.
 * As of 202408, the `releases` branch is no longer used and no longer tracks the latest release.  See [Why is the `releases` branch deprecated and what are alternatives?](#why-is-the-releases-branch-deprecated-and-what-are-alternatives).
 
