@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	msig14 "github.com/filecoin-project/go-state-types/builtin/v14/multisig"
+	msig15 "github.com/filecoin-project/go-state-types/builtin/v15/multisig"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -56,6 +56,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version14:
 			return load14(store, act.Head)
+
+		case actorstypes.Version15:
+			return load15(store, act.Head)
 
 		}
 	}
@@ -133,6 +136,9 @@ func MakeState(store adt.Store, av actorstypes.Version, signers []address.Addres
 	case actorstypes.Version14:
 		return make14(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
+	case actorstypes.Version15:
+		return make15(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -159,7 +165,7 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig14.Transaction
+type Transaction = msig15.Transaction
 
 var Methods = builtintypes.MethodsMultisig
 
@@ -207,6 +213,9 @@ func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 
 	case actorstypes.Version14:
 		return message14{message0{from}}
+
+	case actorstypes.Version15:
+		return message15{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -230,13 +239,13 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig14.ProposalHashData
-type ProposeReturn = msig14.ProposeReturn
-type ProposeParams = msig14.ProposeParams
-type ApproveReturn = msig14.ApproveReturn
+type ProposalHashData = msig15.ProposalHashData
+type ProposeReturn = msig15.ProposeReturn
+type ProposeParams = msig15.ProposeParams
+type ApproveReturn = msig15.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig14.TxnIDParams{ID: msig14.TxnID(id)}
+	params := msig15.TxnIDParams{ID: msig15.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
@@ -274,5 +283,6 @@ func AllCodes() []cid.Cid {
 		(&state12{}).Code(),
 		(&state13{}).Code(),
 		(&state14{}).Code(),
+		(&state15{}).Code(),
 	}
 }
