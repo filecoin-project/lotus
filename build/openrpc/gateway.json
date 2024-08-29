@@ -9276,7 +9276,7 @@
                     "title": "number",
                     "description": "Number is a number",
                     "examples": [
-                        23
+                        24
                     ],
                     "type": [
                         "number"
