@@ -17,7 +17,6 @@ import (
 
 func ChainIndexer(cfg config.IndexConfig) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
 	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
-
 		sqlitePath, err := r.SqlitePath()
 		if err != nil {
 			return nil, err
@@ -39,9 +38,11 @@ func ChainIndexer(cfg config.IndexConfig) func(lc fx.Lifecycle, mctx helpers.Met
 	}
 }
 
-func InitChainIndexer(lc fx.Lifecycle, indexer chainindex.Indexer, evapi EventHelperAPI, mp *messagepool.MessagePool) {
+func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainindex.Indexer, evapi EventHelperAPI, mp *messagepool.MessagePool) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+		OnStart: func(_ context.Context) error {
 			ev, err := events.NewEvents(ctx, &evapi)
 			if err != nil {
 				return err
