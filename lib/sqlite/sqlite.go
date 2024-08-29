@@ -28,6 +28,7 @@ var pragmas = []string{
 	"PRAGMA journal_mode = WAL",
 	"PRAGMA wal_autocheckpoint = 256", // checkpoint @ 256 pages
 	"PRAGMA journal_size_limit = 0",   // always reset journal and wal files
+	"PRAGMA foreign_keys = ON",
 }
 
 const metaTableDdl = `CREATE TABLE IF NOT EXISTS _meta (

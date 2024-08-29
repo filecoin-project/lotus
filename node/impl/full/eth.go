@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -142,6 +143,8 @@ type EthModule struct {
 
 	EthBlkCache   *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
 	EthBlkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks along with full transaction payload by their CID
+
+	ChainIndexer chainindex.Indexer
 
 	ChainAPI
 	MpoolAPI
@@ -356,9 +359,15 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 		return nil, nil
 	}
 
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	var c cid.Cid
+	var err error
+	c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
 	if err != nil {
-		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+		if err != nil {
+			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+		}
 	}
 
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
@@ -415,7 +424,14 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		return nil, nil
 	}
 
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	var c cid.Cid
+	var err error
+	c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
+	if err != nil {
+		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	}
+
 	// We fall out of the first condition and continue
 	if errors.Is(err, ethhashlookup.ErrNotFound) {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
@@ -499,9 +515,15 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 }
 
 func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+	var c cid.Cid
+	var err error
+	c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
 	if err != nil {
-		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+		if err != nil {
+			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+		}
 	}
 
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
@@ -940,9 +962,11 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 
 	// make it immediately available in the transaction hash lookup db, even though it will also
 	// eventually get there via the mpool
-	if err := a.EthTxHashManager.TransactionHashLookup.UpsertHash(txHash, smsg.Cid()); err != nil {
-		log.Errorf("error inserting tx mapping to db: %s", err)
+	if err := a.ChainIndexer.IndexEthTxHash(ctx, txHash, smsg.Cid()); err != nil {
+		log.Errorf("error indexing tx: %s", err)
 	}
+
+	fmt.Println("INDEXING CID", smsg.Cid())
 
 	return ethtypes.EthHashFromTxBytes(rawTx), nil
 }

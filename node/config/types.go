@@ -632,6 +632,11 @@ type IndexConfig struct {
 	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
 	EnableMsgIndex bool
+
+	// GCRetentionEpochs defines the number of epochs for which data is retained in the Indexer.
+	// During the garbage collection (GC) process, data older than this retention period is pruned.
+	// A value of 0 disables GC, retaining all historical data.
+	GCRetentionEpochs int64
 }
 
 type HarmonyDB struct {

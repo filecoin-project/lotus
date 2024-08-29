@@ -68,6 +68,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chainindex"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/must"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -177,7 +178,8 @@ var migrationsCmd = &cli.Command{
 		defer cs.Close() //nolint:errcheck
 
 		// Note: we use a map datastore for the metadata to avoid writing / using cached migration results in the metadata store
-		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, datastore.NewMapDatastore(), index.DummyMsgIndex)
+		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil,
+			datastore.NewMapDatastore(), index.DummyMsgIndex, chainindex.DummyIndexer)
 		if err != nil {
 			return err
 		}

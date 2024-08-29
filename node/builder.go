@@ -129,6 +129,8 @@ const (
 
 	StoreEventsKey
 
+	InitChainIndexerKey
+
 	_nInvokes // keep this last
 )
 

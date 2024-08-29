@@ -190,9 +190,13 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 }
 
 func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
-	minfo, err := sm.msgIndex.GetMsgInfo(ctx, mcid)
+	minfo, err := sm.chainIndexer.GetMsgInfo(ctx, mcid)
 	if err != nil {
-		return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in index: %w", err)
+		// If chainIndexer fails, fallback to msgIndex
+		minfo, err = sm.msgIndex.GetMsgInfo(ctx, mcid)
+		if err != nil {
+			return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in indexes: %w", err)
+		}
 	}
 
 	// check the height against the current tipset; minimum execution confidence requires that the

@@ -350,6 +350,14 @@ in a cluster. Only 1 is required`,
 			Comment: `EXPERIMENTAL FEATURE. USE WITH CAUTION
 EnableMsgIndex enables indexing of messages on chain.`,
 		},
+		{
+			Name: "GCRetentionEpochs",
+			Type: "int64",
+
+			Comment: `GCRetentionEpochs defines the number of epochs for which data is retained in the Indexer.
+During the garbage collection (GC) process, data older than this retention period is pruned.
+A value of 0 disables GC, retaining all historical data.`,
+		},
 	},
 	"JournalConfig": {
 		{

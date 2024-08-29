@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chainindex"
 
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -156,7 +157,8 @@ type StateManager struct {
 	tsExecMonitor ExecMonitor
 	beacon        beacon.Schedule
 
-	msgIndex index.MsgIndex
+	msgIndex     index.MsgIndex
+	chainIndexer chainindex.Indexer
 
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
@@ -177,7 +179,8 @@ type tipSetCacheEntry struct {
 	invocTrace    []*api.InvocResult
 }
 
-func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule, metadataDs dstore.Batching, msgIndex index.MsgIndex) (*StateManager, error) {
+func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule,
+	metadataDs dstore.Batching, msgIndex index.MsgIndex, chainIndexer chainindex.Indexer) (*StateManager, error) {
 	// If we have upgrades, make sure they're in-order and make sense.
 	if err := us.Validate(); err != nil {
 		return nil, err
@@ -243,12 +246,13 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		},
 		compWait:       make(map[string]chan struct{}),
 		msgIndex:       msgIndex,
+		chainIndexer:   chainIndexer,
 		execTraceCache: execTraceCache,
 	}, nil
 }
 
-func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor, metadataDs dstore.Batching, msgIndex index.MsgIndex) (*StateManager, error) {
-	sm, err := NewStateManager(cs, exec, sys, us, b, metadataDs, msgIndex)
+func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor, metadataDs dstore.Batching, msgIndex index.MsgIndex, chainIndexer chainindex.Indexer) (*StateManager, error) {
+	sm, err := NewStateManager(cs, exec, sys, us, b, metadataDs, msgIndex, chainIndexer)
 	if err != nil {
 		return nil, err
 	}

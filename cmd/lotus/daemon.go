@@ -42,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chainindex"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
@@ -50,7 +51,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
@@ -612,7 +612,8 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 			return xerrors.Errorf("failed to construct beacon schedule: %w", err)
 		}
 
-		stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), shd, mds, index.DummyMsgIndex)
+		stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc),
+			vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), shd, mds, index.DummyMsgIndex, chainindex.DummyIndexer)
 		if err != nil {
 			return err
 		}
@@ -628,27 +629,18 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	// populate the message index if user has EnableMsgIndex enabled
+	// populate the chain Index from the snapshot
 	//
-	c, err := lr.Config()
+	basePath, err := lr.SqlitePath()
 	if err != nil {
 		return err
 	}
-	cfg, ok := c.(*config.FullNode)
-	if !ok {
-		return xerrors.Errorf("invalid config for repo, got: %T", c)
+
+	log.Info("populating chain index...")
+	if err := chainindex.PopulateFromSnapshot(ctx, filepath.Join(basePath, chainindex.DefaultDbFilename), cst); err != nil {
+		return err
 	}
-	if cfg.Index.EnableMsgIndex {
-		log.Info("populating message index...")
-		basePath, err := lr.SqlitePath()
-		if err != nil {
-			return err
-		}
-		if err := index.PopulateAfterSnapshot(ctx, filepath.Join(basePath, index.DefaultDbFilename), cst); err != nil {
-			return err
-		}
-		log.Info("populating message index done")
-	}
+	log.Info("populating chain index done")
 
 	return nil
 }

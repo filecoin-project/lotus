@@ -41,6 +41,7 @@ import (
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chainindex"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
@@ -169,7 +170,7 @@ func TestForkHeightTriggers(t *testing.T) {
 				}
 
 				return st.Flush(ctx)
-			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
+			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex, chainindex.DummyIndexer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +288,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				migrationCount++
 				return root, nil
-			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
+			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex, chainindex.DummyIndexer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -519,7 +520,7 @@ func TestForkPreMigration(t *testing.T) {
 					return nil
 				},
 			}}},
-		}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
+		}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex, chainindex.DummyIndexer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,6 +596,7 @@ func TestDisablePreMigration(t *testing.T) {
 		cg.BeaconSchedule(),
 		datastore.NewMapDatastore(),
 		index.DummyMsgIndex,
+		chainindex.DummyIndexer,
 	)
 	require.NoError(t, err)
 	require.NoError(t, sm.Start(context.Background()))
@@ -650,6 +652,7 @@ func TestMigrtionCache(t *testing.T) {
 		cg.BeaconSchedule(),
 		metadataDs,
 		index.DummyMsgIndex,
+		chainindex.DummyIndexer,
 	)
 	require.NoError(t, err)
 	require.NoError(t, sm.Start(context.Background()))
@@ -703,6 +706,7 @@ func TestMigrtionCache(t *testing.T) {
 			cg.BeaconSchedule(),
 			metadataDs,
 			index.DummyMsgIndex,
+			chainindex.DummyIndexer,
 		)
 		require.NoError(t, err)
 		sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {

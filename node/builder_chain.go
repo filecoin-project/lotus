@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
+	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -285,6 +286,9 @@ func ConfigFullNode(c interface{}) Option {
 		If(cfg.FaultReporter.EnableConsensusFaultReporter,
 			Override(ConsensusReporterKey, modules.RunConsensusFaultReporter(cfg.FaultReporter)),
 		),
+
+		Override(new(chainindex.Indexer), modules.ChainIndexer(cfg.Index)),
+		Override(InitChainIndexerKey, modules.InitChainIndexer),
 	)
 }
 

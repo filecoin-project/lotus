@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/lib/sqlite"
 )
 
@@ -88,7 +89,7 @@ type headChange struct {
 	app []*types.TipSet
 }
 
-func NewMsgIndex(lctx context.Context, path string, cs ChainStore) (MsgIndex, error) {
+func NewMsgIndex(lctx context.Context, path string, cs ChainStore, enableWrites bool) (MsgIndex, error) {
 	db, exists, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
@@ -124,13 +125,15 @@ func NewMsgIndex(lctx context.Context, path string, cs ChainStore) (MsgIndex, er
 		return nil, xerrors.Errorf("error preparing msgindex database statements: %w", err)
 	}
 
-	rnf := store.WrapHeadChangeCoalescer(
-		msgIndex.onHeadChange,
-		CoalesceMinDelay,
-		CoalesceMaxDelay,
-		CoalesceMergeInterval,
-	)
-	cs.SubscribeHeadChanges(rnf)
+	if enableWrites {
+		rnf := store.WrapHeadChangeCoalescer(
+			msgIndex.onHeadChange,
+			CoalesceMinDelay,
+			CoalesceMaxDelay,
+			CoalesceMergeInterval,
+		)
+		cs.SubscribeHeadChanges(rnf)
+	}
 
 	msgIndex.workers.Add(1)
 	go msgIndex.background(ctx)
@@ -431,12 +434,12 @@ func (x *msgIndex) doApply(ctx context.Context, tx *sql.Tx, ts *types.TipSet) er
 }
 
 // interface
-func (x *msgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
+func (x *msgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (*chainindex.MsgInfo, error) {
 	x.closeLk.RLock()
 	defer x.closeLk.RUnlock()
 
 	if x.closed {
-		return MsgInfo{}, ErrClosed
+		return nil, ErrClosed
 	}
 
 	var (
@@ -449,18 +452,18 @@ func (x *msgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
 	err := row.Scan(&tipset, &epoch)
 	switch {
 	case err == sql.ErrNoRows:
-		return MsgInfo{}, ErrNotFound
+		return nil, ErrNotFound
 
 	case err != nil:
-		return MsgInfo{}, xerrors.Errorf("error querying msgindex database: %w", err)
+		return nil, xerrors.Errorf("error querying msgindex database: %w", err)
 	}
 
 	tipsetCid, err := cid.Decode(tipset)
 	if err != nil {
-		return MsgInfo{}, xerrors.Errorf("error decoding tipset cid: %w", err)
+		return nil, xerrors.Errorf("error decoding tipset cid: %w", err)
 	}
 
-	return MsgInfo{
+	return &chainindex.MsgInfo{
 		Message: m,
 		TipSet:  tipsetCid,
 		Epoch:   abi.ChainEpoch(epoch),
