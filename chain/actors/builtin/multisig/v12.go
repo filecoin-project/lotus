@@ -5,21 +5,20 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/manifest"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin12 "github.com/filecoin-project/go-state-types/builtin"
 	msig12 "github.com/filecoin-project/go-state-types/builtin/v12/multisig"
 	adt12 "github.com/filecoin-project/go-state-types/builtin/v12/util/adt"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state12)(nil)

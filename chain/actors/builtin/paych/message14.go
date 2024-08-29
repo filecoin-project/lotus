@@ -5,13 +5,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin14 "github.com/filecoin-project/go-state-types/builtin"
 	init14 "github.com/filecoin-project/go-state-types/builtin/v14/init"
 	paych14 "github.com/filecoin-project/go-state-types/builtin/v14/paych"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"

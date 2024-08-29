@@ -5564,7 +5564,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  24
 ]
 ```
 
@@ -5579,7 +5579,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  24
 ]
 ```
 
@@ -6490,7 +6490,8 @@ Response:
     "UpgradeWatermelonHeight": 10101,
     "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101,
-    "UpgradeWaffleHeight": 10101
+    "UpgradeWaffleHeight": 10101,
+    "UpgradeOmenHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -7470,7 +7471,7 @@ Inputs:
 ]
 ```
 
-Response: `23`
+Response: `24`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
