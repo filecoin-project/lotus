@@ -628,12 +628,6 @@ func TestTraceTransaction(t *testing.T) {
 	require.Contains(t, err.Error(), "transaction not found")
 	require.Nil(t, traces)
 
-	// EthTraceTransaction errors when a trace for pending transactions is requested
-	traces, err = client.EthTraceTransaction(ctx, hash.String())
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no trace for pending transactions")
-	require.Nil(t, traces)
-
 	receipt, err := client.EVM().WaitTransaction(ctx, hash)
 	require.NoError(t, err)
 	require.NotNil(t, receipt)

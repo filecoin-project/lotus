@@ -20,6 +20,12 @@ var (
 )
 
 func (si *SqliteIndexer) GetMaxNonRevertedTipset(ctx context.Context) (*types.TipSet, error) {
+	si.closeLk.RLock()
+	if si.closed {
+		return nil, ErrClosed
+	}
+	si.closeLk.RUnlock()
+
 	var tipsetKeyCidBytes []byte
 	err := si.getMaxNonRevertedTipsetStmt.QueryRowContext(ctx).Scan(&tipsetKeyCidBytes)
 	if err != nil {
@@ -39,6 +45,12 @@ func (si *SqliteIndexer) GetMaxNonRevertedTipset(ctx context.Context) (*types.Ti
 }
 
 func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.EthHash) (cid.Cid, error) {
+	si.closeLk.RLock()
+	if si.closed {
+		return cid.Undef, ErrClosed
+	}
+	si.closeLk.RUnlock()
+
 	var msgCidBytes []byte
 
 	err := si.queryMsgCidFromEthHash(ctx, txHash, &msgCidBytes)
@@ -70,10 +82,14 @@ func (si *SqliteIndexer) queryMsgCidFromEthHash(ctx context.Context, txHash etht
 }
 
 func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*MsgInfo, error) {
+	si.closeLk.RLock()
+	if si.closed {
+		return nil, ErrClosed
+	}
+	si.closeLk.RUnlock()
+
 	var tipsetKeyCidBytes []byte
 	var height int64
-
-	fmt.Println("GETTING MSG INFO")
 
 	err := si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height)
 	if err == sql.ErrNoRows {
@@ -84,7 +100,6 @@ func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*M
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			fmt.Println("GETTING MSG INFO")
 			return nil, ErrNotFound
 		}
 		return nil, xerrors.Errorf("failed to get message info: %w", err)

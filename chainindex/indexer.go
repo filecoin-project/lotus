@@ -42,6 +42,9 @@ type SqliteIndexer struct {
 	mu           sync.Mutex
 	updateSubs   map[uint64]*updateSub
 	subIdCounter uint64
+
+	closeLk sync.RWMutex
+	closed  bool
 }
 
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64) (si *SqliteIndexer, err error) {
@@ -84,6 +87,13 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64) (si *
 }
 
 func (si *SqliteIndexer) Close() error {
+	si.closeLk.Lock()
+	defer si.closeLk.Unlock()
+	if si.closed {
+		return nil
+	}
+	si.closed = true
+
 	if si.db == nil {
 		return nil
 	}
@@ -148,12 +158,24 @@ func (si *SqliteIndexer) prepareStatements() error {
 }
 
 func (si *SqliteIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, msgCid cid.Cid) error {
+	si.closeLk.RLock()
+	if si.closed {
+		return ErrClosed
+	}
+	si.closeLk.RUnlock()
+
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
 		return si.indexEthTxHash(ctx, tx, txHash, msgCid)
 	})
 }
 
 func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error {
+	si.closeLk.RLock()
+	if si.closed {
+		return ErrClosed
+	}
+	si.closeLk.RUnlock()
+
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
 		return si.indexSignedMessage(ctx, tx, msg)
 	})
@@ -188,6 +210,12 @@ func (si *SqliteIndexer) indexEthTxHash(ctx context.Context, tx *sql.Tx, txHash 
 }
 
 func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
+	si.closeLk.RLock()
+	if si.closed {
+		return ErrClosed
+	}
+	si.closeLk.RUnlock()
+
 	// We're moving the chain ahead from the `from` tipset to the `to` tipset
 	// Height(to) > Height(from)
 	err := withTx(ctx, si.db, func(tx *sql.Tx) error {
@@ -214,6 +242,12 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 }
 
 func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) error {
+	si.closeLk.RLock()
+	if si.closed {
+		return ErrClosed
+	}
+	si.closeLk.RUnlock()
+
 	// We're reverting the chain from the tipset at `from` to the tipset at `to`.
 	// Height(to) < Height(from)
 

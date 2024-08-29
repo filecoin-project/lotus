@@ -325,6 +325,14 @@
   # env var: LOTUS_INDEX_ENABLEMSGINDEX
   #EnableMsgIndex = false
 
+  # GCRetentionEpochs defines the number of epochs for which data is retained in the Indexer.
+  # During the garbage collection (GC) process, data older than this retention period is pruned.
+  # A value of 0 disables GC, retaining all historical data.
+  #
+  # type: int64
+  # env var: LOTUS_INDEX_GCRETENTIONEPOCHS
+  #GCRetentionEpochs = 0
+
 
 [FaultReporter]
   # EnableConsensusFaultReporter controls whether the node will monitor and
