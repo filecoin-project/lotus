@@ -65,18 +65,3 @@ func NewEvents(ctx context.Context, api EventHelperAPI) (*Events, error) {
 	gcConfidence := 2 * policy.ChainFinality
 	return newEventsWithGCConfidence(ctx, api, gcConfidence)
 }
-
-func NewEventsWithHead(ctx context.Context, api EventHelperAPI, head *types.TipSet) (*Events, error) {
-	gcConfidence := 2 * policy.ChainFinality
-	cache := newCache(api, gcConfidence)
-
-	ob := newObserverWithHead(cache, gcConfidence, head)
-	if err := ob.start(ctx); err != nil {
-		return nil, err
-	}
-
-	he := newHeightEvents(cache, ob, gcConfidence)
-	headChange := newHCEvents(cache, ob)
-
-	return &Events{ob, he, headChange}, nil
-}

@@ -41,21 +41,6 @@ func newObserver(api *cache, gcConfidence abi.ChainEpoch) *observer {
 	return obs
 }
 
-func newObserverWithHead(api *cache, gcConfidence abi.ChainEpoch, head *types.TipSet) *observer {
-	obs := &observer{
-		api:          api,
-		gcConfidence: gcConfidence,
-		head:         head,
-		ready:        make(chan struct{}),
-		observers:    []TipSetObserver{},
-	}
-	obs.Observe(api.observer())
-
-	close(obs.ready) // Close the ready channel since we already have a head
-
-	return obs
-}
-
 func (o *observer) start(ctx context.Context) error {
 	go o.listenHeadChanges(ctx)
 
