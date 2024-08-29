@@ -57,7 +57,6 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64) (si *
 
 	defer func() {
 		if err != nil {
-			cancel()
 			_ = db.Close()
 		}
 	}()

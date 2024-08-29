@@ -54,11 +54,11 @@ func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.Eth
 	var msgCidBytes []byte
 
 	err := si.queryMsgCidFromEthHash(ctx, txHash, &msgCidBytes)
-	if err == sql.ErrNoRows {
+	/*if err == sql.ErrNoRows {
 		err = si.waitTillHeadIndexedAndApply(ctx, func() error {
 			return si.queryMsgCidFromEthHash(ctx, txHash, &msgCidBytes)
 		})
-	}
+	}*/
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -92,11 +92,11 @@ func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*M
 	var height int64
 
 	err := si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height)
-	if err == sql.ErrNoRows {
+	/*if err == sql.ErrNoRows {
 		err = si.waitTillHeadIndexedAndApply(ctx, func() error {
 			return si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height)
 		})
-	}
+	}*/
 
 	if err != nil {
 		if err == sql.ErrNoRows {
