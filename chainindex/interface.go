@@ -45,6 +45,7 @@ type ChainStore interface {
 	GetHeaviestTipSet() *types.TipSet
 	GetTipSetByCid(ctx context.Context, tsKeyCid cid.Cid) (*types.TipSet, error)
 	GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+	MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 }
 
 var _ ChainStore = (*store.ChainStore)(nil)

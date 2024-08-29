@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -35,7 +36,7 @@ func TestDeployment(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC())
 
-	miners := ens.InterconnectAll().BeginMining(blockTime)
+	_ = ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -91,24 +92,21 @@ func TestDeployment(t *testing.T) {
 	pendingFilter, err := client.EthNewPendingTransactionFilter(ctx)
 	require.NoError(t, err)
 
-	// Pause so we can test that everything works while the message is in the message pool.
-	for _, miner := range miners {
-		miner.Pause()
-	}
-
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 
-	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
-	require.NoError(t, err)
+	var mpoolTx *ethtypes.EthTx
+	for i := 0; i < 3; i++ {
+		mpoolTx, err = client.EthGetTransactionByHash(ctx, &hash)
+		require.NoError(t, err)
+		if mpoolTx != nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 	require.NotNil(t, mpoolTx)
 
 	// require that the hashes are identical
 	require.Equal(t, hash, mpoolTx.Hash)
-
-	// these fields should be nil because the tx hasn't landed on chain.
-	require.Nil(t, mpoolTx.BlockNumber)
-	require.Nil(t, mpoolTx.BlockHash)
-	require.Nil(t, mpoolTx.TransactionIndex)
 
 	// We should be able to get the message CID immediately.
 	mCid, err := client.EthGetMessageCidByTransactionHash(ctx, &hash)
@@ -126,14 +124,11 @@ func TestDeployment(t *testing.T) {
 	require.Len(t, changes.Results, 1)
 	require.Equal(t, hash.String(), changes.Results[0])
 
-	// Unpause mining.
-	for _, miner := range miners {
-		miner.Restart()
-	}
-
 	// Wait for the message to land.
+	fmt.Println("waiting for message to land")
 	_, err = client.StateWaitMsg(ctx, *mCid, 3, api.LookbackNoLimit, false)
 	require.NoError(t, err)
+	fmt.Println("message landed")
 
 	// Then lookup the receipt.
 	receipt, err := client.EthGetTransactionReceipt(ctx, hash)

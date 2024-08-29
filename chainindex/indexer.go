@@ -304,14 +304,23 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
 			return xerrors.Errorf("error inserting tipset message: %w", err)
 		}
+	}
 
-		smsg, ok := msg.(*types.SignedMessage)
-		if !ok {
-			continue
+	for _, blk := range ts.Blocks() {
+		blk := blk
+		_, smsgs, err := si.cs.MessagesForBlock(ctx, blk)
+		if err != nil {
+			return err
 		}
 
-		if err := si.indexSignedMessage(ctx, tx, smsg); err != nil {
-			return xerrors.Errorf("error indexing eth tx hash: %w", err)
+		for _, smsg := range smsgs {
+			smsg := smsg
+			if smsg.Signature.Type != crypto.SigTypeDelegated {
+				continue
+			}
+			if err := si.indexSignedMessage(ctx, tx, smsg); err != nil {
+				return xerrors.Errorf("error indexing eth tx hash: %w", err)
+			}
 		}
 	}
 
