@@ -244,6 +244,24 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 	return nil
 }
 
+// ObserveAndBlock registers the observer and returns the current tipset along with a handle function.
+// The observer is guaranteed to observe events starting at this tipset.
+// The returned handle function should be called by the client when it's ready to receive updates.
+//
+// This function should only be called by the client after the observer has been started.
+// Note that the Observer will block all clients from recieving tipset updates until the handle is called.
+func (o *observer) ObserveAndBlock(obs TipSetObserver) (*types.TipSet, func()) {
+	o.lk.Lock()
+	o.observers = append(o.observers, obs)
+	currentHead := o.head
+
+	unlockHandle := func() {
+		o.lk.Unlock()
+	}
+
+	return currentHead, unlockHandle
+}
+
 // Observe registers the observer, and returns the current tipset. The observer is guaranteed to
 // observe events starting at this tipset.
 //

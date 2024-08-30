@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -49,7 +50,11 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 			}
 
 			// Tipset listener
-			_ = ev.Observe(indexer)
+			tipset, unlockObserver := ev.ObserveAndBlock(indexer)
+			if err := indexer.ReconcileWithChain(ctx, tipset); err != nil {
+				return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
+			}
+			unlockObserver()
 
 			ch, err := mp.Updates(ctx)
 			if err != nil {

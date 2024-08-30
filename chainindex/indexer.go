@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -36,6 +37,10 @@ type SqliteIndexer struct {
 	removeRevertedTipsetsBeforeHeightStmt *sql.Stmt
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
 	deleteEthHashesOlderThanStmt          *sql.Stmt
+	revertTipsetsFromHeightStmt           *sql.Stmt
+	countMessagesStmt                     *sql.Stmt
+	minNonRevertedHeightStmt              *sql.Stmt
+	tipsetExistsNotRevertedStmt           *sql.Stmt
 
 	gcRetentionEpochs int64
 
@@ -84,6 +89,104 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64) (si *
 	go si.gcLoop()
 
 	return si, nil
+}
+
+// ReconcileWithChain ensures that the index is consistent with the current chain state.
+// It performs the following steps:
+//  1. Checks if the index is empty. If so, it returns immediately as there's nothing to reconcile.
+//  2. Finds the lowest non-reverted height in the index.
+//  3. Walks backwards from the current chain head until it finds a tipset that exists
+//     in the index and is not marked as reverted.
+//  4. Sets a boundary epoch just above this found tipset.
+//  5. Marks all tipsets above this boundary as reverted, ensuring consistency with the current chain state.
+//  6. Applies all missing un-indexed tipsets starting from the last matching tipset b/w index and canonical chain
+//     to the current chain head.
+//
+// This function is crucial for maintaining index integrity, especially after chain reorgs.
+// It ensures that the index accurately reflects the current state of the blockchain.
+func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error {
+	si.closeLk.RLock()
+	if si.closed {
+		return ErrClosed
+	}
+	si.closeLk.RUnlock()
+
+	if currHead == nil {
+		return nil
+	}
+
+	return withTx(ctx, si.db, func(tx *sql.Tx) error {
+		row := tx.StmtContext(ctx, si.countMessagesStmt).QueryRowContext(ctx)
+		var result int64
+		if err := row.Scan(&result); err != nil {
+			return xerrors.Errorf("error counting messages: %w", err)
+		}
+		if result == 0 {
+			return nil
+		}
+
+		// Find the minimum applied tipset in the index; this will mark the end of the reconciliation walk
+		row = tx.StmtContext(ctx, si.minNonRevertedHeightStmt).QueryRowContext(ctx)
+		if err := row.Scan(&result); err != nil {
+			return xerrors.Errorf("error finding boundary epoch: %w", err)
+		}
+
+		boundaryEpoch := abi.ChainEpoch(result)
+
+		var tipsetStack []*types.TipSet
+
+		curTs := currHead
+		log.Infof("Starting chain reconciliation from height %d", currHead.Height())
+		for curTs != nil && curTs.Height() >= boundaryEpoch {
+			tsKeyCidBytes, err := toTipsetKeyCidBytes(curTs)
+			if err != nil {
+				return xerrors.Errorf("error computing tipset cid: %w", err)
+			}
+
+			var exists bool
+			err = tx.StmtContext(ctx, si.tipsetExistsNotRevertedStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists)
+			if err != nil {
+				return xerrors.Errorf("error checking if tipset exists and is not reverted: %w", err)
+			}
+
+			if exists {
+				// found it!
+				boundaryEpoch = curTs.Height() + 1
+				log.Infof("Found matching tipset at height %d, setting boundary epoch to %d", curTs.Height(), boundaryEpoch)
+				break
+			}
+			tipsetStack = append(tipsetStack, curTs)
+
+			// walk up
+			parents := curTs.Parents()
+			curTs, err = si.cs.GetTipSetFromKey(ctx, parents)
+			if err != nil {
+				return xerrors.Errorf("error walking chain: %w", err)
+			}
+		}
+
+		if curTs == nil {
+			log.Warn("ReconcileWithChain reached genesis without finding matching tipset")
+		}
+
+		// mark all tipsets from the boundary epoch in the Index as reverted as they are not in the current canonical chain
+		log.Infof("Marking tipsets as reverted from height %d", boundaryEpoch)
+		_, err := tx.StmtContext(ctx, si.revertTipsetsFromHeightStmt).ExecContext(ctx, int64(boundaryEpoch))
+		if err != nil {
+			return xerrors.Errorf("error marking tipsets as reverted: %w", err)
+		}
+
+		// Now apply all missing tipsets in reverse order i,e, we apply tipsets in [last matching tipset b/w index and canonical chain,
+		// current chain head]
+		for i := len(tipsetStack) - 1; i >= 0; i-- {
+			curTs := tipsetStack[i]
+			if err := si.indexTipset(ctx, tx, curTs); err != nil {
+				return xerrors.Errorf("error indexing tipset: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 func (si *SqliteIndexer) Close() error {
@@ -152,6 +255,27 @@ func (si *SqliteIndexer) prepareStatements() error {
 	si.deleteEthHashesOlderThanStmt, err = si.db.Prepare(stmtDeleteEthHashesOlderThan)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "deleteEthHashesOlderThanStmt", err)
+	}
+	si.revertTipsetsFromHeightStmt, err = si.db.Prepare(stmtRevertTipsetsFromHeight)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "revertTipsetsFromHeightStmt", err)
+	}
+	si.countMessagesStmt, err = si.db.Prepare(stmtCountMessages)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "countMessagesStmt", err)
+	}
+	si.minNonRevertedHeightStmt, err = si.db.Prepare(stmtMinNonRevertedHeight)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "minNonRevertedHeightStmt", err)
+	}
+	si.tipsetExistsNotRevertedStmt, err = si.db.Prepare(stmtTipsetExistsNotReverted)
+
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "tipsetExistsNotRevertedStmt", err)
+	}
+	si.tipsetExistsNotRevertedStmt, err = si.db.Prepare(stmtTipsetExistsNotReverted)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "tipsetExistsNotRevertedStmt", err)
 	}
 
 	return nil

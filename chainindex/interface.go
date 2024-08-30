@@ -27,6 +27,7 @@ type MsgInfo struct {
 }
 
 type Indexer interface {
+	ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error
 	IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error
 	IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error
 
@@ -77,6 +78,10 @@ func (dummyIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
 }
 
 func (dummyIndexer) Revert(ctx context.Context, from, to *types.TipSet) error {
+	return nil
+}
+
+func (dummyIndexer) ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error {
 	return nil
 }
 

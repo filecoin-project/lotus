@@ -20,6 +20,14 @@ const (
 	stmtRemoveTipsetsBeforeHeight         = "DELETE FROM tipset_message WHERE height < ?"
 
 	stmtDeleteEthHashesOlderThan = `DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?);`
+
+	stmtRevertTipsetsFromHeight = "UPDATE tipset_message SET reverted = 1 WHERE height >= ?"
+
+	stmtCountMessages = "SELECT COUNT(*) FROM tipset_message"
+
+	stmtMinNonRevertedHeight = `SELECT MIN(height) FROM tipset_message WHERE reverted = 0`
+
+	stmtTipsetExistsNotReverted = `SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)`
 )
 
 var ddls = []string{
