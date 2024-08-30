@@ -7,6 +7,7 @@ import (
 	badgerV2 "github.com/dgraph-io/badger/v2"
 	optionsV2 "github.com/dgraph-io/badger/v2/options"
 	badgerV4 "github.com/dgraph-io/badger/v4"
+	optionsV4 "github.com/dgraph-io/badger/v4/options"
 )
 
 // Options embeds the badger options themselves, and augments them with
@@ -45,6 +46,9 @@ func BlockStoreOptions(path string, readonly bool, badgerVersion int) Options {
 	// blocks are prefixed with this namespace. In the future, this can go away,
 	// in order to shorten keys, but it'll require a migration.
 	opts.Prefix = "/blocks/"
+
+	// Disable Snappy Compression
+	opts.V4Options.Compression = optionsV4.None
 
 	// Blockstore values are immutable; therefore we do not expect any
 	// conflicts to emerge.
