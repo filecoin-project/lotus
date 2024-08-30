@@ -24,6 +24,7 @@ This is a Lotus Node only release, which includes a variety of new features, imp
 See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 for the set of changes since the last release.  
 
 <details><summary>Organized Changelog</summary>
+
 ### New features
 
 - feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
