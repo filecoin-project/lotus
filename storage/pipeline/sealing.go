@@ -273,7 +273,7 @@ func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events
 	}
 	s.precommiter = pc
 
-	cc, err := NewCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc, prov)
+	cc, err := NewCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc, prov, s)
 	if err != nil {
 		return nil, err
 	}

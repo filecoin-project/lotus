@@ -7,8 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/proofs"
@@ -19,14 +18,8 @@ func TestGenerateUnsealedCID(t *testing.T) {
 	ups := int(abi.PaddedPieceSize(2048).Unpadded())
 
 	commP := func(b []byte) cid.Cid {
-		pf, werr, err := commpffi.ToReadableFile(bytes.NewReader(b), int64(len(b)))
+		c, err := commp.GeneratePieceCIDFromFile(pt, bytes.NewReader(b), abi.UnpaddedPieceSize(len(b)))
 		require.NoError(t, err)
-
-		c, err := ffi.GeneratePieceCIDFromFile(pt, pf, abi.UnpaddedPieceSize(len(b)))
-		require.NoError(t, err)
-
-		require.NoError(t, werr())
-
 		return c
 	}
 

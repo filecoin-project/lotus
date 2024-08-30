@@ -2,13 +2,18 @@ name: PR Title Check
 
 on:
   pull_request_target:
-    types: [opened, edited, synchronize, reopened]
+    types:
+      - opened
+      - edited
+      - reopened
+      - ready_for_review
 
 permissions:
   pull-requests: write
 
 jobs:
   check-pr-title:
+    if: github.event.pull_request.draft == false
     name: Check PR Title
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +25,7 @@ jobs:
             const title = context.payload.pull_request.title;
             // This should match https://github.com/filecoin-project/lotus/blob/master/README.md#pr-title-conventions
             // 202408: Beyond Conventional Commit conventions, we also optionally suport the "scope" outside of paranenthesis for a transitionary period from legacy conventions per https://github.com/filecoin-project/lotus/pull/12340 
-            const pattern = /^(\[skip changelog\]\s)?(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(\w+\))?!?:?\s(\w+:)?\s?[a-z].+$/;
+            const pattern = /^(\[skip changelog\]\s)?(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w.]+\))?!?:?\s(\w+:)?\s?[a-z].+$/;
             
             if (!pattern.test(title)) {
               await github.rest.pulls.createReview({
@@ -30,7 +35,10 @@ jobs:
                 event: 'REQUEST_CHANGES'
               });
               core.setFailed('PR title does not match the required format');
-            } else {
+            } else if (context.payload.action === 'edited' && context.payload.changes.title) {
+              // Only proceed with dismissal if the title was just edited
+              await new Promise(resolve => setTimeout(resolve, 5000));  // 5 second delay
+
               const reviews = await github.rest.pulls.listReviews({
                 ...context.repo,
                 pull_number: context.payload.pull_request.number

@@ -42,7 +42,6 @@ type CommitBatcherApi interface {
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
-	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
@@ -54,10 +53,16 @@ type CommitBatcherApi interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
+type PledgeApi interface {
+	sectorWeight(ctx context.Context, sector SectorInfo, expiration abi.ChainEpoch) (abi.StoragePower, error)
+	pledgeForPower(ctx context.Context, addedPower abi.StoragePower) (abi.TokenAmount, error)
+}
+
 type AggregateInput struct {
-	Spt   abi.RegisteredSealProof
-	Info  proof.AggregateSealVerifyInfo
-	Proof []byte
+	Spt    abi.RegisteredSealProof
+	Info   proof.AggregateSealVerifyInfo
+	Proof  []byte
+	Weight abi.StoragePower
 
 	ActivationManifest miner.SectorActivationManifest
 	DealIDPrecommit    bool
@@ -65,6 +70,7 @@ type AggregateInput struct {
 
 type CommitBatcher struct {
 	api       CommitBatcherApi
+	pledgeApi PledgeApi
 	maddr     address.Address
 	mctx      context.Context
 	addrSel   AddressSelector
@@ -81,7 +87,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover) (*CommitBatcher, error) {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover, pa PledgeApi) (*CommitBatcher, error) {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -90,6 +96,7 @@ func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBat
 		feeCfg:    feeCfg,
 		getConfig: getConfig,
 		prover:    prov,
+		pledgeApi: pa,
 
 		cutoffs: map[abi.SectorNumber]time.Time{},
 		todo:    map[abi.SectorNumber]AggregateInput{},
@@ -606,7 +613,7 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSe
 		return big.Zero(), xerrors.Errorf("precommit info not found on chain")
 	}
 
-	collateral, err := b.api.StateMinerInitialPledgeCollateral(b.mctx, b.maddr, pci.Info, tsk)
+	collateral, err := b.pledgeApi.pledgeForPower(b.mctx, b.todo[sn].Weight) // b.maddr, pci.Info, tsk
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
@@ -615,6 +622,8 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSe
 	if collateral.LessThan(big.Zero()) {
 		collateral = big.Zero()
 	}
+
+	log.Infow("getSectorCollateral", "collateral", types.FIL(collateral), "sn", sn, "precommit", types.FIL(pci.PreCommitDeposit), "pledge", types.FIL(collateral), "weight", b.todo[sn].Weight)
 
 	return collateral, nil
 }
