@@ -71,6 +71,7 @@ func DefaultFullNode() *FullNode {
 
 		Chainstore: Chainstore{
 			EnableSplitstore: true,
+			BadgerVersion:    2,
 			Splitstore: Splitstore{
 				ColdStoreType: "discard",
 				HotStoreType:  "badger",

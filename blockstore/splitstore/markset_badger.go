@@ -416,7 +416,7 @@ func openBadgerDB(path string, recover bool) (*badger.DB, error) {
 	}
 	opts.Logger = &badgerLogger{
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+		Skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 	}
 
 	return badger.Open(opts)
@@ -443,7 +443,7 @@ func closeBadgerDB(db *badger.DB, path string, persist bool) error {
 // badger logging through go-log
 type badgerLogger struct {
 	*zap.SugaredLogger
-	skip2 *zap.SugaredLogger
+	Skip2 *zap.SugaredLogger
 }
 
 func (b *badgerLogger) Warningf(format string, args ...interface{}) {}

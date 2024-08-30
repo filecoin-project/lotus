@@ -21,6 +21,7 @@ import (
 	evm2 "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -80,7 +81,17 @@ var FevmBalanceCmd = &cli.Command{
 			return err
 		}
 
-		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly())
+		c, err := lkrepo.Config()
+		if err != nil {
+			return err
+		}
+		lotusCfg, ok := c.(*config.FullNode)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+		badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly(), badgerVersion)
 		if err != nil {
 			return err
 		}
@@ -175,7 +186,17 @@ var FevmActorsCmd = &cli.Command{
 			return err
 		}
 
-		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly())
+		c, err := lkrepo.Config()
+		if err != nil {
+			return err
+		}
+		lotusCfg, ok := c.(*config.FullNode)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+		badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly(), badgerVersion)
 		if err != nil {
 			return err
 		}

@@ -12,8 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dustin/go-humanize"
 	"github.com/ipfs/boxo/blockservice"
 	offline "github.com/ipfs/boxo/exchange/offline"
@@ -31,9 +29,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/filecoin-project/lotus/chain/store"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -234,20 +234,31 @@ var exportRawCmd = &cli.Command{
 			}
 
 			{
+
+				c, err := lr.Config()
+				if err != nil {
+					return err
+				}
+				lotusCfg, ok := c.(*config.FullNode)
+				if !ok {
+					return xerrors.Errorf("invalid config for repo, got: %T", c)
+				}
+				badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
 				path := filepath.Join(lr.Path(), "datastore", "chain")
-				opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, path, false)
+				opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, path, false, badgerVersion)
 				if err != nil {
 					return err
 				}
 
-				opts.Logger = &badgerLog{
+				opts.Logger = badger.BadgerLogger{
 					SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-					skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+					Skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 				}
 
 				log.Infow("open db")
 
-				db, err := badger.Open(opts.Options)
+				db, err := badger.OpenBadgerDB(opts)
 				if err != nil {
 					return fmt.Errorf("failed to open badger blockstore: %w", err)
 				}
@@ -258,50 +269,40 @@ var exportRawCmd = &cli.Command{
 				var wlk sync.Mutex
 
 				str := db.NewStream()
-				str.NumGo = 16
-				str.LogPrefix = "bstream"
-				str.Send = func(list *pb.KVList) (err error) {
-					defer func() {
-						if err != nil {
-							log.Errorw("send error", "err", err)
-						}
-					}()
+				str.SetNumGo(16)
+				str.SetLogPrefix("bstream")
+				err = str.ForEach(ctx, func(key string, value string) error {
+					if !strings.HasPrefix(key, "/blocks/") {
+						log.Infow("no blocks prefix", "key", key)
+						return nil
+					}
 
-					for _, kv := range list.Kv {
-						if kv.Key == nil || kv.Value == nil {
-							continue
-						}
-						if !strings.HasPrefix(string(kv.Key), "/blocks/") {
-							log.Infow("no blocks prefix", "key", string(kv.Key))
-							continue
-						}
+					h, err := base32.RawStdEncoding.DecodeString(key[len("/blocks/"):])
+					if err != nil {
+						return xerrors.Errorf("decode b32 ds key %x: %w", key, err)
+					}
 
-						h, err := base32.RawStdEncoding.DecodeString(string(kv.Key[len("/blocks/"):]))
-						if err != nil {
-							return xerrors.Errorf("decode b32 ds key %x: %w", kv.Key, err)
-						}
+					c := cid.NewCidV1(cid.Raw, h)
 
-						c := cid.NewCidV1(cid.Raw, h)
+					b, err := block.NewBlockWithCid([]byte(value), c)
+					if err != nil {
+						return xerrors.Errorf("readblk: %w", err)
+					}
 
-						b, err := block.NewBlockWithCid(kv.Value, c)
-						if err != nil {
-							return xerrors.Errorf("readblk: %w", err)
-						}
-
-						wlk.Lock()
-						err = consume(c, b)
-						wlk.Unlock()
-						if err != nil {
-							return xerrors.Errorf("consume stream block: %w", err)
-						}
+					wlk.Lock()
+					err = consume(c, b)
+					wlk.Unlock()
+					if err != nil {
+						return xerrors.Errorf("consume stream block: %w", err)
 					}
 
 					return nil
-				}
-
-				if err := str.Orchestrate(ctx); err != nil {
+				})
+				if err != nil {
+					log.Errorw("send error", "err", err)
 					return xerrors.Errorf("orchestrate stream: %w", err)
 				}
+
 			}
 		}
 
@@ -479,12 +480,3 @@ func (rc *rawCarb) writeCar(ctx context.Context, path string, root cid.Cid) erro
 }
 
 var _ blockstore.Blockstore = &rawCarb{}
-
-type badgerLog struct {
-	*zap.SugaredLogger
-	skip2 *zap.SugaredLogger
-}
-
-func (b *badgerLog) Warningf(format string, args ...interface{}) {
-	b.skip2.Warnf(format, args...)
-}

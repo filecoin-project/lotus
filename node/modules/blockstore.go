@@ -45,33 +45,36 @@ func DiscardColdBlockstore(lc fx.Lifecycle, bs dtypes.UniversalBlockstore) (dtyp
 	return blockstore.NewDiscardStore(bs), nil
 }
 
-func BadgerHotBlockstore(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
-	path, err := r.SplitstorePath()
-	if err != nil {
-		return nil, err
+func BadgerHotBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
+	return func(lc fx.Lifecycle, r repo.LockedRepo) (dtypes.HotBlockstore, error) {
+		path, err := r.SplitstorePath()
+		if err != nil {
+			return nil, err
+		}
+
+		path = filepath.Join(path, "hot.badger")
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return nil, err
+		}
+
+		badgerVersion := cfg.BadgerVersion
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, r.Readonly(), badgerVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		bs, err := badgerbs.Open(opts)
+		if err != nil {
+			return nil, err
+		}
+
+		lc.Append(fx.Hook{
+			OnStop: func(_ context.Context) error {
+				return bs.Close()
+			}})
+
+		return bs, nil
 	}
-
-	path = filepath.Join(path, "hot.badger")
-	if err := os.MkdirAll(path, 0755); err != nil {
-		return nil, err
-	}
-
-	opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, r.Readonly())
-	if err != nil {
-		return nil, err
-	}
-
-	bs, err := badgerbs.Open(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			return bs.Close()
-		}})
-
-	return bs, nil
 }
 
 func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.LockedRepo, ds dtypes.MetadataDS, cold dtypes.ColdBlockstore, hot dtypes.HotBlockstore) (dtypes.SplitBlockstore, error) {

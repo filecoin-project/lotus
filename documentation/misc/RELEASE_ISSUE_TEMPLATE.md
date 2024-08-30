@@ -129,9 +129,9 @@
 
 ### Post-Release
 
-- [ ] Open a pull request against `master` with a merge of the `release/vX.Y.Z` branch. 
-   - [ ] Conflict resolution should ignore the changes to `version.go` (keep the `-dev` version from master). 
+- [ ] Open a pull request against `master` cherry-picking the CHANGELOG commits from the `release/vX.Y.Z` branch. 
    - Link to PR: 
+   - Assuming we followed [the process of merging changes into `master` first before backporting to the release branch](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#branch-and-tag-strategy), the only changes should be CHANGELOG updates.  
 - [ ] Finish updating/merging the [RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) PR from `Before RC1` with any improvements determined from this latest release iteration.
 
 ## ❤️ Contributors

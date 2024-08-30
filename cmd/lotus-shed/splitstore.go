@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/urfave/cli/v2"
@@ -18,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -195,31 +195,40 @@ func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 	coldPath := filepath.Join(dataPath, "chain")
 	hotPath := filepath.Join(dataPath, "splitstore", "hot.badger")
 
-	blog := &badgerLogger{
+	blog := badger.BadgerLogger{
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+		Skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 	}
 
-	coldOpts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false)
+	c, err := lr.Config()
+	if err != nil {
+		return err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+	badgerVersion := cfg.Chainstore.BadgerVersion
+	coldOpts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false, badgerVersion)
 	if err != nil {
 		return xerrors.Errorf("error getting coldstore badger options: %w", err)
 	}
 	coldOpts.SyncWrites = false
 	coldOpts.Logger = blog
 
-	hotOpts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, true)
+	hotOpts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, true, badgerVersion)
 	if err != nil {
 		return xerrors.Errorf("error getting hotstore badger options: %w", err)
 	}
 	hotOpts.Logger = blog
 
-	cold, err := badger.Open(coldOpts.Options)
+	cold, err := badger.OpenBadgerDB(coldOpts)
 	if err != nil {
 		return xerrors.Errorf("error opening coldstore: %w", err)
 	}
 	defer cold.Close() //nolint
 
-	hot, err := badger.Open(hotOpts.Options)
+	hot, err := badger.OpenBadgerDB(hotOpts)
 	if err != nil {
 		return xerrors.Errorf("error opening hotstore: %w", err)
 	}
@@ -278,7 +287,7 @@ func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 			err = cold.RunValueLogGC(0.0625)
 		}
 
-		if err != badger.ErrNoRewrite {
+		if err != cold.GetErrNoRewrite() {
 			return xerrors.Errorf("error garbage collecting coldstore: %w", err)
 		}
 	}
@@ -352,16 +361,6 @@ func deleteSplitstoreKeys(lr repo.LockedRepo) error {
 
 	return nil
 }
-
-// badger logging through go-log
-type badgerLogger struct {
-	*zap.SugaredLogger
-	skip2 *zap.SugaredLogger
-}
-
-func (b *badgerLogger) Warningf(format string, args ...interface{}) {}
-func (b *badgerLogger) Infof(format string, args ...interface{})    {}
-func (b *badgerLogger) Debugf(format string, args ...interface{})   {}
 
 var splitstoreCheckCmd = &cli.Command{
 	Name:        "check",

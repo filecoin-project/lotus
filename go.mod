@@ -26,6 +26,8 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.4
+	github.com/dgraph-io/badger/v4 v4.2.0
+	github.com/dgraph-io/ristretto v0.1.1
 	github.com/docker/go-units v0.5.0
 	github.com/drand/drand v1.5.11
 	github.com/drand/kyber v1.3.1
@@ -41,8 +43,8 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
-	github.com/filecoin-project/go-crypto v0.0.1
-	github.com/filecoin-project/go-f3 v0.1.0
+	github.com/filecoin-project/go-crypto v0.1.0
+	github.com/filecoin-project/go-f3 v0.2.0
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.6.0
@@ -147,6 +149,7 @@ require (
 	go.opentelemetry.io/otel/bridge/opencensus v1.28.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.14.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0
+	go.opentelemetry.io/otel/metric v1.28.0
 	go.opentelemetry.io/otel/sdk v1.28.0
 	go.opentelemetry.io/otel/sdk/metric v1.28.0
 	go.uber.org/atomic v1.11.0
@@ -187,7 +190,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
-	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/drand/kyber-bls12381 v0.3.1 // indirect
 	github.com/elastic/go-windows v1.0.0 // indirect
@@ -218,6 +220,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20240509144519-723abb6459b7 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
@@ -238,7 +241,6 @@ require (
 	github.com/ipfs/go-peertaskqueue v0.8.1 // indirect
 	github.com/ipfs/go-verifcid v0.0.3 // indirect
 	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
-	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
 	github.com/jackc/pgx/v5 v5.6.0 // indirect
@@ -323,7 +325,8 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
 	github.com/zondax/hid v0.9.2 // indirect
 	github.com/zondax/ledger-go v0.14.3 // indirect
-	go.opentelemetry.io/otel/metric v1.28.0 // indirect
+	gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b // indirect
+	gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.uber.org/dig v1.17.1 // indirect
 	go.uber.org/mock v0.4.0 // indirect

@@ -16,10 +16,9 @@ import (
 	"time"
 
 	ocprom "contrib.go.opencensus.io/exporter/prometheus"
-	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger2"
+	badgerIpfs "github.com/ipfs/go-ds-badger2"
 	measure "github.com/ipfs/go-ds-measure"
 	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
 	"github.com/ipld/go-car"
@@ -33,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -46,6 +46,7 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -171,11 +172,33 @@ var importBenchCmd = &cli.Command{
 			err error
 		)
 
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		c, err := lkrepo.Config()
+		if err != nil {
+			return err
+		}
+		lotusCfg, ok := c.(*config.FullNode)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+		badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
 		switch {
 		case cctx.Bool("use-native-badger"):
 			log.Info("using native badger")
-			var opts badgerbs.Options
-			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false); err != nil {
+
+			var opts badger.Options
+			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false, badgerVersion); err != nil {
 				return err
 			}
 			opts.SyncWrites = false
@@ -183,14 +206,12 @@ var importBenchCmd = &cli.Command{
 
 		default: // legacy badger via datastore.
 			log.Info("using legacy badger")
-			bdgOpt := badger.DefaultOptions
-			bdgOpt.GcInterval = 0
-			bdgOpt.Options = bdg.DefaultOptions("")
-			bdgOpt.Options.SyncWrites = false
-			bdgOpt.Options.Truncate = true
-			bdgOpt.Options.DetectConflicts = false
+			var opts badger.Options
+			if opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, tdir, false, badgerVersion); err != nil {
+				return err
+			}
 
-			ds, err = badger.NewDatastore(tdir, &bdgOpt)
+			bs, err = badgerbs.Open(opts)
 		}
 
 		if err != nil {
@@ -209,7 +230,7 @@ var importBenchCmd = &cli.Command{
 
 		var verifier proofs.Verifier = proofsffi.ProofVerifier
 		if cctx.IsSet("syscall-cache") {
-			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &badger.DefaultOptions)
+			scds, err := badgerIpfs.NewDatastore(cctx.String("syscall-cache"), &badgerIpfs.DefaultOptions)
 			if err != nil {
 				return xerrors.Errorf("opening syscall-cache datastore: %w", err)
 			}

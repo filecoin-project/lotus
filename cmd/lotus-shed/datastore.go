@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -20,8 +19,10 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
+	badger "github.com/filecoin-project/lotus/blockstore/badger/versions"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/backupds"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -321,26 +322,48 @@ var datastoreRewriteCmd = &cli.Command{
 		}
 
 		var (
-			from *badger.DB
-			to   *badger.DB
+			from badger.BadgerDB
+			to   badger.BadgerDB
 		)
 
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		c, err := lkrepo.Config()
+		if err != nil {
+			return err
+		}
+		lotusCfg, ok := c.(*config.FullNode)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+		badgerVersion := lotusCfg.Chainstore.BadgerVersion
+
 		// open the destination (to) store.
-		opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, toPath, false)
+		opts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, toPath, false, badgerVersion)
 		if err != nil {
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}
 		opts.SyncWrites = false
-		if to, err = badger.Open(opts.Options); err != nil {
+		if to, err = badger.OpenBadgerDB(opts); err != nil {
+
 			return xerrors.Errorf("opening 'to' badger store: %w", err)
 		}
 
 		// open the source (from) store.
-		opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, fromPath, true)
+		opts, err = repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, fromPath, true, badgerVersion)
 		if err != nil {
 			return xerrors.Errorf("failed to get badger options: %w", err)
 		}
-		if from, err = badger.Open(opts.Options); err != nil {
+		if from, err = badger.OpenBadgerDB(opts); err != nil {
 			return xerrors.Errorf("opening 'from' datastore: %w", err)
 		}
 
