@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# Node v1.29.0-rc1 / 2024-08-22
+# Node v1.29.0 / 2024-08-30
 
-  This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
+This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
 
 - **New Features:**
   - **Trace Filter API:** Added support for the [`trace_filter`](https://openethereum.github.io/JSONRPC-trace-module#trace_filter) RPC method, allowing users to configure `EthTraceFilterMaxResults` to limit the number of results returned in any individual `trace_filter` RPC API call. ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123))
