@@ -299,6 +299,14 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 		return xerrors.Errorf("error getting messages for tipset: %w", err)
 	}
 
+	if len(msgs) == 0 {
+		// If there are no messages, just insert the tipset and return
+		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, nil, -1); err != nil {
+			return xerrors.Errorf("error inserting empty tipset: %w", err)
+		}
+		return nil
+	}
+
 	for i, msg := range msgs {
 		msg := msg
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {

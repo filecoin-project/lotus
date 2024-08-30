@@ -28,8 +28,8 @@ var ddls = []string{
 		tipset_key_cid BLOB NOT NULL,
 		height INTEGER NOT NULL,
 		reverted INTEGER NOT NULL,
-		message_cid BLOB NOT NULL,
-		message_index INTEGER NOT NULL,
+		message_cid BLOB,
+		message_index INTEGER,
 		UNIQUE (tipset_key_cid, message_cid)
 	)`,
 
