@@ -228,6 +228,10 @@ jobs:
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
+      - name: Install OpenCL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ocl-icd-opencl-dev
   test:
     needs: [discover, cache]
     name: Test (${{ matrix.name }})
@@ -305,3 +309,7 @@ jobs:
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
         continue-on-error: true
+      - name: Install OpenCL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ocl-icd-opencl-dev
