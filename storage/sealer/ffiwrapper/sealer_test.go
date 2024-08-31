@@ -278,8 +278,6 @@ func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
 //
 // go test -run=^TestDownloadParams
 func TestDownloadParams(t *testing.T) {
-	// defer requireFDsClosed(t, openFDs(t)) flaky likely cause of how go-embed works with param files
-
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 }
 
@@ -287,8 +285,6 @@ func TestSealAndVerify(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-
-	defer requireFDsClosed(t, openFDs(t))
 
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
@@ -358,8 +354,6 @@ func TestSealPoStNoCommit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-
-	defer requireFDsClosed(t, openFDs(t))
 
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
@@ -434,8 +428,6 @@ func TestSealAndVerify3(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	defer requireFDsClosed(t, openFDs(t))
-
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
@@ -509,8 +501,6 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-
-	defer requireFDsClosed(t, openFDs(t))
 
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
@@ -607,62 +597,6 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 		ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg2KiBV1, rf, bt, tf, nil) // nolint:errcheck
 		_ = w()
 	}
-}
-
-func openFDs(t *testing.T) int {
-	path := "/proc/self/fd"
-	if runtime.GOOS == "darwin" {
-		path = "/dev/fd"
-	}
-	dent, err := os.ReadDir(path)
-	if err != nil && !strings.Contains(err.Error(), "/dev/fd/3: bad file descriptor") {
-		require.NoError(t, err)
-	}
-
-	var skip int
-	for _, info := range dent {
-		l, err := os.Readlink(filepath.Join(path, info.Name()))
-		if err != nil {
-			continue
-		}
-
-		if strings.HasPrefix(l, "/dev/nvidia") {
-			skip++
-		}
-
-		if strings.HasPrefix(l, "/var/tmp/filecoin-proof-parameters/") {
-			skip++
-		}
-	}
-
-	return len(dent) - skip
-}
-
-func requireFDsClosed(t *testing.T, start int) {
-	openNow := openFDs(t)
-
-	if start != openNow {
-		path := "/proc/self/fd"
-		if runtime.GOOS == "darwin" {
-			path = "/dev/fd"
-		}
-		dent, err := os.ReadDir(path)
-		require.NoError(t, err)
-
-		for _, info := range dent {
-			l, err := os.Readlink(filepath.Join(path, info.Name()))
-			if err != nil {
-				fmt.Printf("FD err %s\n", err)
-				continue
-			}
-
-			fmt.Printf("FD %s -> %s\n", info.Name(), l)
-		}
-	}
-
-	log.Infow("open FDs", "start", start, "now", openNow)
-	// todo make work with cuda somehow
-	// require.Equal(t, start, openNow, "FDs shouldn't leak")
 }
 
 func TestGenerateUnsealedCID(t *testing.T) {
@@ -1106,8 +1040,6 @@ func TestSealAndVerifySynth(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	defer requireFDsClosed(t, openFDs(t))
-
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
@@ -1225,8 +1157,6 @@ func TestSealCommDRInGo(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-
-	defer requireFDsClosed(t, openFDs(t))
 
 	cdir, err := os.MkdirTemp("", "sbtest-c-")
 	require.NoError(t, err)
