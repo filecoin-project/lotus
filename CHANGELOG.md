@@ -36,7 +36,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 
 ### Improvements
 
-- feat!: gateway: fix rate limiting, better stateful handling ([filecoin-project/lotus#12315](https://github.com/filecoin-project/lotus/pull/12315)).
+- feat!: gateway: fix rate limiting, better stateful handling ([filecoin-project/lotus#12327](https://github.com/filecoin-project/lotus/pull/12327)).
   - CLI usage documentation has been improved for `lotus-gateway`
   - `--per-conn-rate-limit` now works as advertised.
   - `--eth-max-filters-per-conn` is new and allows you to set the maximum number of filters and subscription per connection, it defaults to 16.
