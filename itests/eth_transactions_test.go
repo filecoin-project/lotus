@@ -688,6 +688,8 @@ func TestTraceFilter(t *testing.T) {
 	require.EqualValues(t, tracesx[0].TransactionHash, hash)
 	require.EqualValues(t, tracesx[0].BlockNumber, receipt.BlockNumber)
 
+	_ = client.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(receipt.BlockNumber+1)))
+
 	// Define filter criteria
 	fromBlock := "0x1"
 	toBlock := fmt.Sprint(receipt.BlockNumber)
