@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# Node v1.29.0-rc1 / 2024-08-22
+# Node v1.29.0 / 2024-09-02
 
-  This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
+This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
 
 - **New Features:**
   - **Trace Filter API:** Added support for the [`trace_filter`](https://openethereum.github.io/JSONRPC-trace-module#trace_filter) RPC method, allowing users to configure `EthTraceFilterMaxResults` to limit the number of results returned in any individual `trace_filter` RPC API call. ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123))
@@ -17,13 +17,14 @@
 
 - `lotus-gateway` behaviour, CLI-arguments and APIs have received minor changes. See the improvements section below for more information.
 - The `FilecoinAddressToEthAddress` RPC introduces a breaking change for users of the go-jsonrpc library or Lotus as a library.
-
+- We are aware that legacy/historical Drand lookups via `StateGetBeaconEntry` are currently broken. If you rely on `StateGetBeaconEntry` for looking up historic beacons, we recommend waiting for the Lotus v1.29.1 release. You can follow the progress on this issue in [#12414](https://github.com/filecoin-project/lotus/issues/12414).
 
 ## 📝 Changelog
 
 See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 for the set of changes since the last release.  
 
 <details><summary>Organized Changelog</summary>
+
 ### New features
 
 - feat: Add trace filter API supporting RPC method `trace_filter` ([filecoin-project/lotus#12123](https://github.com/filecoin-project/lotus/pull/12123)). Configuring `EthTraceFilterMaxResults` sets a limit on how many results are returned in any individual `trace_filter` RPC API call.
@@ -35,7 +36,7 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 
 ### Improvements
 
-- feat!: gateway: fix rate limiting, better stateful handling ([filecoin-project/lotus#12315](https://github.com/filecoin-project/lotus/pull/12315)).
+- feat!: gateway: fix rate limiting, better stateful handling ([filecoin-project/lotus#12327](https://github.com/filecoin-project/lotus/pull/12327)).
   - CLI usage documentation has been improved for `lotus-gateway`
   - `--per-conn-rate-limit` now works as advertised.
   - `--eth-max-filters-per-conn` is new and allows you to set the maximum number of filters and subscription per connection, it defaults to 16.
@@ -55,6 +56,10 @@ See https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0 
 - fix(ETH RPC): receipts: use correct txtype in receipts (#12332) ([filecoin-project/lotus#12332](https://github.com/filecoin-project/lotus/pull/12332)
 - fix(cli): only change method for 0x recipients (#12328) ([filecoin-project/lotus#12328](https://github.com/filecoin-project/lotus/pull/12328))
 - feat: api: clean API for Miners (#12112) ([filecoin-project/lotus#12112](https://github.com/filecoin-project/lotus/pull/12112))
+- feat: p2p: environment variables for disabling DHT query filter and routing table filter (#12289) ([filecoin-project/lotus#12289](https://github.com/filecoin-project/lotus/pull/12289))
+- fix: cli: Add delegated to cli docs (#12229) ([filecoin-project/lotus#12229](https://github.com/filecoin-project/lotus/pull/12229))
+- feat: sqlite: extract common init and migration utilities (#12098) ([filecoin-project/lotus#12098](https://github.com/filecoin-project/lotus/pull/12098))
+- feat: niporep: multi-sector onboarding through UnmanagedMiner (#12180) ([filecoin-project/lotus#12180](https://github.com/filecoin-project/lotus/pull/12180))
 
 ### Dependencies
 From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0#diff-33ef32bf6c23acb95f5902d7097b7a1d5128ca061167ec0716715b0b9eeaa5f6
@@ -63,6 +68,7 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 - github.com/filecoin-project/go-hamt-ipld/v3 (v3.1.0 -> v3.4.0):
 - github.com/filecoin-project/go-jsonrpc (v0.3.2 -> v0.6.0):
 - github.com/filecoin-project/jackc/pgx (v5.4.1 -> v5.6.0)
+- feat(f3): update from v0.0.7 to v0.1.0 (#12382) ([filecoin-project/lotus#12382](https://github.com/filecoin-project/lotus/pull/12382))
 - feat: f3: update go-f3 to 0.2.0 (#12390) ([filecoin-project/lotus#12390](https://github.com/filecoin-project/lotus/pull/12390))
 
 ### Chores
@@ -86,7 +92,41 @@ From https://github.com/filecoin-project/lotus/compare/v1.28.2...release/v1.29.0
 - chore: proxy single Put/Delete to the Many variants (#12313) ([filecoin-project/lotus#12313](https://github.com/filecoin-project/lotus/pull/12313))
 - chore: logging: switch stdout print to use the logger (#12311) ([filecoin-project/lotus#12311](https://github.com/filecoin-project/lotus/pull/12311))
 - fix(test): flaky eth_legacy_tx_test: wait for async msg indexing (#12200) ([filecoin-project/lotus#12200](https://github.com/filecoin-project/lotus/pull/12200))
+- chore: ci: prefix ref passed to build pulse with refs/heads/ (Piotr Galar) (#12338) ([filecoin-project/lotus#12338](https://github.com/filecoin-project/lotus/pull/12338))
+- chore: types: remove all references to FFI/rust implementations of CommP/sha2-256-254 (#12345) ([filecoin-project/lotus#12345](https://github.com/filecoin-project/lotus/pull/12345))
+- ci: provide additional input for the buildpulse-action (#12284) ([filecoin-project/lotus#12284](https://github.com/filecoin-project/lotus/pull/12284))
+- fix: ci: fix configuration variables retrieval in buildpulse workflow (#12282) ([filecoin-project/lotus#12282](https://github.com/filecoin-project/lotus/pull/12282))
+- fix: eth: make tx hash immediately available in lookup db after submission (#12219) ([filecoin-project/lotus#12219](https://github.com/filecoin-project/lotus/pull/12219))
+- chore: blockstore_gc: minor cleanups ([filecoin-project/lotus#12312](https://github.com/filecoin-project/lotus/pull/12312))
+- fix: flaky wdPost dispute itest (#12243) ([filecoin-project/lotus#12243](https://github.com/filecoin-project/lotus/pull/12243))
+- ci: add changelog check workflow (#12191) ([filecoin-project/lotus#12191](https://github.com/filecoin-project/lotus/pull/12191))
+- fix: build break for Docker test environments (#12229) ([filecoin-project/lotus#12229](https://github.com/filecoin-project/lotus/pull/12229))
+- misc: add waffle to match w/ forest (#12247) ([filecoin-project/lotus#12247](https://github.com/filecoin-project/lotus/pull/12247))
+- docs: Update Building_a_network_skeleton.md ()
 - chore: cli: use `embed` pkg to split long template content to file (#12193) ([filecoin-project/lotus#12193](https://github.com/filecoin-project/lotus/pull/12193))
+- ci: provide additional input for the buildpulse-action (#12329) ([filecoin-project/lotus#12329](https://github.com/filecoin-project/lotus/pull/12329))
+- chore: docs: Update label to skip/changelog in the PR-template (#12201) ([filecoin-project/lotus#12201](https://github.com/filecoin-project/lotus/pull/12201))
+chore: all: fix comment (#12256) ([filecoin-project/lotus#12256](https://github.com/filecoin-project/lotus/pull/12256))
+- chore: ui: add a terminal check (#12256) ([filecoin-project/lotus#12256](https://github.com/filecoin-project/lotus/pull/12256))
+- chore: types: buildconstants split post-cleanup (#12246) ([filecoin-project/lotus#12246](https://github.com/filecoin-project/lotus/pull/12246))
+- chore: lint: enable method, function & type godoc linting (#12258) ([filecoin-project/lotus#12258](https://github.com/filecoin-project/lotus/pull/12258))
+- chore: types: buildconstants split post-cleanup (Peter Rabbitson) (#12245) ([filecoin-project/lotus#12245](https://github.com/filecoin-project/lotus/pull/12245))
+- fix (ci): support checking PRs from forks in PR-title check (#12367) ([filecoin-project/lotus#12367](https://github.com/filecoin-project/lotus/pull/12367))
+- chore: post release steps for Lotus Miner & Node v1.28.2 Release  (#12379) ([filecoin-project/lotus#12379](https://github.com/filecoin-project/lotus/pull/12379))
+- chore(release): bump MinerBuildVersion in master (#12380) ([filecoin-project/lotus#12380](https://github.com/filecoin-project/lotus/pull/12380))
+- fix(ci): don't PR or changelog check for draft PRs (#12405) ([filecoin-project/lotus#12405](https://github.com/filecoin-project/lotus/pull/12405))
+- build: release Lotus node v1.29.0-rc1 (#12410) ([filecoin-project/lotus#12410](https://github.com/filecoin-project/lotus/pull/12410))
+- fix: docs: address typo (#12321) ([filecoin-project/lotus#12321](https://github.com/filecoin-project/lotus/pull/12321))
+- chore: drand: cleanup legacy and unused configs (#12272) ([filecoin-project/lotus#12272](https://github.com/filecoin-project/lotus/pull/12272))
+- chore: merge release/v1.28.0 / v1.28.0-rc4 back to master (#12190) ([filecoin-project/lotus#12190](https://github.com/filecoin-project/lotus/pull/12190))
+- fix: Eth Tx Events Bloom Filter: fix slice modification bug and flaky test (#12203) ([filecoin-project/lotus#12203](https://github.com/filecoin-project/lotus/pull/12203))
+- Merge releases into master (#12302) ([filecoin-project/lotus#12302](https://github.com/filecoin-project/lotus/pull/12302))
+- Merge 1.28.2 to master (#12317) ([filecoin-project/lotus#12317](https://github.com/filecoin-project/lotus/pull/12317))
+- fix: panic in api-test because of Commit Batche (#12244)  ([filecoin-project/lotus#12244](https://github.com/filecoin-project/lotus/pull/12244))
+- fix: events: remove filter if we fail to add it to the FilterStore (#12318) ([filecoin-project/lotus#12318](https://github.com/filecoin-project/lotus/pull/12318))
+- fix: events: don't initialise events helpers when not needed (#12314) ([filecoin-project/lotus#12314](https://github.com/filecoin-project/lotus/pull/12314))
+- fix: ethhashlookup: clean-up query management and lifecycle (#12235) ([filecoin-project/lotus#12235](https://github.com/filecoin-project/lotus/pull/12235))
+- fix: test: use parents instead of height-1 to calculate sector activation epoch (#12220) ([filecoin-project/lotus#12235](https://github.com/filecoin-project/lotus/pull/12220))
 </details>
 
 ## 👨‍👩‍👧‍👦 Contributors
