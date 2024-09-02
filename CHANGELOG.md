@@ -17,7 +17,7 @@ This is a Lotus Node only release, which includes a variety of new features, imp
 
 - `lotus-gateway` behaviour, CLI-arguments and APIs have received minor changes. See the improvements section below for more information.
 - The `FilecoinAddressToEthAddress` RPC introduces a breaking change for users of the go-jsonrpc library or Lotus as a library.
-
+- We are aware that legacy/historical Drand lookups via `StateGetBeaconEntry` are currently broken. If you rely on `StateGetBeaconEntry` for looking up historic beacons, we recommend waiting for the Lotus v1.29.1 release. You can follow the progress on this issue in [#12414](https://github.com/filecoin-project/lotus/issues/12414).
 
 ## 📝 Changelog
 
