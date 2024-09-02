@@ -228,13 +228,10 @@ jobs:
         with:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
-      - name: Setup OpenCL
+      - name: Install OpenCL dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ocl-icd-opencl-dev opencl-headers clinfo nvidia-opencl-icd
-          sudo mkdir -p /etc/OpenCL/vendors
-          sudo ln -s /usr/lib/x86_64-linux-gnu/libOpenCL.so.1 /usr/lib/libOpenCL.so
-          echo "FFI_USE_OPENCL=1" >> $GITHUB_ENV
+          sudo apt-get install -y ocl-icd-opencl-dev
   test:
     needs: [discover, cache]
     name: Test (${{ matrix.name }})
@@ -312,3 +309,7 @@ jobs:
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.xml
             ${{ steps.reports.outputs.path }}/${{ matrix.name }}.json
         continue-on-error: true
+      - name: Install OpenCL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ocl-icd-opencl-dev
