@@ -206,9 +206,9 @@ jobs:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
           lookup-only: true
-      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         uses: ./.github/actions/install-system-dependencies
-      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         uses: ./.github/actions/install-go
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         env:
