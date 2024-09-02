@@ -10,10 +10,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin"
-
-	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/sqlite"
 )
@@ -132,14 +128,12 @@ func (ei *EthTxHashLookup) DeleteEntriesOlderThan(days int) (int64, error) {
 		return 0, xerrors.New("db closed")
 	}
 
-	epochs := abi.ChainEpoch(buildconstants.BlockDelaySecs * builtin.SecondsInDay * uint64(days))
-	return DeleteEntriesOlderThan(ei.db, epochs)
+	return DeleteEntriesOlderThan(ei.db, days)
 }
 
 // DeleteEntriesOlderThan deletes entries older than the given number of epochs from now.
-func DeleteEntriesOlderThan(db *sql.DB, epochs abi.ChainEpoch) (int64, error) {
-	secondsAgo := int64(epochs) * int64(buildconstants.BlockDelaySecs)
-	res, err := db.Exec(deleteOlderThan, "-"+strconv.FormatInt(secondsAgo, 10)+" seconds")
+func DeleteEntriesOlderThan(db *sql.DB, days int) (int64, error) {
+	res, err := db.Exec(deleteOlderThan, "-"+strconv.Itoa(days)+" day")
 	if err != nil {
 		return 0, err
 	}

@@ -899,12 +899,11 @@ var backfillTxHashCmd = &cli.Command{
 
 var pruneTxHashCmd = &cli.Command{
 	Name:  "prune-txhash",
-	Usage: "Prune the txhash.db for txs older than a given height",
+	Usage: "Prune the txhash.db for txs older than provided days",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
-			Name:  "older-than",
-			Value: 0,
-			Usage: "height to start pruning txhashes older than this epoch, 0 means start from head",
+			Name:  "older-than-days",
+			Usage: "prune tx hashes older than this number of days, 0 means prune all",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -914,15 +913,17 @@ var pruneTxHashCmd = &cli.Command{
 		}
 		defer srv.Close() //nolint:errcheck
 
-		api := srv.FullNodeAPI()
-		ctx := lcli.ReqContext(cctx)
-
-		basePath, startHeight, err := parsePruneArgs(ctx, cctx, api)
+		basePath, err := homedir.Expand(cctx.String("repo"))
 		if err != nil {
-			return xerrors.Errorf("error parsing prune args: %w", err)
+			return xerrors.Errorf("failed to get base path: %w", err)
 		}
 
-		if err := pruneTxIndex(basePath, startHeight); err != nil {
+		days := cctx.Int("older-than-days")
+		if days < 0 {
+			return xerrors.Errorf("invalid number of days to prune: %d", days)
+		}
+
+		if err := pruneTxIndex(basePath, days); err != nil {
 			return xerrors.Errorf("error pruning txindex: %w", err)
 		}
 
@@ -971,7 +972,11 @@ var pruneAllIndexesCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "older-than",
 			Value: 0,
-			Usage: "height to start pruning events older than this epoch, 0 means start from head",
+			Usage: "height to start pruning msg index and events older than this epoch, 0 means start from head",
+		},
+		&cli.IntFlag{
+			Name:  "older-than-days",
+			Usage: "prune txhashes older than this number of days",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1000,7 +1005,12 @@ var pruneAllIndexesCmd = &cli.Command{
 		})
 
 		g.Go(func() error {
-			if err := pruneTxIndex(basePath, startHeight); err != nil {
+			days := cctx.Int("older-than-days")
+			if days <= 0 {
+				return xerrors.Errorf("invalid number of days to prune: %d", days)
+			}
+
+			if err := pruneTxIndex(basePath, days); err != nil {
 				return xerrors.Errorf("error pruning txindex: %w", err)
 			}
 
@@ -1100,8 +1110,8 @@ func pruneEventsIndex(basePath string, startHeight int64) error {
 	return nil
 }
 
-// pruneTxIndex is a helper function that prunes the txindex.db for a number of epochs starting from a specified height
-func pruneTxIndex(basePath string, startHeight int64) error {
+// pruneTxIndex is a helper function that prunes the txindex.db for txs older than a given number of days
+func pruneTxIndex(basePath string, days int) error {
 	log.Infof("pruning txindex")
 
 	dbPath := path.Join(basePath, indexesDBDir, ethhashlookup.DefaultDbFilename)
@@ -1116,7 +1126,7 @@ func pruneTxIndex(basePath string, startHeight int64) error {
 		}
 	}()
 
-	rowsAffected, err := ethhashlookup.DeleteEntriesOlderThan(db, abi.ChainEpoch(startHeight))
+	rowsAffected, err := ethhashlookup.DeleteEntriesOlderThan(db, days)
 	if err != nil {
 		return xerrors.Errorf("failed to delete entries: %w", err)
 	}
