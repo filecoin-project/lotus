@@ -104,7 +104,6 @@ func New(hosts []string, username, password, database, port string, itestID ITes
 
 	cfg.ConnConfig.OnNotice = func(conn *pgconn.PgConn, n *pgconn.Notice) {
 		logger.Debug("database notice: " + n.Message + ": " + n.Detail)
-		DBMeasures.Errors.M(1)
 	}
 
 	db := DB{cfg: cfg, schema: schema, hostnames: hosts} // pgx populated in AddStatsAndConnect
@@ -113,32 +112,6 @@ func New(hosts []string, username, password, database, port string, itestID ITes
 	}
 
 	return &db, db.upgrade()
-}
-
-type tracer struct {
-}
-
-type ctxkey string
-
-const SQL_START = ctxkey("sqlStart")
-const SQL_STRING = ctxkey("sqlString")
-
-func (t tracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
-	return context.WithValue(context.WithValue(ctx, SQL_START, time.Now()), SQL_STRING, data.SQL)
-}
-func (t tracer) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData) {
-	DBMeasures.Hits.M(1)
-	ms := time.Since(ctx.Value(SQL_START).(time.Time)).Milliseconds()
-	DBMeasures.TotalWait.M(ms)
-	DBMeasures.Waits.Observe(float64(ms))
-	if data.Err != nil {
-		DBMeasures.Errors.M(1)
-	}
-	logger.Debugw("SQL run",
-		"query", ctx.Value(SQL_STRING).(string),
-		"err", data.Err,
-		"rowCt", data.CommandTag.RowsAffected(),
-		"milliseconds", ms)
 }
 
 func (db *DB) GetRoutableIP() (string, error) {
@@ -158,19 +131,9 @@ func (db *DB) GetRoutableIP() (string, error) {
 // addStatsAndConnect connects a prometheus logger. Be sure to run this before using the DB.
 func (db *DB) addStatsAndConnect() error {
 
-	db.cfg.ConnConfig.Tracer = tracer{}
-
 	hostnameToIndex := map[string]float64{}
 	for i, h := range db.hostnames {
 		hostnameToIndex[h] = float64(i)
-	}
-	db.cfg.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
-		s := db.pgx.Stat()
-		DBMeasures.OpenConnections.M(int64(s.TotalConns()))
-		DBMeasures.WhichHost.Observe(hostnameToIndex[c.Config().Host])
-
-		//FUTURE place for any connection seasoning
-		return nil
 	}
 
 	// Timeout the first connection so we know if the DB is down.
@@ -183,21 +146,6 @@ func (db *DB) addStatsAndConnect() error {
 		return err
 	}
 	return nil
-}
-
-// ITestDeleteAll will delete everything created for "this" integration test.
-// This must be called at the end of each integration test.
-func (db *DB) ITestDeleteAll() {
-	if !strings.HasPrefix(db.schema, "itest_") {
-		fmt.Println("Warning: this should never be called on anything but an itest schema.")
-		return
-	}
-	defer db.pgx.Close()
-	_, err := db.pgx.Exec(context.Background(), "DROP SCHEMA "+db.schema+" CASCADE")
-	if err != nil {
-		fmt.Println("warning: unclean itest shutdown: cannot delete schema: " + err.Error())
-		return
-	}
 }
 
 var schemaREString = "^[A-Za-z0-9_]+$"
