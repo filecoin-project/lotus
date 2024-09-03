@@ -36,9 +36,7 @@ const (
 	SSealing
 	SSectorStorage
 
-	SHarmony
-
-	MinerSubsystems = iota
+	MinerSubsystems = 0
 )
 
 func (ms MinerSubsystem) Add(single MinerSubsystem) MinerSubsystem {
