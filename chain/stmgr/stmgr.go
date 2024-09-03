@@ -572,9 +572,17 @@ func (sm *StateManager) GetRandomnessDigestFromBeacon(ctx context.Context, randE
 	}
 
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
-
 	return r.GetBeaconRandomness(ctx, randEpoch)
+}
 
+func (sm *StateManager) GetBeaconEntry(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (*types.BeaconEntry, error) {
+	pts, err := sm.ChainStore().GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
+	return r.GetBeaconEntry(ctx, randEpoch)
 }
 
 func (sm *StateManager) GetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) ([32]byte, error) {
@@ -584,6 +592,5 @@ func (sm *StateManager) GetRandomnessDigestFromTickets(ctx context.Context, rand
 	}
 
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
-
 	return r.GetChainRandomness(ctx, randEpoch)
 }
