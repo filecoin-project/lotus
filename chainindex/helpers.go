@@ -32,16 +32,17 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 		startHeight := curTs.Height()
 
 		for curTs != nil {
-			if err := si.indexTipset(ctx, tx, curTs); err != nil {
+			parentTs, err := cs.GetTipSetFromKey(ctx, curTs.Parents())
+			if err != nil {
+				return xerrors.Errorf("error getting parent tipset: %w", err)
+			}
+
+			if err := si.indexTipset(ctx, tx, curTs, parentTs, false); err != nil {
 				log.Infof("stopping import after %d tipsets", startHeight-curTs.Height())
 				break
 			}
 
-			curTs, err = cs.GetTipSetFromKey(ctx, curTs.Parents())
-			if err != nil {
-				log.Infof("stopping import after %d tipsets", startHeight-curTs.Height())
-				break
-			}
+			curTs = parentTs
 		}
 
 		return nil
@@ -105,4 +106,11 @@ func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) (err error)
 
 	err = fn(tx)
 	return
+}
+
+func isIndexedValue(b uint8) bool {
+	// currently we mark the full entry as indexed if either the key
+	// or the value are indexed; in the future we will need finer-grained
+	// management of indices
+	return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
 }

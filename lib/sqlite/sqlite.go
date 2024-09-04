@@ -11,6 +11,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 )
 

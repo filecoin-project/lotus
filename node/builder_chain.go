@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -277,10 +276,6 @@ func ConfigFullNode(c interface{}) Option {
 				Override(new(full.ActorEventAPI), &full.ActorEventDummy{}),
 			),
 		),
-
-		// enable message index for full node when configured by the user, otherwise use dummy.
-		If(cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.MsgIndex)),
-		If(!cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.DummyMsgIndex)),
 
 		// enable fault reporter when configured by the user
 		If(cfg.FaultReporter.EnableConsensusFaultReporter,

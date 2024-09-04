@@ -28,6 +28,19 @@ const (
 	stmtMinNonRevertedHeight = `SELECT MIN(height) FROM tipset_message WHERE reverted = 0`
 
 	stmtTipsetExistsNotReverted = `SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)`
+
+	stmtEventsRevert = `UPDATE event SET reverted = 1 WHERE message_id IN (
+			SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
+		)`
+
+	stmtEventsUnRevert = `UPDATE event SET reverted = 0 WHERE message_id IN (
+		SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
+	)`
+
+	stmtGetMsgIdForMsgCidAndTipset = `SELECT message_id FROM tipset_message WHERE message_cid = ? AND tipset_key_cid = ?`
+
+	stmtInsertEvent      = "INSERT INTO event (message_id, event_index, emitter_addr, reverted) VALUES (?, ?, ?, ?)"
+	stmtInsertEventEntry = "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)"
 )
 
 var ddls = []string{
@@ -47,9 +60,33 @@ var ddls = []string{
 		inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`,
 
+	`CREATE TABLE IF NOT EXISTS event (
+		event_id INTEGER PRIMARY KEY,
+		message_id INTEGER NOT NULL,
+        event_index INTEGER NOT NULL,
+        emitter_addr BLOB NOT NULL,
+		reverted INTEGER NOT NULL,
+		FOREIGN KEY (message_id) REFERENCES tipset_message(message_id) ON DELETE CASCADE,
+		UNIQUE (message_id, event_index)
+    )`,
+
+	`CREATE TABLE IF NOT EXISTS event_entry (
+		event_id INTEGER NOT NULL,
+		indexed INTEGER NOT NULL,
+		flags BLOB NOT NULL,
+		key TEXT NOT NULL,
+		codec INTEGER,
+		value BLOB NOT NULL,
+		FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE
+	)`,
+
 	`CREATE INDEX IF NOT EXISTS insertion_time_index ON eth_tx_hash (inserted_at)`,
 
 	`CREATE INDEX IF NOT EXISTS idx_message_cid ON tipset_message (message_cid)`,
 
 	`CREATE INDEX IF NOT EXISTS idx_tipset_key_cid ON tipset_message (tipset_key_cid)`,
+
+	`CREATE INDEX IF NOT EXISTS idx_event_message_id ON event (message_id)`,
+
+	`CREATE INDEX IF NOT EXISTS idx_height ON tipset_message (height)`,
 }

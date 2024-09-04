@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -18,6 +19,9 @@ import (
 
 var _ Indexer = (*SqliteIndexer)(nil)
 
+// IdToRobustAddrFunc is a function type that resolves an actor ID to a robust address
+type IdToRobustAddrFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
+
 type SqliteIndexer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -25,6 +29,8 @@ type SqliteIndexer struct {
 
 	db *sql.DB
 	cs ChainStore
+
+	idToRobustAddrFunc IdToRobustAddrFunc
 
 	insertEthTxHashStmt                   *sql.Stmt
 	getNonRevertedMsgInfoStmt             *sql.Stmt
@@ -41,6 +47,11 @@ type SqliteIndexer struct {
 	countMessagesStmt                     *sql.Stmt
 	minNonRevertedHeightStmt              *sql.Stmt
 	tipsetExistsNotRevertedStmt           *sql.Stmt
+	revertEventsStmt                      *sql.Stmt
+	eventsUnRevertStmt                    *sql.Stmt
+	getMsgIdForMsgCidAndTipsetStmt        *sql.Stmt
+	insertEventStmt                       *sql.Stmt
+	insertEventEntryStmt                  *sql.Stmt
 
 	gcRetentionEpochs int64
 
@@ -89,6 +100,10 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64) (si *
 	go si.gcLoop()
 
 	return si, nil
+}
+
+func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc) {
+	si.idToRobustAddrFunc = idToRobustAddrFunc
 }
 
 // ReconcileWithChain ensures that the index is consistent with the current chain state.
@@ -180,7 +195,11 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 		// current chain head]
 		for i := len(tipsetStack) - 1; i >= 0; i-- {
 			curTs := tipsetStack[i]
-			if err := si.indexTipset(ctx, tx, curTs); err != nil {
+			parentTs, err := si.cs.GetTipSetFromKey(ctx, curTs.Parents())
+			if err != nil {
+				return xerrors.Errorf("error getting parent tipset: %w", err)
+			}
+			if err := si.indexTipset(ctx, tx, curTs, parentTs, true); err != nil {
 				return xerrors.Errorf("error indexing tipset: %w", err)
 			}
 		}
@@ -277,6 +296,29 @@ func (si *SqliteIndexer) prepareStatements() error {
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "tipsetExistsNotRevertedStmt", err)
 	}
+	si.eventsUnRevertStmt, err = si.db.Prepare(stmtEventsUnRevert)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "eventsUnRevertStmt", err)
+	}
+
+	si.revertEventsStmt, err = si.db.Prepare(stmtEventsRevert)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "revertEventsStmt", err)
+	}
+
+	si.getMsgIdForMsgCidAndTipsetStmt, err = si.db.Prepare(stmtGetMsgIdForMsgCidAndTipset)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "getMsgIdForMsgCidAndTipsetStmt", err)
+	}
+
+	si.insertEventStmt, err = si.db.Prepare(stmtInsertEvent)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "insertEventStmt", err)
+	}
+	si.insertEventEntryStmt, err = si.db.Prepare(stmtInsertEventEntry)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "insertEventEntryStmt", err)
+	}
 
 	return nil
 }
@@ -343,13 +385,7 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 	// We're moving the chain ahead from the `from` tipset to the `to` tipset
 	// Height(to) > Height(from)
 	err := withTx(ctx, si.db, func(tx *sql.Tx) error {
-		// index the `to` tipset first as we only need to index the tipsets and messages for it
-		if err := si.indexTipset(ctx, tx, to); err != nil {
-			return xerrors.Errorf("error indexing tipset: %w", err)
-		}
-
-		// index the `from` tipset just in case it's not indexed
-		if err := si.indexTipset(ctx, tx, from); err != nil {
+		if err := si.indexTipset(ctx, tx, to, from, true); err != nil {
 			return xerrors.Errorf("error indexing tipset: %w", err)
 		}
 
@@ -380,14 +416,22 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 		return xerrors.Errorf("error getting tipset key cid: %w", err)
 	}
 
+	// Because of deferred execution in Filecoin, events at tipset T are reverted when a tipset T+1 is reverted.
+	// However, the tipet `T` itself is not reverted.
+	eventTsKeyCid, err := toTipsetKeyCidBytes(to)
+	if err != nil {
+		return xerrors.Errorf("error getting tipset key cid: %w", err)
+	}
+
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
 		if _, err := tx.Stmt(si.revertTipsetStmt).ExecContext(ctx, revertTsKeyCid); err != nil {
-			return xerrors.Errorf("error marking tipset as reverted: %w", err)
+			return xerrors.Errorf("error marking tipset %s as reverted: %w", revertTsKeyCid, err)
 		}
 
-		// index the `to` tipset as it has now been applied -> simply for redundancy
-		if err := si.indexTipset(ctx, tx, to); err != nil {
-			return xerrors.Errorf("error indexing tipset: %w", err)
+		// events are indexed against the message inclusion tipset, not the message execution tipset.
+		// So we need to revert the events for the message inclusion tipset.
+		if _, err := tx.Stmt(si.revertEventsStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
+			return xerrors.Errorf("error reverting events for tipset %s: %w", eventTsKeyCid, err)
 		}
 
 		return nil
@@ -401,13 +445,19 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 	return nil
 }
 
-func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.TipSet) error {
+func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.TipSet, parentTs *types.TipSet, indexEvents bool) error {
 	tsKeyCidBytes, err := toTipsetKeyCidBytes(ts)
 	if err != nil {
 		return xerrors.Errorf("error computing tipset cid: %w", err)
 	}
 
-	restored, err := si.restoreTipsetIfExists(ctx, tx, tsKeyCidBytes)
+	parentsKeyCid, err := parentTs.Key().Cid()
+	if err != nil {
+		return xerrors.Errorf("error computing tipset parents cid: %w", err)
+	}
+	parentsKeyCidBytes := parentsKeyCid.Bytes()
+
+	restored, err := si.restoreTipsetIfExists(ctx, tx, tsKeyCidBytes, parentsKeyCidBytes)
 	if err != nil {
 		return xerrors.Errorf("error restoring tipset: %w", err)
 	}
@@ -428,6 +478,12 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, nil, -1); err != nil {
 			return xerrors.Errorf("error inserting empty tipset: %w", err)
 		}
+
+		// we still need to index events for the parent tipset
+		if err := si.indexEvents(ctx, tx, parentTs, ts); err != nil {
+			return xerrors.Errorf("error indexing events: %w", err)
+		}
+
 		return nil
 	}
 
@@ -456,10 +512,19 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 		}
 	}
 
+	if !indexEvents {
+		return nil
+	}
+
+	// index events
+	if err := si.indexEvents(ctx, tx, parentTs, ts); err != nil {
+		return xerrors.Errorf("error indexing events: %w", err)
+	}
+
 	return nil
 }
 
-func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, tsKeyCidBytes []byte) (bool, error) {
+func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, tsKeyCidBytes []byte, parentsKeyCidBytes []byte) (bool, error) {
 	// Check if the tipset already exists
 	var exists bool
 	if err := tx.Stmt(si.tipsetExistsStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
@@ -469,6 +534,12 @@ func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, 
 		if _, err := tx.Stmt(si.tipsetUnRevertStmt).ExecContext(ctx, tsKeyCidBytes); err != nil {
 			return false, xerrors.Errorf("error restoring tipset: %w", err)
 		}
+
+		// also mark all the events in the parent as not reverted
+		if _, err := tx.Stmt(si.eventsUnRevertStmt).ExecContext(ctx, parentsKeyCidBytes); err != nil {
+			return false, xerrors.Errorf("error unreverting events: %w", err)
+		}
+
 		return true, nil
 	}
 	return false, nil

@@ -1,8 +1,6 @@
 package modules
 
 import (
-	"context"
-	"path/filepath"
 	"time"
 
 	"github.com/hashicorp/golang-lru/arc/v2"
@@ -12,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -29,30 +26,6 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI,
 		mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI,
 		ethEventHandler *full.EthEventHandler, chainIndexer chainindex.Indexer) (*full.EthModule, error) {
-		ctx := helpers.LifecycleCtx(mctx, lc)
-
-		sqlitePath, err := r.SqlitePath()
-		if err != nil {
-			return nil, err
-		}
-
-		dbPath := filepath.Join(sqlitePath, ethhashlookup.DefaultDbFilename)
-
-		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(ctx, dbPath)
-		if err != nil {
-			return nil, err
-		}
-
-		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
-				return transactionHashLookup.Close()
-			},
-		})
-
-		ethTxHashManager := full.EthTxHashManager{
-			StateAPI:              stateapi,
-			TransactionHashLookup: transactionHashLookup,
-		}
 
 		// prefill the whole skiplist cache maintained internally by the GetTipsetByHeight
 		go func() {
@@ -65,15 +38,7 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
 		}()
 
-		lc.Append(fx.Hook{
-			OnStart: func(context.Context) error {
-
-				go full.EthTxHashGC(ctx, cfg.EthTxHashMappingLifetimeDays, &ethTxHashManager)
-
-				return nil
-			},
-		})
-
+		var err error
 		var blkCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
 		var blkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
 		if cfg.EthBlkCacheSize > 0 {
@@ -99,7 +64,6 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			SyncAPI:         syncapi,
 			EthEventHandler: ethEventHandler,
 
-			EthTxHashManager:         &ethTxHashManager,
 			EthTraceFilterMaxResults: cfg.EthTraceFilterMaxResults,
 
 			EthBlkCache:   blkCache,

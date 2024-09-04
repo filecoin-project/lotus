@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	builtinevm "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
-	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -46,11 +45,6 @@ import (
 var ErrUnsupported = errors.New("unsupported method")
 
 const maxEthFeeHistoryRewardPercentiles = 100
-
-var (
-	// wait for 3 epochs
-	eventReadTimeout = 90 * time.Second
-)
 
 type EthModuleAPI interface {
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
@@ -137,7 +131,6 @@ type EthModule struct {
 	Chain                    *store.ChainStore
 	Mpool                    *messagepool.MessagePool
 	StateManager             *stmgr.StateManager
-	EthTxHashManager         *EthTxHashManager
 	EthTraceFilterMaxResults uint64
 	EthEventHandler          *EthEventHandler
 
@@ -361,12 +354,10 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 
 	var c cid.Cid
 	var err error
-	c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
-	if err != nil {
-		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	if a.ChainIndexer != nil {
+		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
 		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		}
 	}
 
@@ -426,18 +417,19 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 
 	var c cid.Cid
 	var err error
-	c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
-	if err != nil {
-		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	if a.ChainIndexer != nil {
+		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
+		if err != nil {
+			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		}
 	}
 
 	// We fall out of the first condition and continue
-	if errors.Is(err, ethhashlookup.ErrNotFound) {
+	if errors.Is(err, chainindex.ErrNotFound) {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	} else if err != nil {
 		return nil, xerrors.Errorf("database error: %w", err)
-	} else {
+	} else if a.ChainIndexer != nil {
 		return &c, nil
 	}
 
@@ -517,12 +509,11 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
 	var c cid.Cid
 	var err error
-	c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
-	if err != nil {
-		log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+
+	if a.ChainIndexer != nil {
+		c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
 		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		}
 	}
 
@@ -962,11 +953,11 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 
 	// make it immediately available in the transaction hash lookup db, even though it will also
 	// eventually get there via the mpool
-	if err := a.ChainIndexer.IndexEthTxHash(ctx, txHash, smsg.Cid()); err != nil {
-		log.Errorf("error indexing tx: %s", err)
+	if a.ChainIndexer != nil {
+		if err := a.ChainIndexer.IndexEthTxHash(ctx, txHash, smsg.Cid()); err != nil {
+			log.Errorf("error indexing tx: %s", err)
+		}
 	}
-
-	fmt.Println("INDEXING CID", smsg.Cid())
 
 	return ethtypes.EthHashFromTxBytes(rawTx), nil
 }
@@ -1582,12 +1573,13 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
 }
 
-func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) ([]*filter.CollectedEvent, error) {
+func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context,
+	filterSpec *ethtypes.EthFilterSpec) ([]*chainindex.CollectedEvent, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
 
-	if e.EventFilterManager.EventIndex == nil {
+	if e.EventFilterManager.ChainIndexer == nil {
 		return nil, xerrors.Errorf("cannot use eth_get_logs if historical event index is disabled")
 	}
 
@@ -1596,106 +1588,37 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		return nil, xerrors.Errorf("failed to parse eth filter spec: %w", err)
 	}
 
-	if pf.tipsetCid == cid.Undef {
-		maxHeight := pf.maxHeight
-		if maxHeight == -1 {
-			// heaviest tipset doesn't have events because its messages haven't been executed yet
-			maxHeight = e.Chain.GetHeaviestTipSet().Height() - 1
-		}
-
-		if maxHeight < 0 {
-			return nil, xerrors.Errorf("maxHeight requested is less than 0")
-		}
-
-		// we can't return events for the heaviest tipset as the transactions in that tipset will be executed
-		// in the next non null tipset (because of Filecoin's "deferred execution" model)
-		if maxHeight > e.Chain.GetHeaviestTipSet().Height()-1 {
-			return nil, xerrors.Errorf("maxHeight requested is greater than the heaviest tipset")
-		}
-
-		err := e.waitForHeightProcessed(ctx, maxHeight)
-		if err != nil {
-			return nil, err
-		}
-		// TODO: Ideally we should also check that events for the epoch at `pf.minheight` have been indexed
-		// However, it is currently tricky to check/guarantee this for two reasons:
-		// a) Event Index is not aware of null-blocks. This means that the Event Index wont be able to say whether the block at
-		//    `pf.minheight` is a null block or whether it has no events
-		// b) There can be holes in the index where events at certain epoch simply haven't been indexed because of edge cases around
-		//    node restarts while indexing. This needs a long term "auto-repair"/"automated-backfilling" implementation in the index
-		// So, for now, the best we can do is ensure that the event index has evenets for events at height >= `pf.maxHeight`
-	} else {
+	head := e.Chain.GetHeaviestTipSet()
+	// should not ask for events for a tipset >= head because of deferred execution
+	if pf.tipsetCid != cid.Undef {
 		ts, err := e.Chain.GetTipSetByCid(ctx, pf.tipsetCid)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
-		err = e.waitForHeightProcessed(ctx, ts.Height())
-		if err != nil {
-			return nil, err
-		}
-
-		b, err := e.EventFilterManager.EventIndex.IsTipsetProcessed(ctx, pf.tipsetCid.Bytes())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to check if tipset events have been indexed: %w", err)
-		}
-		if !b {
-			return nil, xerrors.Errorf("event index failed to index tipset %s", pf.tipsetCid.String())
+		if ts.Height() >= head.Height() {
+			return nil, xerrors.Errorf("cannot ask for events for a tipset >= head")
 		}
 	}
 
-	// Create a temporary filter
-	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, true)
+	if pf.maxHeight >= head.Height() {
+		return nil, xerrors.Errorf("cannot ask for events for a tipset >= head")
+	}
+
+	ef := &chainindex.EventFilter{
+		MinHeight:     pf.minHeight,
+		MaxHeight:     pf.maxHeight,
+		TipsetCid:     pf.tipsetCid,
+		Addresses:     pf.addresses,
+		KeysWithCodec: pf.keys,
+		MaxResults:    e.EventFilterManager.MaxFilterResults,
+	}
+
+	ces, err := e.EventFilterManager.ChainIndexer.GetEventsForFilter(ctx, ef, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to install event filter: %w", err)
+		return nil, xerrors.Errorf("failed to get events for filter: %w", err)
 	}
-	ces := f.TakeCollectedEvents(ctx)
-
-	_ = e.uninstallFilter(ctx, f)
 
 	return ces, nil
-}
-
-// note that we can have null blocks at the given height and the event Index is not null block aware
-// so, what we do here is wait till we see the event index contain a block at a height greater than the given height
-func (e *EthEventHandler) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
-	ei := e.EventFilterManager.EventIndex
-	if height > e.Chain.GetHeaviestTipSet().Height() {
-		return xerrors.New("height is in the future")
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, eventReadTimeout)
-	defer cancel()
-
-	// if the height we're interested in has already been indexed -> there's nothing to do here
-	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
-		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
-	} else if b {
-		return nil
-	}
-
-	// subscribe for updates to the event index
-	subCh, unSubscribeF := ei.SubscribeUpdates()
-	defer unSubscribeF()
-
-	// it could be that the event index was update while the subscription was being processed -> check if index has what we need now
-	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
-		return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
-	} else if b {
-		return nil
-	}
-
-	for {
-		select {
-		case <-subCh:
-			if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
-				return xerrors.Errorf("failed to check if event index has events for given height: %w", err)
-			} else if b {
-				return nil
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
 }
 
 func (e *EthEventHandler) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {

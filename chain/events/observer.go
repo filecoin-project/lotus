@@ -249,7 +249,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 // The returned handle function should be called by the client when it's ready to receive updates.
 //
 // This function should only be called by the client after the observer has been started.
-// Note that the Observer will block all clients from recieving tipset updates until the handle is called.
+// Note that the Observer will block all clients from receiving tipset updates until the handle is called.
 func (o *observer) ObserveAndBlock(obs TipSetObserver) (*types.TipSet, func()) {
 	o.lk.Lock()
 	o.observers = append(o.observers, obs)

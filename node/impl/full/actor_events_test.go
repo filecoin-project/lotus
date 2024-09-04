@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chainindex"
 )
 
 var testCid = cid.MustParse("bafyreicmaj5hhoy5mgqvamfhgexxyergw7hdeshizghodwkjg6qmpoco7i")
@@ -331,7 +332,7 @@ func TestSubscribeActorEventsRaw(t *testing.T) {
 					req.NoError(err)
 					mockChain.setHeaviestTipSet(ts)
 
-					var eventsThisEpoch []*filter.CollectedEvent
+					var eventsThisEpoch []*chainindex.CollectedEvent
 					if thisHeight <= finishHeight {
 						eventsThisEpoch = allEvents[(thisHeight-filterStartHeight)*eventsPerEpoch : (thisHeight-filterStartHeight+2)*eventsPerEpoch]
 					}
@@ -529,13 +530,13 @@ type mockFilter struct {
 	id                   types.FilterID
 	lastTaken            time.Time
 	ch                   chan<- interface{}
-	historicalEvents     []*filter.CollectedEvent
+	historicalEvents     []*chainindex.CollectedEvent
 	subChannelCalls      int
 	clearSubChannelCalls int
 	lk                   sync.Mutex
 }
 
-func newMockFilter(ctx context.Context, t *testing.T, rng *pseudo.Rand, historicalEvents []*filter.CollectedEvent) *mockFilter {
+func newMockFilter(ctx context.Context, t *testing.T, rng *pseudo.Rand, historicalEvents []*chainindex.CollectedEvent) *mockFilter {
 	t.Helper()
 	var id [32]byte
 	_, err := rng.Read(id[:])
@@ -548,7 +549,7 @@ func newMockFilter(ctx context.Context, t *testing.T, rng *pseudo.Rand, historic
 	}
 }
 
-func (m *mockFilter) sendEventToChannel(e *filter.CollectedEvent) {
+func (m *mockFilter) sendEventToChannel(e *chainindex.CollectedEvent) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	if m.ch != nil {
@@ -602,7 +603,7 @@ func (m *mockFilter) ClearSubChannel() {
 	m.ch = nil
 }
 
-func (m *mockFilter) TakeCollectedEvents(context.Context) []*filter.CollectedEvent {
+func (m *mockFilter) TakeCollectedEvents(context.Context) []*chainindex.CollectedEvent {
 	e := m.historicalEvents
 	m.historicalEvents = nil
 	m.lastTaken = time.Now()
@@ -729,7 +730,7 @@ func epochPtr(i int) *abi.ChainEpoch {
 	return &e
 }
 
-func collectedToActorEvents(collected []*filter.CollectedEvent) []*types.ActorEvent {
+func collectedToActorEvents(collected []*chainindex.CollectedEvent) []*types.ActorEvent {
 	var out []*types.ActorEvent
 	for _, c := range collected {
 		out = append(out, &types.ActorEvent{
@@ -744,8 +745,8 @@ func collectedToActorEvents(collected []*filter.CollectedEvent) []*types.ActorEv
 	return out
 }
 
-func makeCollectedEvents(t *testing.T, rng *pseudo.Rand, eventStartHeight, eventsPerHeight, eventEndHeight int64) []*filter.CollectedEvent {
-	var out []*filter.CollectedEvent
+func makeCollectedEvents(t *testing.T, rng *pseudo.Rand, eventStartHeight, eventsPerHeight, eventEndHeight int64) []*chainindex.CollectedEvent {
+	var out []*chainindex.CollectedEvent
 	for h := eventStartHeight; h <= eventEndHeight; h++ {
 		for i := int64(0); i < eventsPerHeight; i++ {
 			out = append(out, makeCollectedEvent(t, rng, types.NewTipSetKey(mkCid(t, fmt.Sprintf("h=%d", h))), abi.ChainEpoch(h)))
@@ -754,11 +755,11 @@ func makeCollectedEvents(t *testing.T, rng *pseudo.Rand, eventStartHeight, event
 	return out
 }
 
-func makeCollectedEvent(t *testing.T, rng *pseudo.Rand, tsKey types.TipSetKey, height abi.ChainEpoch) *filter.CollectedEvent {
+func makeCollectedEvent(t *testing.T, rng *pseudo.Rand, tsKey types.TipSetKey, height abi.ChainEpoch) *chainindex.CollectedEvent {
 	addr, err := address.NewIDAddress(uint64(rng.Int63()))
 	require.NoError(t, err)
 
-	return &filter.CollectedEvent{
+	return &chainindex.CollectedEvent{
 		Entries: []types.EventEntry{
 			{Flags: 0x01, Key: "k1", Codec: cid.Raw, Value: []byte("v1")},
 			{Flags: 0x01, Key: "k2", Codec: cid.Raw, Value: []byte("v2")},

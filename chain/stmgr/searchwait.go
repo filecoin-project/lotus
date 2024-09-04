@@ -10,9 +10,9 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chainindex"
 )
 
 // WaitForMessage blocks until a message appears on chain. It looks backwards in the chain to see if this has already
@@ -168,7 +168,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 			log.Debugf("message %s not found", mcid)
 		}
 
-	case errors.Is(err, index.ErrNotFound):
+	case errors.Is(err, chainindex.ErrNotFound):
 		// ok for the index to have incomplete data
 
 	default:
@@ -190,13 +190,12 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 }
 
 func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+	if sm.chainIndexer == nil {
+		return nil, nil, cid.Undef, chainindex.ErrNotFound
+	}
 	minfo, err := sm.chainIndexer.GetMsgInfo(ctx, mcid)
 	if err != nil {
-		// If chainIndexer fails, fallback to msgIndex
-		minfo, err = sm.msgIndex.GetMsgInfo(ctx, mcid)
-		if err != nil {
-			return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in indexes: %w", err)
-		}
+		return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in indexes: %w", err)
 	}
 
 	// check the height against the current tipset; minimum execution confidence requires that the

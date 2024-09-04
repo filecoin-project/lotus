@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/index"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -30,7 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/conformance/chaos"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls" // enable bls signatures
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
@@ -112,7 +110,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		cs      = store.NewChainStore(bs, bs, ds, filcns.Weight, nil)
 		tse     = consensus.NewTipSetExecutor(filcns.RewardFunc)
 		sm, err = stmgr.NewStateManager(cs, tse, syscalls, filcns.DefaultUpgradeSchedule(), nil, ds,
-			index.DummyMsgIndex, chainindex.DummyIndexer)
+			nil)
 	)
 	if err != nil {
 		return nil, err

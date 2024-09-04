@@ -3,7 +3,6 @@ package chainindex
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -11,38 +10,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var (
 	headIndexedWaitTimeout = 5 * time.Second
 )
-
-func (si *SqliteIndexer) GetMaxNonRevertedTipset(ctx context.Context) (*types.TipSet, error) {
-	si.closeLk.RLock()
-	if si.closed {
-		return nil, ErrClosed
-	}
-	si.closeLk.RUnlock()
-
-	var tipsetKeyCidBytes []byte
-	err := si.getMaxNonRevertedTipsetStmt.QueryRowContext(ctx).Scan(&tipsetKeyCidBytes)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, xerrors.Errorf("failed to get max non reverted tipset: %w", err)
-	}
-
-	tipsetKeyCid, err := cid.Cast(tipsetKeyCidBytes)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to cast tipset key cid: %w", err)
-	}
-
-	// Can this error out for reverted tipsets ?
-	return si.cs.GetTipSetByCid(ctx, tipsetKeyCid)
-}
 
 func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.EthHash) (cid.Cid, error) {
 	si.closeLk.RLock()
@@ -71,8 +44,6 @@ func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.Eth
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to cast message CID: %w", err)
 	}
-
-	fmt.Println("RETURNING CORRECT MSG CID")
 
 	return msgCid, nil
 }

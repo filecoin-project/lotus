@@ -19,13 +19,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/index"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chainindex"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -109,7 +107,7 @@ var gasTraceCmd = &cli.Command{
 		defer cs.Close() //nolint:errcheck
 
 		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(),
-			shd, mds, index.DummyMsgIndex, chainindex.DummyIndexer)
+			shd, mds, nil)
 		if err != nil {
 			return err
 		}
@@ -206,7 +204,7 @@ var replayOfflineCmd = &cli.Command{
 		defer cs.Close() //nolint:errcheck
 
 		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(),
-			shd, mds, index.DummyMsgIndex, chainindex.DummyIndexer)
+			shd, mds, nil)
 		if err != nil {
 			return err
 		}

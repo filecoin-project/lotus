@@ -6,8 +6,10 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -26,11 +28,33 @@ type MsgInfo struct {
 	Epoch abi.ChainEpoch
 }
 
+type CollectedEvent struct {
+	Entries     []types.EventEntry
+	EmitterAddr address.Address // address of emitter
+	EventIdx    int             // index of the event within the list of emitted events in a given tipset
+	Reverted    bool
+	Height      abi.ChainEpoch
+	TipSetKey   types.TipSetKey // tipset that contained the message
+	MsgIdx      int             // index of the message in the tipset
+	MsgCid      cid.Cid         // cid of message that produced event
+}
+
+type EventFilter struct {
+	MinHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
+	MaxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
+	TipsetCid cid.Cid
+	Addresses []address.Address // list of actor addresses that are extpected to emit the event
+
+	KeysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
+	MaxResults    int                                // maximum number of results to collect, 0 is unlimited
+}
+
 type Indexer interface {
 	ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error
 	IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error
 	IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error
 
+	SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc)
 	Apply(ctx context.Context, from, to *types.TipSet) error
 	Revert(ctx context.Context, from, to *types.TipSet) error
 
@@ -38,6 +62,9 @@ type Indexer interface {
 	GetCidFromHash(ctx context.Context, hash ethtypes.EthHash) (cid.Cid, error)
 	// Returns (nil, ErrNotFound) if the message was not found
 	GetMsgInfo(ctx context.Context, m cid.Cid) (*MsgInfo, error)
+
+	GetEventsForFilter(ctx context.Context, f *EventFilter, excludeReverted bool) ([]*CollectedEvent, error)
+
 	Close() error
 }
 
@@ -47,42 +74,7 @@ type ChainStore interface {
 	GetTipSetByCid(ctx context.Context, tsKeyCid cid.Cid) (*types.TipSet, error)
 	GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
+	ActorStore(ctx context.Context) adt.Store
 }
 
 var _ ChainStore = (*store.ChainStore)(nil)
-
-type dummyIndexer struct{}
-
-func (dummyIndexer) Close() error {
-	return nil
-}
-
-func (dummyIndexer) IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error {
-	return nil
-}
-
-func (dummyIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error {
-	return nil
-}
-
-func (dummyIndexer) GetCidFromHash(ctx context.Context, hash ethtypes.EthHash) (cid.Cid, error) {
-	return cid.Undef, ErrNotFound
-}
-
-func (dummyIndexer) GetMsgInfo(ctx context.Context, m cid.Cid) (*MsgInfo, error) {
-	return nil, ErrNotFound
-}
-
-func (dummyIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
-	return nil
-}
-
-func (dummyIndexer) Revert(ctx context.Context, from, to *types.TipSet) error {
-	return nil
-}
-
-func (dummyIndexer) ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error {
-	return nil
-}
-
-var DummyIndexer Indexer = dummyIndexer{}

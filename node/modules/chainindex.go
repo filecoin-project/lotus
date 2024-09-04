@@ -7,9 +7,14 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -39,11 +44,27 @@ func ChainIndexer(cfg config.IndexConfig) func(lc fx.Lifecycle, mctx helpers.Met
 	}
 }
 
-func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainindex.Indexer, evapi EventHelperAPI, mp *messagepool.MessagePool) {
+func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainindex.Indexer,
+	evapi EventHelperAPI, mp *messagepool.MessagePool, sm *stmgr.StateManager) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
+
+			indexer.SetIdToRobustAddrFunc(func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+				idAddr, err := address.NewIDAddress(uint64(emitter))
+				if err != nil {
+					return address.Undef, false
+				}
+
+				actor, err := sm.LoadActor(ctx, idAddr, ts)
+				if err != nil || actor.DelegatedAddress == nil {
+					return idAddr, true
+				}
+
+				return *actor.DelegatedAddress, true
+			})
+
 			ev, err := events.NewEvents(ctx, &evapi)
 			if err != nil {
 				return err

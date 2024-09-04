@@ -224,13 +224,6 @@ rewards. This address should have adequate funds to cover gas fees.`,
 This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
 		},
 		{
-			Name: "EthTxHashMappingLifetimeDays",
-			Type: "int",
-
-			Comment: `EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
-Set to 0 to keep all mappings`,
-		},
-		{
 			Name: "EthTraceFilterMaxResults",
 			Type: "uint64",
 
