@@ -1049,6 +1049,21 @@ func (mr *MockFullNodeMockRecorder) EthSendRawTransaction(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSendRawTransaction", reflect.TypeOf((*MockFullNode)(nil).EthSendRawTransaction), arg0, arg1)
 }
 
+// EthSendRawTransactionUntrusted mocks base method.
+func (m *MockFullNode) EthSendRawTransactionUntrusted(arg0 context.Context, arg1 ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthSendRawTransactionUntrusted", arg0, arg1)
+	ret0, _ := ret[0].(ethtypes.EthHash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthSendRawTransactionUntrusted indicates an expected call of EthSendRawTransactionUntrusted.
+func (mr *MockFullNodeMockRecorder) EthSendRawTransactionUntrusted(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSendRawTransactionUntrusted", reflect.TypeOf((*MockFullNode)(nil).EthSendRawTransactionUntrusted), arg0, arg1)
+}
+
 // EthSubscribe mocks base method.
 func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
 	m.ctrl.T.Helper()

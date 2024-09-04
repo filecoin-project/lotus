@@ -263,6 +263,8 @@ func TestContractInvocation(t *testing.T) {
 	// Submit transaction with bad signature
 	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
 	require.Error(t, err)
+	_, err = client.EVM().EthSendRawTransactionUntrusted(ctx, signed)
+	require.Error(t, err)
 
 	// Submit transaction with valid signature
 	client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
@@ -285,6 +287,120 @@ func TestContractInvocation(t *testing.T) {
 	require.EqualValues(t, invokResult.GasCost.GasUsed, big.NewInt(int64(receipt.GasUsed)))
 	effectiveGasPrice := big.Div(invokResult.GasCost.TotalCost, invokResult.GasCost.GasUsed)
 	require.EqualValues(t, effectiveGasPrice, big.Int(receipt.EffectiveGasPrice))
+}
+
+func TestContractInvocationMultiple(t *testing.T) {
+	const (
+		blockTime     = 100 * time.Millisecond
+		totalMessages = 20
+		maxUntrusted  = 10
+	)
+
+	for _, untrusted := range []bool{true, false} {
+		t.Run(fmt.Sprintf("untrusted=%t", untrusted), func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+
+			client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+			t.Cleanup(func() {
+				_ = client.Stop(ctx)
+				_ = miner.Stop(ctx)
+			})
+			ens.InterconnectAll().BeginMining(blockTime)
+
+			// install contract
+			contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+			require.NoError(t, err)
+			contract, err := hex.DecodeString(string(contractHex))
+			require.NoError(t, err)
+
+			// create a new Ethereum account
+			key, ethAddr, deployer := client.EVM().NewAccount()
+			// send some funds to the f410 address
+			kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+
+			// DEPLOY CONTRACT
+			contractTx, err := deployContractTx(ctx, client, ethAddr, contract)
+			require.NoError(t, err)
+			client.EVM().SignTransaction(contractTx, key.PrivateKey)
+			deployHash := client.EVM().SubmitTransaction(ctx, contractTx)
+
+			receipt, err := client.EVM().WaitTransaction(ctx, deployHash)
+			require.NoError(t, err)
+			require.NotNil(t, receipt)
+			require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+			// Get contract address.
+			contractAddr := client.EVM().ComputeContractAddress(ethAddr, 0)
+
+			// INVOKE CONTRACT
+
+			// Params
+			// entry point for getBalance - f8b2cb4f
+			// address - ff00000000000000000000000000000000000064
+			params, err := hex.DecodeString("f8b2cb4f000000000000000000000000ff00000000000000000000000000000000000064")
+			require.NoError(t, err)
+
+			gasParams, err := json.Marshal(ethtypes.EthEstimateGasParams{Tx: ethtypes.EthCall{
+				From: &ethAddr,
+				To:   &contractAddr,
+				Data: params,
+			}})
+			require.NoError(t, err)
+
+			gaslimit, err := client.EthEstimateGas(ctx, gasParams)
+			require.NoError(t, err)
+
+			maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+			require.NoError(t, err)
+
+			hashes := make([]ethtypes.EthHash, 0)
+			baseMsg := ethtypes.Eth1559TxArgs{
+				ChainID:              buildconstants.Eip155ChainId,
+				To:                   &contractAddr,
+				Value:                big.Zero(),
+				MaxFeePerGas:         types.NanoFil,
+				MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+				GasLimit:             int(gaslimit),
+				Input:                params,
+				V:                    big.Zero(),
+				R:                    big.Zero(),
+				S:                    big.Zero(),
+			}
+
+			for i := 0; i < totalMessages; i++ {
+				invokeTx := baseMsg
+				invokeTx.Nonce = i + 1
+
+				client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
+				signed, err := invokeTx.ToRlpSignedMsg()
+				require.NoError(t, err)
+
+				if untrusted {
+					hash, err := client.EVM().EthSendRawTransactionUntrusted(ctx, signed)
+					if i >= maxUntrusted {
+						require.Error(t, err)
+						require.Contains(t, err.Error(), "too many pending messages")
+						break
+					}
+					require.NoError(t, err)
+					hashes = append(hashes, hash)
+				} else {
+					hash, err := client.EVM().EthSendRawTransaction(ctx, signed)
+					require.NoError(t, err)
+					hashes = append(hashes, hash)
+				}
+			}
+
+			for _, hash := range hashes {
+				receipt, err = client.EVM().WaitTransaction(ctx, hash)
+				require.NoError(t, err)
+				require.NotNil(t, receipt)
+				// Success.
+				require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+			}
+		})
+	}
 }
 
 func TestGetBlockByNumber(t *testing.T) {

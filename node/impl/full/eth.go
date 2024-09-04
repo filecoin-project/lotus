@@ -79,6 +79,7 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
+	EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 	Web3ClientVersion(ctx context.Context) (string, error)
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
@@ -101,8 +102,6 @@ type EthEventAPI interface {
 var (
 	_ EthModuleAPI = *new(api.FullNode)
 	_ EthEventAPI  = *new(api.FullNode)
-
-	_ EthModuleAPI = *new(api.Gateway)
 )
 
 // EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
@@ -918,6 +917,14 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return a.ethSendRawTransaction(ctx, rawTx, false)
+}
+
+func (a *EthModule) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return a.ethSendRawTransaction(ctx, rawTx, true)
+}
+
+func (a *EthModule) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
 	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -933,9 +940,14 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 		return ethtypes.EmptyEthHash, err
 	}
 
-	_, err = a.MpoolAPI.MpoolPush(ctx, smsg)
-	if err != nil {
-		return ethtypes.EmptyEthHash, err
+	if untrusted {
+		if _, err = a.MpoolAPI.MpoolPushUntrusted(ctx, smsg); err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+	} else {
+		if _, err = a.MpoolAPI.MpoolPush(ctx, smsg); err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
 	}
 
 	// make it immediately available in the transaction hash lookup db, even though it will also
