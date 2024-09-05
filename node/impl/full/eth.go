@@ -356,8 +356,11 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 	var err error
 	if a.ChainIndexer != nil {
 		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
-		if err != nil {
+
+		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		} else if err != nil {
+			return nil, xerrors.Errorf("database error: %w", err)
 		}
 	}
 
@@ -419,8 +422,10 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 	var err error
 	if a.ChainIndexer != nil {
 		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
-		if err != nil {
+		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		} else if err != nil {
+			return nil, xerrors.Errorf("database error: %w", err)
 		}
 	}
 
@@ -512,8 +517,10 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 
 	if a.ChainIndexer != nil {
 		c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
-		if err != nil {
+		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
+		} else if err != nil {
+			return nil, xerrors.Errorf("database error: %w", err)
 		}
 	}
 

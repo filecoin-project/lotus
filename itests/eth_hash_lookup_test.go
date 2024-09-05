@@ -83,15 +83,8 @@ func TestTransactionHashLookup(t *testing.T) {
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 	require.Equal(t, rawTxHash, hash)
 
-	var mpoolTx *ethtypes.EthTx
-	for i := 0; i < 3; i++ {
-		mpoolTx, err = client.EthGetTransactionByHash(ctx, &hash)
-		require.NoError(t, err)
-		if mpoolTx != nil {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
+	require.NoError(t, err)
 	require.Equal(t, hash, mpoolTx.Hash)
 
 	// Wait for message to land on chain
