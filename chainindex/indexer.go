@@ -44,6 +44,7 @@ type SqliteIndexer struct {
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
+	updateEventsToRevertedFromHeightStmt  *sql.Stmt
 	isTipsetMessageNonEmptyStmt           *sql.Stmt
 	getMinNonRevertedHeightStmt           *sql.Stmt
 	hasNonRevertedTipsetStmt              *sql.Stmt
@@ -178,6 +179,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 				log.Infof("Found matching tipset at height %d, setting reconciliation epoch to %d", curTs.Height(), reconciliationEpoch)
 				break
 			}
+
 			tipsetStack = append(tipsetStack, curTs)
 
 			// walk up
@@ -197,6 +199,11 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		_, err = tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch))
 		if err != nil {
 			return xerrors.Errorf("failed to mark tipsets as reverted: %w", err)
+		}
+		// also need to mark events as reverted for the corresponding inclusion tipsets
+		_, err = tx.StmtContext(ctx, si.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1))
+		if err != nil {
+			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
 
 		// Now apply all missing tipsets in reverse order i,e, we apply tipsets in [last matching tipset b/w index and canonical chain,
@@ -286,6 +293,11 @@ func (si *SqliteIndexer) prepareStatements() error {
 	si.updateTipsetsToRevertedFromHeightStmt, err = si.db.Prepare(stmtUpdateTipsetsToRevertedFromHeight)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetsToRevertedFromHeightStmt", err)
+	}
+
+	si.updateEventsToRevertedFromHeightStmt, err = si.db.Prepare(stmtUpdateEventsToRevertedFromHeight)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "updateEventsToRevertedFromHeightStmt", err)
 	}
 
 	si.isTipsetMessageNonEmptyStmt, err = si.db.Prepare(stmtIsTipsetMessageNonEmpty)
