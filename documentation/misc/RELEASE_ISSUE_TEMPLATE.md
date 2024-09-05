@@ -102,7 +102,7 @@
    - [ ] Ensure no missing content when spot checking git history
       - Example command looking at git commits: `git log --oneline --graph vA.B.C..`, where A.B.C correspond to the previous release. 
       - Example GitHub UI search looking at merged PRs into master: https://github.com/filecoin-project/lotus/pulls?q=is%3Apr+base%3Amaster+merged%3A%3EYYYY-MM-DD
-      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas: `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, mergedAt, .author.login, .title] | @tsv' | sort -k4`
+      - Example `gh` cli command looking at merged PRs into master and sorted by title to group similar areas (where `YYYY-MM-DD` is the start search date): `gh pr list --repo filecoin-project/lotus --search "base:master merged:>YYYY-MM-DD" --json number,mergedAt,author,title | jq -r '.[] | [.number, .mergedAt, .author.login, .title] | @tsv' | sort -k4`
 - [ ] Merge the PR
    - Opening the PR will trigger a CI run that will build assets, attach the assets to the GitHub release, publish the GitHub release, and create the corresponding git tag.
  - [ ] Update `🚢 Estimated shipping date` table
