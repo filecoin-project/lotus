@@ -407,10 +407,22 @@ func TestEthBlockNumberAliases(t *testing.T) {
 	defer cancel()
 
 	head := client.WaitTillChain(ctx, kit.HeightAtLeast(policy.ChainFinality+100))
-
 	// latest should be head-1 (parents)
-	latestEthBlk, err := client.EVM().EthGetBlockByNumber(ctx, "latest", true)
-	require.NoError(t, err)
+	var latestEthBlk ethtypes.EthBlock
+	for {
+		var err error
+		latestEthBlk, err = client.EVM().EthGetBlockByNumber(ctx, "latest", true)
+		require.NoError(t, err)
+		afterHead, err := client.ChainHead(ctx)
+		require.NoError(t, err)
+		if afterHead.Height() == head.Height() {
+			break
+		}
+		// else: whoops, we had a chain increment between getting head and getting "latest" so they're
+		// clearly not going to match, try again
+		head = afterHead
+	}
+
 	diff := int64(latestEthBlk.Number) - int64(head.Height()-1)
 	require.GreaterOrEqual(t, diff, int64(0))
 	require.LessOrEqual(t, diff, int64(2))
