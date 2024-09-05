@@ -53,7 +53,7 @@ type SqliteIndexer struct {
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
 
-	gcRetentionEpochs int64
+	gcRetentionDays int64
 
 	mu           sync.Mutex
 	updateSubs   map[uint64]*updateSub
@@ -63,7 +63,7 @@ type SqliteIndexer struct {
 	closed  bool
 }
 
-func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64) (si *SqliteIndexer, err error) {
+func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64) (si *SqliteIndexer, err error) {
 	db, _, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
@@ -84,13 +84,13 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64) (si *
 	}
 
 	si = &SqliteIndexer{
-		ctx:               ctx,
-		cancel:            cancel,
-		db:                db,
-		cs:                cs,
-		updateSubs:        make(map[uint64]*updateSub),
-		subIdCounter:      0,
-		gcRetentionEpochs: gcRetentionEpochs,
+		ctx:             ctx,
+		cancel:          cancel,
+		db:              db,
+		cs:              cs,
+		updateSubs:      make(map[uint64]*updateSub),
+		subIdCounter:    0,
+		gcRetentionDays: gcRetentionDays,
 	}
 	if err = si.prepareStatements(); err != nil {
 		return nil, xerrors.Errorf("failed to prepare statements: %w", err)

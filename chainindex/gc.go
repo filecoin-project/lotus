@@ -7,6 +7,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -25,7 +26,7 @@ func (si *SqliteIndexer) gcLoop() {
 	cleanupTicker := time.NewTicker(cleanupInterval)
 	defer cleanupTicker.Stop()
 
-	for {
+	for si.ctx.Err() == nil {
 		select {
 		case <-cleanupTicker.C:
 			si.cleanupRevertedTipsets(si.ctx)
@@ -37,13 +38,14 @@ func (si *SqliteIndexer) gcLoop() {
 }
 
 func (si *SqliteIndexer) gc(ctx context.Context) {
-	if si.gcRetentionEpochs <= 0 {
+	if si.gcRetentionDays <= 0 {
 		return
 	}
 
-	head := si.cs.GetHeaviestTipSet().Height()
-	removeEpoch := int64(head) - si.gcRetentionEpochs
+	head := si.cs.GetHeaviestTipSet()
+	retentionEpochs := si.gcRetentionDays * builtin.EpochsInDay
 
+	removeEpoch := int64(head.Height()) - retentionEpochs - 10 // 10 is for some grace period
 	if removeEpoch <= 0 {
 		return
 	}
@@ -64,15 +66,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 
 	// Also GC eth hashes
 
-	// Calculate the number of days
-	days := int((si.gcRetentionEpochs * 30) / (24 * 60 * 60))
-
-	// Ensure we have at least 1 day for GC
-	if days < 1 {
-		return
-	}
-
-	res, err = si.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(days) + " day")
+	res, err = si.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(int(si.gcRetentionDays)) + " day")
 	if err != nil {
 		log.Errorw("failed to delete eth hashes older than", "error", err)
 		return
@@ -88,9 +82,8 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 }
 
 func (si *SqliteIndexer) cleanupRevertedTipsets(ctx context.Context) {
-	head := si.cs.GetHeaviestTipSet().Height()
-
-	finalEpoch := (head - policy.ChainFinality) - 10 // 10 is for some grace period
+	head := si.cs.GetHeaviestTipSet()
+	finalEpoch := (head.Height() - policy.ChainFinality) - 10 // 10 is for some grace period
 	if finalEpoch <= 0 {
 		return
 	}
