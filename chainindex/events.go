@@ -181,6 +181,59 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 	return ems, nil
 }
 
+// checkTipsetIndexedStatus verifies if a specific tipset is indexed based on the EventFilter.
+// It returns nil if the tipset is indexed, ErrNotFound if it's not indexed or not specified,
+func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventFilter) error {
+	var tipsetKeyCid []byte
+	var err error
+
+	// Determine the tipset to check based on the filter
+	switch {
+	case f.TipsetCid != cid.Undef:
+		tipsetKeyCid = f.TipsetCid.Bytes()
+	case f.MinHeight >= 0 && f.MinHeight == f.MaxHeight:
+		tipsetKeyCid, err = si.getTipsetKeyCidByHeight(ctx, f.MinHeight)
+		if err != nil {
+			return xerrors.Errorf("failed to get tipset key cid by height: %w", err)
+		}
+	default:
+		// Filter doesn't specify a specific tipset
+		return ErrNotFound
+	}
+
+	// If we couldn't determine a specific tipset, return ErrNotFound
+	if tipsetKeyCid == nil {
+		return ErrNotFound
+	}
+
+	// Check if the determined tipset is indexed
+	exists, err := si.isTipsetIndexed(ctx, tipsetKeyCid)
+	if err != nil {
+		return xerrors.Errorf("failed to check if tipset is indexed: %w", err)
+	}
+
+	if exists {
+		return nil // Tipset is indexed
+	}
+
+	return ErrNotFound // Tipset is not indexed
+}
+
+// getTipsetKeyCidByHeight retrieves the tipset key CID for a given height.
+// It returns nil if no tipset is found at the exact height.
+func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi.ChainEpoch) ([]byte, error) {
+	ts, err := si.cs.GetTipsetByHeight(ctx, height, nil, false)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset by height: %w", err)
+	}
+
+	if ts.Height() != height {
+		return nil, nil // No tipset at exact height
+	}
+
+	return toTipsetKeyCidBytes(ts)
+}
+
 // GetEventsForFilter returns matching events for the given filter
 // prefillFilter fills a filter's collection of events from the historic index
 // Returns nil, nil if the filter has no matching events
@@ -201,31 +254,20 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 
 	q, err := stmt.QueryContext(ctx, values...)
 	if err == sql.ErrNoRows {
-		// wait for head to be indexed and retry
-		err = si.waitTillHeadIndexedAndApply(ctx, func() error {
-			q, err = stmt.QueryContext(ctx, values...)
-			return err
-		})
+		// did not find events, but may be in head, so wait for it and check again
+		if err := si.waitTillHeadIndexed(ctx); err != nil {
+			return nil, xerrors.Errorf("error waiting for head to be indexed: %w", err)
+		}
+		q, err = stmt.QueryContext(ctx, values...)
 	}
 
 	if err != nil {
+		// if no rows are found, we should differentiate between no events for the tipset(which is valid and can happen)
+		// and the tipset not being indexed
 		if errors.Is(err, sql.ErrNoRows) {
-			// if user is asking for a specific tipset, differentiate between no events for the tipset and the absence of the tipset itself
-			if f.TipsetCid != cid.Undef {
-				exists, err := si.isTipsetIndexed(ctx, f.TipsetCid.Bytes())
-				if err != nil {
-					return nil, xerrors.Errorf("error checking if tipset exists: %w", err)
-				}
-				// we have the tipset indexed but simply dont have events for it i.e. no events matching the given filter
-				if exists {
-					return nil, nil
-				}
-			}
-
-			// we don't have the tipset indexed
-			return nil, ErrNotFound
+			return nil, si.checkTipsetIndexedStatus(ctx, f)
 		}
-		return nil, xerrors.Errorf("exec prefill query: %w", err)
+		return nil, xerrors.Errorf("failed to query events: %w", err)
 	}
 	defer func() { _ = q.Close() }()
 

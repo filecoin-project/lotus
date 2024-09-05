@@ -75,6 +75,7 @@ type ChainStore interface {
 	GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	ActorStore(ctx context.Context) adt.Store
+	GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error)
 }
 
 var _ ChainStore = (*store.ChainStore)(nil)

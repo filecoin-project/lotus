@@ -13,9 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-var (
-	headIndexedWaitTimeout = 5 * time.Second
-)
+const headIndexedWaitTimeout = 5 * time.Second
 
 func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.EthHash) (cid.Cid, error) {
 	si.closeLk.RLock()
@@ -26,18 +24,10 @@ func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.Eth
 
 	var msgCidBytes []byte
 
-	err := si.queryMsgCidFromEthHash(ctx, txHash, &msgCidBytes)
-	if err == sql.ErrNoRows {
-		err = si.waitTillHeadIndexedAndApply(ctx, func() error {
-			return si.queryMsgCidFromEthHash(ctx, txHash, &msgCidBytes)
-		})
-	}
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return cid.Undef, ErrNotFound
-		}
-		return cid.Undef, xerrors.Errorf("failed to get message CID from eth hash: %w", err)
+	if err := si.readWithHeadIndexWait(ctx, func() error {
+		return si.queryMsgCidFromEthHash(ctx, txHash, &msgCidBytes)
+	}); err != nil {
+		return cid.Undef, err
 	}
 
 	msgCid, err := cid.Cast(msgCidBytes)
@@ -62,18 +52,10 @@ func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*M
 	var tipsetKeyCidBytes []byte
 	var height int64
 
-	err := si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height)
-	if err == sql.ErrNoRows {
-		err = si.waitTillHeadIndexedAndApply(ctx, func() error {
-			return si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height)
-		})
-	}
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
-		}
-		return nil, xerrors.Errorf("failed to get message info: %w", err)
+	if err := si.readWithHeadIndexWait(ctx, func() error {
+		return si.queryMsgInfo(ctx, messageCid, &tipsetKeyCidBytes, &height)
+	}); err != nil {
+		return nil, err
 	}
 
 	tipsetKey, err := cid.Cast(tipsetKeyCidBytes)
@@ -86,6 +68,30 @@ func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*M
 		TipSet:  tipsetKey,
 		Epoch:   abi.ChainEpoch(height),
 	}, nil
+}
+
+// This function attempts to read data using the provided readFunc.
+// If the initial read returns no rows, it waits for the head to be indexed
+// and tries again. This ensures that the most up-to-date data is checked.
+// If no data is found after the second attempt, it returns ErrNotFound.
+func (si *SqliteIndexer) readWithHeadIndexWait(ctx context.Context, readFunc func() error) error {
+	err := readFunc()
+	if err == sql.ErrNoRows {
+		if err := si.waitTillHeadIndexed(ctx); err != nil {
+			return xerrors.Errorf("error waiting for head to be indexed: %w", err)
+		}
+		// not found, but may be in latest head, so wait for it and check again
+		err = readFunc()
+	}
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ErrNotFound
+		}
+		return xerrors.Errorf("failed to get message info: %w", err)
+	}
+
+	return nil
 }
 
 func (si *SqliteIndexer) queryMsgInfo(ctx context.Context, messageCid cid.Cid, tipsetKeyCidBytes *[]byte, height *int64) error {
@@ -101,7 +107,7 @@ func (si *SqliteIndexer) isTipsetIndexed(ctx context.Context, tsKeyCid []byte) (
 	return exists, nil
 }
 
-func (si *SqliteIndexer) waitTillHeadIndexedAndApply(ctx context.Context, applyFn func() error) error {
+func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, headIndexedWaitTimeout)
 	defer cancel()
 
@@ -115,20 +121,20 @@ func (si *SqliteIndexer) waitTillHeadIndexedAndApply(ctx context.Context, applyF
 	if exists, err := si.isTipsetIndexed(ctx, headTsKeyCidBytes); err != nil {
 		return xerrors.Errorf("error checking if tipset exists: %w", err)
 	} else if exists {
-		return applyFn()
+		return nil
 	}
 
 	// wait till it is indexed
 	subCh, unsubFn := si.subscribeUpdates()
 	defer unsubFn()
 
-	for {
+	for ctx.Err() == nil {
 		exists, err := si.isTipsetIndexed(ctx, headTsKeyCidBytes)
 		if err != nil {
 			return xerrors.Errorf("error checking if tipset exists: %w", err)
 		}
 		if exists {
-			return applyFn()
+			return nil
 		}
 
 		select {
@@ -138,4 +144,5 @@ func (si *SqliteIndexer) waitTillHeadIndexedAndApply(ctx context.Context, applyF
 			return ctx.Err()
 		}
 	}
+	return ctx.Err()
 }

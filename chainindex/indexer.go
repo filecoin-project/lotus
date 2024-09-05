@@ -44,7 +44,7 @@ type SqliteIndexer struct {
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
-	countMessagesStmt                     *sql.Stmt
+	isTipsetMessageEmptyStmt              *sql.Stmt
 	getMinNonRevertedHeightStmt           *sql.Stmt
 	hasNonRevertedTipsetStmt              *sql.Stmt
 	updateEventsToRevertedStmt            *sql.Stmt
@@ -131,19 +131,20 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 	}
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
-		row := tx.StmtContext(ctx, si.countMessagesStmt).QueryRowContext(ctx)
-		var result int64
-		if err := row.Scan(&result); err != nil {
-			return xerrors.Errorf("error counting messages: %w", err)
+		var isEmpty bool
+		err := tx.StmtContext(ctx, si.isTipsetMessageEmptyStmt).QueryRowContext(ctx).Scan(&isEmpty)
+		if err != nil {
+			return xerrors.Errorf("failed to check if tipset message is empty: %w", err)
 		}
-		if result == 0 {
+		if isEmpty {
 			return nil
 		}
 
-		// Find the minimum applied tipset in the index; this will mark the end of the reconciliation walk
-		row = tx.StmtContext(ctx, si.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
+		// Find the minimum applied tipset in the index; this will mark the absolute min height of the reconciliation walk
+		var result int64
+		row := tx.StmtContext(ctx, si.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
 		if err := row.Scan(&result); err != nil {
-			return xerrors.Errorf("error finding boundary epoch: %w", err)
+			return xerrors.Errorf("failed to find boundary epoch: %w", err)
 		}
 
 		boundaryEpoch := abi.ChainEpoch(result)
@@ -155,13 +156,13 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 		for curTs != nil && curTs.Height() >= boundaryEpoch {
 			tsKeyCidBytes, err := toTipsetKeyCidBytes(curTs)
 			if err != nil {
-				return xerrors.Errorf("error computing tipset cid: %w", err)
+				return xerrors.Errorf("failed to compute tipset cid: %w", err)
 			}
 
 			var exists bool
 			err = tx.StmtContext(ctx, si.hasNonRevertedTipsetStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists)
 			if err != nil {
-				return xerrors.Errorf("error checking if tipset exists and is not reverted: %w", err)
+				return xerrors.Errorf("failed to check if tipset exists and is not reverted: %w", err)
 			}
 
 			if exists {
@@ -176,7 +177,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 			parents := curTs.Parents()
 			curTs, err = si.cs.GetTipSetFromKey(ctx, parents)
 			if err != nil {
-				return xerrors.Errorf("error walking chain: %w", err)
+				return xerrors.Errorf("failed to walk chain: %w", err)
 			}
 		}
 
@@ -186,9 +187,9 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 
 		// mark all tipsets from the boundary epoch in the Index as reverted as they are not in the current canonical chain
 		log.Infof("Marking tipsets as reverted from height %d", boundaryEpoch)
-		_, err := tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(boundaryEpoch))
+		_, err = tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(boundaryEpoch))
 		if err != nil {
-			return xerrors.Errorf("error marking tipsets as reverted: %w", err)
+			return xerrors.Errorf("failed to mark tipsets as reverted: %w", err)
 		}
 
 		// Now apply all missing tipsets in reverse order i,e, we apply tipsets in [last matching tipset b/w index and canonical chain,
@@ -197,10 +198,10 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 			curTs := tipsetStack[i]
 			parentTs, err := si.cs.GetTipSetFromKey(ctx, curTs.Parents())
 			if err != nil {
-				return xerrors.Errorf("error getting parent tipset: %w", err)
+				return xerrors.Errorf("failed to get parent tipset: %w", err)
 			}
 			if err := si.indexTipset(ctx, tx, curTs, parentTs, true); err != nil {
-				return xerrors.Errorf("error indexing tipset: %w", err)
+				return xerrors.Errorf("failed to index tipset: %w", err)
 			}
 		}
 
@@ -279,10 +280,12 @@ func (si *SqliteIndexer) prepareStatements() error {
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetsToRevertedFromHeightStmt", err)
 	}
-	si.countMessagesStmt, err = si.db.Prepare(stmtCountMessages)
+
+	si.isTipsetMessageEmptyStmt, err = si.db.Prepare(stmtIsTipsetMessageEmpty)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "countMessagesStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "isTipsetMessageEmptyStmt", err)
 	}
+
 	si.getMinNonRevertedHeightStmt, err = si.db.Prepare(stmtGetMinNonRevertedHeight)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "getMinNonRevertedHeightStmt", err)
@@ -333,6 +336,9 @@ func (si *SqliteIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.Eth
 }
 
 func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error {
+	if msg.Signature.Type != crypto.SigTypeDelegated {
+		return nil
+	}
 	si.closeLk.RLock()
 	if si.closed {
 		return ErrClosed
@@ -345,10 +351,6 @@ func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.Sign
 }
 
 func (si *SqliteIndexer) indexSignedMessage(ctx context.Context, tx *sql.Tx, msg *types.SignedMessage) error {
-	if msg.Signature.Type != crypto.SigTypeDelegated {
-		return nil
-	}
-
 	ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(msg)
 	if err != nil {
 		return xerrors.Errorf("error converting filecoin message to eth tx: %w", err)

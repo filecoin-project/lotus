@@ -45,14 +45,14 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	head := si.cs.GetHeaviestTipSet()
 	retentionEpochs := si.gcRetentionDays * builtin.EpochsInDay
 
-	removeEpoch := int64(head.Height()) - retentionEpochs - 10 // 10 is for some grace period
-	if removeEpoch <= 0 {
+	removalEpoch := int64(head.Height()) - retentionEpochs - 10 // 10 is for some grace period
+	if removalEpoch <= 0 {
 		return
 	}
 
-	res, err := si.removeTipsetsBeforeHeightStmt.ExecContext(ctx, removeEpoch)
+	res, err := si.removeTipsetsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
 	if err != nil {
-		log.Errorw("failed to remove reverted tipsets before height", "height", removeEpoch, "error", err)
+		log.Errorw("failed to remove reverted tipsets before height", "height", removalEpoch, "error", err)
 		return
 	}
 
@@ -62,7 +62,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infow("gc'd tipsets", "height", removeEpoch, "nRows", rows)
+	log.Infow("gc'd tipsets", "height", removalEpoch, "nRows", rows)
 
 	// Also GC eth hashes
 
@@ -78,7 +78,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infow("gc'd eth hashes", "height", removeEpoch, "nRows", rows)
+	log.Infow("gc'd eth hashes", "height", removalEpoch, "nRows", rows)
 }
 
 func (si *SqliteIndexer) cleanupRevertedTipsets(ctx context.Context) {

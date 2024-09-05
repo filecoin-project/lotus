@@ -55,7 +55,8 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 }
 
 func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer Indexer) {
-	for {
+
+	for ctx.Err() == nil {
 		select {
 		case <-ctx.Done():
 			return
