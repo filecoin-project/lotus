@@ -94,7 +94,7 @@ func (si *SqliteIndexer) queryMsgInfo(ctx context.Context, messageCid cid.Cid, t
 
 func (si *SqliteIndexer) isTipsetIndexed(ctx context.Context, tsKeyCid []byte) (bool, error) {
 	var exists bool
-	err := si.tipsetExistsStmt.QueryRowContext(ctx, tsKeyCid).Scan(&exists)
+	err := si.hasTipsetStmt.QueryRowContext(ctx, tsKeyCid).Scan(&exists)
 	if err != nil {
 		return false, xerrors.Errorf("error checking if tipset exists: %w", err)
 	}

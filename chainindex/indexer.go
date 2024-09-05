@@ -36,19 +36,19 @@ type SqliteIndexer struct {
 	getNonRevertedMsgInfoStmt             *sql.Stmt
 	getMsgCidFromEthHashStmt              *sql.Stmt
 	insertTipsetMessageStmt               *sql.Stmt
-	revertTipsetStmt                      *sql.Stmt
+	updateTipsetToRevertedStmt            *sql.Stmt
 	getMaxNonRevertedTipsetStmt           *sql.Stmt
-	tipsetExistsStmt                      *sql.Stmt
-	tipsetUnRevertStmt                    *sql.Stmt
+	hasTipsetStmt                         *sql.Stmt
+	updateTipsetToNonRevertedStmt         *sql.Stmt
 	removeRevertedTipsetsBeforeHeightStmt *sql.Stmt
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
-	deleteEthHashesOlderThanStmt          *sql.Stmt
-	revertTipsetsFromHeightStmt           *sql.Stmt
+	removeEthHashesOlderThanStmt          *sql.Stmt
+	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
 	countMessagesStmt                     *sql.Stmt
-	minNonRevertedHeightStmt              *sql.Stmt
-	tipsetExistsNotRevertedStmt           *sql.Stmt
-	revertEventsStmt                      *sql.Stmt
-	eventsUnRevertStmt                    *sql.Stmt
+	getMinNonRevertedHeightStmt           *sql.Stmt
+	hasNonRevertedTipsetStmt              *sql.Stmt
+	updateEventsToRevertedStmt            *sql.Stmt
+	updateEventsToNonRevertedStmt         *sql.Stmt
 	getMsgIdForMsgCidAndTipsetStmt        *sql.Stmt
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
@@ -141,7 +141,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 		}
 
 		// Find the minimum applied tipset in the index; this will mark the end of the reconciliation walk
-		row = tx.StmtContext(ctx, si.minNonRevertedHeightStmt).QueryRowContext(ctx)
+		row = tx.StmtContext(ctx, si.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
 		if err := row.Scan(&result); err != nil {
 			return xerrors.Errorf("error finding boundary epoch: %w", err)
 		}
@@ -159,7 +159,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 			}
 
 			var exists bool
-			err = tx.StmtContext(ctx, si.tipsetExistsNotRevertedStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists)
+			err = tx.StmtContext(ctx, si.hasNonRevertedTipsetStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists)
 			if err != nil {
 				return xerrors.Errorf("error checking if tipset exists and is not reverted: %w", err)
 			}
@@ -186,7 +186,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 
 		// mark all tipsets from the boundary epoch in the Index as reverted as they are not in the current canonical chain
 		log.Infof("Marking tipsets as reverted from height %d", boundaryEpoch)
-		_, err := tx.StmtContext(ctx, si.revertTipsetsFromHeightStmt).ExecContext(ctx, int64(boundaryEpoch))
+		_, err := tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(boundaryEpoch))
 		if err != nil {
 			return xerrors.Errorf("error marking tipsets as reverted: %w", err)
 		}
@@ -247,17 +247,17 @@ func (si *SqliteIndexer) prepareStatements() error {
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "insertTipsetMessageStmt", err)
 	}
-	si.tipsetExistsStmt, err = si.db.Prepare(stmtTipsetExists)
+	si.hasTipsetStmt, err = si.db.Prepare(stmtHasTipset)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "tipsetExistsStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "hasTipsetStmt", err)
 	}
-	si.tipsetUnRevertStmt, err = si.db.Prepare(stmtTipsetUnRevert)
+	si.updateTipsetToNonRevertedStmt, err = si.db.Prepare(stmtUpdateTipsetToNonReverted)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "tipsetUnRevertStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "updateTipsetToNonRevertedStmt", err)
 	}
-	si.revertTipsetStmt, err = si.db.Prepare(stmtRevertTipset)
+	si.updateTipsetToRevertedStmt, err = si.db.Prepare(stmtUpdateTipsetToReverted)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "revertTipsetStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "updateTipsetToRevertedStmt", err)
 	}
 	si.getMaxNonRevertedTipsetStmt, err = si.db.Prepare(stmtGetMaxNonRevertedTipset)
 	if err != nil {
@@ -271,39 +271,36 @@ func (si *SqliteIndexer) prepareStatements() error {
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "removeTipsetsBeforeHeightStmt", err)
 	}
-	si.deleteEthHashesOlderThanStmt, err = si.db.Prepare(stmtDeleteEthHashesOlderThan)
+	si.removeEthHashesOlderThanStmt, err = si.db.Prepare(stmtRemoveEthHashesOlderThan)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "deleteEthHashesOlderThanStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "removeEthHashesOlderThanStmt", err)
 	}
-	si.revertTipsetsFromHeightStmt, err = si.db.Prepare(stmtRevertTipsetsFromHeight)
+	si.updateTipsetsToRevertedFromHeightStmt, err = si.db.Prepare(stmtUpdateTipsetsToRevertedFromHeight)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "revertTipsetsFromHeightStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "updateTipsetsToRevertedFromHeightStmt", err)
 	}
 	si.countMessagesStmt, err = si.db.Prepare(stmtCountMessages)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "countMessagesStmt", err)
 	}
-	si.minNonRevertedHeightStmt, err = si.db.Prepare(stmtMinNonRevertedHeight)
+	si.getMinNonRevertedHeightStmt, err = si.db.Prepare(stmtGetMinNonRevertedHeight)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "minNonRevertedHeightStmt", err)
-	}
-	si.tipsetExistsNotRevertedStmt, err = si.db.Prepare(stmtTipsetExistsNotReverted)
-
-	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "tipsetExistsNotRevertedStmt", err)
-	}
-	si.tipsetExistsNotRevertedStmt, err = si.db.Prepare(stmtTipsetExistsNotReverted)
-	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "tipsetExistsNotRevertedStmt", err)
-	}
-	si.eventsUnRevertStmt, err = si.db.Prepare(stmtEventsUnRevert)
-	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "eventsUnRevertStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "getMinNonRevertedHeightStmt", err)
 	}
 
-	si.revertEventsStmt, err = si.db.Prepare(stmtEventsRevert)
+	si.hasNonRevertedTipsetStmt, err = si.db.Prepare(stmtHasNonRevertedTipset)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "revertEventsStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "hasNonRevertedTipsetStmt", err)
+	}
+
+	si.updateEventsToNonRevertedStmt, err = si.db.Prepare(stmtUpdateEventsToNonReverted)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "updateEventsToNonRevertedStmt", err)
+	}
+
+	si.updateEventsToRevertedStmt, err = si.db.Prepare(stmtUpdateEventsToReverted)
+	if err != nil {
+		return xerrors.Errorf("prepare %s: %w", "updateEventsToRevertedStmt", err)
 	}
 
 	si.getMsgIdForMsgCidAndTipsetStmt, err = si.db.Prepare(stmtGetMsgIdForMsgCidAndTipset)
@@ -424,13 +421,13 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 	}
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		if _, err := tx.Stmt(si.revertTipsetStmt).ExecContext(ctx, revertTsKeyCid); err != nil {
+		if _, err := tx.Stmt(si.updateTipsetToRevertedStmt).ExecContext(ctx, revertTsKeyCid); err != nil {
 			return xerrors.Errorf("error marking tipset %s as reverted: %w", revertTsKeyCid, err)
 		}
 
 		// events are indexed against the message inclusion tipset, not the message execution tipset.
 		// So we need to revert the events for the message inclusion tipset.
-		if _, err := tx.Stmt(si.revertEventsStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
+		if _, err := tx.Stmt(si.updateEventsToRevertedStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
 			return xerrors.Errorf("error reverting events for tipset %s: %w", eventTsKeyCid, err)
 		}
 
@@ -527,16 +524,16 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, tsKeyCidBytes []byte, parentsKeyCidBytes []byte) (bool, error) {
 	// Check if the tipset already exists
 	var exists bool
-	if err := tx.Stmt(si.tipsetExistsStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
+	if err := tx.Stmt(si.hasTipsetStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
 		return false, xerrors.Errorf("error checking if tipset exists: %w", err)
 	}
 	if exists {
-		if _, err := tx.Stmt(si.tipsetUnRevertStmt).ExecContext(ctx, tsKeyCidBytes); err != nil {
+		if _, err := tx.Stmt(si.updateTipsetToNonRevertedStmt).ExecContext(ctx, tsKeyCidBytes); err != nil {
 			return false, xerrors.Errorf("error restoring tipset: %w", err)
 		}
 
 		// also mark all the events in the parent as not reverted
-		if _, err := tx.Stmt(si.eventsUnRevertStmt).ExecContext(ctx, parentsKeyCidBytes); err != nil {
+		if _, err := tx.Stmt(si.updateEventsToNonRevertedStmt).ExecContext(ctx, parentsKeyCidBytes); err != nil {
 			return false, xerrors.Errorf("error unreverting events: %w", err)
 		}
 

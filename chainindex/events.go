@@ -38,7 +38,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	}
 
 	// if we've already indexed events for this tipset, mark them as unreverted and return
-	res, err := tx.Stmt(si.eventsUnRevertStmt).ExecContext(ctx, msgTsKeyCidBytes)
+	res, err := tx.Stmt(si.updateEventsToNonRevertedStmt).ExecContext(ctx, msgTsKeyCidBytes)
 	if err != nil {
 		return xerrors.Errorf("error unreverting events for tipset: %w", err)
 	}

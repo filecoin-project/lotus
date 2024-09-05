@@ -9,31 +9,31 @@ const (
 
 	stmtInsertTipsetMessage = "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) DO UPDATE SET reverted = 0"
 
-	stmtTipsetExists   = "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)"
-	stmtTipsetUnRevert = "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?"
+	stmtHasTipset                 = "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)"
+	stmtUpdateTipsetToNonReverted = "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?"
 
-	stmtRevertTipset = "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?"
+	stmtUpdateTipsetToReverted = "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?"
 
 	stmtGetMaxNonRevertedTipset = "SELECT tipset_key_cid FROM tipset_message WHERE reverted = 0 ORDER BY height DESC LIMIT 1"
 
 	stmtRemoveRevertedTipsetsBeforeHeight = "DELETE FROM tipset_message WHERE height < ? AND reverted = 1"
 	stmtRemoveTipsetsBeforeHeight         = "DELETE FROM tipset_message WHERE height < ?"
 
-	stmtDeleteEthHashesOlderThan = `DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?);`
+	stmtRemoveEthHashesOlderThan = `DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?);`
 
-	stmtRevertTipsetsFromHeight = "UPDATE tipset_message SET reverted = 1 WHERE height >= ?"
+	stmtUpdateTipsetsToRevertedFromHeight = "UPDATE tipset_message SET reverted = 1 WHERE height >= ?"
 
 	stmtCountMessages = "SELECT COUNT(*) FROM tipset_message"
 
-	stmtMinNonRevertedHeight = `SELECT MIN(height) FROM tipset_message WHERE reverted = 0`
+	stmtGetMinNonRevertedHeight = `SELECT MIN(height) FROM tipset_message WHERE reverted = 0`
 
-	stmtTipsetExistsNotReverted = `SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)`
+	stmtHasNonRevertedTipset = `SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)`
 
-	stmtEventsRevert = `UPDATE event SET reverted = 1 WHERE message_id IN (
+	stmtUpdateEventsToReverted = `UPDATE event SET reverted = 1 WHERE message_id IN (
 			SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
 		)`
 
-	stmtEventsUnRevert = `UPDATE event SET reverted = 0 WHERE message_id IN (
+	stmtUpdateEventsToNonReverted = `UPDATE event SET reverted = 0 WHERE message_id IN (
 		SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
 	)`
 

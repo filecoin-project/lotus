@@ -72,7 +72,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	res, err = si.deleteEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(days) + " day")
+	res, err = si.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(days) + " day")
 	if err != nil {
 		log.Errorw("failed to delete eth hashes older than", "error", err)
 		return
