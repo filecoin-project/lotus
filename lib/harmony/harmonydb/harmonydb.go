@@ -4,11 +4,9 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"math/rand"
 	"net"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,13 +20,6 @@ import (
 
 	"github.com/filecoin-project/lotus/node/config"
 )
-
-type ITestID string
-
-// ITestNewID see ITestWithID doc
-func ITestNewID() ITestID {
-	return ITestID(strconv.Itoa(rand.Intn(99999)))
-}
 
 type DB struct {
 	pgx       *pgxpool.Pool
@@ -52,28 +43,13 @@ func NewFromConfig(cfg config.HarmonyDB) (*DB, error) {
 		cfg.Password,
 		cfg.Database,
 		cfg.Port,
-		"",
 	)
-}
-
-func NewFromConfigWithITestID(cfg config.HarmonyDB) func(id ITestID) (*DB, error) {
-	return func(id ITestID) (*DB, error) {
-		return New(
-			cfg.Hosts,
-			cfg.Username,
-			cfg.Password,
-			cfg.Database,
-			cfg.Port,
-			id,
-		)
-	}
 }
 
 // New is to be called once per binary to establish the pool.
 // log() is for errors. It returns an upgraded database's connection.
 // This entry point serves both production and integration tests, so it's more DI.
-func New(hosts []string, username, password, database, port string, itestID ITestID) (*DB, error) {
-	itest := string(itestID)
+func New(hosts []string, username, password, database, port string) (*DB, error) {
 	connString := ""
 	if len(hosts) > 0 {
 		connString = "host=" + hosts[0] + " "
@@ -85,9 +61,6 @@ func New(hosts []string, username, password, database, port string, itestID ITes
 	}
 
 	schema := "curio"
-	if itest != "" {
-		schema = "itest_" + itest
-	}
 
 	if err := ensureSchemaExists(connString, schema); err != nil {
 		return nil, err
