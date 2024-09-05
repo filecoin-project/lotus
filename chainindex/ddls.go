@@ -23,7 +23,7 @@ const (
 
 	stmtUpdateTipsetsToRevertedFromHeight = "UPDATE tipset_message SET reverted = 1 WHERE height >= ?"
 
-	stmtIsTipsetMessageEmpty = "SELECT EXISTS(SELECT 1 FROM tipset_message LIMIT 1)"
+	stmtIsTipsetMessageNonEmpty = "SELECT EXISTS(SELECT 1 FROM tipset_message LIMIT 1)"
 
 	stmtGetMinNonRevertedHeight = `SELECT MIN(height) FROM tipset_message WHERE reverted = 0`
 

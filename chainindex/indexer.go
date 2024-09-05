@@ -44,7 +44,7 @@ type SqliteIndexer struct {
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
-	isTipsetMessageEmptyStmt              *sql.Stmt
+	isTipsetMessageNonEmptyStmt           *sql.Stmt
 	getMinNonRevertedHeightStmt           *sql.Stmt
 	hasNonRevertedTipsetStmt              *sql.Stmt
 	updateEventsToRevertedStmt            *sql.Stmt
@@ -131,12 +131,12 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 	}
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
-		var isEmpty bool
-		err := tx.StmtContext(ctx, si.isTipsetMessageEmptyStmt).QueryRowContext(ctx).Scan(&isEmpty)
+		var hasTipset bool
+		err := tx.StmtContext(ctx, si.isTipsetMessageNonEmptyStmt).QueryRowContext(ctx).Scan(&hasTipset)
 		if err != nil {
 			return xerrors.Errorf("failed to check if tipset message is empty: %w", err)
 		}
-		if isEmpty {
+		if !hasTipset {
 			return nil
 		}
 
@@ -281,9 +281,9 @@ func (si *SqliteIndexer) prepareStatements() error {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetsToRevertedFromHeightStmt", err)
 	}
 
-	si.isTipsetMessageEmptyStmt, err = si.db.Prepare(stmtIsTipsetMessageEmpty)
+	si.isTipsetMessageNonEmptyStmt, err = si.db.Prepare(stmtIsTipsetMessageNonEmpty)
 	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "isTipsetMessageEmptyStmt", err)
+		return xerrors.Errorf("prepare %s: %w", "isTipsetMessageNonEmptyStmt", err)
 	}
 
 	si.getMinNonRevertedHeightStmt, err = si.db.Prepare(stmtGetMinNonRevertedHeight)
@@ -456,11 +456,9 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 	}
 	parentsKeyCidBytes := parentsKeyCid.Bytes()
 
-	restored, err := si.restoreTipsetIfExists(ctx, tx, tsKeyCidBytes, parentsKeyCidBytes)
-	if err != nil {
+	if restored, err := si.restoreTipsetIfExists(ctx, tx, tsKeyCidBytes, parentsKeyCidBytes); err != nil {
 		return xerrors.Errorf("error restoring tipset: %w", err)
-	}
-	if restored {
+	} else if restored {
 		return nil
 	}
 
