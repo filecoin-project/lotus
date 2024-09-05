@@ -139,10 +139,6 @@ func (e *EthModuleDummy) EthSendRawTransaction(ctx context.Context, rawTx ethtyp
 	return ethtypes.EthHash{}, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	return ethtypes.EthHash{}, ErrModuleDisabled
-}
-
 func (e *EthModuleDummy) Web3ClientVersion(ctx context.Context) (string, error) {
 	return "", ErrModuleDisabled
 }

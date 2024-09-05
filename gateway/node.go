@@ -180,6 +180,7 @@ var (
 	_ full.GasModuleAPI   = (*Node)(nil)
 	_ full.MpoolModuleAPI = (*Node)(nil)
 	_ full.StateModuleAPI = (*Node)(nil)
+	_ full.EthModuleAPI   = (*Node)(nil)
 )
 
 type options struct {

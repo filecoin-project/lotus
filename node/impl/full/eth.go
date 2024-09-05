@@ -79,7 +79,6 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
-	EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 	Web3ClientVersion(ctx context.Context) (string, error)
 	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
@@ -102,6 +101,7 @@ type EthEventAPI interface {
 var (
 	_ EthModuleAPI = *new(api.FullNode)
 	_ EthEventAPI  = *new(api.FullNode)
+	_ EthModuleAPI = *new(api.Gateway)
 )
 
 // EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
@@ -135,7 +135,7 @@ type EthModule struct {
 	Chain                    *store.ChainStore
 	Mpool                    *messagepool.MessagePool
 	StateManager             *stmgr.StateManager
-	EthTxHashManager         *EthTxHashManager
+	EthTxHashManager         EthTxHashManager
 	EthTraceFilterMaxResults uint64
 	EthEventHandler          *EthEventHandler
 
@@ -166,8 +166,10 @@ var _ EthEventAPI = (*EthEventHandler)(nil)
 type EthAPI struct {
 	fx.In
 
-	Chain        *store.ChainStore
-	StateManager *stmgr.StateManager
+	Chain            *store.ChainStore
+	StateManager     *stmgr.StateManager
+	EthTxHashManager EthTxHashManager
+	MpoolAPI         MpoolAPI
 
 	EthModuleAPI
 	EthEventAPI
@@ -355,7 +357,7 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 		return nil, nil
 	}
 
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	c, err := a.EthTxHashManager.GetCidFromHash(*txHash)
 	if err != nil {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
@@ -414,7 +416,7 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		return nil, nil
 	}
 
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	c, err := a.EthTxHashManager.GetCidFromHash(*txHash)
 	// We fall out of the first condition and continue
 	if errors.Is(err, ethhashlookup.ErrNotFound) {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
@@ -498,7 +500,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 }
 
 func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+	c, err := a.EthTxHashManager.GetCidFromHash(txHash)
 	if err != nil {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
@@ -917,14 +919,14 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	return a.ethSendRawTransaction(ctx, rawTx, false)
+	return ethSendRawTransaction(ctx, a.MpoolAPI, a.EthTxHashManager, rawTx, false)
 }
 
-func (a *EthModule) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	return a.ethSendRawTransaction(ctx, rawTx, true)
+func (a *EthAPI) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return ethSendRawTransaction(ctx, a.MpoolAPI, a.EthTxHashManager, rawTx, true)
 }
 
-func (a *EthModule) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
+func ethSendRawTransaction(ctx context.Context, mpool MpoolAPI, ethTxHashManager EthTxHashManager, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
 	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -941,18 +943,18 @@ func (a *EthModule) ethSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	}
 
 	if untrusted {
-		if _, err = a.MpoolAPI.MpoolPushUntrusted(ctx, smsg); err != nil {
+		if _, err = mpool.MpoolPushUntrusted(ctx, smsg); err != nil {
 			return ethtypes.EmptyEthHash, err
 		}
 	} else {
-		if _, err = a.MpoolAPI.MpoolPush(ctx, smsg); err != nil {
+		if _, err = mpool.MpoolPush(ctx, smsg); err != nil {
 			return ethtypes.EmptyEthHash, err
 		}
 	}
 
 	// make it immediately available in the transaction hash lookup db, even though it will also
 	// eventually get there via the mpool
-	if err := a.EthTxHashManager.TransactionHashLookup.UpsertHash(txHash, smsg.Cid()); err != nil {
+	if err := ethTxHashManager.UpsertHash(txHash, smsg.Cid()); err != nil {
 		log.Errorf("error inserting tx mapping to db: %s", err)
 	}
 
