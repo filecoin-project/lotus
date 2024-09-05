@@ -25,7 +25,7 @@ type FullNode struct {
 	Chainstore    Chainstore
 	Fevm          FevmConfig
 	Events        EventsConfig
-	Index         IndexConfig
+	ChainIndexer  ChainIndexerConfig
 	FaultReporter FaultReporterConfig
 }
 
@@ -583,11 +583,6 @@ type EventsConfig struct {
 	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool
 
-	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
-	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-	DisableHistoricFilterAPI bool
-
 	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
 	// emitted by (smart contracts + built-in Actors).
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
@@ -612,27 +607,29 @@ type EventsConfig struct {
 	// the entire chain)
 	MaxFilterHeightRange uint64
 
-	// DatabasePath is the full path to a sqlite database that will be used to index actor events to
-	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
-	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-	// relative to the CWD (current working directory).
-	DatabasePath string
-
 	// Others, not implemented yet:
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
 	// Set upper bound on index size
 }
 
-type IndexConfig struct {
-	// EXPERIMENTAL FEATURE. USE WITH CAUTION
-	// EnableMsgIndex enables indexing of messages on chain.
-	EnableMsgIndex bool
+type ChainIndexerConfig struct {
+	// DisableChainIndexer disables the chain indexer which indexes tipsets, messages and events from chain state.
+	// Ideally, this should always be set to false as the Indexer is a crucial component for faster Lotus RPC responses.
+	// Only turn it off if you know what you are doing.
+	DisableChainIndexer bool
 
 	// GCRetentionDays defines the number of days for which data is retained in the Indexer.
 	// During the garbage collection (GC) process, data older than this retention period is pruned.
 	// A value of 0 disables GC, retaining all historical data.
+	// Default is 0 i.e. GC is disabled by default.
 	GCRetentionDays int64
+
+	// ReconcileEmptyIndex reconciles the index with the chain state even if the Index is empty.
+	// This is useful when the indexer is not running for a long time and the chain has progressed.
+	// This will cause the indexer to re-index the entire chain state available on the node.
+	// Defaults to false.
+	ReconcileEmptyIndex bool
 }
 
 type HarmonyDB struct {

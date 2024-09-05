@@ -253,14 +253,6 @@
   # env var: LOTUS_EVENTS_DISABLEREALTIMEFILTERAPI
   #DisableRealTimeFilterAPI = false
 
-  # DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
-  # that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-  # The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.
-  #
-  # type: bool
-  # env var: LOTUS_EVENTS_DISABLEHISTORICFILTERAPI
-  #DisableHistoricFilterAPI = false
-
   # EnableActorEventsAPI enables the Actor events API that enables clients to consume events
   # emitted by (smart contracts + built-in Actors).
   # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
@@ -300,31 +292,16 @@
   # env var: LOTUS_EVENTS_MAXFILTERHEIGHTRANGE
   #MaxFilterHeightRange = 2880
 
-  # DatabasePath is the full path to a sqlite database that will be used to index actor events to
-  # support the historic filter APIs. If the database does not exist it will be created. The directory containing
-  # the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-  # relative to the CWD (current working directory).
-  #
-  # type: string
-  # env var: LOTUS_EVENTS_DATABASEPATH
-  #DatabasePath = ""
 
+[ChainIndexer]
+  # env var: LOTUS_CHAININDEXER_DISABLECHAININDEXER
+  #DisableChainIndexer = false
 
-[Index]
-  # EXPERIMENTAL FEATURE. USE WITH CAUTION
-  # EnableMsgIndex enables indexing of messages on chain.
-  #
-  # type: bool
-  # env var: LOTUS_INDEX_ENABLEMSGINDEX
-  #EnableMsgIndex = false
+  # env var: LOTUS_CHAININDEXER_GCRETENTIONDAYS
+  #GCRetentionDays = 0
 
-  # GCRetentionEpochs defines the number of epochs for which data is retained in the Indexer.
-  # During the garbage collection (GC) process, data older than this retention period is pruned.
-  # A value of 0 disables GC, retaining all historical data.
-  #
-  # type: int64
-  # env var: LOTUS_INDEX_GCRETENTIONEPOCHS
-  #GCRetentionEpochs = 0
+  # env var: LOTUS_CHAININDEXER_RECONCILEEMPTYINDEX
+  #ReconcileEmptyIndex = false
 
 
 [FaultReporter]

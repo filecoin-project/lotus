@@ -21,15 +21,20 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func ChainIndexer(cfg config.IndexConfig) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
+func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
 	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
+		if cfg.DisableChainIndexer {
+			return nil, nil
+		}
+
 		sqlitePath, err := r.SqlitePath()
 		if err != nil {
 			return nil, err
 		}
 
 		// TODO Implement config driven auto-backfilling
-		chainIndexer, err := chainindex.NewSqliteIndexer(filepath.Join(sqlitePath, chainindex.DefaultDbFilename), cs, cfg.GCRetentionDays)
+		chainIndexer, err := chainindex.NewSqliteIndexer(filepath.Join(sqlitePath, chainindex.DefaultDbFilename),
+			cs, cfg.GCRetentionDays, cfg.ReconcileEmptyIndex)
 		if err != nil {
 			return nil, err
 		}

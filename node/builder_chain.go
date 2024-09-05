@@ -282,8 +282,10 @@ func ConfigFullNode(c interface{}) Option {
 			Override(ConsensusReporterKey, modules.RunConsensusFaultReporter(cfg.FaultReporter)),
 		),
 
-		Override(new(chainindex.Indexer), modules.ChainIndexer(cfg.Index)),
-		Override(InitChainIndexerKey, modules.InitChainIndexer),
+		Override(new(chainindex.Indexer), modules.ChainIndexer(cfg.ChainIndexer)),
+		If(!cfg.ChainIndexer.DisableChainIndexer,
+			Override(InitChainIndexerKey, modules.InitChainIndexer),
+		),
 	)
 }
 

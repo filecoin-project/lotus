@@ -89,12 +89,16 @@ func DefaultFullNode() *FullNode {
 		},
 		Events: EventsConfig{
 			DisableRealTimeFilterAPI: false,
-			DisableHistoricFilterAPI: false,
 			EnableActorEventsAPI:     false,
 			FilterTTL:                Duration(time.Hour * 1),
 			MaxFilters:               100,
 			MaxFilterResults:         10000,
 			MaxFilterHeightRange:     2880, // conservative limit of one day
+		},
+		ChainIndexer: ChainIndexerConfig{
+			DisableChainIndexer: false,
+			GCRetentionDays:     0,
+			ReconcileEmptyIndex: false,
 		},
 	}
 }

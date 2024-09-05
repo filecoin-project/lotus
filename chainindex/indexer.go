@@ -53,7 +53,8 @@ type SqliteIndexer struct {
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
 
-	gcRetentionDays int64
+	gcRetentionDays     int64
+	reconcileEmptyIndex bool
 
 	mu           sync.Mutex
 	updateSubs   map[uint64]*updateSub
@@ -63,7 +64,7 @@ type SqliteIndexer struct {
 	closed  bool
 }
 
-func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64) (si *SqliteIndexer, err error) {
+func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64, reconcileEmptyIndex bool) (si *SqliteIndexer, err error) {
 	db, _, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
@@ -84,13 +85,14 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64) (si *Sq
 	}
 
 	si = &SqliteIndexer{
-		ctx:             ctx,
-		cancel:          cancel,
-		db:              db,
-		cs:              cs,
-		updateSubs:      make(map[uint64]*updateSub),
-		subIdCounter:    0,
-		gcRetentionDays: gcRetentionDays,
+		ctx:                 ctx,
+		cancel:              cancel,
+		db:                  db,
+		cs:                  cs,
+		updateSubs:          make(map[uint64]*updateSub),
+		subIdCounter:        0,
+		gcRetentionDays:     gcRetentionDays,
+		reconcileEmptyIndex: reconcileEmptyIndex,
 	}
 	if err = si.prepareStatements(); err != nil {
 		return nil, xerrors.Errorf("failed to prepare statements: %w", err)
@@ -119,14 +121,14 @@ func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddr
 //
 // This function is crucial for maintaining index integrity, especially after chain reorgs.
 // It ensures that the index accurately reflects the current state of the blockchain.
-func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error {
+func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.TipSet) error {
 	si.closeLk.RLock()
 	if si.closed {
 		return ErrClosed
 	}
 	si.closeLk.RUnlock()
 
-	if currHead == nil {
+	if head == nil {
 		return nil
 	}
 
@@ -147,13 +149,18 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 			return xerrors.Errorf("failed to find boundary epoch: %w", err)
 		}
 
-		boundaryEpoch := abi.ChainEpoch(result)
+		reconciliationEpoch := abi.ChainEpoch(result)
 
 		var tipsetStack []*types.TipSet
 
-		curTs := currHead
-		log.Infof("Starting chain reconciliation from height %d", currHead.Height())
-		for curTs != nil && curTs.Height() >= boundaryEpoch {
+		curTs := head
+		log.Infof("Starting chain reconciliation from height %d", head.Height())
+
+		// The goal here is to walk the canonical chain backwards from head until we find a matching non-reverted tipset
+		// in the db so we know where to start reconciliation from
+		// All tipsets that exist in the DB but not in the canonical chain are then marked as reverted
+		// All tpsets that exist in the canonical chain but not in the db are then applied
+		for curTs != nil && curTs.Height() >= reconciliationEpoch {
 			tsKeyCidBytes, err := toTipsetKeyCidBytes(curTs)
 			if err != nil {
 				return xerrors.Errorf("failed to compute tipset cid: %w", err)
@@ -167,8 +174,8 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 
 			if exists {
 				// found it!
-				boundaryEpoch = curTs.Height() + 1
-				log.Infof("Found matching tipset at height %d, setting boundary epoch to %d", curTs.Height(), boundaryEpoch)
+				reconciliationEpoch = curTs.Height() + 1
+				log.Infof("Found matching tipset at height %d, setting reconciliation epoch to %d", curTs.Height(), reconciliationEpoch)
 				break
 			}
 			tipsetStack = append(tipsetStack, curTs)
@@ -185,9 +192,9 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, currHead *types
 			log.Warn("ReconcileWithChain reached genesis without finding matching tipset")
 		}
 
-		// mark all tipsets from the boundary epoch in the Index as reverted as they are not in the current canonical chain
-		log.Infof("Marking tipsets as reverted from height %d", boundaryEpoch)
-		_, err = tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(boundaryEpoch))
+		// mark all tipsets from the reconciliation epoch onwards in the Index as reverted as they are not in the current canonical chain
+		log.Infof("Marking tipsets as reverted from height %d", reconciliationEpoch)
+		_, err = tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch))
 		if err != nil {
 			return xerrors.Errorf("failed to mark tipsets as reverted: %w", err)
 		}

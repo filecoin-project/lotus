@@ -122,14 +122,6 @@ your node if metadata log is disabled`,
 The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
 		},
 		{
-			Name: "DisableHistoricFilterAPI",
-			Type: "bool",
-
-			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
-that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-The API is enabled when Fevm.EnableEthRPC or EnableActorEventsAPI is true, but can be disabled selectively with this flag.`,
-		},
-		{
 			Name: "EnableActorEventsAPI",
 			Type: "bool",
 
@@ -167,15 +159,6 @@ of filters per connection.`,
 
 			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
 the entire chain)`,
-		},
-		{
-			Name: "DatabasePath",
-			Type: "string",
-
-			Comment: `DatabasePath is the full path to a sqlite database that will be used to index actor events to
-support the historic filter APIs. If the database does not exist it will be created. The directory containing
-the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-relative to the CWD (current working directory).`,
 		},
 	},
 	"FaultReporterConfig": {
@@ -337,19 +320,21 @@ in a cluster. Only 1 is required`,
 	},
 	"IndexConfig": {
 		{
-			Name: "EnableMsgIndex",
+			Name: "DisableChainIndexer",
 			Type: "bool",
 
-			Comment: `EXPERIMENTAL FEATURE. USE WITH CAUTION
-EnableMsgIndex enables indexing of messages on chain.`,
+			Comment: `DisableChainIndexer disables the chain indexer which indexes tipsets, messages and events from chain state.
+Ideally, this should always be set to false as the Indexer is a crucial component for faster Lotus RPC responses.
+Only turn it off if you know what you are doing.`,
 		},
 		{
-			Name: "GCRetentionEpochs",
+			Name: "GCRetentionDays",
 			Type: "int64",
 
-			Comment: `GCRetentionEpochs defines the number of epochs for which data is retained in the Indexer.
+			Comment: `GCRetentionDays defines the number of days for which data is retained in the Indexer.
 During the garbage collection (GC) process, data older than this retention period is pruned.
-A value of 0 disables GC, retaining all historical data.`,
+A value of 0 disables GC, retaining all historical data.
+Default is 0 i.e. GC is disabled by default.`,
 		},
 	},
 	"JournalConfig": {
