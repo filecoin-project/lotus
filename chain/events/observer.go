@@ -244,22 +244,39 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 	return nil
 }
 
-// ObserveAndBlock registers the observer and returns the current tipset along with a handle function.
-// The observer is guaranteed to observe events starting at this tipset.
-// The returned handle function should be called by the client when it's ready to receive updates.
+// ObserveAndBlock registers the observer and returns the current tipset along with an unlock function.
 //
-// This function should only be called by the client after the observer has been started.
-// Note that the Observer will block all clients from receiving tipset updates until the handle is called.
-func (o *observer) ObserveAndBlock(obs TipSetObserver) (*types.TipSet, func()) {
+// This method guarantees that the observer will receive tipset updates starting from the returned tipset.
+// It blocks all tipset updates for all clients until the returned unlock function is called.
+//
+// The typical usage pattern is:
+// 1. Call ObserveAndBlock to register the observer
+// 2. Perform any necessary initialization using the returned current tipset
+// 3. Call the unlock function to start receiving updates
+//
+// Important notes:
+// - This method should only be called after the observer has been started
+// - The unlock function must be called to prevent blocking of tipset updates for all registered observers
+// - This method returns an error if the observer hasn't started yet
+//
+// Returns:
+// - *types.TipSet: The current tipset at the time of registration
+// - func(): An unlock function that must be called to start receiving updates
+// - error: An error if the observer hasn't started yet
+func (o *observer) ObserveAndBlock(obs TipSetObserver) (*types.TipSet, func(), error) {
 	o.lk.Lock()
-	o.observers = append(o.observers, obs)
 	currentHead := o.head
+	if currentHead == nil {
+		o.lk.Unlock()
+		return nil, func() {}, xerrors.New("observer not started")
+	}
 
+	o.observers = append(o.observers, obs)
 	unlockHandle := func() {
 		o.lk.Unlock()
 	}
 
-	return currentHead, unlockHandle
+	return currentHead, unlockHandle, nil
 }
 
 // Observe registers the observer, and returns the current tipset. The observer is guaranteed to

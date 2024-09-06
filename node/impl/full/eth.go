@@ -360,7 +360,8 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		} else if err != nil {
-			return nil, xerrors.Errorf("database error: %w", err)
+			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
+			return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
 		}
 	}
 
@@ -425,15 +426,13 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		} else if err != nil {
-			return nil, xerrors.Errorf("database error: %w", err)
+			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
+			return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
 		}
 	}
 
-	// We fall out of the first condition and continue
 	if errors.Is(err, chainindex.ErrNotFound) {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-	} else if err != nil {
-		return nil, xerrors.Errorf("database error: %w", err)
 	} else if a.ChainIndexer != nil {
 		return &c, nil
 	}
@@ -520,7 +519,8 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		} else if err != nil {
-			return nil, xerrors.Errorf("database error: %w", err)
+			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
+			return nil, xerrors.Errorf("failed to lookup transaction hash %s in chain indexer: %w", txHash.String(), err)
 		}
 	}
 
@@ -1575,19 +1575,18 @@ func (e *EthEventHandler) getEthLogsForBlockAndTransaction(ctx context.Context, 
 func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get events for filter: %w", err)
 	}
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
 }
 
-func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context,
-	filterSpec *ethtypes.EthFilterSpec) ([]*chainindex.CollectedEvent, error) {
+func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) ([]*chainindex.CollectedEvent, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
 
 	if e.EventFilterManager.ChainIndexer == nil {
-		return nil, xerrors.Errorf("cannot use eth_get_logs if historical event index is disabled")
+		return nil, xerrors.Errorf("cannot use `eth_get_logs` if chain indexer is disabled")
 	}
 
 	pf, err := e.parseEthFilterSpec(filterSpec)
@@ -1603,12 +1602,12 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context,
 			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
 		if ts.Height() >= head.Height() {
-			return nil, xerrors.Errorf("cannot ask for events for a tipset >= head")
+			return nil, xerrors.New("cannot ask for events for a tipset >= head")
 		}
 	}
 
-	if pf.maxHeight >= head.Height() {
-		return nil, xerrors.Errorf("cannot ask for events for a tipset >= head")
+	if pf.minHeight >= head.Height() || pf.maxHeight >= head.Height() {
+		return nil, xerrors.New("cannot ask for events for a tipset >= head")
 	}
 
 	ef := &chainindex.EventFilter{
@@ -1622,7 +1621,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context,
 
 	ces, err := e.EventFilterManager.ChainIndexer.GetEventsForFilter(ctx, ef, true)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get events for filter: %w", err)
+		return nil, xerrors.Errorf("failed to get events for filter from chain indexer: %w", err)
 	}
 
 	return ces, nil

@@ -76,8 +76,14 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 			}
 
 			// Tipset listener
-			tipset, unlockObserver := ev.ObserveAndBlock(indexer)
-			if err := indexer.ReconcileWithChain(ctx, tipset); err != nil {
+
+			// `ObserveAndBlock` returns the current head and guarantees that it will call the observer with all future tipsets
+			head, unlockObserver, err := ev.ObserveAndBlock(indexer)
+			if err != nil {
+				return xerrors.Errorf("error while observing tipsets: %w", err)
+			}
+			if err := indexer.ReconcileWithChain(ctx, head); err != nil {
+				unlockObserver()
 				return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
 			}
 			unlockObserver()
