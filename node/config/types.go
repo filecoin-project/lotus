@@ -614,26 +614,47 @@ type EventsConfig struct {
 }
 
 type ChainIndexerConfig struct {
-	// DisableChainIndexer disables the chain indexer which indexes tipsets, messages and events from chain state.
-	// Ideally, this should always be set to false as the Indexer is a crucial component for faster Lotus RPC responses.
-	// Only turn it off if you know what you are doing.
-	DisableChainIndexer bool
+	// DisableIndexer controls whether the chain indexer is active.
+	// The chain indexer is responsible for indexing tipsets, messages, and events from the chain state.
+	// It is a crucial component for optimizing Lotus RPC response times.
+	//
+	// Default: false (indexer is enabled)
+	//
+	// Setting this to true will disable the indexer, which may significantly impact RPC performance.
+	// It is strongly recommended to keep this set to false unless you have a specific reason to disable it
+	// and fully understand the implications.
+	DisableIndexer bool
 
-	// GCRetentionDays defines the number of days for which data is retained in the Indexer.
-	// During the garbage collection (GC) process, data older than this retention period is pruned.
-	// A value of 0 disables GC, retaining all historical data.
-	// Default is 0 i.e. GC is disabled by default.
+	// GCRetentionDays specifies the duration (in days) for which data is retained in the Indexer.
+	// The garbage collection (GC) process removes data older than this retention period.
+	// Setting this to 0 disables GC, preserving all historical data indefinitely.
+	//
+	// Default: 0 (GC disabled)
 	GCRetentionDays int64
 
-	// ReconcileEmptyIndex reconciles the index with the chain state even if the Index is empty.
-	// This is useful when the indexer is not running for a long time and the chain has progressed.
-	// This will cause the indexer to re-index the entire chain state available on the node.
-	// Defaults to false.
+	// ReconcileEmptyIndex determines whether to reconcile the index with the chain state
+	// during startup when the index is empty.
+	//
+	// When set to true:
+	// - On startup, if the index is empty, the indexer will index the available
+	//   chain state on the node albeit within the `MaxReconcileTipsets` limit.
+	//
+	// When set to false:
+	// - The indexer will not automatically re-index the chain state on startup if the index is empty.
+	//
+	// Default: false
+	//
+	// Note: The number of tipsets reconciled (i.e. indexed) during this process can be
+	// controlled using the `MaxReconcileTipsets` option.
 	ReconcileEmptyIndex bool
 
-	// MaxReconcileTipsets limits the number of tipsets to reconcile with the chain.
-	// This is useful to limit the amount of disk space used by the indexer.
-	// Defaults to 3 * epochsPerDay i.e. 3 days of chain history.
+	// MaxReconcileTipsets limits the number of tipsets to reconcile with the chain during startup.
+	// It represents the maximum number of tipsets to index from the chain state that are absent in the index.
+	//
+	// Default: 3 * epochsPerDay (approximately 3 days of chain history)
+	//
+	// Note: Setting this value too low may result in incomplete indexing, while setting it too high
+	// may increase startup time.
 	MaxReconcileTipsets int
 }
 

@@ -96,7 +96,7 @@ func DefaultFullNode() *FullNode {
 			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
 		ChainIndexer: ChainIndexerConfig{
-			DisableChainIndexer: false,
+			DisableIndexer:      false,
 			GCRetentionDays:     0,
 			ReconcileEmptyIndex: false,
 			MaxReconcileTipsets: 3 * builtin.EpochsInDay,
