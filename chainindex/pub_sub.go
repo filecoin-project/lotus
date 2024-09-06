@@ -12,7 +12,7 @@ type updateSub struct {
 type chainIndexUpdated struct{}
 
 func (si *SqliteIndexer) subscribeUpdates() (chan chainIndexUpdated, func()) {
-	subCtx, subCancel := context.WithCancel(context.Background())
+	subCtx, subCancel := context.WithCancel(si.ctx)
 	ch := make(chan chainIndexUpdated)
 
 	si.mu.Lock()

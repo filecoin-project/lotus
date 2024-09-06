@@ -89,7 +89,7 @@ func (si *SqliteIndexer) cleanupRevertedTipsets(ctx context.Context) {
 	}
 
 	// remove all entries from the `tipsets` table where `reverted=true` and height is < finalEpoch
-	// cacade delete based on foreign key constraints takes care of cleaning up the other tables
+	// cascade delete based on foreign key constraints takes care of cleaning up the other tables
 	res, err := si.removeRevertedTipsetsBeforeHeightStmt.ExecContext(ctx, finalEpoch)
 	if err != nil {
 		log.Errorw("failed to remove reverted tipsets before height", "height", finalEpoch, "error", err)

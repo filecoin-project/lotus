@@ -35,17 +35,17 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	// this makes event inserts idempotent
 	msgTsKeyCidBytes, err := toTipsetKeyCidBytes(msgTs)
 	if err != nil {
-		return xerrors.Errorf("error getting tipset key cid: %w", err)
+		return xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
 	// if we've already indexed events for this tipset, mark them as unreverted and return
 	res, err := tx.Stmt(si.updateEventsToNonRevertedStmt).ExecContext(ctx, msgTsKeyCidBytes)
 	if err != nil {
-		return xerrors.Errorf("error unreverting events for tipset: %w", err)
+		return xerrors.Errorf("failed to unrevert events for tipset: %w", err)
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return xerrors.Errorf("error unreverting events for tipset: %w", err)
+		return xerrors.Errorf("failed to get rows affected by unreverting events for tipset: %w", err)
 	}
 	if rows > 0 {
 		return nil
@@ -53,7 +53,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 
 	ems, err := si.loadExecutedMessages(ctx, msgTs, executionTs)
 	if err != nil {
-		return xerrors.Errorf("error loading executed messages: %w", err)
+		return xerrors.Errorf("failed to load executed messages: %w", err)
 	}
 	eventCount := 0
 	addressLookups := make(map[abi.ActorID]address.Address)
@@ -64,7 +64,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 		// read message id for this message cid and tipset key cid
 		var messageID int64
 		if err := tx.Stmt(si.getMsgIdForMsgCidAndTipsetStmt).QueryRow(msgCidBytes, msgTsKeyCidBytes).Scan(&messageID); err != nil {
-			return xerrors.Errorf("error getting message id for message cid and tipset key cid: %w", err)
+			return xerrors.Errorf("failed to get message id for message cid and tipset key cid: %w", err)
 		}
 		if messageID == 0 {
 			return xerrors.Errorf("message id not found for message cid %s and tipset key cid %s", em.msg.Cid(), msgTs.Key())
@@ -86,13 +86,13 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 			// Insert event into events table
 			eventResult, err := tx.Stmt(si.insertEventStmt).Exec(messageID, eventCount, addr.Bytes(), 0)
 			if err != nil {
-				return xerrors.Errorf("error inserting event: %w", err)
+				return xerrors.Errorf("failed to insert event: %w", err)
 			}
 
 			// Get the event_id of the inserted event
 			eventID, err := eventResult.LastInsertId()
 			if err != nil {
-				return xerrors.Errorf("error getting last insert id for event: %w", err)
+				return xerrors.Errorf("failed to get last insert id for event: %w", err)
 			}
 
 			// Insert event entries
@@ -106,7 +106,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 					entry.Value,
 				)
 				if err != nil {
-					return xerrors.Errorf("error inserting event entry: %w", err)
+					return xerrors.Errorf("failed to insert event entry: %w", err)
 				}
 			}
 			eventCount++
@@ -221,7 +221,6 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 }
 
 // getTipsetKeyCidByHeight retrieves the tipset key CID for a given height.
-// It returns nil if no tipset is found at the exact height.
 func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi.ChainEpoch) ([]byte, error) {
 	ts, err := si.cs.GetTipsetByHeight(ctx, height, nil, false)
 	if err != nil {
@@ -229,14 +228,13 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 	}
 
 	if ts.Height() != height {
-		return nil, nil // No tipset at exact height
+		return nil, ErrNotFound // No tipset at exact height
 	}
 
 	return toTipsetKeyCidBytes(ts)
 }
 
 // GetEventsForFilter returns matching events for the given filter
-// prefillFilter fills a filter's collection of events from the historic index
 // Returns nil, nil if the filter has no matching events
 // Returns nil, ErrNotFound if the filter has no matching events and the tipset is not indexed
 // Returns nil, err for all other errors
@@ -257,7 +255,7 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 	if err == sql.ErrNoRows {
 		// did not find events, but may be in head, so wait for it and check again
 		if err := si.waitTillHeadIndexed(ctx); err != nil {
-			return nil, xerrors.Errorf("error waiting for head to be indexed: %w", err)
+			return nil, xerrors.Errorf("failed to wait for head to be indexed: %w", err)
 		}
 		q, err = stmt.QueryContext(ctx, values...)
 	}
@@ -387,7 +385,7 @@ func (si *SqliteIndexer) sanityCheckFilter(ctx context.Context, f *EventFilter) 
 	if f.TipsetCid != cid.Undef {
 		ts, err := si.cs.GetTipSetByCid(ctx, f.TipsetCid)
 		if err != nil {
-			return xerrors.Errorf("error getting tipset by cid: %w", err)
+			return xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
 		if ts.Height() >= head.Height() {
 			return xerrors.New("cannot ask for events for a tipset >= head")

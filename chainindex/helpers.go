@@ -25,9 +25,11 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 	}
 	defer func() {
 		if closeErr := si.Close(); closeErr != nil {
-			log.Errorf("failed to close sqlite indexer: %v", closeErr)
+			log.Errorf("failed to close sqlite indexer: %s", closeErr)
 		}
 	}()
+
+	totalIndexed := 0
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
 		head := cs.GetHeaviestTipSet()
@@ -40,6 +42,7 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 				log.Infof("stopping import after %d tipsets with final error: %s", startHeight-curTs.Height(), err)
 				break
 			}
+			totalIndexed++
 
 			curTs, err = cs.GetTipSetFromKey(ctx, curTs.Parents())
 			if err != nil {
@@ -53,12 +56,11 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 		return xerrors.Errorf("failed to populate from snapshot: %w", err)
 	}
 
-	log.Infof("Successfully populated chainindex from snapshot")
+	log.Infof("Successfully populated chainindex from snapshot with %d tipsets", totalIndexed)
 	return nil
 }
 
 func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer Indexer) {
-
 	for ctx.Err() == nil {
 		select {
 		case <-ctx.Done():
@@ -72,7 +74,7 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer
 			}
 			err := indexer.IndexSignedMessage(ctx, u.Message)
 			if err != nil {
-				log.Errorw("error indexing signed Mpool message", "error", err)
+				log.Errorw("failed to index signed Mpool message", "error", err)
 			}
 		}
 	}
@@ -82,7 +84,7 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer
 func toTipsetKeyCidBytes(ts *types.TipSet) ([]byte, error) {
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {
-		return nil, xerrors.Errorf("error getting tipset key cid: %w", err)
+		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 	return tsKeyCid.Bytes(), nil
 }
