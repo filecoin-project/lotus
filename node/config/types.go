@@ -71,7 +71,7 @@ type ApisConfig struct {
 }
 
 type JournalConfig struct {
-	//Events of the form: "system1:event1,system1:event2[,...]"
+	// Events of the form: "system1:event1,system1:event2[,...]"
 	DisabledEvents string
 }
 
@@ -632,6 +632,12 @@ type IndexConfig struct {
 	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
 	EnableMsgIndex bool
+
+	// EnableAutomaticBackFillTxIndex enables automatic index back-filling
+	EnableAutomaticBackFillTxIndex bool
+
+	// Maximum number of blocks to process during a single back-fill operation
+	MaxAutomaticBackFillTxIndexHeight uint64
 }
 
 type HarmonyDB struct {

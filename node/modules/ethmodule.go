@@ -9,10 +9,8 @@ import (
 	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -23,9 +21,10 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
+	"golang.org/x/xerrors"
 )
 
-func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler) (*full.EthModule, error) {
+func EthModuleAPI(cfg config.FevmConfig, enableAutomaticBackFill bool, maxAutomaticBackFillBlocks uint64) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler) (*full.EthModule, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI, ethEventHandler *full.EthEventHandler) (*full.EthModule, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
@@ -53,6 +52,7 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 
 		ethTxHashManager := full.EthTxHashManager{
 			StateAPI:              stateapi,
+			ChainAPI:              chainapi,
 			TransactionHashLookup: transactionHashLookup,
 		}
 
@@ -82,7 +82,16 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 				}
 
 				// Tipset listener
-				_ = ev.Observe(&ethTxHashManager)
+				head := ev.Observe(&ethTxHashManager)
+
+				if enableAutomaticBackFill { // If the db exists and back-fill is enabled, we'll back-fill missing entries
+					go func() { // since there is only one DB connection, so we can do this in a goroutine without worrying about concurrent write issues
+						err = ethTxHashManager.FillIndexGap(mctx, head, abi.ChainEpoch(maxAutomaticBackFillBlocks))
+						if err != nil {
+							log.Warnf("error when back-filling transaction index gap: %w", err)
+						}
+					}()
+				}
 
 				ch, err := mp.Updates(ctx)
 				if err != nil {

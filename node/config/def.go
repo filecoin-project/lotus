@@ -97,6 +97,10 @@ func DefaultFullNode() *FullNode {
 			MaxFilterResults:         10000,
 			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
+		Index: IndexConfig{
+			EnableAutomaticBackFillTxIndex:    false,
+			MaxAutomaticBackFillTxIndexHeight: 5760, // total epochs in 2 days, (30 seconds per epoch)
+		},
 	}
 }
 
