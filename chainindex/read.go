@@ -77,10 +77,10 @@ func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*M
 func (si *SqliteIndexer) readWithHeadIndexWait(ctx context.Context, readFunc func() error) error {
 	err := readFunc()
 	if err == sql.ErrNoRows {
-		if err := si.waitTillHeadIndexed(ctx); err != nil {
-			return xerrors.Errorf("error waiting for head to be indexed: %w", err)
-		}
 		// not found, but may be in latest head, so wait for it and check again
+		if err := si.waitTillHeadIndexed(ctx); err != nil {
+			return xerrors.Errorf("failed while waiting for head to be indexed: %w", err)
+		}
 		err = readFunc()
 	}
 
@@ -98,15 +98,6 @@ func (si *SqliteIndexer) queryMsgInfo(ctx context.Context, messageCid cid.Cid, t
 	return si.getNonRevertedMsgInfoStmt.QueryRowContext(ctx, messageCid.Bytes()).Scan(tipsetKeyCidBytes, height)
 }
 
-func (si *SqliteIndexer) isTipsetIndexed(ctx context.Context, tsKeyCid []byte) (bool, error) {
-	var exists bool
-	err := si.hasTipsetStmt.QueryRowContext(ctx, tsKeyCid).Scan(&exists)
-	if err != nil {
-		return false, xerrors.Errorf("error checking if tipset exists: %w", err)
-	}
-	return exists, nil
-}
-
 func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, headIndexedWaitTimeout)
 	defer cancel()
@@ -114,12 +105,12 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 	head := si.cs.GetHeaviestTipSet()
 	headTsKeyCidBytes, err := toTipsetKeyCidBytes(head)
 	if err != nil {
-		return xerrors.Errorf("error getting tipset key cid: %w", err)
+		return xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
 	// is it already indexed?
-	if exists, err := si.isTipsetIndexed(ctx, headTsKeyCidBytes); err != nil {
-		return xerrors.Errorf("error checking if tipset exists: %w", err)
+	if exists, err := si.hasNonRevertedTipset(ctx, headTsKeyCidBytes); err != nil {
+		return xerrors.Errorf("failed to check if tipset exists: %w", err)
 	} else if exists {
 		return nil
 	}
@@ -129,11 +120,10 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 	defer unsubFn()
 
 	for ctx.Err() == nil {
-		exists, err := si.isTipsetIndexed(ctx, headTsKeyCidBytes)
+		exists, err := si.hasNonRevertedTipset(ctx, headTsKeyCidBytes)
 		if err != nil {
-			return xerrors.Errorf("error checking if tipset exists: %w", err)
-		}
-		if exists {
+			return xerrors.Errorf("failed to check if tipset exists: %w", err)
+		} else if exists {
 			return nil
 		}
 
@@ -145,4 +135,20 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 		}
 	}
 	return ctx.Err()
+}
+
+func (si *SqliteIndexer) hasNonRevertedTipset(ctx context.Context, tsKeyCidBytes []byte) (bool, error) {
+	var exists bool
+	if err := si.hasNonRevertedTipsetStmt.QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
+		return false, xerrors.Errorf("failed to check if tipset is indexed and non-reverted: %w", err)
+	}
+	return exists, nil
+}
+
+func (si *SqliteIndexer) isTipsetIndexed(ctx context.Context, tsKeyCidBytes []byte) (bool, error) {
+	var exists bool
+	if err := si.hasTipsetStmt.QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
+		return false, xerrors.Errorf("failed to check if tipset is indexed: %w", err)
+	}
+	return exists, nil
 }

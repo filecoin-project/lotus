@@ -285,46 +285,57 @@ func (si *SqliteIndexer) prepareStatements() error {
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "insertEthTxHashStmt", err)
 	}
+
 	si.getNonRevertedMsgInfoStmt, err = si.db.Prepare(stmtGetNonRevertedMessageInfo)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "getNonRevertedMsgInfoStmt", err)
 	}
+
 	si.getMsgCidFromEthHashStmt, err = si.db.Prepare(stmtGetMsgCidFromEthHash)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "getMsgCidFromEthHashStmt", err)
 	}
+
 	si.insertTipsetMessageStmt, err = si.db.Prepare(stmtInsertTipsetMessage)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "insertTipsetMessageStmt", err)
 	}
+
 	si.hasTipsetStmt, err = si.db.Prepare(stmtHasTipset)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "hasTipsetStmt", err)
 	}
+
 	si.updateTipsetToNonRevertedStmt, err = si.db.Prepare(stmtUpdateTipsetToNonReverted)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetToNonRevertedStmt", err)
 	}
+
 	si.updateTipsetToRevertedStmt, err = si.db.Prepare(stmtUpdateTipsetToReverted)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetToRevertedStmt", err)
 	}
+
 	si.getMaxNonRevertedTipsetStmt, err = si.db.Prepare(stmtGetMaxNonRevertedTipset)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "getMaxNonRevertedTipsetStmt", err)
 	}
+
 	si.removeRevertedTipsetsBeforeHeightStmt, err = si.db.Prepare(stmtRemoveRevertedTipsetsBeforeHeight)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "removeRevertedTipsetsBeforeHeightStmt", err)
 	}
+
 	si.removeTipsetsBeforeHeightStmt, err = si.db.Prepare(stmtRemoveTipsetsBeforeHeight)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "removeTipsetsBeforeHeightStmt", err)
 	}
+
 	si.removeEthHashesOlderThanStmt, err = si.db.Prepare(stmtRemoveEthHashesOlderThan)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "removeEthHashesOlderThanStmt", err)
 	}
+
 	si.updateTipsetsToRevertedFromHeightStmt, err = si.db.Prepare(stmtUpdateTipsetsToRevertedFromHeight)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetsToRevertedFromHeightStmt", err)
@@ -369,6 +380,7 @@ func (si *SqliteIndexer) prepareStatements() error {
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "insertEventStmt", err)
 	}
+
 	si.insertEventEntryStmt, err = si.db.Prepare(stmtInsertEventEntry)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "insertEventEntryStmt", err)
