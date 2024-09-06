@@ -64,9 +64,9 @@ func TestWindowPostDispute(t *testing.T) {
 	ens.InterconnectAll().BeginMining(blocktime, &chainMiner)
 
 	// Give the chain miner enough sectors to win every block.
-	chainMiner.PledgeSectors(ctx, 10, 0, nil)
+	chainMiner.PledgeSectors(ctx, -1, 10, 0, nil)
 	// And the evil one 1 sector. No cookie for you.
-	evilMiner.PledgeSectors(ctx, 1, 0, nil)
+	evilMiner.PledgeSectors(ctx, -1, 1, 0, nil)
 
 	// Let the evil miner's sectors gain power.
 	evilMinerAddr, err := evilMiner.ActorAddress(ctx)
@@ -260,7 +260,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	build.Clock.Sleep(time.Second)
 
-	miner.PledgeSectors(ctx, 10, 0, nil)
+	miner.PledgeSectors(ctx, -1, 10, 0, nil)
 
 	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)

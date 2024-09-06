@@ -56,7 +56,7 @@ func TestTerminate(t *testing.T) {
 
 	t.Log("Seal a sector")
 
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 
 	t.Log("wait for power")
 

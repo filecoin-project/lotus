@@ -5,10 +5,12 @@ import (
 
 	"golang.org/x/xerrors"
 
+	abi "github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-func (m *Sealing) PledgeSector(ctx context.Context) (storiface.SectorRef, error) {
+func (m *Sealing) PledgeSector(ctx context.Context, spt abi.RegisteredSealProof) (storiface.SectorRef, error) {
 	m.startupWait.Wait()
 
 	m.inputLk.Lock()
@@ -25,9 +27,10 @@ func (m *Sealing) PledgeSector(ctx context.Context) (storiface.SectorRef, error)
 		}
 	}
 
-	spt, err := m.currentSealProof(ctx)
-	if err != nil {
-		return storiface.SectorRef{}, xerrors.Errorf("getting seal proof type: %w", err)
+	if spt == -1 {
+		if spt, err = m.currentSealProof(ctx); err != nil {
+			return storiface.SectorRef{}, xerrors.Errorf("getting seal proof type: %w", err)
+		}
 	}
 
 	sid, err := m.createSector(ctx, cfg, spt)

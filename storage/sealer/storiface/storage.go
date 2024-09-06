@@ -83,6 +83,7 @@ type Sealer interface {
 
 	SealCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids SectorCids) (Commit1Out, error)
 	SealCommit2(ctx context.Context, sector SectorRef, c1o Commit1Out) (Proof, error)
+	SealCommit2CircuitProofs(ctx context.Context, sector SectorRef, c1o Commit1Out) (Proof, error)
 
 	FinalizeSector(ctx context.Context, sector SectorRef) error
 

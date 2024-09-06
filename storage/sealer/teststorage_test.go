@@ -61,6 +61,10 @@ func (t *testExec) SealCommit2(ctx context.Context, sector storiface.SectorRef, 
 	panic("implement me")
 }
 
+func (t *testExec) SealCommit2CircuitProofs(ctx context.Context, sector storiface.SectorRef, c1o storiface.Commit1Out) (storiface.Proof, error) {
+	panic("implement me")
+}
+
 func (t *testExec) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
 	panic("implement me")
 }

@@ -96,7 +96,7 @@ func TestDeadlineToggling(t *testing.T) {
 
 	// pledge sectors on C, go through a PP, check for power
 	{
-		minerC.PledgeSectors(ctx, sectorsC, 0, nil)
+		minerC.PledgeSectors(ctx, -1, sectorsC, 0, nil)
 
 		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err := client.StateMinerProvingDeadline(ctx, maddrC, types.EmptyTSK)
@@ -167,10 +167,10 @@ func TestDeadlineToggling(t *testing.T) {
 	checkMiner(maddrE, types.NewInt(0), false, types.EmptyTSK)
 
 	// pledge sectors on minerB/minerD, stop post on minerC
-	minerB.PledgeSectors(ctx, sectorsB, 0, nil)
+	minerB.PledgeSectors(ctx, -1, sectorsB, 0, nil)
 	checkMiner(maddrB, types.NewInt(0), true, types.EmptyTSK)
 
-	minerD.PledgeSectors(ctx, sectorsD, 0, nil)
+	minerD.PledgeSectors(ctx, -1, sectorsD, 0, nil)
 	checkMiner(maddrD, types.NewInt(0), true, types.EmptyTSK)
 
 	minerC.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).Fail()

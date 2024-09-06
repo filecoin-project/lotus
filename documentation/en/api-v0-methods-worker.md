@@ -35,6 +35,7 @@
 * [Seal](#Seal)
   * [SealCommit1](#SealCommit1)
   * [SealCommit2](#SealCommit2)
+  * [SealCommit2CircuitProofs](#SealCommit2CircuitProofs)
   * [SealPreCommit1](#SealPreCommit1)
   * [SealPreCommit2](#SealPreCommit2)
 * [Set](#Set)
@@ -2649,6 +2650,36 @@ Response:
 ```
 
 ### SealCommit2
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  "Bw=="
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+### SealCommit2CircuitProofs
 
 
 Perms: admin

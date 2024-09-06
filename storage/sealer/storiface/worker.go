@@ -138,6 +138,7 @@ type WorkerCalls interface {
 	SealPreCommit2(ctx context.Context, sector SectorRef, pc1o PreCommit1Out) (CallID, error)
 	SealCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids SectorCids) (CallID, error)
 	SealCommit2(ctx context.Context, sector SectorRef, c1o Commit1Out) (CallID, error)
+	SealCommit2CircuitProofs(ctx context.Context, sector SectorRef, c1o Commit1Out) (CallID, error)
 	FinalizeSector(ctx context.Context, sector SectorRef) (CallID, error)
 	FinalizeReplicaUpdate(ctx context.Context, sector SectorRef) (CallID, error)
 	ReleaseUnsealed(ctx context.Context, sector SectorRef, safeToFree []Range) (CallID, error)
@@ -230,6 +231,7 @@ type WorkerReturn interface {
 	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed SectorCids, err *CallError) error
 	ReturnSealCommit1(ctx context.Context, callID CallID, out Commit1Out, err *CallError) error
 	ReturnSealCommit2(ctx context.Context, callID CallID, proof Proof, err *CallError) error
+	ReturnSealCommit2CircuitProofs(ctx context.Context, callID CallID, proof Proof, err *CallError) error
 	ReturnFinalizeSector(ctx context.Context, callID CallID, err *CallError) error
 	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err *CallError) error
 	ReturnReplicaUpdate(ctx context.Context, callID CallID, out ReplicaUpdateOut, err *CallError) error

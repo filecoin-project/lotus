@@ -51,6 +51,7 @@
   * [ReturnReplicaUpdate](#ReturnReplicaUpdate)
   * [ReturnSealCommit1](#ReturnSealCommit1)
   * [ReturnSealCommit2](#ReturnSealCommit2)
+  * [ReturnSealCommit2CircuitProofs](#ReturnSealCommit2CircuitProofs)
   * [ReturnSealPreCommit1](#ReturnSealPreCommit1)
   * [ReturnSealPreCommit2](#ReturnSealPreCommit2)
   * [ReturnUnsealPiece](#ReturnUnsealPiece)
@@ -605,12 +606,17 @@ Response:
 
 
 ### PledgeSector
-Temp api for testing
+Temp api for testing, use -1 as seal proof to use the default
 
 
 Perms: write
 
-Inputs: `null`
+Inputs:
+```json
+[
+  8
+]
+```
 
 Response:
 ```json
@@ -1017,6 +1023,31 @@ Inputs:
 Response: `{}`
 
 ### ReturnSealCommit2
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  "Bw==",
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnSealCommit2CircuitProofs
 
 
 Perms: admin

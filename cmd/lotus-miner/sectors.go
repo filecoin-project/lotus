@@ -87,7 +87,7 @@ var sectorsPledgeCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		id, err := minerApi.PledgeSector(ctx)
+		id, err := minerApi.PledgeSector(ctx, -1)
 		if err != nil {
 			return err
 		}

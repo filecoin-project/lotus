@@ -13,10 +13,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/config"
@@ -42,7 +44,46 @@ func TestPledgeSectors(t *testing.T) {
 		_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
-		miner.PledgeSectors(ctx, nSectors, 0, nil)
+		miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
+	}
+
+	t.Run("1", func(t *testing.T) {
+		runTest(t, 1)
+	})
+
+	t.Run("100", func(t *testing.T) {
+		runTest(t, 100)
+	})
+
+	t.Run("1000", func(t *testing.T) {
+		if testing.Short() { // takes ~16s
+			t.Skip("skipping test in short mode")
+		}
+
+		runTest(t, 1000)
+	})
+}
+
+func TestPledgeNiPoRepSectors(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	sectorSize := abi.SectorSize(2 << 10) // 2KiB
+	sealProofType, err := miner.SealProofTypeFromSectorSize(sectorSize, network.Version23, miner.SealProofVariant_NonInteractive)
+	require.NoError(t, err)
+
+	blockTime := 50 * time.Millisecond
+
+	runTest := func(t *testing.T, nSectors int) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
+
+		// TODO: this is likely necessary when running real-proofs
+		// miner.FullNode.WaitTillChain(ctx, kit.HeightAtLeast(policy.SealRandomnessLookback))
+
+		miner.PledgeSectors(ctx, sealProofType, nSectors, 0, nil)
 	}
 
 	t.Run("1", func(t *testing.T) {
@@ -81,7 +122,7 @@ func TestPledgeBatching(t *testing.T) {
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
-		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
+		toCheck := miner.StartPledge(ctx, -1, nSectors, 0, nil)
 
 		for len(toCheck) > 0 {
 			states := map[api.SectorState]int{}
@@ -151,7 +192,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		cfg.MinCommitBatch = miner5.MaxAggregatedSectors
 		require.NoError(t, m.SetSealingConfigFunc(cfg))
 
-		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
+		toCheck := miner.StartPledge(ctx, -1, nSectors, 0, nil)
 		var lastSectorNo abi.SectorNumber
 
 		for len(toCheck) > 0 {
@@ -222,7 +263,7 @@ func TestPledgeSynth(t *testing.T) {
 
 		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
-		miner.PledgeSectors(ctx, nSectors, 0, nil)
+		miner.PledgeSectors(ctx, -1, nSectors, 0, nil)
 	}
 
 	t.Run("1", func(t *testing.T) {
@@ -247,7 +288,7 @@ func TestSectorsSummary(t *testing.T) {
 	_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.PresealSectors(nPreseal))
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	miner.PledgeSectors(ctx, 1, 0, nil)
+	miner.PledgeSectors(ctx, -1, 1, 0, nil)
 
 	ms, err := miner.SectorsSummary(ctx)
 	require.NoError(t, err)

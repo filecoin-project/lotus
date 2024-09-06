@@ -137,8 +137,8 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 	return mi.SectorSize, nil
 }
 
-func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) (abi.SectorID, error) {
-	sr, err := sm.Miner.PledgeSector(ctx)
+func (sm *StorageMinerAPI) PledgeSector(ctx context.Context, spt abi.RegisteredSealProof) (abi.SectorID, error) {
+	sr, err := sm.Miner.PledgeSector(ctx, spt)
 	if err != nil {
 		return abi.SectorID{}, err
 	}

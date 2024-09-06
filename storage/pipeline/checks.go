@@ -196,56 +196,58 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
 	}
 
-	pci, err := m.Api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tsk)
-	if err != nil {
-		return xerrors.Errorf("getting precommit info: %w", err)
-	}
-
-	if pci == nil {
-		alloc, err := m.Api.StateMinerSectorAllocated(ctx, m.maddr, si.SectorNumber, tsk)
+	if !si.SectorType.IsNonInteractive() {
+		pci, err := m.Api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tsk)
 		if err != nil {
-			return xerrors.Errorf("checking if sector is allocated: %w", err)
+			return xerrors.Errorf("getting precommit info: %w", err)
 		}
-		if alloc {
-			// not much more we can check here, basically try to wait for commit,
-			// and hope that this will work
 
-			if si.CommitMessage != nil {
-				return &ErrCommitWaitFailed{err}
+		if pci == nil {
+			alloc, err := m.Api.StateMinerSectorAllocated(ctx, m.maddr, si.SectorNumber, tsk)
+			if err != nil {
+				return xerrors.Errorf("checking if sector is allocated: %w", err)
+			}
+			if alloc {
+				// not much more we can check here, basically try to wait for commit,
+				// and hope that this will work
+
+				if si.CommitMessage != nil {
+					return &ErrCommitWaitFailed{err}
+				}
+
+				return xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)
 			}
 
-			return xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)
+			return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 		}
 
-		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
-	}
+		if pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay() != si.SeedEpoch {
+			return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay(), si.SeedEpoch)}
+		}
 
-	if pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay() != si.SeedEpoch {
-		return &ErrBadSeed{xerrors.Errorf("seed epoch doesn't match on chain info: %d != %d", pci.PreCommitEpoch+policy.GetPreCommitChallengeDelay(), si.SeedEpoch)}
-	}
+		if *si.CommR != pci.Info.SealedCID {
+			log.Warn("on-chain sealed CID doesn't match!")
+		}
 
-	buf := new(bytes.Buffer)
-	if err := m.maddr.MarshalCBOR(buf); err != nil {
-		return err
-	}
+		buf := new(bytes.Buffer)
+		if err := m.maddr.MarshalCBOR(buf); err != nil {
+			return err
+		}
 
-	seed, err := m.Api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes(), tsk)
-	if err != nil {
-		return &ErrApi{xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)}
-	}
+		seed, err := m.Api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes(), tsk)
+		if err != nil {
+			return &ErrApi{xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)}
+		}
 
-	if string(seed) != string(si.SeedValue) {
-		return &ErrBadSeed{xerrors.Errorf("seed has changed")}
-	}
-
-	if *si.CommR != pci.Info.SealedCID {
-		log.Warn("on-chain sealed CID doesn't match!")
+		if string(seed) != string(si.SeedValue) {
+			return &ErrBadSeed{xerrors.Errorf("seed has changed")}
+		}
 	}
 
 	ok, err := m.verif.VerifySeal(prooftypes.SealVerifyInfo{
 		SectorID:              m.minerSectorID(si.SectorNumber),
-		SealedCID:             pci.Info.SealedCID,
-		SealProof:             pci.Info.SealProof,
+		SealedCID:             *si.CommR,
+		SealProof:             si.SectorType,
 		Proof:                 proof,
 		Randomness:            si.TicketValue,
 		InteractiveRandomness: si.SeedValue,

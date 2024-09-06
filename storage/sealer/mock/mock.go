@@ -262,6 +262,20 @@ func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid storiface.SectorRef, 
 	return out[:], nil
 }
 
+func (mgr *SectorMgr) SealCommit2CircuitProofs(ctx context.Context, sid storiface.SectorRef, phase1Out storiface.Commit1Out) (proof storiface.Proof, err error) {
+	plen, err := sid.ProofType.ProofSize()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]byte, plen)
+	for i := range out[:len(phase1Out)] {
+		out[i] = phase1Out[i] ^ byte(sid.ID.Number&0xff)
+	}
+
+	return out[:], nil
+}
+
 func (mgr *SectorMgr) ReplicaUpdate(ctx context.Context, sid storiface.SectorRef, pieces []abi.PieceInfo) (storiface.ReplicaUpdateOut, error) {
 	out := storiface.ReplicaUpdateOut{}
 	return out, nil
@@ -567,6 +581,10 @@ func (mgr *SectorMgr) ReturnSealCommit1(ctx context.Context, callID storiface.Ca
 }
 
 func (mgr *SectorMgr) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnSealCommit2CircuitProofs(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error {
 	panic("not supported")
 }
 
