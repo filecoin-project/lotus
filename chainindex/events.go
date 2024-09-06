@@ -32,6 +32,7 @@ type executedMessage struct {
 // events are indexed against their inclusion/message tipset when we get the corresponding execution tipset
 func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *types.TipSet, executionTs *types.TipSet) error {
 	// check if we have an event indexed for any message in the `msgTs` tipset -> if so, there's nothig to do here
+	// this makes event inserts idempotent
 	msgTsKeyCidBytes, err := toTipsetKeyCidBytes(msgTs)
 	if err != nil {
 		return xerrors.Errorf("error getting tipset key cid: %w", err)

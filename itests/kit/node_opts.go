@@ -67,6 +67,8 @@ var DefaultNodeOpts = nodeOpts{
 			cfg.Fevm.EnableEthRPC = true
 			cfg.Events.MaxFilterHeightRange = math.MaxInt64
 			cfg.Events.EnableActorEventsAPI = true
+			cfg.ChainIndexer.ReconcileEmptyIndex = true
+			cfg.ChainIndexer.MaxReconcileTipsets = 10000
 			return nil
 		},
 	},

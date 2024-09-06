@@ -630,6 +630,11 @@ type ChainIndexerConfig struct {
 	// This will cause the indexer to re-index the entire chain state available on the node.
 	// Defaults to false.
 	ReconcileEmptyIndex bool
+
+	// MaxReconcileTipsets limits the number of tipsets to reconcile with the chain.
+	// This is useful to limit the amount of disk space used by the indexer.
+	// Defaults to 3 * epochsPerDay i.e. 3 days of chain history.
+	MaxReconcileTipsets int
 }
 
 type HarmonyDB struct {

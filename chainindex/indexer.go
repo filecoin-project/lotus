@@ -56,6 +56,7 @@ type SqliteIndexer struct {
 
 	gcRetentionDays     int64
 	reconcileEmptyIndex bool
+	maxReconcileTipsets int
 
 	mu           sync.Mutex
 	updateSubs   map[uint64]*updateSub
@@ -65,7 +66,8 @@ type SqliteIndexer struct {
 	closed  bool
 }
 
-func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64, reconcileEmptyIndex bool) (si *SqliteIndexer, err error) {
+func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64, reconcileEmptyIndex bool,
+	maxReconcileTipsets int) (si *SqliteIndexer, err error) {
 	db, _, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
@@ -94,6 +96,7 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64, reconci
 		subIdCounter:        0,
 		gcRetentionDays:     gcRetentionDays,
 		reconcileEmptyIndex: reconcileEmptyIndex,
+		maxReconcileTipsets: maxReconcileTipsets,
 	}
 	if err = si.prepareStatements(); err != nil {
 		return nil, xerrors.Errorf("failed to prepare statements: %w", err)
@@ -139,30 +142,35 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		if err != nil {
 			return xerrors.Errorf("failed to check if tipset message is empty: %w", err)
 		}
-		if !hasTipset {
+
+		isIndexEmpty := !hasTipset
+		if isIndexEmpty && !si.reconcileEmptyIndex {
 			return nil
 		}
 
 		// Find the minimum applied tipset in the index; this will mark the absolute min height of the reconciliation walk
-		var result int64
-		row := tx.StmtContext(ctx, si.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
-		if err := row.Scan(&result); err != nil {
-			return xerrors.Errorf("failed to find boundary epoch: %w", err)
+		var reconciliationEpoch abi.ChainEpoch
+		if isIndexEmpty {
+			reconciliationEpoch = 0
+		} else {
+			var result int64
+			row := tx.StmtContext(ctx, si.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
+			if err := row.Scan(&result); err != nil {
+				return xerrors.Errorf("failed to scan minimum non-reverted height %w", err)
+			}
+			reconciliationEpoch = abi.ChainEpoch(result)
 		}
 
-		reconciliationEpoch := abi.ChainEpoch(result)
-
-		var tipsetStack []*types.TipSet
-
-		curTs := head
+		currTs := head
 		log.Infof("Starting chain reconciliation from height %d", head.Height())
+		var missingTipsets []*types.TipSet
 
 		// The goal here is to walk the canonical chain backwards from head until we find a matching non-reverted tipset
 		// in the db so we know where to start reconciliation from
 		// All tipsets that exist in the DB but not in the canonical chain are then marked as reverted
 		// All tpsets that exist in the canonical chain but not in the db are then applied
-		for curTs != nil && curTs.Height() >= reconciliationEpoch {
-			tsKeyCidBytes, err := toTipsetKeyCidBytes(curTs)
+		for currTs != nil && currTs.Height() >= reconciliationEpoch {
+			tsKeyCidBytes, err := toTipsetKeyCidBytes(currTs)
 			if err != nil {
 				return xerrors.Errorf("failed to compute tipset cid: %w", err)
 			}
@@ -175,49 +183,71 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 			if exists {
 				// found it!
-				reconciliationEpoch = curTs.Height() + 1
-				log.Infof("Found matching tipset at height %d, setting reconciliation epoch to %d", curTs.Height(), reconciliationEpoch)
+				reconciliationEpoch = currTs.Height() + 1
+				log.Infof("Found matching tipset at height %d, setting reconciliation epoch to %d", currTs.Height(), reconciliationEpoch)
 				break
 			}
 
-			tipsetStack = append(tipsetStack, curTs)
+			if len(missingTipsets) <= si.maxReconcileTipsets {
+				missingTipsets = append(missingTipsets, currTs)
+			}
 
-			// walk up
-			parents := curTs.Parents()
-			curTs, err = si.cs.GetTipSetFromKey(ctx, parents)
+			if currTs.Height() == 0 {
+				break
+			}
+
+			parents := currTs.Parents()
+			currTs, err = si.cs.GetTipSetFromKey(ctx, parents)
 			if err != nil {
 				return xerrors.Errorf("failed to walk chain: %w", err)
 			}
 		}
 
-		if curTs == nil {
+		if currTs == nil {
 			log.Warn("ReconcileWithChain reached genesis without finding matching tipset")
 		}
 
 		// mark all tipsets from the reconciliation epoch onwards in the Index as reverted as they are not in the current canonical chain
 		log.Infof("Marking tipsets as reverted from height %d", reconciliationEpoch)
-		_, err = tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch))
-		if err != nil {
+		if _, err = tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch)); err != nil {
 			return xerrors.Errorf("failed to mark tipsets as reverted: %w", err)
 		}
+
 		// also need to mark events as reverted for the corresponding inclusion tipsets
-		_, err = tx.StmtContext(ctx, si.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1))
-		if err != nil {
+		if _, err = tx.StmtContext(ctx, si.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1)); err != nil {
 			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
 
-		// Now apply all missing tipsets in reverse order i,e, we apply tipsets in [last matching tipset b/w index and canonical chain,
-		// current chain head]
-		for i := len(tipsetStack) - 1; i >= 0; i-- {
-			curTs := tipsetStack[i]
-			parentTs, err := si.cs.GetTipSetFromKey(ctx, curTs.Parents())
-			if err != nil {
-				return xerrors.Errorf("failed to get parent tipset: %w", err)
+		totalIndexed := 0
+		// apply all missing tipsets from the canonical chain to the current chain head
+		for i := 0; i < len(missingTipsets); i++ {
+			currTs := missingTipsets[i]
+			var parentTs *types.TipSet
+			var err error
+
+			if i < len(missingTipsets)-1 {
+				parentTs = missingTipsets[i+1]
+			} else {
+				parentTs, err = si.cs.GetTipSetFromKey(ctx, currTs.Parents())
+				if err != nil {
+					return xerrors.Errorf("failed to get parent tipset: %w", err)
+				}
 			}
-			if err := si.indexTipset(ctx, tx, curTs, parentTs, true); err != nil {
-				return xerrors.Errorf("failed to index tipset: %w", err)
+
+			if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, currTs); err != nil {
+				log.Warnf("failed to index tipset with parent events during reconciliation: %s", err)
+				// the above could have failed because of missing messages for `parentTs` in the chainstore
+				// so try to index only the currentTs and then halt the reconciliation process as we've
+				// reached the end of what we have in the chainstore
+				if err := si.indexTipset(ctx, tx, currTs); err != nil {
+					log.Warnf("failed to index tipset during reconciliation: %s", err)
+				}
+				break
 			}
+			totalIndexed++
 		}
+
+		log.Infof("Indexed %d missing tipsets during reconciliation", totalIndexed)
 
 		return nil
 	})
@@ -403,7 +433,7 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 	// We're moving the chain ahead from the `from` tipset to the `to` tipset
 	// Height(to) > Height(from)
 	err := withTx(ctx, si.db, func(tx *sql.Tx) error {
-		if err := si.indexTipset(ctx, tx, to, from, true); err != nil {
+		if err := si.indexTipsetWithParentEvents(ctx, tx, from, to); err != nil {
 			return xerrors.Errorf("error indexing tipset: %w", err)
 		}
 
@@ -463,20 +493,14 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 	return nil
 }
 
-func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.TipSet, parentTs *types.TipSet, indexEvents bool) error {
+func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.TipSet) error {
 	tsKeyCidBytes, err := toTipsetKeyCidBytes(ts)
 	if err != nil {
-		return xerrors.Errorf("error computing tipset cid: %w", err)
+		return xerrors.Errorf("failed to compute tipset cid: %w", err)
 	}
 
-	parentsKeyCid, err := parentTs.Key().Cid()
-	if err != nil {
-		return xerrors.Errorf("error computing tipset parents cid: %w", err)
-	}
-	parentsKeyCidBytes := parentsKeyCid.Bytes()
-
-	if restored, err := si.restoreTipsetIfExists(ctx, tx, tsKeyCidBytes, parentsKeyCidBytes); err != nil {
-		return xerrors.Errorf("error restoring tipset: %w", err)
+	if restored, err := si.restoreTipsetIfExists(ctx, tx, tsKeyCidBytes); err != nil {
+		return xerrors.Errorf("failed to restore tipset: %w", err)
 	} else if restored {
 		return nil
 	}
@@ -486,27 +510,21 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 
 	msgs, err := si.cs.MessagesForTipset(ctx, ts)
 	if err != nil {
-		return xerrors.Errorf("error getting messages for tipset: %w", err)
+		return xerrors.Errorf("failed to get messages for tipset: %w", err)
 	}
 
 	if len(msgs) == 0 {
 		// If there are no messages, just insert the tipset and return
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, nil, -1); err != nil {
-			return xerrors.Errorf("error inserting empty tipset: %w", err)
+			return xerrors.Errorf("failed to insert empty tipset: %w", err)
 		}
-
-		// we still need to index events for the parent tipset
-		if err := si.indexEvents(ctx, tx, parentTs, ts); err != nil {
-			return xerrors.Errorf("error indexing events: %w", err)
-		}
-
 		return nil
 	}
 
 	for i, msg := range msgs {
 		msg := msg
 		if _, err := insertTipsetMsgStmt.ExecContext(ctx, tsKeyCidBytes, height, 0, msg.Cid().Bytes(), i); err != nil {
-			return xerrors.Errorf("error inserting tipset message: %w", err)
+			return xerrors.Errorf("failed to insert tipset message: %w", err)
 		}
 	}
 
@@ -514,7 +532,7 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 		blk := blk
 		_, smsgs, err := si.cs.MessagesForBlock(ctx, blk)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
 		for _, smsg := range smsgs {
@@ -523,39 +541,43 @@ func (si *SqliteIndexer) indexTipset(ctx context.Context, tx *sql.Tx, ts *types.
 				continue
 			}
 			if err := si.indexSignedMessage(ctx, tx, smsg); err != nil {
-				return xerrors.Errorf("error indexing eth tx hash: %w", err)
+				return xerrors.Errorf("failed to index eth tx hash: %w", err)
 			}
 		}
-	}
-
-	if !indexEvents {
-		return nil
-	}
-
-	// index events
-	if err := si.indexEvents(ctx, tx, parentTs, ts); err != nil {
-		return xerrors.Errorf("error indexing events: %w", err)
 	}
 
 	return nil
 }
 
-func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, tsKeyCidBytes []byte, parentsKeyCidBytes []byte) (bool, error) {
+func (si *SqliteIndexer) indexTipsetWithParentEvents(ctx context.Context, tx *sql.Tx, parentTs *types.TipSet, currentTs *types.TipSet) error {
+	// Index the parent tipset if it doesn't exist yet.
+	// This is necessary to properly index events produced by executing
+	// messages included in the parent tipset by the current tipset (deferred execution).
+	if err := si.indexTipset(ctx, tx, parentTs); err != nil {
+		return xerrors.Errorf("failed to index parent tipset: %w", err)
+	}
+	if err := si.indexTipset(ctx, tx, currentTs); err != nil {
+		return xerrors.Errorf("failed to index tipset: %w", err)
+	}
+
+	// Now Index events
+	if err := si.indexEvents(ctx, tx, parentTs, currentTs); err != nil {
+		return xerrors.Errorf("failed to index events: %w", err)
+	}
+
+	return nil
+}
+
+func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, tsKeyCidBytes []byte) (bool, error) {
 	// Check if the tipset already exists
 	var exists bool
 	if err := tx.Stmt(si.hasTipsetStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
-		return false, xerrors.Errorf("error checking if tipset exists: %w", err)
+		return false, xerrors.Errorf("failed to check if tipset exists: %w", err)
 	}
 	if exists {
 		if _, err := tx.Stmt(si.updateTipsetToNonRevertedStmt).ExecContext(ctx, tsKeyCidBytes); err != nil {
-			return false, xerrors.Errorf("error restoring tipset: %w", err)
+			return false, xerrors.Errorf("failed to restore tipset: %w", err)
 		}
-
-		// also mark all the events in the parent as not reverted
-		if _, err := tx.Stmt(si.updateEventsToNonRevertedStmt).ExecContext(ctx, parentsKeyCidBytes); err != nil {
-			return false, xerrors.Errorf("error unreverting events: %w", err)
-		}
-
 		return true, nil
 	}
 	return false, nil

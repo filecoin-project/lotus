@@ -71,6 +71,42 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
+	"ChainIndexerConfig": {
+		{
+			Name: "DisableChainIndexer",
+			Type: "bool",
+
+			Comment: `DisableChainIndexer disables the chain indexer which indexes tipsets, messages and events from chain state.
+Ideally, this should always be set to false as the Indexer is a crucial component for faster Lotus RPC responses.
+Only turn it off if you know what you are doing.`,
+		},
+		{
+			Name: "GCRetentionDays",
+			Type: "int64",
+
+			Comment: `GCRetentionDays defines the number of days for which data is retained in the Indexer.
+During the garbage collection (GC) process, data older than this retention period is pruned.
+A value of 0 disables GC, retaining all historical data.
+Default is 0 i.e. GC is disabled by default.`,
+		},
+		{
+			Name: "ReconcileEmptyIndex",
+			Type: "bool",
+
+			Comment: `ReconcileEmptyIndex reconciles the index with the chain state even if the Index is empty.
+This is useful when the indexer is not running for a long time and the chain has progressed.
+This will cause the indexer to re-index the entire chain state available on the node.
+Defaults to false.`,
+		},
+		{
+			Name: "MaxReconcileTipsets",
+			Type: "int",
+
+			Comment: `MaxReconcileTipsets limits the number of tipsets to reconcile with the chain.
+This is useful to limit the amount of disk space used by the indexer.
+Defaults to 3 * epochsPerDay i.e. 3 days of chain history.`,
+		},
+	},
 	"Chainstore": {
 		{
 			Name: "EnableSplitstore",
@@ -273,8 +309,8 @@ Note: Setting this value to 0 disables the cache.`,
 			Comment: ``,
 		},
 		{
-			Name: "Index",
-			Type: "IndexConfig",
+			Name: "ChainIndexer",
+			Type: "ChainIndexerConfig",
 
 			Comment: ``,
 		},
@@ -316,25 +352,6 @@ in a cluster. Only 1 is required`,
 			Type: "string",
 
 			Comment: `The port to find Yugabyte. Blank for default.`,
-		},
-	},
-	"IndexConfig": {
-		{
-			Name: "DisableChainIndexer",
-			Type: "bool",
-
-			Comment: `DisableChainIndexer disables the chain indexer which indexes tipsets, messages and events from chain state.
-Ideally, this should always be set to false as the Indexer is a crucial component for faster Lotus RPC responses.
-Only turn it off if you know what you are doing.`,
-		},
-		{
-			Name: "GCRetentionDays",
-			Type: "int64",
-
-			Comment: `GCRetentionDays defines the number of days for which data is retained in the Indexer.
-During the garbage collection (GC) process, data older than this retention period is pruned.
-A value of 0 disables GC, retaining all historical data.
-Default is 0 i.e. GC is disabled by default.`,
 		},
 	},
 	"JournalConfig": {

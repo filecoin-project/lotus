@@ -12,45 +12,48 @@ import (
 )
 
 func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error {
-	// if a database already exists, we try to delete it and create a new one
+	// Check if a database already exists and attempt to delete it
 	if _, err := os.Stat(path); err == nil {
 		if err = os.Remove(path); err != nil {
-			return xerrors.Errorf("chainindex already exists at %s and can't be deleted", path)
+			return xerrors.Errorf("failed to delete existing chainindex at %s: %w", path, err)
 		}
 	}
 
-	si, err := NewSqliteIndexer(path, cs, 0, false)
+	si, err := NewSqliteIndexer(path, cs, 0, false, 0)
 	if err != nil {
 		return xerrors.Errorf("failed to create sqlite indexer: %w", err)
 	}
 	defer func() {
-		_ = si.Close()
+		if closeErr := si.Close(); closeErr != nil {
+			log.Errorf("failed to close sqlite indexer: %v", closeErr)
+		}
 	}()
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		curTs := cs.GetHeaviestTipSet()
-		startHeight := curTs.Height()
+		head := cs.GetHeaviestTipSet()
+		startHeight := head.Height()
+		curTs := head
+		log.Infof("starting index hydration from snapshot at height %d", startHeight)
 
 		for curTs != nil {
-			parentTs, err := cs.GetTipSetFromKey(ctx, curTs.Parents())
-			if err != nil {
-				return xerrors.Errorf("error getting parent tipset: %w", err)
-			}
-
-			if err := si.indexTipset(ctx, tx, curTs, parentTs, false); err != nil {
-				log.Infof("stopping import after %d tipsets", startHeight-curTs.Height())
+			if err := si.indexTipset(ctx, tx, curTs); err != nil {
+				log.Infof("stopping import after %d tipsets with final error: %s", startHeight-curTs.Height(), err)
 				break
 			}
 
-			curTs = parentTs
+			curTs, err = cs.GetTipSetFromKey(ctx, curTs.Parents())
+			if err != nil {
+				return xerrors.Errorf("failed to get parent tipset: %w", err)
+			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		return xerrors.Errorf("failed populate from snapshot: %w", err)
+		return xerrors.Errorf("failed to populate from snapshot: %w", err)
 	}
 
+	log.Infof("Successfully populated chainindex from snapshot")
 	return nil
 }
 

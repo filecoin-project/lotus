@@ -99,6 +99,7 @@ func DefaultFullNode() *FullNode {
 			DisableChainIndexer: false,
 			GCRetentionDays:     0,
 			ReconcileEmptyIndex: false,
+			MaxReconcileTipsets: 3 * builtin.EpochsInDay,
 		},
 	}
 }
