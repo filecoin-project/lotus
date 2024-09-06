@@ -227,11 +227,16 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 			if i < len(missingTipsets)-1 {
 				parentTs = missingTipsets[i+1]
-			} else {
+			} else if currTs.Height() > 0 {
 				parentTs, err = si.cs.GetTipSetFromKey(ctx, currTs.Parents())
 				if err != nil {
 					return xerrors.Errorf("failed to get parent tipset: %w", err)
 				}
+			} else if currTs.Height() == 0 {
+				if err := si.indexTipset(ctx, tx, currTs); err != nil {
+					log.Warnf("failed to index tipset during reconciliation: %s", err)
+				}
+				break
 			}
 
 			if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, currTs); err != nil {
