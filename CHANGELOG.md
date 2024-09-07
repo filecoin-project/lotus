@@ -6,6 +6,8 @@
 
 ## New features
 
+* Add `EthSendRawTransactionUntrusted` RPC method to be used for the gateway when accepting `EthSendRawTransaction` and `eth_sendRawTransaction`. Applies a tighter limit on the number of messages in the queue from a single sender and applies additional restrictions on nonce increments. ([filecoin-project/lotus#12431](https://github.com/filecoin-project/lotus/pull/12431))
+
 ## Improvements
 
 # Node v1.29.0 / 2024-09-02
