@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"sync"
 	"time"
 
@@ -354,28 +355,28 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		recordFailure(ctx, metrics.MessageValidationFailure, "add")
 		switch {
 
-		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
+		case errors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+		case errors.Is(err, messagepool.ErrRBFTooLowPremium):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
+		case errors.Is(err, messagepool.ErrTooManyPendingMessages):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrNonceGap):
+		case errors.Is(err, messagepool.ErrNonceGap):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrGasFeeCapTooLow):
+		case errors.Is(err, messagepool.ErrGasFeeCapTooLow):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrNonceTooLow):
+		case errors.Is(err, messagepool.ErrNonceTooLow):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrNotEnoughFunds):
+		case errors.Is(err, messagepool.ErrNotEnoughFunds):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrExistingNonce):
+		case errors.Is(err, messagepool.ErrExistingNonce):
 			return pubsub.ValidationIgnore
 
-		case xerrors.Is(err, messagepool.ErrMessageTooBig):
+		case errors.Is(err, messagepool.ErrMessageTooBig):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrMessageValueTooHigh):
+		case errors.Is(err, messagepool.ErrMessageValueTooHigh):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrInvalidToAddr):
+		case errors.Is(err, messagepool.ErrInvalidToAddr):
 			fallthrough
 		default:
 			return pubsub.ValidationReject

@@ -854,7 +854,7 @@ loop:
 	log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", incoming.Cids(), incoming.Height(), known.Cids(), known.Height())
 	fork, err := syncer.syncFork(ctx, base, known, ignoreCheckpoint)
 	if err != nil {
-		if xerrors.Is(err, ErrForkTooLong) || xerrors.Is(err, ErrForkCheckpoint) {
+		if errors.Is(err, ErrForkTooLong) || errors.Is(err, ErrForkCheckpoint) {
 			// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
 			log.Warn("adding forked chain to our bad tipset cache")
 			for _, b := range incoming.Blocks() {

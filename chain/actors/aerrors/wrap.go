@@ -183,7 +183,7 @@ func HandleExternalError(err error, msg string) ActorError {
 		}
 	}
 
-	if xerrors.Is(err, &cbor.SerializationError{}) {
+	if errors.Is(err, &cbor.SerializationError{}) {
 		return &actorError{
 			fatal:   false,
 			retCode: 253,

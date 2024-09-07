@@ -419,7 +419,7 @@ func (sb *Sealer) pieceCid(spt abi.RegisteredSealProof, in []byte) (cid.Cid, err
 func (sb *Sealer) acquireUpdatePath(ctx context.Context, sector storiface.SectorRef) (string, func(), error) {
 	// copy so that the sector doesn't get removed from a long-term storage path
 	replicaPath, releaseSector, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTUpdate, storiface.FTNone, storiface.PathSealing)
-	if xerrors.Is(err, storiface.ErrSectorNotFound) {
+	if errors.Is(err, storiface.ErrSectorNotFound) {
 		return "", releaseSector, nil
 	} else if err != nil {
 		return "", releaseSector, xerrors.Errorf("reading updated replica: %w", err)
@@ -471,7 +471,7 @@ func (sb *Sealer) acquireSectorKeyOrRegenerate(ctx context.Context, sector stori
 	paths, done, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathSealing)
 	if err == nil {
 		return paths, done, err
-	} else if !xerrors.Is(err, storiface.ErrSectorNotFound) {
+	} else if !errors.Is(err, storiface.ErrSectorNotFound) {
 		return paths, done, xerrors.Errorf("reading sector key: %w", err)
 	}
 
@@ -575,7 +575,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 	var pf *partialfile.PartialFile
 
 	switch {
-	case xerrors.Is(err, storiface.ErrSectorNotFound):
+	case errors.Is(err, storiface.ErrSectorNotFound):
 		// allocate if doesn't exist
 		unsealedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTUnsealed, storiface.PathSealing)
 		if err != nil {
@@ -774,7 +774,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storif
 
 	pf, err := partialfile.OpenPartialFile(maxPieceSize, path.Unsealed)
 	if err != nil {
-		if xerrors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
 
@@ -1183,7 +1183,7 @@ func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRe
 				return err
 			}
 		} else {
-			if !xerrors.Is(err, os.ErrNotExist) {
+			if !errors.Is(err, os.ErrNotExist) {
 				return xerrors.Errorf("opening partial file: %w", err)
 			}
 		}

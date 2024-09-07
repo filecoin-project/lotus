@@ -1593,7 +1593,7 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 		}
 
 		if err := mp.addLoaded(ctx, &sm); err != nil {
-			if xerrors.Is(err, ErrNonceTooLow) {
+			if errors.Is(err, ErrNonceTooLow) {
 				continue // todo: drop the message from local cache (if above certain confidence threshold)
 			}
 

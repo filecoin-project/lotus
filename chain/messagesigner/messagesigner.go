@@ -3,6 +3,7 @@ package messagesigner
 import (
 	"bytes"
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/google/uuid"
@@ -141,7 +142,7 @@ func (ms *MessageSigner) NextNonce(ctx context.Context, addr address.Address) (u
 	dsNonceBytes, err := ms.ds.Get(ctx, addrNonceKey)
 
 	switch {
-	case xerrors.Is(err, datastore.ErrNotFound):
+	case errors.Is(err, datastore.ErrNotFound):
 		// If a nonce for this address hasn't yet been created in the
 		// datastore, just use the nonce from the mempool
 		return nonce, nil
