@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -331,7 +332,7 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 		_ = rt.chargeGasSafe(newGasCharge("OnGetActor", 0, 0))
 		toActor, err := st.GetActor(msg.To)
 		if err != nil {
-			if xerrors.Is(err, types.ErrActorNotFound) {
+			if errors.Is(err, types.ErrActorNotFound) {
 				a, aid, err := TryCreateAccountActor(rt, msg.To)
 				if err != nil {
 					return nil, aerrors.Wrapf(err, "could not create account")
@@ -473,7 +474,7 @@ func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*App
 	fromActor, err := st.GetActor(msg.From)
 	// this should never happen, but is currently still exercised by some tests
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			gasOutputs := ZeroGasOutputs()
 			gasOutputs.MinerPenalty = minerPenaltyAmount
 			return &ApplyRet{
@@ -647,7 +648,7 @@ func (vm *LegacyVM) ShouldBurn(ctx context.Context, st *state.StateTree, msg *ty
 			// the trace, but I'm not sure if that's safe?
 			if toActor, err := st.GetActor(msg.To); err != nil {
 				// If the actor wasn't found, we probably deleted it or something. Move on.
-				if !xerrors.Is(err, types.ErrActorNotFound) {
+				if !errors.Is(err, types.ErrActorNotFound) {
 					// Otherwise, this should never fail and something is very wrong.
 					return false, xerrors.Errorf("failed to lookup target actor: %w", err)
 				}

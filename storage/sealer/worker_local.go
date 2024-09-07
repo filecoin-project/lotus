@@ -3,6 +3,7 @@ package sealer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"reflect"
@@ -312,7 +313,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storiface.SectorRef,
 
 func toCallError(err error) *storiface.CallError {
 	var serr *storiface.CallError
-	if err != nil && !xerrors.As(err, &serr) {
+	if err != nil && !errors.As(err, &serr) {
 		serr = storiface.Err(storiface.ErrUnknown, err)
 	}
 

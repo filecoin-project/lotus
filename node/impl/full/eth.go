@@ -470,7 +470,7 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 
 	// First, handle the case where the "sender" is an EVM actor.
 	if actor, err := a.StateManager.LoadActor(ctx, addr, ts); err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
 		}
 		return 0, xerrors.Errorf("failed to lookup contract %s: %w", sender, err)
@@ -560,7 +560,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 
 	actor, err := a.StateManager.LoadActor(ctx, to, ts)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, nil
 		}
 		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
@@ -653,7 +653,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 
 	actor, err := a.StateManager.LoadActor(ctx, to, ts)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return ethtypes.EthBytes(make([]byte, 32)), nil
 		}
 		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
@@ -734,7 +734,7 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 	}
 
 	actor, err := a.StateManager.LoadActorRaw(ctx, filAddr, st)
-	if xerrors.Is(err, types.ErrActorNotFound) {
+	if errors.Is(err, types.ErrActorNotFound) {
 		return ethtypes.EthBigIntZero, nil
 	} else if err != nil {
 		return ethtypes.EthBigInt{}, err

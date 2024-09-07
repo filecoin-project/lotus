@@ -161,7 +161,7 @@ require (
 	golang.org/x/term v0.24.0
 	golang.org/x/time v0.6.0
 	golang.org/x/tools v0.24.0
-	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gotest.tools v2.2.0+incompatible
 )
