@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
-	"github.com/minio/blake2b-simd"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
