@@ -3,7 +3,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/minio/blake2b-simd"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/lotus/build/buildconstants"
 )

@@ -12,9 +12,9 @@ import (
 
 	"github.com/docker/go-units"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/minio/blake2b-simd"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
