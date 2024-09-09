@@ -232,6 +232,11 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
 
+		if len(missingTipsets) == 0 {
+			log.Info("No missing tipsets to reconcile; index is all caught up with the chain")
+			return nil
+		}
+
 		log.Infof("Applying %d missing tipsets to Index; max missing tipset height %d; min missing tipset height %d", len(missingTipsets),
 			missingTipsets[0].Height(), missingTipsets[len(missingTipsets)-1].Height())
 		totalIndexed := 0

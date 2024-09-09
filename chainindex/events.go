@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -204,7 +203,7 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 		}
 	default:
 		// Filter doesn't specify a specific tipset
-		return ErrNotFound
+		return nil
 	}
 
 	// If we couldn't determine a specific tipset, return ErrNotFound
@@ -244,6 +243,122 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 // Returns nil, ErrNotFound if the filter has no matching events and the tipset is not indexed
 // Returns nil, err for all other errors
 func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter, excludeReverted bool) ([]*CollectedEvent, error) {
+	getEventsFnc := func(stmt *sql.Stmt, values []any) ([]*CollectedEvent, error) {
+		q, err := stmt.QueryContext(ctx, values...)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to query events: %w", err)
+		}
+		defer func() { _ = q.Close() }()
+
+		var ces []*CollectedEvent
+		var currentID int64 = -1
+		var ce *CollectedEvent
+
+		for q.Next() {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+
+			var row struct {
+				id           int64
+				height       uint64
+				tipsetKeyCid []byte
+				emitterAddr  []byte
+				eventIndex   int
+				messageCid   []byte
+				messageIndex int
+				reverted     bool
+				flags        []byte
+				key          string
+				codec        uint64
+				value        []byte
+			}
+
+			if err := q.Scan(
+				&row.id,
+				&row.height,
+				&row.tipsetKeyCid,
+				&row.emitterAddr,
+				&row.eventIndex,
+				&row.messageCid,
+				&row.messageIndex,
+				&row.reverted,
+				&row.flags,
+				&row.key,
+				&row.codec,
+				&row.value,
+			); err != nil {
+				return nil, xerrors.Errorf("read prefill row: %w", err)
+			}
+
+			if row.id != currentID {
+				if ce != nil {
+					ces = append(ces, ce)
+					ce = nil
+					// Unfortunately we can't easily incorporate the max results limit into the query due to the
+					// unpredictable number of rows caused by joins
+					// Break here to stop collecting rows
+					if f.MaxResults > 0 && len(ces) >= f.MaxResults {
+						break
+					}
+				}
+
+				currentID = row.id
+				ce = &CollectedEvent{
+					EventIdx: row.eventIndex,
+					Reverted: row.reverted,
+					Height:   abi.ChainEpoch(row.height),
+					MsgIdx:   row.messageIndex,
+				}
+
+				ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
+				if err != nil {
+					return nil, xerrors.Errorf("parse emitter addr: %w", err)
+				}
+
+				tsKeyCid, err := cid.Cast(row.tipsetKeyCid)
+				if err != nil {
+					return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
+				}
+
+				ts, err := si.cs.GetTipSetByCid(ctx, tsKeyCid)
+				if err != nil {
+					return nil, xerrors.Errorf("get tipset by cid: %w", err)
+				}
+
+				ce.TipSetKey = ts.Key()
+
+				ce.MsgCid, err = cid.Cast(row.messageCid)
+				if err != nil {
+					return nil, xerrors.Errorf("parse message cid: %w", err)
+				}
+			}
+
+			ce.Entries = append(ce.Entries, types.EventEntry{
+				Flags: row.flags[0],
+				Key:   row.key,
+				Codec: row.codec,
+				Value: row.value,
+			})
+		}
+
+		if ce != nil {
+			ces = append(ces, ce)
+		}
+
+		if len(ces) == 0 {
+			return nil, nil
+		}
+
+		// collected event list is in inverted order since we selected only the most recent events
+		// sort it into height order
+		sort.Slice(ces, func(i, j int) bool { return ces[i].Height < ces[j].Height })
+
+		return ces, nil
+	}
+
 	if err := si.sanityCheckFilter(ctx, f); err != nil {
 		return nil, xerrors.Errorf("event filter is invalid: %w", err)
 	}
@@ -256,130 +371,24 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 	}
 	defer func() { _ = stmt.Close() }()
 
-	q, err := stmt.QueryContext(ctx, values...)
-	if err == sql.ErrNoRows {
-		// did not find events, but may be in head, so wait for it and check again
+	ces, err := getEventsFnc(stmt, values)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get events: %w", err)
+	}
+	if len(ces) == 0 {
+		// there's no matching events for the filter, wait till index has caught up to the head and then retry
 		if err := si.waitTillHeadIndexed(ctx); err != nil {
 			return nil, xerrors.Errorf("failed to wait for head to be indexed: %w", err)
 		}
-		q, err = stmt.QueryContext(ctx, values...)
-	}
+		ces, err = getEventsFnc(stmt, values)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get events: %w", err)
+		}
 
-	if err != nil {
-		// if no rows are found, we should differentiate between no events for the tipset(which is valid and can happen)
-		// and the tipset not being indexed
-		if errors.Is(err, sql.ErrNoRows) {
+		if len(ces) == 0 {
 			return nil, si.checkTipsetIndexedStatus(ctx, f)
 		}
-		return nil, xerrors.Errorf("failed to query events: %w", err)
 	}
-	defer func() { _ = q.Close() }()
-
-	var ces []*CollectedEvent
-	var currentID int64 = -1
-	var ce *CollectedEvent
-
-	for q.Next() {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-
-		var row struct {
-			id           int64
-			height       uint64
-			tipsetKeyCid []byte
-			emitterAddr  []byte
-			eventIndex   int
-			messageCid   []byte
-			messageIndex int
-			reverted     bool
-			flags        []byte
-			key          string
-			codec        uint64
-			value        []byte
-		}
-
-		if err := q.Scan(
-			&row.id,
-			&row.height,
-			&row.tipsetKeyCid,
-			&row.emitterAddr,
-			&row.eventIndex,
-			&row.messageCid,
-			&row.messageIndex,
-			&row.reverted,
-			&row.flags,
-			&row.key,
-			&row.codec,
-			&row.value,
-		); err != nil {
-			return nil, xerrors.Errorf("read prefill row: %w", err)
-		}
-
-		if row.id != currentID {
-			if ce != nil {
-				ces = append(ces, ce)
-				ce = nil
-				// Unfortunately we can't easily incorporate the max results limit into the query due to the
-				// unpredictable number of rows caused by joins
-				// Break here to stop collecting rows
-				if f.MaxResults > 0 && len(ces) >= f.MaxResults {
-					break
-				}
-			}
-
-			currentID = row.id
-			ce = &CollectedEvent{
-				EventIdx: row.eventIndex,
-				Reverted: row.reverted,
-				Height:   abi.ChainEpoch(row.height),
-				MsgIdx:   row.messageIndex,
-			}
-
-			ce.EmitterAddr, err = address.NewFromBytes(row.emitterAddr)
-			if err != nil {
-				return nil, xerrors.Errorf("parse emitter addr: %w", err)
-			}
-
-			tsKeyCid, err := cid.Cast(row.tipsetKeyCid)
-			if err != nil {
-				return nil, xerrors.Errorf("parse tipsetkey cid: %w", err)
-			}
-
-			ts, err := si.cs.GetTipSetByCid(ctx, tsKeyCid)
-			if err != nil {
-				return nil, xerrors.Errorf("get tipset by cid: %w", err)
-			}
-
-			ce.TipSetKey = ts.Key()
-
-			ce.MsgCid, err = cid.Cast(row.messageCid)
-			if err != nil {
-				return nil, xerrors.Errorf("parse message cid: %w", err)
-			}
-		}
-
-		ce.Entries = append(ce.Entries, types.EventEntry{
-			Flags: row.flags[0],
-			Key:   row.key,
-			Codec: row.codec,
-			Value: row.value,
-		})
-	}
-
-	if ce != nil {
-		ces = append(ces, ce)
-	}
-
-	if len(ces) == 0 {
-		return nil, nil
-	}
-
-	// collected event list is in inverted order since we selected only the most recent events
-	// sort it into height order
-	sort.Slice(ces, func(i, j int) bool { return ces[i].Height < ces[j].Height })
 
 	return ces, nil
 }
