@@ -102,10 +102,13 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64, reconci
 		return nil, xerrors.Errorf("failed to prepare statements: %w", err)
 	}
 
+	return si, nil
+}
+
+func (si *SqliteIndexer) Start() error {
 	si.wg.Add(1)
 	go si.gcLoop()
-
-	return si, nil
+	return nil
 }
 
 func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddrFunc) {

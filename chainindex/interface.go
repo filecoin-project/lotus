@@ -50,6 +50,7 @@ type EventFilter struct {
 }
 
 type Indexer interface {
+	Start() error
 	ReconcileWithChain(ctx context.Context, currHead *types.TipSet) error
 	IndexSignedMessage(ctx context.Context, msg *types.SignedMessage) error
 	IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, c cid.Cid) error

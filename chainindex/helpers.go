@@ -12,8 +12,10 @@ import (
 )
 
 func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error {
+	log.Infof("populating chainindex at path %s from snapshot", path)
 	// Check if a database already exists and attempt to delete it
 	if _, err := os.Stat(path); err == nil {
+		log.Infof("deleting existing chainindex at %s", path)
 		if err = os.Remove(path); err != nil {
 			return xerrors.Errorf("failed to delete existing chainindex at %s: %w", path, err)
 		}
@@ -33,13 +35,12 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
 		head := cs.GetHeaviestTipSet()
-		startHeight := head.Height()
 		curTs := head
-		log.Infof("starting index hydration from snapshot at height %d", startHeight)
+		log.Infof("starting to populate chainindex from snapshot at head height %d", head.Height())
 
 		for curTs != nil {
 			if err := si.indexTipset(ctx, tx, curTs); err != nil {
-				log.Infof("stopping import after %d tipsets with final error: %s", startHeight-curTs.Height(), err)
+				log.Infof("stopping chainindex population at height %d with final error: %s", curTs.Height(), err)
 				break
 			}
 			totalIndexed++
@@ -53,7 +54,7 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 		return nil
 	})
 	if err != nil {
-		return xerrors.Errorf("failed to populate from snapshot: %w", err)
+		return xerrors.Errorf("failed to populate chainindex from snapshot: %w", err)
 	}
 
 	log.Infof("Successfully populated chainindex from snapshot with %d tipsets", totalIndexed)
