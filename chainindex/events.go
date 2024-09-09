@@ -48,6 +48,11 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 		return xerrors.Errorf("failed to get rows affected by unreverting events for tipset: %w", err)
 	}
 	if rows > 0 {
+		log.Infof("unreverted %d events for tipset: %s", rows, msgTs.Key())
+		return nil
+	}
+
+	if !si.cs.IsStoringEvents() {
 		return nil
 	}
 

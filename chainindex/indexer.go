@@ -145,6 +145,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		isIndexEmpty := !hasTipset
 		if isIndexEmpty && !si.reconcileEmptyIndex {
+			log.Info("Chain index is empty and reconcileEmptyIndex is disabled; skipping reconciliation")
 			return nil
 		}
 
@@ -162,7 +163,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		}
 
 		currTs := head
-		log.Infof("Starting chain reconciliation from height %d", head.Height())
+		log.Infof("Starting chain reconciliation from height %d, reconciliationEpoch: %d", head.Height(), reconciliationEpoch)
 		var missingTipsets []*types.TipSet
 
 		// The goal here is to walk the canonical chain backwards from head until we find a matching non-reverted tipset
@@ -209,9 +210,15 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		// mark all tipsets from the reconciliation epoch onwards in the Index as reverted as they are not in the current canonical chain
 		log.Infof("Marking tipsets as reverted from height %d", reconciliationEpoch)
-		if _, err = tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch)); err != nil {
+		result, err := tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch))
+		if err != nil {
 			return xerrors.Errorf("failed to mark tipsets as reverted: %w", err)
 		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return xerrors.Errorf("failed to get number of rows affected: %w", err)
+		}
+		log.Infof("Marked %d tipsets as reverted from height %d", rowsAffected, reconciliationEpoch)
 
 		// also need to mark events as reverted for the corresponding inclusion tipsets
 		if _, err = tx.StmtContext(ctx, si.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1)); err != nil {

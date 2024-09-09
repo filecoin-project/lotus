@@ -86,6 +86,7 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 				unlockObserver()
 				return xerrors.Errorf("error while reconciling chain index with chain state: %w", err)
 			}
+			log.Infof("Chain indexer reconciled with chain state; observer will start upates from height: %d", head.Height())
 			unlockObserver()
 
 			ch, err := mp.Updates(ctx)

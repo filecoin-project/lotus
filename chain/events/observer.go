@@ -206,7 +206,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 
 		for _, obs := range observers {
 			if err := obs.Revert(ctx, from, to); err != nil {
-				log.Errorf("observer %T failed to apply tipset %s (%d) with: %s", obs, from.Key(), from.Height(), err)
+				log.Errorf("observer %T failed to revert tipset %s (%d) with: %s", obs, from.Key(), from.Height(), err)
 			}
 		}
 
@@ -232,7 +232,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 
 		for _, obs := range observers {
 			if err := obs.Apply(ctx, head, to); err != nil {
-				log.Errorf("observer %T failed to revert tipset %s (%d) with: %s", obs, to.Key(), to.Height(), err)
+				log.Errorf("observer %T failed to apply tipset %s (%d) with: %s", obs, to.Key(), to.Height(), err)
 			}
 		}
 		if to.Height() > o.maxHeight {
