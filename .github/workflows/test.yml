@@ -213,7 +213,15 @@ jobs:
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: FFI_BUILD_FROM_SOURCE=1 FFI_USE_BLST_PORTABLE=1 make deps
+        run: |
+          set -x
+          FFI_BUILD_FROM_SOURCE=1 FFI_USE_BLST_PORTABLE=1 make deps 2>&1 | tee ffi_build.log
+          echo "FFI Build Log:"
+          cat ffi_build.log
+          echo "CPU Flags:"
+          grep -i "cpu flags" /proc/cpuinfo | head -n 1
+          echo "Supported CPU Flags in Build:"
+          grep -i "flags" ffi_build.log || echo "No CPU flags found in build log"
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: make lotus
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
