@@ -213,7 +213,7 @@ jobs:
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: FFI_USE_BLST_PORTABLE=1 make deps
+        run: FFI_BUILD_FROM_SOURCE=1 FFI_USE_BLST_PORTABLE=1 make deps
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: make lotus
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
