@@ -166,7 +166,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		}
 
 		currTs := head
-		log.Infof("Starting chain reconciliation from height %d, reconciliationEpoch: %d", head.Height(), reconciliationEpoch)
+		log.Infof("Starting chain reconciliation from head height %d, reconciliationEpoch: %d", head.Height(), reconciliationEpoch)
 		var missingTipsets []*types.TipSet
 
 		// The goal here is to walk the canonical chain backwards from head until we find a matching non-reverted tipset
@@ -194,9 +194,13 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 			if len(missingTipsets) <= si.maxReconcileTipsets {
 				missingTipsets = append(missingTipsets, currTs)
+			} else if isIndexEmpty {
+				// if chain index is empty, we can short circuit here as the index has minimum epoch for reconciliation i.e. it is always 0
+				break
 			}
 
 			if currTs.Height() == 0 {
+				log.Infof("ReconcileWithChain reached genesis but no matching tipset found in index")
 				break
 			}
 
@@ -207,7 +211,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			}
 		}
 
-		if currTs == nil {
+		if currTs == nil && !isIndexEmpty {
 			log.Warn("ReconcileWithChain reached genesis without finding matching tipset")
 		}
 
@@ -228,6 +232,8 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
 
+		log.Infof("Applying %d missing tipsets to Index; max missing tipset height %d; min missing tipset height %d", len(missingTipsets),
+			missingTipsets[0].Height(), missingTipsets[len(missingTipsets)-1].Height())
 		totalIndexed := 0
 		// apply all missing tipsets from the canonical chain to the current chain head
 		for i := 0; i < len(missingTipsets); i++ {
@@ -244,7 +250,9 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 				}
 			} else if currTs.Height() == 0 {
 				if err := si.indexTipset(ctx, tx, currTs); err != nil {
-					log.Warnf("failed to index tipset during reconciliation: %s", err)
+					log.Warnf("failed to index genesis tipset during reconciliation: %s", err)
+				} else {
+					totalIndexed++
 				}
 				break
 			}
@@ -256,9 +264,12 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 				// reached the end of what we have in the chainstore
 				if err := si.indexTipset(ctx, tx, currTs); err != nil {
 					log.Warnf("failed to index tipset during reconciliation: %s", err)
+				} else {
+					totalIndexed++
 				}
 				break
 			}
+
 			totalIndexed++
 		}
 

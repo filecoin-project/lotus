@@ -1602,12 +1602,12 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 			return nil, xerrors.Errorf("failed to get tipset by cid: %w", err)
 		}
 		if ts.Height() >= head.Height() {
-			return nil, xerrors.New("cannot ask for events for a tipset >= head")
+			return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
 		}
 	}
 
 	if pf.minHeight >= head.Height() || pf.maxHeight >= head.Height() {
-		return nil, xerrors.New("cannot ask for events for a tipset >= head")
+		return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
 	}
 
 	ef := &chainindex.EventFilter{
@@ -1750,7 +1750,8 @@ func (e *EthEventHandler) parseEthFilterSpec(filterSpec *ethtypes.EthFilterSpec)
 		tipsetCid = filterSpec.BlockHash.ToCid()
 	} else {
 		var err error
-		minHeight, maxHeight, err = parseBlockRange(e.Chain.GetHeaviestTipSet().Height(), filterSpec.FromBlock, filterSpec.ToBlock, e.MaxFilterHeightRange)
+		// Because of deferred execution, we need to subtract 1 from the heaviest tipset height for the "heaviest" parameter
+		minHeight, maxHeight, err = parseBlockRange(e.Chain.GetHeaviestTipSet().Height()-1, filterSpec.FromBlock, filterSpec.ToBlock, e.MaxFilterHeightRange)
 		if err != nil {
 			return nil, err
 		}

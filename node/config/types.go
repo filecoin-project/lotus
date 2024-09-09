@@ -637,7 +637,7 @@ type ChainIndexerConfig struct {
 	//
 	// When set to true:
 	// - On startup, if the index is empty, the indexer will index the available
-	//   chain state on the node albeit within the `MaxReconcileTipsets` limit.
+	//   chain state on the node albeit within the MaxReconcileTipsets limit.
 	//
 	// When set to false:
 	// - The indexer will not automatically re-index the chain state on startup if the index is empty.
@@ -645,7 +645,7 @@ type ChainIndexerConfig struct {
 	// Default: false
 	//
 	// Note: The number of tipsets reconciled (i.e. indexed) during this process can be
-	// controlled using the `MaxReconcileTipsets` option.
+	// controlled using the MaxReconcileTipsets option.
 	ReconcileEmptyIndex bool
 
 	// MaxReconcileTipsets limits the number of tipsets to reconcile with the chain during startup.

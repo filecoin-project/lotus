@@ -24,6 +24,7 @@ import (
 func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
 	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
 		if cfg.DisableIndexer {
+			log.Infof("ChainIndexer is disabled")
 			return nil, nil
 		}
 
