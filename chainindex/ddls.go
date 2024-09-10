@@ -14,8 +14,7 @@ const (
 
 	stmtUpdateTipsetToReverted = "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?"
 
-	stmtRemoveRevertedTipsetsBeforeHeight = "DELETE FROM tipset_message WHERE height < ? AND reverted = 1"
-	stmtRemoveTipsetsBeforeHeight         = "DELETE FROM tipset_message WHERE height < ?"
+	stmtRemoveTipsetsBeforeHeight = "DELETE FROM tipset_message WHERE height < ?"
 
 	stmtRemoveEthHashesOlderThan = `DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?);`
 

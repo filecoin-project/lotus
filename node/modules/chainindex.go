@@ -70,10 +70,6 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 				return *actor.DelegatedAddress, true
 			})
 
-			if err := indexer.Start(); err != nil {
-				return err
-			}
-
 			ev, err := events.NewEvents(ctx, &evapi)
 			if err != nil {
 				return err
@@ -98,6 +94,10 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 				return err
 			}
 			go chainindex.WaitForMpoolUpdates(ctx, ch, indexer)
+
+			if err := indexer.Start(); err != nil {
+				return err
+			}
 
 			return nil
 		},

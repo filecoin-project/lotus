@@ -39,7 +39,6 @@ type SqliteIndexer struct {
 	updateTipsetToRevertedStmt            *sql.Stmt
 	hasTipsetStmt                         *sql.Stmt
 	updateTipsetToNonRevertedStmt         *sql.Stmt
-	removeRevertedTipsetsBeforeHeightStmt *sql.Stmt
 	removeTipsetsBeforeHeightStmt         *sql.Stmt
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
@@ -339,11 +338,6 @@ func (si *SqliteIndexer) prepareStatements() error {
 	si.updateTipsetToRevertedStmt, err = si.db.Prepare(stmtUpdateTipsetToReverted)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetToRevertedStmt", err)
-	}
-
-	si.removeRevertedTipsetsBeforeHeightStmt, err = si.db.Prepare(stmtRemoveRevertedTipsetsBeforeHeight)
-	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "removeRevertedTipsetsBeforeHeightStmt", err)
 	}
 
 	si.removeTipsetsBeforeHeightStmt, err = si.db.Prepare(stmtRemoveTipsetsBeforeHeight)
