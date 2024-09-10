@@ -22,7 +22,7 @@ var NetworkBundle = "butterflynet"
 var ActorDebugging = false
 
 const BootstrappersFile = "butterflynet.pi"
-const GenesisFile = "butterflynet.car"
+const GenesisFile = "butterflynet.car.zst"
 
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 120
