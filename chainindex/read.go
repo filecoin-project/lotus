@@ -109,7 +109,7 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 	}
 
 	// is it already indexed?
-	if exists, err := si.hasNonRevertedTipset(ctx, headTsKeyCidBytes); err != nil {
+	if exists, err := si.isTipsetIndexed(ctx, headTsKeyCidBytes); err != nil {
 		return xerrors.Errorf("failed to check if tipset exists: %w", err)
 	} else if exists {
 		return nil
@@ -120,7 +120,7 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 	defer unsubFn()
 
 	for ctx.Err() == nil {
-		exists, err := si.hasNonRevertedTipset(ctx, headTsKeyCidBytes)
+		exists, err := si.isTipsetIndexed(ctx, headTsKeyCidBytes)
 		if err != nil {
 			return xerrors.Errorf("failed to check if tipset exists: %w", err)
 		} else if exists {
@@ -135,14 +135,6 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 		}
 	}
 	return ctx.Err()
-}
-
-func (si *SqliteIndexer) hasNonRevertedTipset(ctx context.Context, tsKeyCidBytes []byte) (bool, error) {
-	var exists bool
-	if err := si.hasNonRevertedTipsetStmt.QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
-		return false, xerrors.Errorf("failed to check if tipset is indexed and non-reverted: %w", err)
-	}
-	return exists, nil
 }
 
 func (si *SqliteIndexer) isTipsetIndexed(ctx context.Context, tsKeyCidBytes []byte) (bool, error) {

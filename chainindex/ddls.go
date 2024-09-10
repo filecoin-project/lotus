@@ -14,8 +14,6 @@ const (
 
 	stmtUpdateTipsetToReverted = "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?"
 
-	stmtGetMaxNonRevertedTipset = "SELECT tipset_key_cid FROM tipset_message WHERE reverted = 0 ORDER BY height DESC LIMIT 1"
-
 	stmtRemoveRevertedTipsetsBeforeHeight = "DELETE FROM tipset_message WHERE height < ? AND reverted = 1"
 	stmtRemoveTipsetsBeforeHeight         = "DELETE FROM tipset_message WHERE height < ?"
 
@@ -39,7 +37,7 @@ const (
 		SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
 	)`
 
-	stmtGetMsgIdForMsgCidAndTipset = `SELECT message_id FROM tipset_message WHERE message_cid = ? AND tipset_key_cid = ?`
+	stmtGetMsgIdForMsgCidAndTipset = `SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND message_cid = ?AND reverted = 0`
 
 	stmtInsertEvent      = "INSERT INTO event (message_id, event_index, emitter_addr, reverted) VALUES (?, ?, ?, ?)"
 	stmtInsertEventEntry = "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)"
@@ -91,4 +89,6 @@ var ddls = []string{
 	`CREATE INDEX IF NOT EXISTS idx_event_message_id ON event (message_id)`,
 
 	`CREATE INDEX IF NOT EXISTS idx_height ON tipset_message (height)`,
+
+	`CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id)`,
 }

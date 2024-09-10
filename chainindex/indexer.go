@@ -37,7 +37,6 @@ type SqliteIndexer struct {
 	getMsgCidFromEthHashStmt              *sql.Stmt
 	insertTipsetMessageStmt               *sql.Stmt
 	updateTipsetToRevertedStmt            *sql.Stmt
-	getMaxNonRevertedTipsetStmt           *sql.Stmt
 	hasTipsetStmt                         *sql.Stmt
 	updateTipsetToNonRevertedStmt         *sql.Stmt
 	removeRevertedTipsetsBeforeHeightStmt *sql.Stmt
@@ -340,11 +339,6 @@ func (si *SqliteIndexer) prepareStatements() error {
 	si.updateTipsetToRevertedStmt, err = si.db.Prepare(stmtUpdateTipsetToReverted)
 	if err != nil {
 		return xerrors.Errorf("prepare %s: %w", "updateTipsetToRevertedStmt", err)
-	}
-
-	si.getMaxNonRevertedTipsetStmt, err = si.db.Prepare(stmtGetMaxNonRevertedTipset)
-	if err != nil {
-		return xerrors.Errorf("prepare %s: %w", "getMaxNonRevertedTipsetStmt", err)
 	}
 
 	si.removeRevertedTipsetsBeforeHeightStmt, err = si.db.Prepare(stmtRemoveRevertedTipsetsBeforeHeight)

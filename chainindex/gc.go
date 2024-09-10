@@ -41,14 +41,18 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	if si.gcRetentionDays <= 0 {
 		return
 	}
+	log.Info("starting index gc")
 
 	head := si.cs.GetHeaviestTipSet()
 	retentionEpochs := si.gcRetentionDays * builtin.EpochsInDay
 
 	removalEpoch := int64(head.Height()) - retentionEpochs - 10 // 10 is for some grace period
 	if removalEpoch <= 0 {
+		log.Info("no tipsets to gc")
 		return
 	}
+
+	log.Infof("gc'ing all(reverted and non-reverted) tipsets before epoch %d", removalEpoch)
 
 	res, err := si.removeTipsetsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
 	if err != nil {
@@ -62,13 +66,13 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infow("gc'd tipsets", "height", removalEpoch, "nRows", rows)
-
+	log.Infof("gc'd %d tipsets before epoch %d", rows, removalEpoch)
 	// Also GC eth hashes
 
+	log.Infof("gc'ing eth hashes older than %d days", si.gcRetentionDays)
 	res, err = si.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(int(si.gcRetentionDays)) + " day")
 	if err != nil {
-		log.Errorw("failed to delete eth hashes older than", "error", err)
+		log.Errorw("failed to gc eth hashes older than", "error", err)
 		return
 	}
 
@@ -78,7 +82,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infow("gc'd eth hashes", "height", removalEpoch, "nRows", rows)
+	log.Infof("gc'd %d eth hashes older than %d days", rows, si.gcRetentionDays)
 }
 
 func (si *SqliteIndexer) cleanupRevertedTipsets(ctx context.Context) {
@@ -87,6 +91,8 @@ func (si *SqliteIndexer) cleanupRevertedTipsets(ctx context.Context) {
 	if finalEpoch <= 0 {
 		return
 	}
+
+	log.Infof("cleaning up all reverted tipsets before epoch %d as it is now final", finalEpoch)
 
 	// remove all entries from the `tipsets` table where `reverted=true` and height is < finalEpoch
 	// cascade delete based on foreign key constraints takes care of cleaning up the other tables
