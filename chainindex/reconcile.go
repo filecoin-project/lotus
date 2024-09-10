@@ -69,6 +69,10 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		// in the db so we know where to start reconciliation from
 		// All tipsets that exist in the DB but not in the canonical chain are then marked as reverted
 		// All tpsets that exist in the canonical chain but not in the db are then applied
+
+		// we only need to walk back as far as the reconciliation epoch as all the tipsets in the index
+		// below the reconciliation epoch are already marked as reverted because the reconciliation epoch
+		// is the minimum non-reverted height in the index
 		for currTs != nil && currTs.Height() >= reconciliationEpoch {
 			tsKeyCidBytes, err := toTipsetKeyCidBytes(currTs)
 			if err != nil {
@@ -88,11 +92,11 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 				break
 			}
 
-			if len(missingTipsets) <= si.maxReconcileTipsets {
+			if len(missingTipsets) < si.maxReconcileTipsets {
 				missingTipsets = append(missingTipsets, currTs)
 			}
-			// even if len(missingTipsets) > si.maxReconcileTipsets, we still need to continue the walk
-			// to find the reconciliation epoch so we can mark the indexed tipsets not in the main chain as reverted
+			// even if len(missingTipsets) >= si.maxReconcileTipsets, we still need to continue the walk
+			// to find the final reconciliation epoch so we can mark the indexed tipsets not in the main chain as reverted
 
 			if currTs.Height() == 0 {
 				log.Infof("ReconcileWithChain reached genesis but no matching tipset found in index")
