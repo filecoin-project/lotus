@@ -129,6 +129,7 @@ func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddr
 func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.TipSet) error {
 	si.closeLk.RLock()
 	if si.closed {
+		si.closeLk.RUnlock()
 		return ErrClosed
 	}
 	si.closeLk.RUnlock()
@@ -406,6 +407,7 @@ func (si *SqliteIndexer) prepareStatements() error {
 func (si *SqliteIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, msgCid cid.Cid) error {
 	si.closeLk.RLock()
 	if si.closed {
+		si.closeLk.RUnlock()
 		return ErrClosed
 	}
 	si.closeLk.RUnlock()
@@ -421,6 +423,7 @@ func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.Sign
 	}
 	si.closeLk.RLock()
 	if si.closed {
+		si.closeLk.RUnlock()
 		return ErrClosed
 	}
 	si.closeLk.RUnlock()
@@ -457,6 +460,7 @@ func (si *SqliteIndexer) indexEthTxHash(ctx context.Context, tx *sql.Tx, txHash 
 func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
 	si.closeLk.RLock()
 	if si.closed {
+		si.closeLk.RUnlock()
 		return ErrClosed
 	}
 	si.closeLk.RUnlock()
@@ -483,6 +487,7 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) error {
 	si.closeLk.RLock()
 	if si.closed {
+		si.closeLk.RUnlock()
 		return ErrClosed
 	}
 	si.closeLk.RUnlock()
