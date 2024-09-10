@@ -83,7 +83,7 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 
 	err = sqlite.InitDb(ctx, "chain index", db, ddls, []sqlite.MigrationFunc{})
 	if err != nil {
-		return nil, xerrors.Errorf("failed to init message index db: %w", err)
+		return nil, xerrors.Errorf("failed to init chain index db: %w", err)
 	}
 
 	si = &SqliteIndexer{

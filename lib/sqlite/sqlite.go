@@ -70,6 +70,16 @@ func Open(path string) (*sql.DB, bool, error) {
 		}
 	}
 
+	var foreignKeysEnabled int
+	if err := db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeysEnabled); err != nil {
+		return nil, false, xerrors.Errorf("failed to check foreign keys setting: %w", err)
+	}
+	if foreignKeysEnabled == 0 {
+		return nil, false, xerrors.Errorf("foreign keys are not enabled for database [@ %s]", path)
+	}
+
+	log.Infof("Database [@ %s] opened successfully with foreign keys enabled", path)
+
 	return db, exists, nil
 }
 
