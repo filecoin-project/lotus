@@ -67,7 +67,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 
 		// read message id for this message cid and tipset key cid
 		var messageID int64
-		if err := tx.Stmt(si.getMsgIdForMsgCidAndTipsetStmt).QueryRow(msgCidBytes, msgTsKeyCidBytes).Scan(&messageID); err != nil {
+		if err := tx.Stmt(si.getMsgIdForMsgCidAndTipsetStmt).QueryRow(msgTsKeyCidBytes, msgCidBytes).Scan(&messageID); err != nil {
 			return xerrors.Errorf("failed to get message id for message cid and tipset key cid: %w", err)
 		}
 		if messageID == 0 {
