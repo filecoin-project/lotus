@@ -186,7 +186,7 @@ jobs:
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
       - id: make_deps
         env:
-          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}-portable
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}-p
           CACHE_PATH: |
             ./extern/filecoin-ffi/filcrypto.h
             ./extern/filecoin-ffi/libfilcrypto.a
@@ -214,14 +214,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          set -x
-          FFI_BUILD_FROM_SOURCE=1 FFI_USE_BLST_PORTABLE=1 make deps 2>&1 | tee ffi_build.log
-          echo "FFI Build Log:"
-          cat ffi_build.log
-          echo "CPU Flags:"
-          grep -i "cpu flags" /proc/cpuinfo | head -n 1
-          echo "Supported CPU Flags in Build:"
-          grep -i "flags" ffi_build.log || echo "No CPU flags found in build log"
+          make build/.update-modules
+          (
+            cd extern/filecoin-ffi/rust
+            ./scripts/build-release.sh build --verbose --no-default-features --features multicore-sdr,opencl,blst-portable
+            find . -type f -name filcrypto.h -exec cp -- "{}" .. \;
+            find . -type f -name libfilcrypto.a -exec cp -- "{}" .. \;
+            find . -type f -name filcrypto.pc -exec cp -- "{}" .. \;
+          )
+          touch build/.filecoin-install
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: make lotus
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
