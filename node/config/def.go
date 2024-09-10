@@ -97,7 +97,7 @@ func DefaultFullNode() *FullNode {
 		},
 		ChainIndexer: ChainIndexerConfig{
 			DisableIndexer:      false,
-			GCRetentionDays:     0,
+			GCRetentionEpochs:   0,
 			ReconcileEmptyIndex: false,
 			MaxReconcileTipsets: 3 * builtin.EpochsInDay,
 		},

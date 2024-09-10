@@ -38,15 +38,15 @@ func (si *SqliteIndexer) gcLoop() {
 }
 
 func (si *SqliteIndexer) gc(ctx context.Context) {
-	if si.gcRetentionDays <= 0 {
+	if si.gcRetentionEpochs <= 0 {
+		log.Info("gc retention epochs is not set, skipping gc")
 		return
 	}
 	log.Info("starting index gc")
 
 	head := si.cs.GetHeaviestTipSet()
-	retentionEpochs := si.gcRetentionDays * builtin.EpochsInDay
 
-	removalEpoch := int64(head.Height()) - retentionEpochs - 10 // 10 is for some grace period
+	removalEpoch := int64(head.Height()) - si.gcRetentionEpochs - 10 // 10 is for some grace period
 	if removalEpoch <= 0 {
 		log.Info("no tipsets to gc")
 		return
@@ -67,22 +67,31 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	}
 
 	log.Infof("gc'd %d tipsets before epoch %d", rows, removalEpoch)
+
+	// -------------------------------------------------------------------------------------------------
 	// Also GC eth hashes
 
-	log.Infof("gc'ing eth hashes older than %d days", si.gcRetentionDays)
-	res, err = si.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(int(si.gcRetentionDays)) + " day")
+	// Convert gcRetentionEpochs to number of days
+	gcRetentionDays := si.gcRetentionEpochs / (builtin.EpochsInDay)
+	if gcRetentionDays < 1 {
+		log.Infof("skipping gc of eth hashes as retention days is less than 1")
+		return
+	}
+
+	log.Infof("gc'ing eth hashes older than %d days", gcRetentionDays)
+	res, err = si.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(int(gcRetentionDays)) + " day")
 	if err != nil {
-		log.Errorw("failed to gc eth hashes older than", "error", err)
+		log.Errorf("failed to gc eth hashes older than %d days: %w", gcRetentionDays, err)
 		return
 	}
 
 	rows, err = res.RowsAffected()
 	if err != nil {
-		log.Errorw("failed to get rows affected", "error", err)
+		log.Errorf("failed to get rows affected: %w", err)
 		return
 	}
 
-	log.Infof("gc'd %d eth hashes older than %d days", rows, si.gcRetentionDays)
+	log.Infof("gc'd %d eth hashes older than %d days", rows, gcRetentionDays)
 }
 
 func (si *SqliteIndexer) cleanupRevertedTipsets(ctx context.Context) {

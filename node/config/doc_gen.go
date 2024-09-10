@@ -87,10 +87,10 @@ It is strongly recommended to keep this set to false unless you have a specific 
 and fully understand the implications.`,
 		},
 		{
-			Name: "GCRetentionDays",
+			Name: "GCRetentionEpochs",
 			Type: "int64",
 
-			Comment: `GCRetentionDays specifies the duration (in days) for which data is retained in the Indexer.
+			Comment: `GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
 The garbage collection (GC) process removes data older than this retention period.
 Setting this to 0 disables GC, preserving all historical data indefinitely.
 

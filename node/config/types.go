@@ -625,12 +625,12 @@ type ChainIndexerConfig struct {
 	// and fully understand the implications.
 	DisableIndexer bool
 
-	// GCRetentionDays specifies the duration (in days) for which data is retained in the Indexer.
+	// GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
 	// The garbage collection (GC) process removes data older than this retention period.
 	// Setting this to 0 disables GC, preserving all historical data indefinitely.
 	//
 	// Default: 0 (GC disabled)
-	GCRetentionDays int64
+	GCRetentionEpochs int64
 
 	// ReconcileEmptyIndex determines whether to reconcile the index with the chain state
 	// during startup when the index is empty.

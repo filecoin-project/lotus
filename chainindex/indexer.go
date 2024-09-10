@@ -53,7 +53,7 @@ type SqliteIndexer struct {
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
 
-	gcRetentionDays     int64
+	gcRetentionEpochs   int64
 	reconcileEmptyIndex bool
 	maxReconcileTipsets int
 
@@ -65,7 +65,7 @@ type SqliteIndexer struct {
 	closed  bool
 }
 
-func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64, reconcileEmptyIndex bool,
+func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
 	maxReconcileTipsets int) (si *SqliteIndexer, err error) {
 	db, _, err := sqlite.Open(path)
 	if err != nil {
@@ -93,7 +93,7 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionDays int64, reconci
 		cs:                  cs,
 		updateSubs:          make(map[uint64]*updateSub),
 		subIdCounter:        0,
-		gcRetentionDays:     gcRetentionDays,
+		gcRetentionEpochs:   gcRetentionEpochs,
 		reconcileEmptyIndex: reconcileEmptyIndex,
 		maxReconcileTipsets: maxReconcileTipsets,
 	}
