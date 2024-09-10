@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
-	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
