@@ -150,8 +150,8 @@ Given Lotus Miner is being actively replaced by [Curio](https://github.com/filec
 `releases` goal was to point to the latest stable tagged release of Lotus software for convenience and script.  This worked when Lotus Node and Miner were released together, but with the [2024Q3 split of releasing Lotus Node and Miner separately](https://github.com/filecoin-project/lotus/issues/12010), there isn't necessarily a single commit to track for the latest released software of both. Rather than having ambiguity by tracking Lotus Node or Lotus Miner releases, we [decided it was clearer to deprecate the branch](https://github.com/filecoin-project/lotus/issues/12374). 
 
 That said, one can still programmatically get the latest release based on the [Branch and Tag Strategy](#branch-and-tag-strategy) with:
-* Lotus Node: `git tag -l 'v*' | sort -V -r | head -n 1` 
-* Lotus Miner: `git tag -l 'miner/v*' | sort -V -r | head -n 1` 
+* Lotus Node: `git tag -l 'v*' | grep -v "-" | sort -V -r | head -n 1` 
+* Lotus Miner: `git tag -l 'miner/v*' | grep -v "-" | sort -V -r | head -n 1` 
 
 ## Related Items
 
