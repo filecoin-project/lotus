@@ -5,17 +5,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"time"
-
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/metrics"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
@@ -29,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -43,6 +31,15 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
+	"time"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -193,6 +190,8 @@ type FullNodeMethods struct {
 
 	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
 
+	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) `perm:"read"`
+
 	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) `perm:"read"`
 
 	EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 ethtypes.EthUint64) (ethtypes.EthUint64, error) `perm:"read"`
@@ -222,8 +221,6 @@ type FullNodeMethods struct {
 	EthGetTransactionHashByCid func(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) `perm:"read"`
 
 	EthGetTransactionReceipt func(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) `perm:"read"`
-
-	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) `perm:"read"`
 
 	EthGetTransactionReceiptLimited func(p0 context.Context, p1 ethtypes.EthHash, p2 abi.ChainEpoch) (*EthTxReceipt, error) `perm:"read"`
 
@@ -643,9 +640,9 @@ type GatewayMethods struct {
 
 	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) ``
 
-	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) ``
-
 	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) ``
+
+	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) ``
 
 	EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) ``
 
@@ -1766,6 +1763,17 @@ func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 boo
 	return *new(ethtypes.EthBlock), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceipts == nil {
+		return *new([]*EthTxReceipt), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceipts(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	return *new([]*EthTxReceipt), ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByHash == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -1984,13 +1992,6 @@ func (s *FullNodeStruct) EthNewPendingTransactionFilter(p0 context.Context) (eth
 
 func (s *FullNodeStub) EthNewPendingTransactionFilter(p0 context.Context) (ethtypes.EthFilterID, error) {
 	return *new(ethtypes.EthFilterID), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
-	if s.Internal.EthGetBlockReceipts == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.EthGetBlockReceipts(p0, p1)
 }
 
 func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {
@@ -3841,12 +3842,6 @@ func (s *FullNodeStub) WalletSignMessage(p0 context.Context, p1 address.Address,
 	return nil, ErrNotSupported
 }
 
-
-// Add this method to the FullNodeStub
-func (s *FullNodeStub) EthGetBlockReceipts(p0 context.Context, p1 *types.TipSetKey) ([]*EthTxReceipt, error) {
-	return nil, ErrNotSupported
-}
-
 func (s *FullNodeStruct) WalletValidateAddress(p0 context.Context, p1 string) (address.Address, error) {
 	if s.Internal.WalletValidateAddress == nil {
 		return *new(address.Address), ErrNotSupported
@@ -4188,6 +4183,17 @@ func (s *GatewayStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool
 	return *new(ethtypes.EthBlock), ErrNotSupported
 }
 
+func (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceipts == nil {
+		return *new([]*EthTxReceipt), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceipts(p0, p1)
+}
+
+func (s *GatewayStub) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	return *new([]*EthTxReceipt), ErrNotSupported
+}
+
 func (s *GatewayStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByHash == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -4386,16 +4392,6 @@ func (s *GatewayStub) EthNewPendingTransactionFilter(p0 context.Context) (ethtyp
 	return *new(ethtypes.EthFilterID), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
-	if s.Internal.EthGetBlockReceipts == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.EthGetBlockReceipts(p0, p1)
-}
-
-func (s *GatewayStub) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
-	return nil, ErrNotSupported
-}
 func (s *GatewayStruct) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthProtocolVersion == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -6738,7 +6734,6 @@ func (s *WorkerStruct) WaitQuiet(p0 context.Context) error {
 func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
 	return ErrNotSupported
 }
-
 
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)

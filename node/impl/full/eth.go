@@ -2159,7 +2159,7 @@ func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes
 			continue
 		}
 
-		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, int(i), a.Chain, a.StateAPI)
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, i, a.Chain, a.StateAPI)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create Eth transaction: %w", err)
 		}
