@@ -213,16 +213,7 @@ jobs:
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          make build/.update-modules
-          (
-            cd extern/filecoin-ffi/rust
-            ./scripts/build-release.sh build --verbose --no-default-features --features multicore-sdr,opencl,blst-portable
-            find . -type f -name filcrypto.h -exec cp -- "{}" .. \;
-            find . -type f -name libfilcrypto.a -exec cp -- "{}" .. \;
-            find . -type f -name filcrypto.pc -exec cp -- "{}" .. \;
-          )
-          touch build/.filecoin-install
+        run: FFI_PORTABLE=1 make deps
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: make lotus
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
