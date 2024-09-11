@@ -122,9 +122,9 @@ func (s *state7) LockedTable() (BalanceTable, error) {
 
 func (s *state7) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market7.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market7.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state7) NextID() (abi.DealID, error) {
