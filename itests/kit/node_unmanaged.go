@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/v2"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/batch"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -787,7 +788,7 @@ func (tm *TestUnmanagedMiner) submitProveCommit(
 		req.True(msgReturn.Receipt.ExitCode.IsSuccess())
 	}
 
-	var returnValue miner14.BatchReturn
+	var returnValue batch.BatchReturn
 	req.NoError(returnValue.UnmarshalCBOR(bytes.NewReader(msgReturn.Receipt.Return)))
 	exitCodes := exitCodesFromBatchReturn(returnValue)
 
@@ -1597,7 +1598,7 @@ func CurrentDeadlineIndex(di *dline.Info) uint64 {
 }
 
 // TODO: remove when https://github.com/filecoin-project/go-state-types/pull/286 is available
-func exitCodesFromBatchReturn(b miner14.BatchReturn) []exitcode.ExitCode {
+func exitCodesFromBatchReturn(b batch.BatchReturn) []exitcode.ExitCode {
 	size := int(b.SuccessCount) + len(b.FailCodes)
 	codes := make([]exitcode.ExitCode, size)
 	i := 0

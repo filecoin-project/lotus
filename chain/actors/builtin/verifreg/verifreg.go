@@ -49,7 +49,6 @@ type (
 	RemoveDataCapReturn            = verifregtypes.RemoveDataCapReturn
 	RemoveExpiredAllocationsParams = verifregtypes.RemoveExpiredAllocationsParams
 	RemoveExpiredAllocationsReturn = verifregtypes.RemoveExpiredAllocationsReturn
-	BatchReturn                    = verifregtypes.BatchReturn
 	AllocationId                   = verifregtypes.AllocationId
 	ClaimId                        = verifregtypes.ClaimId
 	ClaimAllocationsParams         = verifregtypes.ClaimAllocationsParams

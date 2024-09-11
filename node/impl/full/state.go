@@ -1449,12 +1449,12 @@ func (a *StateAPI) calculateSectorWeight(ctx context.Context, maddr address.Addr
 		return types.EmptyInt, xerrors.Errorf("loading market actor: %w", err)
 	} else if s, err := market.Load(store, act); err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading market actor state: %w", err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, height, pci.Expiration); err != nil {
+	} else if vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, height, pci.Expiration); err != nil {
 		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - height
-		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = builtin.QAPowerForWeight(ssize, duration, vw)
 	}
 
 	return sectorWeight, nil
@@ -1613,7 +1613,7 @@ func (a *StateAPI) StateMinerInitialPledgeForSector(ctx context.Context, sectorD
 	}
 
 	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
-	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, big.Zero(), verifiedWeight)
+	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, verifiedWeight)
 
 	initialPledge, err := rewardState.InitialPledgeForPower(
 		sectorWeight,
