@@ -71,6 +71,10 @@ func (e *EthModuleDummy) EthGetTransactionReceipt(ctx context.Context, txHash et
 	return nil, ErrModuleDisabled
 }
 
+func (e *EthModuleDummy) EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+	return nil, ErrModuleDisabled
+}
+
 func (e *EthModuleDummy) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
 	return nil, ErrModuleDisabled
 }

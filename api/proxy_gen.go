@@ -223,6 +223,8 @@ type FullNodeMethods struct {
 
 	EthGetTransactionReceipt func(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) `perm:"read"`
 
+	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) `perm:"read"`
+
 	EthGetTransactionReceiptLimited func(p0 context.Context, p1 ethtypes.EthHash, p2 abi.ChainEpoch) (*EthTxReceipt, error) `perm:"read"`
 
 	EthMaxPriorityFeePerGas func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
@@ -640,6 +642,8 @@ type GatewayMethods struct {
 	EthGetBalance func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) ``
 
 	EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) ``
+
+	EthGetBlockReceipts func(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) ``
 
 	EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) ``
 
@@ -1980,6 +1984,13 @@ func (s *FullNodeStruct) EthNewPendingTransactionFilter(p0 context.Context) (eth
 
 func (s *FullNodeStub) EthNewPendingTransactionFilter(p0 context.Context) (ethtypes.EthFilterID, error) {
 	return *new(ethtypes.EthFilterID), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceipts == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceipts(p0, p1)
 }
 
 func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {
@@ -3830,6 +3841,12 @@ func (s *FullNodeStub) WalletSignMessage(p0 context.Context, p1 address.Address,
 	return nil, ErrNotSupported
 }
 
+
+// Add this method to the FullNodeStub
+func (s *FullNodeStub) EthGetBlockReceipts(p0 context.Context, p1 *types.TipSetKey) ([]*EthTxReceipt, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) WalletValidateAddress(p0 context.Context, p1 string) (address.Address, error) {
 	if s.Internal.WalletValidateAddress == nil {
 		return *new(address.Address), ErrNotSupported
@@ -4369,6 +4386,16 @@ func (s *GatewayStub) EthNewPendingTransactionFilter(p0 context.Context) (ethtyp
 	return *new(ethtypes.EthFilterID), ErrNotSupported
 }
 
+func (s *GatewayStruct) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	if s.Internal.EthGetBlockReceipts == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetBlockReceipts(p0, p1)
+}
+
+func (s *GatewayStub) EthGetBlockReceipts(p0 context.Context, p1 ethtypes.EthBlockNumberOrHash) ([]*EthTxReceipt, error) {
+	return nil, ErrNotSupported
+}
 func (s *GatewayStruct) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthProtocolVersion == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -6711,6 +6738,7 @@ func (s *WorkerStruct) WaitQuiet(p0 context.Context) error {
 func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
 	return ErrNotSupported
 }
+
 
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)

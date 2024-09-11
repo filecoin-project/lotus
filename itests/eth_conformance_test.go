@@ -53,6 +53,7 @@ type ethAPIRaw struct {
 	EthGetTransactionByHash                func(context.Context, *ethtypes.EthHash) (json.RawMessage, error)
 	EthGetTransactionCount                 func(context.Context, ethtypes.EthAddress, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthGetTransactionReceipt               func(context.Context, ethtypes.EthHash) (json.RawMessage, error)
+	EthGetBlockReceipts                    func(context.Context, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthMaxPriorityFeePerGas                func(context.Context) (json.RawMessage, error)
 	EthNewBlockFilter                      func(context.Context) (json.RawMessage, error)
 	EthNewFilter                           func(context.Context, *ethtypes.EthFilterSpec) (json.RawMessage, error)
@@ -351,6 +352,13 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method: "eth_getTransactionReceipt",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionReceipt(context.Background(), messageWithEvents)
+			},
+		},
+
+		{
+			method: "eth_getBlockReceipts",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockReceipts(context.Background(), ethtypes.NewEthBlockNumberOrHashFromPredefined(blockHashWithMessage.String()))
 			},
 		},
 

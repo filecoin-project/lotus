@@ -84,6 +84,7 @@ type EthModuleAPI interface {
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error)
 	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error)
+	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error)
 }
 
 type EthEventAPI interface {
@@ -131,6 +132,7 @@ var (
 // "Latest executed epoch" refers to the tipset that this node currently
 // accepts as the best parent tipset, based on the blocks it is accumulating
 // within the HEAD tipset.
+
 type EthModule struct {
 	Chain                    *store.ChainStore
 	Mpool                    *messagepool.MessagePool
@@ -2134,4 +2136,41 @@ func (g gasRewardSorter) Swap(i, j int) {
 }
 func (g gasRewardSorter) Less(i, j int) bool {
 	return g[i].premium.Int.Cmp(g[j].premium.Int) == -1
+}
+
+func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.Chain, blockParam)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+	}
+
+	messages, err := a.Chain.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
+	}
+
+	receipts := make([]*api.EthTxReceipt, 0, len(messages))
+	for i, msg := range messages {
+		msgLookup, err := a.StateAPI.StateSearchMsg(ctx, ts.Key(), msg.Cid(), api.LookbackNoLimit, true)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to search for message: %w", err)
+		}
+		if msgLookup == nil {
+			continue
+		}
+
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, int(i), a.Chain, a.StateAPI)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create Eth transaction: %w", err)
+		}
+
+		receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, a.EthEventHandler)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
+		}
+
+		receipts = append(receipts, &receipt)
+	}
+
+	return receipts, nil
 }

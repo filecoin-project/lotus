@@ -899,6 +899,12 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByHashLimited(arg0, arg1, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionByHashLimited", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionByHashLimited), arg0, arg1, arg2)
 }
 
+// EthGetBlockByHash indicates an expected call of EthGetBlockByHash.
+func (mr *MockFullNodeMockRecorder) EthGetBlockReceipts(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockReceipts", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockReceipts), arg0, arg1)
+}
+
 // EthGetTransactionCount mocks base method.
 func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
@@ -934,6 +940,14 @@ func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 ethty
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionReceipt", arg0, arg1)
 	ret0, _ := ret[0].(*api.EthTxReceipt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (m *MockFullNode) EthGetBlockReceipts(arg0 context.Context, arg1 ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetBlockReceipts", arg0, arg1)
+	ret0, _ := ret[0].([]*api.EthTxReceipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

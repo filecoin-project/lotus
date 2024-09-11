@@ -4949,6 +4949,56 @@
             }
         },
         {
+            "name": "Filecoin.EthGetBlockReceipts",
+            "description": "Retrieves receipts for all transactions in a block.",
+            "summary": "",
+            "paramStructure": "by-position",
+            "params": [
+                {
+                    "name": "p1",
+                    "description": "ethtypes.EthHash",
+                    "summary": "",
+                    "schema": {
+                        "examples": [
+                            "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+                        ],
+                        "items": [
+                            {
+                                "title": "number",
+                                "description": "Number is a number",
+                                "type": [
+                                    "number"
+                                ]
+                            }
+                        ],
+                        "maxItems": 32,
+                        "minItems": 32,
+                        "type": [
+                            "array"
+                        ]
+                    },
+                    "required": true,
+                    "deprecated": false
+                }
+            ],
+            "result": {
+                "name": "result",
+                "description": "Array of EthTxReceipt objects",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/EthTxReceipt"
+                    }
+                },
+                "required": true
+            },
+            "deprecated": false,
+            "externalDocs": {
+                "description": "Github remote link",
+                "url": "https://github.com/filecoin-project/lotus/blob/master/api/api_full.go#L789"
+            }
+        },
+        {
             "name": "Filecoin.EthGetTransactionReceiptLimited",
             "description": "```go\nfunc (s *FullNodeStruct) EthGetTransactionReceiptLimited(p0 context.Context, p1 ethtypes.EthHash, p2 abi.ChainEpoch) (*EthTxReceipt, error) {\n\tif s.Internal.EthGetTransactionReceiptLimited == nil {\n\t\treturn nil, ErrNotSupported\n\t}\n\treturn s.Internal.EthGetTransactionReceiptLimited(p0, p1, p2)\n}\n```",
             "summary": "",

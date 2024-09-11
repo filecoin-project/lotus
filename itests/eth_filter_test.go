@@ -516,6 +516,11 @@ func TestEthGetLogsBasic(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(rct)
 
+	receipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &rct.BlockHash})
+	require.NoError(err)
+	require.Len(receipts, 1)
+	require.Equal(rct, receipts[0])
+
 	require.Len(rct.Logs, 1)
 	var rctLogs []*ethtypes.EthLog
 	for _, rctLog := range rct.Logs {

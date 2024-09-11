@@ -1053,3 +1053,25 @@ func TestFEVMErrorParsing(t *testing.T) {
 		})
 	}
 }
+
+func TestEthGetBlockReceipts(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// Deploy a contract to generate a transaction
+	_, contractAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
+
+	// Get the latest block
+	latestBlock, err := client.EthGetBlockByNumber(ctx, "latest", true)
+	require.NoError(t, err)
+
+	// Get block receipts
+	receipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &latestBlock.Hash})
+	require.NoError(t, err)
+
+	// Verify receipts
+	require.Len(t, receipts, 1)
+	require.Equal(t, contractAddr, receipts[0].ContractAddress)
+	require.Equal(t, ethtypes.EthUint64(1), receipts[0].Status)
+	require.Equal(t, latestBlock.Hash, receipts[0].BlockHash)
+}

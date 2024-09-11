@@ -140,6 +140,12 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 
+	// Verify that the receipt is correct.
+	receipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &receipt.BlockHash})
+	require.NoError(t, err)
+	require.Len(t, receipts, 1)
+	require.Equal(t, receipt, receipts[0])
+
 	// logs must be an empty array, not a nil value, to avoid tooling compatibility issues
 	require.Empty(t, receipt.Logs)
 	// a correctly formed logs bloom, albeit empty, has 256 zeroes
