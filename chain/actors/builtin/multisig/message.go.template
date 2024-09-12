@@ -1,23 +1,27 @@
 package multisig
 
 import (
+{{if (le .v 1)}}
+	"math"
+	"golang.org/x/crypto/blake2b"
+{{end}}
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-    {{if (le .v 7)}}
-	    builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-	    init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
-	    multisig{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/multisig"
-    {{else}}
-        actorstypes "github.com/filecoin-project/go-state-types/actors"
-        multisig{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}multisig"
-        init{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/init"
-	    "github.com/filecoin-project/go-state-types/manifest"
-    {{end}}
+{{if (le .v 7)}}
+	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+	init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
+	multisig{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/multisig"
+{{else}}
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	multisig{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}multisig"
+	init{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/init"
+	"github.com/filecoin-project/go-state-types/manifest"
+{{end}}
 
-    builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -163,5 +167,31 @@ func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHa
 		Method: builtin0.MethodsMultisig.Cancel,
 		Params: enc,
 	}, nil
+}
+
+func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
+	if id > uint64(math.MaxInt64) {
+		return nil, xerrors.Errorf("transaction ID %d is out of range for int64", id)
+	}
+	params := multisig0.TxnIDParams{ID: multisig0.TxnID(id)}
+	if data != nil {
+		if data.Requester.Protocol() != address.ID {
+			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
+		}
+		if data.Value.Sign() == -1 {
+			return nil, xerrors.Errorf("proposal value must be non-negative, was %s", data.Value)
+		}
+		if data.To == address.Undef {
+			return nil, xerrors.Errorf("proposed destination address must be set")
+		}
+		pser, err := data.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		hash := blake2b.Sum256(pser)
+		params.ProposalHash = hash[:]
+	}
+
+	return actors.SerializeParams(&params)
 }
 {{end}}
