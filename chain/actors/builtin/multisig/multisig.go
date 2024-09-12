@@ -243,29 +243,6 @@ type ProposeReturn = msig15.ProposeReturn
 type ProposeParams = msig15.ProposeParams
 type ApproveReturn = msig15.ApproveReturn
 
-func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig15.TxnIDParams{ID: msig15.TxnID(id)}
-	if data != nil {
-		if data.Requester.Protocol() != address.ID {
-			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
-		}
-		if data.Value.Sign() == -1 {
-			return nil, xerrors.Errorf("proposal value must be non-negative, was %s", data.Value)
-		}
-		if data.To == address.Undef {
-			return nil, xerrors.Errorf("proposed destination address must be set")
-		}
-		pser, err := data.Serialize()
-		if err != nil {
-			return nil, err
-		}
-		hash := blake2b.Sum256(pser)
-		params.ProposalHash = hash[:]
-	}
-
-	return actors.SerializeParams(&params)
-}
-
 func AllCodes() []cid.Cid {
 	return []cid.Cid{
 		(&state0{}).Code(),
