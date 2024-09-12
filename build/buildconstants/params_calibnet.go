@@ -97,6 +97,9 @@ const UpgradeCalibrationDragonFixHeight = 1493854
 // 2024-07-11T12:00:00Z
 const UpgradeWaffleHeight = 1779094
 
+// ??????
+const UpgradeOmenHeight = 999999999999999
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,

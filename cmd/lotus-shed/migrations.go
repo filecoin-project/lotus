@@ -37,6 +37,7 @@ import (
 	market13 "github.com/filecoin-project/go-state-types/builtin/v13/market"
 	adt13 "github.com/filecoin-project/go-state-types/builtin/v13/util/adt"
 	v14 "github.com/filecoin-project/go-state-types/builtin/v14"
+	v15 "github.com/filecoin-project/go-state-types/builtin/v15"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
@@ -294,6 +295,8 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 		return filcns.UpgradeActorsV13, filcns.PreUpgradeActorsV13, checkNv22Invariants, nil
 	case network.Version23:
 		return filcns.UpgradeActorsV14, filcns.PreUpgradeActorsV14, checkNv23Invariants, nil
+	case network.Version24:
+		return filcns.UpgradeActorsV15, filcns.PreUpgradeActorsV15, checkNv24Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
 	}
@@ -618,6 +621,39 @@ func printMarketActorDiff(ctx context.Context, cst *cbornode.BasicIpldStore, nv 
 			}
 		}
 	}
+
+	return nil
+}
+
+func checkNv24Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
+
+	// Load the new state root.
+	var newStateRoot types.StateRoot
+	if err := actorStore.Get(ctx, newStateRootCid, &newStateRoot); err != nil {
+		return xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version14)
+	if err != nil {
+		return err
+	}
+	newActorTree, err := builtin.LoadTree(actorStore, newStateRoot.Actors)
+	if err != nil {
+		return err
+	}
+	messages, err := v15.CheckStateInvariants(newActorTree, epoch, actorCodeCids)
+	if err != nil {
+		return xerrors.Errorf("checking state invariants: %w", err)
+	}
+
+	for _, message := range messages.Messages() {
+		fmt.Println("got the following error: ", message)
+	}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
 
 	return nil
 }

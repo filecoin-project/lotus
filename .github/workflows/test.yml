@@ -186,7 +186,7 @@ jobs:
           echo -e "path<<EOF\n$CACHE_PATH\nEOF" | tee -a $GITHUB_OUTPUT
       - id: make_deps
         env:
-          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}
+          CACHE_KEY: ${{ runner.os }}-${{ runner.arch }}-make-deps-${{ hashFiles('./.git/modules/extern/filecoin-ffi/HEAD') }}-p
           CACHE_PATH: |
             ./extern/filecoin-ffi/filcrypto.h
             ./extern/filecoin-ffi/libfilcrypto.a
@@ -206,14 +206,14 @@ jobs:
           key: ${{ steps.make_deps.outputs.key }}
           path: ${{ steps.make_deps.outputs.path }}
           lookup-only: true
-      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         uses: ./.github/actions/install-system-dependencies
-      - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
+      - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         uses: ./.github/actions/install-go
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true' || steps.restore_make_deps.outputs.cache-hit != 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: make deps
+        run: FFI_PORTABLE=1 make deps
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'
         run: make lotus
       - if: steps.restore_fetch_params.outputs.cache-hit != 'true'

@@ -55,6 +55,7 @@ func NewActorRegistry() *vm.ActorRegistry {
 	inv.Register(actorstypes.Version12, vm.ActorsVersionPredicate(actorstypes.Version12), builtin.MakeRegistry(actorstypes.Version12))
 	inv.Register(actorstypes.Version13, vm.ActorsVersionPredicate(actorstypes.Version13), builtin.MakeRegistry(actorstypes.Version13))
 	inv.Register(actorstypes.Version14, vm.ActorsVersionPredicate(actorstypes.Version14), builtin.MakeRegistry(actorstypes.Version14))
+	inv.Register(actorstypes.Version15, vm.ActorsVersionPredicate(actorstypes.Version15), builtin.MakeRegistry(actorstypes.Version15))
 
 	return inv
 }

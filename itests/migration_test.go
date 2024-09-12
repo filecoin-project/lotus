@@ -18,7 +18,7 @@ import (
 	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
 	adt11 "github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
-	account "github.com/filecoin-project/go-state-types/builtin/v14/account"
+	account "github.com/filecoin-project/go-state-types/builtin/v15/account"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
