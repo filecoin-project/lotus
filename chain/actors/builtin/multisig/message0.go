@@ -1,6 +1,9 @@
 package multisig
 
 import (
+	"math"
+
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -139,4 +142,30 @@ func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHa
 		Method: builtin0.MethodsMultisig.Cancel,
 		Params: enc,
 	}, nil
+}
+
+func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
+	if id > uint64(math.MaxInt64) {
+		return nil, xerrors.Errorf("transaction ID %d is out of range for int64", id)
+	}
+	params := multisig0.TxnIDParams{ID: multisig0.TxnID(id)}
+	if data != nil {
+		if data.Requester.Protocol() != address.ID {
+			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
+		}
+		if data.Value.Sign() == -1 {
+			return nil, xerrors.Errorf("proposal value must be non-negative, was %s", data.Value)
+		}
+		if data.To == address.Undef {
+			return nil, xerrors.Errorf("proposed destination address must be set")
+		}
+		pser, err := data.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		hash := blake2b.Sum256(pser)
+		params.ProposalHash = hash[:]
+	}
+
+	return actors.SerializeParams(&params)
 }
