@@ -56,7 +56,7 @@ const UpgradePhoenixHeight = -26
 const UpgradeWaffleHeight = -27
 
 // ??????
-const UpgradeOmenHeight = 999999999999999
+const UpgradeTuktukHeight = 999999999999999
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100

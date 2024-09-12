@@ -319,7 +319,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    buildconstants.UpgradeOmenHeight,
+		Height:    buildconstants.UpgradeTuktukHeight,
 		Network:   network.Version24,
 		Migration: UpgradeActorsV15,
 		PreMigrations: []stmgr.PreMigration{{
