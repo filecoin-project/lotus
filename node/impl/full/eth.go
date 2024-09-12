@@ -165,6 +165,8 @@ type EthAPI struct {
 
 	Chain        *store.ChainStore
 	StateManager *stmgr.StateManager
+	ChainIndexer chainindex.Indexer
+	MpoolAPI     MpoolAPI
 
 	EthModuleAPI
 	EthEventAPI
@@ -938,6 +940,14 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return ethSendRawTransaction(ctx, a.MpoolAPI, a.ChainIndexer, rawTx, false)
+}
+
+func (a *EthAPI) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return ethSendRawTransaction(ctx, a.MpoolAPI, a.ChainIndexer, rawTx, true)
+}
+
+func ethSendRawTransaction(ctx context.Context, mpool MpoolAPI, indexer chainindex.Indexer, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
 	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -953,15 +963,20 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 		return ethtypes.EmptyEthHash, err
 	}
 
-	_, err = a.MpoolAPI.MpoolPush(ctx, smsg)
-	if err != nil {
-		return ethtypes.EmptyEthHash, err
+	if untrusted {
+		if _, err = mpool.MpoolPushUntrusted(ctx, smsg); err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+	} else {
+		if _, err = mpool.MpoolPush(ctx, smsg); err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
 	}
 
 	// make it immediately available in the transaction hash lookup db, even though it will also
 	// eventually get there via the mpool
-	if a.ChainIndexer != nil {
-		if err := a.ChainIndexer.IndexEthTxHash(ctx, txHash, smsg.Cid()); err != nil {
+	if indexer != nil {
+		if err := indexer.IndexEthTxHash(ctx, txHash, smsg.Cid()); err != nil {
 			log.Errorf("error indexing tx: %s", err)
 		}
 	}
