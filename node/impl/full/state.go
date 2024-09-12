@@ -487,7 +487,7 @@ func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, t
 	}
 
 	ret, err := m.StateManager.LookupIDAddress(ctx, addr, ts)
-	if err != nil && xerrors.Is(err, types.ErrActorNotFound) {
+	if err != nil && errors.Is(err, types.ErrActorNotFound) {
 		return address.Undef, &api.ErrActorNotFound{}
 	}
 
@@ -1223,7 +1223,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 		_, err := a.StateLookupID(ctx, match.To, tsk)
 
 		// if the recipient doesn't exist at the start point, we're not gonna find any matches
-		if xerrors.Is(err, &api.ErrActorNotFound{}) {
+		if errors.Is(err, &api.ErrActorNotFound{}) {
 			return nil, nil
 		}
 
@@ -1234,7 +1234,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 		_, err := a.StateLookupID(ctx, match.From, tsk)
 
 		// if the sender doesn't exist at the start point, we're not gonna find any matches
-		if xerrors.Is(err, &api.ErrActorNotFound{}) {
+		if errors.Is(err, &api.ErrActorNotFound{}) {
 			return nil, nil
 		}
 

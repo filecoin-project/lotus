@@ -141,6 +141,7 @@ var ChainNode = Options(
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
+		Override(new(full.EthTxHashManager), &full.EthTxHashManagerDummy{}),
 		Override(new(full.EthEventAPI), From(new(api.Gateway))),
 		Override(new(full.ActorEventAPI), From(new(api.Gateway))),
 	),
@@ -261,12 +262,14 @@ func ConfigFullNode(c interface{}) Option {
 
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(*full.EthEventHandler), modules.EthEventHandler(cfg.Events, cfg.Fevm.EnableEthRPC)),
+				Override(new(full.EthTxHashManager), modules.EthTxHashManager(cfg.Fevm)),
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
 				Override(new(full.EthEventAPI), From(new(*full.EthEventHandler))),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+				Override(new(full.EthTxHashManager), &full.EthTxHashManagerDummy{}),
 			),
 
 			If(cfg.Events.EnableActorEventsAPI,

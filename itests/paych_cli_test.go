@@ -3,6 +3,7 @@ package itests
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -13,7 +14,6 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -71,7 +71,7 @@ func TestPaymentChannelsBasic(t *testing.T) {
 	// This makes us wait as much as 10 epochs before giving up and failing
 	retry := 0
 	_, err = paymentReceiver.StateLookupID(ctx, chAddr, types.EmptyTSK)
-	for err != nil && xerrors.Is(err, &api.ErrActorNotFound{}) {
+	for err != nil && errors.Is(err, &api.ErrActorNotFound{}) {
 		time.Sleep(blocktime)
 		_, err = paymentReceiver.StateLookupID(ctx, chAddr, types.EmptyTSK)
 		retry++

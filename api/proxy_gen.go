@@ -237,6 +237,8 @@ type FullNodeMethods struct {
 
 	EthSendRawTransaction func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) `perm:"read"`
 
+	EthSendRawTransactionUntrusted func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) `perm:"read"`
+
 	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) `perm:"read"`
 
 	EthSyncing func(p0 context.Context) (ethtypes.EthSyncingResult, error) `perm:"read"`
@@ -1999,6 +2001,17 @@ func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 ethtypes.E
 }
 
 func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return *new(ethtypes.EthHash), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthSendRawTransactionUntrusted(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	if s.Internal.EthSendRawTransactionUntrusted == nil {
+		return *new(ethtypes.EthHash), ErrNotSupported
+	}
+	return s.Internal.EthSendRawTransactionUntrusted(p0, p1)
+}
+
+func (s *FullNodeStub) EthSendRawTransactionUntrusted(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {
 	return *new(ethtypes.EthHash), ErrNotSupported
 }
 

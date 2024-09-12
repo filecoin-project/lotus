@@ -107,8 +107,8 @@ func ConfigStorageMiner(c interface{}) Option {
 				Override(new(paths.SectorIndex), From(new(*paths.DBIndex))),
 
 				// sector index db is the only thing on lotus-miner that will use harmonydb
-				Override(new(*harmonydb.DB), func(cfg config.HarmonyDB, id harmonydb.ITestID) (*harmonydb.DB, error) {
-					return harmonydb.NewFromConfigWithITestID(cfg)(id)
+				Override(new(*harmonydb.DB), func(cfg config.HarmonyDB) (*harmonydb.DB, error) {
+					return harmonydb.NewFromConfig(cfg)
 				}),
 			),
 			If(!cfg.Subsystems.EnableSectorIndexDB,
@@ -136,7 +136,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(config.SealerConfig), cfg.Storage),
 		Override(new(config.ProvingConfig), cfg.Proving),
 		Override(new(config.HarmonyDB), cfg.HarmonyDB),
-		Override(new(harmonydb.ITestID), harmonydb.ITestID("")),
 		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 		If(build.IsF3Enabled(), Override(F3Participation, modules.F3Participation)),
 	)

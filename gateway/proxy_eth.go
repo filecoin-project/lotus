@@ -412,7 +412,8 @@ func (gw *Node) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthByt
 		return ethtypes.EthHash{}, err
 	}
 
-	return gw.target.EthSendRawTransaction(ctx, rawTx)
+	// push the message via the untrusted variant which uses MpoolPushUntrusted
+	return gw.target.EthSendRawTransactionUntrusted(ctx, rawTx)
 }
 
 func (gw *Node) EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {

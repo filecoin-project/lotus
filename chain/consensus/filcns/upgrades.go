@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -455,7 +456,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ st
 	err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
 		lbact, err := lbtree.GetActor(addr)
 		if err != nil {
-			if !xerrors.Is(err, types.ErrActorNotFound) {
+			if !errors.Is(err, types.ErrActorNotFound) {
 				return xerrors.Errorf("failed to get actor in lookback state")
 			}
 		}
@@ -1020,7 +1021,7 @@ func UpgradeActorsV3(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 	if buildconstants.BuildType == buildconstants.BuildMainnet {
 		err := stmgr.TerminateActor(ctx, tree, buildconstants.ZeroAddress, cb, epoch, ts)
-		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
+		if err != nil && !errors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %w", err)
 		}
 

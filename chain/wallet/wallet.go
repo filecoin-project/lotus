@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"sync"
@@ -88,7 +89,7 @@ func (w *LocalWallet) findKey(addr address.Address) (*key.Key, error) {
 
 	ki, err := w.tryFind(addr)
 	if err != nil {
-		if xerrors.Is(err, types.ErrKeyInfoNotFound) {
+		if errors.Is(err, types.ErrKeyInfoNotFound) {
 			return nil, nil
 		}
 		return nil, xerrors.Errorf("getting from keystore: %w", err)
@@ -108,7 +109,7 @@ func (w *LocalWallet) tryFind(addr address.Address) (types.KeyInfo, error) {
 		return ki, err
 	}
 
-	if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+	if !errors.Is(err, types.ErrKeyInfoNotFound) {
 		return types.KeyInfo{}, err
 	}
 
@@ -223,7 +224,7 @@ func (w *LocalWallet) SetDefault(a address.Address) error {
 	}
 
 	if err := w.keystore.Delete(KDefault); err != nil {
-		if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+		if !errors.Is(err, types.ErrKeyInfoNotFound) {
 			log.Warnf("failed to unregister current default key: %s", err)
 		}
 	}
@@ -251,7 +252,7 @@ func (w *LocalWallet) WalletNew(ctx context.Context, typ types.KeyType) (address
 
 	_, err = w.keystore.Get(KDefault)
 	if err != nil {
-		if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+		if !errors.Is(err, types.ErrKeyInfoNotFound) {
 			return address.Undef, err
 		}
 
@@ -284,7 +285,7 @@ func (w *LocalWallet) walletDelete(ctx context.Context, addr address.Address) er
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
-	if err := w.keystore.Delete(KTrashPrefix + k.Address.String()); err != nil && !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+	if err := w.keystore.Delete(KTrashPrefix + k.Address.String()); err != nil && !errors.Is(err, types.ErrKeyInfoNotFound) {
 		return xerrors.Errorf("failed to purge trashed key %s: %w", addr, err)
 	}
 
@@ -313,7 +314,7 @@ func (w *LocalWallet) deleteDefault() {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 	if err := w.keystore.Delete(KDefault); err != nil {
-		if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+		if !errors.Is(err, types.ErrKeyInfoNotFound) {
 			log.Warnf("failed to unregister current default key: %s", err)
 		}
 	}
