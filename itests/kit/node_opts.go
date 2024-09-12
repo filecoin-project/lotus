@@ -92,13 +92,6 @@ func WithAllSubsystems() NodeOpt {
 	}
 }
 
-func WithSectorIndexDB() NodeOpt {
-	return func(opts *nodeOpts) error {
-		opts.subsystems = opts.subsystems.Add(SHarmony)
-		return nil
-	}
-}
-
 func WithSubsystems(systems ...MinerSubsystem) NodeOpt {
 	return func(opts *nodeOpts) error {
 		for _, s := range systems {

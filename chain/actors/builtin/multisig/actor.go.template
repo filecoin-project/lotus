@@ -1,17 +1,19 @@
 package multisig
 
 import (
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/ipfs/go-cid"
 	"fmt"
 
-	"github.com/minio/blake2b-simd"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	msig{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin{{import .latestVersion}}multisig"
 {{range .versions}}
@@ -19,9 +21,6 @@ import (
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
     {{end}}
 {{end}}
-
-    builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"

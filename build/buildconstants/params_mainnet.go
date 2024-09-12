@@ -30,7 +30,7 @@ const ActorDebugging = false
 const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "mainnet.pi"
-const GenesisFile = "mainnet.car"
+const GenesisFile = "mainnet.car.zst"
 
 const UpgradeBreezeHeight abi.ChainEpoch = 41280
 

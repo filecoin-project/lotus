@@ -107,24 +107,19 @@ Unless a security issue is actively being exploited or a significant number of u
 
 ## Branch and Tag Strategy
 
-> [!NOTE]
-> - <span style="color:blue">Blue text</span> indicates node-related information.
-> - <span style="color:orange">Orange text</span> indicates miner-related information.
-> - System default colored text applies to both node and miner releases.
-
-* Releases are branched from the `master` branch, regardless of whether they include a network upgrade or not.
+* Releases are usually branched from the `master` branch, regardless of whether they include a network upgrade or not.
+  * For certain patch releases where we can't risk including recent `master` changes (such as for security or emergency bug-fix releases):
+    * Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`
+    * Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`
 * PRs usually target the `master` branch, even if they need to be backported to a release branch. 
+  * The primary exception is CHANGELOG editorializing and callouts.  As part of the [release process](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md), those changes happen directly in a release branch and are cherry-picked back to `master` at the end of a release. 
 * PRs that need to be backported should be marked with a `backport` label.
-* <span style="color:blue">Node release branches are named `release/vX.Y.Z`</span>
-* <span style="color:orange">Miner release branches are named `release/miner/vX.Y.Z`</span>
+* Node release branches are named `release/vX.Y.Z`
+* Miner release branches are named `release/miner/vX.Y.Z`
 * By the end of the release process:
-  * <span style="color:blue">A `release/vX.Y.Z` branch (node) will have an associated `vX.Y.Z` tag</span>
-  * <span style="color:orange">A `release/miner/vX.Y.Z` branch (miner) will have an associated `miner/vX.Y.Z` tag</span>
-* Both node and miner releases may have additional `vX.Y.Z-rcN` or `miner/vX.Y.Z-rcN` tags for release candidates
-* The `master` branch is typically the source for creating release branches
-* For emergency patch releases where we can't risk including recent `master` changes:
-  * <span style="color:blue">Node: `release/vX.Y.Z+1` will be created from `release/vX.Y.Z`</span>
-  * <span style="color:orange">Miner: `release/miner/vX.Y.Z+1` will be created from `release/miner/vX.Y.Z`</span>
+  * A `release/vX.Y.Z` branch (node) will have an associated `vX.Y.Z` tag
+  * A `release/miner/vX.Y.Z` branch (miner) will have an associated `miner/vX.Y.Z` tag
+* Both node and miner releases may have additional `vX.Y.Z-rcN` or `miner/vX.Y.Z-rcN` tags for release candidates.
 * As of 202408, the `releases` branch is no longer used and no longer tracks the latest release.  See [Why is the `releases` branch deprecated and what are alternatives?](#why-is-the-releases-branch-deprecated-and-what-are-alternatives).
 
 ## FAQ
@@ -155,8 +150,8 @@ Given Lotus Miner is being actively replaced by [Curio](https://github.com/filec
 `releases` goal was to point to the latest stable tagged release of Lotus software for convenience and script.  This worked when Lotus Node and Miner were released together, but with the [2024Q3 split of releasing Lotus Node and Miner separately](https://github.com/filecoin-project/lotus/issues/12010), there isn't necessarily a single commit to track for the latest released software of both. Rather than having ambiguity by tracking Lotus Node or Lotus Miner releases, we [decided it was clearer to deprecate the branch](https://github.com/filecoin-project/lotus/issues/12374). 
 
 That said, one can still programmatically get the latest release based on the [Branch and Tag Strategy](#branch-and-tag-strategy) with:
-* Lotus Node: `git tag -l 'v*' | sort -V -r | head -n 1` 
-* Lotus Miner: `git tag -l 'miner/v*' | sort -V -r | head -n 1` 
+* Lotus Node: `git tag -l 'v*' | grep -v "-" | sort -V -r | head -n 1` 
+* Lotus Miner: `git tag -l 'miner/v*' | grep -v "-" | sort -V -r | head -n 1` 
 
 ## Related Items
 

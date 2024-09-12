@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -113,7 +113,7 @@ func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
 func (rt *Runtime) ResolveAddress(addr address.Address) (ret address.Address, ok bool) {
 	r, err := rt.state.LookupIDAddress(addr)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return address.Undef, false
 		}
 		panic(aerrors.Fatalf("failed to resolve address %s: %s", addr, err))
@@ -128,8 +128,8 @@ type notFoundErr interface {
 func (rt *Runtime) StoreGet(c cid.Cid, o cbor.Unmarshaler) bool {
 	if err := rt.cst.Get(context.TODO(), c, o); err != nil {
 		var nfe notFoundErr
-		if xerrors.As(err, &nfe) && nfe.IsNotFound() {
-			if xerrors.As(err, new(ipldcbor.SerializationError)) {
+		if errors.As(err, &nfe) && nfe.IsNotFound() {
+			if errors.As(err, new(ipldcbor.SerializationError)) {
 				panic(aerrors.Newf(exitcode.ErrSerialization, "failed to unmarshal cbor object %s", err))
 			}
 			return false
@@ -143,7 +143,7 @@ func (rt *Runtime) StoreGet(c cid.Cid, o cbor.Unmarshaler) bool {
 func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 	c, err := rt.cst.Put(context.TODO(), x)
 	if err != nil {
-		if xerrors.As(err, new(ipldcbor.SerializationError)) {
+		if errors.As(err, new(ipldcbor.SerializationError)) {
 			panic(aerrors.Newf(exitcode.ErrSerialization, "failed to marshal cbor object %s", err))
 		}
 		panic(aerrors.Fatalf("failed to put cbor object: %s", err))
@@ -219,7 +219,7 @@ func (rt *Runtime) CurrentBalance() abi.TokenAmount {
 func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
 	act, err := rt.state.GetActor(addr)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, false
 		}
 
@@ -314,7 +314,7 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 	rt.chargeGas(rt.Pricelist().OnDeleteActor())
 	act, err := rt.state.GetActor(rt.Receiver())
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			rt.Abortf(exitcode.SysErrorIllegalActor, "failed to load actor in delete actor: %s", err)
 		}
 		panic(aerrors.Fatalf("failed to get actor: %s", err))

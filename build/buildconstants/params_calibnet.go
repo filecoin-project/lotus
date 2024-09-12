@@ -26,7 +26,7 @@ var NetworkBundle = "calibrationnet"
 var ActorDebugging = false
 
 const BootstrappersFile = "calibnet.pi"
-const GenesisFile = "calibnet.car"
+const GenesisFile = "calibnet.car.zst"
 
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 120

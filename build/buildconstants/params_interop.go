@@ -19,7 +19,7 @@ var NetworkBundle = "caterpillarnet"
 var ActorDebugging = false
 
 const BootstrappersFile = "interopnet.pi"
-const GenesisFile = "interopnet.car"
+const GenesisFile = "interopnet.car.zst"
 
 const GenesisNetworkVersion = network.Version22
 

@@ -101,7 +101,6 @@ type EthEventAPI interface {
 var (
 	_ EthModuleAPI = *new(api.FullNode)
 	_ EthEventAPI  = *new(api.FullNode)
-
 	_ EthModuleAPI = *new(api.Gateway)
 )
 
@@ -136,7 +135,7 @@ type EthModule struct {
 	Chain                    *store.ChainStore
 	Mpool                    *messagepool.MessagePool
 	StateManager             *stmgr.StateManager
-	EthTxHashManager         *EthTxHashManager
+	EthTxHashManager         EthTxHashManager
 	EthTraceFilterMaxResults uint64
 	EthEventHandler          *EthEventHandler
 
@@ -167,8 +166,10 @@ var _ EthEventAPI = (*EthEventHandler)(nil)
 type EthAPI struct {
 	fx.In
 
-	Chain        *store.ChainStore
-	StateManager *stmgr.StateManager
+	Chain            *store.ChainStore
+	StateManager     *stmgr.StateManager
+	EthTxHashManager EthTxHashManager
+	MpoolAPI         MpoolAPI
 
 	EthModuleAPI
 	EthEventAPI
@@ -356,7 +357,7 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 		return nil, nil
 	}
 
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	c, err := a.EthTxHashManager.GetCidFromHash(*txHash)
 	if err != nil {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
@@ -415,7 +416,7 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		return nil, nil
 	}
 
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	c, err := a.EthTxHashManager.GetCidFromHash(*txHash)
 	// We fall out of the first condition and continue
 	if errors.Is(err, ethhashlookup.ErrNotFound) {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
@@ -469,7 +470,7 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 
 	// First, handle the case where the "sender" is an EVM actor.
 	if actor, err := a.StateManager.LoadActor(ctx, addr, ts); err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
 		}
 		return 0, xerrors.Errorf("failed to lookup contract %s: %w", sender, err)
@@ -499,7 +500,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 }
 
 func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
-	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+	c, err := a.EthTxHashManager.GetCidFromHash(txHash)
 	if err != nil {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
@@ -559,7 +560,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 
 	actor, err := a.StateManager.LoadActor(ctx, to, ts)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, nil
 		}
 		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
@@ -652,7 +653,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 
 	actor, err := a.StateManager.LoadActor(ctx, to, ts)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return ethtypes.EthBytes(make([]byte, 32)), nil
 		}
 		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
@@ -733,7 +734,7 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 	}
 
 	actor, err := a.StateManager.LoadActorRaw(ctx, filAddr, st)
-	if xerrors.Is(err, types.ErrActorNotFound) {
+	if errors.Is(err, types.ErrActorNotFound) {
 		return ethtypes.EthBigIntZero, nil
 	} else if err != nil {
 		return ethtypes.EthBigInt{}, err
@@ -918,6 +919,14 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return ethSendRawTransaction(ctx, a.MpoolAPI, a.EthTxHashManager, rawTx, false)
+}
+
+func (a *EthAPI) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return ethSendRawTransaction(ctx, a.MpoolAPI, a.EthTxHashManager, rawTx, true)
+}
+
+func ethSendRawTransaction(ctx context.Context, mpool MpoolAPI, ethTxHashManager EthTxHashManager, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
 	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -933,14 +942,19 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 		return ethtypes.EmptyEthHash, err
 	}
 
-	_, err = a.MpoolAPI.MpoolPush(ctx, smsg)
-	if err != nil {
-		return ethtypes.EmptyEthHash, err
+	if untrusted {
+		if _, err = mpool.MpoolPushUntrusted(ctx, smsg); err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
+	} else {
+		if _, err = mpool.MpoolPush(ctx, smsg); err != nil {
+			return ethtypes.EmptyEthHash, err
+		}
 	}
 
 	// make it immediately available in the transaction hash lookup db, even though it will also
 	// eventually get there via the mpool
-	if err := a.EthTxHashManager.TransactionHashLookup.UpsertHash(txHash, smsg.Cid()); err != nil {
+	if err := ethTxHashManager.UpsertHash(txHash, smsg.Cid()); err != nil {
 		log.Errorf("error inserting tx mapping to db: %s", err)
 	}
 

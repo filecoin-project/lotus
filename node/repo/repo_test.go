@@ -2,12 +2,12 @@
 package repo
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
@@ -96,7 +96,7 @@ func basicTest(t *testing.T, repo Repo) {
 
 	err = kstr.Put("k1", k1)
 	if assert.Error(t, err, "putting key under the same name should error") {
-		assert.True(t, xerrors.Is(err, types.ErrKeyExists), "returned error is ErrKeyExists")
+		assert.True(t, errors.Is(err, types.ErrKeyExists), "returned error is ErrKeyExists")
 	}
 
 	k1prim, err := kstr.Get("k1")
@@ -105,7 +105,7 @@ func basicTest(t *testing.T, repo Repo) {
 
 	k2prim, err := kstr.Get("k2")
 	if assert.Error(t, err, "should not be able to get k2") {
-		assert.True(t, xerrors.Is(err, types.ErrKeyInfoNotFound), "returned error is ErrKeyNotFound")
+		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned error is ErrKeyNotFound")
 	}
 	assert.Empty(t, k2prim, "there should be no output for k2")
 
@@ -125,6 +125,6 @@ func basicTest(t *testing.T, repo Repo) {
 
 	err = kstr.Delete("k2")
 	if assert.Error(t, err) {
-		assert.True(t, xerrors.Is(err, types.ErrKeyInfoNotFound), "returned errror is ErrKeyNotFound")
+		assert.True(t, errors.Is(err, types.ErrKeyInfoNotFound), "returned errror is ErrKeyNotFound")
 	}
 }

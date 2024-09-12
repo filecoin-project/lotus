@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -368,7 +369,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	// Transform `addr` to its ID format.
 	iaddr, err := st.LookupIDAddress(addr)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return nil, xerrors.Errorf("address resolution: %w", err)
@@ -413,7 +414,7 @@ func (st *StateTree) DeleteActor(addr address.Address) error {
 
 	iaddr, err := st.LookupIDAddress(addr)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return xerrors.Errorf("address resolution: %w", err)

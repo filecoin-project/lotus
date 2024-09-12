@@ -387,7 +387,7 @@ func DoTransfer(tree types.StateTree, from, to address.Address, amt abi.TokenAmo
 
 func TerminateActor(ctx context.Context, tree *state.StateTree, addr address.Address, em ExecMonitor, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	a, err := tree.GetActor(addr)
-	if xerrors.Is(err, types.ErrActorNotFound) {
+	if errors.Is(err, types.ErrActorNotFound) {
 		return types.ErrActorNotFound
 	} else if err != nil {
 		return xerrors.Errorf("failed to get actor to delete: %w", err)

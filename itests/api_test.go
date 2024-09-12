@@ -3,6 +3,7 @@ package itests
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -10,7 +11,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -183,7 +183,7 @@ func (ts *apiSuite) testOutOfGasError(t *testing.T) {
 
 	_, err = full.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
 	require.Error(t, err, "should have failed")
-	require.True(t, xerrors.Is(err, &lapi.ErrOutOfGas{}))
+	require.True(t, errors.Is(err, &lapi.ErrOutOfGas{}))
 }
 
 func (ts *apiSuite) testLookupNotFoundError(t *testing.T) {
@@ -196,7 +196,7 @@ func (ts *apiSuite) testLookupNotFoundError(t *testing.T) {
 
 	_, err = full.StateLookupID(ctx, addr, types.EmptyTSK)
 	require.Error(t, err)
-	require.True(t, xerrors.Is(err, &lapi.ErrActorNotFound{}))
+	require.True(t, errors.Is(err, &lapi.ErrActorNotFound{}))
 }
 
 func (ts *apiSuite) testMining(t *testing.T) {

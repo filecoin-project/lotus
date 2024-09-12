@@ -3,6 +3,7 @@ package stmgr
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 
 	"github.com/ipfs/go-cid"
@@ -333,7 +334,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 	}
 
 	act, err := sm.LoadActorRaw(ctx, maddr, lbst)
-	if xerrors.Is(err, types.ErrActorNotFound) {
+	if errors.Is(err, types.ErrActorNotFound) {
 		_, err := sm.LoadActor(ctx, maddr, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("loading miner in current state: %w", err)

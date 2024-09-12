@@ -90,9 +90,9 @@ func TestPathDetachRedeclare(t *testing.T) {
 	// move sector data to the new path
 
 	// note: dest path already exist so we only want to .Join src
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "sealed"), newLocal).Run())
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "cache"), newLocal).Run())
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "unsealed"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(oldLocal, "sealed"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(oldLocal, "cache"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(oldLocal, "unsealed"), newLocal).Run())
 
 	// check that sector files aren't indexed, post checks fail
 	sps, err = miner.StorageList(ctx)
@@ -210,9 +210,9 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	// move sector data to the new path
 
 	// note: dest path already exist so we only want to .Join src
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "sealed"), newLocalTemp).Run())
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "cache"), newLocalTemp).Run())
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "unsealed"), newLocalTemp).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(oldLocal, "sealed"), newLocalTemp).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(oldLocal, "cache"), newLocalTemp).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(oldLocal, "unsealed"), newLocalTemp).Run())
 
 	// check that sector files aren't indexed, post checks fail
 	sps, err = miner.StorageList(ctx)
@@ -255,9 +255,9 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	// move sector data to the new path
 
 	// note: dest path already exist so we only want to .Join src
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(newLocalTemp, "sealed"), newLocal).Run())
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(newLocalTemp, "cache"), newLocal).Run())
-	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(newLocalTemp, "unsealed"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(newLocalTemp, "sealed"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(newLocalTemp, "cache"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "-R", filepath.Join(newLocalTemp, "unsealed"), newLocal).Run())
 
 	// redeclare sectors
 	require.NoError(t, sealw.StorageRedeclareLocal(ctx, nil, false))

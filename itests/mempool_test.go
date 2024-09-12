@@ -46,91 +46,6 @@ func TestMemPoolPushOutgoingInvalidDelegated(t *testing.T) {
 	require.Contains(t, err.Error(), "is a delegated address but not a valid Eth Address")
 }
 
-func TestMemPoolPushSingleNode(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001
-	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
-	//stm: @CHAIN_MEMPOOL_PUSH_002
-	ctx := context.Background()
-	const blockTime = 100 * time.Millisecond
-	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
-	ens.InterconnectAll()
-	kit.QuietMiningLogs()
-
-	sender := firstNode.DefaultKey.Address
-
-	addr, err := firstNode.WalletNew(ctx, types.KTBLS)
-	require.NoError(t, err)
-
-	const totalMessages = 10
-
-	bal, err := firstNode.WalletBalance(ctx, sender)
-	require.NoError(t, err)
-	toSend := big.Div(bal, big.NewInt(10))
-	each := big.Div(toSend, big.NewInt(totalMessages))
-
-	// add messages to be mined/published
-	var sms []*types.SignedMessage
-	for i := 0; i < totalMessages; i++ {
-		msg := &types.Message{
-			From:  sender,
-			To:    addr,
-			Value: each,
-		}
-
-		sm, err := firstNode.MpoolPushMessage(ctx, msg, nil)
-		require.NoError(t, err)
-		require.EqualValues(t, i, sm.Message.Nonce)
-
-		sms = append(sms, sm)
-	}
-
-	// check pending messages for address
-	kit.CircuitBreaker(t, "push messages", mPoolThrottle, mPoolTimeout, func() bool {
-		msgStatuses, _ := firstNode.MpoolCheckPendingMessages(ctx, sender)
-		if len(msgStatuses) == totalMessages {
-			for _, msgStatusList := range msgStatuses {
-				for _, status := range msgStatusList {
-					require.True(t, status.OK)
-				}
-			}
-			return true
-		}
-		return false
-	})
-
-	// verify messages should be the ones included in the next block
-	selected, _ := firstNode.MpoolSelect(ctx, types.EmptyTSK, 0)
-	for _, msg := range sms {
-		found := false
-		for _, selectedMsg := range selected {
-			if selectedMsg.Cid() == msg.Cid() {
-				found = true
-				break
-			}
-		}
-		require.True(t, found)
-	}
-
-	ens.BeginMining(blockTime)
-
-	kit.CircuitBreaker(t, "mine messages", mPoolThrottle, mPoolTimeout, func() bool {
-		// pool pending list should be empty
-		pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
-		require.NoError(t, err)
-
-		if len(pending) == 0 {
-			// all messages should be added to the chain
-			for _, lookMsg := range sms {
-				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
-				require.NoError(t, err)
-				require.NotNil(t, msgLookup)
-			}
-			return true
-		}
-		return false
-	})
-}
-
 func TestMemPoolPushTwoNodes(t *testing.T) {
 	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001
 	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
@@ -185,7 +100,7 @@ func TestMemPoolPushTwoNodes(t *testing.T) {
 
 	ens.BeginMining(blockTime)
 
-	kit.CircuitBreaker(t, "push & mine messages", mPoolThrottle, mPoolTimeout, func() bool {
+	require.Eventually(t, func() bool {
 		pending1, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
 		require.NoError(t, err)
 
@@ -206,7 +121,7 @@ func TestMemPoolPushTwoNodes(t *testing.T) {
 			return true
 		}
 		return false
-	})
+	}, mPoolTimeout, mPoolThrottle)
 }
 
 func TestMemPoolClearPending(t *testing.T) {
@@ -239,23 +154,23 @@ func TestMemPoolClearPending(t *testing.T) {
 	require.NoError(t, err)
 
 	// message should be in the mempool
-	kit.CircuitBreaker(t, "push message", mPoolThrottle, mPoolTimeout, func() bool {
+	require.Eventually(t, func() bool {
 		pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
 		require.NoError(t, err)
 
 		return len(pending) == 1
-	})
+	}, mPoolTimeout, mPoolThrottle)
 
 	err = firstNode.MpoolClear(ctx, true)
 	require.NoError(t, err)
 
 	// pool should be empty now
-	kit.CircuitBreaker(t, "clear mempool", mPoolThrottle, mPoolTimeout, func() bool {
+	require.Eventually(t, func() bool {
 		pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
 		require.NoError(t, err)
 
 		return len(pending) == 0
-	})
+	}, mPoolTimeout, mPoolThrottle)
 
 	// mine a couple of blocks
 	ens.BeginMining(blockTime)
@@ -311,7 +226,7 @@ func TestMemPoolBatchPush(t *testing.T) {
 	require.NoError(t, err)
 
 	// check pending messages for address
-	kit.CircuitBreaker(t, "batch push", mPoolThrottle, mPoolTimeout, func() bool {
+	require.Eventually(t, func() bool {
 		msgStatuses, err := firstNode.MpoolCheckPendingMessages(ctx, sender)
 		require.NoError(t, err)
 
@@ -324,7 +239,7 @@ func TestMemPoolBatchPush(t *testing.T) {
 			return true
 		}
 		return false
-	})
+	}, mPoolTimeout, mPoolThrottle)
 
 	// verify messages should be the ones included in the next block
 	selected, _ := firstNode.MpoolSelect(ctx, types.EmptyTSK, 0)
@@ -342,7 +257,7 @@ func TestMemPoolBatchPush(t *testing.T) {
 
 	ens.BeginMining(blockTime)
 
-	kit.CircuitBreaker(t, "mine messages", mPoolThrottle, mPoolTimeout, func() bool {
+	require.Eventually(t, func() bool {
 		// pool pending list should be empty
 		pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
 		require.NoError(t, err)
@@ -357,102 +272,131 @@ func TestMemPoolBatchPush(t *testing.T) {
 			return true
 		}
 		return false
-	})
+	}, mPoolTimeout, mPoolThrottle)
 }
 
-func TestMemPoolPushSingleNodeUntrusted(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
-	//stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001, @CHAIN_MEMPOOL_SELECT_001
-	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001
-	//stm: @CHAIN_MEMPOOL_PUSH_003
-	ctx := context.Background()
-	const blockTime = 100 * time.Millisecond
-	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
-	ens.InterconnectAll()
-	kit.QuietMiningLogs()
+func TestMemPoolPushSingleNode(t *testing.T) {
+	const blockTime = 50 * time.Millisecond
+	const maxMessages = 20
+	const maxUntrusted = 10
 
-	sender := firstNode.DefaultKey.Address
+	for _, style := range []string{"MpoolPush", "MpoolPushUntrusted", "MpoolPushMessage"} {
+		t.Run(style, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
 
-	addr, _ := firstNode.WalletNew(ctx, types.KTBLS)
+			firstNode, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+			t.Cleanup(func() {
+				_ = firstNode.Stop(ctx)
+				_ = miner.Stop(ctx)
+			})
+			ens.InterconnectAll()
+			kit.QuietMiningLogs()
 
-	const totalMessages = 10
+			sender := firstNode.DefaultKey.Address
+			addr, _ := firstNode.WalletNew(ctx, types.KTBLS)
+			bal, err := firstNode.WalletBalance(ctx, sender)
+			require.NoError(t, err)
+			toSend := big.Div(bal, big.NewInt(10))
+			each := big.Div(toSend, big.NewInt(maxMessages))
 
-	bal, err := firstNode.WalletBalance(ctx, sender)
-	require.NoError(t, err)
-	toSend := big.Div(bal, big.NewInt(10))
-	each := big.Div(toSend, big.NewInt(totalMessages))
+			// add messages to be mined/published
+			var sms []*types.SignedMessage
+			for i := 0; i < maxMessages; i++ {
+				msg := &types.Message{
+					From:  sender,
+					To:    addr,
+					Value: each,
+				}
 
-	// add messages to be mined/published
-	var sms []*types.SignedMessage
-	for i := 0; i < totalMessages; i++ {
-		msg := &types.Message{
-			From:       sender,
-			To:         addr,
-			Value:      each,
-			Nonce:      uint64(i),
-			GasLimit:   50_000_000,
-			GasFeeCap:  types.NewInt(100_000_000),
-			GasPremium: types.NewInt(1),
-		}
+				if style == "MpoolPush" || style == "MpoolPushUntrusted" {
+					msg.Nonce = uint64(i)
+					msg.GasLimit = 50_000_000
+					msg.GasFeeCap = types.NewInt(100_000_000)
+					msg.GasPremium = types.NewInt(1)
 
-		signedMessage, err := firstNode.WalletSignMessage(ctx, sender, msg)
-		require.NoError(t, err)
+					signedMessage, err := firstNode.WalletSignMessage(ctx, sender, msg)
+					require.NoError(t, err)
 
-		// push untrusted messages
-		pushedCid, err := firstNode.MpoolPushUntrusted(ctx, signedMessage)
-		require.NoError(t, err)
-		require.Equal(t, msg.Cid(), pushedCid)
-
-		sms = append(sms, signedMessage)
-	}
-
-	kit.CircuitBreaker(t, "push untrusted messages", mPoolThrottle, mPoolTimeout, func() bool {
-		// check pending messages for address
-		msgStatuses, _ := firstNode.MpoolCheckPendingMessages(ctx, sender)
-
-		if len(msgStatuses) == totalMessages {
-			for _, msgStatusList := range msgStatuses {
-				for _, status := range msgStatusList {
-					require.True(t, status.OK)
+					if style == "MpoolPushUntrusted" {
+						pushedCid, err := firstNode.MpoolPushUntrusted(ctx, signedMessage)
+						if i < maxUntrusted {
+							require.NoError(t, err)
+							require.Equal(t, msg.Cid(), pushedCid)
+						} else {
+							// can't push more than maxUntrusted through MpoolPushUntrusted
+							require.Error(t, err)
+							require.Contains(t, err.Error(), "too many pending messages")
+							break
+						}
+					} else {
+						pushedCid, err := firstNode.MpoolPush(ctx, signedMessage)
+						require.NoError(t, err)
+						require.Equal(t, msg.Cid(), pushedCid)
+					}
+					sms = append(sms, signedMessage)
+				} else {
+					signedMessage, err := firstNode.MpoolPushMessage(ctx, msg, nil)
+					require.NoError(t, err)
+					require.EqualValues(t, i, signedMessage.Message.Nonce)
+					sms = append(sms, signedMessage)
 				}
 			}
-			return true
-		}
-		return false
-	})
 
-	// verify messages should be the ones included in the next block
-	selected, _ := firstNode.MpoolSelect(ctx, types.EmptyTSK, 0)
-	for _, msg := range sms {
-		found := false
-		for _, selectedMsg := range selected {
-			if selectedMsg.Cid() == msg.Cid() {
-				found = true
-				break
+			expectedMessages := maxMessages
+			if style == "MpoolPushUntrusted" {
+				expectedMessages = maxUntrusted
 			}
-		}
-		require.True(t, found)
-	}
 
-	ens.BeginMining(blockTime)
+			require.Eventually(t, func() bool {
+				// check pending messages for address
+				msgStatuses, _ := firstNode.MpoolCheckPendingMessages(ctx, sender)
 
-	kit.CircuitBreaker(t, "mine untrusted messages", mPoolThrottle, mPoolTimeout, func() bool {
-		// pool pending list should be empty
-		pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
-		require.NoError(t, err)
+				if len(msgStatuses) == expectedMessages {
+					t.Logf("%#v", msgStatuses)
+					for _, msgStatusList := range msgStatuses {
+						for i, status := range msgStatusList {
+							require.True(t, status.OK, "message %d failed", i)
+						}
+					}
+					return true
+				}
+				return false
+			}, mPoolTimeout, mPoolThrottle)
 
-		if len(pending) == 0 {
-			// all messages should be added to the chain
-			for _, lookMsg := range sms {
-				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+			// verify messages should be the ones included in the next block
+			selected, _ := firstNode.MpoolSelect(ctx, types.EmptyTSK, 0)
+			for _, msg := range sms {
+				found := false
+				for _, selectedMsg := range selected {
+					if selectedMsg.Cid() == msg.Cid() {
+						found = true
+						break
+					}
+				}
+				require.True(t, found)
+			}
+
+			ens.BeginMining(blockTime)
+
+			require.Eventually(t, func() bool {
+				// pool pending list should be empty
+				pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
 				require.NoError(t, err)
-				require.NotNil(t, msgLookup)
-			}
-			return true
-		}
-		return false
-	})
 
+				if len(pending) == 0 {
+					// all messages should be added to the chain
+					for _, lookMsg := range sms {
+						msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+						require.NoError(t, err)
+						require.NotNil(t, msgLookup)
+					}
+					return true
+				}
+				return false
+			}, mPoolTimeout, mPoolThrottle)
+		})
+	}
 }
 
 func TestMemPoolBatchPushUntrusted(t *testing.T) {
@@ -500,7 +444,7 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 	require.NoError(t, err)
 
 	// check pending messages for address, wait until they are all pushed
-	kit.CircuitBreaker(t, "push untrusted messages", mPoolThrottle, mPoolTimeout, func() bool {
+	require.Eventually(t, func() bool {
 		msgStatuses, err := firstNode.MpoolCheckPendingMessages(ctx, sender)
 		require.NoError(t, err)
 
@@ -513,7 +457,7 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 			return true
 		}
 		return false
-	})
+	}, mPoolTimeout, mPoolThrottle)
 
 	// verify messages should be the ones included in the next block
 	selected, _ := firstNode.MpoolSelect(ctx, types.EmptyTSK, 0)
@@ -532,7 +476,7 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 	ens.BeginMining(blockTime)
 
 	// wait until pending messages are mined, pool pending list should be empty
-	kit.CircuitBreaker(t, "mine untrusted messages", mPoolThrottle, mPoolTimeout, func() bool {
+	require.Eventually(t, func() bool {
 		pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
 		require.NoError(t, err)
 
@@ -546,6 +490,5 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 			return true
 		}
 		return false
-	})
-
+	}, mPoolTimeout, mPoolThrottle)
 }

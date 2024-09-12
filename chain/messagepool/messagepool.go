@@ -19,9 +19,9 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
 	"go.opencensus.io/stats"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -293,7 +293,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 		// ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
 
-	if !has && strict && len(ms.msgs) >= maxActorPendingMessages {
+	if !has && len(ms.msgs) >= maxActorPendingMessages {
 		log.Errorf("too many pending messages from actor %s", m.Message.From)
 		return false, ErrTooManyPendingMessages
 	}
@@ -875,7 +875,7 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	}
 
 	if snonce > m.Message.Nonce {
-		return false, xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
+		return false, xerrors.Errorf("minimum expected nonce is %d, got %d: %w", snonce, m.Message.Nonce, ErrNonceTooLow)
 	}
 
 	senderAct, err := mp.api.GetActorAfter(m.Message.From, curTs)
@@ -1593,7 +1593,7 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 		}
 
 		if err := mp.addLoaded(ctx, &sm); err != nil {
-			if xerrors.Is(err, ErrNonceTooLow) {
+			if errors.Is(err, ErrNonceTooLow) {
 				continue // todo: drop the message from local cache (if above certain confidence threshold)
 			}
 

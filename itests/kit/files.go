@@ -7,8 +7,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/minio/blake2b-simd"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/blake2b"
+
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 // CreateRandomFile creates a random file with the provided seed and the
@@ -34,7 +36,7 @@ func CreateRandomFile(t *testing.T, rseed, size int) (path string) {
 // fails the test if unequal.
 func AssertFilesEqual(t *testing.T, left, right string) {
 	// initialize hashes.
-	leftH, rightH := blake2b.New256(), blake2b.New256()
+	leftH, rightH := must.One(blake2b.New256(nil)), must.One(blake2b.New256(nil))
 
 	// open files.
 	leftF, err := os.Open(left)

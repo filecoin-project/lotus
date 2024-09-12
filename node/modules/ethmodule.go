@@ -25,8 +25,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler) (*full.EthModule, error) {
-	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI, ethEventHandler *full.EthEventHandler) (*full.EthModule, error) {
+func EthTxHashManager(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.SyncAPI) (full.EthTxHashManager, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, evapi EventHelperAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, syncapi full.SyncAPI) (full.EthTxHashManager, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		sqlitePath, err := r.SqlitePath()
@@ -51,10 +51,7 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			},
 		})
 
-		ethTxHashManager := full.EthTxHashManager{
-			StateAPI:              stateapi,
-			TransactionHashLookup: transactionHashLookup,
-		}
+		ethTxHashManager := full.NewEthTxHashManager(stateapi, transactionHashLookup)
 
 		if !dbAlreadyExists {
 			err = ethTxHashManager.PopulateExistingMappings(mctx, 0)
@@ -82,21 +79,29 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 				}
 
 				// Tipset listener
-				_ = ev.Observe(&ethTxHashManager)
+				_ = ev.Observe(ethTxHashManager)
 
 				ch, err := mp.Updates(ctx)
 				if err != nil {
 					return err
 				}
-				go full.WaitForMpoolUpdates(ctx, ch, &ethTxHashManager)
-				go full.EthTxHashGC(ctx, cfg.EthTxHashMappingLifetimeDays, &ethTxHashManager)
+				go full.WaitForMpoolUpdates(ctx, ch, ethTxHashManager)
+				go full.EthTxHashGC(ctx, cfg.EthTxHashMappingLifetimeDays, ethTxHashManager)
 
 				return nil
 			},
 		})
 
+		return ethTxHashManager, nil
+	}
+}
+
+func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler, full.EthTxHashManager) (*full.EthModule, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI, ethEventHandler *full.EthEventHandler, ethTxHashManager full.EthTxHashManager) (*full.EthModule, error) {
+
 		var blkCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
 		var blkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock]
+		var err error
 		if cfg.EthBlkCacheSize > 0 {
 			blkCache, err = arc.NewARC[cid.Cid, *ethtypes.EthBlock](cfg.EthBlkCacheSize)
 			if err != nil {
@@ -120,7 +125,7 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			SyncAPI:         syncapi,
 			EthEventHandler: ethEventHandler,
 
-			EthTxHashManager:         &ethTxHashManager,
+			EthTxHashManager:         ethTxHashManager,
 			EthTraceFilterMaxResults: cfg.EthTraceFilterMaxResults,
 
 			EthBlkCache:   blkCache,

@@ -73,6 +73,7 @@
   * [EthNewPendingTransactionFilter](#EthNewPendingTransactionFilter)
   * [EthProtocolVersion](#EthProtocolVersion)
   * [EthSendRawTransaction](#EthSendRawTransaction)
+  * [EthSendRawTransactionUntrusted](#EthSendRawTransactionUntrusted)
   * [EthSubscribe](#EthSubscribe)
   * [EthSyncing](#EthSyncing)
   * [EthTraceBlock](#EthTraceBlock)
@@ -1974,6 +1975,21 @@ Inputs: `null`
 Response: `"0x5"`
 
 ### EthSendRawTransaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x07"
+]
+```
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
+
+### EthSendRawTransactionUntrusted
+EthSendRawTransactionUntrusted sends a transaction from and untrusted source, using MpoolPushUntrusted to submit the message.
 
 
 Perms: read

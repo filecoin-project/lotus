@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
@@ -148,7 +149,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 		// If there are not enough funds in the channel to cover the voucher,
 		// return a voucher create result with the shortfall
 		var ife insufficientFundsErr
-		if xerrors.As(err, &ife) {
+		if errors.As(err, &ife) {
 			return &api.VoucherCreateResult{
 				Shortfall: ife.Shortfall(),
 			}, nil
