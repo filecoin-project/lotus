@@ -1,6 +1,8 @@
 module github.com/filecoin-project/lotus
 
-go 1.21
+go 1.22
+
+toolchain go1.22.0
 
 retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
 
@@ -42,7 +44,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0
 	github.com/filecoin-project/go-crypto v0.1.0
-	github.com/filecoin-project/go-f3 v0.2.0
+	github.com/filecoin-project/go-f3 v0.2.1-0.20240912182403-2c6f7bf80f19
 	github.com/filecoin-project/go-fil-commcid v0.2.0
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0
 	github.com/filecoin-project/go-jsonrpc v0.6.0
