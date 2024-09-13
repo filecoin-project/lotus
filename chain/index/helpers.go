@@ -11,6 +11,20 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// PopulateFromSnapshot initializes and populates the chain index from a snapshot.
+//
+// This function creates a new Index at the specified path and populates
+// it by using the  chain state from the provided ChainStore. It starts from the heaviest
+// tipset and works backwards, indexing each tipset until it reaches the genesis
+// block or encounters a tipset for which it is unable to find messages in the chain store.
+//
+// Important Notes:
+//  1. This function assumes that the snapshot has already been imported into the ChainStore.
+//  2. Events are not populated in the index because snapshots do not contain event data,
+//     and messages are not re-executed during this process. The resulting index will
+//     only contain tipsets and messages.
+//  3. This function will delete any existing database at the specified path before
+//     creating a new one.
 func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error {
 	log.Infof("populating chainindex at path %s from snapshot", path)
 	// Check if a database already exists and attempt to delete it

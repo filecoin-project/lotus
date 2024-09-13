@@ -90,7 +90,7 @@ func (si *SqliteIndexer) readWithHeadIndexWait(ctx context.Context, readFunc fun
 		if err == sql.ErrNoRows {
 			return ErrNotFound
 		}
-		return xerrors.Errorf("failed to get message info: %w", err)
+		return xerrors.Errorf("failed to read data from index: %w", err)
 	}
 
 	return nil
@@ -108,13 +108,6 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 	headTsKeyCidBytes, err := toTipsetKeyCidBytes(head)
 	if err != nil {
 		return xerrors.Errorf("failed to get tipset key cid: %w", err)
-	}
-
-	// is it already indexed?
-	if exists, err := si.isTipsetIndexed(ctx, headTsKeyCidBytes); err != nil {
-		return xerrors.Errorf("failed to check if tipset exists: %w", err)
-	} else if exists {
-		return nil
 	}
 
 	// wait till it is indexed

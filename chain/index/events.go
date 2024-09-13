@@ -30,6 +30,10 @@ type executedMessage struct {
 
 // events are indexed against their inclusion/message tipset when we get the corresponding execution tipset
 func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *types.TipSet, executionTs *types.TipSet) error {
+	if si.idToRobustAddrFunc == nil {
+		return xerrors.Errorf("indexer can not index events without an address resolver")
+	}
+
 	// check if we have an event indexed for any message in the `msgTs` tipset -> if so, there's nothig to do here
 	// this makes event inserts idempotent
 	msgTsKeyCidBytes, err := toTipsetKeyCidBytes(msgTs)
@@ -199,6 +203,11 @@ func (si *SqliteIndexer) checkTipsetIndexedStatus(ctx context.Context, f *EventF
 	case f.MinHeight >= 0 && f.MinHeight == f.MaxHeight:
 		tipsetKeyCid, err = si.getTipsetKeyCidByHeight(ctx, f.MinHeight)
 		if err != nil {
+			if err == ErrNotFound {
+				// this means that this is a null round and there exist no events for this epoch
+				return nil
+			}
+
 			return xerrors.Errorf("failed to get tipset key cid by height: %w", err)
 		}
 	default:
@@ -232,7 +241,8 @@ func (si *SqliteIndexer) getTipsetKeyCidByHeight(ctx context.Context, height abi
 	}
 
 	if ts.Height() != height {
-		return nil, ErrNotFound // No tipset at exact height
+		// this means that this is a null round
+		return nil, ErrNotFound
 	}
 
 	return toTipsetKeyCidBytes(ts)
