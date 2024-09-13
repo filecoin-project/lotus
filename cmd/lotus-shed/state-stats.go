@@ -258,8 +258,7 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 	}
 
 	tsExec := consensus.NewTipSetExecutor(filcns.RewardFunc)
-	sm, err := stmgr.NewStateManager(cs, tsExec, vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds,
-		nil)
+	sm, err := stmgr.NewStateManager(cs, tsExec, vm.Syscalls(proofsffi.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open state manager: %w", err)
 	}
