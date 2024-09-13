@@ -70,6 +70,12 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 				return *actor.DelegatedAddress, true
 			})
 
+			ch, err := mp.Updates(ctx)
+			if err != nil {
+				return err
+			}
+			go chainindex.WaitForMpoolUpdates(ctx, ch, indexer)
+
 			ev, err := events.NewEvents(ctx, &evapi)
 			if err != nil {
 				return err
@@ -88,12 +94,6 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 			}
 			log.Infof("Chain indexer reconciled with chain state; observer will start upates from height: %d", head.Height())
 			unlockObserver()
-
-			ch, err := mp.Updates(ctx)
-			if err != nil {
-				return err
-			}
-			go chainindex.WaitForMpoolUpdates(ctx, ch, indexer)
 
 			if err := indexer.Start(); err != nil {
 				return err
