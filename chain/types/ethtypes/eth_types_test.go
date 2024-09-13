@@ -107,14 +107,16 @@ func TestEthHash(t *testing.T) {
 		require.Equal(t, hash, string(jm))
 	}
 
-	_, err := EthHashFromCid(cid.Undef)
-	require.ErrorContains(t, err, "not 32 bytes")
-
-	_, err = EthHashFromCid(cid.MustParse("bafkqaaa"))
-	require.ErrorContains(t, err, "not 32 bytes")
-
-	_, err = EthHashFromCid(cid.MustParse("bafyrgqhai26anf3i7pips7q22coa4sz2fr4gk4q4sqdtymvvjyginfzaqewveaeqdh524nsktaq43j65v22xxrybrtertmcfxufdam3da3hbk"))
-	require.ErrorContains(t, err, "not 32 bytes")
+	for _, c := range []cid.Cid{
+		cid.Undef,
+		cid.MustParse("bafy2bzacaa"),
+		cid.MustParse("bafkqaaa"),
+		cid.MustParse("bafy2bzacidqenpags5upxuhzpynnbhaojm5cy6dfoiojibz4gk2u4degs4qiclksacibt65ogzfjqionu7o25nl3y4ayzsizwbc32crqgnrqntqv"),
+		cid.MustParse("bafyrgqhai26anf3i7pips7q22coa4sz2fr4gk4q4sqdtymvvjyginfzaqewveaeqdh524nsktaq43j65v22xxrybrtertmcfxufdam3da3hbk"),
+	} {
+		_, err := EthHashFromCid(c)
+		require.ErrorContains(t, err, "CID does not have the expected prefix")
+	}
 }
 
 func TestEthFilterID(t *testing.T) {
