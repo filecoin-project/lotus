@@ -324,7 +324,7 @@ func TestTransactionHashLookupNonexistentMessage(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	cid := cid.MustParse("bafk2bzacecapjnxnyw4talwqv5ajbtbkzmzqiosztj5cb3sortyp73ndjl76e")
+	cid := cid.MustParse("bafy2bzacecapjnxnyw4talwqv5ajbtbkzmzqiosztj5cb3sortyp73ndjl76e")
 
 	// We shouldn't be able to return a hash for this fake cid
 	chainHash, err := client.EthGetTransactionHashByCid(ctx, cid)
