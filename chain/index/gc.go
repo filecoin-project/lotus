@@ -25,6 +25,13 @@ func (si *SqliteIndexer) gcLoop() {
 	defer cleanupTicker.Stop()
 
 	for si.ctx.Err() == nil {
+		si.closeLk.RLock()
+		if si.closed {
+			si.closeLk.RUnlock()
+			return
+		}
+		si.closeLk.RUnlock()
+
 		select {
 		case <-cleanupTicker.C:
 			si.gc(si.ctx)

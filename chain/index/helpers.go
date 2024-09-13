@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -54,8 +55,12 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 
 		for curTs != nil {
 			if err := si.indexTipset(ctx, tx, curTs); err != nil {
-				log.Infof("stopping chainindex population at height %d with final error: %s", curTs.Height(), err)
-				break
+				if ipld.IsNotFound(err) {
+					log.Infof("stopping chainindex population at height %d as snapshot only contains data upto this height; error is %s", curTs.Height(), err)
+					break
+				}
+
+				return xerrors.Errorf("failed to populate chainindex from snapshot at height %d: %w", curTs.Height(), err)
 			}
 			totalIndexed++
 

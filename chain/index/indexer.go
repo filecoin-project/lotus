@@ -66,7 +66,7 @@ type SqliteIndexer struct {
 
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
 	maxReconcileTipsets int) (si *SqliteIndexer, err error) {
-	db, _, err := sqlite.Open(path)
+	db, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
 	}

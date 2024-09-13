@@ -47,40 +47,39 @@ func metaDdl(version uint64) []string {
 }
 
 // Open opens a database at the given path. If the database does not exist, it will be created.
-func Open(path string) (*sql.DB, bool, error) {
+func Open(path string) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, false, xerrors.Errorf("error creating database base directory [@ %s]: %w", path, err)
+		return nil, xerrors.Errorf("error creating database base directory [@ %s]: %w", path, err)
 	}
 
 	_, err := os.Stat(path)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, false, xerrors.Errorf("error checking file status for database [@ %s]: %w", path, err)
+		return nil, xerrors.Errorf("error checking file status for database [@ %s]: %w", path, err)
 	}
-	exists := err == nil
 
 	db, err := sql.Open("sqlite3", path+"?mode=rwc")
 	if err != nil {
-		return nil, false, xerrors.Errorf("error opening database [@ %s]: %w", path, err)
+		return nil, xerrors.Errorf("error opening database [@ %s]: %w", path, err)
 	}
 
 	for _, pragma := range pragmas {
 		if _, err := db.Exec(pragma); err != nil {
 			_ = db.Close()
-			return nil, false, xerrors.Errorf("error setting database pragma %q: %w", pragma, err)
+			return nil, xerrors.Errorf("error setting database pragma %q: %w", pragma, err)
 		}
 	}
 
 	var foreignKeysEnabled int
 	if err := db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeysEnabled); err != nil {
-		return nil, false, xerrors.Errorf("failed to check foreign keys setting: %w", err)
+		return nil, xerrors.Errorf("failed to check foreign keys setting: %w", err)
 	}
 	if foreignKeysEnabled == 0 {
-		return nil, false, xerrors.Errorf("foreign keys are not enabled for database [@ %s]", path)
+		return nil, xerrors.Errorf("foreign keys are not enabled for database [@ %s]", path)
 	}
 
 	log.Infof("Database [@ %s] opened successfully with foreign keys enabled", path)
 
-	return db, exists, nil
+	return db, nil
 }
 
 // InitDb initializes the database by checking whether it needs to be created or upgraded.
