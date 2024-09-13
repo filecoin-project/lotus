@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
+	ipld "github.com/ipfs/go-ipld-format"
 )
 
 // ReconcileWithChain ensures that the index is consistent with the current chain state.
@@ -203,15 +204,20 @@ func (si *SqliteIndexer) applyMissingTipsets(ctx context.Context, tx *sql.Tx, mi
 		}
 
 		if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, currTs); err != nil {
-			log.Warnf("failed to index tipset with parent events during reconciliation: %s", err)
+			if !ipld.IsNotFound(err) {
+				return xerrors.Errorf("failed to index tipset with parent events during reconciliation: %w", err)
+			}
 			// the above could have failed because of missing messages for `parentTs` in the chainstore
 			// so try to index only the currentTs and then halt the reconciliation process as we've
 			// reached the end of what we have in the chainstore
 			if err := si.indexTipset(ctx, tx, currTs); err != nil {
-				log.Warnf("failed to index tipset during reconciliation: %s", err)
-			} else {
-				totalIndexed++
+				if !ipld.IsNotFound(err) {
+					return xerrors.Errorf("failed to index tipset during reconciliation: %w", err)
+				}
+				log.Infof("stopping reconciliation at height %d as chainstore only contains data up to this height; error is %s", currTs.Height(), err)
+				break
 			}
+			totalIndexed++
 			break
 		}
 
