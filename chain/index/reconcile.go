@@ -38,7 +38,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
 		var hasTipset bool
-		err := tx.StmtContext(ctx, si.isTipsetMessageNonEmptyStmt).QueryRowContext(ctx).Scan(&hasTipset)
+		err := tx.StmtContext(ctx, si.stmts.isTipsetMessageNonEmptyStmt).QueryRowContext(ctx).Scan(&hasTipset)
 		if err != nil {
 			return xerrors.Errorf("failed to check if tipset message is empty: %w", err)
 		}
@@ -56,7 +56,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		// Find the minimum applied tipset in the index; this will mark the absolute min height of the reconciliation walk
 		var reconciliationEpoch abi.ChainEpoch
-		row := tx.StmtContext(ctx, si.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
+		row := tx.StmtContext(ctx, si.stmts.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
 		if err := row.Scan(&reconciliationEpoch); err != nil {
 			return xerrors.Errorf("failed to scan minimum non-reverted height: %w", err)
 		}
@@ -80,7 +80,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			}
 
 			var exists bool
-			err = tx.StmtContext(ctx, si.hasNonRevertedTipsetStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists)
+			err = tx.StmtContext(ctx, si.stmts.hasNonRevertedTipsetStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists)
 			if err != nil {
 				return xerrors.Errorf("failed to check if tipset exists and is not reverted: %w", err)
 			}
@@ -116,7 +116,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		// mark all tipsets from the reconciliation epoch onwards in the Index as reverted as they are not in the current canonical chain
 		log.Infof("Marking tipsets as reverted from height %d", reconciliationEpoch)
-		result, err := tx.StmtContext(ctx, si.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch))
+		result, err := tx.StmtContext(ctx, si.stmts.updateTipsetsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch))
 		if err != nil {
 			return xerrors.Errorf("failed to mark tipsets as reverted: %w", err)
 		}
@@ -126,7 +126,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		}
 
 		// also need to mark events as reverted for the corresponding inclusion tipsets
-		if _, err = tx.StmtContext(ctx, si.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1)); err != nil {
+		if _, err = tx.StmtContext(ctx, si.stmts.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1)); err != nil {
 			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
 

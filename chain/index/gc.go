@@ -58,7 +58,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 
 	log.Infof("gc'ing all (reverted and non-reverted) tipsets before epoch %d", removalEpoch)
 
-	res, err := si.removeTipsetsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
+	res, err := si.stmts.removeTipsetsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
 	if err != nil {
 		log.Errorw("failed to remove reverted tipsets before height", "height", removalEpoch, "error", err)
 		return
@@ -83,7 +83,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 	}
 
 	log.Infof("gc'ing eth hashes older than %d days", gcRetentionDays)
-	res, err = si.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(int(gcRetentionDays)) + " day")
+	res, err = si.stmts.removeEthHashesOlderThanStmt.Exec("-" + strconv.Itoa(int(gcRetentionDays)) + " day")
 	if err != nil {
 		log.Errorf("failed to gc eth hashes older than %d days: %w", gcRetentionDays, err)
 		return

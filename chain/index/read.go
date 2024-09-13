@@ -40,7 +40,7 @@ func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.Eth
 }
 
 func (si *SqliteIndexer) queryMsgCidFromEthHash(ctx context.Context, txHash ethtypes.EthHash, msgCidBytes *[]byte) error {
-	return si.getMsgCidFromEthHashStmt.QueryRowContext(ctx, txHash.String()).Scan(msgCidBytes)
+	return si.stmts.getMsgCidFromEthHashStmt.QueryRowContext(ctx, txHash.String()).Scan(msgCidBytes)
 }
 
 func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*MsgInfo, error) {
@@ -97,7 +97,7 @@ func (si *SqliteIndexer) readWithHeadIndexWait(ctx context.Context, readFunc fun
 }
 
 func (si *SqliteIndexer) queryMsgInfo(ctx context.Context, messageCid cid.Cid, tipsetKeyCidBytes *[]byte, height *int64) error {
-	return si.getNonRevertedMsgInfoStmt.QueryRowContext(ctx, messageCid.Bytes()).Scan(tipsetKeyCidBytes, height)
+	return si.stmts.getNonRevertedMsgInfoStmt.QueryRowContext(ctx, messageCid.Bytes()).Scan(tipsetKeyCidBytes, height)
 }
 
 func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
@@ -134,7 +134,7 @@ func (si *SqliteIndexer) waitTillHeadIndexed(ctx context.Context) error {
 
 func (si *SqliteIndexer) isTipsetIndexed(ctx context.Context, tsKeyCidBytes []byte) (bool, error) {
 	var exists bool
-	if err := si.hasTipsetStmt.QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
+	if err := si.stmts.hasTipsetStmt.QueryRowContext(ctx, tsKeyCidBytes).Scan(&exists); err != nil {
 		return false, xerrors.Errorf("failed to check if tipset is indexed: %w", err)
 	}
 	return exists, nil

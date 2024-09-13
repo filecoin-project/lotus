@@ -42,7 +42,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 	}
 
 	// if we've already indexed events for this tipset, mark them as unreverted and return
-	res, err := tx.Stmt(si.updateEventsToNonRevertedStmt).ExecContext(ctx, msgTsKeyCidBytes)
+	res, err := tx.Stmt(si.stmts.updateEventsToNonRevertedStmt).ExecContext(ctx, msgTsKeyCidBytes)
 	if err != nil {
 		return xerrors.Errorf("failed to unrevert events for tipset: %w", err)
 	}
@@ -71,7 +71,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 
 		// read message id for this message cid and tipset key cid
 		var messageID int64
-		if err := tx.Stmt(si.getMsgIdForMsgCidAndTipsetStmt).QueryRow(msgTsKeyCidBytes, msgCidBytes).Scan(&messageID); err != nil {
+		if err := tx.Stmt(si.stmts.getMsgIdForMsgCidAndTipsetStmt).QueryRow(msgTsKeyCidBytes, msgCidBytes).Scan(&messageID); err != nil {
 			return xerrors.Errorf("failed to get message id for message cid and tipset key cid: %w", err)
 		}
 		if messageID == 0 {
@@ -92,7 +92,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 			}
 
 			// Insert event into events table
-			eventResult, err := tx.Stmt(si.insertEventStmt).Exec(messageID, eventCount, addr.Bytes(), 0)
+			eventResult, err := tx.Stmt(si.stmts.insertEventStmt).Exec(messageID, eventCount, addr.Bytes(), 0)
 			if err != nil {
 				return xerrors.Errorf("failed to insert event: %w", err)
 			}
@@ -105,7 +105,7 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 
 			// Insert event entries
 			for _, entry := range event.Entries {
-				_, err := tx.Stmt(si.insertEventEntryStmt).Exec(
+				_, err := tx.Stmt(si.stmts.insertEventEntryStmt).Exec(
 					eventID,
 					isIndexedValue(entry.Flags),
 					[]byte{entry.Flags},

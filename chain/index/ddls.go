@@ -1,46 +1,8 @@
 package index
 
+import "database/sql"
+
 const DefaultDbFilename = "chainindex.db"
-
-const (
-	stmtGetNonRevertedMessageInfo = "SELECT tipset_key_cid, height FROM tipset_message WHERE message_cid = ? AND reverted = 0"
-	stmtGetMsgCidFromEthHash      = "SELECT message_cid FROM eth_tx_hash WHERE tx_hash = ?"
-	stmtInsertEthTxHash           = "INSERT INTO eth_tx_hash (tx_hash, message_cid) VALUES (?, ?) ON CONFLICT (tx_hash) DO UPDATE SET inserted_at = CURRENT_TIMESTAMP"
-
-	stmtInsertTipsetMessage = "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) DO UPDATE SET reverted = 0"
-
-	stmtHasTipset                 = "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)"
-	stmtUpdateTipsetToNonReverted = "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?"
-
-	stmtUpdateTipsetToReverted = "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?"
-
-	stmtRemoveTipsetsBeforeHeight = "DELETE FROM tipset_message WHERE height < ?"
-
-	stmtRemoveEthHashesOlderThan = `DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?);`
-
-	stmtUpdateTipsetsToRevertedFromHeight = "UPDATE tipset_message SET reverted = 1 WHERE height >= ?"
-
-	stmtUpdateEventsToRevertedFromHeight = "UPDATE event SET reverted = 1 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE height >= ?)"
-
-	stmtIsTipsetMessageNonEmpty = "SELECT EXISTS(SELECT 1 FROM tipset_message LIMIT 1)"
-
-	stmtGetMinNonRevertedHeight = `SELECT MIN(height) FROM tipset_message WHERE reverted = 0`
-
-	stmtHasNonRevertedTipset = `SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)`
-
-	stmtUpdateEventsToReverted = `UPDATE event SET reverted = 1 WHERE message_id IN (
-			SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
-		)`
-
-	stmtUpdateEventsToNonReverted = `UPDATE event SET reverted = 0 WHERE message_id IN (
-		SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?
-	)`
-
-	stmtGetMsgIdForMsgCidAndTipset = `SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND message_cid = ?AND reverted = 0`
-
-	stmtInsertEvent      = "INSERT INTO event (message_id, event_index, emitter_addr, reverted) VALUES (?, ?, ?, ?)"
-	stmtInsertEventEntry = "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)"
-)
 
 var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS tipset_message (
@@ -90,4 +52,31 @@ var ddls = []string{
 	`CREATE INDEX IF NOT EXISTS idx_height ON tipset_message (height)`,
 
 	`CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id)`,
+}
+
+// preparedStatementMapping returns a map of fields of the preparedStatements struct to the SQL
+// query that should be prepared for that field. This is used to prepare all the statements in
+// the preparedStatements struct.
+func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
+	return map[**sql.Stmt]string{
+		&ps.getNonRevertedMsgInfoStmt:             "SELECT tipset_key_cid, height FROM tipset_message WHERE message_cid = ? AND reverted = 0",
+		&ps.getMsgCidFromEthHashStmt:              "SELECT message_cid FROM eth_tx_hash WHERE tx_hash = ?",
+		&ps.insertEthTxHashStmt:                   "INSERT INTO eth_tx_hash (tx_hash, message_cid) VALUES (?, ?) ON CONFLICT (tx_hash) DO UPDATE SET inserted_at = CURRENT_TIMESTAMP",
+		&ps.insertTipsetMessageStmt:               "INSERT INTO tipset_message (tipset_key_cid, height, reverted, message_cid, message_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (tipset_key_cid, message_cid) DO UPDATE SET reverted = 0",
+		&ps.hasTipsetStmt:                         "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ?)",
+		&ps.updateTipsetToNonRevertedStmt:         "UPDATE tipset_message SET reverted = 0 WHERE tipset_key_cid = ?",
+		&ps.updateTipsetToRevertedStmt:            "UPDATE tipset_message SET reverted = 1 WHERE tipset_key_cid = ?",
+		&ps.removeTipsetsBeforeHeightStmt:         "DELETE FROM tipset_message WHERE height < ?",
+		&ps.removeEthHashesOlderThanStmt:          "DELETE FROM eth_tx_hash WHERE inserted_at < datetime('now', ?)",
+		&ps.updateTipsetsToRevertedFromHeightStmt: "UPDATE tipset_message SET reverted = 1 WHERE height >= ?",
+		&ps.updateEventsToRevertedFromHeightStmt:  "UPDATE event SET reverted = 1 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE height >= ?)",
+		&ps.isTipsetMessageNonEmptyStmt:           "SELECT EXISTS(SELECT 1 FROM tipset_message LIMIT 1)",
+		&ps.getMinNonRevertedHeightStmt:           "SELECT MIN(height) FROM tipset_message WHERE reverted = 0",
+		&ps.hasNonRevertedTipsetStmt:              "SELECT EXISTS(SELECT 1 FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)",
+		&ps.updateEventsToRevertedStmt:            "UPDATE event SET reverted = 1 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?)",
+		&ps.updateEventsToNonRevertedStmt:         "UPDATE event SET reverted = 0 WHERE message_id IN (SELECT message_id FROM tipset_message WHERE tipset_key_cid = ?)",
+		&ps.getMsgIdForMsgCidAndTipsetStmt:        "SELECT message_id FROM tipset_message WHERE tipset_key_cid = ? AND message_cid = ? AND reverted = 0",
+		&ps.insertEventStmt:                       "INSERT INTO event (message_id, event_index, emitter_addr, reverted) VALUES (?, ?, ?, ?)",
+		&ps.insertEventEntryStmt:                  "INSERT INTO event_entry (event_id, indexed, flags, key, codec, value) VALUES (?, ?, ?, ?, ?, ?)",
+	}
 }
