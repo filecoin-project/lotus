@@ -4,7 +4,7 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
-- Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12458](https://github.com/filecoin-project/lotus/pull/12458))
+- Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12459](https://github.com/filecoin-project/lotus/pull/12459))
 
 ## New features
 
