@@ -7,7 +7,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -55,13 +54,25 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		}
 
 		// Find the minimum applied tipset in the index; this will mark the absolute min height of the reconciliation walk
+		var reconciliationEpochInIndex sql.NullInt64
 		var reconciliationEpoch abi.ChainEpoch
+
 		row := tx.StmtContext(ctx, si.stmts.getMinNonRevertedHeightStmt).QueryRowContext(ctx)
-		if err := row.Scan(&reconciliationEpoch); err != nil {
-			return xerrors.Errorf("failed to scan minimum non-reverted height: %w", err)
+		if err := row.Scan(&reconciliationEpochInIndex); err != nil {
+			if err != sql.ErrNoRows {
+				return xerrors.Errorf("failed to scan minimum non-reverted height: %w", err)
+			}
+			log.Warn("index only contains reverted tipsets; setting reconciliation epoch to 0")
+			reconciliationEpoch = 0
+		} else if !reconciliationEpochInIndex.Valid {
+			log.Warn("index only contains reverted tipsets; setting reconciliation epoch to 0")
+			reconciliationEpoch = 0
+		} else {
+			reconciliationEpoch = abi.ChainEpoch(reconciliationEpochInIndex.Int64)
 		}
 
 		currTs := head
+
 		log.Infof("Starting chain reconciliation from head height %d; searching for base reconciliation height above %d)", head.Height(), reconciliationEpoch)
 		var missingTipsets []*types.TipSet
 
