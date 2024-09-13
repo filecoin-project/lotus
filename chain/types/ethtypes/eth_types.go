@@ -529,7 +529,13 @@ func handleHexStringPrefix(s string) string {
 }
 
 func EthHashFromCid(c cid.Cid) (EthHash, error) {
-	return ParseEthHash(c.Hash().HexString()[8:])
+	b := c.Hash()
+	if len(b) != EthHashLength+4 {
+		return EthHash{}, fmt.Errorf("CID hash length is not 32 bytes")
+	}
+	var h EthHash
+	copy(h[:], b[4:])
+	return h, nil
 }
 
 func ParseEthHash(s string) (EthHash, error) {

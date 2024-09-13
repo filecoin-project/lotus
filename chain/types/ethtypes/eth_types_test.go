@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -105,6 +106,15 @@ func TestEthHash(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, hash, string(jm))
 	}
+
+	_, err := EthHashFromCid(cid.Undef)
+	require.ErrorContains(t, err, "not 32 bytes")
+
+	_, err = EthHashFromCid(cid.MustParse("bafkqaaa"))
+	require.ErrorContains(t, err, "not 32 bytes")
+
+	_, err = EthHashFromCid(cid.MustParse("bafyrgqhai26anf3i7pips7q22coa4sz2fr4gk4q4sqdtymvvjyginfzaqewveaeqdh524nsktaq43j65v22xxrybrtertmcfxufdam3da3hbk"))
+	require.ErrorContains(t, err, "not 32 bytes")
 }
 
 func TestEthFilterID(t *testing.T) {
@@ -524,4 +534,15 @@ func TestFilecoinAddressToEthAddressParams(t *testing.T) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func BenchmarkEthHashFromCid(b *testing.B) {
+	c := cid.MustParse("bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu")
+
+	for i := 0; i < b.N; i++ {
+		_, err := EthHashFromCid(c)
+		if err != nil {
+			b.Fatalf("Error in EthHashFromCid: %v", err)
+		}
+	}
 }
