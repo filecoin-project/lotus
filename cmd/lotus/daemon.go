@@ -36,12 +36,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/index"
 	proofsffi "github.com/filecoin-project/lotus/chain/proofs/ffi"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chainindex"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
@@ -636,7 +636,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	log.Info("populating chain index...")
-	if err := chainindex.PopulateFromSnapshot(ctx, filepath.Join(basePath, chainindex.DefaultDbFilename), cst); err != nil {
+	if err := index.PopulateFromSnapshot(ctx, filepath.Join(basePath, index.DefaultDbFilename), cst); err != nil {
 		return err
 	}
 	log.Info("populating chain index done")

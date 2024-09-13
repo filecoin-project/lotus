@@ -12,11 +12,11 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -95,9 +95,9 @@ func EthEventHandler(cfg config.EventsConfig, enableEthRPC bool) func(helpers.Me
 }
 
 func EventFilterManager(cfg config.EventsConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore,
-	*stmgr.StateManager, EventHelperAPI, full.ChainAPI, chainindex.Indexer) (*filter.EventFilterManager, error) {
+	*stmgr.StateManager, EventHelperAPI, full.ChainAPI, index.Indexer) (*filter.EventFilterManager, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager,
-		evapi EventHelperAPI, chainapi full.ChainAPI, ci chainindex.Indexer) (*filter.EventFilterManager, error) {
+		evapi EventHelperAPI, chainapi full.ChainAPI, ci index.Indexer) (*filter.EventFilterManager, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		// Enable indexing of actor events

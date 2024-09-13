@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/lf3"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -34,7 +35,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -282,7 +282,7 @@ func ConfigFullNode(c interface{}) Option {
 			Override(ConsensusReporterKey, modules.RunConsensusFaultReporter(cfg.FaultReporter)),
 		),
 
-		Override(new(chainindex.Indexer), modules.ChainIndexer(cfg.ChainIndexer)),
+		Override(new(index.Indexer), modules.ChainIndexer(cfg.ChainIndexer)),
 		If(!cfg.ChainIndexer.DisableIndexer,
 			Override(InitChainIndexerKey, modules.InitChainIndexer),
 		),

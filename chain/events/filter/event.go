@@ -16,9 +16,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/index"
 	cstore "github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chainindex"
 )
 
 func isIndexedValue(b uint8) bool {
@@ -33,7 +33,7 @@ type AddressResolver func(context.Context, abi.ActorID, *types.TipSet) (address.
 type EventFilter interface {
 	Filter
 
-	TakeCollectedEvents(context.Context) []*chainindex.CollectedEvent
+	TakeCollectedEvents(context.Context) []*index.CollectedEvent
 	CollectEvents(context.Context, *TipSetEvents, bool, AddressResolver) error
 }
 
@@ -48,7 +48,7 @@ type eventFilter struct {
 	maxResults    int                                // maximum number of results to collect, 0 is unlimited
 
 	mu        sync.Mutex
-	collected []*chainindex.CollectedEvent
+	collected []*index.CollectedEvent
 	lastTaken time.Time
 	ch        chan<- interface{}
 }
@@ -109,7 +109,7 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			}
 
 			// event matches filter, so record it
-			cev := &chainindex.CollectedEvent{
+			cev := &index.CollectedEvent{
 				Entries:     ev.Entries,
 				EmitterAddr: addr,
 				EventIdx:    eventCount,
@@ -141,13 +141,13 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	return nil
 }
 
-func (f *eventFilter) setCollectedEvents(ces []*chainindex.CollectedEvent) {
+func (f *eventFilter) setCollectedEvents(ces []*index.CollectedEvent) {
 	f.mu.Lock()
 	f.collected = ces
 	f.mu.Unlock()
 }
 
-func (f *eventFilter) TakeCollectedEvents(ctx context.Context) []*chainindex.CollectedEvent {
+func (f *eventFilter) TakeCollectedEvents(ctx context.Context) []*index.CollectedEvent {
 	f.mu.Lock()
 	collected := f.collected
 	f.collected = nil
@@ -297,7 +297,7 @@ type EventFilterManager struct {
 	ChainStore       *cstore.ChainStore
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
-	ChainIndexer     chainindex.Indexer
+	ChainIndexer     index.Indexer
 
 	mu            sync.Mutex // guards mutations to filters
 	filters       map[types.FilterID]EventFilter
@@ -384,7 +384,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	}
 
 	if m.ChainIndexer != nil && minHeight != -1 && minHeight < currentHeight {
-		ef := &chainindex.EventFilter{
+		ef := &index.EventFilter{
 			MinHeight:     minHeight,
 			MaxHeight:     maxHeight,
 			TipsetCid:     tipsetCid,

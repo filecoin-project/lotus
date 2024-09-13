@@ -28,12 +28,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chainindex"
 
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -156,7 +156,7 @@ type StateManager struct {
 	tsExecMonitor ExecMonitor
 	beacon        beacon.Schedule
 
-	chainIndexer chainindex.Indexer
+	chainIndexer index.Indexer
 
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
@@ -178,7 +178,7 @@ type tipSetCacheEntry struct {
 }
 
 func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule,
-	metadataDs dstore.Batching, chainIndexer chainindex.Indexer) (*StateManager, error) {
+	metadataDs dstore.Batching, chainIndexer index.Indexer) (*StateManager, error) {
 	// If we have upgrades, make sure they're in-order and make sense.
 	if err := us.Validate(); err != nil {
 		return nil, err
@@ -248,7 +248,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 	}, nil
 }
 
-func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor, metadataDs dstore.Batching, chainIndexer chainindex.Indexer) (*StateManager, error) {
+func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor, metadataDs dstore.Batching, chainIndexer index.Indexer) (*StateManager, error) {
 	sm, err := NewStateManager(cs, exec, sys, us, b, metadataDs, chainIndexer)
 	if err != nil {
 		return nil, err

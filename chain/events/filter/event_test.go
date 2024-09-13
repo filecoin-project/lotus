@@ -19,8 +19,8 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chainindex"
 )
 
 func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
@@ -71,8 +71,8 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	cid14000, err := events14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
-	noCollectedEvents := []*chainindex.CollectedEvent{}
-	oneCollectedEvent := []*chainindex.CollectedEvent{
+	noCollectedEvents := []*index.CollectedEvent{}
+	oneCollectedEvent := []*index.CollectedEvent{
 		{
 			Entries:     ev1.Entries,
 			EmitterAddr: a1,
@@ -89,7 +89,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		name   string
 		filter *eventFilter
 		te     *TipSetEvents
-		want   []*chainindex.CollectedEvent
+		want   []*index.CollectedEvent
 	}{
 		{
 			name: "nomatch tipset min height",

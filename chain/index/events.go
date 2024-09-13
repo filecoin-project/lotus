@@ -1,4 +1,4 @@
-package chainindex
+package index
 
 import (
 	"bytes"

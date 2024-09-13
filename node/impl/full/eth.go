@@ -33,12 +33,12 @@ import (
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	builtinevm "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
 	"github.com/filecoin-project/lotus/chain/events/filter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -137,7 +137,7 @@ type EthModule struct {
 	EthBlkCache   *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
 	EthBlkTxCache *arc.ARCCache[cid.Cid, *ethtypes.EthBlock] // caches blocks along with full transaction payload by their CID
 
-	ChainIndexer chainindex.Indexer
+	ChainIndexer index.Indexer
 
 	ChainAPI
 	MpoolAPI
@@ -165,7 +165,7 @@ type EthAPI struct {
 
 	Chain        *store.ChainStore
 	StateManager *stmgr.StateManager
-	ChainIndexer chainindex.Indexer
+	ChainIndexer index.Indexer
 	MpoolAPI     MpoolAPI
 
 	EthModuleAPI
@@ -359,7 +359,7 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 	if a.ChainIndexer != nil {
 		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
 
-		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
+		if err != nil && errors.Is(err, index.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		} else if err != nil {
 			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
@@ -425,7 +425,7 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 	var err error
 	if a.ChainIndexer != nil {
 		c, err = a.ChainIndexer.GetCidFromHash(ctx, *txHash)
-		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
+		if err != nil && errors.Is(err, index.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		} else if err != nil {
 			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
@@ -433,7 +433,7 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		}
 	}
 
-	if errors.Is(err, chainindex.ErrNotFound) {
+	if errors.Is(err, index.ErrNotFound) {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	} else if a.ChainIndexer != nil {
 		return &c, nil
@@ -518,7 +518,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 
 	if a.ChainIndexer != nil {
 		c, err = a.ChainIndexer.GetCidFromHash(ctx, txHash)
-		if err != nil && errors.Is(err, chainindex.ErrNotFound) {
+		if err != nil && errors.Is(err, index.ErrNotFound) {
 			log.Debug("could not find transaction hash %s in chain indexer", txHash.String())
 		} else if err != nil {
 			log.Errorf("failed to lookup transaction hash %s in chain indexer: %s", txHash.String(), err)
@@ -947,7 +947,7 @@ func (a *EthAPI) EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethty
 	return ethSendRawTransaction(ctx, a.MpoolAPI, a.ChainIndexer, rawTx, true)
 }
 
-func ethSendRawTransaction(ctx context.Context, mpool MpoolAPI, indexer chainindex.Indexer, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
+func ethSendRawTransaction(ctx context.Context, mpool MpoolAPI, indexer index.Indexer, rawTx ethtypes.EthBytes, untrusted bool) (ethtypes.EthHash, error) {
 	txArgs, err := ethtypes.ParseEthTransaction(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -1595,7 +1595,7 @@ func (e *EthEventHandler) EthGetLogs(ctx context.Context, filterSpec *ethtypes.E
 	return ethFilterResultFromEvents(ctx, ces, e.SubManager.StateAPI)
 }
 
-func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) ([]*chainindex.CollectedEvent, error) {
+func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec *ethtypes.EthFilterSpec) ([]*index.CollectedEvent, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -1625,7 +1625,7 @@ func (e *EthEventHandler) ethGetEventsForFilter(ctx context.Context, filterSpec 
 		return nil, xerrors.New("cannot ask for events for a tipset at or greater than head")
 	}
 
-	ef := &chainindex.EventFilter{
+	ef := &index.EventFilter{
 		MinHeight:     pf.minHeight,
 		MaxHeight:     pf.maxHeight,
 		TipsetCid:     pf.tipsetCid,

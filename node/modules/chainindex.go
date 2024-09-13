@@ -11,18 +11,18 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
-	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (chainindex.Indexer, error) {
+func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (index.Indexer, error) {
+	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (index.Indexer, error) {
 		if cfg.DisableIndexer {
 			log.Infof("ChainIndexer is disabled")
 			return nil, nil
@@ -34,7 +34,7 @@ func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx help
 		}
 
 		// TODO Implement config driven auto-backfilling
-		chainIndexer, err := chainindex.NewSqliteIndexer(filepath.Join(sqlitePath, chainindex.DefaultDbFilename),
+		chainIndexer, err := index.NewSqliteIndexer(filepath.Join(sqlitePath, index.DefaultDbFilename),
 			cs, cfg.GCRetentionEpochs, cfg.ReconcileEmptyIndex, cfg.MaxReconcileTipsets)
 		if err != nil {
 			return nil, err
@@ -50,7 +50,7 @@ func ChainIndexer(cfg config.ChainIndexerConfig) func(lc fx.Lifecycle, mctx help
 	}
 }
 
-func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainindex.Indexer,
+func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.Indexer,
 	evapi EventHelperAPI, mp *messagepool.MessagePool, sm *stmgr.StateManager) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
@@ -74,7 +74,7 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer chainind
 			if err != nil {
 				return err
 			}
-			go chainindex.WaitForMpoolUpdates(ctx, ch, indexer)
+			go index.WaitForMpoolUpdates(ctx, ch, indexer)
 
 			ev, err := events.NewEvents(ctx, &evapi)
 			if err != nil {

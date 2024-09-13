@@ -10,11 +10,11 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/chainindex"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -22,10 +22,10 @@ import (
 )
 
 func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager,
-	EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler, chainindex.Indexer) (*full.EthModule, error) {
+	EventHelperAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI, *full.EthEventHandler, index.Indexer) (*full.EthModule, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventHelperAPI,
 		mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI,
-		ethEventHandler *full.EthEventHandler, chainIndexer chainindex.Indexer) (*full.EthModule, error) {
+		ethEventHandler *full.EthEventHandler, chainIndexer index.Indexer) (*full.EthModule, error) {
 
 		// prefill the whole skiplist cache maintained internally by the GetTipsetByHeight
 		go func() {
