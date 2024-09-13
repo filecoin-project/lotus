@@ -58,7 +58,7 @@ type SqliteIndexer struct {
 
 	gcRetentionEpochs   int64
 	reconcileEmptyIndex bool
-	maxReconcileTipsets int
+	maxReconcileTipsets uint64
 
 	mu           sync.Mutex
 	updateSubs   map[uint64]*updateSub
@@ -69,7 +69,7 @@ type SqliteIndexer struct {
 }
 
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
-	maxReconcileTipsets int) (si *SqliteIndexer, err error) {
+	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
 	db, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)

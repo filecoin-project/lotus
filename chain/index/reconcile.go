@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain/types"
-	ipld "github.com/ipfs/go-ipld-format"
 )
 
 // ReconcileWithChain ensures that the index is consistent with the current chain state.
@@ -104,7 +105,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 				break
 			}
 
-			if len(missingTipsets) < si.maxReconcileTipsets {
+			if uint64(len(missingTipsets)) < si.maxReconcileTipsets {
 				missingTipsets = append(missingTipsets, currTs)
 			}
 			// even if len(missingTipsets) >= si.maxReconcileTipsets, we still need to continue the walk
@@ -155,7 +156,7 @@ func (si *SqliteIndexer) backfillEmptyIndex(ctx context.Context, tx *sql.Tx, hea
 	log.Infof("Backfilling empty chain index from head height %d", head.Height())
 	var err error
 
-	for currTs != nil && len(missingTipsets) < si.maxReconcileTipsets {
+	for currTs != nil && uint64(len(missingTipsets)) < si.maxReconcileTipsets {
 		missingTipsets = append(missingTipsets, currTs)
 		if currTs.Height() == 0 {
 			break

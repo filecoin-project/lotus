@@ -345,7 +345,7 @@
   # Note: Setting this value too low may result in incomplete indexing, while setting it too high
   # may increase startup time.
   #
-  # type: int
+  # type: uint64
   # env var: LOTUS_CHAININDEXER_MAXRECONCILETIPSETS
   #MaxReconcileTipsets = 8640
 

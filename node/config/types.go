@@ -655,7 +655,7 @@ type ChainIndexerConfig struct {
 	//
 	// Note: Setting this value too low may result in incomplete indexing, while setting it too high
 	// may increase startup time.
-	MaxReconcileTipsets int
+	MaxReconcileTipsets uint64
 }
 
 type HarmonyDB struct {

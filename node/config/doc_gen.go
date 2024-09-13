@@ -117,7 +117,7 @@ controlled using the MaxReconcileTipsets option.`,
 		},
 		{
 			Name: "MaxReconcileTipsets",
-			Type: "int",
+			Type: "uint64",
 
 			Comment: `MaxReconcileTipsets limits the number of tipsets to reconcile with the chain during startup.
 It represents the maximum number of tipsets to index from the chain state that are absent in the index.
