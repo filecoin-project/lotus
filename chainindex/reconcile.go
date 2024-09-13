@@ -62,7 +62,7 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		}
 
 		currTs := head
-		log.Infof("Starting chain reconciliation from head height %d, reconciliationEpoch: %d", head.Height(), reconciliationEpoch)
+		log.Infof("Starting chain reconciliation from head height %d; searching for base reconciliation height above %d)", head.Height(), reconciliationEpoch)
 		var missingTipsets []*types.TipSet
 
 		// The goal here is to walk the canonical chain backwards from head until we find a matching non-reverted tipset
@@ -124,12 +124,13 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		if err != nil {
 			return xerrors.Errorf("failed to get number of rows affected: %w", err)
 		}
-		log.Infof("Marked %d tipsets as reverted from height %d", rowsAffected, reconciliationEpoch)
 
 		// also need to mark events as reverted for the corresponding inclusion tipsets
 		if _, err = tx.StmtContext(ctx, si.updateEventsToRevertedFromHeightStmt).ExecContext(ctx, int64(reconciliationEpoch-1)); err != nil {
 			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
+
+		log.Infof("Marked %d tipsets as reverted from height %d", rowsAffected, reconciliationEpoch)
 
 		return si.applyMissingTipsets(ctx, tx, missingTipsets)
 	})
@@ -139,7 +140,7 @@ func (si *SqliteIndexer) backfillEmptyIndex(ctx context.Context, tx *sql.Tx, hea
 	currTs := head
 	var missingTipsets []*types.TipSet
 
-	log.Infof("backfilling empty chain index from head height %d", head.Height())
+	log.Infof("Backfilling empty chain index from head height %d", head.Height())
 	var err error
 
 	for currTs != nil && len(missingTipsets) < si.maxReconcileTipsets {
@@ -174,6 +175,7 @@ func (si *SqliteIndexer) applyMissingTipsets(ctx context.Context, tx *sql.Tx, mi
 		var err error
 
 		if i < len(missingTipsets)-1 {
+			// a caller must supply a reverse-ordered contiguous list of missingTipsets
 			parentTs = missingTipsets[i+1]
 		} else if currTs.Height() > 0 {
 			parentTs, err = si.cs.GetTipSetFromKey(ctx, currTs.Parents())

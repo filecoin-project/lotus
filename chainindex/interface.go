@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-var ErrNotFound = errors.New("required data not found in index")
+var ErrNotFound = errors.New("not found in index")
 var ErrClosed = errors.New("index closed")
 
 // MsgInfo is the Message metadata the index tracks.

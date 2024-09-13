@@ -318,20 +318,23 @@
   # env var: LOTUS_CHAININDEXER_GCRETENTIONEPOCHS
   #GCRetentionEpochs = 0
 
-  # ReconcileEmptyIndex determines whether to reconcile the index with the chain state
-  # during startup when the index is empty.
+  # ReconcileEmptyIndex determines whether to reconcile the index with historic
+  # chain state during startup when the index is empty. This is limited by the
+  # amount of chain state available, and the MaxReconcileTipsets option.
   # 
-  # When set to true:
-  # - On startup, if the index is empty, the indexer will index the available
-  # chain state on the node albeit within the MaxReconcileTipsets limit.
+  # When set to true: historic indexing is desirable and the index is empty.
+  # On startup, the indexer will index the available chain state on the node,
+  # albeit within the MaxReconcileTipsets limit and the available chain state.
   # 
-  # When set to false:
-  # - The indexer will not automatically re-index the chain state on startup if the index is empty.
+  # When set to false: historic indexing is not needed. The indexer will not
+  # automatically re-index historic chain state on startup if the index is
+  # empty, but will instead only index from the point that indexing is turned
+  # on.
   # 
   # Default: false
   # 
-  # Note: The number of tipsets reconciled (i.e. indexed) during this process can be
-  # controlled using the MaxReconcileTipsets option.
+  # Note: The number of tipsets reconciled (i.e. indexed) during this process
+  # can be controlled using the MaxReconcileTipsets option.
   #
   # type: bool
   # env var: LOTUS_CHAININDEXER_RECONCILEEMPTYINDEX
@@ -339,6 +342,11 @@
 
   # MaxReconcileTipsets limits the number of tipsets to reconcile with the chain during startup.
   # It represents the maximum number of tipsets to index from the chain state that are absent in the index.
+  #
+  # Reconciliation generally only involves checking the latest tipset, but in
+  # the case of an empty index, or an index that has not been actively
+  # maintained (such as indexing being turned off for a period). This option
+  # limits the number of historic tipsets to reconcile with the chain state.
   # 
   # Default: 3 * epochsPerDay (approximately 3 days of chain history)
   # 

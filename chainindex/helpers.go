@@ -81,7 +81,6 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer
 	}
 }
 
-// revert function for observer
 func toTipsetKeyCidBytes(ts *types.TipSet) ([]byte, error) {
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {

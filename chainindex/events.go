@@ -496,6 +496,6 @@ func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string
 	}
 
 	// retain insertion order of event_entry rows
-	s += " ORDER BY tm.height DESC, ee.rowid ASC"
+	s += " ORDER BY tm.height DESC, ee._rowid_ ASC"
 	return values, s
 }

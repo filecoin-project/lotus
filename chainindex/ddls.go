@@ -62,8 +62,8 @@ var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS event (
 		event_id INTEGER PRIMARY KEY,
 		message_id INTEGER NOT NULL,
-        event_index INTEGER NOT NULL,
-        emitter_addr BLOB NOT NULL,
+		event_index INTEGER NOT NULL,
+		emitter_addr BLOB NOT NULL,
 		reverted INTEGER NOT NULL,
 		FOREIGN KEY (message_id) REFERENCES tipset_message(message_id) ON DELETE CASCADE,
 		UNIQUE (message_id, event_index)

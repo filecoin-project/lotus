@@ -49,7 +49,7 @@ func (si *SqliteIndexer) gc(ctx context.Context) {
 		return
 	}
 
-	log.Infof("gc'ing all(reverted and non-reverted) tipsets before epoch %d", removalEpoch)
+	log.Infof("gc'ing all (reverted and non-reverted) tipsets before epoch %d", removalEpoch)
 
 	res, err := si.removeTipsetsBeforeHeightStmt.ExecContext(ctx, removalEpoch)
 	if err != nil {
