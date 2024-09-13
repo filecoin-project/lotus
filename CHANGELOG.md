@@ -4,6 +4,8 @@
 
 ## ☢️ Upgrade Warnings ☢️
 
+- Minimum go-version been updated to v1.22.7 ([filecoin-project/lotus#12458](https://github.com/filecoin-project/lotus/pull/12458))
+
 ## New features
 
 * Add `EthSendRawTransactionUntrusted` RPC method to be used for the gateway when accepting `EthSendRawTransaction` and `eth_sendRawTransaction`. Applies a tighter limit on the number of messages in the queue from a single sender and applies additional restrictions on nonce increments. ([filecoin-project/lotus#12431](https://github.com/filecoin-project/lotus/pull/12431))
