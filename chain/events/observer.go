@@ -157,13 +157,14 @@ func (o *observer) applyChanges(ctx context.Context, changes []*api.HeadChange) 
 }
 
 func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) error {
+	o.lk.Lock()
+	defer o.lk.Unlock()
+
 	ctx, span := trace.StartSpan(ctx, "events.HeadChange")
 	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
 	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
 
-	o.lk.Lock()
 	head := o.head
-	o.lk.Unlock()
 
 	defer func() {
 		span.AddAttributes(trace.Int64Attribute("endHeight", int64(head.Height())))
@@ -199,12 +200,10 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 		// 1. We need to get the observers every time in case some registered/deregistered.
 		// 2. We need to atomically set the head so new observers don't see events twice or
 		// skip them.
-		o.lk.Lock()
-		observers := o.observers
-		o.head = to
-		o.lk.Unlock()
 
-		for _, obs := range observers {
+		o.head = to
+
+		for _, obs := range o.observers {
 			if err := obs.Revert(ctx, from, to); err != nil {
 				log.Errorf("observer %T failed to revert tipset %s (%d) with: %s", obs, from.Key(), from.Height(), err)
 			}
@@ -225,12 +224,9 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 			)
 		}
 
-		o.lk.Lock()
-		observers := o.observers
 		o.head = to
-		o.lk.Unlock()
 
-		for _, obs := range observers {
+		for _, obs := range o.observers {
 			if err := obs.Apply(ctx, head, to); err != nil {
 				log.Errorf("observer %T failed to apply tipset %s (%d) with: %s", obs, to.Key(), to.Height(), err)
 			}
