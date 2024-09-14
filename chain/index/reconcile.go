@@ -201,8 +201,8 @@ func (si *SqliteIndexer) backfillIndex(ctx context.Context, tx *sql.Tx, head *ty
 		err := si.applyMissingTipset(ctx, tx, currTs)
 		if err != nil {
 			if ipld.IsNotFound(err) {
-				log.Infof("stopping backfill at height %d as chain store only contains data up to this height; backfill applied %d tipsets",
-					currTs.Height(), totalApplied)
+				log.Infof("stopping backfill at height %d as chain store only contains data up to this height as per error %s; backfill applied %d tipsets",
+					currTs.Height(), err, totalApplied)
 				return nil
 			}
 
