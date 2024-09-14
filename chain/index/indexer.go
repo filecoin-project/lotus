@@ -3,7 +3,6 @@ package index
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -73,7 +72,7 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
 
 	if !cs.IsStoringEvents() {
-		return nil, errors.New("indexer can only be enabled if event storage is enabled; partial indexing is not supported for now")
+		log.Warn("indexer initialised with event storage disabled; please ensure that this is intentional")
 	}
 
 	db, err := sqlite.Open(path)
