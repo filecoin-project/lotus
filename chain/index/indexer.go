@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -70,6 +71,11 @@ type SqliteIndexer struct {
 
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
 	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
+
+	if !cs.IsStoringEvents() {
+		return nil, errors.New("indexer can only be enabled if event storage is enabled; partial indexing is not supported for now")
+	}
+
 	db, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
