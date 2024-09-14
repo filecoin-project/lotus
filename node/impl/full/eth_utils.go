@@ -643,19 +643,18 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 		}
 	}
 
-	blkHash, err := ethtypes.EthHashFromCid(parentTsCid)
-	if err != nil {
-		return ethtypes.EthTx{}, err
-	}
-
-	smsg, err := getSignedMessage(ctx, cs, msgLookup.Message)
-	if err != nil {
-		return ethtypes.EthTx{}, xerrors.Errorf("failed to get signed msg: %w", err)
-	}
-
 	st, err := sa.StateManager.StateTree(ts.ParentState())
 	if err != nil {
 		return ethtypes.EthTx{}, xerrors.Errorf("failed to load message state tree: %w", err)
+	}
+
+	return newEthTx(ctx, cs, st, parentTs.Height(), parentTsCid, msgLookup.Message, txIdx)
+}
+
+func newEthTx(ctx context.Context, cs *store.ChainStore, st *state.StateTree, blockHeight abi.ChainEpoch, parentTsCid cid.Cid, msgCid cid.Cid, txIdx int) (ethtypes.EthTx, error) {
+	smsg, err := getSignedMessage(ctx, cs, msgCid)
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to get signed msg: %w", err)
 	}
 
 	tx, err := newEthTxFromSignedMessage(smsg, st)
@@ -664,9 +663,14 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	}
 
 	var (
-		bn = ethtypes.EthUint64(parentTs.Height())
+		bn = ethtypes.EthUint64(blockHeight)
 		ti = ethtypes.EthUint64(txIdx)
 	)
+
+	blkHash, err := ethtypes.EthHashFromCid(parentTsCid)
+	if err != nil {
+		return ethtypes.EthTx{}, err
+	}
 
 	tx.BlockHash = &blkHash
 	tx.BlockNumber = &bn

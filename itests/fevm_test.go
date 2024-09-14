@@ -1061,6 +1061,10 @@ func TestEthGetBlockReceipts(t *testing.T) {
 	// Deploy a contract to generate a transaction
 	_, contractAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/SimpleCoin.hex")
 
+	// Invoke a function to ensure there is a transaction
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, client.DefaultKey.Address, contractAddr, "someFunction()", []byte{})
+	require.NoError(t, err)
+
 	// Get the latest block
 	latestBlock, err := client.EthGetBlockByNumber(ctx, "latest", true)
 	require.NoError(t, err)

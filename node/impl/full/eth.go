@@ -2149,17 +2149,34 @@ func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes
 		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
 	}
 
+	// Get the next tipset where the messages are actually executed
+	nextTs, err := a.Chain.GetTipsetByHeight(ctx, ts.Height()+1, ts, false)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get next tipset: %w", err)
+	}
+
+	// Load the state tree once for all messages
+	st, err := a.StateManager.StateTree(ts.ParentState())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	parentTsCid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get parent tipset cid: %w", err)
+	}
+
 	receipts := make([]*api.EthTxReceipt, 0, len(messages))
 	for i, msg := range messages {
-		msgLookup, err := a.StateAPI.StateSearchMsg(ctx, ts.Key(), msg.Cid(), api.LookbackNoLimit, true)
+		msgLookup, err := a.StateAPI.StateSearchMsg(ctx, nextTs.Key(), msg.Cid(), 1, true)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to search for message: %w", err)
 		}
 		if msgLookup == nil {
-			continue
+			return nil, xerrors.Errorf("message not found in next tipset: %s", msg.Cid())
 		}
 
-		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, i, a.Chain, a.StateAPI)
+		tx, err := newEthTx(ctx, a.Chain, st, ts.Height(), parentTsCid, msg.Cid(), i)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create Eth transaction: %w", err)
 		}
