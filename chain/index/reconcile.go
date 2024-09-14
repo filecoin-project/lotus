@@ -213,7 +213,7 @@ func (si *SqliteIndexer) backfillIndex(ctx context.Context, tx *sql.Tx, head *ty
 
 		if lastLoggedEpoch-currTs.Height() >= builtin.EpochsInDay {
 			progress := float64(totalApplied) / float64(totalTipsetsToApply) * 100
-			log.Infof("backfill progress: %.2f%% complete (%d tipsets applied; total to apply: %d), ongoing", progress, totalApplied, totalTipsetsToApply)
+			log.Infof("backfill progress: %.2f%% complete (%d out of %d tipsets applied), ongoing", progress, totalApplied, totalTipsetsToApply)
 			lastLoggedEpoch = currTs.Height()
 		}
 
