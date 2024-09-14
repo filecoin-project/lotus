@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -68,6 +69,10 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				}
 
 				return *actor.DelegatedAddress, true
+			})
+
+			indexer.SetTipsetExecutorFnc(func(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+				return sm.RecomputeTipSetState(ctx, ts)
 			})
 
 			ch, err := mp.Updates(ctx)

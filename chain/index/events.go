@@ -163,7 +163,21 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 
 		eventsArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
-			return nil, xerrors.Errorf("error loading events amt: %w", err)
+			if si.tipsetExecutorFnc == nil {
+				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
+			}
+			log.Warnf("failed to load events amt for message %s: %s; recomputing tipset state to regenerate events", ems[i].msg.Cid(), err)
+
+			_, _, err = si.tipsetExecutorFnc(ctx, msgTs)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to recompute missing events; failed to recompute tipset state: %w", err)
+			}
+
+			eventsArr, err = amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+			if err != nil {
+				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
+			}
+			log.Infof("successfully recomputed tipset state and loaded events amt for message %s", ems[i].msg.Cid())
 		}
 
 		ems[i].evs = make([]types.Event, eventsArr.Len())
