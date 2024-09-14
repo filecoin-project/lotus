@@ -50,6 +50,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
@@ -628,18 +629,31 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
+	c, err := lr.Config()
+	if err != nil {
+		return err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+
+	if cfg.ChainIndexer.DisableIndexer {
+		log.Info("chain indexer is disabled, not populating index from snapshot")
+		return nil
+	}
+
 	// populate the chain Index from the snapshot
-	//
 	basePath, err := lr.SqlitePath()
 	if err != nil {
 		return err
 	}
 
-	log.Info("populating chain index...")
+	log.Info("populating chain index from snapshot...")
 	if err := index.PopulateFromSnapshot(ctx, filepath.Join(basePath, index.DefaultDbFilename), cst); err != nil {
 		return err
 	}
-	log.Info("populating chain index done")
+	log.Info("populating chain index from snapshot done")
 
 	return nil
 }
