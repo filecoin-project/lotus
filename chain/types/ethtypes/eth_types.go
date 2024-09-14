@@ -13,6 +13,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
@@ -25,6 +26,13 @@ import (
 	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/lib/must"
 )
+
+var expectedHashPrefix = cid.Prefix{
+	Version:  1,
+	Codec:    cid.DagCBOR,
+	MhType:   uint64(mh.BLAKE2B_MIN + 31),
+	MhLength: 32,
+}.Bytes()
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
@@ -529,7 +537,19 @@ func handleHexStringPrefix(s string) string {
 }
 
 func EthHashFromCid(c cid.Cid) (EthHash, error) {
-	return ParseEthHash(c.Hash().HexString()[8:])
+	hash, found := bytes.CutPrefix(c.Bytes(), expectedHashPrefix)
+	if !found {
+		return EthHash{}, fmt.Errorf("CID does not have the expected prefix")
+	}
+
+	if len(hash) != EthHashLength {
+		// this shouldn't be possible since the prefix has the length, but just in case
+		return EthHash{}, fmt.Errorf("CID hash length is not 32 bytes")
+	}
+
+	var h EthHash
+	copy(h[:], hash)
+	return h, nil
 }
 
 func ParseEthHash(s string) (EthHash, error) {

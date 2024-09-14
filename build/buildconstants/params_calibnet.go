@@ -26,7 +26,7 @@ var NetworkBundle = "calibrationnet"
 var ActorDebugging = false
 
 const BootstrappersFile = "calibnet.pi"
-const GenesisFile = "calibnet.car"
+const GenesisFile = "calibnet.car.zst"
 
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 120
@@ -96,6 +96,9 @@ const UpgradeCalibrationDragonFixHeight = 1493854
 
 // 2024-07-11T12:00:00Z
 const UpgradeWaffleHeight = 1779094
+
+// ??????
+const UpgradeTuktukHeight = 999999999999999
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

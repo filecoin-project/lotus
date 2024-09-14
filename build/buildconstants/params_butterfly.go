@@ -22,7 +22,7 @@ var NetworkBundle = "butterflynet"
 var ActorDebugging = false
 
 const BootstrappersFile = "butterflynet.pi"
-const GenesisFile = "butterflynet.car"
+const GenesisFile = "butterflynet.car.zst"
 
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 120
@@ -53,8 +53,10 @@ const UpgradeThunderHeight = -23
 const UpgradeWatermelonHeight = -24
 const UpgradeDragonHeight = -25
 const UpgradePhoenixHeight = -26
+const UpgradeWaffleHeight = -27
 
-const UpgradeWaffleHeight = 100
+// ??????
+const UpgradeTuktukHeight = 999999999999999
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -100

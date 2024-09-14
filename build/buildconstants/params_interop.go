@@ -19,7 +19,7 @@ var NetworkBundle = "caterpillarnet"
 var ActorDebugging = false
 
 const BootstrappersFile = "interopnet.pi"
-const GenesisFile = "interopnet.car"
+const GenesisFile = "interopnet.car.zst"
 
 const GenesisNetworkVersion = network.Version22
 
@@ -52,8 +52,9 @@ var UpgradeThunderHeight = abi.ChainEpoch(-23)
 var UpgradeWatermelonHeight = abi.ChainEpoch(-24)
 var UpgradeDragonHeight = abi.ChainEpoch(-25)
 var UpgradePhoenixHeight = abi.ChainEpoch(-26)
+var UpgradeWaffleHeight = abi.ChainEpoch(-27)
 
-const UpgradeWaffleHeight = 50
+const UpgradeTuktukHeight = 50
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight = -1

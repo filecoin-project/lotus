@@ -30,7 +30,7 @@ const ActorDebugging = false
 const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "mainnet.pi"
-const GenesisFile = "mainnet.car"
+const GenesisFile = "mainnet.car.zst"
 
 const UpgradeBreezeHeight abi.ChainEpoch = 41280
 
@@ -105,7 +105,10 @@ const UpgradeDragonHeight abi.ChainEpoch = 3855360
 const UpgradePhoenixHeight abi.ChainEpoch = UpgradeDragonHeight + 120
 
 // 2024-08-06T12:00:00Z
-var UpgradeWaffleHeight abi.ChainEpoch = 4154640
+const UpgradeWaffleHeight abi.ChainEpoch = 4154640
+
+// ??????
+var UpgradeTuktukHeight = abi.ChainEpoch(9999999999)
 
 // This fix upgrade only ran on calibrationnet
 const UpgradeWatermelonFixHeight abi.ChainEpoch = -1
@@ -131,8 +134,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_WAFFLE") == "1" {
-		UpgradeWaffleHeight = math.MaxInt64 - 1
+	if os.Getenv("LOTUS_DISABLE_TUKTUK") == "1" {
+		UpgradeTuktukHeight = math.MaxInt64 - 1
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

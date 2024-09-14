@@ -22,6 +22,8 @@
 * Scope: Node|Miner MINOR|PATCH
 * Is this linked with a network upgrade, and thus mandatory? Yes|No
 * Related network upgrade version: nvXX|n/a
+   * (network upgrade) Scope, dates, and epochs: <link to post in https://github.com/filecoin-project/community/discussions/74>
+   * (network upgrade) Lotus changelog with Lotus specifics: <link to section in https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md with more details>
 
 ## 🚢 Estimated shipping date
 
