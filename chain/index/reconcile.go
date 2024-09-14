@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -46,13 +47,13 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		isIndexEmpty := !hasTipset
 		if isIndexEmpty && !si.reconcileEmptyIndex {
-			log.Info("Chain index is empty and reconcileEmptyIndex is disabled; skipping reconciliation")
+			log.Info("chain index is empty and reconcileEmptyIndex is disabled; skipping reconciliation")
 			return nil
 		}
 
 		if isIndexEmpty {
-			log.Info("Chain index is empty; backfilling from head")
-			return si.backfillEmptyIndex(ctx, tx, head)
+			log.Info("chain index is empty; backfilling from head")
+			return si.backfillIndex(ctx, tx, head, 0)
 		}
 
 		// Find the minimum applied tipset in the index; this will mark the absolute min height of the reconciliation walk
@@ -75,13 +76,12 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 
 		currTs := head
 
-		log.Infof("Starting chain reconciliation from head height %d; searching for base reconciliation height above %d)", head.Height(), reconciliationEpoch)
-		var missingTipsets []*types.TipSet
+		log.Infof("starting chain reconciliation from head height %d; reconciliation epoch is %d", head.Height(), reconciliationEpoch)
 
 		// The goal here is to walk the canonical chain backwards from head until we find a matching non-reverted tipset
 		// in the db so we know where to start reconciliation from
 		// All tipsets that exist in the DB but not in the canonical chain are then marked as reverted
-		// All tpsets that exist in the canonical chain but not in the db are then applied
+		// All tipsets that exist in the canonical chain but not in the db are then applied
 
 		// we only need to walk back as far as the reconciliation epoch as all the tipsets in the index
 		// below the reconciliation epoch are already marked as reverted because the reconciliation epoch
@@ -101,15 +101,9 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			if exists {
 				// found it!
 				reconciliationEpoch = currTs.Height() + 1
-				log.Infof("Found matching tipset at height %d, setting reconciliation epoch to %d", currTs.Height(), reconciliationEpoch)
+				log.Infof("found matching tipset at height %d, setting reconciliation epoch to %d", currTs.Height(), reconciliationEpoch)
 				break
 			}
-
-			if uint64(len(missingTipsets)) < si.maxReconcileTipsets {
-				missingTipsets = append(missingTipsets, currTs)
-			}
-			// even if len(missingTipsets) >= si.maxReconcileTipsets, we still need to continue the walk
-			// to find the final reconciliation epoch so we can mark the indexed tipsets not in the main chain as reverted
 
 			if currTs.Height() == 0 {
 				log.Infof("ReconcileWithChain reached genesis but no matching tipset found in index")
@@ -143,89 +137,130 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 			return xerrors.Errorf("failed to mark events as reverted: %w", err)
 		}
 
-		log.Infof("Marked %d tipsets as reverted from height %d", rowsAffected, reconciliationEpoch)
+		log.Infof("marked %d tipsets as reverted from height %d", rowsAffected, reconciliationEpoch)
 
-		return si.applyMissingTipsets(ctx, tx, missingTipsets)
+		// if the head is less than the reconciliation epoch, we don't need to index any tipsets as we're already caught up
+		if head.Height() < reconciliationEpoch {
+			log.Info("no missing tipsets to index; index is already caught up with chain")
+			return nil
+		}
+
+		// apply all missing tipsets by walking the chain backwards starting from head upto the reconciliation epoch
+		log.Infof("indexing missing tipsets backwards from head height %d to reconciliation epoch %d", head.Height(), reconciliationEpoch)
+
+		// if head.Height == reconciliationEpoch, this will only index head and return
+		if err := si.backfillIndex(ctx, tx, head, reconciliationEpoch); err != nil {
+			return xerrors.Errorf("failed to backfill index: %w", err)
+		}
+
+		return nil
 	})
 }
 
-func (si *SqliteIndexer) backfillEmptyIndex(ctx context.Context, tx *sql.Tx, head *types.TipSet) error {
+// backfillIndex backfills the chain index with missing tipsets starting from the given head tipset
+// and stopping after the specified stopAfter epoch (inclusive).
+//
+// The behavior of this function depends on the relationship between head.Height and stopAfter:
+//
+// 1. If head.Height > stopAfter:
+//   - The function will apply missing tipsets from head.Height down to stopAfter (inclusive).
+//   - It will stop applying tipsets if the maximum number of tipsets to apply (si.maxReconcileTipsets) is reached.
+//   - If the chain store only contains data up to a certain height, the function will stop backfilling at that height.
+//
+// 2. If head.Height == stopAfter:
+//   - The function will only apply the head tipset and then return.
+//
+// 3. If head.Height < stopAfter:
+//   - The function will immediately return without applying any tipsets.
+//
+// The si.maxReconcileTipsets parameter is used to limit the maximum number of tipsets that can be applied during the backfill process.
+// If the number of applied tipsets reaches si.maxReconcileTipsets, the function will stop backfilling and return.
+//
+// The function also logs progress information at regular intervals (every builtin.EpochsInDay) to provide visibility into the backfill process.
+func (si *SqliteIndexer) backfillIndex(ctx context.Context, tx *sql.Tx, head *types.TipSet, stopAfter abi.ChainEpoch) error {
+	if head.Height() < stopAfter {
+		return nil
+	}
+
 	currTs := head
-	var missingTipsets []*types.TipSet
+	totalApplied := uint64(0)
+	lastLoggedEpoch := head.Height()
 
-	log.Infof("Backfilling empty chain index from head height %d", head.Height())
-	var err error
+	log.Infof("backfilling chain index backwards starting from head height %d", head.Height())
 
-	for currTs != nil && uint64(len(missingTipsets)) < si.maxReconcileTipsets {
-		missingTipsets = append(missingTipsets, currTs)
+	// Calculate the actual number of tipsets to apply
+	totalTipsetsToApply := min(uint64(head.Height()-stopAfter+1), si.maxReconcileTipsets)
+
+	for currTs != nil {
+		if totalApplied >= si.maxReconcileTipsets {
+			log.Infof("reached maximum number of tipsets to apply (%d), finishing backfill; backfill applied %d tipsets",
+				si.maxReconcileTipsets, totalApplied)
+			return nil
+		}
+
+		err := si.applyMissingTipset(ctx, tx, currTs)
+		if err != nil {
+			if ipld.IsNotFound(err) {
+				log.Infof("stopping backfill at height %d as chain store only contains data up to this height; backfill applied %d tipsets",
+					currTs.Height(), totalApplied)
+				return nil
+			}
+
+			return xerrors.Errorf("failed to apply tipset at height %d: %w", currTs.Height(), err)
+		}
+
+		totalApplied++
+
+		if lastLoggedEpoch-currTs.Height() >= builtin.EpochsInDay {
+			progress := float64(totalApplied) / float64(totalTipsetsToApply) * 100
+			log.Infof("backfill progress: %.2f%% complete (%d tipsets applied; total to apply: %d), ongoing", progress, totalApplied, totalTipsetsToApply)
+			lastLoggedEpoch = currTs.Height()
+		}
+
 		if currTs.Height() == 0 {
-			break
+			log.Infof("reached genesis tipset and have backfilled everything up to genesis; backfilled %d tipsets", totalApplied)
+			return nil
+		}
+
+		if currTs.Height() <= stopAfter {
+			log.Infof("reached stop height %d; backfilled %d tipsets", stopAfter, totalApplied)
+			return nil
 		}
 
 		currTs, err = si.cs.GetTipSetFromKey(ctx, currTs.Parents())
 		if err != nil {
-			return xerrors.Errorf("failed to walk chain: %w", err)
+			return xerrors.Errorf("failed to walk chain at height %d: %w", currTs.Height(), err)
 		}
 	}
 
-	return si.applyMissingTipsets(ctx, tx, missingTipsets)
+	log.Infof("applied %d tipsets during backfill", totalApplied)
+	return nil
 }
 
-func (si *SqliteIndexer) applyMissingTipsets(ctx context.Context, tx *sql.Tx, missingTipsets []*types.TipSet) error {
-	if len(missingTipsets) == 0 {
-		log.Info("No missing tipsets to index; index is all caught up with the chain")
+// applyMissingTipset indexes a single missing tipset and its parent events
+// It's a simplified version of applyMissingTipsets, handling one tipset at a time
+func (si *SqliteIndexer) applyMissingTipset(ctx context.Context, tx *sql.Tx, currTs *types.TipSet) error {
+	if currTs == nil {
+		return xerrors.Errorf("failed to apply missing tipset: tipset is nil")
+	}
+
+	// Special handling for genesis tipset
+	if currTs.Height() == 0 {
+		if err := si.indexTipset(ctx, tx, currTs); err != nil {
+			return xerrors.Errorf("failed to index genesis tipset: %w", err)
+		}
 		return nil
 	}
 
-	log.Infof("Applying %d missing tipsets to Index; max missing tipset height %d; min missing tipset height %d", len(missingTipsets),
-		missingTipsets[0].Height(), missingTipsets[len(missingTipsets)-1].Height())
-	totalIndexed := 0
-
-	// apply all missing tipsets from the canonical chain to the current chain head
-	for i := 0; i < len(missingTipsets); i++ {
-		currTs := missingTipsets[i]
-		var parentTs *types.TipSet
-		var err error
-
-		if i < len(missingTipsets)-1 {
-			// a caller must supply a reverse-ordered contiguous list of missingTipsets
-			parentTs = missingTipsets[i+1]
-		} else if currTs.Height() > 0 {
-			parentTs, err = si.cs.GetTipSetFromKey(ctx, currTs.Parents())
-			if err != nil {
-				return xerrors.Errorf("failed to get parent tipset: %w", err)
-			}
-		} else if currTs.Height() == 0 {
-			if err := si.indexTipset(ctx, tx, currTs); err != nil {
-				log.Warnf("failed to index genesis tipset during reconciliation: %s", err)
-			} else {
-				totalIndexed++
-			}
-			break
-		}
-
-		if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, currTs); err != nil {
-			if !ipld.IsNotFound(err) {
-				return xerrors.Errorf("failed to index tipset with parent events during reconciliation: %w", err)
-			}
-			// the above could have failed because of missing messages for `parentTs` in the chainstore
-			// so try to index only the currentTs and then halt the reconciliation process as we've
-			// reached the end of what we have in the chainstore
-			if err := si.indexTipset(ctx, tx, currTs); err != nil {
-				if !ipld.IsNotFound(err) {
-					return xerrors.Errorf("failed to index tipset during reconciliation: %w", err)
-				}
-				log.Infof("stopping reconciliation at height %d as chainstore only contains data up to this height; error is %s", currTs.Height(), err)
-				break
-			}
-			totalIndexed++
-			break
-		}
-
-		totalIndexed++
+	parentTs, err := si.cs.GetTipSetFromKey(ctx, currTs.Parents())
+	if err != nil {
+		return xerrors.Errorf("failed to get parent tipset: %w", err)
 	}
 
-	log.Infof("Indexed %d missing tipsets during reconciliation", totalIndexed)
+	// Index the tipset along with its parent events
+	if err := si.indexTipsetWithParentEvents(ctx, tx, parentTs, currTs); err != nil {
+		return xerrors.Errorf("failed to index tipset with parent events: %w", err)
+	}
 
 	return nil
 }
