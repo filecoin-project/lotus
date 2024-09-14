@@ -27,6 +27,10 @@ import (
 // This function is crucial for maintaining index integrity, especially after chain reorgs.
 // It ensures that the index accurately reflects the current state of the blockchain.
 func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.TipSet) error {
+	if !si.cs.IsStoringEvents() {
+		log.Warn("chain indexer is not storing events during reconciliation; please ensure this is intentional")
+	}
+
 	si.closeLk.RLock()
 	if si.closed {
 		si.closeLk.RUnlock()

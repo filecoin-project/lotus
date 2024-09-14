@@ -71,10 +71,6 @@ type SqliteIndexer struct {
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
 	maxReconcileTipsets uint64) (si *SqliteIndexer, err error) {
 
-	if !cs.IsStoringEvents() {
-		log.Warn("indexer initialised with event storage disabled; please ensure that this is intentional")
-	}
-
 	db, err := sqlite.Open(path)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to setup message index db: %w", err)
