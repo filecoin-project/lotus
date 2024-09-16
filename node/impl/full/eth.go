@@ -2150,7 +2150,7 @@ func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes
 	}
 
 	// Get the next tipset where the messages are actually executed
-	nextTs, err := a.Chain.GetTipsetByHeight(ctx, ts.Height()+1, ts, false)
+	nextTs, err := a.Chain.GetTipsetByHeight(ctx, ts.Height()+1, nil, false)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get next tipset: %w", err)
 	}

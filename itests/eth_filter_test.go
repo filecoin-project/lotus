@@ -753,6 +753,25 @@ func TestMultipleEvents(t *testing.T) {
 	expectedLogIndex := 0
 	var receiptLogs []ethtypes.EthLog
 	for _, receipt := range receipts {
+		require.Equal(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+		// Test GetBlockReceipts
+		blockReceipts, err := client.EthGetBlockReceipts(ctx, ethtypes.EthBlockNumberOrHash{BlockHash: &receipt.BlockHash})
+		require.NoError(t, err)
+		require.NotEmpty(t, blockReceipts)
+
+		// Find the matching receipt in blockReceipts
+		var matchingReceipt *api.EthTxReceipt
+		for _, blockReceipt := range blockReceipts {
+			if blockReceipt.TransactionHash == receipt.TransactionHash {
+				matchingReceipt = blockReceipt
+				break
+			}
+		}
+
+		require.NotNil(t, matchingReceipt, "Matching receipt not found in block receipts")
+		require.Equal(t, receipt, matchingReceipt, "Receipt from GetTransactionReceipt should match the one in GetBlockReceipts")
+
 		for _, log := range receipt.Logs {
 			require.Equal(t, ethtypes.EthUint64(expectedLogIndex), log.LogIndex, "LogIndex should be sequential")
 			expectedLogIndex++
