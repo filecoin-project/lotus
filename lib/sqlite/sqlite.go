@@ -77,8 +77,6 @@ func Open(path string) (*sql.DB, error) {
 		return nil, xerrors.Errorf("foreign keys are not enabled for database [@ %s]", path)
 	}
 
-	log.Infof("Database [@ %s] opened successfully with foreign keys enabled", path)
-
 	return db, nil
 }
 
