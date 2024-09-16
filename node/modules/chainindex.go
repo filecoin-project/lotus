@@ -70,6 +70,11 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				return *actor.DelegatedAddress, true
 			})
 
+			indexer.SetRecomputeTipSetStateFunc(func(ctx context.Context, ts *types.TipSet) error {
+				_, _, err := sm.RecomputeTipSetState(ctx, ts)
+				return err
+			})
+
 			ch, err := mp.Updates(ctx)
 			if err != nil {
 				return err
