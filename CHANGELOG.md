@@ -18,12 +18,24 @@
 
 - Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
 
+# Node v1.29.1 / 2024-09-16
+
+This is a Lotus Node patch release that addresses a critical sync issue affecting users of the v1.29.0 release. The primary fix in this release is:
+
+- Downgrade of a dependency that was causing invalid BLS signatures, leading to sync failures for many Lotus nodes. See [#12467](https://github.com/filecoin-project/lotus/issues/12467) for more information about the bug.
+
+We strongly recommend that all users currently running Lotus v1.29.0 upgrade to this version to resolve the syncing problems.
+
+## Bug Fixes
+- Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
+
 # 1.28.3 / 2024-09-16
 
 This is a Lotus Node patch release that addresses a critical sync issue affecting users of the v1.28.2 release. The primary fix in this patch release is downgrading of a dependency that was causing invalid BLS signatures, leading to sync failures for many Lotus nodes. See #12467 for more information about the issue/bug.
 
 ## Bug Fixes
 - Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
+
 
 # Node v1.29.0 / 2024-09-02
 
