@@ -226,7 +226,7 @@
   #
   # type: bool
   # env var: LOTUS_FEVM_ENABLEETHRPC
-  #EnableEthRPC = true
+  #EnableEthRPC = false
 
   # EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
   #
@@ -260,7 +260,7 @@
   #
   # type: bool
   # env var: LOTUS_EVENTS_ENABLEACTOREVENTSAPI
-  #EnableActorEventsAPI = true
+  #EnableActorEventsAPI = false
 
   # FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
   # this time become eligible for automatic deletion. Filters consume resources, so if they are unused they
@@ -306,7 +306,7 @@
   #
   # type: bool
   # env var: LOTUS_CHAININDEXER_DISABLEINDEXER
-  #DisableIndexer = false
+  #DisableIndexer = true
 
   # GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
   # The garbage collection (GC) process removes data older than this retention period.
