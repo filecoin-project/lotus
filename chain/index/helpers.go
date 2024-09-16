@@ -56,7 +56,7 @@ func PopulateFromSnapshot(ctx context.Context, path string, cs ChainStore) error
 		for curTs != nil {
 			if err := si.indexTipset(ctx, tx, curTs); err != nil {
 				if ipld.IsNotFound(err) {
-					log.Infof("stopping chainindex population at height %d as snapshot only contains data upto this height; error is %s", curTs.Height(), err)
+					log.Infof("stopping chainindex population at height %d as snapshot only contains data upto this height; error is: %s", curTs.Height(), err)
 					break
 				}
 

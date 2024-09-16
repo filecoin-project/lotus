@@ -127,14 +127,14 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 	msgs, err := si.cs.MessagesForTipset(ctx, msgTs)
 	if err != nil {
-		return nil, xerrors.Errorf("error getting messages for tipset: %w", err)
+		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
 	}
 
 	st := si.cs.ActorStore(ctx)
 
 	receiptsArr, err := blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
-		return nil, xerrors.Errorf("error loading message receipts array: %w", err)
+		return nil, xerrors.Errorf("failed to load message receipts array: %w", err)
 	}
 
 	if uint64(len(msgs)) != receiptsArr.Length() {
@@ -149,7 +149,7 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 		var rct types.MessageReceipt
 		found, err := receiptsArr.Get(uint64(i), &rct)
 		if err != nil {
-			return nil, xerrors.Errorf("error loading receipt %d: %w", i, err)
+			return nil, xerrors.Errorf("failed to load receipt %d: %w", i, err)
 		}
 		if !found {
 			return nil, xerrors.Errorf("receipt %d not found", i)
@@ -176,6 +176,7 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 			if err != nil {
 				return nil, xerrors.Errorf("failed to load events amt for message %s: %w", ems[i].msg.Cid(), err)
 			}
+
 			log.Infof("successfully recomputed tipset state and loaded events amt for message %s", ems[i].msg.Cid())
 		}
 
@@ -195,7 +196,7 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 		})
 
 		if err != nil {
-			return nil, xerrors.Errorf("error iterating over events for message %d: %w", i, err)
+			return nil, xerrors.Errorf("failed to iterate over events for message %d: %w", i, err)
 		}
 
 	}
@@ -382,10 +383,6 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 		return ces, nil
 	}
 
-	if err := si.sanityCheckFilter(ctx, f); err != nil {
-		return nil, xerrors.Errorf("event filter is invalid: %w", err)
-	}
-
 	values, query := makePrefillFilterQuery(f, excludeReverted)
 
 	stmt, err := si.db.Prepare(query)
@@ -414,26 +411,6 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 	}
 
 	return ces, nil
-}
-
-func (si *SqliteIndexer) sanityCheckFilter(ctx context.Context, f *EventFilter) error {
-	head := si.cs.GetHeaviestTipSet()
-
-	if f.TipsetCid != cid.Undef {
-		ts, err := si.cs.GetTipSetByCid(ctx, f.TipsetCid)
-		if err != nil {
-			return xerrors.Errorf("failed to get tipset by cid: %w", err)
-		}
-		if ts.Height() >= head.Height() {
-			return xerrors.New("cannot ask for events for a tipset >= head")
-		}
-	}
-
-	if f.MinHeight >= head.Height() || f.MaxHeight >= head.Height() {
-		return xerrors.New("cannot ask for events for a tipset >= head")
-	}
-
-	return nil
 }
 
 func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string) {

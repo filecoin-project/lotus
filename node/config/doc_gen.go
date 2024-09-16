@@ -73,18 +73,17 @@ your node if metadata log is disabled`,
 	},
 	"ChainIndexerConfig": {
 		{
-			Name: "DisableIndexer",
+			Name: "EnableIndexer",
 			Type: "bool",
 
-			Comment: `DisableIndexer controls whether the chain indexer is active.
+			Comment: `EnableIndexer controls whether the chain indexer is active.
 The chain indexer is responsible for indexing tipsets, messages, and events from the chain state.
 It is a crucial component for optimizing Lotus RPC response times.
 
-Default: false (indexer is enabled)
+Default: false (indexer is disabled)
 
-Setting this to true will disable the indexer, which may significantly impact RPC performance.
-It is strongly recommended to keep this set to false unless you have a specific reason to disable it
-and fully understand the implications.`,
+Setting this to true will enable the indexer, which will significantly improve RPC performance.
+It is strongly recommended to keep this set to true if you are an RPC provider.`,
 		},
 		{
 			Name: "GCRetentionEpochs",

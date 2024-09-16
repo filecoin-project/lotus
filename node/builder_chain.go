@@ -238,7 +238,7 @@ func ConfigFullNode(c interface{}) Option {
 		// If the Eth JSON-RPC is enabled, enable storing events at the ChainStore.
 		// This is the case even if real-time and historic filtering are disabled,
 		// as it enables us to serve logs in eth_getTransactionReceipt.
-		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI || !cfg.ChainIndexer.DisableIndexer, Override(StoreEventsKey, modules.EnableStoringEvents)),
+		If(cfg.Fevm.EnableEthRPC || cfg.Events.EnableActorEventsAPI || cfg.ChainIndexer.EnableIndexer, Override(StoreEventsKey, modules.EnableStoringEvents)),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
@@ -282,9 +282,11 @@ func ConfigFullNode(c interface{}) Option {
 			Override(ConsensusReporterKey, modules.RunConsensusFaultReporter(cfg.FaultReporter)),
 		),
 
-		Override(new(index.Indexer), modules.ChainIndexer(cfg.ChainIndexer)),
-		If(!cfg.ChainIndexer.DisableIndexer,
-			Override(InitChainIndexerKey, modules.InitChainIndexer),
+		ApplyIf(isFullNode,
+			Override(new(index.Indexer), modules.ChainIndexer(cfg.ChainIndexer)),
+			If(cfg.ChainIndexer.EnableIndexer,
+				Override(InitChainIndexerKey, modules.InitChainIndexer),
+			),
 		),
 	)
 }

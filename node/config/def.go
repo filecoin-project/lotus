@@ -83,20 +83,20 @@ func DefaultFullNode() *FullNode {
 			},
 		},
 		Fevm: FevmConfig{
-			EnableEthRPC:             true,
+			EnableEthRPC:             false,
 			EthTraceFilterMaxResults: 500,
 			EthBlkCacheSize:          500,
 		},
 		Events: EventsConfig{
 			DisableRealTimeFilterAPI: false,
-			EnableActorEventsAPI:     true,
+			EnableActorEventsAPI:     false,
 			FilterTTL:                Duration(time.Hour * 1),
 			MaxFilters:               100,
 			MaxFilterResults:         10000,
 			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
 		ChainIndexer: ChainIndexerConfig{
-			DisableIndexer:      false,
+			EnableIndexer:       false,
 			GCRetentionEpochs:   0,
 			ReconcileEmptyIndex: false,
 			MaxReconcileTipsets: 3 * builtin.EpochsInDay,

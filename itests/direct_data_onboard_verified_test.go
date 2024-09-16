@@ -135,7 +135,7 @@ func TestOnboardRawPieceVerified_WithActorEvents(t *testing.T) {
 	// subscribe to actor events up until the current head
 	initialEventsChan, err := miner.FullNode.SubscribeActorEventsRaw(ctx, &types.ActorEventFilter{
 		FromHeight: epochPtr(0),
-		ToHeight:   epochPtr(int64(head.Height()) - 1),
+		ToHeight:   epochPtr(int64(head.Height())),
 	})
 	require.NoError(t, err)
 

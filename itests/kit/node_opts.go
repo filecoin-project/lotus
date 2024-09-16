@@ -65,7 +65,7 @@ var DefaultNodeOpts = nodeOpts{
 			// test defaults
 
 			cfg.Fevm.EnableEthRPC = true
-			cfg.ChainIndexer.DisableIndexer = false
+			cfg.ChainIndexer.EnableIndexer = true
 			cfg.Events.MaxFilterHeightRange = math.MaxInt64
 			cfg.Events.EnableActorEventsAPI = true
 			cfg.ChainIndexer.ReconcileEmptyIndex = true

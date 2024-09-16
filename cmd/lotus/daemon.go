@@ -638,7 +638,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("invalid config for repo, got: %T", c)
 	}
 
-	if cfg.ChainIndexer.DisableIndexer {
+	if !cfg.ChainIndexer.EnableIndexer {
 		log.Info("chain indexer is disabled, not populating index from snapshot")
 		return nil
 	}
