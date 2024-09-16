@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -79,7 +81,7 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 			if err != nil {
 				return err
 			}
-			go index.WaitForMpoolUpdates(ctx, ch, indexer)
+			go WaitForMpoolUpdates(ctx, ch, indexer)
 
 			ev, err := events.NewEvents(ctx, &evapi)
 			if err != nil {
@@ -107,4 +109,34 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 			return nil
 		},
 	})
+}
+
+func ChainIndexHandler(cfg config.ChainIndexerConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, index.Indexer) (*full.ChainIndexHandler, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, indexer index.Indexer) (*full.ChainIndexHandler, error) {
+		if !cfg.EnableIndexer {
+			return nil, nil
+		}
+
+		return full.NewChainIndexHandler(indexer), nil
+	}
+}
+
+func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, indexer index.Indexer) {
+	for ctx.Err() == nil {
+		select {
+		case <-ctx.Done():
+			return
+		case u := <-ch:
+			if u.Type != api.MpoolAdd {
+				continue
+			}
+			if u.Message == nil {
+				continue
+			}
+			err := indexer.IndexSignedMessage(ctx, u.Message)
+			if err != nil {
+				log.Errorw("failed to index signed Mpool message", "error", err)
+			}
+		}
+	}
 }

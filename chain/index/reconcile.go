@@ -27,6 +27,9 @@ import (
 // This function is crucial for maintaining index integrity, especially after chain reorgs.
 // It ensures that the index accurately reflects the current state of the blockchain.
 func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.TipSet) error {
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
+
 	if !si.cs.IsStoringEvents() {
 		log.Warn("chain indexer is not storing events during reconciliation; please ensure this is intentional")
 	}
@@ -43,13 +46,12 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 	}
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
-		var hasTipset bool
-		err := tx.StmtContext(ctx, si.stmts.isTipsetMessageNonEmptyStmt).QueryRowContext(ctx).Scan(&hasTipset)
+		var isIndexEmpty bool
+		err := tx.StmtContext(ctx, si.stmts.isIndexEmptyStmt).QueryRowContext(ctx).Scan(&isIndexEmpty)
 		if err != nil {
-			return xerrors.Errorf("failed to check if tipset message is empty: %w", err)
+			return xerrors.Errorf("failed to check if index is empty: %w", err)
 		}
 
-		isIndexEmpty := !hasTipset
 		if isIndexEmpty && !si.reconcileEmptyIndex {
 			log.Info("chain index is empty and reconcileEmptyIndex is disabled; skipping reconciliation")
 			return nil

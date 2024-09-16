@@ -510,6 +510,21 @@ func (mr *MockFullNodeMockRecorder) ChainTipSetWeight(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainTipSetWeight", reflect.TypeOf((*MockFullNode)(nil).ChainTipSetWeight), arg0, arg1)
 }
 
+// ChainValidateIndex mocks base method.
+func (m *MockFullNode) ChainValidateIndex(arg0 context.Context, arg1 abi.ChainEpoch, arg2 bool) (*types.IndexValidation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainValidateIndex", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.IndexValidation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainValidateIndex indicates an expected call of ChainValidateIndex.
+func (mr *MockFullNodeMockRecorder) ChainValidateIndex(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainValidateIndex", reflect.TypeOf((*MockFullNode)(nil).ChainValidateIndex), arg0, arg1, arg2)
+}
+
 // Closing mocks base method.
 func (m *MockFullNode) Closing(arg0 context.Context) (<-chan struct{}, error) {
 	m.ctrl.T.Helper()

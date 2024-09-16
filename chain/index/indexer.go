@@ -35,7 +35,7 @@ type preparedStatements struct {
 	removeEthHashesOlderThanStmt          *sql.Stmt
 	updateTipsetsToRevertedFromHeightStmt *sql.Stmt
 	updateEventsToRevertedFromHeightStmt  *sql.Stmt
-	isTipsetMessageNonEmptyStmt           *sql.Stmt
+	isIndexEmptyStmt                      *sql.Stmt
 	getMinNonRevertedHeightStmt           *sql.Stmt
 	hasNonRevertedTipsetStmt              *sql.Stmt
 	updateEventsToRevertedStmt            *sql.Stmt
@@ -43,6 +43,11 @@ type preparedStatements struct {
 	getMsgIdForMsgCidAndTipsetStmt        *sql.Stmt
 	insertEventStmt                       *sql.Stmt
 	insertEventEntryStmt                  *sql.Stmt
+
+	getMaxNonRevertedHeightStmt      *sql.Stmt
+	hasNullRoundAtHeightStmt         *sql.Stmt
+	getNonRevertedTipsetAtHeightStmt *sql.Stmt
+	countTipsetsAtHeightStmt         *sql.Stmt
 }
 
 type SqliteIndexer struct {
@@ -66,8 +71,13 @@ type SqliteIndexer struct {
 	updateSubs   map[uint64]*updateSub
 	subIdCounter uint64
 
+	started bool
+
 	closeLk sync.RWMutex
 	closed  bool
+
+	// ensures writes are serialized so backfilling does not race with index updates
+	writerLk sync.Mutex
 }
 
 func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, reconcileEmptyIndex bool,
@@ -115,6 +125,9 @@ func NewSqliteIndexer(path string, cs ChainStore, gcRetentionEpochs int64, recon
 func (si *SqliteIndexer) Start() error {
 	si.wg.Add(1)
 	go si.gcLoop()
+
+	si.started = true
+
 	return nil
 }
 
@@ -219,6 +232,9 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 		return ErrClosed
 	}
 	si.closeLk.RUnlock()
+
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
 
 	// We're moving the chain ahead from the `from` tipset to the `to` tipset
 	// Height(to) > Height(from)
@@ -337,6 +353,9 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 	}
 	si.closeLk.RUnlock()
 
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
+
 	// We're reverting the chain from the tipset at `from` to the tipset at `to`.
 	// Height(to) < Height(from)
 
@@ -353,12 +372,18 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 	}
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
+		// revert the `from` tipset
 		if _, err := tx.Stmt(si.stmts.updateTipsetToRevertedStmt).ExecContext(ctx, revertTsKeyCid); err != nil {
 			return xerrors.Errorf("failed to mark tipset %s as reverted: %w", revertTsKeyCid, err)
 		}
 
+		// index the `to` tipset -> it is idempotent
+		if err := si.indexTipset(ctx, tx, to); err != nil {
+			return xerrors.Errorf("failed to index tipset: %w", err)
+		}
+
 		// events are indexed against the message inclusion tipset, not the message execution tipset.
-		// So we need to revert the events for the message inclusion tipset.
+		// So we need to revert the events for the message inclusion tipset i.e. `to` tipset.
 		if _, err := tx.Stmt(si.stmts.updateEventsToRevertedStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
 			return xerrors.Errorf("failed to revert events for tipset %s: %w", eventTsKeyCid, err)
 		}

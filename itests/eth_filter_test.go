@@ -524,6 +524,17 @@ func TestEthGetLogsBasic(t *testing.T) {
 	}
 
 	AssertEthLogs(t, rctLogs, expected, received)
+
+	iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(0), false)
+	require.NoError(err)
+	require.NotNil(iv)
+
+	fmt.Printf("index validation: %v\n", iv)
+
+	iv, err = client.ChainValidateIndex(ctx, abi.ChainEpoch(22), false)
+	require.NoError(err)
+	require.NotNil(iv)
+	fmt.Printf("index validation: %v\n", iv)
 }
 
 func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {

@@ -169,6 +169,8 @@ type FullNodeMethods struct {
 
 	ChainTipSetWeight func(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
+	ChainValidateIndex func(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) `perm:"read"`
+
 	CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) `perm:"read"`
@@ -1628,6 +1630,17 @@ func (s *FullNodeStruct) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKe
 
 func (s *FullNodeStub) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainValidateIndex(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) {
+	if s.Internal.ChainValidateIndex == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainValidateIndex(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ChainValidateIndex(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {

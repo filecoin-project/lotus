@@ -63,6 +63,9 @@ type FullNode interface {
 	Common
 	Net
 
+	// MethodGroup: ChainIndexer
+	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) //perm:read
+
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
 	// blockchain, but that do not require any form of state computation.

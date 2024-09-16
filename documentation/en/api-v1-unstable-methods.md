@@ -37,6 +37,7 @@
   * [ChainSetHead](#ChainSetHead)
   * [ChainStatObj](#ChainStatObj)
   * [ChainTipSetWeight](#ChainTipSetWeight)
+  * [ChainValidateIndex](#ChainValidateIndex)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Eth](#Eth)
@@ -1232,6 +1233,31 @@ Inputs:
 ```
 
 Response: `"0"`
+
+### ChainValidateIndex
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  true
+]
+```
+
+Response:
+```json
+{
+  "TipsetKey": "string value",
+  "Height": 42,
+  "TotalMessages": 42,
+  "TotalEvents": 42,
+  "EventsReverted": true,
+  "Backfilled": true
+}
+```
 
 ## Create
 

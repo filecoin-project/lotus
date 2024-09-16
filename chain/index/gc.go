@@ -42,6 +42,9 @@ func (si *SqliteIndexer) gcLoop() {
 }
 
 func (si *SqliteIndexer) gc(ctx context.Context) {
+	si.writerLk.Lock()
+	defer si.writerLk.Unlock()
+
 	if si.gcRetentionEpochs <= 0 {
 		log.Info("gc retention epochs is not set, skipping gc")
 		return
