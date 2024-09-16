@@ -8,6 +8,10 @@ This is a Lotus Node patch release that addresses a critical sync issue affectin
 
 We strongly recommend that all users currently running Lotus v1.29.0 upgrade to this version to resolve the syncing problems.
 
+## Bug Fixes
+
+- Update BLS dependency to fix [filecoin-project/lotus#12467](https://github.com/filecoin-project/lotus/pull/12467).
+
 # Node v1.29.0 / 2024-09-02
 
 This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
