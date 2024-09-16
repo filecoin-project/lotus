@@ -1,5 +1,13 @@
 # Lotus changelog
 
+# Node v1.29.1 / 2024-09-16
+
+This is a Lotus Node patch release that addresses a critical sync issue affecting users of the v1.29.0 release. The primary fix in this release is:
+
+- Downgrade of a dependency that was causing invalid BLS signatures, leading to sync failures for many Lotus nodes. See [#12467](https://github.com/filecoin-project/lotus/issues/12467) for more information about the bug.
+
+We strongly recommend that all users currently running Lotus v1.29.0 upgrade to this version to resolve the syncing problems.
+
 # Node v1.29.0 / 2024-09-02
 
 This is a Lotus Node only release, which includes a variety of new features, improvements, and fixes, particularly focused on enhancing ETH RPC functionality. Key highlights of this release include:
