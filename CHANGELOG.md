@@ -2,7 +2,7 @@
 
 # 1.28.3 / 2024-09-16
 
-This patch fixes the invalid bls signature bug that is causing many of the lotus node to fail in syncing.
+This patch fixes the invalid bls signature bug that is causing many lotus nodes to fail in syncing (see [#12467](https://github.com/filecoin-project/lotus/issues/12467)).
 
 
 # 1.28.2 / 2024-08-15
