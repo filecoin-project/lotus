@@ -1,5 +1,3 @@
-> Release Issue Template
-
 # Lotus Node|Miner X.Y.Z Release
 
 [//]: # (Below are non-visible steps intended for the issue creator)
