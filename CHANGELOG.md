@@ -1,5 +1,10 @@
 # Lotus changelog
 
+# 1.28.3 / 2024-09-16
+
+This patch fixes the invalid bls signature bug that is causing many of the lotus node to fail in syncing.
+
+
 # 1.28.2 / 2024-08-15
 
 This is a Lotus patch release v1.28.2 for Node operators and Storage Providers.
