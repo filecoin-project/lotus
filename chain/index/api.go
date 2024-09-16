@@ -276,8 +276,8 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		TipsetKey:      ts.Key().String(),
 		Height:         uint64(ts.Height()),
 		Backfilled:     true,
-		TotalMessages:  indexedData.nonRevertedMessageCount,
-		TotalEvents:    indexedData.nonRevertedEventCount,
+		TotalMessages:  uint64(indexedData.nonRevertedMessageCount),
+		TotalEvents:    uint64(indexedData.nonRevertedEventCount),
 		EventsReverted: indexedData.hasRevertedEvents,
 	}, nil
 }
