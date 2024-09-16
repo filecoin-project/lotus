@@ -57,14 +57,15 @@
    - This will get merged in a `Post Release` step.
 - [ ] (patch release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from the last stable `release/vX.Y.x` or `release/miner/vX.Y.x` and make any further release-related changes to this branch.
 - [ ] (minor release) Fork a new branch (`release/vX.Y.Z` or `release/miner/vX.Y.Z`) from `master` and make any further release-related changes to this branch.
-- (minor release) `master` branch Version string updates
-   - [ ] bump the version(s) in `build/version.go` to `vX.Y.()-dev`. 
+- `master` branch Version string updates
+   - Skip this set of steps if you are patching a previos minor release. 
+   - [ ] bump the version(s) in `build/version.go` to `vX.Y.(Z+1)-dev`. 
       - Ensure to update the appropriate version string based on whether you are creating a node release (`NodeBuildVersion`), a miner release (`MinerBuildVersion`), or both.
    - [ ] Run `make gen && make docsgen-cli` before committing changes.
    - [ ] Update the CHANGELOG
      - [ ] Change the `UNRELEASED` section to `UNRELEASED vX.Y.Z` and set the section's content to be `See https://github.com/filecoin-project/lotus/blob/release/vX.Y.Z/CHANGELOG.md`
      - [ ] Add a new `UNRELEASED` header to top.
-   - [ ] Create a PR with title `build: update Lotus Node|Miner version to vX.Y.()-dev in master`
+   - [ ] Create a PR with title `build: update Lotus Node|Miner version to vX.Y.(Z+1)-dev in master`
      - Link to PR: 
    - [ ] Merge PR
 
