@@ -195,12 +195,12 @@ func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.Sign
 func (si *SqliteIndexer) indexSignedMessage(ctx context.Context, tx *sql.Tx, msg *types.SignedMessage) error {
 	ethTx, err := ethtypes.EthTransactionFromSignedFilecoinMessage(msg)
 	if err != nil {
-		return xerrors.Errorf("error converting filecoin message to eth tx: %w", err)
+		return xerrors.Errorf("failed to convert filecoin message to eth tx: %w", err)
 	}
 
 	txHash, err := ethTx.TxHash()
 	if err != nil {
-		return xerrors.Errorf("error hashing transaction: %w", err)
+		return xerrors.Errorf("failed to hash transaction: %w", err)
 	}
 
 	return si.indexEthTxHash(ctx, tx, txHash, msg.Cid())
@@ -218,14 +218,14 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 	// Height(to) > Height(from)
 	err := withTx(ctx, si.db, func(tx *sql.Tx) error {
 		if err := si.indexTipsetWithParentEvents(ctx, tx, from, to); err != nil {
-			return xerrors.Errorf("error indexing tipset: %w", err)
+			return xerrors.Errorf("failed to index tipset: %w", err)
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		return xerrors.Errorf("error applying tipset: %w", err)
+		return xerrors.Errorf("failed to apply tipset: %w", err)
 	}
 
 	si.notifyUpdateSubs()
@@ -336,31 +336,31 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 
 	revertTsKeyCid, err := toTipsetKeyCidBytes(from)
 	if err != nil {
-		return xerrors.Errorf("error getting tipset key cid: %w", err)
+		return xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
 	// Because of deferred execution in Filecoin, events at tipset T are reverted when a tipset T+1 is reverted.
 	// However, the tipet `T` itself is not reverted.
 	eventTsKeyCid, err := toTipsetKeyCidBytes(to)
 	if err != nil {
-		return xerrors.Errorf("error getting tipset key cid: %w", err)
+		return xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
 		if _, err := tx.Stmt(si.stmts.updateTipsetToRevertedStmt).ExecContext(ctx, revertTsKeyCid); err != nil {
-			return xerrors.Errorf("error marking tipset %s as reverted: %w", revertTsKeyCid, err)
+			return xerrors.Errorf("failed to mark tipset %s as reverted: %w", revertTsKeyCid, err)
 		}
 
 		// events are indexed against the message inclusion tipset, not the message execution tipset.
 		// So we need to revert the events for the message inclusion tipset.
 		if _, err := tx.Stmt(si.stmts.updateEventsToRevertedStmt).ExecContext(ctx, eventTsKeyCid); err != nil {
-			return xerrors.Errorf("error reverting events for tipset %s: %w", eventTsKeyCid, err)
+			return xerrors.Errorf("failed to revert events for tipset %s: %w", eventTsKeyCid, err)
 		}
 
 		return nil
 	})
 	if err != nil {
-		return xerrors.Errorf("error during revert transaction: %w", err)
+		return xerrors.Errorf("failed during revert transaction: %w", err)
 	}
 
 	si.notifyUpdateSubs()

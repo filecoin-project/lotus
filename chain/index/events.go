@@ -127,14 +127,14 @@ func (si *SqliteIndexer) indexEvents(ctx context.Context, tx *sql.Tx, msgTs *typ
 func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 	msgs, err := si.cs.MessagesForTipset(ctx, msgTs)
 	if err != nil {
-		return nil, xerrors.Errorf("error getting messages for tipset: %w", err)
+		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
 	}
 
 	st := si.cs.ActorStore(ctx)
 
 	receiptsArr, err := blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
-		return nil, xerrors.Errorf("error loading message receipts array: %w", err)
+		return nil, xerrors.Errorf("failed to load message receipts array: %w", err)
 	}
 
 	if uint64(len(msgs)) != receiptsArr.Length() {
@@ -149,7 +149,7 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 		var rct types.MessageReceipt
 		found, err := receiptsArr.Get(uint64(i), &rct)
 		if err != nil {
-			return nil, xerrors.Errorf("error loading receipt %d: %w", i, err)
+			return nil, xerrors.Errorf("failed to load receipt %d: %w", i, err)
 		}
 		if !found {
 			return nil, xerrors.Errorf("receipt %d not found", i)
@@ -163,7 +163,7 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 
 		eventsArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
-			return nil, xerrors.Errorf("error loading events amt: %w", err)
+			return nil, xerrors.Errorf("failed to load events amt: %w", err)
 		}
 
 		ems[i].evs = make([]types.Event, eventsArr.Len())
@@ -182,7 +182,7 @@ func (si *SqliteIndexer) loadExecutedMessages(ctx context.Context, msgTs, rctTs 
 		})
 
 		if err != nil {
-			return nil, xerrors.Errorf("error iterating over events for message %d: %w", i, err)
+			return nil, xerrors.Errorf("failed to iterate over events for message %d: %w", i, err)
 		}
 
 	}
