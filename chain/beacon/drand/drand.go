@@ -115,10 +115,10 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		log.Info("drand beacon without pubsub")
 	}
 
-	client, err := dclient.Wrap(clients, opts...)
-	if err != nil {
-		return nil, xerrors.Errorf("creating drand client: %w", err)
-	}
+	//client, err := dclient.Wrap(clients, opts...)
+	//if err != nil {
+	//return nil, xerrors.Errorf("creating drand client: %w", err)
+	//}
 
 	lc, err := lru.New[uint64, *types.BeaconEntry](1024)
 	if err != nil {
@@ -127,7 +127,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 
 	db := &DrandBeacon{
 		isChained:  config.IsChained,
-		client:     client,
+		client:     nil,
 		localCache: lc,
 	}
 
