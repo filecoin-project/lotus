@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/build/buildconstants"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -23,12 +23,13 @@ func main() {
 		panic(err)
 	}
 	const MAINNET_GENESIS_TIME = 1598306400
-	shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), MAINNET_GENESIS_TIME, nil)
+
+	bc, err := drand.NewDrandBeacon(MAINNET_GENESIS_TIME, buildconstants.BlockDelaySecs, nil, buildconstants.DrandConfigs[buildconstants.DrandQuicknet])
 	if err != nil {
 		panic(err)
 	}
 
-	err = shd.BeaconForEpoch(4273425).VerifyEntry(entry, nil)
+	err = bc.VerifyEntry(entry, nil)
 	if err != nil {
 		panic(err)
 	}
