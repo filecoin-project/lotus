@@ -34,12 +34,9 @@ func (si *SqliteIndexer) ReconcileWithChain(ctx context.Context, head *types.Tip
 		log.Warn("chain indexer is not storing events during reconciliation; please ensure this is intentional")
 	}
 
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	if head == nil {
 		return nil

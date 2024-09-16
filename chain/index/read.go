@@ -16,12 +16,9 @@ import (
 const headIndexedWaitTimeout = 5 * time.Second
 
 func (si *SqliteIndexer) GetCidFromHash(ctx context.Context, txHash ethtypes.EthHash) (cid.Cid, error) {
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return cid.Undef, ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	var msgCidBytes []byte
 
@@ -44,12 +41,9 @@ func (si *SqliteIndexer) queryMsgCidFromEthHash(ctx context.Context, txHash etht
 }
 
 func (si *SqliteIndexer) GetMsgInfo(ctx context.Context, messageCid cid.Cid) (*MsgInfo, error) {
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return nil, ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	var tipsetKeyCidBytes []byte
 	var height int64
