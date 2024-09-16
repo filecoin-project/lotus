@@ -21,7 +21,7 @@ var _ Indexer = (*SqliteIndexer)(nil)
 
 // IdToRobustAddrFunc is a function type that resolves an actor ID to a robust address
 type IdToRobustAddrFunc func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
-type tipsetExecutorFnc func(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error)
+type recomputeTipSetStateFunc func(ctx context.Context, ts *types.TipSet) error
 
 type preparedStatements struct {
 	insertEthTxHashStmt                   *sql.Stmt
@@ -53,8 +53,8 @@ type SqliteIndexer struct {
 	db *sql.DB
 	cs ChainStore
 
-	idToRobustAddrFunc IdToRobustAddrFunc
-	tipsetExecutorFnc  tipsetExecutorFnc
+	idToRobustAddrFunc       IdToRobustAddrFunc
+	recomputeTipSetStateFunc recomputeTipSetStateFunc
 
 	stmts *preparedStatements
 
@@ -122,8 +122,8 @@ func (si *SqliteIndexer) SetIdToRobustAddrFunc(idToRobustAddrFunc IdToRobustAddr
 	si.idToRobustAddrFunc = idToRobustAddrFunc
 }
 
-func (si *SqliteIndexer) SetTipsetExecutorFnc(tipsetExecutorFnc tipsetExecutorFnc) {
-	si.tipsetExecutorFnc = tipsetExecutorFnc
+func (si *SqliteIndexer) SetRecomputeTipSetStateFunc(recomputeTipSetStateFunc recomputeTipSetStateFunc) {
+	si.recomputeTipSetStateFunc = recomputeTipSetStateFunc
 }
 
 func (si *SqliteIndexer) Close() error {

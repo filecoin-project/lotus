@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -71,8 +70,9 @@ func InitChainIndexer(lc fx.Lifecycle, mctx helpers.MetricsCtx, indexer index.In
 				return *actor.DelegatedAddress, true
 			})
 
-			indexer.SetTipsetExecutorFnc(func(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
-				return sm.RecomputeTipSetState(ctx, ts)
+			indexer.SetRecomputeTipSetStateFunc(func(ctx context.Context, ts *types.TipSet) error {
+				_, _, err := sm.RecomputeTipSetState(ctx, ts)
+				return err
 			})
 
 			ch, err := mp.Updates(ctx)
