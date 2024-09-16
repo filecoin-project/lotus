@@ -369,10 +369,6 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 		return ces, nil
 	}
 
-	if err := si.sanityCheckFilter(ctx, f); err != nil {
-		return nil, xerrors.Errorf("event filter is invalid: %w", err)
-	}
-
 	values, query := makePrefillFilterQuery(f, excludeReverted)
 
 	stmt, err := si.db.Prepare(query)
@@ -401,26 +397,6 @@ func (si *SqliteIndexer) GetEventsForFilter(ctx context.Context, f *EventFilter,
 	}
 
 	return ces, nil
-}
-
-func (si *SqliteIndexer) sanityCheckFilter(ctx context.Context, f *EventFilter) error {
-	head := si.cs.GetHeaviestTipSet()
-
-	if f.TipsetCid != cid.Undef {
-		ts, err := si.cs.GetTipSetByCid(ctx, f.TipsetCid)
-		if err != nil {
-			return xerrors.Errorf("failed to get tipset by cid: %w", err)
-		}
-		if ts.Height() >= head.Height() {
-			return xerrors.New("cannot ask for events for a tipset >= head")
-		}
-	}
-
-	if f.MinHeight >= head.Height() || f.MaxHeight >= head.Height() {
-		return xerrors.New("cannot ask for events for a tipset >= head")
-	}
-
-	return nil
 }
 
 func makePrefillFilterQuery(f *EventFilter, excludeReverted bool) ([]any, string) {

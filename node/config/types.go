@@ -614,16 +614,15 @@ type EventsConfig struct {
 }
 
 type ChainIndexerConfig struct {
-	// DisableIndexer controls whether the chain indexer is active.
+	// EnableIndexer controls whether the chain indexer is active.
 	// The chain indexer is responsible for indexing tipsets, messages, and events from the chain state.
 	// It is a crucial component for optimizing Lotus RPC response times.
 	//
-	// Default: false (indexer is enabled)
+	// Default: false (indexer is disabled)
 	//
-	// Setting this to true will disable the indexer, which may significantly impact RPC performance.
-	// It is strongly recommended to keep this set to false unless you have a specific reason to disable it
-	// and fully understand the implications.
-	DisableIndexer bool
+	// Setting this to true will enable the indexer, which will significantly improve RPC performance.
+	// It is strongly recommended to keep this set to true if you are an RPC provider.
+	EnableIndexer bool
 
 	// GCRetentionEpochs specifies the number of epochs for which data is retained in the Indexer.
 	// The garbage collection (GC) process removes data older than this retention period.
