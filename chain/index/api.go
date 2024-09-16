@@ -136,6 +136,10 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		return nil, xerrors.Errorf("failed to get tipset message and event counts at height %d: %w", expectedTs.Height(), err)
 	}
 
+	if err = si.verifyIndexedData(ctx, expectedTs, indexedNonRevertedMsgCount); err != nil {
+		return nil, xerrors.Errorf("failed to verify indexed data at height %d: %w", expectedTs.Height(), err)
+	}
+
 	return &types.IndexValidation{
 		TipsetKey:      expectedTs.Key().String(),
 		Height:         uint64(expectedTs.Height()),
@@ -145,23 +149,40 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}, nil
 }
 
+// verifyIndexedData verifies that the indexed data for a tipset is correct
+// by comparing the number of messages in the chainstore to the number of messages indexed
+
+// TODO: verify indexed events too (to verify the events we need to load the next tipset (ts+1) and verify the events are the same)
+func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet, indexedMsgCount uint64) (err error) {
+	msgs, err := si.cs.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return xerrors.Errorf("failed to get messages for tipset: %w", err)
+	}
+
+	msgCount := uint64(len(msgs))
+	if msgCount != indexedMsgCount {
+		return xerrors.Errorf("tipset message count mismatch: chainstore has %d, index has %d", msgCount, indexedMsgCount)
+	}
+
+	return nil
+}
+
 func (si *SqliteIndexer) getIndexedTipSetData(ctx context.Context, tsKey types.TipSetKey) (messageCount uint64, eventCount uint64, hasRevertedEvents bool, err error) {
 	tsKeyBytes := tsKey.Bytes()
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		err := tx.Stmt(si.stmts.getNonRevertedTipsetMessageCountStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&messageCount)
-		if err != nil {
+		if err = tx.Stmt(si.stmts.getNonRevertedTipsetMessageCountStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&messageCount); err != nil {
 			return xerrors.Errorf("failed to query non reverted message count: %w", err)
 		}
 
-		err = tx.Stmt(si.stmts.getNonRevertedTipsetEventCountStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&eventCount)
-		if err != nil {
+		if err = tx.Stmt(si.stmts.getNonRevertedTipsetEventCountStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&eventCount); err != nil {
 			return xerrors.Errorf("failed to query non reverted event count: %w", err)
 		}
 
-		err = tx.Stmt(si.stmts.hasRevertedEventsStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&hasRevertedEvents)
-		if err != nil {
-			return xerrors.Errorf("failed to check for reverted events: %w", err)
+		if eventCount > 0 {
+			if err = tx.Stmt(si.stmts.hasRevertedEventsStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&hasRevertedEvents); err != nil {
+				return xerrors.Errorf("failed to check for reverted events: %w", err)
+			}
 		}
 
 		return nil
