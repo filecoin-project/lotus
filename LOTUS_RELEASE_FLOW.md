@@ -22,6 +22,7 @@
   - [Why do we call it "Lotus Node"?](#why-do-we-call-it-lotus-node)
   - [Why isn't Lotus Miner released more frequently?](#why-isnt-lotus-miner-released-more-frequently)
   - [Why is the `releases` branch deprecated and what are alternatives?](#why-is-the-releases-branch-deprecated-and-what-are-alternatives)
+  - [Why does Lotus still use a `master` branch instead of `main`?](#why-does-lotus-still-use-a-master-branch-instead-of-main)
 - [Related Items](#related-items)
 
 ## Purpose
@@ -152,6 +153,9 @@ Given Lotus Miner is being actively replaced by [Curio](https://github.com/filec
 That said, one can still programmatically get the latest release based on the [Branch and Tag Strategy](#branch-and-tag-strategy) with:
 * Lotus Node: `git tag -l 'v*' | grep -v "-" | sort -V -r | head -n 1` 
 * Lotus Miner: `git tag -l 'miner/v*' | grep -v "-" | sort -V -r | head -n 1` 
+
+### Why does Lotus still use a `master` branch instead of `main`?
+There was a [push in 202109](https://github.com/filecoin-project/lotus/issues/7356) on changing the default branch to `main` from `master` for good reason. 3 years later though, the migration was never completed and `master` has ossified 😔.  It's acknowledged by the maintainers that this isn't ideal and that such terms are legitimately offensive to some.  This certainly isn't how we'd want to structure the project if starting from scratch.  Given the effort hasn't completed after three years and having multiple main-like branches caused a snag during the [202409 operational event](https://github.com/filecoin-project/lotus/issues/12467), we're currently admitting defeat.  We welcome input if this branch migration is something contributors and consumers would want maintainers to prioritize above other work. 
 
 ## Related Items
 
