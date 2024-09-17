@@ -761,3 +761,22 @@ func newStatefulCallTracker() *statefulCallTracker {
 		userSubscriptions: make(map[ethtypes.EthSubscriptionID]cleanup),
 	}
 }
+func (gw *Node) EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error) {
+	return gw.EthGetBlockReceiptsLimited(ctx, blkParam, api.LookbackNoLimit)
+}
+
+func (gw *Node) EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	if limit == api.LookbackNoLimit {
+		limit = gw.maxMessageLookbackEpochs
+	}
+
+	if gw.maxMessageLookbackEpochs != api.LookbackNoLimit && limit > gw.maxMessageLookbackEpochs {
+		limit = gw.maxMessageLookbackEpochs
+	}
+
+	return gw.target.EthGetBlockReceiptsLimited(ctx, blkParam, limit)
+}
