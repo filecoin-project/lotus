@@ -2148,26 +2148,52 @@ func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
-	// Execute the tipset to get the receipts
-	_, msgs, receipts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
+	// Execute the tipset to get the receipts, messages, and events
+	st, msgs, receipts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to execute tipset: %w", err)
 	}
 
 	// Load the state tree
-	st, _, err := a.StateManager.TipSetState(ctx, ts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to compute tipset state: %w", err)
-	}
-
 	stateTree, err := a.StateManager.StateTree(st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
+	// Get the parent tipset CID
 	parentTsCid, err := ts.Parents().Cid()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get parent tipset cid: %w", err)
+	}
+
+	// Load executed messages and extract events
+	executedMsgs, err := a.EthEventHandler.EventFilterManager.LoadExecutedMessages(ctx, ts, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load executed messages: %w", err)
+	}
+
+	// Convert executed messages to events
+	events := make([]*filter.CollectedEvent, 0, len(executedMsgs))
+	for _, em := range executedMsgs {
+		for _, ev := range em.Events() {
+			addr, err := address.NewIDAddress(uint64(ev.Emitter))
+			if err != nil {
+				return nil, xerrors.Errorf("failed to create ID address: %w", err)
+			}
+			events = append(events, &filter.CollectedEvent{
+				Entries:     ev.Entries,
+				EmitterAddr: addr,
+				Height:      ts.Height(),
+				TipSetKey:   ts.Key(),
+				MsgCid:      em.Message().Cid(),
+			})
+		}
+	}
+
+	// Convert raw events to Ethereum logs
+	logs, err := ethFilterLogsFromEvents(ctx, events, a.StateAPI)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to convert events to logs: %w", err)
 	}
 
 	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
@@ -2186,8 +2212,22 @@ func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes
 			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 		}
 
+		// Add logs to the receipt
+		receipt.Logs = filterLogsByTxHash(logs, receipt.TransactionHash)
+
 		ethReceipts = append(ethReceipts, &receipt)
 	}
 
 	return ethReceipts, nil
+}
+
+// Helper function to filter logs by transaction hash
+func filterLogsByTxHash(logs []ethtypes.EthLog, txHash ethtypes.EthHash) []ethtypes.EthLog {
+	var filteredLogs []ethtypes.EthLog
+	for _, log := range logs {
+		if log.TransactionHash == txHash {
+			filteredLogs = append(filteredLogs, log)
+		}
+	}
+	return filteredLogs
 }

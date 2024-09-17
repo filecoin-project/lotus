@@ -308,10 +308,9 @@ type EventFilterManager struct {
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
 	EventIndex       *EventIndex
-
-	mu            sync.Mutex // guards mutations to filters
-	filters       map[types.FilterID]EventFilter
-	currentHeight abi.ChainEpoch
+	mu               sync.Mutex // guards mutations to filters
+	filters          map[types.FilterID]EventFilter
+	currentHeight    abi.ChainEpoch
 }
 
 func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
@@ -326,7 +325,7 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 	tse := &TipSetEvents{
 		msgTs: from,
 		rctTs: to,
-		load:  m.loadExecutedMessages,
+		load:  m.LoadExecutedMessages,
 	}
 
 	if m.EventIndex != nil {
@@ -357,7 +356,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	tse := &TipSetEvents{
 		msgTs: to,
 		rctTs: from,
-		load:  m.loadExecutedMessages,
+		load:  m.LoadExecutedMessages,
 	}
 
 	if m.EventIndex != nil {
@@ -432,7 +431,7 @@ func (m *EventFilterManager) Remove(ctx context.Context, id types.FilterID) erro
 	return nil
 }
 
-func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+func (m *EventFilterManager) LoadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
 	msgs, err := m.ChainStore.MessagesForTipset(ctx, msgTs)
 	if err != nil {
 		return nil, xerrors.Errorf("read messages: %w", err)
