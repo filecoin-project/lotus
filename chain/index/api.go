@@ -19,6 +19,7 @@ func (si *SqliteIndexer) sanityCheckBackfillEpoch(ctx context.Context, epoch abi
 	if err != nil {
 		return xerrors.Errorf("failed to get max non reverted height: %w", err)
 	}
+	// couldn't find any non-reverted entries
 	if !maxNonRevertedHeight.Valid {
 		return nil
 	}
@@ -93,6 +94,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		if isIndexEmpty {
 			return nil, nil
 		}
+		// validate the db has a hole here and error if not, we don't attempt to repair because something must be very wrong for this to fail
 		return si.validateNullRound(ctx, epoch)
 	}
 
@@ -108,15 +110,14 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 		}
 		return nil, xerrors.Errorf("failed to get tipset counts at height: %w", err)
 	}
-	if revertedCount == 0 && nonRevertedCount == 0 {
+	switch {
+	case revertedCount == 0 && nonRevertedCount == 0:
 		return si.backfillMissingTipset(ctx, expectedTs, backfill)
-	}
 
-	if revertedCount > 0 && nonRevertedCount == 0 {
+	case revertedCount > 0 && nonRevertedCount == 0:
 		return nil, xerrors.Errorf("index corruption: height %d only has reverted tipsets", epoch)
-	}
 
-	if nonRevertedCount > 1 {
+	case nonRevertedCount > 1:
 		return nil, xerrors.Errorf("index corruption: height %d has multiple non-reverted tipsets", epoch)
 	}
 

@@ -1,7 +1,7 @@
 package types
 
 type IndexValidation struct {
-	TipsetKey string
+	TipSetKey TipSetKey
 	Height    uint64
 
 	NonRevertedMessageCount uint64

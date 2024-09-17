@@ -286,8 +286,6 @@ func ConfigFullNode(c interface{}) Option {
 			Override(new(index.Indexer), modules.ChainIndexer(cfg.ChainIndexer)),
 			If(cfg.ChainIndexer.EnableIndexer,
 				Override(InitChainIndexerKey, modules.InitChainIndexer),
-			),
-			If(cfg.ChainIndexer.EnableIndexer,
 				Override(new(full.ChainIndexerAPI), modules.ChainIndexHandler(cfg.ChainIndexer)),
 			),
 		),

@@ -64,7 +64,7 @@ type FullNode interface {
 	Net
 
 	// MethodGroup: ChainIndexer
-	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) //perm:read
+	ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) //perm:write
 
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
