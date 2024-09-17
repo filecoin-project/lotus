@@ -57,8 +57,12 @@ func (si *SqliteIndexer) getTipsetCountsAtHeight(ctx context.Context, height abi
 }
 
 func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.ChainEpoch, backfill bool) (*types.IndexValidation, error) {
-	if !si.started && si.isClosed() {
-		return nil, xerrors.Errorf("ChainValidateIndex can only be called after the indexer has been started and not closed")
+	if !si.started {
+		return nil, xerrors.Errorf("ChainValidateIndex can only be called after the indexer has been started")
+	}
+
+	if si.isClosed() {
+		return nil, xerrors.Errorf("ChainValidateIndex can only be called before the indexer has been closed")
 	}
 
 	si.writerLk.Lock()
@@ -132,9 +136,13 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 
 	// indexedTsKeyCid and expectedTsKeyCid are the same, so we can use `expectedTs` to fetch the indexed data
-	indexedData, err := si.getIndexedTipSetData(ctx, expectedTs.Key())
+	indexedData, err := si.getIndexedTipSetData(ctx, expectedTs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset message and event counts at height %d: %w", expectedTs.Height(), err)
+	}
+
+	if indexedData == nil {
+		return nil, xerrors.Errorf("invalid indexed data for tipset at height %d", expectedTs.Height())
 	}
 
 	if err = si.verifyIndexedData(ctx, expectedTs, indexedData); err != nil {
@@ -142,44 +150,33 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 
 	return &types.IndexValidation{
-		TipsetKey:      expectedTs.Key().String(),
-		Height:         uint64(expectedTs.Height()),
-		TotalMessages:  uint64(indexedData.nonRevertedMessageCount),
-		TotalEvents:    uint64(indexedData.nonRevertedEventCount),
-		EventsReverted: indexedData.hasRevertedEvents,
+		TipsetKey:               expectedTs.Key().String(),
+		Height:                  uint64(expectedTs.Height()),
+		NonRevertedMessageCount: uint64(indexedData.nonRevertedMessageCount),
+		NonRevertedEventsCount:  uint64(indexedData.nonRevertedEventCount),
 	}, nil
 }
 
 type indexedTipSetData struct {
 	nonRevertedMessageCount int
 	nonRevertedEventCount   int
-	hasRevertedEvents       bool
 }
 
 // getIndexedTipSetData fetches the indexed tipset data for a tipset
-func (si *SqliteIndexer) getIndexedTipSetData(ctx context.Context, tsKey types.TipSetKey) (*indexedTipSetData, error) {
-	cid, err := tsKey.Cid()
+func (si *SqliteIndexer) getIndexedTipSetData(ctx context.Context, ts *types.TipSet) (*indexedTipSetData, error) {
+	tsKeyCidBytes, err := toTipsetKeyCidBytes(ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
-	tsKeyBytes := cid.Bytes()
 
 	var data indexedTipSetData
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
-		if err = tx.Stmt(si.stmts.getNonRevertedTipsetMessageCountStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&data.nonRevertedMessageCount); err != nil {
+		if err = tx.Stmt(si.stmts.getNonRevertedTipsetMessageCountStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&data.nonRevertedMessageCount); err != nil {
 			return xerrors.Errorf("failed to query non reverted message count: %w", err)
 		}
 
-		if err = tx.Stmt(si.stmts.getNonRevertedTipsetEventCountStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&data.nonRevertedEventCount); err != nil {
+		if err = tx.Stmt(si.stmts.getNonRevertedTipsetEventCountStmt).QueryRowContext(ctx, tsKeyCidBytes).Scan(&data.nonRevertedEventCount); err != nil {
 			return xerrors.Errorf("failed to query non reverted event count: %w", err)
-		}
-
-		// we are only fetching non-reverted events, so if there are no non-reverted events,
-		// then we need to check if the events were reverted.
-		if data.nonRevertedEventCount == 0 {
-			if err = tx.Stmt(si.stmts.hasRevertedEventsStmt).QueryRowContext(ctx, tsKeyBytes).Scan(&data.hasRevertedEvents); err != nil {
-				return xerrors.Errorf("failed to check for reverted events: %w", err)
-			}
 		}
 
 		return nil
@@ -195,16 +192,6 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 	tsKeyCid, err := ts.Key().Cid()
 	if err != nil {
 		return xerrors.Errorf("failed to get tipset key cid: %w", err)
-	}
-
-	msgs, err := si.cs.MessagesForTipset(ctx, ts)
-	if err != nil {
-		return xerrors.Errorf("failed to get messages for tipset: %w", err)
-	}
-
-	msgCount := len(msgs)
-	if msgCount != indexedData.nonRevertedMessageCount {
-		return xerrors.Errorf("tipset message count mismatch: chainstore has %d, index has %d", msgCount, indexedData.nonRevertedMessageCount)
 	}
 
 	// get the tipset where the messages of `ts` will be executed (deferred execution)
@@ -238,7 +225,7 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 	}
 
 	totalExecutedMsgCount := len(executedMsgs)
-	if totalExecutedMsgCount != int(indexedData.nonRevertedMessageCount) {
+	if totalExecutedMsgCount != indexedData.nonRevertedMessageCount {
 		return xerrors.Errorf("tipset executed message count mismatch: chainstore has %d, index has %d", totalExecutedMsgCount, indexedData.nonRevertedMessageCount)
 	}
 
@@ -267,17 +254,16 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 		return nil, xerrors.Errorf("error applying tipset: %w", err)
 	}
 
-	indexedData, err := si.getIndexedTipSetData(ctx, ts.Key())
+	indexedData, err := si.getIndexedTipSetData(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset message and event counts at height %d: %w", ts.Height(), err)
 	}
 
 	return &types.IndexValidation{
-		TipsetKey:      ts.Key().String(),
-		Height:         uint64(ts.Height()),
-		Backfilled:     true,
-		TotalMessages:  uint64(indexedData.nonRevertedMessageCount),
-		TotalEvents:    uint64(indexedData.nonRevertedEventCount),
-		EventsReverted: indexedData.hasRevertedEvents,
+		TipsetKey:               ts.Key().String(),
+		Height:                  uint64(ts.Height()),
+		Backfilled:              true,
+		NonRevertedMessageCount: uint64(indexedData.nonRevertedMessageCount),
+		NonRevertedEventsCount:  uint64(indexedData.nonRevertedEventCount),
 	}, nil
 }
