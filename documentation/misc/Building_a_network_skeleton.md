@@ -35,6 +35,26 @@ The table below gives an overview of how Lotus and its critical dependencies rel
 
 [^0]: Exceptional case of no Lotus minor version for when we have two-stage upgrades where one network version enables some new feature and the next version disables the deprecated feature.
 
+```mermaid
+graph TD
+    lotus[lotus]
+    ffi[filecoin-ffi]
+    gst[go-state-types]
+    ba[builtin-actors]
+    fvm[ref-fvm]
+
+    lotus -->gst
+    lotus -->|via submodule| ffi
+    lotus -->|via pack script| ba
+
+    gst --> ba
+
+    ffi --> gst
+    ffi --> fvm
+
+    ba --> fvm
+```
+
 ## Setup
 
 1. Clone the [ref-fvm](https://github.com/filecoin-project/ref-fvm.git) repository.
