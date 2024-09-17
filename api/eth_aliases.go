@@ -14,6 +14,7 @@ func CreateEthRPCAliases(as apitypes.Aliaser) {
 	as.AliasMethod("eth_getTransactionByHash", "Filecoin.EthGetTransactionByHash")
 	as.AliasMethod("eth_getTransactionCount", "Filecoin.EthGetTransactionCount")
 	as.AliasMethod("eth_getTransactionReceipt", "Filecoin.EthGetTransactionReceipt")
+	as.AliasMethod("eth_getBlockReceipts", "Filecoin.EthGetBlockReceipts")
 	as.AliasMethod("eth_getTransactionByBlockHashAndIndex", "Filecoin.EthGetTransactionByBlockHashAndIndex")
 	as.AliasMethod("eth_getTransactionByBlockNumberAndIndex", "Filecoin.EthGetTransactionByBlockNumberAndIndex")
 
