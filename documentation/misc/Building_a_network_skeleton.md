@@ -1,14 +1,37 @@
-# Network Upgrade Skeleton in Lotus
+# Network Upgrade Skeleton in Lotus <!-- omit in toc -->
 
-This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. The process involves making changes in multiple repositories in the following order:
+This guide will walk you through the process of creating a skeleton for a network upgrade in Lotus. 
 
+- [Context](#context)
+  - [Network Upgrade Dependency Versions](#network-upgrade-dependency-versions)
+  - [Network Upgrade Dependency Relationships](#network-upgrade-dependency-relationships)
 - [Setup](#setup)
 - [Ref-FVM Checklist](#ref-fvm-checklist)
 - [Filecoin-FFI Checklist](#filecoin-ffi-checklist)
 - [Go-State-Types Checklist](#go-state-types-checklist)
 - [Lotus Checklist](#lotus-checklist)
 
-Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository.
+Each repository has its own set of steps that need to be followed. This guide will provide detailed instructions for each repository in the proper order.
+
+## Context
+
+### Network Upgrade Dependency Versions
+There are these versions at play for a network upgrade:
+- Network Version: an incrementing integer prefixed with `nv` that corresponds with the hard fork that Filecoin implementations coordinate around.
+- FVM Version: The ref-fvm vX.Y.Z crate version.
+- Lotus Version: The Lotus go.mod version.
+- Actor Version: The incrementing integer that is associated with a builtin-actors bundle.
+
+### Network Upgrade Dependency Relationships
+The table below gives an overview of how Lotus and its critical dependencies relate to each other and are versioned relative to network versions.
+
+Repo | For every network upgrade (increase in Network Version)... | Versioning Scheme | Versioning Docs | go.mod direct dependencies | cargo.toml direct dependencies | Other direct dependencies
+-- | -- | -- | -- | -- | -- | --
+`lotus` | There is at least one Lotus minor version. [^2] | 1.LOTUS_MINOR_VERSION.x | [link](https://github.com/filecoin-project/lotus/blob/master/LOTUS_RELEASE_FLOW.md#adopted-conventions) | `go-state-types` | n/a | * `filecoin-ffi` via git submodule<br/>* `builtin-actors` via pack script
+`filecoin-ffi` | There is at least one filecoin-ffi minor version (since `filecion-ffi` tracks `lotus`). | 1.LOTUS_MINOR_VERSION.x | [link](https://github.com/filecoin-project/filecoin-ffi?tab=readme-ov-file#versioning) | `go-state-types` | `ref-fvm` | None
+`go-state-types` | There are zero or one go-state-types minor versions (since `go-state-types` minor versions track `builtin-actors` major versions) | 0.ACTORS_VERSION.x | [link](https://github.com/filecoin-project/go-state-types?tab=readme-ov-file#versioning) | None | n/a | None
+`builtin-actors` | There are zero or one actors major versions (i.e., we can have a new network upgrade without an actors bump) | ACTORS_VERSION.0.x | [link](https://github.com/filecoin-project/builtin-actors?tab=readme-ov-file#versioning) | n/a |`ref-fvm` | None
+`ref-fvm` | There may be a major version bump.If there isn't, there is at least a minor version bump to enable support for the new network version. | FVM_ MAJOR_VERSION.y.x | [link](https://github.com/filecoin-project/ref-fvm?tab=readme-ov-file#versioning) | n/a | None | None
 
 ## Setup
 
@@ -177,6 +200,8 @@ And you're done! These are all the steps necessary to create a network upgrade s
 - Sync the new network version with the mock actor bundle, and be able to see that you are on a new network version with `lotus state network-version`
 
 You can take a look at this [Lotus PR as a reference](https://github.com/filecoin-project/lotus/pull/11964), which added the skeleton for network version 23.
+
+[^7]: Exceptional case of no Lotus minor version for when we have two-stage upgrades where one network version enables some new feature and the next version disables the deprecated feature.
 
 [^1]: Here is system.go template for a simple migration:
 
