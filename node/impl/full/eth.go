@@ -527,9 +527,13 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		return nil, xerrors.Errorf("failed to convert %s into an Eth Txn: %w", txHash, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, a.EthEventHandler)
+	receipt, err := newEthTxReceipt(ctx, tx, &api.MsgLookup{
+		Receipt: msgLookup.Receipt,
+		TipSet:  msgLookup.TipSet,
+		Height:  msgLookup.Height,
+	}, a.ChainAPI, a.StateAPI, a.EthEventHandler)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to convert %s into an Eth Receipt: %w", txHash, err)
+		return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 	}
 
 	return &receipt, nil
@@ -2144,50 +2148,46 @@ func (a *EthModule) EthGetBlockReceipts(ctx context.Context, blockParam ethtypes
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
-	messages, err := a.Chain.MessagesForTipset(ctx, ts)
+	// Execute the tipset to get the receipts
+	_, msgs, receipts, err := executeTipset(ctx, ts, a.Chain, a.StateAPI)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get messages for tipset: %w", err)
+		return nil, xerrors.Errorf("failed to execute tipset: %w", err)
 	}
 
-	// Get the next tipset where the messages are actually executed
-	nextTs, err := a.Chain.GetTipsetByHeight(ctx, ts.Height()+1, nil, false)
+	// Load the state tree
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get next tipset: %w", err)
+		return nil, xerrors.Errorf("failed to compute tipset state: %w", err)
 	}
 
-	// Load the state tree once for all messages
-	st, err := a.StateManager.StateTree(ts.ParentState())
+	stateTree, err := a.StateManager.StateTree(st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
-	parentTsCid, err := ts.Key().Cid()
+	parentTsCid, err := ts.Parents().Cid()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get parent tipset cid: %w", err)
 	}
 
-	receipts := make([]*api.EthTxReceipt, 0, len(messages))
-	for i, msg := range messages {
-		msgLookup, err := a.StateAPI.StateSearchMsg(ctx, nextTs.Key(), msg.Cid(), 1, true)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to search for message: %w", err)
-		}
-		if msgLookup == nil {
-			return nil, xerrors.Errorf("message not found in next tipset: %s", msg.Cid())
-		}
-
-		tx, err := newEthTx(ctx, a.Chain, st, ts.Height(), parentTsCid, msg.Cid(), i)
+	ethReceipts := make([]*api.EthTxReceipt, 0, len(msgs))
+	for i, msg := range msgs {
+		tx, err := newEthTx(ctx, a.Chain, stateTree, ts.Height(), parentTsCid, msg.Cid(), i)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create Eth transaction: %w", err)
 		}
 
-		receipt, err := newEthTxReceipt(ctx, tx, msgLookup, a.ChainAPI, a.StateAPI, a.EthEventHandler)
+		receipt, err := newEthTxReceipt(ctx, tx, &api.MsgLookup{
+			Receipt: receipts[i],
+			TipSet:  ts.Key(),
+			Height:  ts.Height(),
+		}, a.ChainAPI, a.StateAPI, a.EthEventHandler)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create Eth receipt: %w", err)
 		}
 
-		receipts = append(receipts, &receipt)
+		ethReceipts = append(ethReceipts, &receipt)
 	}
 
-	return receipts, nil
+	return ethReceipts, nil
 }
