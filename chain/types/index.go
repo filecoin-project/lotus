@@ -4,7 +4,7 @@ type IndexValidation struct {
 	TipSetKey TipSetKey
 	Height    uint64
 
-	NonRevertedMessageCount uint64
-	NonRevertedEventsCount  uint64
-	Backfilled              bool
+	IndexedMessagesCount uint64
+	IndexedEventsCount   uint64
+	Backfilled           bool
 }

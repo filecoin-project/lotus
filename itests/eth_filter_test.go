@@ -525,31 +525,49 @@ func TestEthGetLogsBasic(t *testing.T) {
 
 	AssertEthLogs(t, rctLogs, expected, received)
 
-	epoch := uint64(0)
-	iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), false)
+	head, err := client.ChainHead(ctx)
 	require.NoError(err)
-	require.NotNil(iv)
 
-	fmt.Printf("index validation: %v\n", iv)
+	for height := 0; height < int(head.Height()); height++ {
+		// for each tipset
+		ts, err := client.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
+		require.NoError(err)
 
-	// Add assertions for IndexValidation fields
-	require.NotEmpty(t, iv.TipsetKey, "TipsetKey should not be empty")
-	require.Equal(t, epoch, iv.Height, "Height should be 0")
-	require.GreaterOrEqual(t, iv.NonRevertedMessageCount, uint64(0), "NonRevertedMessageCount should be non-negative") // TODO: change according to actual number of messages in the tipset
-	require.GreaterOrEqual(t, iv.NonRevertedEventsCount, uint64(0), "NonRevertedEventsCount should be non-negative")   // TODO: change according to actual number of messages in the tipset
-	require.False(iv.Backfilled, "Backfilled should be flase")
+		if ts.Height() != abi.ChainEpoch(height) {
+			iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
+			require.Nil(iv)
+			require.NoError(err)
+			t.Logf("tipset %d is a null round", height)
+			continue
+		}
 
-	epoch = 22
-	iv, err = client.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), false)
-	require.NoError(err)
-	require.NotNil(iv)
-	fmt.Printf("index validation: %v\n", iv)
+		totalMessageCount := 0
+		totalEventCount := 0
+		messages, err := client.ChainGetMessagesInTipset(ctx, ts.Key())
+		require.NoError(err)
+		totalMessageCount = len(messages)
+		for _, m := range messages {
+			receipt, err := client.StateSearchMsg(ctx, types.EmptyTSK, m.Cid, -1, false)
+			require.NoError(err)
+			require.NotNil(receipt)
+			// receipt
+			if receipt.Receipt.EventsRoot != nil {
+				events, err := client.ChainGetEvents(ctx, *receipt.Receipt.EventsRoot)
+				require.NoError(err)
+				totalEventCount += len(events)
+			}
+		}
+		t.Logf("tipset %d: %d messages, %d events", height, totalMessageCount, totalEventCount)
 
-	require.NotEmpty(t, iv.TipsetKey, "TipsetKey should not be empty")
-	require.Equal(t, epoch, iv.Height, "Height should be 22")
-	require.GreaterOrEqual(t, iv.NonRevertedMessageCount, uint64(0), "NonRevertedMessageCount be non-negative") // TODO: change according to actual number of messages in the tipset
-	require.GreaterOrEqual(t, iv.NonRevertedEventsCount, uint64(0), "NonRevertedEventsCount be non-negative")   // TODO: change according to actual number of messages in the tipset
-	require.True(iv.Backfilled, "Backfilled should be false")
+		iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(height), false)
+		require.NoError(err)
+		require.NotNil(iv)
+		t.Logf("tipset %d: %+v", height, iv)
+		require.EqualValues(height, iv.Height)
+		require.EqualValues(totalMessageCount, iv.IndexedMessagesCount)
+		require.EqualValues(totalEventCount, iv.IndexedEventsCount)
+		require.False(iv.Backfilled)
+	}
 }
 
 func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {

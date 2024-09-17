@@ -169,7 +169,7 @@ type FullNodeMethods struct {
 
 	ChainTipSetWeight func(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
-	ChainValidateIndex func(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) `perm:"read"`
+	ChainValidateIndex func(p0 context.Context, p1 abi.ChainEpoch, p2 bool) (*types.IndexValidation, error) `perm:"write"`
 
 	CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 

@@ -30,7 +30,7 @@ func (si *SqliteIndexer) sanityCheckBackfillEpoch(ctx context.Context, epoch abi
 	return nil
 }
 
-func (si *SqliteIndexer) validateNullRound(ctx context.Context, epoch abi.ChainEpoch) (*types.IndexValidation, error) {
+func (si *SqliteIndexer) validateIsNullRound(ctx context.Context, epoch abi.ChainEpoch) (*types.IndexValidation, error) {
 	// make sure we do not have ANY non-reverted tipset at this epoch
 	var isNullRound bool
 	err := si.stmts.hasNullRoundAtHeightStmt.QueryRowContext(ctx, epoch).Scan(&isNullRound)
@@ -84,10 +84,6 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset by height: %w", err)
 	}
-	expectedTsKeyCid, err := expectedTs.Key().Cid()
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
-	}
 
 	// Canonical chain has a null round at the epoch -> return if index is empty otherwise validate
 	if expectedTs.Height() != epoch { // Canonical chain has a null round at the epoch
@@ -95,7 +91,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 			return nil, nil
 		}
 		// validate the db has a hole here and error if not, we don't attempt to repair because something must be very wrong for this to fail
-		return si.validateNullRound(ctx, epoch)
+		return si.validateIsNullRound(ctx, epoch)
 	}
 
 	// if the index is empty -> short-circuit and simply backfill if applicable
@@ -131,7 +127,10 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	if err != nil {
 		return nil, xerrors.Errorf("failed to cast tipset key cid: %w", err)
 	}
-
+	expectedTsKeyCid, err := expectedTs.Key().Cid()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
+	}
 	if !indexedTsKeyCid.Equals(expectedTsKeyCid) {
 		return nil, xerrors.Errorf("index corruption: non-reverted tipset at height %d has key %s, but canonical chain has %s", epoch, indexedTsKeyCid, expectedTsKeyCid)
 	}
@@ -139,7 +138,7 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	// indexedTsKeyCid and expectedTsKeyCid are the same, so we can use `expectedTs` to fetch the indexed data
 	indexedData, err := si.getIndexedTipSetData(ctx, expectedTs)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset message and event counts at height %d: %w", expectedTs.Height(), err)
+		return nil, xerrors.Errorf("failed to get indexed data for tipset at height %d: %w", expectedTs.Height(), err)
 	}
 
 	if indexedData == nil {
@@ -151,10 +150,10 @@ func (si *SqliteIndexer) ChainValidateIndex(ctx context.Context, epoch abi.Chain
 	}
 
 	return &types.IndexValidation{
-		TipsetKey:               expectedTs.Key().String(),
-		Height:                  uint64(expectedTs.Height()),
-		NonRevertedMessageCount: uint64(indexedData.nonRevertedMessageCount),
-		NonRevertedEventsCount:  uint64(indexedData.nonRevertedEventCount),
+		TipSetKey:            expectedTs.Key(),
+		Height:               uint64(expectedTs.Height()),
+		IndexedMessagesCount: uint64(indexedData.nonRevertedMessageCount),
+		IndexedEventsCount:   uint64(indexedData.nonRevertedEventCount),
 	}, nil
 }
 
@@ -207,8 +206,11 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 	}
 
 	// the parent tipset of the execution tipset should be the same as the indexed tipset (`ts` should be the parent of `executionTs`)
+	// if that is not the case, it means that the chain forked after we fetched the tipset `ts` from the canonical chain and
+	// `ts` is no longer part of the canonical chain. Simply return an error here and ask the user to retry.
 	if !eParentTsKeyCid.Equals(tsKeyCid) {
-		return xerrors.Errorf("execution tipset parent key mismatch: chainstore has %s, index has %s", eParentTsKeyCid, tsKeyCid)
+		return xerrors.Errorf("execution tipset parent key mismatch: chainstore has %s, index has %s; please retry your request as this could have been caused by a chain reorg",
+			eParentTsKeyCid, tsKeyCid)
 	}
 
 	executedMsgs, err := si.loadExecutedMessages(ctx, ts, executionTs)
@@ -222,12 +224,22 @@ func (si *SqliteIndexer) verifyIndexedData(ctx context.Context, ts *types.TipSet
 	}
 
 	if totalEventsCount != indexedData.nonRevertedEventCount {
-		return xerrors.Errorf("tipset event count mismatch: chainstore has %d, index has %d", totalEventsCount, indexedData.nonRevertedEventCount)
+		return xerrors.Errorf("event count mismatch: chainstore has %d, index has %d", totalEventsCount, indexedData.nonRevertedEventCount)
 	}
 
 	totalExecutedMsgCount := len(executedMsgs)
 	if totalExecutedMsgCount != indexedData.nonRevertedMessageCount {
-		return xerrors.Errorf("tipset executed message count mismatch: chainstore has %d, index has %d", totalExecutedMsgCount, indexedData.nonRevertedMessageCount)
+		return xerrors.Errorf("message count mismatch: chainstore has %d, index has %d", totalExecutedMsgCount, indexedData.nonRevertedMessageCount)
+	}
+
+	// if non-reverted events exist which means that tipset `ts` has been executed, there should be 0 reverted events in the DB
+	var hasRevertedEventsInTipset bool
+	err = si.stmts.hasRevertedEventsInTipsetStmt.QueryRowContext(ctx, tsKeyCid.Bytes()).Scan(&hasRevertedEventsInTipset)
+	if err != nil {
+		return xerrors.Errorf("failed to check if there are reverted events in tipset: %w", err)
+	}
+	if hasRevertedEventsInTipset {
+		return xerrors.Errorf("index corruption: reverted events found for an executed tipset %s", tsKeyCid)
 	}
 
 	return nil
@@ -261,10 +273,10 @@ func (si *SqliteIndexer) backfillMissingTipset(ctx context.Context, ts *types.Ti
 	}
 
 	return &types.IndexValidation{
-		TipsetKey:               ts.Key().String(),
-		Height:                  uint64(ts.Height()),
-		Backfilled:              true,
-		NonRevertedMessageCount: uint64(indexedData.nonRevertedMessageCount),
-		NonRevertedEventsCount:  uint64(indexedData.nonRevertedEventCount),
+		TipSetKey:            ts.Key(),
+		Height:               uint64(ts.Height()),
+		Backfilled:           true,
+		IndexedMessagesCount: uint64(indexedData.nonRevertedMessageCount),
+		IndexedEventsCount:   uint64(indexedData.nonRevertedEventCount),
 	}, nil
 }

@@ -2055,10 +2055,17 @@
                 "schema": {
                     "examples": [
                         {
-                            "TipsetKey": "string value",
+                            "TipSetKey": [
+                                {
+                                    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                                },
+                                {
+                                    "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+                                }
+                            ],
                             "Height": 42,
-                            "TotalMessages": 42,
-                            "TotalEvents": 42,
+                            "IndexedMessagesCount": 42,
+                            "IndexedEventsCount": 42,
                             "Backfilled": true
                         }
                     ],
@@ -2071,16 +2078,17 @@
                             "title": "number",
                             "type": "number"
                         },
-                        "TipsetKey": {
-                            "type": "string"
-                        },
-                        "TotalEvents": {
+                        "IndexedEventsCount": {
                             "title": "number",
                             "type": "number"
                         },
-                        "TotalMessages": {
+                        "IndexedMessagesCount": {
                             "title": "number",
                             "type": "number"
+                        },
+                        "TipSetKey": {
+                            "additionalProperties": false,
+                            "type": "object"
                         }
                     },
                     "type": [

@@ -51,6 +51,7 @@ type preparedStatements struct {
 
 	getNonRevertedTipsetMessageCountStmt *sql.Stmt
 	getNonRevertedTipsetEventCountStmt   *sql.Stmt
+	hasRevertedEventsInTipsetStmt        *sql.Stmt
 }
 
 type SqliteIndexer struct {
@@ -224,15 +225,11 @@ func (si *SqliteIndexer) indexSignedMessage(ctx context.Context, tx *sql.Tx, msg
 }
 
 func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
-	si.closeLk.RLock()
 	if si.isClosed() {
-		si.closeLk.RUnlock()
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	si.writerLk.Lock()
-	defer si.writerLk.Unlock()
 
 	// We're moving the chain ahead from the `from` tipset to the `to` tipset
 	// Height(to) > Height(from)
@@ -245,8 +242,10 @@ func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) erro
 	})
 
 	if err != nil {
+		si.writerLk.Unlock()
 		return xerrors.Errorf("failed to apply tipset: %w", err)
 	}
+	si.writerLk.Unlock()
 
 	si.notifyUpdateSubs()
 
@@ -348,9 +347,6 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 		return ErrClosed
 	}
 
-	si.writerLk.Lock()
-	defer si.writerLk.Unlock()
-
 	// We're reverting the chain from the tipset at `from` to the tipset at `to`.
 	// Height(to) < Height(from)
 
@@ -365,6 +361,8 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 	if err != nil {
 		return xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
+
+	si.writerLk.Lock()
 
 	err = withTx(ctx, si.db, func(tx *sql.Tx) error {
 		// revert the `from` tipset
@@ -386,9 +384,11 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 		return nil
 	})
 	if err != nil {
+		si.writerLk.Unlock()
 		return xerrors.Errorf("failed during revert transaction: %w", err)
 	}
 
+	si.writerLk.Unlock()
 	si.notifyUpdateSubs()
 
 	return nil

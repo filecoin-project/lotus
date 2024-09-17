@@ -1237,7 +1237,7 @@ Response: `"0"`
 ### ChainValidateIndex
 There are not yet any comments for this method.
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json
@@ -1250,11 +1250,17 @@ Inputs:
 Response:
 ```json
 {
-  "TipsetKey": "string value",
+  "TipSetKey": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
   "Height": 42,
-  "TotalMessages": 42,
-  "TotalEvents": 42,
-  "EventsReverted": true,
+  "IndexedMessagesCount": 42,
+  "IndexedEventsCount": 42,
   "Backfilled": true
 }
 ```
