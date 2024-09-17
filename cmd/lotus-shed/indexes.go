@@ -35,15 +35,6 @@ const (
 	insertEntry      = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
 	upsertEventsSeen = `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`
 	tipsetSeen       = `SELECT height,reverted FROM events_seen WHERE tipset_key_cid=?`
-
-	getEthTxHashCountForTipset = `SELECT COUNT(*) FROM eth_tx_hash WHERE message_cid IN (SELECT message_cid FROM tipset_message WHERE tipset_key_cid = ? AND reverted = 0)`
-	getTotalEventEntries       = `
-		SELECT COUNT(*)
-		FROM event_entry ee
-		JOIN event e ON ee.event_id = e.event_id
-		JOIN tipset_message tm ON e.message_id = tm.message_id
-		WHERE tm.tipset_key_cid = ? AND tm.message_cid IS NOT NULL
-	`
 )
 
 func withCategory(cat string, cmd *cli.Command) *cli.Command {
