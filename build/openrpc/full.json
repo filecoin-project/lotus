@@ -2059,16 +2059,12 @@
                             "Height": 42,
                             "TotalMessages": 42,
                             "TotalEvents": 42,
-                            "EventsReverted": true,
                             "Backfilled": true
                         }
                     ],
                     "additionalProperties": false,
                     "properties": {
                         "Backfilled": {
-                            "type": "boolean"
-                        },
-                        "EventsReverted": {
                             "type": "boolean"
                         },
                         "Height": {

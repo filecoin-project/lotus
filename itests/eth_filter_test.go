@@ -525,16 +525,31 @@ func TestEthGetLogsBasic(t *testing.T) {
 
 	AssertEthLogs(t, rctLogs, expected, received)
 
-	iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(0), false)
+	epoch := uint64(0)
+	iv, err := client.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), false)
 	require.NoError(err)
 	require.NotNil(iv)
 
 	fmt.Printf("index validation: %v\n", iv)
 
-	iv, err = client.ChainValidateIndex(ctx, abi.ChainEpoch(22), false)
+	// Add assertions for IndexValidation fields
+	require.NotEmpty(t, iv.TipsetKey, "TipsetKey should not be empty")
+	require.Equal(t, epoch, iv.Height, "Height should be 0")
+	require.GreaterOrEqual(t, iv.NonRevertedMessageCount, uint64(0), "NonRevertedMessageCount should be non-negative") // TODO: change according to actual number of messages in the tipset
+	require.GreaterOrEqual(t, iv.NonRevertedEventsCount, uint64(0), "NonRevertedEventsCount should be non-negative")   // TODO: change according to actual number of messages in the tipset
+	require.False(iv.Backfilled, "Backfilled should be flase")
+
+	epoch = 22
+	iv, err = client.ChainValidateIndex(ctx, abi.ChainEpoch(epoch), false)
 	require.NoError(err)
 	require.NotNil(iv)
 	fmt.Printf("index validation: %v\n", iv)
+
+	require.NotEmpty(t, iv.TipsetKey, "TipsetKey should not be empty")
+	require.Equal(t, epoch, iv.Height, "Height should be 22")
+	require.GreaterOrEqual(t, iv.NonRevertedMessageCount, uint64(0), "NonRevertedMessageCount be non-negative") // TODO: change according to actual number of messages in the tipset
+	require.GreaterOrEqual(t, iv.NonRevertedEventsCount, uint64(0), "NonRevertedEventsCount be non-negative")   // TODO: change according to actual number of messages in the tipset
+	require.True(iv.Backfilled, "Backfilled should be false")
 }
 
 func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {

@@ -48,6 +48,9 @@ type preparedStatements struct {
 	hasNullRoundAtHeightStmt         *sql.Stmt
 	getNonRevertedTipsetAtHeightStmt *sql.Stmt
 	countTipsetsAtHeightStmt         *sql.Stmt
+
+	getNonRevertedTipsetMessageCountStmt *sql.Stmt
+	getNonRevertedTipsetEventCountStmt   *sql.Stmt
 }
 
 type SqliteIndexer struct {
@@ -173,12 +176,9 @@ func (si *SqliteIndexer) initStatements() error {
 }
 
 func (si *SqliteIndexer) IndexEthTxHash(ctx context.Context, txHash ethtypes.EthHash, msgCid cid.Cid) error {
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
 		return si.indexEthTxHash(ctx, tx, txHash, msgCid)
@@ -199,12 +199,10 @@ func (si *SqliteIndexer) IndexSignedMessage(ctx context.Context, msg *types.Sign
 	if msg.Signature.Type != crypto.SigTypeDelegated {
 		return nil
 	}
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	return withTx(ctx, si.db, func(tx *sql.Tx) error {
 		return si.indexSignedMessage(ctx, tx, msg)
@@ -227,7 +225,7 @@ func (si *SqliteIndexer) indexSignedMessage(ctx context.Context, tx *sql.Tx, msg
 
 func (si *SqliteIndexer) Apply(ctx context.Context, from, to *types.TipSet) error {
 	si.closeLk.RLock()
-	if si.closed {
+	if si.isClosed() {
 		si.closeLk.RUnlock()
 		return ErrClosed
 	}
@@ -346,12 +344,9 @@ func (si *SqliteIndexer) restoreTipsetIfExists(ctx context.Context, tx *sql.Tx, 
 }
 
 func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) error {
-	si.closeLk.RLock()
-	if si.closed {
-		si.closeLk.RUnlock()
+	if si.isClosed() {
 		return ErrClosed
 	}
-	si.closeLk.RUnlock()
 
 	si.writerLk.Lock()
 	defer si.writerLk.Unlock()
@@ -397,4 +392,10 @@ func (si *SqliteIndexer) Revert(ctx context.Context, from, to *types.TipSet) err
 	si.notifyUpdateSubs()
 
 	return nil
+}
+
+func (si *SqliteIndexer) isClosed() bool {
+	si.closeLk.RLock()
+	defer si.closeLk.RUnlock()
+	return si.closed
 }
